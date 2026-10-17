@@ -1,77 +1,200 @@
-# Agent 工作流与文件能力交付计划（2026-10-17）
+# Agent 工作流与 Codex + OpenCode 内核整合计划（2026-10-17）
 
-> 状态：功能已在本地增强分支 `codex/agent-workflow-refinement`（基线 963690b）实现并通过验证，尚未合并或发布。
-> 本文件所在分支 `plan` 仅用于在 GitHub 上存放和评审本计划；代码改动保留在本地增强分支，等待评审后按第 4 节流程集成。
-> 详细记录：本地 `docs/agent-enhancement-verification.md` 与 `docs/HANDOFF_AGENT_WORKFLOW_2026-10-17.md`。
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-## 1. 背景与目标
+**Goal:** 将 GitHub `plan` 分支交付计划、本地 Agent 工作流实现、Codex CLI 与 OpenCode CLI 的能力研究整合成一个可执行的 DeskPet 内核计划；优先完成会话、工具、权限和恢复，GUI 暂时保持现状。
 
-- 用户希望 DeskPet 的 Agent 能力对齐 OpenCode，对话与工作区体验对齐 Codex App / MiMo Code Desktop；在保持默认 700px 聊天布局不变的前提下，增强宽屏工作区、上下文管理、非中断引导、工作设置与文件能力。
-- 优先场景：文件与代码工作（读懂项目、跨文件修改、生成并核对成果），允许在受控范围内运行项目命令。
-- 原则：保留现有视觉语言；新增功能补齐对应 UI；不引入第三方参考项目源码；真实交互与截图驱动验收。
+**Architecture:** 内核采用自研 C# Session / Tool / Permission / Recovery 四层。Codex 提供线程、回合、压缩、执行策略、审批和恢复语义；OpenCode 提供 Provider、Tool Schema、Agent 模式、Inbox/Step、插件与统计语义；DeskPet 保留 Windows 文件安全、项目/会话存储、语音和当前 UI。GUI 只消费内核事件，不承载核心业务规则。
 
-## 2. 已完成（本地增强分支）
+**Tech Stack:** C#、.NET Framework 4.8 WPF、.NET 10 shared tests、DataContractJsonSerializer、HttpClient、现有 HistoryStore / AgentTaskStore / ConversationSession / AgentWorkspace / WindowsCommandRunner。
 
-### 2.1 工作区与界面
+**Specs:**
+- `docs/superpowers/specs/2026-10-17-codex-opencode-kernel-capability-matrix.md`
+- `docs/superpowers/specs/2026-10-17-multi-project-sessions-and-change-diffs-design.md`
 
-- 实际宽度 ≥960px 显示左侧项目/任务栏，≥1280px 增加右侧浮动详情卡；最大化与手动拉大采用同一规则；520/700 默认布局不变，还原保留草稿。
-- 左栏按参考图重构：图标导航、项目行、缩进任务行、字号行高统一；路径与权限移入悬停提示/右侧详情；“新对话”入口。
-- 设置入口合并：宽屏仅保留左下“头像+伙伴名”旁齿轮，普通窗口仍保留原右上入口。
-- 快速对话滚动条与完整对话共用 SlimScrollBars 样式（标题栏、历史、队列、输入框一致）。
+## 0. 来源合并结论
 
-### 2.2 对话模式与预测
+| 主题 | GitHub `plan` 分支 | 本地内容 | 合并结果 |
+| --- | --- | --- | --- |
+| Agent 工作流 | 工作区、压缩、引导、命令、检查点、文件格式 | 已有实现并追加项目/会话、差异预览、GitHub 工具 | 保留本地实现；补入内核分层和后续能力 |
+| “新对话” | 作为侧栏入口 | 先实现为多窗口，用户随后要求同窗口标签 | **保留差异**：最终目标改为同一窗口内项目/会话标签；多窗口方案标记为被替代 |
+| 文件变更 | 变更卡、查看差异、增删行数 | 已升级为真实行级 diff、截断/未知状态 | 保留本地较新实现；计划中统一为 `AgentDiff` 能力 |
+| GitHub / 网页 | 未展开 | 已加入 `fetch_url` 与 GitHub 读写工具雏形 | 保留为内核连接器能力；GUI 配置后续再做 |
+| GUI | Codex App / MiMo Desktop 对齐 | 当前 WPF 基础和宽屏侧栏 | **暂不动 GUI**；只保留数据/事件接口 |
+| 发布 | 推送、PR、版本、CHANGELOG | 仍未提交/推送/发布 | 保留为最后集成阶段，不混入内核实现 |
 
-- 快速对话仅纯对话：移除模式切换与 Tab 快捷，“+”菜单去掉目标/计划模式，顶部轻量标注“快速对话”；请求以 ConversationOnly 队列标记强制纯对话，不影响全局模式。
-- 完整对话默认工作模式（新设置默认值），保留对话/工作切换。
-- 输入框内 ghost 预测：空输入框浅灰显示预测，首次 Enter 仅确认填入草稿，释放后再按 Enter 发送；长按不越过确认；Ctrl+Enter 保留引导语义；Esc 关闭并抑制本轮；快速/完整窗口共享。
-- 工作过程中输入框上方轻量显示“N 个文件已更改 +a −b”（真实记录，任务结束收起）。
+## 1. P0：会话内核
 
-### 2.3 上下文与长任务
+### Task 1：统一 Session / Inbox / Step 模型
 
-- 请求前两阶段压缩：先折叠旧工具输出，再按完整协议组生成摘要＋任务事实；保留目标、最新要求、近期工具组与签名；压缩中/完成提示“正在压缩，请稍后”→“上下文已自动压缩”；摘要、引导与附件进入加密任务检查点。
-- 移除任务总轮数、总调用次数与总时长限制及设置，保留单条命令超时与资源边界；工具进度保留最近 100 条。
+**Files:**
+- Create: `src/AgentKernel/SessionModel.cs`
+- Create: `src/AgentKernel/SessionStore.cs`
+- Modify: `src/ConversationSession.cs`
+- Test: `tests/AgentSessionModelTests.cs`
 
-### 2.4 引导与任务可靠性
+**Interfaces:**
+- `SessionId`、`ProjectId`、`ConversationId`、`AgentTaskId`、`MessageId`、`CallId`
+- `SessionInput { Kind, Text, Attachments, Resume, Steer, IdempotencyId }`
+- `SessionEvent { Sequence, Type, Payload, CreatedUtc }`
+- `SessionProjection { Messages, PendingInput, ActiveStep, RecoveryState }`
 
-- 引导在当前操作完成后、下一次模型请求前接入；修订号确认防并发编辑丢失；附件随检查点加密并可恢复；跨项目/超容量保留队列并明确报错。
-- 存储失败后暂停队列并防止已完成引导重复执行；检查点读取对并发保存的瞬时共享冲突加入重试；新建文件首次覆盖补记备份路径，恢复可用。
+- [ ] **Step 1:** 写“同一 Session 幂等输入、跨 Session ID 冲突、pending/delivered 状态”失败测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 实现稳定 ID、Inbox、Step 和事件序列。
+- [ ] **Step 4:** 将当前 `ConversationLog` 和 `ConversationQueue` 映射到 Session 投影。
+- [ ] **Step 5:** 运行 `AgentSessionModelTests`、`ConversationTests`、`QueueTests`。
+- [ ] **Step 6:** 本地提交。
 
-### 2.5 工作设置与变更摘要
+### Task 2：上下文预算与可恢复压缩
 
-- 工作设置三分区（项目权限 / 任务与上下文 / 项目命令）、固定保存栏；命令新增/编辑草稿保护、原项目绑定。
-- 回复下方变更卡：真实文件数与前 3 个文件、展开更多、查看差异；增删行数按原始备份计算，无法可靠计算时不显示数字；恢复后同路径去重。
+**Files:**
+- Modify: `src/AgentContextBudget.cs`
+- Modify: `src/AgentTaskState.cs`
+- Test: `tests/AgentContextRecoveryTests.cs`
 
-### 2.6 文件格式多样性
+**Interfaces:**
+- `ContextBudgetResult { Compacted, Summary, RetainedIds, Unknown, Status }`
+- `Checkpoint { Summary, TaskFacts, ToolCalls, ThinkingSignatures, Attachments }`
 
-- 内置 OOXML：`read_file/read_files/write_file/search_files` 支持 .docx（段落/标题/加粗/表格提取；写入按行生成标题与加粗）与 .xlsx（共享/内联字符串、列间隙、制表符或引号 CSV 写入，最多 5000 行 × 64 列）。
-- 旧版 .doc/.xls 经本机 WPS/Word/Excel COM 转换（WPS 优先，失败回退）；未安装时给出改用 .docx/.xlsx 的明确提示；COM 调用独立 STA 线程、隐藏窗口、关闭弹窗、60 秒超时并退出实例。
-- 文档不支持 old_text 精确修改（明确提示用 write_file 完整重写）；`restore_file` 按字节还原；附件选择器同步支持 .doc/.docx/.xls/.xlsx（提取文字）。
+- [ ] **Step 1:** 写压缩中断、摘要失败、重启恢复和晚到结果测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 统一压缩状态、摘要版本和恢复边界。
+- [ ] **Step 4:** 保留工具身份、调用/结果关联和思考签名。
+- [ ] **Step 5:** 运行 `AgentContextTests`、`AgentProtocolTests`、`AgentTaskTests`。
+- [ ] **Step 6:** 本地提交。
 
-## 3. 验证基线
+## 2. P0：工具内核
 
-- Windows 全量 45/45 组回归通过（含真实 WPS 的 .doc/.xls 往返、原生鼠标配置引导、预测 UI、队列与工作台）。
-- .NET 10 共享业务回归 325 项通过、0 失败。
-- 应用重建成功；PackagingSmoke 全部通过（干净源码构建、便携包、旧版更新助手整包应用）。
-- 修复 Build.ps1 丢失 UTF-8 BOM 导致 Windows PowerShell 5.1 中文文件名乱码的问题。
-- 未验证：真实付费模型、macOS 原生设备、跨设备多屏/DPI。
+### Task 3：统一 Tool Registry / Schema / Executor
 
-## 4. 集成与发布计划（待办）
+**Files:**
+- Create: `src/AgentKernel/AgentTool.cs`
+- Create: `src/AgentKernel/ToolRegistry.cs`
+- Create: `src/AgentKernel/ToolExecutor.cs`
+- Modify: `src/AgentToolCatalog.cs`
+- Modify: `src/AgentWorkspace.cs`
+- Test: `tests/AgentToolRuntimeTests.cs`
 
-1. 评审本地增强分支的源码与验证记录，必要时按反馈修订。
-2. 将 `codex/agent-workflow-refinement` 推送并创建 PR（本 `plan` 分支可作评审说明）。
-3. 合并后更新版本号与 CHANGELOG，按既有流程构建安装包与便携包、校验 SHA256、更新 README 与截图。
-4. 发布前复核配置引导（Windows 原生）与更新助手整包应用；不覆盖用户现有安装。
-5. 可选：补做真实付费模型冒烟与 macOS 原生验收。
+**Interfaces:**
+- `AgentToolDefinition { Name, Description, ReadOnly, InputSchema, OutputSchema }`
+- `ToolExecutionContext { SessionId, AgentId, MessageId, CallId, Progress, Permission }`
+- `ToolResult { Content, Output, Metadata, Truncated, Duration }`
 
-## 5. 后续可选增强
+- [ ] **Step 1:** 写注册、替换、取消、输出截断、进度和稳定 CallId 测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 将文件、补丁、命令、GitHub、网页工具迁移到统一执行器。
+- [ ] **Step 4:** 统一错误分类：取消、权限、工具、格式、超时。
+- [ ] **Step 5:** 运行 `AgentToolRuntimeTests`、`AgentFileToolsTests`、`AgentChangesTests`、`AgentCommandTests`。
+- [ ] **Step 6:** 本地提交。
 
-- .docx 的格式保留式精确编辑（当前为文本视图重写）；PDF 文本提取；PPTX 读取；表格样式与多工作表命名。
-- 快速对话与完整对话的独立历史视图与任务侧栏联动；预测模型的本地缓存与成本控制选项。
-- 大文档解析上限与 COM 超时的用户可调设置；文档转换兼容性矩阵（WPS 各版本、Office 旧版）。
+### Task 4：文件、补丁、命令安全边界
 
-## 6. 风险与边界
+**Files:**
+- Modify: `src/AgentWorkspace.cs`
+- Modify: `src/AgentChanges.cs`
+- Modify: `src/WindowsCommandRunner.cs`
+- Test: `tests/AgentSafetyBoundaryTests.cs`
 
-- .doc/.xls 依赖本机 Office/WPS；低完整性/沙箱环境会被 COM 拒绝并以明确错误提示降级。
-- 文档写入为“文本视图重建”，会丢失原有复杂格式；需要精确保留格式时应使用专业工具。
-- 预览/恢复依赖有界备份（单文件 1 MiB 写入上限、备份目录 200 份/64 MiB 上限）。
-- 本计划分支不包含代码改动；代码以本地增强分支为准，合并前请完成第 4 节评审。
+- [ ] **Step 1:** 写路径、链接、冲突、备份、命令参数和进程清理测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 统一 preflight / write / audit 三阶段。
+- [ ] **Step 4:** 保留有界文件、输出、命令超时和恢复语义。
+- [ ] **Step 5:** 运行文件、补丁、命令、恢复回归。
+- [ ] **Step 6:** 本地提交。
+
+## 3. P0：权限与审批
+
+### Task 5：Action / Resource / Effect 权限模型
+
+**Files:**
+- Create: `src/AgentKernel/AgentPermission.cs`
+- Create: `src/AgentKernel/PermissionRuntime.cs`
+- Test: `tests/AgentPermissionTests.cs`
+
+**Interfaces:**
+- `AgentAction`: `read`, `write`, `delete`, `patch`, `shell`, `network`, `github_read`, `github_write`, `mcp`
+- `PermissionDecision`: `allow`, `deny`, `ask`
+- `ApprovalRequest { Id, Action, Resource, Risk, PayloadHash }`
+
+规则要求：
+
+- 默认拒绝未知动作和未知资源。
+- 读取、写入、命令、网络、GitHub 写入分别可配置。
+- 项目命令仍只接受用户配置的命令 ID。
+- 每次决策写入稳定 CallId 对应的审计记录。
+
+- [ ] **Step 1:** 写 allow/deny/ask、资源匹配、默认拒绝和审计测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 实现规则合并、优先级和审批请求。
+- [ ] **Step 4:** 将 `AgentWorkspace.ExecuteAsync` 全部工具调用接入权限层。
+- [ ] **Step 5:** 运行 `AgentPermissionTests`、`AgentCommandTests`、`AgentProtocolTests`。
+- [ ] **Step 6:** 本地提交。
+
+## 4. P0：恢复与执行可靠性
+
+### Task 6：Write-ahead 执行声明与恢复
+
+**Files:**
+- Create: `src/AgentKernel/ExecutionClaim.cs`
+- Modify: `src/AgentTaskStore.cs`
+- Test: `tests/AgentRecoveryTests.cs`
+
+- [ ] **Step 1:** 写启动恢复、重复执行、失败任务、外部副作用不确定和恢复取消测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 实现执行声明、尝试次数、完成/失败/中断释放。
+- [ ] **Step 4:** 恢复时先核对文件/命令状态，不自动重放写入。
+- [ ] **Step 5:** 运行恢复、检查点、协议回归。
+- [ ] **Step 6:** 本地提交。
+
+### Task 7：审计、事件与可观测性
+
+**Files:**
+- Create: `src/AgentKernel/AgentAudit.cs`
+- Test: `tests/AgentAuditTests.cs`
+
+- [ ] **Step 1:** 写输入摘要、权限决策、工具结果、耗时和重试事件测试。
+- [ ] **Step 2:** 验证 RED。
+- [ ] **Step 3:** 接入 Session / Tool / Permission / Recovery 事件。
+- [ ] **Step 4:** 保证 token、密钥、认证头和原始响应不进入日志。
+- [ ] **Step 5:** 运行审计回归。
+- [ ] **Step 6:** 本地提交。
+
+## 5. P1：连接器与模型层
+
+### Task 8：Web / GitHub / MCP 适配器
+
+- 保留 `fetch_url`、GitHub 读写工具。
+- GitHub Token 加密，仓库范围显式，写操作走审批。
+- MCP 只通过统一 Tool Registry 接入。
+- 每个连接器限制响应大小、超时、来源和敏感字段。
+
+### Task 9：Provider 与 Agent Profiles
+
+- 保留当前 OpenAI / Anthropic / 兼容 Provider。
+- 增加模型能力描述：上下文窗口、工具支持、推理、图片、音频。
+- 引入 `build`、`plan`、`explore/general` Agent Profile。
+- 子 Agent 只能在权限规则允许时启动。
+
+## 6. GUI 暂缓项
+
+以下不进入 P0：
+
+- ChatGPT App / Codex Desktop 视觉重构。
+- 复杂 Code Mode JavaScript 解释器。
+- 云端 Agent tree、OAuth、clustering、完整 LSP。
+- 复杂成本面板、模型市场、OAuth GitHub 登录。
+
+GUI 只需要逐步消费以下内核事件：
+
+`session.changed`、`message.added`、`tool.started`、`tool.progress`、`permission.requested`、`approval.required`、`diff.ready`、`recovery.available`、`audit.updated`。
+
+## 7. 统一验收
+
+- [ ] 会话可以独立创建、排队、暂停、恢复和重启。
+- [ ] 工具具有稳定 Schema、CallId、输出边界、取消和进度。
+- [ ] 权限默认拒绝，敏感操作可审批，审计不泄露密钥。
+- [ ] 恢复不会重复已执行写入，也不会丢失未完成状态。
+- [ ] GitHub/网页能力属于工具层，不依赖 GUI。
+- [ ] 现有 DeskPet UI 不被重构，只接事件。
+- [ ] 每个阶段均有独立测试和全量回归。
