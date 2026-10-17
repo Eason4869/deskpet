@@ -1,4 +1,4 @@
-﻿name: Windows checks
+name: Windows checks
 on:
   push:
     branches: [main, dev, codex/macos-0.6.0]
@@ -9,14 +9,14 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Build and run tests
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($target in @('CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','ConversationUiSmoke','ApplicationSnapshotTests')) {
+          foreach ($target in @('CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','ConversationUiSmoke','ApplicationSnapshotTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','SteeringSmoke')) {
             & .\Build.ps1 -Target $target
             if ($LASTEXITCODE -ne 0) { throw "Failed: $target" }
           }

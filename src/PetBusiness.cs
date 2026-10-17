@@ -84,6 +84,7 @@ namespace Dafeiyu
         [DataMember] public string Reasoning { get; private set; }
         [DataMember] public long ReasoningMilliseconds { get; private set; }
         [DataMember] public bool WorkMode { get; private set; }
+        [DataMember] public string AgentTaskId { get; internal set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
@@ -135,6 +136,7 @@ namespace Dafeiyu
             lock(gate) { string turn=Guid.NewGuid().ToString("N");var u=new ChatMessage("user",text,turn,"complete",source);var a=new ChatMessage("assistant","",turn,"pending",source);messages.Add(u);messages.Add(a);Trim();user=u.Copy();return a.Copy(); }
         }
         public ChatMessage StartProcessing(string id,bool workMode) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode);return message.Copy();} }
+        internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.AgentTaskId=taskId;}}
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
             lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
@@ -168,6 +170,19 @@ namespace Dafeiyu
                 int index=messages.FindIndex(m=>m.Id==replyId && m.Role=="assistant");if(index<1)throw new InvalidOperationException("找不到这条回复。");
                 var user=messages[index-1];if(user.Role!="user" || user.TurnId!=messages[index].TurnId)throw new InvalidOperationException("这条回复没有对应的用户消息。");
                 var previous=new ConversationLog();previous.Replace(messages.Take(index-1).ToList());var request=previous.ForRequest(persona,user.Content);request.Last().SetAttachments(user.Attachments);return request;
+            }
+        }
+        // Reserve space for schemas, protocol envelopes and observations. The
+        // current user message is never trimmed; only whole prior turns leave.
+        public static void BudgetRequest(List<ChatMessage> request)
+        {
+            Func<ChatMessage,long> size=m=>Encoding.UTF8.GetByteCount(m.Content??"")+ChatAttachment.StoredSize(m.Attachments)+1024;
+            while(request.Sum(size)>7L*1024*1024)
+            {
+                int first=request.FindIndex(m=>m.Role!="system");
+                if(first<0 || first>=request.Count-1)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
+                string turn=request[first].TurnId;request.RemoveAt(first);
+                if(first<request.Count-1 && request[first].Role=="assistant")request.RemoveAt(first);
             }
         }
         public void Clear() { lock(gate)messages.Clear(); }

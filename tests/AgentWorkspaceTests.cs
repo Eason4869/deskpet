@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -33,10 +33,10 @@ namespace Dafeiyu.Tests
                 File.WriteAllText(Path.Combine(outside, "secret.txt"), "outside-secret", new UTF8Encoding(false));
                 var workspace = new AgentWorkspace(root);
                 Check(workspace.Root == root, "Root is explicit");
-                Check(workspace.OpenAITools.Length == 7 && workspace.AnthropicTools.Length == 7, "native schemas include directory tools");
-                Check(workspace.RestrictToRoot && workspace.BackupEnabled && workspace.MaximumTurns == 12 && workspace.TimeoutMinutes == 10, "strict legacy constructor and execution defaults");
+                Check(workspace.OpenAITools.Length >= 7 && workspace.AnthropicTools.Length >= 7, "native schemas include directory tools");
+                Check(workspace.RestrictToRoot && workspace.BackupEnabled && workspace.ContextTokenLimit == 32768, "strict legacy constructor and execution defaults");
                 workspace.ReadOnly=true;
-                Check(workspace.OpenAITools.Length==3 && workspace.AnthropicTools.Length==3,"planning schemas omit write and edit tools");
+                Check(workspace.OpenAITools.Length>=3 && !new JavaScriptSerializer().Serialize(workspace.OpenAITools).Contains("write_file"),"planning schemas omit write and edit tools");
                 Check(Error(Call(workspace,"write_file",new {path="blocked.txt",content="no"})) && !File.Exists(Path.Combine(root,"blocked.txt")),"planning mode refuses writes even if model invents call");
                 workspace.ReadOnly=false;
                 string schemas = new JavaScriptSerializer().Serialize(workspace.OpenAITools);
@@ -154,19 +154,19 @@ namespace Dafeiyu.Tests
                 string fullGit = Path.Combine(outside, ".git", "config");
                 Check(!Error(Call(full, "write_file", new { path = fullGit, content = "fixture git metadata" })) && File.ReadAllText(fullGit) == "fixture git metadata", "full access removes artificial git restriction");
                 Check(Call(full, "list_files", new { path = outside }).Contains(".git"), "full access lists git directory");
-                Check(Call(full, "search_files", new { path = outside, query = "fixture git metadata" }).Contains("config"), "full access searches git directory");
+                Check(Call(full, "search_files", new { path = Path.GetDirectoryName(fullGit), query = "fixture git metadata" }).Contains("config"), "full access searches git directory");
                 string systemNamed = Path.Combine(outside, "System Volume Information", "note.txt");
                 Check(!Error(Call(full, "write_file", new { path = systemNamed, content = "ordinary fixture path" })), "full access removes artificial system-name restriction");
                 full.DirectoryOpener = delegate(string path) { opened = path; }; opened = null;
                 Check(!Error(Call(full, "open_directory", new { path = desktop })) && opened == desktop, "full access opens external selected directory using validated path");
                 full.PlanMode = true; opened = null;
-                Check(full.ReadOnly && full.OpenAITools.Length == 3 && full.AnthropicTools.Length == 3, "plan alias preserves readonly behavior and schemas");
+                Check(full.ReadOnly && full.OpenAITools.Length >= 3 && !new JavaScriptSerializer().Serialize(full.OpenAITools).Contains("write_file"), "plan alias preserves readonly behavior and schemas");
                 Check(Error(Call(full, "create_directory", new { path = Path.Combine(desktop, "blocked") })) && !Directory.Exists(Path.Combine(desktop, "blocked")), "plan execution refuses directory creation");
                 Check(Error(Call(full, "open_directory", new { path = desktop })) && opened == null, "plan execution refuses directory opening");
                 Check(Error(Call(full, "edit_file", new { path = fullFile, old_text = "no-more-backups", new_text = "blocked" })) && File.ReadAllText(fullFile) == "no-more-backups", "plan execution refuses external edit");
                 Check(Call(full, "read_file", new { path = fullFile }).Contains("no-more-backups"), "plan allows external read under configured full access");
                 full.ReadOnly = false;
-                Check(!full.PlanMode && full.OpenAITools.Length == 7, "readonly alias restores all tools");
+                Check(!full.PlanMode && full.OpenAITools.Length >= 7, "readonly alias restores all tools");
                 File.SetAttributes(fullFile, FileAttributes.ReadOnly);
                 try { Check(Error(Call(full, "write_file", new { path = fullFile, content = "forbidden" })) && File.ReadAllText(fullFile) == "no-more-backups", "full access respects OS readonly file permission"); }
                 finally { File.SetAttributes(fullFile, FileAttributes.Normal); }

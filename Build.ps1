@@ -1,4 +1,4 @@
-﻿param([ValidateSet('App','CoreTests','ApiTests','ProfileTests','ConversationTests','ChatSmoke','AudioSmoke','UiSmoke','MotionSmoke','LiveTests','UpdateTests','StartupTests','ReleaseUiSmoke','ProxyTests','GreetingTests','UpdateApplyTests','MenuSmoke','AutoUpdateSmoke','HistoryTests','StreamingTests','QuietTests','FeatureUiSmoke','VoicePresetTests','InteractionTests','SpriteAlignmentTests','InteractionUiSmoke','ActionPaletteSmoke','SettingsNavigationSmoke','OnboardingSmoke','OnboardingModelSmoke','LiveCallSmoke','GuideMenuSmoke','QueueTests','ComposerSmoke','DictationTests','AboutSmoke','SteeringSmoke','FeedbackSmoke','ProviderTests','ProviderUiSmoke','ImportedSkinTests','XiaobeiUiSmoke','AiGreetingTests','AiGreetingUiSmoke','BundledSkinTests','SkinPackExport','StumbleSmoke','HoverSleepSmoke','OnboardingUpgradeTests','RecorderFailureTests','ConversationUiSmoke','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','ApplicationSnapshotTests','AttachmentPickerTests','WorkSettingsTests','UpdateScheduleTests')][string]$Target = 'App', [string]$OutputDirectory = '', [string[]]$TestArguments = @())
+﻿param([ValidateSet('App','CoreTests','ApiTests','ProfileTests','ConversationTests','ChatSmoke','AudioSmoke','UiSmoke','MotionSmoke','LiveTests','UpdateTests','StartupTests','ReleaseUiSmoke','ProxyTests','GreetingTests','UpdateApplyTests','MenuSmoke','AutoUpdateSmoke','HistoryTests','StreamingTests','QuietTests','FeatureUiSmoke','VoicePresetTests','InteractionTests','SpriteAlignmentTests','InteractionUiSmoke','ActionPaletteSmoke','SettingsNavigationSmoke','OnboardingSmoke','OnboardingModelSmoke','LiveCallSmoke','GuideMenuSmoke','QueueTests','ComposerSmoke','DictationTests','AboutSmoke','SteeringSmoke','FeedbackSmoke','ProviderTests','ProviderUiSmoke','ImportedSkinTests','XiaobeiUiSmoke','AiGreetingTests','AiGreetingUiSmoke','BundledSkinTests','SkinPackExport','StumbleSmoke','HoverSleepSmoke','OnboardingUpgradeTests','RecorderFailureTests','ConversationUiSmoke','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','ApplicationSnapshotTests','AttachmentPickerTests','WorkSettingsTests','UpdateScheduleTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','AgentDiffTests','AgentChangePreviewTests','ProjectCatalogTests','ConversationWorkspaceTests','ConversationWorkspaceManagerTests','ProjectSidebarSmoke','GitHubToolsTests','AgentSessionModelTests','AgentKernelTests','AgentKernelIntegrationTests','AgentTaskBindingTests','AgentContextRecoveryTests','AgentProfileTests','AgentProviderKernelTests','AgentSubagentToolTests','AgentIntegrationFinalTests','AgentKernelCompletenessTests','ConversationSingleWindowSmoke','ConversationRepeatSmoke','ConversationTitleTests')][string]$Target = 'App', [string]$OutputDirectory = '', [string[]]$TestArguments = @())
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
 $frameworkRoot = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
@@ -8,6 +8,7 @@ $speechAssembly = Get-ChildItem -LiteralPath (Join-Path $env:WINDIR 'Microsoft.N
 if (!$speechAssembly) { throw 'Windows System.Speech assembly was not found.' }
 $referenceFiles = @('System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Net.Http.dll','System.Runtime.Serialization.dll','System.Security.dll','System.Web.Extensions.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','System.Xaml.dll','WPF\WindowsBase.dll','WPF\PresentationCore.dll','WPF\PresentationFramework.dll')
 $references = @($referenceFiles | ForEach-Object { '/reference:' + (Join-Path $frameworkRoot $_) }) + @('/reference:' + $speechAssembly)
+if ($Target -eq 'AttachmentPickerTests') { foreach ($automation in @('UIAutomationClient.dll','UIAutomationTypes.dll')) { $references += '/reference:' + (Join-Path $frameworkRoot ('WPF\' + $automation)) } }
 $workRoot = Join-Path $projectRoot 'work'
 New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 if ($Target -eq 'App') {
@@ -15,14 +16,14 @@ if ($Target -eq 'App') {
     if ($OutputDirectory) { $outputRoot = [IO.Path]::GetFullPath($OutputDirectory) }
     New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
     $destination = Join-Path $outputRoot '桌面伙伴.exe'
-    $sources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' | Select-Object -ExpandProperty FullName)
+    $sources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | Select-Object -ExpandProperty FullName)
     $options = @('/target:winexe','/main:Dafeiyu.Program',('/win32manifest:' + (Join-Path $projectRoot 'app.manifest')),('/win32icon:' + (Join-Path $projectRoot 'assets\pet.ico')))
 } else {
     $destination = Join-Path $workRoot ($Target + '.exe')
     if ($Target -eq 'CoreTests') { $sourceNames = @('PetCore.cs','Settings.cs','ReleaseInfo.cs','ProxyConfiguration.cs','HistoryStore.cs') }
     elseif ($Target -eq 'ApiTests' -or $Target -eq 'StreamingTests') { $sourceNames = @('PetCore.cs','Settings.cs','ReleaseInfo.cs','ProxyConfiguration.cs','HistoryStore.cs','ApiClient.cs','ChatStream.cs','AudioRecorder.cs') }
     elseif ($Target -eq 'ConversationTests' -or $Target -eq 'HistoryTests') { $sourceNames = @('PetCore.cs','Settings.cs','ReleaseInfo.cs','ProxyConfiguration.cs','ApiClient.cs','ChatStream.cs','AudioRecorder.cs','SpeechOutput.cs','ConversationSession.cs','HistoryStore.cs') }
-    else { $sourceNames = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' | Select-Object -ExpandProperty Name) }
+    else { $sourceNames = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | ForEach-Object { $_.FullName.Substring((Join-Path $projectRoot 'src').Length + 1) }) }
     $sources = @($sourceNames | ForEach-Object { Join-Path $projectRoot ('src\' + $_) } | Where-Object { Test-Path -LiteralPath $_ }) + @((Join-Path $projectRoot ('tests\' + $Target + '.cs')))
     if ($Target -eq 'UiSmoke' -or $Target -eq 'ChatSmoke' -or $Target -eq 'AudioSmoke' -or $Target -eq 'LiveTests' -or $Target -eq 'UpdateTests' -or $Target -eq 'ProxyTests' -or $Target -eq 'ProviderUiSmoke' -or $Target -eq 'OnboardingModelSmoke') { $sources += Join-Path $projectRoot 'tests\ApiTests.cs' }
     if ($Target -eq 'ChatSmoke' -or $Target -eq 'ProviderUiSmoke') { $sources += Join-Path $projectRoot 'tests\LiveTests.cs' }
@@ -33,10 +34,12 @@ if ($Target -eq 'App') {
     $options = @('/target:exe',('/main:Dafeiyu.Tests.' + $Target))
 }
 # Shared business/interfaces are also needed by the small legacy test targets.
-foreach ($sharedSource in @('PetBusiness.cs','ChatAttachment.cs','MarkdownContent.cs','AgentWorkspace.cs','ApiClient.cs','ChatStream.cs','NativeAgentClient.cs','AudioContracts.cs','SecretProtection.cs','OnboardingUpgrade.cs')) {
+foreach ($sharedSource in @('PetBusiness.cs','ChatAttachment.cs','MarkdownContent.cs','AgentWorkspace.cs','AgentToolCatalog.cs','AgentFileTools.cs','AgentChanges.cs','AgentLineChanges.cs','DocumentFormats.cs','AgentCommand.cs','WindowsCommandRunner.cs','AgentTaskState.cs','AgentTaskStore.cs','AgentContextBudget.cs','ApiClient.cs','ChatStream.cs','NativeAgentClient.cs','AudioContracts.cs','SecretProtection.cs','OnboardingUpgrade.cs')) {
     $sharedPath = Join-Path $projectRoot ('src\' + $sharedSource)
     if ((Test-Path -LiteralPath $sharedPath) -and $sources -notcontains $sharedPath) { $sources += $sharedPath }
 }
+$predictionShared = Join-Path $projectRoot 'src/ConversationPredictions.cs'
+if (($sources | Where-Object { [IO.Path]::GetFileName($_) -eq 'ConversationSession.cs' }) -and $sources -notcontains $predictionShared) { $sources += $predictionShared }
 $assets = @('/resource:' + (Join-Path $projectRoot 'assets\provider-logos.json') + ',Dafeiyu.ProviderLogos')
 if ($sources | Where-Object { [IO.Path]::GetFileName($_) -eq 'MarkdownContent.cs' }) {
     foreach ($markdownLibrary in Get-ChildItem -LiteralPath (Join-Path $projectRoot 'vendor/markdown') -Filter '*.dll') {
@@ -84,7 +87,10 @@ if (Test-Path -LiteralPath $bundledSkinRoot -PathType Container) {
     }
 }
 $arguments = @('/nologo','/optimize+','/codepage:65001','/utf8output','/platform:anycpu',('/out:' + $destination)) + $references + $options + $assets + $sources
-& $compiler @arguments
+$responseFile = Join-Path $workRoot ($Target + '.rsp')
+$responseLines = @($arguments | ForEach-Object { '"' + ($_ -replace '(?<!\\)"','\"') + '"' })
+[IO.File]::WriteAllLines($responseFile, $responseLines, [Text.UTF8Encoding]::new($true))
+& $compiler ('@' + $responseFile)
 if ($LASTEXITCODE -ne 0) { throw "Compilation failed ($Target)." }
 if ($Target -eq 'App') {
     $workerDestination = Join-Path $outputRoot 'DeskPet.Update.exe'

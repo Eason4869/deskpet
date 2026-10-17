@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -13,8 +14,11 @@ namespace Dafeiyu.Tests
     public static class AgentProtocolTests
     {
         private static int passed,failed;
-        public static int Main()
+        public static int Main(string[] args)
         {
+            if(args.Length>0 && args[0]=="--wait-command"){File.WriteAllText(args[1],"started");for(int i=0;i<1000;i++){if(File.Exists(args[2])){Console.WriteLine("finished naturally");return 0;}Thread.Sleep(10);}return 9;}
+            if(args.Length>0 && args[0]=="--changing-error"){int count=File.Exists("count.txt")?Int32.Parse(File.ReadAllText("count.txt")):0;File.WriteAllText("count.txt",(++count).ToString());Console.Error.WriteLine("diagnostic-"+count);return 1;}
+            if(args.Length>0 && args[0]=="--verify-fixture"){Console.WriteLine(File.ReadAllText("verified.txt"));return 0;}
             Run("both native protocols write then read with linked observations",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
@@ -100,13 +104,11 @@ namespace Dafeiyu.Tests
                     var events=new List<AgentToolEvent>();Equal("文件不存在。",await api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),null,null,events.Add,false,CancellationToken.None));await Within(server.Done);Equal("error",events[1].Status);Assert(server.Bodies[1].Contains("错误："),"tool failure observation absent");if(anthropic)Assert(server.Bodies[1].Contains("\"is_error\":true"),"Anthropic is_error absent");
                 }
             });
-            Run("loop has a finite cap and never executes the final forbidden round",async delegate
+            Run("native task continues beyond the previous default turn cap",async delegate
             {
-                using(var folder=new WorkspaceFolder())
-                {
-                    var replies=new List<Reply>();for(int i=0;i<12;i++)replies.Add(Json(ToolReply(false,"call-"+i,"list_files",new {path="."})));
-                    using(var server=new Fixture(replies.ToArray()))using(var api=new ApiClient())
-                    {int completed=0;await Fails(()=>api.ChatAgentAsync(Config(server,false),Messages(),new AgentWorkspace(folder.Path),null,null,e=>{if(e.Status=="complete")completed++;},false,CancellationToken.None),"循环上限");await Within(server.Done);Equal(12,server.Bodies.Count);Equal(11,completed);}
+                using(var folder=new WorkspaceFolder()){
+                    var replies=new List<Reply>();for(int i=0;i<16;i++)replies.Add(Json(ToolReply(false,"call-"+i,"list_files",new{path="."})));replies.Add(Json(FinalReply(false,"continued")));
+                    using(var server=new Fixture(replies.ToArray()))using(var api=new ApiClient()){Equal("continued",await api.ChatAgentAsync(Config(server,false),Messages(),new AgentWorkspace(folder.Path),null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(17,server.Bodies.Count);}
                 }
             });
             Run("malformed tool JSON and duplicate IDs are never executed",async delegate
@@ -126,17 +128,11 @@ namespace Dafeiyu.Tests
                     {int events=0;await Fails(()=>api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),null,null,e=>events++,true,CancellationToken.None),"超时");Equal(0,events);Assert(!File.Exists(System.IO.Path.Combine(folder.Path,"stream.md")),"timed-out tool executed");}
                 }
             });
-            Run("configured turn budget stops after the selected number of model rounds",async delegate
+            Run("native task continues past the former maximum of 48 model rounds",async delegate
             {
-                foreach(int maximum in new[]{1,3})using(var folder=new WorkspaceFolder())
-                {
-                    var replies=new List<Reply>();for(int i=0;i<maximum;i++)replies.Add(Json(ToolReply(false,"limited-"+i,"list_files",new {path="."})));
-                    using(var server=new Fixture(replies.ToArray()))using(var api=new ApiClient())
-                    {
-                        var workspace=new AgentWorkspace(folder.Path){MaximumTurns=maximum,TimeoutMinutes=1};int completed=0;
-                        await Fails(()=>api.ChatAgentAsync(Config(server,false),Messages(),workspace,null,null,e=>{if(e.Status=="complete")completed++;},false,CancellationToken.None),"循环上限");
-                        await Within(server.Done);Equal(maximum,server.Bodies.Count);Equal(maximum-1,completed);
-                    }
+                using(var folder=new WorkspaceFolder()){
+                    var replies=new List<Reply>();for(int i=0;i<50;i++)replies.Add(Json(ToolReply(false,"long-"+i,"list_files",new{path="."})));replies.Add(Json(FinalReply(false,"long task completed")));
+                    using(var server=new Fixture(replies.ToArray()))using(var api=new ApiClient()){Equal("long task completed",await api.ChatAgentAsync(Config(server,false),Messages(),new AgentWorkspace(folder.Path),null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(51,server.Bodies.Count);}
                 }
             });
             Run("full access prompt contains real directories and absolute file tools have accurate summaries",async delegate
@@ -170,19 +166,80 @@ namespace Dafeiyu.Tests
                     string schemas=J(request["tools"]);Assert(!schemas.Contains("create_directory") && !schemas.Contains("open_directory") && !schemas.Contains("write_file") && !schemas.Contains("edit_file"),"plan advertised side-effect tools");
                 }
             });
-            Run("configured call budget rejects an oversized batch before any tool runs",async delegate
+            Run("protocol rejects an oversized batch before any tool runs",async delegate
             {
                 using(var folder=new WorkspaceFolder())
                 {
-                    var calls=new List<object>();for(int i=0;i<13;i++)calls.Add(new {id="batch-"+i,type="function",function=new {name="list_files",arguments="{}"}});
+                    var calls=new List<object>();for(int i=0;i<17;i++)calls.Add(new {id="batch-"+i,type="function",function=new {name="list_files",arguments="{}"}});
                     string body=J(new {choices=new[]{new {finish_reason="tool_calls",message=new {content=(string)null,tool_calls=calls}}}});
                     using(var server=new Fixture(new[]{Json(body)}))using(var api=new ApiClient())
-                    {int events=0;var workspace=new AgentWorkspace(folder.Path){MaximumTurns=3};await Fails(()=>api.ChatAgentAsync(Config(server,false),Messages(),workspace,null,null,e=>events++,false,CancellationToken.None),"循环上限");Equal(0,events);await Within(server.Done);Equal(1,server.Bodies.Count);}
+                    {int events=0;var workspace=new AgentWorkspace(folder.Path);await Fails(()=>api.ChatAgentAsync(Config(server,false),Messages(),workspace,null,null,e=>events++,false,CancellationToken.None),"未执行");Equal(0,events);await Within(server.Done);Equal(1,server.Bodies.Count);}
+                }
+            });
+            Run("both protocols patch actual files then execute an authorized verification",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","run_command",new{command_id="verify"})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
+                {
+                    var workspace=new AgentWorkspace(folder.Path);workspace.ConfigureCommands(true,J(new[]{new{Id="verify",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--verify-fixture"}}}));
+                    Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(0,workspace.CommandResults[0].ExitCode);Assert(workspace.CommandResults[0].Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
+                }
+            });
+            Run("successful edits reset the repeated-error streak",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","read_file",new{path="missing"})),Json(ToolReply(anthropic,"fix1","write_file",new{path="fix.txt",content="one"})),Json(ToolReply(anthropic,"b","read_file",new{path="missing"})),Json(ToolReply(anthropic,"fix2","write_file",new{path="fix.txt",content="two"})),Json(ToolReply(anthropic,"c","read_file",new{path="missing"})),Json(FinalReply(anthropic,"progress preserved"))}))using(var api=new ApiClient())
+                {Equal("progress preserved",await api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),null,null,null,false,CancellationToken.None));await Within(server.Done);Equal("two",File.ReadAllText(Path.Combine(folder.Path,"fix.txt")));}
+            });
+            Run("different real command diagnostics reset the error streak",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","run_command",new{command_id="test"})),Json(ToolReply(anthropic,"b","run_command",new{command_id="test"})),Json(ToolReply(anthropic,"c","run_command",new{command_id="test"})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
+                {var workspace=new AgentWorkspace(folder.Path);workspace.ConfigureCommands(true,J(new[]{new{Id="test",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--changing-error"}}}));Equal("new diagnostics retained",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(workspace.CommandResults[2].Output.Contains("diagnostic-3"),"changing command errors lost");}
+            });
+            Run("repeated identical errors stop after three real protocol rounds",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","read_file",new{path="missing"})),Json(ToolReply(anthropic,"b","read_file",new{path="missing"})),Json(ToolReply(anthropic,"c","read_file",new{path="missing"}))}))using(var api=new ApiClient())
+                {await Fails(()=>api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),null,null,null,false,CancellationToken.None),"重复失败三次");await Within(server.Done);Equal(3,server.Bodies.Count);}
+            });
+            Run("context compaction retains native tool identities and thinking signatures",delegate
+            {
+                var history=new List<object>{new{role="assistant",content="call"},new{role="tool",tool_call_id="tool-1",content=new string('x',20000)},new{role="assistant",content="newer"},new{role="user",content="continue"}};
+                AgentContextBudget.Compact(history,false);var reduced=Object(J(history[1]));Equal("tool-1",reduced["tool_call_id"]);Assert(((string)reduced["content"]).Length<1500,"old tool output not reduced");
+                var signature=new{type="thinking",thinking="opaque",signature="signature-1"};var blocks=new List<object>{signature,new{type="tool_result",tool_use_id="anthropic-1",content=new string('y',20000)}};
+                history=new List<object>{new{role="user",content=blocks},new{role="assistant",content="next"}};AgentContextBudget.Compact(history,true);string compact=J(history);Assert(compact.Contains("signature-1") && compact.Contains("anthropic-1") && compact.Contains("read_output"),"native content identity lost");return Task.FromResult(0);
+            });
+            Run("safe guidance joins the same task after a real command without cancellation",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"cmd","run_command",new{command_id="wait"})),Json(ToolReply(anthropic,"edit","write_file",new{path="guided.txt",content="guided"})),Json(FinalReply(anthropic,"done after guidance"))}))using(var api=new ApiClient()){
+                    string started=Path.Combine(folder.Path,"started"),release=Path.Combine(folder.Path,"release");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,AgentCommandsEnabled=true,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;cfg.AgentCommandRecipes=J(new[]{new{Id="wait",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--wait-command",started,release}}});
+                    using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(folder.Path,"history"))))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json"))){
+                        queue.Enqueue("original task");await WaitCondition(()=>File.Exists(started));string id=session.CurrentAgentTask.Id;queue.Hold();queue.Enqueue("later ordinary request");await queue.SteerAsync("only change guided.txt and retain original task");
+                        Assert(session.IsBusy && session.CurrentAgentTask.Id==id && !File.Exists(release),"guidance interrupted the real command");File.WriteAllText(release,"continue");await WaitCondition(()=>!session.IsBusy && !queue.IsRunning);await session.FlushHistoryAsync();await Within(server.Done);
+                        Equal(id,session.CurrentAgentTask.Id);Equal(0,session.CurrentAgentTask.Commands.Single().ExitCode);Assert(!session.CurrentAgentTask.Commands.Single().Cancelled,"command was cancelled");Assert(server.Bodies[1].Contains("only change guided.txt"),"next native request lacked guidance");Assert(queue.Items.Count==1 && queue.Items[0].Text=="later ordinary request","guidance duplicated or consumed an unrelated queued request");Assert(session.History.Messages.All(m=>m.Status!="cancelled"),"guide marked work cancelled");Equal("guided",File.ReadAllText(Path.Combine(folder.Path,"guided.txt")));
+                    }
+                }
+            });
+            Run("oversized history is summarized before the native model request",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(FinalReply(anthropic,"prior decisions summarized")),Json(FinalReply(anthropic,"task continued"))}))using(var api=new ApiClient()){
+                    var messages=new List<ChatMessage>{new ChatMessage("user","initial goal")};for(int i=0;i<12;i++)messages.Add(new ChatMessage(i%2==0?"assistant":"user",new string('旧',2000)));messages.Add(new ChatMessage("user","latest exact request"));var w=new AgentWorkspace(folder.Path){ContextTokenLimit=8192};w.BeginTask(new AgentTaskState{Workspace=folder.Path,Goal="latest exact request"});Equal("task continued",await api.ChatAgentAsync(Config(server,anthropic),messages,w,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(!Object(server.Bodies[0]).ContainsKey("tools"),"summary request exposed tools");Assert(server.Bodies[1].Contains("prior decisions summarized") && server.Bodies[1].Contains("latest exact request"),"compacted request lost summary or current intent");Equal(1,w.TaskState.ContextCompactions);
+                }
+            });
+            Run("oversized guidance is retained before native request or checkpoint overflow",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})foreach(bool checkpoint in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{new Reply(FinalReply(anthropic,"current round complete"),"",true,"application/json")}))using(var api=new ApiClient()){
+                    var data=new byte[4*1024*1024];data[0]=137;data[1]=80;data[2]=78;data[3]=71;var image=ChatAttachment.CreateImage("large.png",data);var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;
+                    using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(folder.Path,"history"))))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json"))){
+                        var work=session.SendTextAsync("original task",cfg,"fixture",attachments:checkpoint?null:new[]{image});await WaitCondition(()=>server.Bodies.Count==1);queue.Hold();await queue.SteerAsync("first large guide",attachments:new[]{image});if(checkpoint)await queue.SteerAsync("second large guide",attachments:new[]{image});server.Release(0);bool blocked=false;
+                        try{await work;}catch(ApiException e){blocked=e.Message.Contains(checkpoint?"检查点容量":"单次请求预算");}await session.FlushHistoryAsync();await Within(server.Done);
+                        Assert(blocked,"oversized guidance did not report its bounded storage/request limit");Equal(1,queue.Items.Count);Equal(checkpoint?"second large guide":"first large guide",queue.Items.Single().Text);Equal(image.Data,queue.Items.Single().Attachments.Single().Data);Equal(checkpoint?1:0,session.CurrentAgentTask.Guidance.Count);Equal(1,server.Bodies.Count);Assert(String.IsNullOrEmpty(session.AgentTaskWarning),"overflow produced an unsaved task instead of retaining queued inputs");
+                        if(checkpoint){var task=new AgentTaskStore(Path.Combine(folder.Path,"history","agent-tasks")).Load("",folder.Path);Equal(image.Data,task.Guidance.Single().Attachments.Single().Data);}
+                    }
                 }
             });
             Console.WriteLine("AgentProtocolTests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
 
+        static async Task WaitCondition(Func<bool> done){for(int i=0;i<1500;i++){if(done())return;await Task.Delay(10);}throw new Exception("agent integration timed out");}
+        sealed class SilentSpeech:IReplySpeech{public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){return Task.FromResult(0);}public void SetVolume(int n){}public void Stop(){}public void Dispose(){}}
         private static string DuplicateCalls()
         {var function=new {name="list_files",arguments="{}"};return J(new {choices=new[]{new {finish_reason="tool_calls",message=new {content=(string)null,tool_calls=new[]{new {id="same",type="function",function=function},new {id="same",type="function",function=function}}}}}});}
         private static IList<ChatMessage> Messages(){return new[]{new ChatMessage("user","完成工作区任务")};}

@@ -51,9 +51,14 @@ namespace Dafeiyu
                 {Span span=node.Kind=="bold"?(Span)new Bold():node.Kind=="italic"?new Italic():new Span{TextDecorations=TextDecorations.Strikethrough};Inline(span.Inlines,node.Children);target.Add(span);continue;}
                 if(node.Kind=="link" || node.Kind=="image")
                 {
-                    Uri uri;if(MarkdownContent.TryLink(node.Url,out uri)){var link=new Hyperlink{NavigateUri=uri,Foreground=Ui.Blue,ToolTip=node.Url};if(node.Kind=="image")link.Inlines.Add(new Run("图片："));if(node.Text.Length>0)link.Inlines.Add(new Run(node.Text));Inline(link.Inlines,node.Children);link.RequestNavigate+=delegate(object sender,System.Windows.Navigation.RequestNavigateEventArgs e){try{Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});}catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}e.Handled=true;};target.Add(link);}else Inline(target,node.Children);continue;
-                }
-                if(node.Text.Length>0){var run=new Run(node.Text);if(node.Kind=="code"){run.FontFamily=new FontFamily("Consolas");run.Background=Ui.Brush("#EFF1F5");run.FontSize=12;}target.Add(run);}if(node.Children.Count>0)Inline(target,node.Children);
+                    Uri uri;if(MarkdownContent.TryLink(node.Url,out uri))
+                    {
+                        string label=node.Text.Length>0?node.Text:(node.Kind=="image"?"图片":uri.Host);var chip=new Border{Background=Ui.Brush("#F3F7FF"),BorderBrush=Ui.Brush("#B8C8F4"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(8,3,8,3),Margin=new Thickness(1,0,1,0),Cursor=System.Windows.Input.Cursors.Hand,ToolTip=node.Url,Tag=uri};
+                        var content=new StackPanel{Orientation=Orientation.Horizontal};var icon=UiIcons.Image("link",Ui.Blue);icon.Width=icon.Height=14;icon.Margin=new Thickness(0,0,6,0);content.Children.Add(icon);var text=Ui.Text(label,12,Ui.Blue);text.TextWrapping=TextWrapping.Wrap;content.Children.Add(text);chip.Child=content;
+                        chip.MouseLeftButtonUp+=delegate{try{Process.Start(new ProcessStartInfo(uri.AbsoluteUri){UseShellExecute=true});}catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}};target.Add(new InlineUIContainer(chip));Inline(target,node.Children);continue;
+                    }
+                    Inline(target,node.Children);continue;
+                }                if(node.Text.Length>0){var run=new Run(node.Text);if(node.Kind=="code"){run.FontFamily=new FontFamily("Consolas");run.Background=Ui.Brush("#EFF1F5");run.FontSize=12;}target.Add(run);}if(node.Children.Count>0)Inline(target,node.Children);
             }
         }
     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,13 +22,14 @@ namespace Dafeiyu.Tests
             string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"conversation-ui");Directory.CreateDirectory(folder);
             try
             {
-                var cfg=new PetSettings{SaveChatHistory=false,GreetingEnabled=false,HideOnFullscreen=false,ReadReplies=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                var cfg=new PetSettings{AgentEnabled=false,SaveChatHistory=false,GreetingEnabled=false,HideOnFullscreen=false,ReadReplies=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 cfg.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:9876/v1",Model="GPT-6.1 Sol",StreamReplies=true};
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();Pump();
                 pet.Conversation.Dispose();var api=new Model();var session=new ConversationSession(api,new Silent(),()=>{throw new Exception("No microphone");});session.SelectPersona(pet.Skin.Id);
                 typeof(PetWindow).GetField("conversation",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
                 session.AddLiveTurn(pet.Skin.Id,"这是一段测试发言","收到，测试消息正常。");
                 var full=new ChatWindow(pet);full.Show();var quick=new QuickChatWindow(pet);quick.Show();Pump();
+                Check(ReferenceEquals(quick.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)],full.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)]),"quick chat reuses the full window's slim scrollbar style");
                 Check(All<MarkdownView>(quick).Any(t=>t.Text=="这是一段测试发言"),"quick chat displays user text");
                 foreach(Window window in new Window[]{full,quick})
                 {
@@ -43,31 +44,33 @@ namespace Dafeiyu.Tests
                 }
                 var task=session.SendTextAsync("请进行深度思考后，再回答",cfg,pet.Skin.Name);Pump();api.Think("先核对问题中的条件，再整理出清晰的回答。");Pump();
                 foreach(Window window in new Window[]{full,quick})
-                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(exp.Header is TextBlock && ((TextBlock)exp.Header).Text=="思考中","process status is a separate stable heading");Check(!exp.IsExpanded && All<TextBlock>((DependencyObject)exp.Parent).Any(t=>t.Text.Contains("先核对")),"reasoning streams into collapsed preview");exp.IsExpanded=true;}
+                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(exp.Header is TextBlock && ((TextBlock)exp.Header).Text.Contains("先核对"),"process status is a separate stable heading");Check(!exp.IsExpanded && ((TextBlock)exp.Header).Foreground==AgentUi.Muted,"reasoning streams into a collapsed grey one-liner");exp.IsExpanded=true;}
                 api.Think("\n接着检查边界情况。");Pump();
-                Check(All<Expander>(full).Last().IsExpanded && All<Expander>(quick).Last().IsExpanded,"expansion survives streamed updates");
+                Check(All<Expander>(full).Last(e=>e.Name=="ReasoningDetails").IsExpanded && All<Expander>(quick).Last(e=>e.Name=="ReasoningDetails").IsExpanded,"expansion survives streamed updates");
                 api.Answer("这是经过检查后的答复。");Pump();
                 foreach(Window window in new Window[]{full,quick})
                 {var last=All<Border>(window).Last(b=>b.Name=="AssistantMessage");Check(!All<StackPanel>(last).Single(p=>p.Name=="ThinkingProcess").IsVisible,"thinking auto-hides when final output starts");Check(!All<StackPanel>(last).Single(p=>p.Name=="ReplyActions").IsVisible,"reply actions stay hidden during streaming");}
                 api.Finish();Wait(()=>task.IsCompleted);task.GetAwaiter().GetResult();Pump();
                 Check(session.History.Messages.Last().Reasoning.Contains("边界") && session.History.Messages.Last().Content=="这是经过检查后的答复。","reasoning and answer remain separate in history");
-                var processLog=new ConversationLog();ChatMessage processUser;var processReply=processLog.BeginTurn("工具任务","text",out processUser);
+                foreach(Window window in new Window[]{full,quick})
+                {var last=All<Border>(window).Last(b=>b.Name=="AssistantMessage");var area=All<StackPanel>(last).Single(p=>p.Name=="ThinkingProcess");var exp=All<Expander>(last).Single(e=>e.Name=="ReasoningDetails");exp.IsExpanded=false;Pump();Check(area.IsVisible && !exp.IsExpanded && ((TextBlock)exp.Header).Text=="思考记录","completed chat reply keeps a collapsed grey thinking entry");}
+                var processLog=new ConversationLog();ChatMessage processUser;var processReply=processLog.BeginTurn("工具任务","text",out processUser);processReply=processLog.StartProcessing(processReply.Id,true);
                 var processTools=new[]{new AgentToolEvent{Id="process-tool",Name="read_file",Summary="读取 README.md\n完整文件内容",Status="running"}};
                 processReply=processLog.Update(processReply.Id,"","pending","先检查仓库",1000,processTools);
                 var processHost=new Window{Width=480,Height=360};var processView=new ChatMessageView(processReply,processHost,pet,processHost);processHost.Content=processView;processHost.Show();Pump();
-                var processExp=All<Expander>(processView).Single(e=>e.Name=="ReasoningDetails");var processPreview=All<TextBlock>(processView).Single(t=>t.Name=="ProcessPreview");
+                var processExp=All<Expander>(processView).Single(e=>e.Name=="ReasoningDetails");var processStatus=All<TextBlock>(processView).Single(t=>t.Name=="ProcessStatus");
                 var processToggle=VisualAll<System.Windows.Controls.Primitives.ToggleButton>(processExp).First(t=>t.Name=="ProcessToggle");var processChevron=VisualAll<System.Windows.Shapes.Path>(processToggle).Single(p=>p.Name=="ProcessChevron");
-                Check(((TextBlock)processExp.Header).Text=="处理中" && processPreview.Text=="读取 README.md" && processPreview.IsVisible,"collapsed unified process shows latest tool preview");
-                Check(processPreview.TranslatePoint(new Point(),processHost).Y>=processToggle.TranslatePoint(new Point(0,processToggle.ActualHeight),processHost).Y && processChevron.Opacity==0,"preview is below the fixed header and idle chevron stays hidden");
+                Check(processStatus.Text=="正在查看 README.md" && processStatus.IsVisible && !processExp.IsExpanded,"collapsed process shows the lightweight activity line");
+                Check(object.ReferenceEquals(processExp.Header,processStatus) && processChevron.Opacity==0,"activity line is the fixed header and idle chevron stays hidden");
                 double chevronX=processChevron.TranslatePoint(new Point(),processHost).X;processTools[0].Summary="读取 "+new string('x',500)+".md\n完整内容";
                 processReply=processLog.Update(processReply.Id,"","pending",tools:processTools);processView.Update(processReply);Pump();
-                Check(Math.Abs(processChevron.TranslatePoint(new Point(),processHost).X-chevronX)<1 && processPreview.ActualWidth<processHost.ActualWidth && processPreview.TextWrapping==TextWrapping.NoWrap,"streaming long filenames keep chevron fixed and preview on one line");
-                foreach(var stage in new[]{new[]{"edit_file","编辑中"},new[]{"open_directory","运行中"},new[]{"read_file","处理中"}})
-                {processTools[0].Name=stage[0];processTools[0].Summary=stage[0]+" README.md";processReply=processLog.Update(processReply.Id,"","pending",tools:processTools);processView.Update(processReply);Check(((TextBlock)processExp.Header).Text==stage[1],"active tool determines stage "+stage[0]);}
-                processExp.IsExpanded=true;Pump();Check(!processPreview.IsVisible && All<Expander>(processExp).Any(e=>e.Name=="AgentToolDetails") && All<TextBox>(processExp).Any(t=>t.Text=="先检查仓库"),"one header expands both reasoning and tool history");
+                Check(Math.Abs(processChevron.TranslatePoint(new Point(),processHost).X-chevronX)<1 && processStatus.ActualWidth<processHost.ActualWidth && processStatus.TextWrapping==TextWrapping.NoWrap,"streaming long filenames keep chevron fixed and the activity line on one line");
+                foreach(var stage in new[]{new[]{"edit_file","正在编辑"},new[]{"open_directory","正在运行"},new[]{"read_file","正在查看"}})
+                {processTools[0].Name=stage[0];processTools[0].Summary=stage[0]+" README.md";processReply=processLog.Update(processReply.Id,"","pending",tools:processTools);processView.Update(processReply);Check(((TextBlock)processExp.Header).Text.StartsWith(stage[1]),"active tool determines stage "+stage[0]);}
+                processExp.IsExpanded=true;Pump();Check(All<Expander>(processExp).Any(e=>e.Name=="AgentToolDetails") && All<TextBox>(processExp).Any(t=>t.Text=="先检查仓库"),"one header expands both reasoning and tool history");
                 processTools[0].Status="complete";processReply=processLog.Update(processReply.Id,"","pending",tools:processTools);processView.Update(processReply);
                 processReply=processLog.Update(processReply.Id,"","pending","新的推理\n继续检查");processView.Update(processReply);processExp.IsExpanded=false;Pump();
-                Check(((TextBlock)processExp.Header).Text=="思考中" && processPreview.Text=="继续检查" && processPreview.Foreground==Ui.Ink,"new reasoning replaces finished tool preview");
+                Check(processStatus.Text=="正在整理结果" && All<TextBlock>(processView).Any(t=>t.Name=="StageMilestone"),"finished tool shows a black stage milestone while the run settles");
                 processReply=processLog.Update(processReply.Id,"最终回答","complete");processView.Update(processReply);Pump();Check(!All<StackPanel>(processView).Single(p=>p.Name=="ThinkingProcess").IsVisible,"final answer automatically hides unified tools and reasoning");
                 var inspect=All<Button>(processView).Single(b=>b.Name=="MoreReply").ContextMenu.Items.OfType<MenuItem>().Single(i=>i.Header as string=="查看思考与工具记录");inspect.IsChecked=true;inspect.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Pump();Check(processExp.IsExpanded && All<StackPanel>(processView).Single(p=>p.Name=="ThinkingProcess").IsVisible,"more menu reopens full process history after final answer");processHost.Close();
                 foreach(Window window in new Window[]{full,quick})
@@ -88,18 +91,22 @@ namespace Dafeiyu.Tests
                 var composer=All<ConversationComposer>(quick).Single();typeof(ConversationComposer).GetMethod("AddAttachments",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).Invoke(composer,new object[]{new[]{file}});Pump();Check(All<Button>(quick).Single(b=>b.Name=="SendQuickMessage").Tag as string=="send","attachment-only draft enables send");
                 Check(All<Button>(quick).Any(b=>b.Name=="RemoveAttachment"),"draft attachment can be removed");
                 All<Button>(quick).Single(b=>b.Name=="RemoveAttachment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(!All<Button>(quick).Any(b=>b.Name=="RemoveAttachment"),"removing attachment updates draft");
-                var mode=All<Button>(quick).Single(b=>b.Name=="ConversationModePicker");mode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","pure conversation uses its chat bubble glyph");
-                Check(mode.ContextMenu.Items.Count==2 && ((MenuItem)mode.ContextMenu.Items[0]).IsChecked,"mode picker defaults to pure conversation and offers two modes");
+                Check(!All<Button>(quick).Any(b=>b.Name=="ConversationModePicker") && All<TextBlock>(quick).Any(t=>t.Name=="QuickChatBadge"),"quick chat shows its badge and removes the mode switch");
+                var linkDraft=All<TextBox>(full).Single(t=>t.Name=="MessageInput");linkDraft.Text="[DeskPet](https://github.com/Eason4869/deskpet)";Pump();Check(All<Border>(full).Any(b=>b.Name=="ComposerMarkdownPreviewSurface"&&b.IsVisible) && All<MarkdownView>(full).Any(m=>m.Name=="ComposerMarkdownPreview"&&m.Text.Contains("github.com")),"input box renders Markdown links in its live preview");linkDraft.Clear();Pump();var draft=All<TextBox>(quick).Single(t=>t.Name=="QuickMessageInput");pet.Settings.AgentEnabled=false;
+                var tab=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(draft),Environment.TickCount,System.Windows.Input.Key.Tab){RoutedEvent=System.Windows.Input.Keyboard.PreviewKeyDownEvent};draft.RaiseEvent(tab);Check(!tab.Handled && !pet.Settings.AgentEnabled,"Tab no longer switches modes from the conversation-only quick chat");
+                var mode=All<Button>(full).Single(b=>b.Name=="ConversationModePicker");mode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","full composer reflects the current pure conversation mode");
+                Check(mode.ContextMenu.Items.Count==2 && ((MenuItem)mode.ContextMenu.Items[0]).IsChecked,"full composer offers both modes and checks the active one");
                 ((MenuItem)mode.ContextMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));mode.ContextMenu.IsOpen=false;Check(pet.Settings.AgentEnabled && pet.Store.Load().AgentEnabled,"working mode persists agent selection");
                 Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="work","working mode uses its writing pencil glyph");
-                var draft=All<TextBox>(quick).Single(t=>t.Name=="QuickMessageInput");var tab=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(draft),Environment.TickCount,System.Windows.Input.Key.Tab){RoutedEvent=System.Windows.Input.Keyboard.PreviewKeyDownEvent};draft.RaiseEvent(tab);Check(tab.Handled && !pet.Settings.AgentEnabled,"Tab in composer switches back to pure conversation");
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","Tab restores the bubble glyph together with pure conversation");
+                ((MenuItem)mode.ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(!pet.Settings.AgentEnabled && !pet.Store.Load().AgentEnabled,"full composer can switch back to pure conversation");
                 composer.SnapshotTargetProvider=()=>null;
                 var plus=All<Button>(quick).Single(b=>b.Name=="AddAttachment");plus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var menu=plus.ContextMenu;
-                Check(menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddFilesAndFolders") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddApplicationSnapshot") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="SetAgentGoal") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AgentPlanMode"),"add menu contains files folders snapshots goal and planning");
+                Check(menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddFilesAndFolders") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddApplicationSnapshot") && !menu.Items.OfType<MenuItem>().Any(m=>m.Name=="SetAgentGoal"||m.Name=="AgentPlanMode"),"quick chat keeps attachment entries and drops work-only goal and planning");
                 Check(menu.Items.OfType<MenuItem>().All(m=>!m.HasItems) && !menu.Items.OfType<MenuItem>().Single(m=>m.Name=="AddApplicationSnapshot").IsEnabled,"add menu is flat and snapshot is disabled without another application");
-                var plan=menu.Items.OfType<MenuItem>().Single(m=>m.Name=="AgentPlanMode");plan.IsChecked=true;plan.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(pet.Settings.AgentPlanMode && pet.Store.Load().AgentPlanMode,"planning mode is saved");menu.IsOpen=false;
+                menu.IsOpen=false;
+                var fullPlus=All<Button>(full).Single(b=>b.Name=="AddAttachment");fullPlus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var fullMenu=fullPlus.ContextMenu;
+                var plan=fullMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="AgentPlanMode");plan.IsChecked=true;plan.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(pet.Settings.AgentPlanMode && pet.Store.Load().AgentPlanMode,"planning mode is saved from the full composer");fullMenu.IsOpen=false;
                 var visual=new DrawingVisual();using(var drawing=visual.RenderOpen()){drawing.DrawRectangle(Ui.Brush("#E8F2FF"),null,new Rect(0,0,220,140));drawing.DrawText(new FormattedText("应用快照",System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface("Microsoft YaHei UI"),25,Ui.Ink,1.0),new Point(20,44));}var bitmap=new RenderTargetBitmap(220,140,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));byte[] picture;using(var memory=new MemoryStream()){encoder.Save(memory);picture=memory.ToArray();}
                 composer.SnapshotTargetProvider=()=>new ApplicationSnapshotTarget{AppName="测试应用",Title="测试应用窗口",IconPng=picture};plus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 var snapshot=plus.ContextMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="AddApplicationSnapshot");Check(snapshot.IsEnabled && snapshot.Icon is Image && !snapshot.HasItems && ((string)snapshot.Header).Contains("测试应用"),"top application appears directly with its actual icon");Save(plus.ContextMenu,Path.Combine(folder,"flat-add-menu.png"));plus.ContextMenu.IsOpen=false;
@@ -121,7 +128,7 @@ namespace Dafeiyu.Tests
                 foreach(Window window in new Window[]{full,quick})
                 {
                     var user=All<Border>(window).First(b=>b.Name=="UserMessage");var cards=All<Border>(user).Where(b=>b.Name=="SentAttachmentCard").ToList();var bubble=All<Border>(user).Single(b=>b.Name=="SentUserBubble");
-                    Check(cards.Count==2 && cards.First().Background is ImageBrush && cards.First().ActualWidth==80,"sent attachments use standalone rounded image and file cards");
+                    Check(cards.Count==2 && cards.First().Background is ImageBrush && cards.First().ActualWidth==88,"sent attachments use standalone rounded image and file cards");var attachmentActions=cards.Last().ContextMenu.Items.OfType<MenuItem>().Select(i=>(string)i.Header).ToArray();Check(new[]{"打开文件","打开方式…","在资源管理器中打开","复制路径","复制文件内容","另存为…"}.All(x=>attachmentActions.Contains(x)),"file card exposes open, reveal, copy and save actions");
                     Check(cards.All(c=>c.TranslatePoint(new Point(0,c.ActualHeight),user).Y<=bubble.TranslatePoint(new Point(),user).Y),"sent attachments are above the blue user bubble");if(window==full)Save(user,Path.Combine(folder,"sent-attachments.png"));
                 }
                 pet.Settings.Text.Model="GPT-6.1 Sol";full.RefreshAppearance();quick.RefreshPersona();Pump();Save(full,Path.Combine(folder,"full-final.png"));Save(quick,Path.Combine(folder,"quick-final.png"));

@@ -11,9 +11,10 @@ namespace Dafeiyu
         {
             string shape=name=="speaker"?"M3,9 L7,9 12,5 12,19 7,15 3,15 Z M16,9 C19,11 19,13 16,15 M18,6 C23,9 23,15 18,18":
                 name=="copy"?"M9,8 L19,8 19,21 9,21 Z M5,16 L4,16 4,3 14,3 14,5":
-                name=="file"?"M6,3 L14,3 19,8 19,21 6,21 Z M14,3 L14,8 19,8":
+                name=="add"?"M12,5 L12,19 M5,12 L19,12":                name=="file"?"M6,3 L14,3 19,8 19,21 6,21 Z M14,3 L14,8 19,8":
+                name=="folder"?"M3,7 L3,5 Q3,4 5,4 L10,4 12,7 20,7 Q21,7 21,9 L19,19 3,19 Z M3,10 L20,10":                name=="folder-open"?"M3,8 L3,5 Q3,4 5,4 L10,4 12,7 21,7 Q22,7 21,9 L19,19 3,19 Z M3,10 L21,10 M8,7 L10,4":
                 name=="chat"?"M5,4 L19,4 Q21,4 21,6 L21,16 Q21,18 19,18 L10,18 5,21 5,18 Q3,18 3,16 L3,6 Q3,4 5,4 Z M8,9 L8,10 M12,9 L12,10 M16,9 L16,10":
-                name=="attachment"?"M8,14 L14,6 C18,2 23,7 19,11 L10,20 C6,24 0,18 4,14 L14,4 M8,15 L16,7":
+                name=="link"?"M9,15 L15,9 M8,17 L6,19 C4,21 1,18 3,16 L6,13 M16,7 L18,5 C20,3 23,6 21,8 L18,11":                name=="attachment"?"M8,14 L14,6 C18,2 23,7 19,11 L10,20 C6,24 0,18 4,14 L14,4 M8,15 L16,7":
                 name=="snapshot"?"M3,8 L3,4 7,4 M17,4 L21,4 21,8 M21,16 L21,20 17,20 M7,20 L3,20 3,16 M7,9 L17,9 17,15 7,15 Z":
                 name=="target"?"M21,12 A9,9 0 1 1 12,3 M17,12 A5,5 0 1 1 12,7 M12,12 L22,2 M17,2 L22,2 22,7":
                 name=="more"?"M5,11 L5,13 M12,11 L12,13 M19,11 L19,13":
@@ -59,7 +60,7 @@ namespace Dafeiyu
         }
         public static Button Button(string icon,string label,bool primary=false)
         {
-            var button=Ui.Button(label,primary);button.Content=Image(icon,primary?Brushes.White:Ui.Ink);button.ToolTip=label;
+            var button=Ui.Button(label,primary);button.Content=Image(icon,primary?Brushes.White:Ui.Ink);button.ToolTip=null;
             button.Width=36;button.Height=36;button.MinHeight=36;button.Padding=new Thickness(8);button.Margin=new Thickness(0,0,6,0);
             if(!primary){button.Background=Brushes.Transparent;button.BorderBrush=Brushes.Transparent;}
             System.Windows.Automation.AutomationProperties.SetName(button,label);return button;

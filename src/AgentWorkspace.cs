@@ -25,7 +25,7 @@ namespace Dafeiyu
 
     // Restricted mode grants authority only to Root; full mode follows the user's OS permissions.
     // No shell commands or file deletion are exposed. Explorer opens directories only.
-    public sealed class AgentWorkspace
+    public sealed partial class AgentWorkspace : IDisposable
     {
         private const int MaxFileBytes = 1024 * 1024;
         private const int MaxResultChars = 24000;
@@ -33,16 +33,14 @@ namespace Dafeiyu
         private static readonly Encoding Utf8 = new UTF8Encoding(false, true);
         private readonly SemaphoreSlim gate = new SemaphoreSlim(1, 1);
         private readonly string prefix;
-        private int calls;
         public string Root { get; private set; }
         public bool RestrictToRoot { get; private set; }
         public bool BackupEnabled { get; set; }
-        public int MaximumTurns { get; set; }
-        public int TimeoutMinutes { get; set; }
+        public int ContextTokenLimit {get;set;}
         internal Action<string> DirectoryOpener { get; set; }
         public object[] OpenAITools { get; private set; }
         public object[] AnthropicTools { get; private set; }
-        private bool readOnly;
+        private bool readOnly,disposed;private GitHubClient github;private AgentPermissionRuntime kernelPermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();private AgentAuditLog kernelAudit;private IAgentApprovalProvider kernelApproval;private ExecutionClaimStore kernelClaims;private string kernelTaskId;private AgentSessionModel kernelSessionModel;private AgentProfile kernelProfile;private AgentModelCapabilities providerCapabilities;private AgentSubagentManager subagents;private AgentSubagentScheduler subagentScheduler;private AgentToolRuntime kernelTools;private readonly List<AgentToolDefinition> dynamicTools=new List<AgentToolDefinition>();private readonly List<IMcpTransport> mcpTransports=new List<IMcpTransport>();
         public bool PlanMode {get{return readOnly;}set{readOnly=value;BuildSchemas();}}
         public bool ReadOnly {get{return PlanMode;}set{PlanMode=value;}}
 
@@ -54,7 +52,7 @@ namespace Dafeiyu
             if (String.IsNullOrWhiteSpace(root) || !Path.IsPathRooted(root))
                 throw new ArgumentException("工作目录必须是明确选择的绝对路径。");
             RestrictToRoot = restrictToRoot;
-            BackupEnabled = true; MaximumTurns = 12; TimeoutMinutes = 10;
+            BackupEnabled = true; ContextTokenLimit=32768;
             DirectoryOpener = OpenExplorer;
             ValidateSyntax(root, true, !restrictToRoot);
             string full = Path.GetFullPath(root), drive = Path.GetPathRoot(full);
@@ -78,7 +76,25 @@ namespace Dafeiyu
             BuildSchemas();
         }
 
-        public Task<string> ExecuteAsync(string name, string argumentsJson, CancellationToken token)
+        internal void ConfigureGitHub(string repository,ConnectionSettings connection){if(github!=null)github.Dispose();github=new GitHubClient(repository,connection);}
+        internal void AttachKernelSession(AgentSessionModel model){kernelSessionModel=model;}
+        internal void ConfigureProvider(string provider,string model){providerCapabilities=new AgentProviderRegistry().Resolve(provider,model);BuildSchemas();}
+        internal void ConfigureMcp(IMcpTransport transport){if(transport==null)throw new ArgumentNullException("transport");if(!mcpTransports.Contains(transport))mcpTransports.Add(transport);kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
+        public AgentModelCapabilities ProviderCapabilities{get{return providerCapabilities;}}public AgentSubagentManager Subagents{get{return subagents;}}public AgentSubagentScheduler SubagentScheduler{get{return subagentScheduler;}}public AgentToolRuntime KernelTools{get{return kernelTools;}}
+        internal void ConfigureAgentProfile(AgentProfile profile){kernelProfile=profile;if(profile!=null)kernelPermissions=new AgentProfileRegistry().PermissionRuntime(profile.Id);kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
+        internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit){ConfigureKernel(permissions,audit,null,null,null);}
+        internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId){ConfigureKernel(permissions,audit,approval,claims,taskId,null);}
+        internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId,AgentSessionModel sessionModel){kernelPermissions=permissions??AgentPermissionRuntime.DefaultWorkspacePolicy();kernelAudit=audit;kernelApproval=approval;kernelClaims=claims;kernelTaskId=taskId;kernelSessionModel=sessionModel;kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);if(kernelClaims!=null){subagents=new AgentSubagentManager(kernelClaims);subagentScheduler=new AgentSubagentScheduler(subagents,4);}RegisterMcpTools();BuildSchemas();}
+        public Task<string> ExecuteAsync(string name,string argumentsJson,CancellationToken token){return ExecuteAsync(name,argumentsJson,Guid.NewGuid().ToString("N"),token);}
+        public async Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
+        {
+            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=AgentPermissionRuntime.ResourceForTool(name,args);
+            var decision=await kernelPermissions.AuthorizeAsync(action,resource,kernelApproval).ConfigureAwait(false);
+            if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return "错误：权限拒绝："+decision.Reason;}
+            try{var result=await ExecuteCoreAsync(name,argumentsJson,callId,token).ConfigureAwait(false);if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
+            catch(Exception){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="error",CreatedUtc=DateTime.UtcNow});throw;}
+        }
+        private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token)
         {
             return Task.Run(delegate
             {
@@ -87,17 +103,28 @@ namespace Dafeiyu
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    if(readOnly && name!="list_files" && name!="read_file" && name!="search_files")return "错误：当前为计划模式，只能读取和分析文件，不能创建、修改或打开目录。";
-                    if (++calls > 256) return "错误：本工作区已达到 256 次工具调用上限，请重新选择工作目录。";
+                    if(readOnly && !AgentToolCatalog.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能创建、修改或打开目录。";
                     if (argumentsJson == null || argumentsJson.Length > MaxFileBytes * 2 + 4096)
                         return "错误：工具参数缺失或过长。";
                     var serializer = new JavaScriptSerializer { MaxJsonLength = MaxFileBytes * 2 + 4096, RecursionLimit = 12 };
                     var args = serializer.DeserializeObject(argumentsJson) as Dictionary<string, object>;
                     if (args == null) return "错误：工具参数必须是 JSON 对象。";
+                    if(name=="spawn_subagent"||name=="complete_subagent"||name=="interrupt_subagent"){if(subagentScheduler==null)return "错误：子 Agent 生命周期尚未初始化。";var serializer2=new JavaScriptSerializer{MaxJsonLength=65536};if(name=="spawn_subagent"){var profile=new AgentProfileRegistry().Get(GetString(args,"profile","general"));if(profile==null)throw new ArgumentException("未知子 Agent Profile。");var child=subagentScheduler.Schedule(kernelTaskId,profile,GetString(args,"input",""));return serializer2.Serialize(new{child.Id,child.Status,child.ProfileId});}string id=GetString(args,"id",null);if(name=="complete_subagent"){bool ok=subagentScheduler.Complete(id,GetString(args,"result",""));return serializer2.Serialize(new{id,status=ok?"complete":"error"});}bool stopped=subagentScheduler.Interrupt(id);return serializer2.Serialize(new{id,status=stopped?"interrupted":"error"});}
+                    if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return "错误：尚未连接 GitHub，请在工作设置中填写 owner/repo 和访问令牌。";return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
                     string path = Resolve(GetString(args, "path", "."));
-                    if (name == "list_files") return ListFiles(path, token);
+                    if (name == "list_files") return ListPage(path, GetInt(args,"offset",0,0,1000000), GetInt(args,"limit",200,1,200), token);
+                    if (name == "find_files") return FindFiles(path,GetString(args,"pattern",null),GetInt(args,"offset",0,0,1500),GetInt(args,"limit",100,1,200),token);
+                    if (name == "read_files") return ReadFiles(args,token);
+                    if (name == "apply_patch") return ApplyPatch(args,token);
+                    if (name == "restore_file") return RestoreFile(path,token);
+                    if (name == "list_changes") return ListChanges();
+                    if (name == "update_plan") return UpdatePlan(args);
+                    if (name == "list_commands") return ListCommands();
+                    if (name == "run_command") return RunCommand(GetString(args,"command_id",null),token);
+                    if (name == "read_output" && args.ContainsKey("output_id")) return SavedOutput(GetString(args,"output_id",null),GetInt(args,"offset",0,0,24000),GetInt(args,"limit",6000,1,12000));
+                    if (name == "read_output") return ReadOutput(GetString(args,"command_id",null),GetInt(args,"offset",0,0,256*1024),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_file") return ReadFile(path, GetInt(args, "offset", 0, 0, 1000000), GetInt(args, "limit", 200, 1, 1000), token);
-                    if (name == "search_files") return Search(path, GetString(args, "query", null), token);
+                    if (name == "search_files") return Search(path, GetString(args, "query", null), GetString(args,"pattern",""), args.ContainsKey("regex") && args["regex"] is bool && (bool)args["regex"], token);
                     if (name == "create_directory")
                     {
                         token.ThrowIfCancellationRequested();
@@ -116,8 +143,10 @@ namespace Dafeiyu
                     {
                         string oldText = GetString(args, "old_text", null), newText = GetString(args, "new_text", null);
                         if (oldText.Length == 0) throw new ArgumentException("old_text 不能为空。");
+                        if (DocumentFormats.IsDocument(path)) throw new ArgumentException("Word/Excel 文档不支持 old_text 精确修改；请用 write_file 以文字完整重写：" + Relative(path));
                         using (LockDirectories(Path.GetDirectoryName(path), false))
                         {
+                            CheckExpected(path,ReadBytes(path,token));
                             string content = ReadText(path, token);
                             int start = content.IndexOf(oldText, StringComparison.Ordinal);
                             if (start < 0) return "错误：未找到 old_text，请先读取当前文件。";
@@ -131,12 +160,13 @@ namespace Dafeiyu
                 catch (OperationCanceledException) { throw; }
                 catch (DecoderFallbackException) { return "错误：文件不是有效的 UTF-8 文本，未进行写入。"; }
                 catch (EncoderFallbackException) { return "错误：内容包含无效 Unicode 字符，未进行写入。"; }
+                catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { return "错误：正则搜索超时，请缩小范围或简化表达式。"; }
                 catch (ArgumentException ex) { return "错误：" + ex.Message; }
                 catch (UnauthorizedAccessException) { return RestrictToRoot ? "错误：拒绝访问。请使用工作目录内的普通文件，禁止链接、受保护目录和越界路径。" : "错误：拒绝访问。请检查系统访问权限；禁止设备路径、链接及硬链接。"; }
                 catch (FileNotFoundException) { return "错误：文件不存在，请先用 list_files 查看目录。"; }
                 catch (DirectoryNotFoundException) { return "错误：目录不存在，请先用 list_files 查看目录。"; }
                 catch (IOException) { return "错误：文件操作失败，文件可能被占用或工作目录已变化。"; }
-                catch (System.ComponentModel.Win32Exception) { return "错误：无法打开资源管理器，请确认目录和系统权限。"; }
+                catch (System.ComponentModel.Win32Exception) { return name=="run_command"?"错误：无法执行配置的命令，请检查程序路径、进程控制权限和系统限制。":"错误：无法打开资源管理器，请确认目录和系统权限。"; }
                 catch (InvalidOperationException) { return "错误：JSON 参数无效或操作超出限制。"; }
                 finally { gate.Release(); }
             }, token);
@@ -193,31 +223,18 @@ namespace Dafeiyu
         private static bool IsWithin(string path, string root) { return path.StartsWith(root.TrimEnd('\\', '/') + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase); }
         private string Relative(string path) { return String.Equals(path, Root, StringComparison.OrdinalIgnoreCase) ? "." : IsWithin(path, Root) ? path.Substring(prefix.Length).Replace('\\', '/') : path; }
 
-        private string ListFiles(string path, CancellationToken token)
-        {
-            using (LockDirectories(path, false))
-            {
-                var output = new StringBuilder();
-                int count = 0;
-                foreach (string entry in Directory.EnumerateFileSystemEntries(path))
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (++count > 200) { output.AppendLine("[已截断：最多列出 200 项]"); break; }
-                    string leaf = Path.GetFileName(entry);
-                    if ((RestrictToRoot && leaf.Equals(".git", StringComparison.OrdinalIgnoreCase)) || leaf.Equals(BackupFolder, StringComparison.OrdinalIgnoreCase)) continue;
-                    FileAttributes attributes = File.GetAttributes(entry);
-                    if ((attributes & FileAttributes.ReparsePoint) != 0) { output.AppendLine("[跳过链接] " + leaf); continue; }
-                    output.AppendLine(((attributes & FileAttributes.Directory) != 0 ? "[目录] " : "[文件] ") + leaf);
-                }
-                return output.Length == 0 ? "目录为空。" : Clip(output.ToString());
-            }
-        }
-
         private string ReadFile(string path, int offset, int limit, CancellationToken token)
         {
             using (LockDirectories(Path.GetDirectoryName(path), false))
             {
-                string content = ReadText(path, token);
+                string content;
+                if (DocumentFormats.IsDocument(path))
+                {
+                    byte[] documentBytes = ReadBytes(path, token, DocumentFormats.MaxDocumentBytes);
+                    observed[path] = ContentHash(documentBytes);
+                    content = DocumentFormats.ReadDocumentText(path, documentBytes, token);
+                }
+                else content = ReadText(path, token);
                 var output = new StringBuilder();
                 using (var reader = new StringReader(content))
                 {
@@ -234,9 +251,11 @@ namespace Dafeiyu
             }
         }
 
-        private string Search(string path, string query, CancellationToken token)
+        private string Search(string path, string query, string pattern, bool useRegex, CancellationToken token)
         {
             if (String.IsNullOrEmpty(query) || query.Length > 1000) throw new ArgumentException("query 应为 1 至 1000 个字符的普通文本。");
+            var expression=useRegex?new System.Text.RegularExpressions.Regex(query,System.Text.RegularExpressions.RegexOptions.IgnoreCase|System.Text.RegularExpressions.RegexOptions.CultureInvariant,TimeSpan.FromMilliseconds(100)):null;
+            var filter=String.IsNullOrEmpty(pattern)?null:FilePattern(pattern);
             var queue = new Queue<KeyValuePair<string, int>>();
             queue.Enqueue(new KeyValuePair<string, int>(path, 0));
             var output = new StringBuilder(); int visited = 0, matches = 0;
@@ -256,11 +275,13 @@ namespace Dafeiyu
                         if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
                         if ((attributes & FileAttributes.Directory) != 0)
                         {
-                            if (item.Value < 12) queue.Enqueue(new KeyValuePair<string, int>(entry, item.Value + 1));
+                            if (item.Value < 12 && !IgnoredDirectories.Contains(leaf)) queue.Enqueue(new KeyValuePair<string, int>(entry, item.Value + 1));
                             continue;
                         }
+                        if(filter!=null && !filter.IsMatch(Relative(entry)))continue;
+                        if(DocumentFormats.IsLegacyWord(entry) || DocumentFormats.IsLegacyExcel(entry))continue;
                         string content;
-                        try { content = ReadText(entry, token); }
+                        try { content = DocumentFormats.IsDocument(entry) ? DocumentFormats.ReadDocumentText(entry, ReadBytes(entry, token, DocumentFormats.MaxDocumentBytes), token) : ReadText(entry, token); }
                         catch (IOException) { continue; }
                         catch (UnauthorizedAccessException) { continue; }
                         catch (ArgumentException) { continue; }
@@ -270,7 +291,7 @@ namespace Dafeiyu
                             while ((line = reader.ReadLine()) != null)
                             {
                                 token.ThrowIfCancellationRequested(); number++;
-                                if (line.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                                if (expression==null ? line.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0 : !expression.IsMatch(line)) continue;
                                 output.Append(Relative(entry)).Append(':').Append(number).Append(": ").AppendLine(line.Length > 400 ? line.Substring(0, 400) + "…" : line);
                                 if (++matches >= 100 || output.Length >= MaxResultChars - 600) return Clip(output + "[已截断：结果达到上限]");
                             }
@@ -278,12 +299,13 @@ namespace Dafeiyu
                     }
                 }
             }
-            return output.Length == 0 ? "未找到匹配文本（仅搜索 UTF-8 文本，深度最多 12 层）。" : Clip(output.ToString());
+            return output.Length == 0 ? "未找到匹配文本（搜索文字文件及 .docx/.xlsx，深度最多 12 层）。" : Clip(output.ToString());
         }
 
         private string ReadText(string path, CancellationToken token)
         {
             byte[] bytes = ReadBytes(path, token);
+            observed[path]=ContentHash(bytes);
             return DecodeText(bytes);
         }
         private static string DecodeText(byte[] bytes)
@@ -294,7 +316,24 @@ namespace Dafeiyu
             return result;
         }
 
-        private byte[] ReadBytes(string path, CancellationToken token)
+        // Binary documents are compared through their readable text so change
+        // counts stay meaningful; unknown binaries yield no comparison text.
+        private static string ReadComparisonText(string path, byte[] bytes)
+        {
+            try { return DecodeText(bytes); }
+            catch (ArgumentException) { }
+            if (DocumentFormats.IsDocument(path))
+                try { return DocumentFormats.ReadDocumentText(path, bytes, CancellationToken.None); }
+                catch (ArgumentException) { }
+            return null;
+        }
+
+        private static string SizeMessage(long limit)
+        {
+            return "文件超过 " + (limit / 1024 / 1024) + " MiB 限制" + (limit == MaxFileBytes ? "，请缩小工作范围。" : "，请拆分文档后重试。");
+        }
+
+        private byte[] ReadBytes(string path, CancellationToken token, long maxBytes = MaxFileBytes)
         {
             using (SafeFileHandle handle = Open(path, 0x80000000, 1, 3, 0x00200000))
             {
@@ -302,7 +341,7 @@ namespace Dafeiyu
                 FileInfoNative info = Inspect(handle);
                 if ((info.Attributes & (uint)(FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0 || info.Links > 1)
                     throw new UnauthorizedAccessException();
-                if (info.SizeHigh != 0 || info.SizeLow > MaxFileBytes) throw new ArgumentException("文件超过 1 MiB 限制，请缩小工作范围。");
+                if (info.SizeHigh != 0 || (long)info.SizeLow > maxBytes) throw new ArgumentException(SizeMessage(maxBytes));
                 using (var stream = new FileStream(handle, FileAccess.Read))
                 using (var data = new MemoryStream())
                 {
@@ -310,7 +349,7 @@ namespace Dafeiyu
                     while ((n = stream.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         token.ThrowIfCancellationRequested();
-                        if (data.Length + n > MaxFileBytes) throw new ArgumentException("文件超过 1 MiB 限制。");
+                        if (data.Length + n > maxBytes) throw new ArgumentException(SizeMessage(maxBytes));
                         data.Write(buffer, 0, n);
                     }
                     return data.ToArray();
@@ -318,23 +357,28 @@ namespace Dafeiyu
             }
         }
 
-        private string WriteFile(string path, string content, CancellationToken token)
+        private string WriteFile(string path, string content, CancellationToken token, byte[] exactBytes=null)
         {
             if (path == Root) throw new ArgumentException("写入路径必须是文件。");
-            byte[] bytes = Utf8.GetBytes(content);
+            EnsureChangeCapacity(new[]{path});
+            if (exactBytes == null && DocumentFormats.IsDocument(path)) exactBytes = DocumentFormats.WriteDocumentBytes(path, content, token);
+            byte[] bytes = exactBytes??Utf8.GetBytes(content);
             if (bytes.Length > MaxFileBytes) throw new ArgumentException("写入内容超过 1 MiB 限制。");
-            if (content.IndexOf('\0') >= 0) throw new ArgumentException("写入内容必须是 UTF-8 文本。");
+            if (content != null && content.IndexOf('\0') >= 0) throw new ArgumentException("写入内容必须是 UTF-8 文本。");
             using (LockDirectories(Path.GetDirectoryName(path), true))
             {
                 token.ThrowIfCancellationRequested();
                 bool exists = File.Exists(path);
                 string backupName = null;
                 string backupPath = null;
+                string beforeHash=null,beforeText=null;
                 if (exists)
                 {
                     // Keep the original bytes, including BOM; decoding also refuses accidental binary overwrites.
                     byte[] previous = ReadBytes(path, token);
-                    DecodeText(previous);
+                    CheckExpected(path,previous);beforeHash=ContentHash(previous);
+                    if (DocumentFormats.IsDocument(path)) beforeText=ReadComparisonText(path,previous);
+                    else beforeText=DecodeText(previous);
                     if (BackupEnabled)
                     {
                         string backupDir = Path.Combine(RestrictToRoot ? Root : Path.GetDirectoryName(path), BackupFolder);
@@ -355,6 +399,7 @@ namespace Dafeiyu
                     }
                 }
                 else if (Directory.Exists(path)) throw new ArgumentException("写入路径是目录。");
+                else if(observed.ContainsKey(path) && observed[path]!=null)throw new ArgumentException("读取过的文件已被删除，请核对后重试。");
                 string temp = Path.Combine(Path.GetDirectoryName(path), ".deskpet-write-" + Guid.NewGuid().ToString("N") + ".tmp");
                 try
                 {
@@ -365,10 +410,12 @@ namespace Dafeiyu
                     {
                         WriteContents(stream, bytes, token);
                         token.ThrowIfCancellationRequested();
+                        if(exists)CheckExpected(path,ReadBytes(path,token));
                         Rename(handle, path, exists);
                     }
                 }
                 finally { if (File.Exists(temp)) File.Delete(temp); }
+                RecordChange(path,beforeHash,ContentHash(bytes),backupPath,beforeText,content,token);
                 return "已写入 " + Relative(path) + "（" + bytes.Length + " 字节）" + (backupName == null ? "。" : "；原文件备份：" + Relative(backupPath) + "。");
             }
         }
@@ -510,28 +557,11 @@ namespace Dafeiyu
             return (int)value;
         }
         private static string Clip(string value) { return value.Length <= MaxResultChars ? value : value.Substring(0, MaxResultChars - 20) + "\n[结果已截断]"; }
+        public void Dispose(){if(disposed)return;disposed=true;foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
+        private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
         private void BuildSchemas()
         {
-            var openai = new List<object>(); var anthropic = new List<object>();
-            AddSchema(openai, anthropic, "list_files", "列出工作目录中的文件和子目录，最多 200 项。", new Dictionary<string, object> { { "path", Property("string", "相对于工作目录的路径，默认 .") } }, new string[0]);
-            AddSchema(openai, anthropic, "read_file", "读取 UTF-8 文件，最多 1 MiB；返回行号。offset 从 0 开始，limit 默认为 200。", new Dictionary<string, object> { { "path", Property("string", "文件路径") }, { "offset", Property("integer", "跳过行数，0 至 1000000") }, { "limit", Property("integer", "读取行数，1 至 1000") } }, new[] { "path" });
-            AddSchema(openai, anthropic, "write_file", "创建或完整覆盖 UTF-8 文件，最多 1 MiB；根据备份设置保存原文件，自动创建子目录。", new Dictionary<string, object> { { "path", Property("string", "文件路径") }, { "content", Property("string", "完整文件内容") } }, new[] { "path", "content" });
-            AddSchema(openai, anthropic, "edit_file", "将文件中唯一一次出现的 old_text 替换为 new_text；根据备份设置保存原文件。", new Dictionary<string, object> { { "path", Property("string", "文件路径") }, { "old_text", Property("string", "唯一匹配的旧文本，包含必要上下文") }, { "new_text", Property("string", "替换文本") } }, new[] { "path", "old_text", "new_text" });
-            AddSchema(openai, anthropic, "search_files", "递归搜索 UTF-8 文本（忽略大小写的普通文本），最多 1500 项、12 层、100 处结果；跳过链接和自动备份目录。", new Dictionary<string, object> { { "path", Property("string", "搜索目录，默认 .") }, { "query", Property("string", "搜索文本，最多 1000 字符") } }, new[] { "query" });
-            if(readOnly){openai.RemoveAt(3);openai.RemoveAt(2);anthropic.RemoveAt(3);anthropic.RemoveAt(2);}
-            else
-            {
-                AddSchema(openai, anthropic, "create_directory", "创建目录及所需父目录，不删除任何文件。", new Dictionary<string, object> { { "path", Property("string", "目录路径") } }, new[] { "path" });
-                AddSchema(openai, anthropic, "open_directory", "在 Windows 资源管理器中打开现有目录，只接受目录。", new Dictionary<string, object> { { "path", Property("string", "已有目录路径") } }, new[] { "path" });
-            }
-            OpenAITools = openai.ToArray(); AnthropicTools = anthropic.ToArray();
-        }
-        private static object Property(string type, string description) { return new { type = type, description = description }; }
-        private static void AddSchema(List<object> openai, List<object> anthropic, string name, string description, Dictionary<string, object> properties, string[] required)
-        {
-            var schema = new { type = "object", properties = properties, required = required, additionalProperties = false };
-            openai.Add(new { type = "function", function = new { name = name, description = description, parameters = schema } });
-            anthropic.Add(new { name = name, description = description, input_schema = schema });
+            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b);OpenAITools=a;AnthropicTools=b;
         }
     }
 }

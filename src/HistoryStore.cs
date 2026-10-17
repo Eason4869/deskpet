@@ -19,6 +19,7 @@ namespace Dafeiyu
         private Task worker=Task.FromResult(0);
         private readonly HashSet<string> unreadableFiles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string warning="";
+        private readonly Dictionary<string,string> warnings=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         public string Warning { get { lock(gate)return warning; } }
         public event Action WarningChanged;
         [DataContract] private sealed class Document
@@ -26,14 +27,15 @@ namespace Dafeiyu
             [DataMember] public int Version=1;
             [DataMember] public List<ChatMessage> Messages;
         }
+        public string DirectoryPath {get{return directory;}}
         public HistoryStore(string directoryPath=null)
         { directory=Path.GetFullPath(directoryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DeskPet","history")); }
         private string FilePath(string petId)
         {
             using(var hash=SHA256.Create())return Path.Combine(directory,BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(petId??""))).Replace("-","").ToLowerInvariant()+".history");
         }
-        private void SetWarning(string value)
-        { Action changed;lock(gate){if(warning==value)return;warning=value;changed=WarningChanged;}if(changed!=null)changed(); }
+        private void SetWarning(string path,string value)
+        { Action changed;lock(gate){if(String.IsNullOrEmpty(value))warnings.Remove(path);else warnings[path]=value;string merged=String.Join(" ",warnings.Values.Distinct());if(warning==merged)return;warning=merged;changed=WarningChanged;}if(changed!=null)changed(); }
         private Task Enqueue(Action action)
         {
             lock(gate) { worker=worker.ContinueWith(delegate { action(); },TaskScheduler.Default);return worker; }
@@ -49,9 +51,9 @@ namespace Dafeiyu
                 if(plain.Length>MaximumBytes)throw new SerializationException();
                 Document document;using(var stream=new MemoryStream(plain))document=(Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(stream);
                 if(document==null || document.Version!=1 || document.Messages==null || document.Messages.Count>400)throw new SerializationException();
-                var log=new ConversationLog();log.Replace(document.Messages);lock(gate)unreadableFiles.Remove(path);SetWarning("");return log.Messages;
+                var log=new ConversationLog();log.Replace(document.Messages);lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");return log.Messages;
             }
-            catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning("聊天记录无法读取，原文件已保留；可清空记录后重新保存。");return new List<ChatMessage>(); }
+            catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning(path,"聊天记录无法读取，原文件已保留；可清空记录后重新保存。");return new List<ChatMessage>(); }
         }
         public Task SaveAsync(string petId,IList<ChatMessage> messages)
         {
@@ -60,7 +62,7 @@ namespace Dafeiyu
                 string temporary=null;
                 try {
                     bool blocked;lock(gate)blocked=unreadableFiles.Contains(path);
-                    if(blocked){SetWarning("聊天记录无法读取，原文件已保留；可清空记录后重新保存。当前对话仍可导出。");return;}
+                    if(blocked){SetWarning(path,"聊天记录无法读取，原文件已保留；可清空记录后重新保存。当前对话仍可导出。");return;}
                     Directory.CreateDirectory(directory);byte[] encrypted;
                     while(true) {
                         byte[] plain;using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(Document)).WriteObject(stream,new Document {Messages=copy});plain=stream.ToArray();}
@@ -71,9 +73,9 @@ namespace Dafeiyu
                     temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
                     using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(encrypted,0,encrypted.Length);stream.Flush(true);}
                     if(File.Exists(path))File.Replace(temporary,path,null);else File.Move(temporary,path);
-                    temporary=null;SetWarning("");
+                    temporary=null;SetWarning(path,"");
                 }
-                catch(Exception e) { if(!IsStorageError(e))throw;SetWarning("聊天记录保存失败；当前窗口中的记录仍可导出，请检查本地存储权限或空间。"); }
+                catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,"聊天记录保存失败；当前窗口中的记录仍可导出，请检查本地存储权限或空间。"); }
                 finally { if(temporary!=null)try{File.Delete(temporary);}catch(IOException){}catch(UnauthorizedAccessException){} }
             });
         }
@@ -82,9 +84,9 @@ namespace Dafeiyu
             string path=FilePath(petId);return Enqueue(delegate {
                 try {
                     try{File.Delete(path);}catch(DirectoryNotFoundException){}
-                    lock(gate)unreadableFiles.Remove(path);SetWarning("");
+                    lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");
                 }
-                catch(Exception e){if(!IsStorageError(e))throw;SetWarning("聊天记录文件删除失败，请检查本地存储权限。");}
+                catch(Exception e){if(!IsStorageError(e))throw;SetWarning(path,"聊天记录文件删除失败，请检查本地存储权限。");}
             });
         }
         private static bool IsStorageError(Exception e)

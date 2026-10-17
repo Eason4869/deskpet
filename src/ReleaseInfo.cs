@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 
 namespace Dafeiyu
 {
     public static class ReleaseInfo
     {
-        public const string AssemblyVersion="0.6.1.0";
-        public const string DisplayVersion="0.6.1";
+        public const string AssemblyVersion="0.6.3.0";
+        public const string DisplayVersion="0.6.3";
         public const string ProductName="桌面伙伴";
         public const string Author="彧晟Eason";
         public const string RepositoryUrl="https://github.com/Eason4869/deskpet";

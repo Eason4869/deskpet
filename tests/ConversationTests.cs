@@ -59,7 +59,7 @@ namespace Dafeiyu.Tests
             Console.WriteLine("Conversation tests: "+passed+" passed, "+failed+" failed");return failed==0 ? 0:1;
         }
         static ConversationSession Create(FakeApi api,FakeSpeech speech){return new ConversationSession(api,speech,delegate{return new FakeRecorder();});}
-        static PetSettings Configured(){return new PetSettings {Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"},Transcription=new ConnectionSettings {BaseUrl="http://127.0.0.1:9002/v1",Model="stt"}};}
+        static PetSettings Configured(){return new PetSettings {AgentEnabled=false,Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"},Transcription=new ConnectionSettings {BaseUrl="http://127.0.0.1:9002/v1",Model="stt"}};}
         static void Check(bool value,string reason){if(!value)throw new Exception(reason);}
         static void Run(string name,Func<Task> test){try{test().GetAwaiter().GetResult();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
         sealed class FakeApi:IConversationApi {

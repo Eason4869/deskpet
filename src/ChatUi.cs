@@ -8,6 +8,12 @@ namespace Dafeiyu
     // A shared composer keeps the small bubble and full conversation consistent.
     internal static class ChatUi
     {
+        // The prediction ghost reuses the composer placeholder created below,
+        // so it needs no extra layout and hides itself whenever the draft is
+        // non-empty. Tests and the prediction controller resolve it here.
+        public static readonly DependencyProperty ComposerPlaceholderProperty=DependencyProperty.RegisterAttached("ComposerPlaceholder",typeof(TextBlock),typeof(ChatUi),new PropertyMetadata(null));
+        public static void SetComposerPlaceholder(TextBox input,TextBlock value){input.SetValue(ComposerPlaceholderProperty,value);}
+        public static TextBlock GetComposerPlaceholder(TextBox input){return (TextBlock)input.GetValue(ComposerPlaceholderProperty);}
         static ControlTemplate actionTemplate;
         static ControlTemplate menuTemplate;
         static ControlTemplate menuItemTemplate;
@@ -16,7 +22,7 @@ namespace Dafeiyu
         {
             if(processTemplate==null)processTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Expander'>
 <StackPanel><ToggleButton x:Name='ProcessToggle' FocusVisualStyle='{x:Null}' Background='Transparent' BorderThickness='0' HorizontalContentAlignment='Left' IsChecked='{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}' Content='{TemplateBinding Header}' AutomationProperties.Name='展开或收起过程详情'>
-<ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border Background='Transparent' Padding='0,3'><StackPanel Orientation='Horizontal'><ContentPresenter VerticalAlignment='Center'/><Path x:Name='ProcessChevron' Data='M 0,0 L 4,4 L 0,8' Stroke='#969BA3' StrokeThickness='1.2' Width='6' Height='10' Margin='6,0,2,0' VerticalAlignment='Center' Opacity='0' RenderTransformOrigin='0.5,0.5'/></StackPanel></Border><ControlTemplate.Triggers>
+<ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border Background='Transparent' Padding='0,3'><Grid><Grid.ColumnDefinitions><ColumnDefinition Width='*'/><ColumnDefinition Width='Auto'/></Grid.ColumnDefinitions><ContentPresenter Grid.Column='0' VerticalAlignment='Center' HorizontalAlignment='Left'/><Path x:Name='ProcessChevron' Grid.Column='1' Data='M 0,0 L 4,4 L 0,8' Stroke='#969BA3' StrokeThickness='1.2' Width='6' Height='10' Margin='6,0,2,0' VerticalAlignment='Center' Opacity='0' RenderTransformOrigin='0.5,0.5'/></Grid></Border><ControlTemplate.Triggers>
 <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='ProcessChevron' Property='Opacity' Value='1'/></Trigger>
 <Trigger Property='IsChecked' Value='True'><Setter TargetName='ProcessChevron' Property='RenderTransform'><Setter.Value><RotateTransform Angle='90'/></Setter.Value></Setter></Trigger>
 </ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter x:Name='ProcessContent' ContentSource='Content' Visibility='Collapsed' Margin='0,5,0,0'/></StackPanel>
@@ -49,12 +55,15 @@ namespace Dafeiyu
             input.MinHeight=48;input.MaxHeight=compact?92:140;
             input.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;
             System.Windows.Automation.AutomationProperties.SetName(input,"消息输入框");
-            var field=new Grid();field.Children.Add(input);
-            // Match the native editor's line metrics rather than Ui.Text's
-            // paragraph spacing. The content host also contributes its own inset.
-            var placeholder=new TextBlock{Name="ComposerPlaceholder",Text="和伙伴一起工作",FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};
-            field.Children.Add(placeholder);
-            if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,1);Grid.SetRow(placeholder,1);field.Children.Add(attachments);}
+            var field=new Grid();int inputRow=0;
+            if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.Children.Add(attachments);inputRow=1;}
+            var markdownPreview=new MarkdownView{Name="ComposerMarkdownPreview",IsHitTestVisible=false,MaxHeight=compact?72:108,Margin=new Thickness(4,6,4,2),Visibility=Visibility.Collapsed};
+            var previewSurface=new Border{Name="ComposerMarkdownPreviewSurface",Child=markdownPreview,Background=Ui.Brush("#FAFBFD"),BorderBrush=Ui.Brush("#E8EBEF"),BorderThickness=new Thickness(0,1,0,0),Padding=new Thickness(4,6,4,4),Visibility=Visibility.Collapsed};
+            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(previewSurface,inputRow++);field.Children.Add(previewSurface);
+            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,inputRow);field.Children.Add(input);
+            var placeholder=new TextBlock{Name="ComposerPlaceholder",Text="和伙伴一起工作",FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
+            SetComposerPlaceholder(input,placeholder);
+            Action syncMarkdown=delegate{string draft=input.Text??"";bool has=draft.Contains("**")||draft.Contains("`")||draft.Contains("\n#")||draft.StartsWith("#")||draft.Contains("\n- ")||draft.Contains("\n> ")||draft.Contains("[");markdownPreview.Text=draft;previewSurface.Visibility=has?Visibility.Visible:Visibility.Collapsed;};
             Action syncPlaceholder=delegate {
                 bool show=input.Text.Length==0;
                 placeholder.Visibility=show?Visibility.Visible:Visibility.Collapsed;
@@ -65,11 +74,11 @@ namespace Dafeiyu
                 var margin=new Thickness(origin.X,origin.Y,0,0);
                 if(placeholder.Margin!=margin)placeholder.Margin=margin;
             };
-            input.TextChanged+=delegate{syncPlaceholder();};
+            input.TextChanged+=delegate{syncMarkdown();syncPlaceholder();};
             input.GotKeyboardFocus+=delegate{syncPlaceholder();};
             input.LostKeyboardFocus+=delegate{syncPlaceholder();};
             input.LayoutUpdated+=delegate{syncPlaceholder();};
-            syncPlaceholder();
+            syncMarkdown();syncPlaceholder();
             var body=new Grid();body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.Children.Add(field);
             var toolbar=new Grid{Name="ComposerToolbar",Margin=new Thickness(2,8,2,0),MinWidth=0};toolbar.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});toolbar.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
             if(leading!=null)toolbar.Children.Add(leading);

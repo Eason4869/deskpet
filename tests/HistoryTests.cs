@@ -68,7 +68,7 @@ namespace Dafeiyu.Tests
         }
         static void Check(bool value,string message){if(!value)throw new Exception(message);}
         static string Temp(){string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"history-test-data",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(path);return path;}
-        static PetSettings Configured(){return new PetSettings {ReadReplies=false,Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"}};}
+        static PetSettings Configured(){return new PetSettings {AgentEnabled=false,ReadReplies=false,Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"}};}
         static async Task CancelRetainsAsync()
         {
             using(var session=new ConversationSession(new TestApi {Delay=1000},new TestSpeech(),delegate{return null;})) {

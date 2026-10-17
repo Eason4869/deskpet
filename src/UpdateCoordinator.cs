@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -103,7 +103,7 @@ namespace Dafeiyu
         {
             if(disposed || pending==null || applying)return;
             if(!pet.CanApplyUpdate(pendingManual))
-            {restartAt=null;Status=pet.HasHistorySaveWarning?"聊天记录尚未保存，请先导出或处理保存问题后再更新。":pendingManual?"新版已就绪。请保存设置草稿、发送或清空输入，并等待对话或语音结束；空闲后会自动退出、安装并重启。":"新版已就绪，等待对话、设置和桌面操作空闲后自动更新。";Notify();return;}
+            {restartAt=null;Status=pet.HasHistorySaveWarning?pet.PendingSaveWarning:pendingManual?"新版已就绪。请保存设置草稿、发送或清空输入，并等待对话或语音结束；空闲后会自动退出、安装并重启。":"新版已就绪，等待对话、设置和桌面操作空闲后自动更新。";Notify();return;}
             if(!restartAt.HasValue)restartAt=DateTime.UtcNow.AddSeconds(5);
             int seconds=Math.Max(0,(int)Math.Ceiling((restartAt.Value-DateTime.UtcNow).TotalSeconds));
             Status="新版已就绪，"+seconds+" 秒后自动更新并重启。可点击“取消更新”。";Notify();if(seconds>0)return;
