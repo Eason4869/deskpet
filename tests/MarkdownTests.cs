@@ -16,7 +16,7 @@ namespace Dafeiyu.Tests
                 foreach(string kind in new[]{"heading","bold","italic","strike","code","link","quote","ordered","list","table","codeblock"})Check(nodes.Any(n=>n.Kind==kind),"AST "+kind);
                 var view=new MarkdownView{Text=input};Check(view.Document.Blocks.OfType<Table>().Count()==1,"table is a real WPF table");Check(view.Document.Blocks.OfType<List>().Count()==2,"ordered and task lists are real WPF lists");
                 var visible=new TextRange(view.Document.ContentStart,view.Document.ContentEnd).Text;Check(visible.Contains("标题") && visible.Contains("粗体") && !visible.Contains("**粗体**") && !visible.Contains("```"),"Markdown markers are rendered, not printed");
-                Check(visible.Contains("<script>"),"HTML remains inert text");
+                Check(visible.Contains("<script>"),"HTML remains inert text");Check(view.Document.Blocks.OfType<Paragraph>().Any(p=>p.Inlines.OfType<InlineUIContainer>().Any(i=>i.Child is System.Windows.Controls.Border)),"links render as clickable rounded chips");
                 string plain=MarkdownContent.PlainText(input);Check(plain.Contains("标题") && plain.Contains("已完成") && !plain.Contains("**"),"plain-text copy and speech omit syntax");
                 view.Text="```python\nprint('流式未闭合')";Check(new TextRange(view.Document.ContentStart,view.Document.ContentEnd).Text.Contains("流式未闭合"),"unclosed streaming code fence renders");
                 Uri uri;Check(!MarkdownContent.TryLink("javascript:alert(1)",out uri) && !MarkdownContent.TryLink("file:///C:/Windows/a",out uri),"active/file links are not executable");

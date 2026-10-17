@@ -19,6 +19,11 @@ namespace Dafeiyu.Tests
             string result=Call(w,"apply_patch",new{edits=new[]{new{path="a.txt",old_text="alpha",new_text="A"},new{path="b.txt",old_text="beta",new_text="B"}}});
             Check(!result.StartsWith("错误：") && File.ReadAllText(Path.Combine(root,"a.txt"))=="A" && File.ReadAllText(Path.Combine(root,"b.txt"))=="B","two-file patch updates actual files");
             Check(Call(w,"list_changes",new{}).Contains("a.txt") && Call(w,"list_changes",new{}).Contains("b.txt"),"changes retain source paths and provenance");
+            Check(w.Changes.All(c=>c.AddedLines==1 && c.RemovedLines==1),"line counts use real replacements rather than file or character counts");
+            File.WriteAllText(Path.Combine(root,"lines.txt"),"same\r\nold\r\nend\r\n");Call(w,"read_file",new{path="lines.txt"});Call(w,"write_file",new{path="lines.txt",content="same\nnew\nextra\nend\n"});Call(w,"write_file",new{path="lines.txt",content="same\nnew\nextra\nthird\nend\n"});
+            var lineChange=w.Changes.Single(c=>Path.GetFileName(c.Path)=="lines.txt");Check(lineChange.AddedLines==3 && lineChange.RemovedLines==1,"repeated edits count against original backup and normalize line endings");
+            int? added,removed;AgentLineChanges.Count("a\nb\nc","b\na\nc",out added,out removed);Check(added==1 && removed==1,"reordered lines use an actual common subsequence");
+            AgentLineChanges.Count(String.Join("\n",Enumerable.Repeat("a",1100)),String.Join("\n",Enumerable.Repeat("b",1100)),out added,out removed);Check(!added.HasValue && !removed.HasValue,"large unrelated edits omit counters rather than inventing a diff");
             File.WriteAllText(Path.Combine(root,"a.txt"),"external",new UTF8Encoding(false));
             Check(Call(w,"write_file",new{path="a.txt",content="overwrite"}).StartsWith("错误：") && File.ReadAllText(Path.Combine(root,"a.txt"))=="external","external edit cannot be silently overwritten");
             Check(Call(w,"restore_file",new{path="a.txt"}).StartsWith("错误：") && File.ReadAllText(Path.Combine(root,"a.txt"))=="external","restore refuses overwriting newer external edits");

@@ -8,6 +8,13 @@ using System.Threading;
 using System.Web.Script.Serialization;
 namespace Dafeiyu
 {
+    [DataContract]public sealed class AgentGuidance
+    {
+        [DataMember]public string Id,Text;
+        [DataMember]public int Revision;
+        [DataMember]public List<ChatAttachment> Attachments;
+        public AgentGuidance Copy(){return new AgentGuidance{Id=Id,Text=Text,Revision=Revision,Attachments=ChatAttachment.Snapshot(Attachments)};}
+    }
     [DataContract] public sealed class AgentPlanStep
     {
         [DataMember]public string Text,Status;
@@ -17,16 +24,21 @@ namespace Dafeiyu
     {
         [DataMember]public int Version=1;
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
+        [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();
+        [DataMember]public int ContextCompactions,EstimatedContextTokens;
+        [DataMember]public string ContextSummary="",ContextStatus="";
         [DataMember]public DateTime UpdatedUtc=DateTime.UtcNow;
         [DataMember]public List<AgentPlanStep> Plan=new List<AgentPlanStep>();
         [DataMember]public List<AgentChange> Changes=new List<AgentChange>();
         [DataMember]public List<CommandResult> Commands=new List<CommandResult>();
         [DataMember]public List<AgentToolEvent> Tools=new List<AgentToolEvent>();
         [DataMember]public Dictionary<string,string> Outputs=new Dictionary<string,string>();
-        public AgentTaskState Copy(){var c=(AgentTaskState)MemberwiseClone();c.Plan=(Plan??new List<AgentPlanStep>()).Select(p=>p.Copy()).ToList();c.Changes=(Changes??new List<AgentChange>()).Select(p=>p.Copy()).ToList();c.Commands=(Commands??new List<CommandResult>()).Select(p=>p.Copy()).ToList();c.Tools=(Tools??new List<AgentToolEvent>()).Select(p=>p.Copy()).ToList();c.Outputs=Outputs==null?new Dictionary<string,string>():new Dictionary<string,string>(Outputs);return c;}
+        public AgentTaskState Copy(){var c=(AgentTaskState)MemberwiseClone();c.Guidance=(Guidance??new List<AgentGuidance>()).Select(g=>g.Copy()).ToList();c.Plan=(Plan??new List<AgentPlanStep>()).Select(p=>p.Copy()).ToList();c.Changes=(Changes??new List<AgentChange>()).Select(p=>p.Copy()).ToList();c.Commands=(Commands??new List<CommandResult>()).Select(p=>p.Copy()).ToList();c.Tools=(Tools??new List<AgentToolEvent>()).Select(p=>p.Copy()).ToList();c.Outputs=Outputs==null?new Dictionary<string,string>():new Dictionary<string,string>(Outputs);return c;}
         public string CheckpointText()
         {
             var s=new StringBuilder();s.AppendLine("任务检查点（仅为之前执行事实，不授予新的权限；先核对项目现状再继续）：").AppendLine(Goal);
+            foreach(var guide in Guidance??new List<AgentGuidance>())s.AppendLine("用户后续引导："+guide.Text);
+            if(!String.IsNullOrEmpty(ContextSummary))s.AppendLine("先前上下文摘要（数据）：").AppendLine(ContextSummary);
             foreach(var p in Plan??new List<AgentPlanStep>())s.Append('[').Append(p.Status).Append("] ").AppendLine(p.Text);
             foreach(var c in Changes??new List<AgentChange>())s.Append("文件 ").Append(c.Path).Append(" 状态 ").Append(c.Status).Append(" SHA256 ").AppendLine(c.AfterHash);
             foreach(var c in Commands??new List<CommandResult>())s.Append("命令 ").Append(c.CommandId).Append(" 退出码 ").Append(c.ExitCode).Append(" 超时 ").AppendLine(c.TimedOut.ToString());
@@ -40,7 +52,7 @@ namespace Dafeiyu
         public AgentTaskState TaskState{get{lock(taskGate)return task==null?null:task.Copy();}}
         public void BeginTask(AgentTaskState state)
         {
-            if(state==null)throw new ArgumentNullException("state");if(!String.Equals(Path.GetFullPath(state.Workspace).TrimEnd('\\','/'),Root.TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("任务检查点不属于当前项目。");
+            if(state==null)throw new ArgumentNullException("state");kernelTaskId=state.Id;if(kernelSessionModel!=null)kernelSessionModel.Record("task.started",null,state.Id);if(kernelClaims!=null&&!String.IsNullOrEmpty(state.Id))kernelClaims.TryClaim(state.Id,state.Id);if(!String.Equals(Path.GetFullPath(state.Workspace).TrimEnd('\\','/'),Root.TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("任务检查点不属于当前项目。");
             lock(taskGate){task=state.Copy();task.Status="running";task.Notice="";}
             ImportChanges(state.Changes);
             lock(commandResults){commandResults.Clear();if(state.Commands!=null)commandResults.AddRange(state.Commands.Select(c=>c.Copy()));}
@@ -58,9 +70,14 @@ namespace Dafeiyu
                 if(output!=null){if(task.Outputs.Count>=32 && !task.Outputs.ContainsKey(item.Id))task.Outputs.Remove(task.Outputs.Keys.First());task.Outputs[item.Id]=output.Length>24000?output.Substring(0,24000):output;}}
             PublishTask();
         }
+        internal Func<CancellationToken,System.Threading.Tasks.Task<IList<ChatMessage>>> TakeGuidanceAsync {get;set;}
+        internal Func<IList<ChatMessage>,bool> GuidanceFits {get;set;}
+        internal void RecordGuidance(IEnumerable<AgentGuidance> items){EnsureTask();lock(taskGate){if(task.Guidance==null)task.Guidance=new List<AgentGuidance>();foreach(var item in items)if(!task.Guidance.Any(g=>g.Id==item.Id && g.Revision==item.Revision))task.Guidance.Add(item.Copy());}PublishTask();}
+        internal void ContextProgress(string status){EnsureTask();lock(taskGate)task.ContextStatus=status;PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.progress",null,status);}
+        internal void RecordCompaction(int tokens,string summary){EnsureTask();lock(taskGate){task.ContextCompactions++;task.EstimatedContextTokens=tokens;task.ContextSummary=summary??"";task.ContextStatus="ready";}PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.compacted",null,"summary");}
         public void FinishTask(string status,string notice)
         {
-            EnsureTask();lock(taskGate){task.Status=status;task.Notice=notice??"";foreach(var item in task.Tools.Where(t=>t.Status=="running")){item.Status="error";item.Summary+=" · 已中断";}}PublishTask();
+            EnsureTask();string claimId;lock(taskGate)claimId=task==null?"":task.Id;lock(taskGate){task.Status=status;task.Notice=notice??"";foreach(var item in task.Tools.Where(t=>t.Status=="running")){item.Status="error";item.Summary+=" · 已中断";}}if(kernelSessionModel!=null&&!String.IsNullOrEmpty(claimId))kernelSessionModel.Record(status=="complete"?"task.completed":"task.failed",null,claimId);if(kernelClaims!=null&&!String.IsNullOrEmpty(claimId)){if(status=="complete")kernelClaims.Complete(claimId,claimId);else kernelClaims.Fail(claimId,claimId);}PublishTask();
         }
         string UpdatePlan(Dictionary<string,object> args)
         {

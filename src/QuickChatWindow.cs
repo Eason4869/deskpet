@@ -15,7 +15,7 @@ namespace Dafeiyu
         readonly Button close;readonly Button taskDetails;GuideFocusScope guideScope;
         public QuickChatWindow(PetWindow companion)
         {
-            pet=companion;session=pet.Conversation;Icon=Ui.ApplicationIcon();Width=400;Height=Math.Min(470,Math.Max(300,SystemParameters.WorkArea.Height-24));AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=12;Foreground=Ui.Ink;UseLayoutRounding=true;
+            pet=companion;session=pet.Conversation;Icon=Ui.ApplicationIcon();Width=400;Height=Math.Min(470,Math.Max(300,SystemParameters.WorkArea.Height-24));AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=12;Foreground=Ui.Ink;SlimScrollBars.Install(this);UseLayoutRounding=true;
             var root=new Grid();root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(14)});
             var panel=new Grid{Margin=new Thickness(18,14,18,12)};
             panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
@@ -24,12 +24,14 @@ namespace Dafeiyu
             var expand=UiIcons.Button("expand","展开完整对话");expand.Name="ExpandChat";expand.Click+=delegate {pet.ShowChat();};DockPanel.SetDock(expand,Dock.Right);header.Children.Add(expand);
             avatar=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=34,Height=34,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,34,34),6.8,6.8),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,10,0)};avatar.Name="QuickAvatar";RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);DockPanel.SetDock(avatar,Dock.Left);header.Children.Add(avatar);
             taskDetails=Ui.Button("任务详情");taskDetails.Name="QuickAgentTask";taskDetails.FontSize=11;taskDetails.MinHeight=24;taskDetails.Click+=delegate{pet.ShowChat();};DockPanel.SetDock(taskDetails,Dock.Right);header.Children.Add(taskDetails);
-            var identity=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};identity.Children.Add(UiIcons.Speech(pet));header.Children.Add(identity);panel.Children.Add(header);
+            var identity=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};identity.Children.Add(UiIcons.Speech(pet));
+            var quickBadge=Ui.Text("快速对话",11,Ui.Muted);quickBadge.Name="QuickChatBadge";quickBadge.Margin=new Thickness(8,1,0,0);quickBadge.VerticalAlignment=VerticalAlignment.Center;identity.Children.Add(quickBadge);
+            header.Children.Add(identity);panel.Children.Add(header);
             scroll=Ui.Scroll(messages);scroll.Name="QuickHistoryScroll";scroll.Margin=new Thickness(0,12,0,8);Grid.SetRow(scroll,1);panel.Children.Add(scroll);
             status=Ui.Text("",11,Ui.Muted);status.Name="QuickStatus";
-            input=Ui.Field("",true);input.Name="QuickMessageInput";input.MaxLength=8000;input.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){e.Handled=true;Hide();}};
+            input=Ui.Field("",true);input.Name="QuickMessageInput";input.MaxLength=8000;input.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){if(composer!=null && composer.DismissPrediction()){e.Handled=true;return;}e.Handled=true;Hide();}};
             record=UiIcons.Button("mic","听写");record.Name="VoiceRecord";
-            composer=new ConversationComposer(pet,this,input,record,status,true);Grid.SetRow(composer,2);panel.Children.Add(composer);
+            composer=new ConversationComposer(pet,this,input,record,status,true,true);Grid.SetRow(composer,2);panel.Children.Add(composer);
             root.Children.Add(new Border{Child=panel,CornerRadius=new CornerRadius(20),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=Brushes.White});tail=new Polygon{Fill=Brushes.White,Stroke=Ui.Line,StrokeThickness=1,Points=new PointCollection(new[]{new Point(168,0),new Point(180,13),new Point(192,0)})};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             messagePump=new MessageUpdatePump(session,Message);session.MessageAdded+=Message;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;session.AgentTaskChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;pet.Live.PartialTranscript+=Partial;Loaded+=delegate {FollowPet();FocusInput();};IsVisibleChanged+=delegate {if(IsVisible)RefreshState();};Closed+=delegate {closed=true;messagePump.Dispose();session.MessageAdded-=Message;session.HistoryChanged-=HistoryChanged;session.StateChanged-=RefreshState;session.AgentTaskChanged-=RefreshState;pet.Live.StateChanged-=RefreshState;pet.Live.PartialTranscript-=Partial;};RefreshPersona();RefreshState();
         }
@@ -59,7 +61,7 @@ namespace Dafeiyu
             else
             {
                 if(rendered.Count==0)messages.Children.Clear();
-                view=new ChatMessageView(message,messages,pet,this);rendered[message.Id]=view;messages.Children.Add(view);
+                view=new ChatMessageView(message,messages,pet,this,session,null);rendered[message.Id]=view;messages.Children.Add(view);
                 if(message.Role=="assistant"){reply.Name="";reply=view.Body;reply.Name="QuickReply";}
                 while(messages.Children.Count>20){var old=(ChatMessageView)messages.Children[0];rendered.Remove((string)old.Tag);messages.Children.RemoveAt(0);}
             }

@@ -34,11 +34,10 @@ internal sealed class WorkSettingsView : StackPanel
         var backup = Ui.Check("5. 写文件前保留原文件备份", settings.AgentBackupFiles, value => { if (settings.AgentBackupFiles == value) return; settings.AgentBackupFiles = value; Save(); }); backup.Name = "AgentBackupFiles"; backup.IsEnabled = supported; Children.Add(backup);
         var openBackup = Ui.AsyncButton("打开备份目录", OpenBackupAsync, owner.Error); openBackup.Name = "OpenAgentBackups"; openBackup.IsEnabled = supported; Children.Add(openBackup);
         Children.Add(Ui.Text("完整访问时，备份在原文件所在目录的 .deskpet-agent-backups；仅工作目录时，备份集中在工作目录中。", 12));
-        var rounds = new NumericUpDown { Name = "AgentMaxTurns", Minimum = 1, Maximum = 48, Value = settings.AgentMaxTurns, IsEnabled = supported };
-        var timeout = new NumericUpDown { Name = "AgentTimeoutMinutes", Minimum = 1, Maximum = 60, Value = settings.AgentTimeoutMinutes, IsEnabled = supported };
-        rounds.ValueChanged += (_, _) => { if (rounds.Value is not { } value || settings.AgentMaxTurns == (int)value) return; settings.AgentMaxTurns = (int)value; Save(); };
-        timeout.ValueChanged += (_, _) => { if (timeout.Value is not { } value || settings.AgentTimeoutMinutes == (int)value) return; settings.AgentTimeoutMinutes = (int)value; Save(); };
-        var limits = new Grid { ColumnDefinitions = new ColumnDefinitions("*,16,*") }; limits.Children.Add(Ui.Field("6. 最大工作轮数（1～48）", rounds)); var timeoutField = Ui.Field("超时（分钟，1～60）", timeout); Grid.SetColumn(timeoutField, 2); limits.Children.Add(timeoutField); Children.Add(limits);
+        var context = new NumericUpDown { Name = "AgentContextTokenLimit", Minimum = 8192, Maximum = 131072, Value = settings.AgentContextTokenLimit, IsEnabled = supported };
+        context.ValueChanged += (_, _) => { if (context.Value is not { } value || settings.AgentContextTokenLimit == (int)value) return; settings.AgentContextTokenLimit = (int)value; Save(); };
+        Children.Add(Ui.Field("6. 上下文预算（tokens）", context));
+        Children.Add(Ui.Text("自动压缩旧上下文；任务持续到完成或手动停止。", 12));
         var detail = Ui.Check("7. 显示详细工作过程", settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
     }
     private void Save() { owner.Save(); notice.Text = "已保存；将在下一次任务生效，不会自动发送请求。"; notice.Foreground = new SolidColorBrush(Color.Parse("#687282")); }

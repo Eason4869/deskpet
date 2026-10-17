@@ -40,6 +40,10 @@ namespace Dafeiyu.Tests
                 Check(switching.Wait(2000),"persona switch deadlocked while save warning reentered queue");
                 Check(store.FlushAsync().Wait(2000),"history worker deadlocked");queue.Dispose();session.Dispose();
             });
+            Run("long tasks keep showing recent tool progress",()=>{
+                SecretProtection.Configure(new Protection());var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=Folder(),ReadReplies=false};settings.Text.BaseUrl="http://127.0.0.1:1";settings.Text.Model="fixture";
+                using(var session=new ConversationSession(new ToolModel(),new Speech(),()=>null)){session.SendTextAsync("long task",settings,"fixture").GetAwaiter().GetResult();var tools=session.History.Messages.Last().ToolEvents;Check(tools.Count==100 && tools.First().Id=="tool-5" && tools.Last().Id=="tool-104" && tools.Last().Status=="complete","chat tool progress froze after the first 100 events");}
+            });
             Console.WriteLine("Agent reliability tests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
         static string Folder(){string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"reliability-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(path);return path;}
@@ -51,7 +55,11 @@ namespace Dafeiyu.Tests
             public byte[] Protect(byte[] value){if(Block){Entered.Set();Release.WaitOne();}if(Fail)throw new CryptographicException("injected failure");return value;}
             public byte[] Unprotect(byte[] value){return value;}
         }
-        sealed class Model:IConversationApi
+        sealed class ToolModel:Model,IAgentConversationApi
+        {
+            public Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> m,AgentWorkspace w,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken cancel){for(int i=0;i<105;i++){t(new AgentToolEvent{Id="tool-"+i,Name="read_file",Summary="reading "+i,Status="running"});t(new AgentToolEvent{Id="tool-"+i,Name="read_file",Summary="read "+i,Status="complete"});}return Task.FromResult("done");}
+        }
+        class Model:IConversationApi
         {
             public IList<ChatMessage> Messages;
             public Task<string> ChatAsync(ConnectionSettings c,IList<ChatMessage> m,CancellationToken t){Messages=m;return Task.FromResult("answer");}

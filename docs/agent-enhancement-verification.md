@@ -1,61 +1,54 @@
-﻿# Agent 增强交付记录（2026-10-17）
+# Agent 增强交付记录（2026-10-17）
 
-基线 94b464a（0.6.1），本地独立分支 codex/agent-enhancement。未修改版本号、推送、发布或替换现有安装。实现与用户操作见 [对话与 Agent](conversation-agent.md)；[设计](superpowers/specs/2026-10-17-agent-enhancement-design.md)与[实施计划](superpowers/plans/2026-10-17-agent-enhancement.md)保留在源码中。
+当前复核基线为 `963690b`，工作分支为 `codex/agent-workflow-refinement`。改动仍在本地工作区，未提交、未推送、未发布、未替换现有安装。实现背景见 [对话与 Agent](conversation-agent.md)，内核能力来源见 [Codex + OpenCode 能力矩阵](superpowers/specs/2026-10-17-codex-opencode-kernel-capability-matrix.md)。
 
 ## 功能与界面
 
-- 文件查找、分页、筛选/有超时正则搜索、批量读取；跨文件补丁、外部改动冲突检查、备份预览与恢复。
-- 用户配置的项目命令 ID、独立参数、退出码与有界输出；停止、超时、父命令退出均清理子进程。计划模式禁止命令和项目修改。
-- 实际计划步骤、工具状态、文件变更、命令结果及加密检查点；恢复由明确点击发起，不自动重放；保存失败保留最新状态并提供重试保存。
-- 默认 700px/最小 520px 保持现有聊天布局。最大化显示项目与当前任务导航、右侧任务/变更/验证详情。侧栏按钮实际打开工作设置、聚焦原输入框、展开同一任务面板；还原不丢草稿或创建第二份会话。较窄屏幕最大化时任务详情仍内嵌。
+- 项目目录、项目工作区、多个项目与多个会话使用稳定 ID 持久化，默认项目名为“默认项目”；切换会话时保留后台 workspace、独立历史与独立队列。侧栏项目支持折叠、会话数量、活动状态圆点、项目/会话图标和独立滚动区；项目名称可在项目设置中编辑；项目和对话标题支持完整换行显示，右键菜单提供重命名、归档和永久删除。展开/收起使用开合文件夹图标。对话标题首回合后由当前模型生成，手动重命名后不再自动覆盖。项目/会话切换复用同一个聊天窗口实例和输入草稿隔离，保持只有一个可见聊天窗口。
+- 文件查找、分页、超时正则搜索、批量读取；跨文件补丁、外部改动冲突检查、备份预览与恢复；文件差异提供真实 `+N/-N`、行级增删与截断/未知状态。
+- 用户配置的项目命令 ID、退出码与有界输出；停止、超时、父命令退出会清理子进程。计划模式禁止命令和项目修改，并从协议工具列表移除非只读工具。
+- 实际计划步骤、工具状态、文件变更、命令结果和上下文压缩检查点持久化；恢复由明确操作发起，不自动重放外部副作用。
+- `.docx/.xlsx` 使用内置 OOXML 读写；`.doc/.xls` 依赖本机 Word/Excel/WPS COM，打开前禁用宏/事件并提供取消和清理。
+- 链接在输入预览、用户消息和 AI 输出中使用统一的可点击圆角样式；文件卡片支持打开、打开方式、资源管理器、复制路径/内容和另存为。输入框提供 Markdown 实时预览。快速对话强制纯聊天；完整对话默认工作模式，可切回对话模式。输入框内预测默认关闭，第一次 Enter 确认 ghost，第二次 Enter 发送。
+- GitHub/网页读取与 GitHub Issue/PR 写入属于工具层，使用显式仓库范围和加密连接配置；GUI 不承载连接器业务规则。
 
-## 验证
+## Codex + OpenCode 风格内核
 
-最终本地 Windows 全量 **40/40 组通过**；.NET 10 共用业务 **308 项通过**。应用编译、ReleaseAssetTests 2 项、干净源码 PackagingSmoke、真实当前更新助手完整 ZIP 应用全部通过。
+- `AgentSessionModel` / `AgentSessionStore`：稳定幂等输入、pending/delivered inbox、Step 事件与重启持久化；`ConversationSession`、`ConversationQueue` 和独立 `ConversationWorkspace` 已接入。
+- `AgentToolRuntime`：统一工具注册、稳定 CallId、输出边界、取消、权限判定与审计；原生模型工具调用把协议 CallId 传入执行和审计。
+- `AgentPermissionRuntime` / `AgentAuditLog` / `ExecutionClaimStore`：`allow/deny/ask`、资源匹配、审批接口、任务/工具/权限审计与 write-ahead 执行声明；恢复不重放已执行写入。
+- `AgentProfileRegistry`：`build`、`plan`、`explore`、`general` Profile；`AgentModelCapabilities` 描述上下文窗口、工具、流式、推理、图片和音频能力，未支持工具不会进入协议 Schema。
+- `AgentSubagentManager` / `AgentSubagentScheduler`：子 Agent 排队、并发上限、启动/中断/完成/失败，队列提升保留稳定子 Agent ID。
+- MCP 通过统一 Tool Registry 接入：HTTP JSON-RPC、stdio JSON-RPC 初始化/`tools/list`/`tools/call`、Schema 属性映射、工具名校验、重复工具防覆盖、计划模式过滤和进程清理。
+- `AgentContextBudget`：上下文压缩保留任务目标、最近指令、工具身份和思考签名，并写入可恢复会话事件。
 
-| 专项 | 结果 |
+## 最终验证（2026-10-17 最终源码）
+
+| Target | Result |
 | --- | --- |
-| AgentReliabilityTests | 3；保存警告、锁等待、大附件预算 |
-| AgentFileToolsTests | 11；分页、glob、带超时正则、批量读取、权限 |
-| AgentChangesTests | 27；实际多文件修改、预检、外部冲突、恢复、数量限制 |
-| AgentCommandTests | 15；实际退出码、洪泛、超时、停止、两种子进程清理、参数字面量、项目隔离 |
-| AgentTaskTests | 17；加密、重启、无自动重放、损坏、保存失败及重试 |
-| AgentProtocolTests | 20 场景；OpenAI/Anthropic 协议、真实补丁/命令闭环、压缩、重复错误及有进展重试 |
-| AgentWorkbenchSmoke | 15；正常/最小/最大化/还原、真实侧栏操作、文件恢复和失败后保存重试 |
-| AgentWorkspaceTests / AgentSessionTests | 87 / 15 |
-| WorkSettingsTests / ConversationUiSmoke / ComposerSmoke | 34 / 77 / 87；原生鼠标拖拽专项未运行 |
-| AttachmentPickerTests | 4；真实系统文件/文件夹选择器 |
+| ProjectCatalogTests / ConversationWorkspaceTests / ConversationWorkspaceManagerTests | 5 / 4 / 3 |
+| ProjectSidebarSmoke / ConversationSingleWindowSmoke | 14 / 7 |
+| AgentDiffTests / AgentChangePreviewTests | 6 / 3 |
+| AgentChangesTests / AgentDocumentTests | 31 / 24 |
+| AgentWorkbenchSmoke / WorkSettingsTests | 37 / 35 |
+| PredictionTests --ui / QueueTests / SteeringSmoke | 48 / 45 / 20 |
+| ConversationUiSmoke / ComposerSmoke / AgentContextTests | 82 / 87 / 28 |
+| MarkdownTests | 18 |
+| ConversationRepeatSmoke / ConversationTitleTests | 3 / 2 |
+| AgentSessionModelTests / AgentKernelTests / AgentKernelIntegrationTests | 5 / 8 / 4 |
+| AgentTaskBindingTests / AgentContextRecoveryTests / AgentProfileTests | 5 / 3 / 4 |
+| AgentProviderKernelTests / AgentSubagentToolTests / AgentIntegrationFinalTests | 7 / 2 / 5 |
+| AgentKernelCompletenessTests | 13 |
+| AgentWorkspaceTests / AgentProtocolTests | 87 assertions / 23 |
+| .NET 10 共享回归 | **325 passed, 0 failed**（`work/portable-report-v062.json`） |
+| PackagingSmoke | 全部通过：干净源码构建、便携包、真实更新助手整包应用、设置/历史/皮肤保留、源码包排除 `research/` 本地参考仓库 |
 
-最终源码包中的全部 src/*.cs 已与交付 checkout 逐文件比较一致。构建信息和程序 SHA256 见 work/agent-preview/build-info.json。
+应用已用最终源码重建。本地测试预览：`work/kernel-preview-12/桌面伙伴.exe`。`PackagingSmoke` 使用编译响应文件解决源码文件数增加后的 Windows 命令行长度限制；`Build.ps1` 保持 UTF-8 BOM。
 
-日志存放于本地 work/final-*.log、work/validation-summary.txt、work/portable-report.json、work/packaging-final.log。应用输出位于 work/app。付费云端模型、真实麦克风听感、macOS 原生应用和远程 GitHub Actions 未在本轮实测；模型协议测试使用本地 HTTP 夹具，文件与命令执行为真实操作。
+日志和报告位于 `work/`。付费云端模型、真实 GitHub 仓库写入、外部 MCP 服务和 macOS 原生应用未在本轮实测；MCP HTTP/stdio 协议由确定性夹具覆盖。`.doc/.xls` 转换依赖本机 Word/Excel/WPS，未安装时提示改用 `.docx/.xlsx`。`TextProviderEditor.cs:215` CS4014、`LiveTests.cs:73` CS0067 和 Windows COM CA1416 为既有或平台分析器警告。
 
-## 独立审查与回归修复
+## 代码审查结论
 
-独立只读审查覆盖 94b464a..598208a，发现 5 项重要问题，无严重项、次要遗留或搁置判断。修复提交 be5834c；随后用户新增最大化布局由作者检查并以真实 UI 回归验证（c1a1edd）。
+最终整分支审查覆盖正确性、可读性、架构、安全和性能。已修复审查发现的 MCP Schema 嵌套错误、子 Agent 排队提升改变 ID、MCP 重名工具覆盖、无效 JSON 抛出、Provider ID 误判为不支持工具、MCP 进程生命周期、同窗口项目/会话切换、完成后二次发送、左侧项目标签折叠/计数/滚动、黑色提示闪烁、完整标题显示、右键重命名/归档/删除、默认项目、开合文件夹图标、项目名称编辑、AI/手动会话标题、新建项目弹窗、Markdown 链接样式、文件卡片操作和最大化底部裁切，以及 PackagingSmoke 的 `research/` 长路径污染。未发现新的 Critical/Important 阻断项。
 
-| 发现 | 最终行为与回归 |
-| --- | --- |
-| 保存失败后加载旧检查点并清除警告 | 按伙伴/项目保留最新待保存快照；真实共享锁使保存失败，界面刷新仍保留恢复状态与警告；实际“重试保存”按钮恢复落盘 |
-| 有进展的修复循环被第 3 次测试失败中止 | 仅连续相同工具/参数/结果失败才累加；成功修改或变化的诊断重置。相同失败停机、有进展继续均覆盖双协议 |
-| 补丁父路径是文件或条目互相构成父子冲突 | 在任何写入前拒绝，实际文件保持原状 |
-| 保存了加载器不能读取的 257 条变更 | 保存/加载统一验证，单任务 256 条变更上限在修改前强制执行；保留既有恢复记录 |
-| CI 首行编码损坏 | 恢复合法 UTF-8 name 键并用 YAML 解析器验证；扩展目标列表和运行时限 |
-
-上述错误均保留先失败、修复后通过的日志；CI 键通过实际解析核验。审查前第一次全量运行中 AgentTaskTests 的失败是新增的保存失败回归暴露问题；以最终全量结果为准。
-
-## 实施取舍
-
-1. 采用独立 Git checkout，避免修改本目录中的旧 checkout；代价是多一个交付目录。
-2. 计划目录被原 .gitignore 忽略，仅强制加入本计划和设计；代价是两份明确纳入版本管理的开发文档。
-3. Mimo Code Desktop 仅参考交互需求，不引入其非商业许可代码；独立 C# 实现也不宣称完整 OpenCode 功能对等。
-4. 挂起启动加 Windows Job 控制进程，不增加运行时 EXE，沿用更新包文件类型；代价是本轮不提供 Mac 本地 Agent。
-5. 默认搜索跳过 VCS/依赖/构建目录；完整访问下仍可显式指定 .git。代价是默认搜索不含这些目录。
-6. 文件变更、命令与任务记录共享同一执行契约，基础能力作为一致提交交付；代价是基础提交跨多个模块。
-7. 文件预览是有界的修改前/当前文本并排展示，不宣称逐行 diff 算法；代价是需要用户自行比较文本。
-8. 模型只引用用户配置的命令 ID；项目命令仍使用当前账户权限，工作目录不是系统沙箱。代价是已授权脚本仍可影响项目外资源。
-9. 恢复使用当前明确配置，不把旧命令权限或凭据固化到检查点；代价是恢复验证需要保留或重新配置适用的命令。
-10. 遵循用户后续补充，仅最大化时显示侧栏；普通大小保持现有结构。屏幕空间不足三栏时，任务详情继续内嵌。
-11. 保留本地增强分支和独立 checkout 作为可验收结果，不自行合并、推送、发布或替换现有安装；代价是后续需要选择集成方式。
-
-没有暂缓处理的次要审查项。保留基线已有的 TextProviderEditor.cs:215 CS4014 编译警告，未将无关整理混入本次工作。
+保留基线已有的 `TextProviderEditor.cs:215` CS4014 编译警告，未将无关整理混入本次工作。

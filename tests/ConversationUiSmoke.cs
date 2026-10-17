@@ -22,13 +22,14 @@ namespace Dafeiyu.Tests
             string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"conversation-ui");Directory.CreateDirectory(folder);
             try
             {
-                var cfg=new PetSettings{SaveChatHistory=false,GreetingEnabled=false,HideOnFullscreen=false,ReadReplies=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                var cfg=new PetSettings{AgentEnabled=false,SaveChatHistory=false,GreetingEnabled=false,HideOnFullscreen=false,ReadReplies=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 cfg.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:9876/v1",Model="GPT-6.1 Sol",StreamReplies=true};
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();Pump();
                 pet.Conversation.Dispose();var api=new Model();var session=new ConversationSession(api,new Silent(),()=>{throw new Exception("No microphone");});session.SelectPersona(pet.Skin.Id);
                 typeof(PetWindow).GetField("conversation",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
                 session.AddLiveTurn(pet.Skin.Id,"这是一段测试发言","收到，测试消息正常。");
                 var full=new ChatWindow(pet);full.Show();var quick=new QuickChatWindow(pet);quick.Show();Pump();
+                Check(ReferenceEquals(quick.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)],full.Resources[typeof(System.Windows.Controls.Primitives.ScrollBar)]),"quick chat reuses the full window's slim scrollbar style");
                 Check(All<MarkdownView>(quick).Any(t=>t.Text=="这是一段测试发言"),"quick chat displays user text");
                 foreach(Window window in new Window[]{full,quick})
                 {
@@ -45,7 +46,7 @@ namespace Dafeiyu.Tests
                 foreach(Window window in new Window[]{full,quick})
                 {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(exp.Header is TextBlock && ((TextBlock)exp.Header).Text=="思考中","process status is a separate stable heading");Check(!exp.IsExpanded && All<TextBlock>((DependencyObject)exp.Parent).Any(t=>t.Text.Contains("先核对")),"reasoning streams into collapsed preview");exp.IsExpanded=true;}
                 api.Think("\n接着检查边界情况。");Pump();
-                Check(All<Expander>(full).Last().IsExpanded && All<Expander>(quick).Last().IsExpanded,"expansion survives streamed updates");
+                Check(All<Expander>(full).Last(e=>e.Name=="ReasoningDetails").IsExpanded && All<Expander>(quick).Last(e=>e.Name=="ReasoningDetails").IsExpanded,"expansion survives streamed updates");
                 api.Answer("这是经过检查后的答复。");Pump();
                 foreach(Window window in new Window[]{full,quick})
                 {var last=All<Border>(window).Last(b=>b.Name=="AssistantMessage");Check(!All<StackPanel>(last).Single(p=>p.Name=="ThinkingProcess").IsVisible,"thinking auto-hides when final output starts");Check(!All<StackPanel>(last).Single(p=>p.Name=="ReplyActions").IsVisible,"reply actions stay hidden during streaming");}
@@ -88,18 +89,22 @@ namespace Dafeiyu.Tests
                 var composer=All<ConversationComposer>(quick).Single();typeof(ConversationComposer).GetMethod("AddAttachments",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).Invoke(composer,new object[]{new[]{file}});Pump();Check(All<Button>(quick).Single(b=>b.Name=="SendQuickMessage").Tag as string=="send","attachment-only draft enables send");
                 Check(All<Button>(quick).Any(b=>b.Name=="RemoveAttachment"),"draft attachment can be removed");
                 All<Button>(quick).Single(b=>b.Name=="RemoveAttachment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(!All<Button>(quick).Any(b=>b.Name=="RemoveAttachment"),"removing attachment updates draft");
-                var mode=All<Button>(quick).Single(b=>b.Name=="ConversationModePicker");mode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","pure conversation uses its chat bubble glyph");
-                Check(mode.ContextMenu.Items.Count==2 && ((MenuItem)mode.ContextMenu.Items[0]).IsChecked,"mode picker defaults to pure conversation and offers two modes");
+                Check(!All<Button>(quick).Any(b=>b.Name=="ConversationModePicker") && All<TextBlock>(quick).Any(t=>t.Name=="QuickChatBadge"),"quick chat shows its badge and removes the mode switch");
+                var linkDraft=All<TextBox>(full).Single(t=>t.Name=="MessageInput");linkDraft.Text="[DeskPet](https://github.com/Eason4869/deskpet)";Pump();Check(All<Border>(full).Any(b=>b.Name=="ComposerMarkdownPreviewSurface"&&b.IsVisible) && All<MarkdownView>(full).Any(m=>m.Name=="ComposerMarkdownPreview"&&m.Text.Contains("github.com")),"input box renders Markdown links in its live preview");linkDraft.Clear();Pump();var draft=All<TextBox>(quick).Single(t=>t.Name=="QuickMessageInput");pet.Settings.AgentEnabled=false;
+                var tab=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(draft),Environment.TickCount,System.Windows.Input.Key.Tab){RoutedEvent=System.Windows.Input.Keyboard.PreviewKeyDownEvent};draft.RaiseEvent(tab);Check(!tab.Handled && !pet.Settings.AgentEnabled,"Tab no longer switches modes from the conversation-only quick chat");
+                var mode=All<Button>(full).Single(b=>b.Name=="ConversationModePicker");mode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","full composer reflects the current pure conversation mode");
+                Check(mode.ContextMenu.Items.Count==2 && ((MenuItem)mode.ContextMenu.Items[0]).IsChecked,"full composer offers both modes and checks the active one");
                 ((MenuItem)mode.ContextMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));mode.ContextMenu.IsOpen=false;Check(pet.Settings.AgentEnabled && pet.Store.Load().AgentEnabled,"working mode persists agent selection");
                 Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="work","working mode uses its writing pencil glyph");
-                var draft=All<TextBox>(quick).Single(t=>t.Name=="QuickMessageInput");var tab=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(draft),Environment.TickCount,System.Windows.Input.Key.Tab){RoutedEvent=System.Windows.Input.Keyboard.PreviewKeyDownEvent};draft.RaiseEvent(tab);Check(tab.Handled && !pet.Settings.AgentEnabled,"Tab in composer switches back to pure conversation");
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","Tab restores the bubble glyph together with pure conversation");
+                ((MenuItem)mode.ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(!pet.Settings.AgentEnabled && !pet.Store.Load().AgentEnabled,"full composer can switch back to pure conversation");
                 composer.SnapshotTargetProvider=()=>null;
                 var plus=All<Button>(quick).Single(b=>b.Name=="AddAttachment");plus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var menu=plus.ContextMenu;
-                Check(menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddFilesAndFolders") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddApplicationSnapshot") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="SetAgentGoal") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AgentPlanMode"),"add menu contains files folders snapshots goal and planning");
+                Check(menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddFilesAndFolders") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddApplicationSnapshot") && !menu.Items.OfType<MenuItem>().Any(m=>m.Name=="SetAgentGoal"||m.Name=="AgentPlanMode"),"quick chat keeps attachment entries and drops work-only goal and planning");
                 Check(menu.Items.OfType<MenuItem>().All(m=>!m.HasItems) && !menu.Items.OfType<MenuItem>().Single(m=>m.Name=="AddApplicationSnapshot").IsEnabled,"add menu is flat and snapshot is disabled without another application");
-                var plan=menu.Items.OfType<MenuItem>().Single(m=>m.Name=="AgentPlanMode");plan.IsChecked=true;plan.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(pet.Settings.AgentPlanMode && pet.Store.Load().AgentPlanMode,"planning mode is saved");menu.IsOpen=false;
+                menu.IsOpen=false;
+                var fullPlus=All<Button>(full).Single(b=>b.Name=="AddAttachment");fullPlus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var fullMenu=fullPlus.ContextMenu;
+                var plan=fullMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="AgentPlanMode");plan.IsChecked=true;plan.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(pet.Settings.AgentPlanMode && pet.Store.Load().AgentPlanMode,"planning mode is saved from the full composer");fullMenu.IsOpen=false;
                 var visual=new DrawingVisual();using(var drawing=visual.RenderOpen()){drawing.DrawRectangle(Ui.Brush("#E8F2FF"),null,new Rect(0,0,220,140));drawing.DrawText(new FormattedText("应用快照",System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface("Microsoft YaHei UI"),25,Ui.Ink,1.0),new Point(20,44));}var bitmap=new RenderTargetBitmap(220,140,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));byte[] picture;using(var memory=new MemoryStream()){encoder.Save(memory);picture=memory.ToArray();}
                 composer.SnapshotTargetProvider=()=>new ApplicationSnapshotTarget{AppName="测试应用",Title="测试应用窗口",IconPng=picture};plus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 var snapshot=plus.ContextMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="AddApplicationSnapshot");Check(snapshot.IsEnabled && snapshot.Icon is Image && !snapshot.HasItems && ((string)snapshot.Header).Contains("测试应用"),"top application appears directly with its actual icon");Save(plus.ContextMenu,Path.Combine(folder,"flat-add-menu.png"));plus.ContextMenu.IsOpen=false;
@@ -121,7 +126,7 @@ namespace Dafeiyu.Tests
                 foreach(Window window in new Window[]{full,quick})
                 {
                     var user=All<Border>(window).First(b=>b.Name=="UserMessage");var cards=All<Border>(user).Where(b=>b.Name=="SentAttachmentCard").ToList();var bubble=All<Border>(user).Single(b=>b.Name=="SentUserBubble");
-                    Check(cards.Count==2 && cards.First().Background is ImageBrush && cards.First().ActualWidth==80,"sent attachments use standalone rounded image and file cards");
+                    Check(cards.Count==2 && cards.First().Background is ImageBrush && cards.First().ActualWidth==88,"sent attachments use standalone rounded image and file cards");var attachmentActions=cards.Last().ContextMenu.Items.OfType<MenuItem>().Select(i=>(string)i.Header).ToArray();Check(new[]{"打开文件","打开方式…","在资源管理器中打开","复制路径","复制文件内容","另存为…"}.All(x=>attachmentActions.Contains(x)),"file card exposes open, reveal, copy and save actions");
                     Check(cards.All(c=>c.TranslatePoint(new Point(0,c.ActualHeight),user).Y<=bubble.TranslatePoint(new Point(),user).Y),"sent attachments are above the blue user bubble");if(window==full)Save(user,Path.Combine(folder,"sent-attachments.png"));
                 }
                 pet.Settings.Text.Model="GPT-6.1 Sol";full.RefreshAppearance();quick.RefreshPersona();Pump();Save(full,Path.Combine(folder,"full-final.png"));Save(quick,Path.Combine(folder,"quick-final.png"));

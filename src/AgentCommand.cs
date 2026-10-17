@@ -47,7 +47,7 @@ namespace Dafeiyu
             if(!CommandsEnabled || readOnly)throw new ArgumentException("此项目尚未启用命令执行，或当前为计划模式。");
             var command=commands.SingleOrDefault(c=>c.Id==id);if(command==null)throw new ArgumentException("未知或未授权的项目命令 ID，请先查看 list_commands。");
             using(LockDirectories(Root,false)){
-                var result=WindowsCommandRunner.Run(command,Math.Max(1,Math.Min(600,CommandTimeoutSeconds)),token);lock(commandResults)commandResults.Add(result);PublishTask();token.ThrowIfCancellationRequested();
+                var result=WindowsCommandRunner.Run(command,Math.Max(1,Math.Min(600,CommandTimeoutSeconds)),token);lock(commandResults){commandResults.Add(result);if(commandResults.Count>8)commandResults.RemoveAt(0);}PublishTask();token.ThrowIfCancellationRequested();
                 string output=result.Output??"";bool previewCut=output.Length>12000;if(previewCut)output=output.Substring(output.Length-12000);
                 string json=new JavaScriptSerializer().Serialize(new{result.CommandId,result.ExitCode,result.TimedOut,result.ElapsedMilliseconds,Output=output,Truncated=result.Truncated || previewCut});
                 return (result.TimedOut?"错误：命令超时。":result.ExitCode!=0?"错误：命令返回非零退出码。":"")+json;

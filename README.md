@@ -1,13 +1,13 @@
-﻿<div align="center">
+<div align="center">
   <img src="previews/logo.png" width="88" alt="桌面伙伴 Logo">
   <h1>桌面伙伴 · DeskPet</h1>
   <p>四位桌面伙伴，陪你工作，也陪你闲聊。</p>
   <p>原画动作与互动 · 多服务商 AI 对话 · 听写、朗读与 Live</p>
-  <p><a href="https://github.com/Eason4869/deskpet/releases/tag/v0.6.1">下载 Windows / macOS 版</a> · <a href="#开始使用">开始使用</a> · <a href="docs/dialogue-setup.md">模型配置指南</a> · <a href="CHANGELOG.md">更新日志</a></p>
-  <p>当前版本 <a href="https://github.com/Eason4869/deskpet/releases/tag/v0.6.1">0.6.1</a> · Windows 10/11 x64 · macOS 14+ 预览（Apple Silicon / Intel）</p>
+  <p><a href="https://github.com/Eason4869/deskpet/tree/v0.6.2">查看 v0.6.2</a> · <a href="#开始使用">开始使用</a> · <a href="docs/dialogue-setup.md">模型配置指南</a> · <a href="CHANGELOG.md">更新日志</a></p>
+  <p>当前版本 <a href="https://github.com/Eason4869/deskpet/tree/v0.6.2">0.6.2</a> · Windows 10/11 x64 · macOS 14+ 预览（Apple Silicon / Intel）</p>
 </div>
 
-> 0.6.1 提供 Windows 安装／便携版和 macOS 双架构预览。Windows 新增原生文件 Agent；Mac 支持聊天、Markdown 与附件，暂不提供本地文件工具或应用窗口快照。Mac 预览仅做 ad-hoc 签名，**未经 Apple Developer ID 签名或公证**。
+> 0.6.2 完善多项目／多会话、Agent 内核、项目管理、Markdown 链接和文件操作。本标签仅提供源码，不创建 GitHub Release。0.6.1 提供 Windows 安装／便携版和 macOS 双架构预览。Windows 新增原生文件 Agent；Mac 支持聊天、Markdown 与附件，暂不提供本地文件工具或应用窗口快照。Mac 预览仅做 ad-hoc 签名，**未经 Apple Developer ID 签名或公证**。
 
 > **升级过渡：0.5.4 及更早正式版本的安装版，无法直接通过内置更新升级到 0.6.0 及后续版本。**请先手动安装 0.5.6，再使用内置更新；也可直接手动安装最新版。覆盖安装会保留原有 `data` 数据。0.5.6 沿用旧安装包名称，并已加入下一版规范名称的识别。便携 ZIP 名称保持兼容，不受本次安装包改名限制。
 
@@ -32,13 +32,13 @@
 
 ### 随时聊两句，也能把想法慢慢展开
 
-双击伙伴打开头顶快速对话，点展开图标进入完整聊天。两个窗口共享会话，支持流式回复、停止生成、历史记录与 Markdown 导出。
+双击伙伴打开头顶快速对话，点展开图标进入完整聊天。两个窗口共享会话，支持流式回复、停止生成、历史记录与 Markdown 导出。快速对话始终为纯聊天（顶部标注“快速对话”，无模式切换）；完整对话默认工作模式，可在其输入框切换对话模式。
 
-0.6.1 更新对话界面：用户半宽浅蓝气泡、无气泡 AI 正文、Markdown 排版，以及结果末尾的复制、朗读和更多图标。过程默认单行显示“思考中／处理中／编辑中／运行中”，悬停出现展开箭头，正式结果开始后自动隐藏；回复顶部显示耗时，用户消息悬停显示时间与复制。输入框 **+** 可添加文件、图片或文件夹引用。Windows 还支持应用窗口快照、持续目标、只读计划模式及原生文件 Agent：切换工作模式后按系统权限访问本地目录，支持新建文件／文件夹及打开目录；在“工作设置”中调整访问范围、备份和任务限制。使用及平台边界见 [对话与 Agent 说明](docs/conversation-agent.md)。下方对话截图来自 0.6.1 本地预览，使用示例数据。
+0.6.2 新增多项目与多会话侧栏、AI／手动标题、右键重命名／归档／删除、Markdown 链接样式和文件卡片操作。0.6.1 更新对话界面：用户半宽浅蓝气泡、无气泡 AI 正文、Markdown 排版，以及结果末尾的复制、朗读和更多图标。过程默认单行显示“思考中／处理中／编辑中／运行中”，悬停出现展开箭头，正式结果开始后自动隐藏；回复顶部显示耗时，用户消息悬停显示时间与复制。输入框 **+** 可添加文件、图片、Word/Excel 文档（.doc/.docx/.xls/.xlsx）或文件夹引用。Windows 还支持应用窗口快照、持续目标、只读计划模式及原生文件 Agent：切换工作模式后按系统权限访问本地目录，支持新建文件／文件夹及打开目录；在“工作设置”中调整访问范围、备份、上下文预算和项目命令。使用及平台边界见 [对话与 Agent 说明](docs/conversation-agent.md)。下方对话截图来自 0.6.1 本地预览，使用示例数据。
 
 <img src="previews/conversation-0.6.1.png" width="780" alt="0.6.1 本地实测：Markdown 回复、耗时、文末操作与对齐的输入框">
 
-回复还没结束时，也可以继续发送：消息进入队列，按顺序处理。拖动六点柄调整顺序，还能编辑、删除，或用“引导”优先处理新要求。停止或出错后队列暂停，重启后可手动继续。
+回复还没结束时，也可以继续发送：消息进入队列，按顺序处理。拖动六点柄调整顺序，还能编辑、删除，或用“引导”在当前操作完成后接入新要求，不停止正在运行的命令。停止或出错后队列暂停，重启后可手动继续。工作设置可启用“显示预测消息”，根据最近对话在输入框内显示浅色预测文本；第一次 Enter 填入草稿，第二次 Enter 发送。该选项默认关闭，开启后会额外请求文字模型。
 
 ### 打个招呼，或直接开口说
 
@@ -65,24 +65,24 @@
 
 ## 开始使用
 
-1. **下载安装。**在 [Release](https://github.com/Eason4869/deskpet/releases/tag/v0.6.1) 选择下表对应平台的文件。Windows 推荐安装版，按中文向导安装，无需管理员权限；便携版完整解压后运行“桌面伙伴.exe”。Mac 下载对应 CPU 的预览 DMG 或 ZIP，将应用复制到“应用程序”。
+1. **下载安装。**0.6.2 当前仅创建源码标签，不创建 GitHub Release；正式附件发布后按下表选择对应平台的文件。Windows 推荐安装版，按中文向导安装，无需管理员权限；便携版完整解压后运行“桌面伙伴.exe”。Mac 下载对应 CPU 的预览 DMG 或 ZIP，将应用复制到“应用程序”。
 2. **认识伙伴。**首次启动会打开 17 步配置引导，带你切换伙伴、编辑人格、拖动和互动，再配置可选的 AI、语音及对话功能。
 3. **按需接入 AI。**只想使用桌宠可以跳过模型与语音步骤；想聊天时，按下方流程添加服务商和模型。
 
 | 下载顺序 | 文件 | 用途 |
 | --- | --- | --- |
-| 1. Windows 安装版（推荐） | `DeskPet-Windows-Setup-0.6.1.exe` | Windows 10/11 x64，中文安装向导 |
-| 2. Windows 便携版 | `DeskPet-Windows-0.6.1.zip` | 完整解压后运行 |
-| 3. Mac Apple Silicon 预览 | `DeskPet-macOS-0.6.1-arm64-preview.dmg` / `.zip` | M 系列芯片，macOS 14+ |
-| 4. Mac Intel 预览 | `DeskPet-macOS-0.6.1-x86_64-preview.dmg` / `.zip` | Intel 芯片，macOS 14+ |
-| 5. 源码 | `DeskPet-Source-0.6.1.zip` | 构建、开发与查看实现 |
-| 6. 四位伙伴外观 | `{Ebao,Dafeiyu,Marfu,Xiaobei}-HD-Skin-0.6.1.zip` | 按伙伴选择独立外观包 |
-| 7. 创作模板 | `DeskPet-Skin-Template-v2-0.6.1.zip` | 完整 v2 外观制作模板 |
+| 1. Windows 安装版（推荐） | `DeskPet-Windows-Setup-0.6.2.exe` | Windows 10/11 x64，中文安装向导 |
+| 2. Windows 便携版 | `DeskPet-Windows-0.6.2.zip` | 完整解压后运行 |
+| 3. Mac Apple Silicon 预览 | `DeskPet-macOS-0.6.2-arm64-preview.dmg` / `.zip` | M 系列芯片，macOS 14+ |
+| 4. Mac Intel 预览 | `DeskPet-macOS-0.6.2-x86_64-preview.dmg` / `.zip` | Intel 芯片，macOS 14+ |
+| 5. 源码 | `DeskPet-Source-0.6.2.zip` | 构建、开发与查看实现 |
+| 6. 四位伙伴外观 | `{Ebao,Dafeiyu,Marfu,Xiaobei}-HD-Skin-0.6.2.zip` | 按伙伴选择独立外观包 |
+| 7. 创作模板 | `DeskPet-Skin-Template-v2-0.6.2.zip` | 完整 v2 外观制作模板 |
 | 8. 校验文件 | `SHA256.txt` | 核对本次发布附件 |
 
 Windows 需要 .NET Framework 4.8；Mac 包为自包含应用，无需另装 .NET。无需 Node.js 或 Docker。GitHub 附件区可能自行排序，请按此表选择。
 
-### macOS 预览 0.6.1
+### macOS 预览 0.6.2
 
 Mac 使用 Avalonia / .NET 10，复用模型、对话、队列、语音与伙伴业务；提供菜单栏、快速与完整聊天、设置、17 步使用引导、Live 和关于与更新窗口。支持本版的 Markdown、头像、附件与过程展示；本地文件 Agent 和应用窗口快照暂不可用。Mac 设置中的文字、听写、云朗读、Live 和语音分别配置，窗口布局与下方 Windows 截图不同。
 
@@ -192,7 +192,7 @@ Mac“关于与更新”只选择本机平台与 CPU 的规范附件，下载后
 
 ## 制作自己的桌宠
 
-在 [Release](https://github.com/Eason4869/deskpet/releases/tag/v0.6.1) 下载四位伙伴的高清外观包，解压后在“伙伴与人格”页导入 `pet.json`。也可下载 `DeskPet-Skin-Template-v2-0.6.1.zip`，从完整创作模板开始。独立外观包遵循通用导入协议，内置伙伴新增的第二招牌与新旧随机互动由程序自带。
+在正式发布附件中下载四位伙伴的高清外观包，解压后在“伙伴与人格”页导入 `pet.json`。也可下载 `DeskPet-Skin-Template-v2-0.6.2.zip`，从完整创作模板开始。独立外观包遵循通用导入协议，内置伙伴新增的第二招牌与新旧随机互动由程序自带。
 
 - **v1**：8 列 × 11 行透明 PNG，高清模板为 3840 × 5720，单帧 480 × 520。
 - **v2**：按动作分别绘制 PNG，自定义帧数、播放速率和循环；提供 17 组动作与 16 方向注视模板。
@@ -202,13 +202,13 @@ Mac“关于与更新”只选择本机平台与 CPU 的规范附件，下载后
 
 ## 接下来的计划
 
-- [ ] 引导不打断。
-- [ ] 上下文压缩：长对话自动整理上下文，并显示“上下文已自动压缩”状态；本次暂不实现。
+- [x] 开发分支：引导在操作完成后接入，不打断正在运行的命令。
+- [x] 开发分支：上下文接近预算时自动整理，显示“正在压缩，请稍后”及“上下文已自动压缩”。
 - [ ] macOS Developer ID 签名、公证及人工设备验收。
 - [ ] 每位伙伴独立的好感度与互动反馈。
 - [ ] 节日限定服饰与动作。
 
-以上项目尚未完成，具体规则见 [开发路线图](docs/roadmap.md)。
+勾选项目已在开发分支实现，其余仍待开发，具体规则见 [开发路线图](docs/roadmap.md)。
 
 ---
 

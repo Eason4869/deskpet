@@ -34,7 +34,7 @@ namespace Dafeiyu.Tests
                 var workspace = new AgentWorkspace(root);
                 Check(workspace.Root == root, "Root is explicit");
                 Check(workspace.OpenAITools.Length >= 7 && workspace.AnthropicTools.Length >= 7, "native schemas include directory tools");
-                Check(workspace.RestrictToRoot && workspace.BackupEnabled && workspace.MaximumTurns == 12 && workspace.TimeoutMinutes == 10, "strict legacy constructor and execution defaults");
+                Check(workspace.RestrictToRoot && workspace.BackupEnabled && workspace.ContextTokenLimit == 32768, "strict legacy constructor and execution defaults");
                 workspace.ReadOnly=true;
                 Check(workspace.OpenAITools.Length>=3 && !new JavaScriptSerializer().Serialize(workspace.OpenAITools).Contains("write_file"),"planning schemas omit write and edit tools");
                 Check(Error(Call(workspace,"write_file",new {path="blocked.txt",content="no"})) && !File.Exists(Path.Combine(root,"blocked.txt")),"planning mode refuses writes even if model invents call");

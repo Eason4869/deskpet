@@ -84,6 +84,7 @@ namespace Dafeiyu
         [DataMember] public string Reasoning { get; private set; }
         [DataMember] public long ReasoningMilliseconds { get; private set; }
         [DataMember] public bool WorkMode { get; private set; }
+        [DataMember] public string AgentTaskId { get; internal set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
@@ -135,6 +136,7 @@ namespace Dafeiyu
             lock(gate) { string turn=Guid.NewGuid().ToString("N");var u=new ChatMessage("user",text,turn,"complete",source);var a=new ChatMessage("assistant","",turn,"pending",source);messages.Add(u);messages.Add(a);Trim();user=u.Copy();return a.Copy(); }
         }
         public ChatMessage StartProcessing(string id,bool workMode) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode);return message.Copy();} }
+        internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.AgentTaskId=taskId;}}
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
             lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }

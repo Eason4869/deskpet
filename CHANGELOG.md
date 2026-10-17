@@ -1,5 +1,18 @@
-﻿# 更新日志
+# 更新日志
 
+## [0.6.2](https://github.com/Eason4869/deskpet/tree/v0.6.2) — 2026-10-18（计划分支标签）
+
+本次仅推送 **plan** 分支并创建 **v0.6.2** 源码标签，不创建 GitHub Release、不上传正式发布附件。
+
+- 完成 Codex + OpenCode 风格 Agent 内核：Session/Inbox/Step、上下文恢复、统一工具执行、权限审批、稳定 CallId、执行声明和审计。
+- 接入 Provider 能力描述、`build/plan/explore/general` Profile、子 Agent 排队生命周期，以及 MCP HTTP / stdio 工具发现和调用。
+- 多项目、多会话改为同窗口标签切换；后台 workspace、历史、队列和草稿独立保留，完成后可以继续发送。
+- 项目默认名改为“默认项目”，支持新增、重命名、归档、恢复和永久删除；对话标题由当前模型生成，也可右键手动重命名、归档或删除。
+- 左侧项目/会话标题完整换行显示，展开/收起使用开合文件夹图标；修复项目悬停黑色闪烁和完整对话最大化底部外漏。
+- Markdown 链接在输入预览、用户消息和 AI 输出中统一显示为可点击圆角样式；输入框支持实时 Markdown 预览。
+- AI 输出文件卡片优化显示，并支持打开文件、打开方式、资源管理器定位、复制路径、复制文件内容和另存为。
+- 修复完成后二次发送、MCP Schema、子 Agent 稳定 ID、Provider 工具门控和打包长路径问题。
+- 最终验证：.NET 10 共享回归 325 项通过；Windows 定向 UI、Agent、队列、文档、打包与真实更新助手回归通过。
 ## [0.6.1](https://github.com/Eason4869/deskpet/releases/tag/v0.6.1) — 2026-10-16
 
 发布 Windows 安装／便携版、macOS 14+ Apple Silicon 与 Intel 预览（各含 DMG、ZIP）、源码、四位伙伴外观、v2 创作模板及 SHA256 校验。Mac 预览仅 ad-hoc 签名，未经 Apple Developer ID 签名或公证；本地文件 Agent 和应用快照仅 Windows 支持。

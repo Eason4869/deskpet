@@ -22,7 +22,7 @@ options = arguments.parse_args()
 root = PROJECT / 'work' / ('source-smoke-' + uuid.uuid4().hex)
 checkout = root / 'DafeiyuDeskPet'
 shutil.copytree(PROJECT, checkout, ignore=shutil.ignore_patterns(
-    '.git', 'work', 'bin', 'obj', 'data', '__pycache__', '.superpowers', 'superpowers',
+    '.git', 'work', 'bin', 'obj', 'data', '__pycache__', '.superpowers', 'superpowers', 'research',
     'motion', 'motion-source', 'drawn-source*', 'PackDrawnMotion.py', 'PackXiaobei.py', 'MotionSourceExport.cs', 'SmoothMotionTests.cs'))
 assert not (checkout/'assets/motion').exists(), 'Clean builds must not depend on retired motion artwork'
 assert (checkout/'templates/high-fps-v2/pet.json').is_file(), 'Author template must be in the repository'

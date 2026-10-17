@@ -486,17 +486,17 @@ try
     settings.SelectSection("work"); Dispatcher.UIThread.RunJobs();
     var workView = settings.GetLogicalDescendants().OfType<WorkSettingsView>().Distinct().Single();
     T WorkControl<T>(string name) where T : Control => workView.GetLogicalDescendants().OfType<T>().Distinct().Single(c => c.Name == name);
-    var accessSetting = WorkControl<ComboBox>("AgentAccess"); var roundSetting = WorkControl<NumericUpDown>("AgentMaxTurns"); var timeoutSetting = WorkControl<NumericUpDown>("AgentTimeoutMinutes");
-    Check(accessSetting.Items.Count == 2 && roundSetting.Minimum == 1 && roundSetting.Maximum == 48 && timeoutSetting.Minimum == 1 && timeoutSetting.Maximum == 60 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
+    var accessSetting = WorkControl<ComboBox>("AgentAccess"); var contextSetting = WorkControl<NumericUpDown>("AgentContextTokenLimit");
+    Check(accessSetting.Items.Count == 2 && contextSetting.Minimum == 8192 && contextSetting.Maximum == 131072 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
     var workBefore = controller.Settings.Copy(); var historyBeforeWork = controller.Session.History.Messages.Count;
     if (OperatingSystem.IsWindows())
     {
         accessSetting.SelectedIndex = 1; WorkControl<CheckBox>("WorkPlanMode").IsChecked = true; WorkControl<CheckBox>("AgentBackupFiles").IsChecked = false;
-        roundSetting.Value = 17; timeoutSetting.Value = 7; WorkControl<TextBox>("WorkGoal").Text = "检查当前项目并给出执行计划";
+        contextSetting.Value = 16384; WorkControl<TextBox>("WorkGoal").Text = "检查当前项目并给出执行计划";
         var selectedWorkDir = Path.Combine(directory, "work-settings-directory"); Directory.CreateDirectory(selectedWorkDir); WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir;
         WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
         var savedWork = new SettingsStore(settingsFile).Load();
-        Check(!savedWork.AgentFullAccess && savedWork.AgentPlanMode && !savedWork.AgentBackupFiles && savedWork.AgentMaxTurns == 17 && savedWork.AgentTimeoutMinutes == 7 && savedWork.AgentGoal == "检查当前项目并给出执行计划" && savedWork.AgentWorkspace == selectedWorkDir, "all work fields persist without changing current conversation or starting a task");
+        Check(!savedWork.AgentFullAccess && savedWork.AgentPlanMode && !savedWork.AgentBackupFiles && savedWork.AgentContextTokenLimit == 16384 && savedWork.AgentGoal == "检查当前项目并给出执行计划" && savedWork.AgentWorkspace == selectedWorkDir, "all work fields persist without changing current conversation or starting a task");
         WorkControl<TextBox>("AgentWorkspaceInput").Text = Path.Combine(directory, "does-not-exist"); WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(controller.Settings.AgentWorkspace == selectedWorkDir, "invalid work directory leaves the previous valid selection unchanged"); WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir;
         var defaultWorkDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "agent-workspace"); bool defaultWorkExisted = Directory.Exists(defaultWorkDir);
@@ -504,11 +504,11 @@ try
         Check(controller.Settings.AgentWorkspace == defaultWorkDir && new SettingsStore(settingsFile).Load().AgentWorkspace == defaultWorkDir && Directory.Exists(defaultWorkDir) == defaultWorkExisted, "reset saves the default work location without creating it before a task runs");
         WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir; WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
-    else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !roundSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
+    else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !contextSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
     WorkControl<CheckBox>("AgentDetailedProcess").IsChecked = true; Dispatcher.UIThread.RunJobs();
     Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && workView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("下一次任务") == true), "detailed process preference persists with a next-task notice and never submits a model request");
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var workFrame = settings.CaptureRenderedFrame()) workFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "work-settings.png"), new PngBitmapEncoderOptions());
-    controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentMaxTurns = workBefore.AgentMaxTurns; controller.Settings.AgentTimeoutMinutes = workBefore.AgentTimeoutMinutes; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
+    controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentContextTokenLimit = workBefore.AgentContextTokenLimit; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
     settings.SelectSection("text"); Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
     using (var rendered = settings.CaptureRenderedFrame())
     {

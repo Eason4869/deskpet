@@ -31,7 +31,7 @@ retired_source_tools={'PackDrawnMotion.py','PackXiaobei.py','tests/MotionSourceE
 def include_source(file):
     relative=file.relative_to(PROJECT)
     if not file.is_file() or OUTPUT in file.resolve().parents:return False
-    if any(part.lower() in {'work','bin','obj','data','outputs','__pycache__','.git','.superpowers','.codex','.agents','.aws','.ssh'} for part in relative.parts):return False
+    if any(part.lower() in {'work','bin','obj','data','outputs','research','__pycache__','.git','.superpowers','.codex','.agents','.aws','.ssh'} for part in relative.parts):return False
     if file.name.lower() in {'.env','credentials','credentials.json','auth.json','id_rsa','id_ed25519'} or file.name.lower().startswith('.env.'):return False
     name=relative.as_posix()
     if name.startswith(('docs/superpowers/','assets/drawn-source','assets/motion-source/','assets/motion/')) or name in retired_source_tools:return False

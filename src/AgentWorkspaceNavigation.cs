@@ -1,41 +1,49 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Controls;using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 
 namespace Dafeiyu
 {
-    // Navigation for the maximized window. All actions use the existing session
-    // and settings rather than creating a second conversation or task model.
-    internal sealed class AgentWorkspaceNavigation : Border, IDisposable
+    internal sealed class AgentWorkspaceNavigation : Border,IDisposable
     {
-        readonly PetWindow pet;
-        readonly TextBlock project=Ui.Text("",15),path=Ui.Text("",11,Ui.Muted),mode=Ui.Text("",11,Ui.Muted),task=Ui.Text("",12),state=Ui.Text("",11,Ui.Muted);
-        readonly Button taskButton;
+        readonly PetWindow pet;readonly ConversationSession session;readonly string workspaceOverridePath;readonly string conversationId;readonly TextBlock project=Label(),task=Label(),identity=Label();ProjectSidebar projectNav;
+        readonly Button taskButton;readonly Image avatar=new Image{Width=26,Height=26,Stretch=Stretch.Uniform,Margin=new Thickness(0,0,10,0)};
+        readonly Border taskDot=new Border{Width=6,Height=6,CornerRadius=new CornerRadius(3),Background=AgentUi.Muted,VerticalAlignment=VerticalAlignment.Center};
         bool disposed;
-        public AgentWorkspaceNavigation(PetWindow companion,Action focusConversation,Action focusTask)
+        public AgentWorkspaceNavigation(PetWindow companion,Action focusConversation,Action focusTask,ConversationSession sessionOverride=null,string workspaceOverride=null,string conversationIdOverride=null)
         {
-            pet=companion;Name="AgentWorkspaceSidebar";Background=Ui.Brush("#F7F8FA");BorderBrush=Ui.Line;BorderThickness=new Thickness(0,0,1,0);
-            var body=new StackPanel{Margin=new Thickness(18,24,18,18)};Child=body;
-            var title=Ui.Text("工作空间",17);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(0,0,0,28);body.Children.Add(title);
-            body.Children.Add(Ui.Text("当前项目",11,Ui.Muted));project.Margin=new Thickness(0,8,0,5);body.Children.Add(project);path.Margin=new Thickness(0,0,0,12);path.TextWrapping=TextWrapping.NoWrap;path.TextTrimming=TextTrimming.CharacterEllipsis;body.Children.Add(path);
-            var settings=Ui.Button("项目与命令设置");settings.Name="WorkspaceProjectSettings";settings.HorizontalContentAlignment=HorizontalAlignment.Left;settings.Click+=delegate{pet.ShowWorkSettings();};body.Children.Add(settings);
-            mode.Margin=new Thickness(0,12,0,28);body.Children.Add(mode);
-            var conversation=Ui.Button("对话");conversation.Name="WorkspaceConversation";conversation.HorizontalContentAlignment=HorizontalAlignment.Left;conversation.Click+=delegate{focusConversation();};body.Children.Add(conversation);
-            body.Children.Add(new Separator{Margin=new Thickness(0,20,0,18)});body.Children.Add(Ui.Text("当前任务",11,Ui.Muted));
-            task.Margin=new Thickness(0,10,0,6);task.MaxHeight=100;body.Children.Add(task);body.Children.Add(state);
-            taskButton=Ui.Button("步骤、变更与验证");taskButton.Name="WorkspaceTaskDetails";taskButton.Margin=new Thickness(0,14,0,0);taskButton.HorizontalContentAlignment=HorizontalAlignment.Left;taskButton.Click+=delegate{focusTask();};body.Children.Add(taskButton);
-            pet.Conversation.AgentTaskChanged+=Refresh;pet.Conversation.StateChanged+=Refresh;pet.Conversation.HistoryChanged+=Refresh;Refresh();
+            pet=companion;session=sessionOverride??pet.Conversation;workspaceOverridePath=workspaceOverride??"";conversationId=conversationIdOverride??"";Name="AgentWorkspaceSidebar";Background=Ui.Brush("#F8F9FB");BorderBrush=AgentUi.Line;BorderThickness=new Thickness(0,0,1,0);
+            var layout=new DockPanel{Margin=new Thickness(8,20,8,12)};Child=layout;
+            var footer=new StackPanel();DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);
+
+            var person=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(12,16,10,2)};person.Children.Add(avatar);identity.VerticalAlignment=VerticalAlignment.Center;identity.MaxWidth=110;person.Children.Add(identity);var settings=UiIcons.Button("settings","设置");settings.Name="WorkspaceProjectSettings";settings.Width=settings.Height=28;settings.MinWidth=0;settings.MinHeight=0;settings.Padding=new Thickness(5);settings.Margin=new Thickness(6,0,0,0);settings.Click+=delegate{pet.ShowWorkSettings();};person.Children.Add(settings);footer.Children.Add(person);
+            var body=new Grid();body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition{Height=new GridLength(1,GridUnitType.Star)});body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});layout.Children.Add(body);
+            var title=Ui.Text("DeskPet",18,AgentUi.Ink);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(12,0,12,23);Grid.SetRow(title,0);body.Children.Add(title);
+            var conversation=Row("edit","新建对话","WorkspaceConversation");conversation.Click+=delegate{pet.NewActiveConversation();};Grid.SetRow(conversation,1);body.Children.Add(conversation);
+            projectNav=new ProjectSidebar(pet.ProjectStore,pet.Projects,delegate(ProjectDefinition project){pet.ActivateProject(project);},delegate(ProjectDefinition project,ConversationDefinition chatConversation){pet.OpenProjectConversation(project,chatConversation);},delegate(ProjectDefinition project){pet.EditProject(project);},delegate(ProjectDefinition project){pet.OpenProjectWorkspace(project);},delegate(ProjectDefinition project){pet.NewProjectConversation(project);},delegate(ProjectDefinition project,ConversationDefinition chatConversation){pet.RenameConversation(project,chatConversation);},delegate(ProjectDefinition project){pet.RenameProject(project);},delegate(ProjectDefinition project){pet.ArchiveProject(project);},delegate(ProjectDefinition project){pet.DeleteProject(project);},delegate(ProjectDefinition project){pet.RestoreProject(project);},delegate(ProjectDefinition project,ConversationDefinition chatConversation){pet.ArchiveConversation(project,chatConversation);},delegate(ProjectDefinition project,ConversationDefinition chatConversation){pet.DeleteConversation(project,chatConversation);},delegate(ProjectDefinition project,ConversationDefinition chatConversation){pet.RestoreConversation(project,chatConversation);});projectNav.SetActiveConversation(conversationId);var projectScroll=Ui.Scroll(projectNav);projectScroll.Name="ProjectLabelsScroll";projectScroll.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;projectScroll.HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;projectScroll.Margin=new Thickness(0,4,0,8);Grid.SetRow(projectScroll,2);body.Children.Add(projectScroll);
+
+            taskButton=AgentUi.Nav("","WorkspaceTaskDetails");taskButton.Height=36;taskButton.Padding=new Thickness(40,7,12,7);taskButton.Background=Ui.Brush("#EBEDEF");
+            var taskRow=new DockPanel{LastChildFill=true};DockPanel.SetDock(taskDot,Dock.Right);taskRow.Children.Add(taskDot);task.Margin=new Thickness(0,0,9,0);taskRow.Children.Add(task);taskButton.Content=taskRow;taskButton.HorizontalContentAlignment=HorizontalAlignment.Stretch;taskButton.Click+=delegate{focusTask();};Grid.SetRow(taskButton,3);body.Children.Add(taskButton);
+            session.AgentTaskChanged+=Refresh;session.StateChanged+=Refresh;session.HistoryChanged+=Refresh;Refresh();
+        }
+        static TextBlock Label(){return new TextBlock{FontSize=14,Foreground=AgentUi.Ink,TextWrapping=TextWrapping.NoWrap,TextTrimming=TextTrimming.CharacterEllipsis,VerticalAlignment=VerticalAlignment.Center};}
+        static Button Row(string icon,string text,string name){var label=Label();label.Text=text;return Row(icon,label,name);}
+        static Button Row(string icon,TextBlock label,string name)
+        {
+            var row=new Grid();row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(28)});row.ColumnDefinitions.Add(new ColumnDefinition());var glyph=UiIcons.Image(icon,AgentUi.Ink);glyph.Width=glyph.Height=18;glyph.HorizontalAlignment=HorizontalAlignment.Left;row.Children.Add(glyph);Grid.SetColumn(label,1);row.Children.Add(label);
+            var button=AgentUi.Nav("",name);button.Height=38;button.FontSize=14;button.Padding=new Thickness(12,8,12,8);button.Content=row;button.HorizontalContentAlignment=HorizontalAlignment.Stretch;return button;
         }
         internal void Refresh()
         {
             if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(Refresh));return;}
-            string root=pet.Settings.AgentWorkspace??"";project.Text=String.IsNullOrEmpty(root)?"尚未选择项目":Path.GetFileName(root.TrimEnd('\\','/'));if(String.IsNullOrEmpty(project.Text))project.Text=root;
-            path.Text=root;path.ToolTip=root;mode.Text=(!pet.Settings.AgentEnabled?"对话模式 · 文件工具关闭":pet.Settings.AgentPlanMode?"计划模式 · 只读分析":"工作模式 · 可修改文件")+"\n"+(pet.Settings.AgentCommandsEnabled?"已启用项目命令":"未启用项目命令");
-            var current=pet.Conversation.CurrentAgentTask;taskButton.IsEnabled=current!=null;
-            task.Text=current==null?"选择工作模式后发送任务。":current.Goal;task.ToolTip=task.Text;
-            state.Text=current==null?"任务记录将在这里显示。":current.Status=="running"?"正在处理":current.Status=="complete"?"已完成":current.Status=="cancelled"?"已停止，可继续":current.Status=="interrupted"?"已中断，可继续":"需要处理，可查看详情";
+            var current=session.CurrentAgentTask;string root=current!=null?current.Workspace:(workspaceOverridePath.Length>0?workspaceOverridePath:pet.Settings.AgentWorkspace??"");
+            project.Text=String.IsNullOrEmpty(root)?"选择项目":Path.GetFileName(root.TrimEnd('\\','/'));if(String.IsNullOrEmpty(project.Text))project.Text=root;project.ToolTip=null;
+            taskButton.Visibility=current==null?Visibility.Collapsed:Visibility.Visible;task.Text=current==null?"":current.Goal;taskButton.ToolTip=null;
+            taskDot.Visibility=current!=null && current.Status=="running"?Visibility.Visible:Visibility.Collapsed;
+            identity.Text=pet.Skin.Name;avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(projectNav!=null){projectNav.SetActiveConversation(conversationId);projectNav.RefreshIfNeeded();}
         }
-        public void Dispose(){disposed=true;pet.Conversation.AgentTaskChanged-=Refresh;pet.Conversation.StateChanged-=Refresh;pet.Conversation.HistoryChanged-=Refresh;}
+        public void Dispose(){disposed=true;session.AgentTaskChanged-=Refresh;session.StateChanged-=Refresh;session.HistoryChanged-=Refresh;}
     }
 }
