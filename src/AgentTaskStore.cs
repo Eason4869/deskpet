@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -37,7 +37,7 @@ namespace Dafeiyu
                     bool blocked;lock(gate)blocked=unreadable.Contains(path);if(blocked){Warn(path,"任务检查点无法读取，原文件已保留；请先清除任务记录后重试。");return;}
                     byte[] plain;using(var memory=new MemoryStream()){new DataContractJsonSerializer(typeof(AgentTaskState)).WriteObject(memory,copy);plain=memory.ToArray();}
                     if(plain.Length>8*1024*1024)throw new SerializationException();byte[] data=SecretProtection.Protect(plain);if(data.Length>8*1024*1024)throw new SerializationException();Directory.CreateDirectory(directory);temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
-                    using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(data,0,data.Length);stream.Flush(true);}if(File.Exists(path))File.Replace(temporary,path,null);else File.Move(temporary,path);temporary=null;lock(gate){AgentTaskState newest;if(pending.TryGetValue(path,out newest) && Object.ReferenceEquals(newest,copy))pending.Remove(path);}Warn(path,"");
+                    using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(data,0,data.Length);stream.Flush(true);}AtomicFile.Commit(temporary,path);temporary=null;lock(gate){AgentTaskState newest;if(pending.TryGetValue(path,out newest) && Object.ReferenceEquals(newest,copy))pending.Remove(path);}Warn(path,"");
                 }catch(Exception e){if(!StorageError(e))throw;Warn(path,"任务检查点尚未保存，请检查数据目录权限或空间；暂时不要退出或更新。");}
                 finally{if(temporary!=null)try{File.Delete(temporary);}catch(IOException){}catch(UnauthorizedAccessException){}}
             },TaskScheduler.Default);return worker;}

@@ -45,10 +45,10 @@ namespace Dafeiyu
         };
         internal static bool IsReadOnly(string name){var tool=Definitions.FirstOrDefault(d=>d.Name==name);return tool!=null && tool.ReadOnly;}
         internal static void Schemas(bool plan,bool commands,out object[] openai,out object[] anthropic){Schemas(plan,commands,null,null,out openai,out anthropic);}
-        internal static void Schemas(bool plan,bool commands,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic)
+        internal static void Schemas(bool plan,bool commands,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic,Func<string,bool> enabled=null)
         {
             var a=new List<object>();var b=new List<object>();var all=Definitions.Concat(extra??new AgentToolDefinition[0]);
-            foreach(var d in all.Where(d=>d!=null && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)))){
+            foreach(var d in all.Where(d=>d!=null && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
                 var schema=new{type="object",properties=d.Properties??new Dictionary<string,object>(),required=d.Required??new string[0],additionalProperties=false};
                 a.Add(new{type="function",function=new{name=d.Name,description=d.Description??"",parameters=schema}});
                 b.Add(new{name=d.Name,description=d.Description??"",input_schema=schema});

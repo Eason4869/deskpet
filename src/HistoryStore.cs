@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -70,9 +70,12 @@ namespace Dafeiyu
                         if(encrypted.Length<=MaximumBytes && copy.Select(m=>m.TurnId).Distinct().Count()<=200)break;
                         if(copy.Count==0)throw new SerializationException();string turn=copy[0].TurnId;copy.RemoveAll(m=>m.TurnId==turn);
                     }
-                    temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
+                    // A 64-character history hash plus another GUID can push a
+                    // valid destination beyond MAX_PATH. Keep the temporary
+                    // name short in the same directory for an atomic commit.
+                    temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
                     using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(encrypted,0,encrypted.Length);stream.Flush(true);}
-                    if(File.Exists(path))File.Replace(temporary,path,null);else File.Move(temporary,path);
+                    AtomicFile.Commit(temporary,path);
                     temporary=null;SetWarning(path,"");
                 }
                 catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,"聊天记录保存失败；当前窗口中的记录仍可导出，请检查本地存储权限或空间。"); }

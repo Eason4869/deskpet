@@ -19,13 +19,13 @@ namespace Dafeiyu
         }
         public bool Complete(string id,string result)
         {
-            AgentSubagentState next=null;bool ok;
+            bool ok;
             lock(gate)
             {
                 var pending=queued.FirstOrDefault(s=>s.Id==id);
                 if(pending!=null){queued.Remove(pending);return true;}
-                ok=manager.Complete(id,result);
-                if(ok)next=PromoteNext();
+                var child=manager.ListAll().FirstOrDefault(s=>s.Id==id);ok=manager.Complete(id,result);
+                if(ok && child!=null)PromoteNext(child.ParentId);
             }
             return ok;
         }
@@ -34,7 +34,7 @@ namespace Dafeiyu
             lock(gate)
             {
                 var pending=queued.FirstOrDefault(s=>s.Id==id);if(pending!=null){queued.Remove(pending);return true;}
-                bool ok=manager.Fail(id,error);if(ok)PromoteNext();return ok;
+                var child=manager.ListAll().FirstOrDefault(s=>s.Id==id);bool ok=manager.Fail(id,error);if(ok && child!=null)PromoteNext(child.ParentId);return ok;
             }
         }
         public bool Interrupt(string id)
@@ -42,7 +42,7 @@ namespace Dafeiyu
             lock(gate)
             {
                 var pending=queued.FirstOrDefault(s=>s.Id==id);if(pending!=null){queued.Remove(pending);return true;}
-                return manager.Interrupt(id);
+                var child=manager.ListAll().FirstOrDefault(s=>s.Id==id);bool ok=manager.Interrupt(id);if(ok && child!=null)PromoteNext(child.ParentId);return ok;
             }
         }
         public IList<AgentSubagentState> List(string parentId)
@@ -52,9 +52,10 @@ namespace Dafeiyu
                 return manager.List(parentId).Concat(queued.Where(s=>s.ParentId==(parentId??""))).OrderBy(s=>s.CreatedUtc).ToArray();
             }
         }
-        AgentSubagentState PromoteNext()
+        AgentSubagentState PromoteNext(string parentId)
         {
-            var next=queued.FirstOrDefault();if(next==null)return null;queued.Remove(next);
+            if(manager.List(parentId).Count(s=>s.Status=="running")>=maxConcurrent)return null;
+            var next=queued.FirstOrDefault(s=>s.ParentId==(parentId??""));if(next==null)return null;queued.Remove(next);
             return manager.StartQueued(next);
         }
     }

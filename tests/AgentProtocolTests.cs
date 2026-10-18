@@ -19,6 +19,32 @@ namespace Dafeiyu.Tests
             if(args.Length>0 && args[0]=="--wait-command"){File.WriteAllText(args[1],"started");for(int i=0;i<1000;i++){if(File.Exists(args[2])){Console.WriteLine("finished naturally");return 0;}Thread.Sleep(10);}return 9;}
             if(args.Length>0 && args[0]=="--changing-error"){int count=File.Exists("count.txt")?Int32.Parse(File.ReadAllText("count.txt")):0;File.WriteAllText("count.txt",(++count).ToString());Console.Error.WriteLine("diagnostic-"+count);return 1;}
             if(args.Length>0 && args[0]=="--verify-fixture"){Console.WriteLine(File.ReadAllText("verified.txt"));return 0;}
+            Run("guidance preserves the current tool and revises an unstarted tool batch",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
+                {
+                    var first=Object(ToolReply(anthropic,"first","write_file",new{path="kept.txt",content="current operation completed"}));
+                    var later=Object(ToolReply(anthropic,"later","write_file",new{path="stale.txt",content="must not run"}));
+                    if(anthropic)first["content"]=((object[])first["content"]).Concat((object[])later["content"]).ToArray();
+                    else
+                    {
+                        var one=(Dictionary<string,object>)((Dictionary<string,object>)((object[])first["choices"])[0])["message"];
+                        var two=(Dictionary<string,object>)((Dictionary<string,object>)((object[])later["choices"])[0])["message"];
+                        one["tool_calls"]=((object[])one["tool_calls"]).Concat((object[])two["tool_calls"]).ToArray();
+                    }
+                    using(var server=new Fixture(new[]{Json(J(first)),Json(FinalReply(anthropic,"adjusted within original task"))}))using(var api=new ApiClient())
+                    {
+                        bool inject=false,admitted=false;var workspace=new AgentWorkspace(folder.Path);var task=new AgentTaskState{Workspace=folder.Path,Goal="original task"};workspace.BeginTask(task);var events=new List<AgentToolEvent>();
+                        workspace.TakeGuidanceAsync=ct=>{if(!inject||admitted)return Task.FromResult<IList<ChatMessage>>(new List<ChatMessage>());admitted=true;return Task.FromResult<IList<ChatMessage>>(new[]{new ChatMessage("user","CHANGE_DIRECTION_NOW")});};
+                        var result=await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,e=>{events.Add(e);if(e.Id=="first"&&e.Status=="running")inject=true;},false,CancellationToken.None);
+                        await Within(server.Done);Equal("adjusted within original task",result);
+                        Assert(File.Exists(Path.Combine(folder.Path,"kept.txt"))&&!File.Exists(Path.Combine(folder.Path,"stale.txt")),"guidance interrupted the current operation or launched the stale next operation");
+                        Assert(events.Any(e=>e.Id=="first"&&e.Status=="complete")&&events.Any(e=>e.Id=="later"&&e.Status=="skipped")&&!events.Any(e=>e.Status=="error"),"guidance was reported as an interrupted or failed tool");
+                        Assert(server.Bodies.Count==2&&server.Bodies[1].Contains("CHANGE_DIRECTION_NOW")&&server.Bodies[1].Contains("later"),"next decision did not include guidance and observations for all tool IDs");
+                        Equal(task.Id,workspace.TaskState.Id);Equal("original task",workspace.TaskState.Goal);
+                    }
+                }
+            });
             Run("both native protocols write then read with linked observations",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
@@ -206,14 +232,14 @@ namespace Dafeiyu.Tests
                 var signature=new{type="thinking",thinking="opaque",signature="signature-1"};var blocks=new List<object>{signature,new{type="tool_result",tool_use_id="anthropic-1",content=new string('y',20000)}};
                 history=new List<object>{new{role="user",content=blocks},new{role="assistant",content="next"}};AgentContextBudget.Compact(history,true);string compact=J(history);Assert(compact.Contains("signature-1") && compact.Contains("anthropic-1") && compact.Contains("read_output"),"native content identity lost");return Task.FromResult(0);
             });
-            Run("safe guidance joins the same task after a real command without cancellation",async delegate
+            Run("safe guidance joins the same task at a real file-tool boundary without cancellation",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"cmd","run_command",new{command_id="wait"})),Json(ToolReply(anthropic,"edit","write_file",new{path="guided.txt",content="guided"})),Json(FinalReply(anthropic,"done after guidance"))}))using(var api=new ApiClient()){
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{new Reply(ToolReply(anthropic,"files","list_files",new{path="."}),"",true,"application/json"),Json(ToolReply(anthropic,"edit","write_file",new{path="guided.txt",content="guided"})),Json(FinalReply(anthropic,"done after guidance"))}))using(var api=new ApiClient()){
                     string started=Path.Combine(folder.Path,"started"),release=Path.Combine(folder.Path,"release");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,AgentCommandsEnabled=true,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;cfg.AgentCommandRecipes=J(new[]{new{Id="wait",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--wait-command",started,release}}});
                     using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(folder.Path,"history"))))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json"))){
-                        queue.Enqueue("original task");await WaitCondition(()=>File.Exists(started));string id=session.CurrentAgentTask.Id;queue.Hold();queue.Enqueue("later ordinary request");await queue.SteerAsync("only change guided.txt and retain original task");
-                        Assert(session.IsBusy && session.CurrentAgentTask.Id==id && !File.Exists(release),"guidance interrupted the real command");File.WriteAllText(release,"continue");await WaitCondition(()=>!session.IsBusy && !queue.IsRunning);await session.FlushHistoryAsync();await Within(server.Done);
-                        Equal(id,session.CurrentAgentTask.Id);Equal(0,session.CurrentAgentTask.Commands.Single().ExitCode);Assert(!session.CurrentAgentTask.Commands.Single().Cancelled,"command was cancelled");Assert(server.Bodies[1].Contains("only change guided.txt"),"next native request lacked guidance");Assert(queue.Items.Count==1 && queue.Items[0].Text=="later ordinary request","guidance duplicated or consumed an unrelated queued request");Assert(session.History.Messages.All(m=>m.Status!="cancelled"),"guide marked work cancelled");Equal("guided",File.ReadAllText(Path.Combine(folder.Path,"guided.txt")));
+                        queue.Enqueue("original task");await WaitCondition(()=>server.Bodies.Count==1);string id=session.CurrentAgentTask.Id;queue.Hold();queue.Enqueue("later ordinary request");await queue.SteerAsync("only change guided.txt and retain original task");
+                        Assert(session.IsBusy && session.CurrentAgentTask.Id==id,"guidance interrupted the active request");server.Release(0);await WaitCondition(()=>!session.IsBusy && !queue.IsRunning);await session.FlushHistoryAsync();await Within(server.Done);
+                        Equal(id,session.CurrentAgentTask.Id);Equal(0,session.CurrentAgentTask.Commands.Count);Assert(server.Bodies[1].Contains("only change guided.txt"),"next native request lacked guidance");Assert(queue.Items.Count==1 && queue.Items[0].Text=="later ordinary request","guidance duplicated or consumed an unrelated queued request");Assert(session.History.Messages.All(m=>m.Status!="cancelled"),"guide marked work cancelled");Equal("guided",File.ReadAllText(Path.Combine(folder.Path,"guided.txt")));
                     }
                 }
             });

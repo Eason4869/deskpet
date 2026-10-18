@@ -25,7 +25,8 @@ namespace Dafeiyu
         [DataMember]public int Version=1;
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
         [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();
-        [DataMember]public int ContextCompactions,EstimatedContextTokens;
+        [DataMember]public int ContextCompactions,EstimatedContextTokens,ModelContextTokens;
+        [DataMember]public string ContextModel="";
         [DataMember]public string ContextSummary="",ContextStatus="";
         [DataMember]public DateTime UpdatedUtc=DateTime.UtcNow;
         [DataMember]public List<AgentPlanStep> Plan=new List<AgentPlanStep>();
@@ -73,6 +74,7 @@ namespace Dafeiyu
         internal Func<CancellationToken,System.Threading.Tasks.Task<IList<ChatMessage>>> TakeGuidanceAsync {get;set;}
         internal Func<IList<ChatMessage>,bool> GuidanceFits {get;set;}
         internal void RecordGuidance(IEnumerable<AgentGuidance> items){EnsureTask();lock(taskGate){if(task.Guidance==null)task.Guidance=new List<AgentGuidance>();foreach(var item in items)if(!task.Guidance.Any(g=>g.Id==item.Id && g.Revision==item.Revision))task.Guidance.Add(item.Copy());}PublishTask();}
+        internal void RecordContextUsage(int tokens,string model,int capacity){EnsureTask();lock(taskGate){task.EstimatedContextTokens=tokens;task.ContextModel=model??"";task.ModelContextTokens=capacity;}PublishTask();}
         internal void ContextProgress(string status){EnsureTask();lock(taskGate)task.ContextStatus=status;PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.progress",null,status);}
         internal void RecordCompaction(int tokens,string summary){EnsureTask();lock(taskGate){task.ContextCompactions++;task.EstimatedContextTokens=tokens;task.ContextSummary=summary??"";task.ContextStatus="ready";}PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.compacted",null,"summary");}
         public void FinishTask(string status,string notice)

@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
                 Check(loaded.Projects.Single(p=>p.Id==a.Id).Conversations.Any(c=>c.Name=="review") && loaded.Projects.Single(p=>p.Id==a.Id).Conversations.Count==2,"project conversations persist with their project");
                 bool rejected=false;try{ProjectCatalogStore.CreateProject(catalog,"bad",Path.Combine(root,"missing"));}catch(ArgumentException){rejected=true;}Check(rejected,"new project requires an existing workspace");
                 var legacy=new PetSettings{AgentWorkspace=workspaceA,AgentGoal="legacy goal"};var migrated=ProjectCatalogStore.MigrateLegacy(legacy);
-                Check(migrated.Projects.Count==1 && migrated.Projects[0].Name=="默认项目" && migrated.Projects[0].Workspace==workspaceA && migrated.Projects[0].Goal=="legacy goal" && migrated.Projects[0].Conversations.Count==1,"legacy agent settings migrate into the default project and conversation");
+                Check(migrated.Projects.Count==0&&!migrated.Sections.Any(section=>section.Id=="chat")&&ProjectCatalogStore.UnassignedProject(migrated,legacy).Workspace==workspaceA&&ProjectCatalogStore.UnassignedProject(migrated,legacy).Goal=="legacy goal","legacy work defaults remain available without recreating the removed default project");
                 a.Conversations[0].Archived=true;b.Archived=true;store.Save(catalog);var archived=store.Load();Check(archived.Projects.Single(p=>p.Id==a.Id).Conversations[0].Archived && archived.Projects.Single(p=>p.Id==b.Id).Archived,"project and conversation archive state persists");Console.WriteLine("Project catalog tests: "+checks+" passed");return 0;
             }
             catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}

@@ -22,9 +22,10 @@ namespace Dafeiyu
             var profile=new AgentProfileRegistry().Get(state.ProfileId);if(profile==null || profile.Mode!="subagent")throw new ArgumentException("排队子 Agent Profile 无效。");
             lock(gate){if(states.ContainsKey(state.Id))throw new InvalidOperationException("子 Agent ID 已存在。");state.Status="running";state.UpdatedUtc=DateTime.UtcNow;states[state.Id]=state;claims.TryClaim(state.Id,state.Id);return state;}
         }
-        public bool Interrupt(string id){lock(gate){AgentSubagentState state;if(!states.TryGetValue(id,out state)||state.Status!="running")return false;state.Status="interrupted";state.UpdatedUtc=DateTime.UtcNow;return true;}}
+        public bool Interrupt(string id){lock(gate){AgentSubagentState state;if(!states.TryGetValue(id,out state)||state.Status!="running")return false;claims.Fail(id,id);state.Status="interrupted";state.UpdatedUtc=DateTime.UtcNow;return true;}}
         public bool Complete(string id,string result){lock(gate){AgentSubagentState state;if(!states.TryGetValue(id,out state)||(state.Status!="running"&&state.Status!="interrupted"))return false;state.Status="complete";state.Result=result??"";state.UpdatedUtc=DateTime.UtcNow;claims.Complete(id,id);return true;}}
         public bool Fail(string id,string error){lock(gate){AgentSubagentState state;if(!states.TryGetValue(id,out state)||state.Status!="running")return false;state.Status="failed";state.Result=error??"";state.UpdatedUtc=DateTime.UtcNow;claims.Fail(id,id);return true;}}
         public IList<AgentSubagentState> List(string parentId){lock(gate)return states.Values.Where(s=>s.ParentId==parentId).OrderBy(s=>s.CreatedUtc).ToArray();}
+        internal IList<AgentSubagentState> ListAll(){lock(gate)return states.Values.ToArray();}
     }
 }

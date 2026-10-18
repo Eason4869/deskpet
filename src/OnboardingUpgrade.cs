@@ -37,7 +37,7 @@ namespace Dafeiyu
             bool changed=settings.LastOnboardingSeries!=series;
             settings.LastOnboardingSeries=series;
             if(show) {
-                settings.OnboardingState="new";settings.OnboardingStep=workUpgrade?WorkGuideStep:0;
+                settings.OnboardingLessonId="";settings.OnboardingCompletedLessons.Clear();settings.OnboardingSkippedLessons.Clear();settings.OnboardingVerifiedLessons.Clear();settings.OnboardingState="new";settings.OnboardingStep=workUpgrade?WorkGuideStep:0;
                 settings.OnboardingVersion=Math.Max(settings.OnboardingVersion,hasWorkGuide?WorkGuideVersion:1);
                 changed=true;
             }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -77,9 +77,9 @@ namespace Dafeiyu.Tests
                 pet.ShowChat();pet.ShowQuickChat();pet.ShowSettings();Pump(.2);
                 var idleChat=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);var idleQuick=app.Windows.OfType<QuickChatWindow>().Single(w=>w.IsVisible);
                 Check(pet.CanApplyUpdate(true),"手动更新允许空闲聊天、快捷对话及设置窗口保持打开");
-                var chatInput=Find<TextBox>(idleChat,"MessageInput");chatInput.Text="未发送聊天草稿";idleChat.Hide();
+                var chatInput=Find<MarkdownEditor>(idleChat,"MessageInput");chatInput.Text="未发送聊天草稿";idleChat.Hide();
                 Check(!pet.CanApplyUpdate(true),"隐藏聊天窗口的未发送草稿阻止自动退出");chatInput.Clear();
-                var quickInput=Find<TextBox>(idleQuick,"QuickMessageInput");quickInput.Text="未发送快捷草稿";idleQuick.Hide();
+                var quickInput=Find<MarkdownEditor>(idleQuick,"QuickMessageInput");quickInput.Text="未发送快捷草稿";idleQuick.Hide();
                 Check(!pet.CanApplyUpdate(true),"隐藏快捷对话的未发送草稿阻止自动退出");quickInput.Clear();
                 pet.ShowChat();pet.ShowQuickChat();Pump(.1);
                 string historyPath=Path.Combine(pet.Store.DirectoryPath,"history");

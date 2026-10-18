@@ -18,8 +18,8 @@ namespace Dafeiyu
         public readonly MarkdownView Body;
         readonly TextBlock state,thinkingLabel;
         readonly TextBlock elapsed;
-        // One lightweight activity line (collapsible). Work mode sweeps a highlight
-        // across it; chat mode keeps it flat grey.
+        // A lightweight activity line shared by chat and work processing.
+        readonly Border activityIcon=new Border{Name="ProcessActivityIcon",Width=14,Height=14,Margin=new Thickness(0,0,7,0),VerticalAlignment=VerticalAlignment.Center,Visibility=Visibility.Collapsed};
         readonly StackPanel stageFeed=new StackPanel{Name="StageMilestones"};
         LinearGradientBrush shimmerBrush;System.Windows.Media.Animation.DoubleAnimation shimmerAnimation;
         readonly System.Windows.Threading.DispatcherTimer clock=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)};
@@ -42,13 +42,14 @@ namespace Dafeiyu
             var panel=new StackPanel();Child=panel;
             elapsed=Ui.Text("",12,Ui.Brush("#969BA3"));elapsed.Name="ReplyElapsedTime";
             if(!user)panel.Children.Add(new Border{Child=elapsed,BorderBrush=Ui.Brush("#ECECEC"),BorderThickness=new Thickness(0,0,0,1),Padding=new Thickness(0,0,0,8),Margin=new Thickness(0,0,0,10)});
-            clock.Tick+=delegate{RefreshElapsed();};Loaded+=delegate{RefreshElapsed();};Unloaded+=delegate{clock.Stop();};
+            clock.Tick+=delegate{RefreshElapsed();};Loaded+=delegate{RefreshElapsed();if(!user&&current!=null&&current.Status=="pending"&&String.IsNullOrEmpty(current.Content))StartShimmer();};Unloaded+=delegate{clock.Stop();StopShimmer();};
             thinkingLabel=Ui.Text("",12,Ui.Muted);thinkingLabel.Name="ProcessStatus";thinkingLabel.TextWrapping=TextWrapping.NoWrap;thinkingLabel.TextTrimming=TextTrimming.CharacterEllipsis;
-            thinkingLabel.SetBinding(MaxWidthProperty,new Binding("ActualWidth"){Source=this,Converter=new ChatWidthConverter(1,24)});
+            thinkingLabel.SetBinding(MaxWidthProperty,new Binding("ActualWidth"){Source=this,Converter=new ChatWidthConverter(1,48)});
             details=TextBox("",13,AgentUi.Muted);details.MaxHeight=240;details.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;details.Margin=new Thickness(20,7,0,8);
             var processDetails=new StackPanel();processDetails.Children.Add(details);processDetails.Children.Add(toolLog);
             // Collapsed by default: only the single activity line is visible.
-            thinking=new Expander{Name="ReasoningDetails",Header=thinkingLabel,Content=processDetails,IsExpanded=inspectThinking || detailedProcess,BorderThickness=new Thickness(0),Background=Brushes.Transparent,Visibility=Visibility.Collapsed};
+            var activityHeader=new StackPanel{Orientation=Orientation.Horizontal};activityHeader.Children.Add(activityIcon);activityHeader.Children.Add(thinkingLabel);
+            thinking=new Expander{Name="ReasoningDetails",Header=activityHeader,Content=processDetails,IsExpanded=inspectThinking || detailedProcess,BorderThickness=new Thickness(0),Background=Brushes.Transparent,Visibility=Visibility.Collapsed};
             ChatUi.ProcessExpander(thinking);
             // The black milestone feed sits outside the collapsed expander so it is
             // actually visible while the work is running.
@@ -59,8 +60,8 @@ namespace Dafeiyu
                 foreach(var file in message.Attachments)files.Children.Add(AttachmentCard(file));
                 panel.Children.Add(files);
             }
-            Body=new MarkdownView{Text=message.Content};
-            if(user)panel.Children.Add(new Border{Name="SentUserBubble",Background=Ui.Brush("#E8F2FF"),CornerRadius=new CornerRadius(18),Padding=new Thickness(15,10,15,10),Child=Body,Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible});
+            Body=new MarkdownView{Text=message.Content,FitContentWidth=user};
+            if(user)panel.Children.Add(new Border{Name="SentUserBubble",HorizontalAlignment=HorizontalAlignment.Right,Background=Ui.Brush("#E8F2FF"),CornerRadius=new CornerRadius(18),Padding=new Thickness(15,10,15,10),Child=Body,Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible});
             else panel.Children.Add(Body);
             state=Ui.Text("",11,Ui.Muted);state.Margin=new Thickness(0,6,0,0);if(!user)panel.Children.Add(state);
             actions=new StackPanel{Name="ReplyActions",Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,7,0,0)};
@@ -75,7 +76,7 @@ namespace Dafeiyu
             {
                 var copy=ActionIcon("copy","复制","CopyReply");copy.Click+=delegate{try{Clipboard.SetText(current.Content);}catch(System.Runtime.InteropServices.COMException){session.ReportNotice("剪贴板正忙，请再试一次。");}};actions.Children.Add(copy);
                 var speak=ActionIcon("speaker","朗读","ReadReply");speak.Click+=async delegate{try{if(session.Stage==ConversationStage.Speaking)pet.StopReplySpeech();else await session.SpeakReplyAsync(current.Id,pet.Settings);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:"朗读未完成，请检查语音设置。");}};actions.Children.Add(speak);
-                var more=ActionIcon("more","更多","MoreReply");var menu=ChatUi.Menu();var regenerate=new MenuItem{Header="重新生成此回复",Name="RegenerateReply"};regenerate.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.RegenerateAsync(current.Id,pet.Settings,pet.Skin.Name);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:"重新生成未完成。");}finally{if(resumeQueue)queue.Resume();}};menu.Items.Add(regenerate);
+                var more=ActionIcon("more","更多","MoreReply");var menu=ChatUi.Menu();var regenerate=new MenuItem{Header="重新生成此回复",Name="RegenerateReply"};regenerate.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.RegenerateAsync(current.Id,pet.ConversationSettings(session),pet.Skin.Name);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:"重新生成未完成。");}finally{if(resumeQueue)queue.Resume();}};menu.Items.Add(regenerate);
                 var inspect=new MenuItem{Header="查看思考与工具记录",IsCheckable=true};inspect.Click+=delegate{inspectThinking=inspect.IsChecked;thinking.IsExpanded=inspectThinking;Update(current);};menu.Items.Add(inspect);
                 var plain=new MenuItem{Header="复制纯文本"};plain.Click+=delegate{try{Clipboard.SetText(MarkdownContent.PlainText(current.Content));}catch(System.Runtime.InteropServices.COMException){session.ReportNotice("剪贴板正忙，请再试一次。");}};menu.Items.Add(plain);
                 var export=new MenuItem{Header="导出本条回复…"};export.Click+=delegate{var picker=new Microsoft.Win32.SaveFileDialog{Filter="Markdown (*.md)|*.md",FileName="DeskPet-reply-"+current.Timestamp.ToLocalTime().ToString("yyyyMMdd-HHmmss")+".md"};if(picker.ShowDialog(host)==true)try{File.WriteAllText(picker.FileName,current.Content,new System.Text.UTF8Encoding(false));}catch(IOException){session.ReportNotice("导出失败，请选择可写入的位置。");}catch(UnauthorizedAccessException){session.ReportNotice("导出失败，请检查目录权限。");}};menu.Items.Add(export);more.ContextMenu=menu;more.Click+=delegate{regenerate.IsEnabled=!pet.DialogueBusy && !queue.IsRunning;menu.PlacementTarget=more;menu.IsOpen=true;};actions.Children.Add(more);panel.Children.Add(actions);
@@ -186,6 +187,9 @@ namespace Dafeiyu
         {
             string text=message.Reasoning??"";
             var running=events.LastOrDefault(t=>t.Status=="running" || t.Status=="pending");
+            string icon=running==null?null:ActivityIcon(running.Name);
+            activityIcon.Visibility=active&&workMode&&icon!=null?Visibility.Visible:Visibility.Collapsed;
+            if(icon!=null&&!String.Equals(activityIcon.Tag as string,icon,StringComparison.Ordinal)){activityIcon.Tag=icon;activityIcon.Child=UiIcons.Image(icon,AgentUi.Muted);}
             if(active && workMode)
             {
                 // Work mode: one lightweight line describing the current action.
@@ -195,9 +199,7 @@ namespace Dafeiyu
             }
             else if(active)
             {
-                // Chat mode: a flat grey one-liner, collapsed by default.
-                StopShimmer();
-                thinkingLabel.Foreground=AgentUi.Muted;
+                StartShimmer();
                 string last=text.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).LastOrDefault()??"";
                 thinkingLabel.Text=String.IsNullOrEmpty(last)?"正在思考":last;
             }
@@ -208,6 +210,10 @@ namespace Dafeiyu
                 thinkingLabel.Text=workMode?"处理记录":"思考记录";
             }
             RefreshStageFeed(events,active,workMode);
+        }
+        static string ActivityIcon(string name)
+        {
+            switch(name){case "write_file":case "edit_file":case "apply_patch":return "edit";case "run_command":return "terminal";case "open_directory":return "folder-open";case "create_directory":return "folder";case "find_files":case "search_files":case "github_search_code":return "search";case "update_plan":case "list_commands":return "list";case "fetch_url":return "globe";case "restore_file":return "back";default:return "file";}
         }
         // Black, temporary milestone lines for a work run; they disappear with the
         // process area as soon as the reply is complete.
@@ -257,14 +263,16 @@ namespace Dafeiyu
             shimmerBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0x8B,0x92,0x9C),0));
             shimmerBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xD9,0xDD,0xE4),0.45));
             shimmerBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0x8B,0x92,0x9C),0.9));
-            var sweep=new TranslateTransform();shimmerBrush.Transform=sweep;
+            // Transform uses device-independent pixels. RelativeTransform moves
+            // in brush coordinates, so the sweep actually crosses the text.
+            var sweep=new TranslateTransform();shimmerBrush.RelativeTransform=sweep;
             shimmerAnimation=new System.Windows.Media.Animation.DoubleAnimation(-1,1,TimeSpan.FromSeconds(1.9)){RepeatBehavior=System.Windows.Media.Animation.RepeatBehavior.Forever};
             thinkingLabel.Foreground=shimmerBrush;sweep.BeginAnimation(TranslateTransform.XProperty,shimmerAnimation);
         }
         void StopShimmer()
         {
             if(shimmerBrush==null)return;
-            var sweep=shimmerBrush.Transform as TranslateTransform;if(sweep!=null)sweep.BeginAnimation(TranslateTransform.XProperty,null);
+            var sweep=shimmerBrush.RelativeTransform as TranslateTransform;if(sweep!=null)sweep.BeginAnimation(TranslateTransform.XProperty,null);
             shimmerBrush=null;shimmerAnimation=null;
         }
     }

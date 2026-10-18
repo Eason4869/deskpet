@@ -12,18 +12,19 @@ using System.Windows.Threading;
 
 namespace Dafeiyu
 {
-    public sealed class ChatWindow : Window
+    public sealed partial class ChatWindow : Window
     {
         private readonly PetWindow pet;
         private ConversationSession session;private ConversationQueue queue;private ConversationWorkspace workspace;
         private readonly StackPanel messages;
         private readonly ScrollViewer scroll;
-        private readonly TextBox input;
+        private readonly MarkdownEditor input;
         public string ConversationId {get{return workspace==null?null:workspace.Id;}}
+        internal bool IsPersonalConversation {get{return workspace!=null&&!workspace.EffectiveSettings().AgentEnabled;}}
         public bool HasDraft { get { return !String.IsNullOrWhiteSpace(input.Text) || (composer!=null && composer.HasEdit); } }
         private readonly TextBlock status;
         private readonly Image avatar;
-        private readonly Button record,clear;readonly Button chatSettings;
+        private readonly Button record;readonly Button chatSettings;
         private ConversationComposer composer;private readonly Dictionary<string,string> drafts=new Dictionary<string,string>();
         private bool closed,showingWelcome,reloading;
         private int visibleTurns=50;
@@ -54,9 +55,8 @@ namespace Dafeiyu
             changeSummary=new AgentChangeSummaryCard(path=>{var ignored=taskPanel.ShowDiff(path);});var contextIcon=UiIcons.Image("file",AgentUi.Muted);contextIcon.Width=contextIcon.Height=15;contextIcon.Margin=new Thickness(0,0,7,0);contextNotice.Children.Add(contextIcon);contextLabel.Name="ContextCompactionLabel";contextNotice.Children.Add(contextLabel);
             Grid.SetRow(scroll,2);messageArea.Children.Add(scroll);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
-            input=Ui.Field("",true);input.Name="MessageInput";input.MaxLength=8000;
+            input=new MarkdownEditor();input.Name="MessageInput";input.MaxLength=8000;
             record=UiIcons.Button("mic","听写");record.Name="VoiceRecord";
-            clear=UiIcons.Button("trash","清空当前聊天记录");clear.Name="ClearChat";clear.Margin=new Thickness(6,0,0,0);clear.Click+=delegate {try{session.Clear();ShowStatus("已清空当前会话。");}catch(Exception e){ShowError(e);}};DockPanel.SetDock(clear,Dock.Right);historyTools.Children.Add(clear);
 
             workspaceShell=new Grid();workspaceShell.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(0)});workspaceShell.ColumnDefinitions.Add(new ColumnDefinition());workspaceShell.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(0)});
             Grid.SetColumn(root,1);workspaceShell.Children.Add(root);
@@ -86,6 +86,13 @@ namespace Dafeiyu
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{if(closed)return;if(follow)scroll.ScrollToEnd();else scroll.ScrollToVerticalOffset(offset);}));
         }
         string DraftKey(){return workspace==null?"":workspace.Id;}
+        internal void ChangeConversationMode(bool work)
+        {
+            if(pet.ConversationSettings(session).AgentEnabled==work){RefreshProjectPicker();return;}
+            string text=input.Text;int caret=input.CaretIndex;
+            SwitchWorkspace(pet.CreateDraftConversation(null,work));
+            input.Text=text;input.CaretIndex=Math.Min(caret,text.Length);input.Focus();
+        }
         public void SwitchWorkspace(ConversationWorkspace replacement)
         {
             if(closed)return;if(ReferenceEquals(workspace,replacement))return;drafts[DraftKey()]=input.Text;UnmountWorkspace(false);
@@ -93,31 +100,33 @@ namespace Dafeiyu
         }
         void MountWorkspace()
         {
-            taskPanel=new AgentTaskPanel(pet,session);taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(inspectorLayout){inspectorHost.Content=taskPanel;taskPanel.SetWorkspaceLayout(true);taskPanel.IsExpanded=true;}else{Grid.SetRow(taskPanel,1);messageArea.Children.Add(taskPanel);}
+            taskPanel=new AgentTaskPanel(pet,session,queue);taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(inspectorLayout){inspectorHost.Content=taskPanel;taskPanel.SetWorkspaceLayout(true);taskPanel.IsExpanded=true;}else{Grid.SetRow(taskPanel,1);messageArea.Children.Add(taskPanel);}
             if(composer==null){composer=new ConversationComposer(pet,this,input,record,status,false,false,session,queue);composer.Margin=new Thickness(0,12,0,0);Grid.SetRow(composer,2);conversationSurface.Children.Add(composer);}else composer.Rebind(session,queue);
-            navigation=new AgentWorkspaceNavigation(pet,delegate{scroll.ScrollToEnd();input.Focus();},delegate{taskPanel.IsExpanded=true;taskPanel.Focus();},session,workspace==null?null:workspace.ProjectWorkspace,workspace==null?null:workspace.Id);navigation.Visibility=workspaceLayout?Visibility.Visible:Visibility.Collapsed;Grid.SetColumn(navigation,0);workspaceShell.Children.Add(navigation);
+            composer.PrepareSubmission=delegate{return pet.PrepareConversationSubmission(workspace);};composer.Submitted=delegate{pet.FinishConversationSubmission(workspace);RefreshProjectPicker();};RefreshProjectPicker();
+            navigation=new AgentWorkspaceNavigation(pet,delegate{taskPanel.IsExpanded=true;taskPanel.Focus();},session,workspace==null?null:workspace.Id);navigation.Visibility=workspaceLayout?Visibility.Visible:Visibility.Collapsed;Grid.SetColumn(navigation,0);workspaceShell.Children.Add(navigation);
             messagePump=new MessageUpdatePump(session,UpdateMessage);session.AgentTaskChanged+=RefreshSummary;session.MessageAdded+=AddMessage;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;
             string draft;input.Text=drafts.TryGetValue(DraftKey(),out draft)?draft:"";ReloadHistory();RefreshAppearance();RefreshState();
         }
         // Task records live under the project workspace, not the global setting.
         PetSettings TaskSettings()
         {
-            var cfg=pet.Settings.Copy();
+            var cfg=pet.ConversationSettings(session);
             if(workspace!=null && !String.IsNullOrEmpty(workspace.ProjectWorkspace))try{cfg.AgentWorkspace=System.IO.Path.GetFullPath(workspace.ProjectWorkspace);}catch(ArgumentException){}
             return cfg;
         }
         void UnmountWorkspace(bool disposeComposer)
         {
+            if(welcomeSuggestions!=null){welcomeSuggestions.Dispose();welcomeSuggestions=null;}
             if(messagePump!=null){messagePump.Dispose();messagePump=null;}if(session!=null){session.AgentTaskChanged-=RefreshSummary;session.MessageAdded-=AddMessage;session.HistoryChanged-=HistoryChanged;session.StateChanged-=RefreshState;}pet.Live.StateChanged-=RefreshState;
             if(disposeComposer && composer!=null){conversationSurface.Children.Remove(composer);composer.Detach();composer=null;}
             if(taskPanel!=null){if(ReferenceEquals(inspectorHost.Content,taskPanel))inspectorHost.Content=null;else messageArea.Children.Remove(taskPanel);taskPanel.Dispose();taskPanel=null;}
             if(navigation!=null){workspaceShell.Children.Remove(navigation);navigation.Dispose();navigation=null;}
         }
         public void RefreshAppearance()
-        {if(!(Content is LiveCallView))Title=pet.Skin.Name+" · 对话";avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.Name;if(composer!=null)composer.RefreshModels();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
+        {if(showingWelcome)ReloadHistory(false);if(!(Content is LiveCallView))Title=pet.Skin.Name+" · 对话";avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.Name;if(composer!=null)composer.RefreshModels();RefreshProjectPicker();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
         public void ReloadHistory(bool scrollToBottom=true)
         {
-            reloading=true;messages.Children.Clear();rendered.Clear();displayed.Clear();showingWelcome=false;
+            reloading=true;if(welcomeSuggestions!=null){welcomeSuggestions.Dispose();welcomeSuggestions=null;}messages.Children.Clear();rendered.Clear();displayed.Clear();showingWelcome=false;
             var turns=session.History.Messages.GroupBy(m=>m.TurnId).ToList();
             foreach(var turn in turns.Skip(Math.Max(0,turns.Count-visibleTurns)))foreach(var message in turn)AddMessage(message);
             earlier.IsEnabled=turns.Count>visibleTurns;export.IsEnabled=turns.Count>0;
@@ -138,14 +147,25 @@ namespace Dafeiyu
             displayed[message.Id]=message;rendered[message.Id].Update(message);RefreshSummary();
             if(follow)Dispatcher.BeginInvoke(DispatcherPriority.Background,new Action(delegate{if(!closed)scroll.ScrollToEnd();}));
         }
+        WelcomeSuggestions welcomeSuggestions;
         private void Welcome()
-        {showingWelcome=true;var panel=new StackPanel {Margin=new Thickness(26,28,26,26)};var character=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=154,Height=154,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,154,154),30.8,30.8),HorizontalAlignment=HorizontalAlignment.Left};RenderOptions.SetBitmapScalingMode(character,BitmapScalingMode.HighQuality);panel.Children.Add(character);var heading=Ui.Text("一起聊聊今天的想法",24);heading.FontWeight=FontWeights.SemiBold;panel.Children.Add(heading);panel.Children.Add(Ui.Text("聊代码、设计，或刚想到的小点子。\n每位伙伴拥有各自的人格与会话。",13,Ui.Muted));var starters=new WrapPanel{Margin=new Thickness(0,18,0,0)};foreach(string idea in new[]{"帮我梳理一个想法","一起检查这段代码"}){string value=idea;var button=Ui.Button(idea);button.Margin=new Thickness(0,0,8,8);button.Click+=delegate {input.Text=value;input.Focus();};starters.Children.Add(button);}panel.Children.Add(starters);messages.Children.Add(panel);}
+        {
+            showingWelcome=true;
+            var panel=new StackPanel{Margin=new Thickness(26,28,26,26)};
+            var character=new Image{Name="WelcomeCharacter",Source=SkinCatalog.GetAvatar(pet.Skin),Width=154,Height=154,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,154,154),30.8,30.8),HorizontalAlignment=HorizontalAlignment.Left};
+            RenderOptions.SetBitmapScalingMode(character,BitmapScalingMode.HighQuality);panel.Children.Add(character);
+            var heading=Ui.Text("一起聊聊今天的想法",24);heading.Name="WelcomeHeading";heading.FontWeight=FontWeights.SemiBold;panel.Children.Add(heading);
+            bool work=pet.ConversationSettings(session).AgentEnabled;
+            panel.Children.Add(Ui.Text(work?"聊代码、设计，或刚想到的小点子。\n工作记录和工作提示词在伙伴间共享。":"聊代码、设计，或刚想到的小点子。\n每位伙伴拥有各自的人格与会话。",13,Ui.Muted));
+            welcomeSuggestions=new WelcomeSuggestions(pet,this,session,workspace,input);panel.Children.Add(welcomeSuggestions);messages.Children.Add(panel);
+        }
+
         private void AddMessage(ChatMessage message)
         {
             if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(delegate {AddMessage(message);}));return;}
             if(!session.History.Messages.Any(m=>m.Id==message.Id))return;if(rendered.ContainsKey(message.Id)){UpdateMessage(message);return;}bool follow=scroll.ScrollableHeight-scroll.VerticalOffset<32;
             if(showingWelcome){messages.Children.Clear();showingWelcome=false;}bool user=message.Role=="user";if(!reloading && !follow && user)visibleTurns=Math.Min(200,visibleTurns+1);displayed[message.Id]=message;
-            var view=new ChatMessageView(message,messages,pet,this);rendered[message.Id]=view;messages.Children.Add(view);RefreshSummary();
+            var view=new ChatMessageView(message,messages,pet,this,session,queue);rendered[message.Id]=view;messages.Children.Add(view);RefreshSummary();
             while(messages.Children.Count>visibleTurns*2){var old=messages.Children[0] as Border;if(old!=null){string id=old.Tag as string;if(id!=null){rendered.Remove(id);displayed.Remove(id);}}messages.Children.RemoveAt(0);}
             if(!reloading){earlier.IsEnabled=session.History.Messages.Select(m=>m.TurnId).Distinct().Count()>visibleTurns;export.IsEnabled=true;if(follow)Dispatcher.BeginInvoke(DispatcherPriority.Background,new Action(delegate{if(!closed)scroll.ScrollToEnd();}));}
         }
@@ -159,9 +179,9 @@ namespace Dafeiyu
         private void RefreshState()
         {
             if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshState));return;}
-            clear.IsEnabled=!pet.DialogueBusy;RefreshAppearance();if(pet.DictationActive)return;
+            RefreshAppearance();if(pet.DictationActive)return;
             if(pet.LiveActive){ShowStatus(pet.Live.Status);return;}
-            ShowStatus(session.Stage==ConversationStage.Recognizing?"正在识别语音…":session.Stage==ConversationStage.Thinking?"正在思考…":session.Stage==ConversationStage.Speaking?"正在朗读 · 可以随时停止":String.IsNullOrEmpty(session.AgentTaskWarning)?String.IsNullOrEmpty(session.HistoryWarning)?(String.IsNullOrEmpty(session.LastNotice)?"Enter 发送 · Shift + Enter 换行":session.LastNotice):session.HistoryWarning:session.AgentTaskWarning);
+            ShowStatus(session.Stage==ConversationStage.Recognizing?"正在识别语音…":session.Stage==ConversationStage.Thinking?"正在思考…":session.Stage==ConversationStage.Speaking?"正在朗读 · 可以随时停止":String.IsNullOrEmpty(session.AgentTaskWarning)?String.IsNullOrEmpty(session.HistoryWarning)?(String.IsNullOrEmpty(session.LastNotice)?ChatUi.SendHint(pet.Settings):session.LastNotice):session.HistoryWarning:session.AgentTaskWarning);
         }
         private void ShowStatus(string text){if(!closed)status.Text=text;}
         private void ShowError(Exception error)

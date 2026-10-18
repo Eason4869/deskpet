@@ -81,6 +81,8 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei']:
 with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
+    assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
+    assert '118' in bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
     assert 'DafeiyuDeskPet/templates/grid-guide.svg' in bundle.namelist()
     assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())

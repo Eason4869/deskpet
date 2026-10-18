@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -34,27 +34,27 @@ namespace Dafeiyu.Tests
             try
             {
                 folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"composer-smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
-                var cfg=new PetSettings{ReadReplies=false,AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false,HideOnFullscreen=false,Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"}};
+                var cfg=new PetSettings{AgentEnabled=false,ReadReplies=false,AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false,HideOnFullscreen=false,Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"}};
                 cfg.EnsureTextProviders();string alias="深度思考";cfg.TextProviders[0].ModelDisplayNames["fixture"]=alias;string longModel="second-provider/very-long-model-name-with-thinking-and-multimodal-capabilities-2026-10";
                 cfg.TextProviders.Add(new TextProviderSettings{Id="second",Name="另一个服务商",Connection=new ConnectionSettings{BaseUrl="http://127.0.0.1:2/v1",ApiKey="fixture-secret",Model=longModel},Models=new List<string>{longModel,"short-model"},ModelDisplayNames=new Dictionary<string,string>{{longModel,alias}}});
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);var api=new Api();var session=new ConversationSession(api,new Speech(),()=>null);session.SelectPersona(pet.Skin.Id);typeof(PetWindow).GetField("conversation",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,session);
                 cfg.Transcription=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="asr-fixture"};Recorder recorder=null;var dictation=new DictationSession(new Api(),()=>recorder=new Recorder(),()=>cfg);typeof(PetWindow).GetField("dictation",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,dictation);
-                pet.Show();pet.ShowChat();pet.ShowQuickChat();Pump(.2);
+                pet.Show();var fixtureChat=new ChatWindow(pet);typeof(PetWindow).GetField("chat",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,fixtureChat);fixtureChat.Show();var sharedQuick=new QuickChatWindow(pet);typeof(PetWindow).GetField("quick",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,sharedQuick);sharedQuick.Closed+=delegate{typeof(PetWindow).GetField("quick",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,null);};sharedQuick.Show();Pump(.2);
                 var chat=app.Windows.OfType<ChatWindow>().Single();var quick=app.Windows.OfType<QuickChatWindow>().Single();
                 if(placeholderOnly){pet.HidePet();PlaceholderSmoke(chat,quick);Console.WriteLine("Placeholder smoke: "+passed+" passed; screenshots: "+folder);return 0;}
-                chat.Show();var initialInput=Find<TextBox>(chat,"MessageInput");initialInput.Text="before switch";Click(Find<Button>(chat,"SendMessage"));Until(()=>api.Requests.Count==1);
+                chat.Show();var initialInput=Find<MarkdownEditor>(chat,"MessageInput");initialInput.Text="before switch";Click(Find<Button>(chat,"SendMessage"));Until(()=>api.Requests.Count==1);
                 SelectModel(quick,"second",longModel);initialInput.Text="queued after switch";Click(Find<Button>(chat,"SendMessage"));
                 Check(api.Requests[0].Model=="fixture" && api.Requests[0].BaseUrl=="http://127.0.0.1:1/v1","switching providers leaves the running request snapshot unchanged");
                 Check(Find<TextBlock>(chat,"CurrentTextModel").Text==alias && Find<TextBlock>(quick,"CurrentTextModel").Text==alias,"both windows immediately show selected Chinese model display name");
                 api.Complete();Until(()=>api.Requests.Count==2);
                 Check(api.Requests[1].Model==longModel && api.Requests[1].BaseUrl=="http://127.0.0.1:2/v1" && api.Requests[1].ApiKey=="fixture-secret","next queued request uses selected provider endpoint, model and credentials");api.Complete();Until(()=>!pet.InputQueue.IsRunning);
                 var saved=new SettingsStore(Path.Combine(folder,"settings.json")).Load();Check(saved.ActiveTextProviderId=="second" && saved.Text.Model==longModel && saved.TextProviders.Single(p=>p.Id=="second").DisplayName(longModel)==alias,"model selection and Chinese display name survive settings reload");
-                chat.Close();pet.ShowChat();Pump(.1);chat=app.Windows.OfType<ChatWindow>().Single();Check(Find<TextBlock>(chat,"CurrentTextModel").Text==alias,"reopened full chat retains the Chinese display name");
+                chat.Close();chat=new ChatWindow(pet);typeof(PetWindow).GetField("chat",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,chat);chat.Show();Pump(.1);Check(Find<TextBlock>(chat,"CurrentTextModel").Text==alias,"reopened full chat retains the Chinese display name");
                 quick.Hide();pet.ShowQuickChat();Pump(.1);Check(Find<TextBlock>(quick,"CurrentTextModel").Text==alias,"reopened quick chat retains the Chinese display name");
                 foreach(Window window in new Window[]{chat,quick})
                 {
                     window.Show();window.UpdateLayout();Pump(.1);
-                    bool small=window==quick;var input=Find<TextBox>(window,small?"QuickMessageInput":"MessageInput");var button=Find<Button>(window,small?"SendQuickMessage":"SendMessage");
+                    bool small=window==quick;var input=Find<MarkdownEditor>(window,small?"QuickMessageInput":"MessageInput");var button=Find<Button>(window,small?"SendQuickMessage":"SendMessage");
                     if(input==null || button==null)throw new Exception("Composer controls missing in "+window.GetType().Name+"; visible="+window.IsVisible);
                     var picker=Find<Button>(window,"TextModelPicker");var mic=Find<Button>(window,"VoiceRecord");Rect inputBounds=Bounds(input,window),pickerBounds=Bounds(picker,window),micBounds=Bounds(mic,window),sendBounds=Bounds(button,window);
                     Check(inputBounds.Bottom<=pickerBounds.Top && inputBounds.Width>pickerBounds.Width+micBounds.Width+sendBounds.Width,"full-width input stays above the toolbar");
@@ -130,7 +130,7 @@ namespace Dafeiyu.Tests
             Point cursor=DesktopInterop.Cursor();
             try {foreach(var window in new[]{chat,quick}) {
                 (window==chat?quick:chat).Hide();window.Show();window.Topmost=true;window.Activate();Pump(.15);
-                string tag=window==chat?"chat":"quick";var input=Find<TextBox>(window,window==chat?"MessageInput":"QuickMessageInput");var picker=Find<Button>(window,"TextModelPicker");var hint=Placeholder(window);Check(hint!=null,"placeholder exists "+tag);
+                string tag=window==chat?"chat":"quick";var input=Find<MarkdownEditor>(window,window==chat?"MessageInput":"QuickMessageInput");var picker=Find<Button>(window,"TextModelPicker");var hint=Placeholder(window);Check(hint!=null,"placeholder exists "+tag);
                 input.Clear();NativeClick(window,picker);picker.ContextMenu.IsOpen=false;Pump(.08);
                 var field=(FrameworkElement)VisualTreeHelper.GetParent(input);window.UpdateLayout();var dpi=VisualTreeHelper.GetDpi(window);Console.WriteLine("DPI native "+tag+" "+dpi.PixelsPerInchX+"x"+dpi.PixelsPerInchY);
                 Check(!input.IsKeyboardFocusWithin && hint.IsVisible,"unfocused empty input shows hint "+tag);Save(window,tag+"-placeholder-empty.png");

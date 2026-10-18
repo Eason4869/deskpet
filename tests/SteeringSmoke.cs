@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,16 +22,16 @@ namespace Dafeiyu.Tests
                 string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"steering-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
                 string configured=Environment.GetEnvironmentVariable("DESKPET_STEERING_SETTINGS");bool real=args.Contains("--real");
                 if(real && String.IsNullOrEmpty(configured))throw new InvalidOperationException("--real requires DESKPET_STEERING_SETTINGS to point to an isolated model configuration.");
-                var cfg=new PetSettings{AutoUpdate=false,ReadReplies=false,SaveChatHistory=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,GreetingEnabled=false,SystemPrompt="你正在执行桌宠交互验收。请严格遵循最新用户消息，回答简短。"};
+                var cfg=new PetSettings{AgentEnabled=false,AutoUpdate=false,ReadReplies=false,SaveChatHistory=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,GreetingEnabled=false,SystemPrompt="你正在执行桌宠交互验收。请严格遵循最新用户消息，回答简短。"};
                 foreach(string action in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[action]="";
                 cfg.Text=real?new SettingsStore(configured).Load().Text.Copy():new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="steering-fixture"};cfg.Text.StreamReplies=true;
                 Console.WriteLine(real?"INFO isolated test uses configured text model; no personal history or audio.":"INFO deterministic streaming transport checks button behavior and request payloads.");
                 var api=new Recorder(real);var session=new ConversationSession(api,new SilentSpeech(),()=>null);
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);session.SelectPersona(pet.Skin.Id);typeof(PetWindow).GetField("conversation",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
-                pet.Show();pet.ShowChat();pet.ShowQuickChat();Pump();
+                pet.Show();var fixtureChat=new ChatWindow(pet);typeof(PetWindow).GetField("chat",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,fixtureChat);fixtureChat.Show();var sharedQuick=new QuickChatWindow(pet);typeof(PetWindow).GetField("quick",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,sharedQuick);sharedQuick.Closed+=delegate{typeof(PetWindow).GetField("quick",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,null);};sharedQuick.Show();Pump();
                 foreach(Window window in new Window[]{app.Windows.OfType<ChatWindow>().Single(),app.Windows.OfType<QuickChatWindow>().Single()})
                 {
-                    window.Show();window.UpdateLayout();Pump();bool quick=window is QuickChatWindow;string prefix=quick?"quick":"full";var input=Find<TextBox>(window,quick?"QuickMessageInput":"MessageInput");var send=Find<Button>(window,quick?"SendQuickMessage":"SendMessage");int baseline=api.Requests.Count;
+                    window.Show();window.UpdateLayout();Pump();bool quick=window is QuickChatWindow;string prefix=quick?"quick":"full";var input=Find<MarkdownEditor>(window,quick?"QuickMessageInput":"MessageInput");var send=Find<Button>(window,quick?"SendQuickMessage":"SendMessage");int baseline=api.Requests.Count;
                     api.PrepareOriginal();input.Text="请逐行写出从 1 到 200 的数字，每行一个，不要省略。";Click(send);
                     Until(()=>session.History.Messages.Any(m=>m.Role=="assistant" && m.Status=="pending" && m.Content.Length>0),90);
                     Check(session.IsBusy,prefix+": original reply is still streaming before guide click");
@@ -40,10 +40,13 @@ namespace Dafeiyu.Tests
                     var buttons=All(window).OfType<Button>().Where(b=>b.Name=="GuideQueuedMessage").ToArray();Check(buttons.Length==2,prefix+": actual queue rows expose guide controls");Click(buttons[1]);
                     Pump();Check(session.IsBusy && !api.OriginalToken.IsCancellationRequested && api.Requests.Count==baseline+1,prefix+": guide preserves the active reply and does not start a concurrent model request");
                     Check(pet.InputQueue.Items.Count==2 && pet.InputQueue.Items[0].IsGuidance && pet.InputQueue.Items[0].Text.Contains("STEER_OK"),prefix+": guide is retained ahead of ordinary queued messages until the safe boundary");
+                    Check(session.History.Messages.Count(m=>m.Role=="user" && m.Content.Contains("STEER_OK"))==1,prefix+": guide appears in history immediately");
+                    Check(All(window).OfType<Button>().Count(b=>b.Name=="GuideQueuedMessage")==1,prefix+": submitted guidance leaves the ordinary queue UI");
                     api.ReleaseOriginal();
                     Until(()=>!pet.InputQueue.IsRunning && !session.IsBusy,90);Pump();
                     Check(pet.InputQueue.Items.Count==0 && !pet.InputQueue.IsPaused,prefix+": guide completes and original queue resumes");
                     var requests=api.Requests.Skip(baseline).ToArray();Check(requests.Length==3 && requests[1].Last().Content.Contains("STEER_OK") && requests[2].Last().Content.Contains("QUEUE_OK"),prefix+": request order is original, steered, then previously queued");
+                    Check(session.History.Messages.Count(m=>m.Role=="user" && m.Content.Contains("STEER_OK"))==1,prefix+": delivered guidance does not duplicate its receipt");
                     var replies=session.History.Messages.Where(m=>m.Role=="assistant").ToArray();
                     Check(replies.Length==3 && replies[0].Status=="complete" && replies[0].Content.Length>0 && replies[1].Status=="complete" && replies[1].Content.Contains("STEER_OK") && replies[2].Status=="complete" && replies[2].Content.Contains("QUEUE_OK"),prefix+": original reply completes naturally and both queued instructions complete");
                     Check(requests[1].Any(m=>m.Role=="user" && m.Content.Contains("200")) && requests[1].Any(m=>m.Role=="assistant" && m.Content==replies[0].Content) && !requests[1].Any(m=>m.Content.Contains("未完成回复")),prefix+": guidance receives the completed original exchange without an interruption marker");

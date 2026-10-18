@@ -29,7 +29,9 @@ namespace Dafeiyu
         {
             window.Title = title; window.Width = width; window.Height = height;window.Icon=ApplicationIcon();
             window.MinWidth = width - 40; window.MinHeight = Math.Min(430, height);
-            window.MaxHeight = Math.Max(430, SystemParameters.WorkArea.Height - 36);
+            window.Height = Math.Min(height,Math.Max(window.MinHeight,SystemParameters.WorkArea.Height-36));
+            // The OS owns maximized bounds for the current monitor and DPI.
+            window.MaxHeight=Double.PositiveInfinity;window.MaxWidth=Double.PositiveInfinity;
             window.FontFamily = new FontFamily("Microsoft YaHei UI"); window.FontSize = 13;
             window.Foreground = Ink; window.Background = Brush("#F7F9FD"); window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             SlimScrollBars.Install(window);window.UseLayoutRounding=true;window.SnapsToDevicePixels=true;

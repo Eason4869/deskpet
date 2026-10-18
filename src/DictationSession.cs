@@ -13,6 +13,8 @@ namespace Dafeiyu
         public event Action Changed;
         public DictationStage Stage {get;private set;}
         public string LastNotice {get;private set;}
+        int successfulRecognitions;
+        internal int SuccessfulRecognitions {get{return Volatile.Read(ref successfulRecognitions);}}
         public bool IsBusy{get{lock(gate)return active!=null;}}
         public double InputLevel{get{return DateTime.UtcNow.Ticks-Interlocked.Read(ref levelAt)>TimeSpan.TicksPerSecond/3?0:Volatile.Read(ref level);}}
         public DictationSession(IConversationApi api,Func<IAudioRecorder> factory,Func<PetSettings> settings){this.api=api;this.factory=factory;this.settings=settings;}
@@ -50,7 +52,7 @@ namespace Dafeiyu
         {
             Operation op;lock(gate){op=active;if(op==null || !ReferenceEquals(op.Owner,owner) || op.Finishing)throw new InvalidOperationException("当前没有可结束的听写。");op.Finishing=true;}
             Stage=DictationStage.Recognizing;Notify();
-            try{byte[] wav=await op.Recorder.FinishAsync();op.Cancel.Token.ThrowIfCancellationRequested();string result=await api.TranscribeAsync(op.Connection,wav,op.Cancel.Token);op.Cancel.Token.ThrowIfCancellationRequested();return result;}
+            try{byte[] wav=await op.Recorder.FinishAsync();op.Cancel.Token.ThrowIfCancellationRequested();string result=await api.TranscribeAsync(op.Connection,wav,op.Cancel.Token);op.Cancel.Token.ThrowIfCancellationRequested();if(!String.IsNullOrWhiteSpace(result))Interlocked.Increment(ref successfulRecognitions);return result;}
             finally{Release(op);op.Cancel.Dispose();}
         }
         public async Task CancelAsync(object owner=null)

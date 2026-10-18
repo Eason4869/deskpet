@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,13 +13,13 @@ namespace Dafeiyu
     // normally; Escape dismisses it for the completed reply.
     internal sealed class PredictionSuggestions : StackPanel,IDisposable
     {
-        readonly PetWindow pet;readonly TextBox input;readonly Window host;ConversationSession session;ConversationQueue queue;
+        readonly PetWindow pet;readonly MarkdownEditor input;readonly Window host;ConversationSession session;ConversationQueue queue;
         readonly DispatcherTimer debounce=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(500)};
         bool subscribed,closed,ghost,enterHeld;string shown="";
         TextBlock placeholder;string defaultPlaceholder="";
         internal Func<bool> AdditionalBlocker {get;set;}
         internal bool GhostActive{get{return ghost;}}
-        public PredictionSuggestions(PetWindow pet,ConversationSession sessionOverride,ConversationQueue queueOverride,TextBox input,Window host)
+        public PredictionSuggestions(PetWindow pet,ConversationSession sessionOverride,ConversationQueue queueOverride,MarkdownEditor input,Window host)
         {
             this.pet=pet;this.input=input;this.host=host;session=sessionOverride??pet.Conversation;queue=queueOverride??pet.InputQueue;
             Name="PredictedMessageSuggestions";Visibility=Visibility.Collapsed;

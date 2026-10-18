@@ -35,7 +35,7 @@ namespace Dafeiyu
         public SettingsWindow(PetWindow companion)
         {
             pet=companion; Ui.Window(this,"桌面伙伴 · 设置",960,790);
-            MinWidth=Math.Min(820,Math.Max(320,SystemParameters.WorkArea.Width-36));MaxWidth=Math.Max(MinWidth,SystemParameters.WorkArea.Width-36);MinHeight=Math.Min(600,MaxHeight);
+            MinWidth=Math.Min(820,Math.Max(320,SystemParameters.WorkArea.Width-36));MinHeight=Math.Min(600,Math.Max(320,SystemParameters.WorkArea.Height-36));
             Background=GlassSurface.Background();
             Icon=Ui.ApplicationIcon();
             var root=new StackPanel();var behaviorPage=new StackPanel();var greetingPage=new StackPanel();
@@ -104,7 +104,7 @@ namespace Dafeiyu
             hello.Children.Add(Ui.Text("可设置 1–1440 分钟；移开焦点后保存并重新计时。问候不会加入聊天记录，也不会自动朗读。",11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
-            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet);work=new WorkSettingsPanel(pet);content=new ContentControl();
+            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet);work=new WorkSettingsPanel(pet);content=new ContentControl{Name="SettingsContentHost",HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(12,0,12,0),Padding=new Thickness(0)};
             string[] navigationLabels={"伙伴","模型配置","工作设置","快捷键","关于"};
             string[] navigationNames={"CompanionNavigation","AiNavigation","WorkNavigation","QuietNavigation","AboutNavigation"};
@@ -119,7 +119,7 @@ namespace Dafeiyu
             sidebarFooter.Children.Add(Ui.Text("版本 "+ReleaseInfo.DisplayVersion,11,Ui.Muted));Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=GlassSurface.Panel(),BorderBrush=Ui.Brush("#DFFFFFFF"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
             navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){work.RefreshState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;};navigation.SelectedIndex=0;Closed+=delegate {about.Dispose();};
-            Loaded+=delegate { DesktopInterop.PlaceBeside(new WindowInteropHelper(this).Handle,new WindowInteropHelper(pet).Handle); };
+            Loaded+=delegate {if(WindowState==WindowState.Normal)DesktopInterop.PlaceBeside(new WindowInteropHelper(this).Handle,new WindowInteropHelper(pet).Handle);};
             RefreshState(); ShowNotice(pet.Notice ?? pet.Store.Warning);
         }
         private static TextBlock Heading(string text) { var label=Ui.Text(text,14); label.FontWeight=FontWeights.SemiBold; return label; }
@@ -190,6 +190,8 @@ namespace Dafeiyu
         public bool SaveGuideNetwork(){return about.SaveNetwork();}
         public bool SaveAiConfiguration(){return connections.Save();}
         public bool SaveGuideAiSection(int index){return connections.SaveGuideSection(index);}
+        internal int GuideSpeechTestRevision {get{return connections.SpeechTestRevision;}}
+        internal bool GuideSpeechTestSucceeded {get{return connections.SpeechTestSucceeded;}}
         public bool ValidateGuideAiSection(int index,out string error){return connections.ValidateGuideSection(index,out error);}
         public FrameworkElement FindControl(string controlName)
         {

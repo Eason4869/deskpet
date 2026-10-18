@@ -111,13 +111,13 @@ namespace Dafeiyu
         }
         public Task SteerAsync(string text,string queuedId=null,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
         {
-            var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";text=Validate(text);var cfg=settings();ApiClient.ValidateConnection(cfg.Text,ApiClient.ChatPath(cfg.Text));
+            var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";text=Validate(text);var cfg=settings();ApiClient.ValidateConnection(cfg.Text,ApiClient.ChatPath(cfg.Text));QueuedMessage receipt;string persona;
             lock(gate){Writable();var entry=queuedId==null?new QueuedMessage{Id=Guid.NewGuid().ToString("N"),Text=text,Attachments=files,ConversationOnly=conversationOnly}:Current.SingleOrDefault(m=>m.Id==queuedId);if(entry==null)throw new InvalidOperationException("这条消息已开始发送。");if(queuedId==null && Current.Count>=20)throw new InvalidOperationException("队列已满，请先处理已有消息。");
                 int index=Current.IndexOf(entry);bool previous=entry.IsGuidance;string project=entry.Workspace;entry.IsGuidance=true;entry.Workspace=session.ActiveAgentWorkspace??(cfg.AgentEnabled?cfg.AgentWorkspace:null);
                 if(index>=0)Current.RemoveAt(index);int position=Current.TakeWhile(m=>m.IsGuidance).Count();Current.Insert(position,entry);
                 try{Save();}catch{Current.Remove(entry);entry.IsGuidance=previous;entry.Workspace=project;if(index>=0)Current.Insert(index,entry);throw;}
-                if(!session.IsBusy)paused.Remove(session.PersonaId);Notice="";
-            }Announce();Kick();return Task.FromResult(0);
+                if(!session.IsBusy)paused.Remove(session.PersonaId);Notice="";receipt=entry.Copy();persona=session.PersonaId;
+            }session.RegisterGuidance(persona,receipt.Id,receipt.Text,receipt.Attachments);Announce();Kick();return Task.FromResult(0);
         }
         IList<AgentGuidance> ReadGuidance(string persona,string workspace)
         {lock(gate){List<QueuedMessage> list;if(disposed || !queues.TryGetValue(persona,out list))return new List<AgentGuidance>();return list.Where(m=>m.IsGuidance && SameProject(m.Workspace,workspace)).Select(m=>new AgentGuidance{Id=m.Id,Text=m.Text,Revision=m.Revision,Attachments=ChatAttachment.Snapshot(m.Attachments)}).ToList();}}
@@ -128,7 +128,7 @@ namespace Dafeiyu
         {
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";
             text=Validate(text);ApiClient.ValidateConnection(settings().Text,ApiClient.ChatPath(settings().Text));
-            string persona;Task wait;QueuedMessage entry;List<ChatMessage> preceding;int revision;
+            string persona,activeText;Task wait;QueuedMessage entry;List<ChatMessage> preceding;int revision;
             lock(gate)
             {
                 Writable();if(steering)throw new InvalidOperationException("正在切换回复，请稍候。");persona=session.PersonaId;
@@ -136,7 +136,7 @@ namespace Dafeiyu
                 if(entry==null)throw new InvalidOperationException("这条消息已开始发送。");if(queuedId==null && Current.Count>=20)throw new InvalidOperationException("队列已满，请先删除一条消息。");
                 // Persist the new instruction before stopping a request or clearing its draft.
                 if(queuedId==null){Current.Add(entry);try{Save();}catch{Current.Remove(entry);throw;}}
-                preceding=inFlight==null || inFlight.Context==null?new List<ChatMessage>():inFlight.Context.Select(m=>m.Copy()).ToList();revision=pauseRevision;steering=true;paused.Add(persona);wait=runTask;
+                activeText=inFlight==null?null:inFlight.Text;preceding=inFlight==null || inFlight.Context==null?new List<ChatMessage>():inFlight.Context.Select(m=>m.Copy()).ToList();revision=pauseRevision;steering=true;paused.Add(persona);wait=runTask;
             }
             Announce();
             try
@@ -146,11 +146,14 @@ namespace Dafeiyu
                 {
                     if(disposed)return;
                     if(session.PersonaId!=persona)throw new InvalidOperationException("伙伴已切换，消息保留在原队列。");
-                    var history=session.History.Messages;var last=history.LastOrDefault();
+                    var history=session.History.Messages;var last=history.LastOrDefault(m=>m.Role=="assistant");
                     if(last!=null && last.Role=="assistant" && last.Status!="complete")
                     {
-                        var original=history.LastOrDefault(m=>m.TurnId==last.TurnId && m.Role=="user");entry.Context=preceding;if(original!=null)entry.Context.Add(original.Copy());
-                        if(!String.IsNullOrEmpty(last.Content))entry.Context.Add(new ChatMessage("assistant",last.Content+"\n[以上是被用户打断的未完成回复，请按新的要求继续。]"));
+                        var original=history.LastOrDefault(m=>m.TurnId==last.TurnId && m.Role=="user");
+                        if(original!=null && original.Source=="guide" && activeText!=null)original=history.LastOrDefault(m=>m.Role=="user"&&m.Source!="guide"&&m.Content==activeText)??original;
+                        entry.Context=preceding;if(original!=null)entry.Context.Add(original.Copy());
+                        var partial=last;if(String.IsNullOrEmpty(partial.Content) && original!=null)partial=history.SkipWhile(m=>m.Id!=original.Id).LastOrDefault(m=>m.Role=="assistant"&&!String.IsNullOrEmpty(m.Content));
+                        if(partial!=null && !String.IsNullOrEmpty(partial.Content))entry.Context.Add(new ChatMessage("assistant",partial.Content+"\n[以上是被用户打断的未完成回复，请按新的要求继续。]"));
                         while(entry.Context.Count>2 && (entry.Context.Count>20 || entry.Context.Sum(m=>(long)m.Content.Length)>100000))entry.Context.RemoveRange(0,2);
                     }
                     Current.Remove(entry);Current.Insert(0,entry);Save();if(revision==pauseRevision)paused.Remove(persona);Notice="";
@@ -188,7 +191,7 @@ namespace Dafeiyu
                     }
                     Announce();
                     if(alreadyCompleted)continue;
-                    try{var cfg=settings();if(entry.ConversationOnly && !entry.IsGuidance){cfg=cfg.Copy();cfg.AgentEnabled=false;}if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException("这条引导属于其他项目，已保留在队列；请切回原项目后继续。");AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException("引导超过任务检查点容量，消息已保留在队列；请减少附件或开始新的任务。");}}await session.SendTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume);}
+                    try{var cfg=settings();if(entry.ConversationOnly && !entry.IsGuidance){cfg=cfg.Copy();cfg.AgentEnabled=false;}if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException("这条引导属于其他项目，已保留在队列；请切回原项目后继续。");AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException("引导超过任务检查点容量，消息已保留在队列；请减少附件或开始新的任务。");}}await session.SendTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume,guidanceId:entry.IsGuidance?entry.Id:null);}
                     catch(OperationCanceledException){lock(gate)paused.Add(persona);return;}
                     catch(Exception e)
                     {

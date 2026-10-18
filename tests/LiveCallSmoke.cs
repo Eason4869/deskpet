@@ -29,7 +29,7 @@ namespace Dafeiyu.Tests
                 typeof(PetWindow).GetField("live",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
                 pet.ShowChat();pet.ShowQuickChat();Pump();
                 var chat=app.Windows.OfType<ChatWindow>().Single();var quick=app.Windows.OfType<QuickChatWindow>().Single();
-                Find<TextBox>(chat,"MessageInput").Text="完整对话草稿";Find<TextBox>(quick,"QuickMessageInput").Text="快速对话草稿";
+                Find<MarkdownEditor>(chat,"MessageInput").Text="完整对话草稿";Find<MarkdownEditor>(quick,"QuickMessageInput").Text="快速对话草稿";
                 Click(quick,"ExpandChat");Pump();
                 Check(!quick.IsVisible && chat.IsVisible,"expanding quick chat dismisses the bubble");
                 pet.ShowQuickChat();Pump();
@@ -47,14 +47,14 @@ namespace Dafeiyu.Tests
                 typeof(DictationSession).GetField("factory",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet.Dictation,(Func<IAudioRecorder>)(()=>recorder));
                 typeof(DictationSession).GetField("api",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet.Dictation,api);
                 Click(quick,"VoiceRecord");Check(recorder.IsRecording && pet.Dictation.Stage==DictationStage.Recording && !(quick.Content is LiveCallView),"quick dictation records independently of saved Live mode");
-                Click(quick,"StopDictation");Until(()=>!pet.Dictation.IsBusy);Pump();Check(api.Recognized==1 && recorder.Disposed && Find<TextBox>(quick,"QuickMessageInput").Text.Contains("语音输入") && pet.Conversation.History.Messages.Count==0,"dictation fills input without sending a model request");
-                Find<TextBox>(quick,"QuickMessageInput").Text="快速对话草稿";
+                Click(quick,"StopDictation");Until(()=>!pet.Dictation.IsBusy);Pump();Check(api.Recognized==1 && recorder.Disposed && Find<MarkdownEditor>(quick,"QuickMessageInput").Text.Contains("语音输入") && pet.Conversation.History.Messages.Count==0,"dictation fills input without sending a model request");
+                Find<MarkdownEditor>(quick,"QuickMessageInput").Text="快速对话草稿";
                 recorder=new FakeRecorder();Click(quick,"VoiceRecord");quick.Hide();Until(()=>!pet.Dictation.IsBusy);Check(recorder.Disposed && api.Recognized==1,"hiding quick chat cancels dictation without recognition");pet.ShowQuickChat();Pump();
                 recorder=new FakeRecorder();Click(chat,"VoiceRecord");Check(recorder.IsRecording && !(chat.Content is LiveCallView),"full chat also records dictation");chat.Hide();Until(()=>!pet.Dictation.IsBusy);Check(recorder.Disposed,"hiding the host releases the active recorder");chat.Show();pet.Conversation.Clear();
                 Pump();Capture(chat,Path.Combine(folder,"chat.png"));Capture(quick,Path.Combine(folder,"quick.png"));
                 socket.Push("{\"setupComplete\":{}}");pet.ShowLiveCall(quick);Until(()=>mic.Started);
                 var call=quick.Content as LiveCallView;Check(call!=null && call.Host==quick && call.IsVisible,"quick entry embeds the call in its original window");
-                Check(app.Windows.Count==3 && Find<TextBox>(quick,"QuickMessageInput")==null,"live covers quick text without adding a window");
+                Check(app.Windows.Count==3 && Find<MarkdownEditor>(quick,"QuickMessageInput")==null,"live covers quick text without adding a window");
                 Check(All(quick).OfType<Button>().All(b=>Inside(b,quick)),"compact call controls fit the bubble");
                 Check(!pet.CanApplyUpdate(true),"open call blocks automatic installation");
                 var orbit=Find<VoiceOrbit>(call,"LiveVoiceOrbit");Check(orbit!=null,"dedicated screen contains graphical voice orbit");
@@ -66,7 +66,7 @@ namespace Dafeiyu.Tests
                 Check(Find<TextBlock>(call,"LiveCallTranscript").Text.Contains("听见啦"),"call subtitles follow actual transcript events");Capture(quick,Path.Combine(folder,"live-quick.png"));
                 quick.WindowState=WindowState.Minimized;Pump();pet.ShowLiveCall(chat);Pump();Check(quick.WindowState==WindowState.Normal && ReferenceEquals(quick.Content,call),"other entry restores the existing call without duplicating it");
                 call.Close();call.Close();Until(()=>!call.IsVisible);Check(mic.Disposed && output.Disposed && !session.IsActive,"repeated close waits for microphone and playback release");
-                Check(Find<TextBox>(chat,"MessageInput").Text=="完整对话草稿" && Find<TextBox>(quick,"QuickMessageInput").Text=="快速对话草稿","entering and leaving call preserves both text drafts");
+                Check(Find<MarkdownEditor>(chat,"MessageInput").Text=="完整对话草稿" && Find<MarkdownEditor>(quick,"QuickMessageInput").Text=="快速对话草稿","entering and leaving call preserves both text drafts");
                 socket=new FakeSocket();mic=new FakeMic();output=new FakeOutput();socket.Push("{\"setupComplete\":{}}");pet.ShowLiveCall(chat);Until(()=>mic.Started);
                 call=chat.Content as LiveCallView;Check(call!=null && !quick.IsVisible && app.Windows.Count==3,"full entry embeds the call and dismisses quick bubble");
                 Capture(chat,Path.Combine(folder,"live-full.png"));chat.Width=520;chat.Height=560;Pump();Check(All(chat).OfType<Button>().All(b=>Inside(b,chat)),"full call controls fit minimum size");Capture(chat,Path.Combine(folder,"live-minimum.png"));

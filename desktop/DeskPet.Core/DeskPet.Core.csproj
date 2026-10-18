@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>disable</Nullable>
@@ -16,7 +16,7 @@
     <Compile Include="../../src/OnboardingUpgrade.cs" Link="Shared/OnboardingUpgrade.cs" />
     <Compile Include="../../src/WanderSchedule.cs" Link="Shared/WanderSchedule.cs" />
     <Compile Include="../../src/GitHubUpdates.cs" Link="Shared/GitHubUpdates.cs" />
-    <Compile Include="../../src/AgentKernel/*.cs;../../src/GitHubClient.cs;../../src/ProjectCatalog.cs;../../src/ConversationWorkspace.cs;../../src/ConversationWorkspaceManager.cs;../../src/PetBusiness.cs;../../src/AudioContracts.cs;../../src/AudioLevel.cs;../../src/SecretProtection.cs;../../src/Settings.cs;../../src/HistoryStore.cs;../../src/ConversationQueue.cs;../../src/ConversationSession.cs;../../src/ConversationPredictions.cs;../../src/DictationSession.cs;../../src/ApiClient.cs;../../src/ChatStream.cs;../../src/GeminiLiveSession.cs;../../src/ProxyConfiguration.cs;../../src/ReleaseInfo.cs;../../src/PersonaProfiles.cs;../../src/VoicePresets.cs;../../src/ServicePresets.cs;../../src/DropMotion.cs;../../src/DropReaction.cs;../../src/IdleSleepSchedule.cs;../../src/GreetingSchedule.cs;../../src/GreetingService.cs;../../src/VisibilityPolicy.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/AgentKernel/*.cs;../../src/GitHubClient.cs;../../src/ProjectCatalog.cs;../../src/ConversationOwnership.cs;../../src/ConversationWorkspace.cs;../../src/ConversationWorkspaceManager.cs;../../src/PetBusiness.cs;../../src/AudioContracts.cs;../../src/AudioLevel.cs;../../src/SecretProtection.cs;../../src/Settings.cs;../../src/HistoryStore.cs;../../src/ConversationQueue.cs;../../src/ConversationContextUsage.cs;../../src/ConversationSession.cs;../../src/ConversationPredictions.cs;../../src/DictationSession.cs;../../src/ApiClient.cs;../../src/ChatStream.cs;../../src/GeminiLiveSession.cs;../../src/ProxyConfiguration.cs;../../src/ReleaseInfo.cs;../../src/PersonaProfiles.cs;../../src/VoicePresets.cs;../../src/ServicePresets.cs;../../src/DropMotion.cs;../../src/DropReaction.cs;../../src/IdleSleepSchedule.cs;../../src/GreetingSchedule.cs;../../src/GreetingService.cs;../../src/VisibilityPolicy.cs" Link="Shared/%(Filename)%(Extension)" />
     <InternalsVisibleTo Include="DeskPet.Tests" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -40,10 +40,12 @@ namespace Dafeiyu
         internal Action<string> DirectoryOpener { get; set; }
         public object[] OpenAITools { get; private set; }
         public object[] AnthropicTools { get; private set; }
-        private bool readOnly,disposed;private GitHubClient github;private AgentPermissionRuntime kernelPermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();private AgentAuditLog kernelAudit;private IAgentApprovalProvider kernelApproval;private ExecutionClaimStore kernelClaims;private string kernelTaskId;private AgentSessionModel kernelSessionModel;private AgentProfile kernelProfile;private AgentModelCapabilities providerCapabilities;private AgentSubagentManager subagents;private AgentSubagentScheduler subagentScheduler;private AgentToolRuntime kernelTools;private readonly List<AgentToolDefinition> dynamicTools=new List<AgentToolDefinition>();private readonly List<IMcpTransport> mcpTransports=new List<IMcpTransport>();
+        private bool readOnly,disposed,desktopSession,githubConnected;private GitHubClient github;private AgentPermissionRuntime kernelPermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();private AgentAuditLog kernelAudit;private IAgentApprovalProvider kernelApproval;private ExecutionClaimStore kernelClaims;private string kernelTaskId;private AgentSessionModel kernelSessionModel;private AgentProfile kernelProfile;private AgentModelCapabilities providerCapabilities;private AgentSubagentManager subagents;private AgentSubagentScheduler subagentScheduler;private AgentToolRuntime kernelTools;private readonly List<AgentToolDefinition> dynamicTools=new List<AgentToolDefinition>();private readonly List<IMcpTransport> mcpTransports=new List<IMcpTransport>();
         public bool PlanMode {get{return readOnly;}set{readOnly=value;BuildSchemas();}}
         public bool ReadOnly {get{return PlanMode;}set{PlanMode=value;}}
 
+        internal static AgentWorkspace ForContextBudget(int budget){return new AgentWorkspace(budget);}
+        private AgentWorkspace(int budget){Root=AppDomain.CurrentDomain.BaseDirectory;prefix=Root;ContextTokenLimit=budget;}
         public AgentWorkspace(string root) : this(root, true) { }
         public AgentWorkspace(string root, bool restrictToRoot)
         {
@@ -76,7 +78,7 @@ namespace Dafeiyu
             BuildSchemas();
         }
 
-        internal void ConfigureGitHub(string repository,ConnectionSettings connection){if(github!=null)github.Dispose();github=new GitHubClient(repository,connection);}
+        internal void ConfigureGitHub(string repository,ConnectionSettings connection){if(github!=null)github.Dispose();github=new GitHubClient(repository,connection);githubConnected=!String.IsNullOrWhiteSpace(repository);BuildSchemas();}
         internal void AttachKernelSession(AgentSessionModel model){kernelSessionModel=model;}
         internal void ConfigureProvider(string provider,string model){providerCapabilities=new AgentProviderRegistry().Resolve(provider,model);BuildSchemas();}
         internal void ConfigureMcp(IMcpTransport transport){if(transport==null)throw new ArgumentNullException("transport");if(!mcpTransports.Contains(transport))mcpTransports.Add(transport);kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
@@ -85,9 +87,16 @@ namespace Dafeiyu
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit){ConfigureKernel(permissions,audit,null,null,null);}
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId){ConfigureKernel(permissions,audit,approval,claims,taskId,null);}
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId,AgentSessionModel sessionModel){kernelPermissions=permissions??AgentPermissionRuntime.DefaultWorkspacePolicy();kernelAudit=audit;kernelApproval=approval;kernelClaims=claims;kernelTaskId=taskId;kernelSessionModel=sessionModel;kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);if(kernelClaims!=null){subagents=new AgentSubagentManager(kernelClaims);subagentScheduler=new AgentSubagentScheduler(subagents,4);}RegisterMcpTools();BuildSchemas();}
+        internal void ConfigureDesktopSession(){desktopSession=true;BuildSchemas();}
+        bool DesktopToolAvailable(string name)
+        {
+            if(name=="run_command" || name=="list_commands" || name=="spawn_subagent" || name=="complete_subagent" || name=="interrupt_subagent")return false;
+            return !name.StartsWith("github_",StringComparison.Ordinal) || (githubConnected && AgentPermissionRuntime.ActionForTool(name)=="github_read");
+        }
         public Task<string> ExecuteAsync(string name,string argumentsJson,CancellationToken token){return ExecuteAsync(name,argumentsJson,Guid.NewGuid().ToString("N"),token);}
         public async Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
         {
+            if(desktopSession && !DesktopToolAvailable(name))return "错误：此工具尚未在桌面端启用或连接，不会执行操作。";
             if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=AgentPermissionRuntime.ResourceForTool(name,args);
             var decision=await kernelPermissions.AuthorizeAsync(action,resource,kernelApproval).ConfigureAwait(false);
             if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return "错误：权限拒绝："+decision.Reason;}
@@ -561,7 +570,7 @@ namespace Dafeiyu
         private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
         private void BuildSchemas()
         {
-            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b);OpenAITools=a;AnthropicTools=b;
+            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b,desktopSession?new Func<string,bool>(DesktopToolAvailable):null);OpenAITools=a;AnthropicTools=b;
         }
     }
 }

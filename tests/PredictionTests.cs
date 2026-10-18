@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -88,8 +88,8 @@ namespace Dafeiyu.Tests
                 var api=new HeldApi();var session=Session(api);session.SelectPersona(pet.Skin.Id);session.History.Commit("我想做一个工具。","先从需求开始吧。");
                 typeof(PetWindow).GetField("conversation",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
                 first=new Window{Width=380,Height=380,Title="Prediction full composer"};second=new Window{Width=380,Height=380,Title="Prediction quick composer"};
-                var firstInput=Ui.Field("",true);firstInput.Name="FirstInput";var firstComposer=new ConversationComposer(pet,first,firstInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),false);first.Content=firstComposer;
-                var secondInput=Ui.Field("",true);secondInput.Name="SecondInput";var secondComposer=new ConversationComposer(pet,second,secondInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),true,true);second.Content=secondComposer;
+                var firstInput=new MarkdownEditor();firstInput.Name="FirstInput";var firstComposer=new ConversationComposer(pet,first,firstInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),false);first.Content=firstComposer;
+                var secondInput=new MarkdownEditor();secondInput.Name="SecondInput";var secondComposer=new ConversationComposer(pet,second,secondInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),true,true);second.Content=secondComposer;
                 first.Show();second.Show();Pump(650);
                 Check(All<Button>(first).Any(b=>b.Name=="ConversationModePicker") && !All<Button>(second).Any(b=>b.Name=="ConversationModePicker"),"only the full composer keeps the mode switch");
                 Check(api.Calls==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="和伙伴一起工作","default-off prediction issues no request and keeps the plain placeholder");
@@ -124,9 +124,9 @@ namespace Dafeiyu.Tests
             }
             finally{if(first!=null)first.Close();if(second!=null)second.Close();if(pet!=null)pet.Close();app.Shutdown();}
         }
-        static string GhostText(TextBox input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder==null?"":placeholder.Text;}
-        static bool GhostVisible(TextBox input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder!=null && placeholder.IsVisible && placeholder.Text!="和伙伴一起工作";}
-        static System.Windows.Input.KeyEventArgs Key(TextBox input,System.Windows.Input.Key key,System.Windows.RoutedEvent routed)
+        static string GhostText(MarkdownEditor input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder==null?"":placeholder.Text;}
+        static bool GhostVisible(MarkdownEditor input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder!=null && placeholder.IsVisible && placeholder.Text!="和伙伴一起工作";}
+        static System.Windows.Input.KeyEventArgs Key(MarkdownEditor input,System.Windows.Input.Key key,System.Windows.RoutedEvent routed)
         {var args=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(input),Environment.TickCount,key){RoutedEvent=routed};input.RaiseEvent(args);return args;}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(System.Windows.Media.VisualTreeHelper.GetChild(root,i)))yield return item;}        static void Pump(int milliseconds)
         {

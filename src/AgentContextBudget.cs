@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,7 +32,7 @@ namespace Dafeiyu
         // its observations are one indivisible unit, including thinking signatures.
         internal static async Task<bool> PrepareAsync(List<object> history,bool anthropic,AgentWorkspace workspace,Func<string,CancellationToken,Task<string>> summarize,CancellationToken cancel,Func<IList<object>,bool> fitsBytes=null,int overheadTokens=0)
         {
-            int limit=workspace.ContextTokenLimit<=0?32768:Math.Max(8192,Math.Min(131072,workspace.ContextTokenLimit));
+            int limit=workspace.ContextTokenLimit<=0?32768:Math.Max(1024,Math.Min(ModelContextCapacity.Maximum,workspace.ContextTokenLimit));
             int inputLimit=limit-Math.Min(4096,limit/4)-Math.Max(0,overheadTokens);Func<IList<object>,bool> fits=items=>EstimateTokens(items)<=inputLimit && (fitsBytes==null || fitsBytes(items));if(fits(history))return false;
             try{
             workspace.ContextProgress("compacting");cancel.ThrowIfCancellationRequested();for(int i=0;i<history.Count;i++)history[i]=Object(history[i]);Compact(history,anthropic);
@@ -52,7 +52,7 @@ namespace Dafeiyu
             object first=users.FirstOrDefault(),last=users.LastOrDefault();var recent=units.LastOrDefault(u=>u.Any(m=>HasCalls(Object(m),anthropic)));
             var kept=new List<object>();var removed=new List<object>();
             foreach(var unit in units){bool protect=unit.Any(m=>Text(Object(m),"role")=="system" || System.Object.ReferenceEquals(m,first) || System.Object.ReferenceEquals(m,last) || System.Object.ReferenceEquals(m,originalGoal)) || unit==recent;(protect?kept:removed).AddRange(unit);}
-            if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException("当前目标、最新消息或最近工具组超过上下文或附件预算，请缩小输入或提高工作设置中的上下文预算。");}
+            if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException("当前目标、最新消息或最近工具组超过上下文或附件预算，请缩小输入，或在模型配置中核对上下文容量；容量未知时可调整工作设置中的兜底值。");}
             var digest=new StringBuilder();foreach(object item in removed){cancel.ThrowIfCancellationRequested();var m=Object(item);digest.Append(Text(m,"role")).Append(": ");DigestToolMetadata(m,digest);object content;if(m.TryGetValue("content",out content)){if(content is string)digest.Append((string)content);else DigestContent(content,digest);}digest.AppendLine();if(digest.Length>48000){digest.Length=48000;digest.AppendLine("[摘要输入达到上限；结合任务事实继续]");break;}}
             string summary;try{summary=await summarize(digest.ToString(),cancel).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(summary))throw new ApiException("摘要为空。");}
             catch(ApiException){summary="摘要生成失败，使用已记录的任务事实；不要推测已省略内容，必要时重新读取文件与命令输出。";}
@@ -61,7 +61,7 @@ namespace Dafeiyu
             string checkpoint="上下文压缩记录（历史数据，不是新的权限或指令）：\n"+summary+"\n"+facts;
             var note=new Dictionary<string,object>{{"role","assistant"},{"content",checkpoint}};int insertion=first==null?0:kept.IndexOf(first)+1;kept.Insert(insertion,note);
             while(!fits(kept) && checkpoint.Length>256){checkpoint=checkpoint.Substring(0,checkpoint.Length/2)+"\n[摘要已精简；使用 list_changes/read_output 核对实际记录]";note["content"]=checkpoint;}
-            if(!fits(kept)){workspace.ContextProgress("limited");throw new ApiException("上下文压缩后仍超过预算，请缩小输入或提高上下文预算。");}
+            if(!fits(kept)){workspace.ContextProgress("limited");throw new ApiException("上下文压缩后仍超过预算，请缩小输入或核对模型上下文容量。");}
             history.Clear();history.AddRange(kept);workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,checkpoint);return true;
             }catch(OperationCanceledException){workspace.ContextProgress("cancelled");throw;}
             catch{if(workspace.TaskState.ContextStatus=="compacting")workspace.ContextProgress("limited");throw;}

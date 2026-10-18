@@ -49,10 +49,14 @@ namespace Dafeiyu
             if(own==IntPtr.Zero || other==IntPtr.Zero)return;
             Rect p=DesktopInterop.Bounds(other),b=DesktopInterop.Bounds(own),area=DesktopInterop.WorkArea(other);double anchor=p.Left+p.Width*.5;
             Point position=PetMath.ClampPosition(anchor-b.Width*.5,p.Top+p.Height*.12-b.Height-7,b.Width,b.Height,area);
-            DesktopInterop.Move(own,position);window.Topmost=pet.Settings.Topmost;
+            if(Math.Abs(b.Left-position.X)>=.5 || Math.Abs(b.Top-position.Y)>=.5)DesktopInterop.Move(own,position);
+            if(window.Topmost!=pet.Settings.Topmost)window.Topmost=pet.Settings.Topmost;
             var source=HwndSource.FromHwnd(own);double scale=source.CompositionTarget.TransformToDevice.M11;
             double x=Math.Max(20,Math.Min(window.Width-20,(anchor-position.X)/scale));
-            tail.Points=new PointCollection(new[]{new Point(x-12,0),new Point(x,13),new Point(x+12,0)});
+            // Follow runs for every pet frame. Stable placement must not rebuild
+            // the tail geometry or issue another native window move.
+            if(tail.Points.Count!=3 || Math.Abs(tail.Points[1].X-x)>=.01)
+                tail.Points=new PointCollection(new[]{new Point(x-12,0),new Point(x,13),new Point(x+12,0)});
         }
     }
 }

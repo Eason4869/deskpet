@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -33,7 +33,7 @@ namespace Dafeiyu.Tests
                 Console.WriteLine("Conversation repeat smoke: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{if(chat!=null)chat.Close();if(pet!=null)pet.Close();}
         }
-        static void Send(ChatWindow chat,string text){var input=All<TextBox>(chat).Single(t=>t.Name=="MessageInput");input.Text=text;var send=All<Button>(chat).Single(b=>b.Name=="SendMessage");if(!send.IsEnabled)throw new Exception("send disabled");send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}
+        static void Send(ChatWindow chat,string text){var input=All<MarkdownEditor>(chat).Single(t=>t.Name=="MessageInput");input.Text=text;var send=All<Button>(chat).Single(b=>b.Name=="SendMessage");if(!send.IsEnabled)throw new Exception("send disabled");send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}
         static void Wait(Func<bool> ready){var end=DateTime.UtcNow.AddSeconds(5);while(!ready()&&DateTime.UtcNow<end)Pump();if(!ready())throw new Exception("Timed out waiting for conversation state");}
         static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}

@@ -52,6 +52,8 @@ namespace Dafeiyu
     {
         readonly Func<ILiveSocket> sockets;readonly Func<IPcmMicrophone> microphones;readonly Func<ILiveAudioOutput> speakers;readonly object gate=new object();
         CancellationTokenSource cancellation;ILiveSocket socket;IPcmMicrophone microphone;ILiveAudioOutput speaker;Task running;TaskCompletionSource<bool> configured;bool disposed;int volume;
+        int successfulConnections;
+        internal int SuccessfulConnections {get{return Volatile.Read(ref successfulConnections);}}
         public bool IsActive {get{lock(gate)return running!=null;}} public string Status {get;private set;}
         public event Action StateChanged;public event Action<string,string> PartialTranscript;public event Action<string,string> TurnCompleted;
         public event Action<string,string,string> TurnCommitted;
@@ -102,7 +104,7 @@ namespace Dafeiyu
                         microphone.PcmAvailable+=delegate(byte[] bytes){if(token.IsCancellationRequested)return;Volatile.Write(ref inputLevel,AudioLevel.Pcm16(bytes));Interlocked.Exchange(ref inputAt,DateTime.UtcNow.Ticks);if(!queue.TryAdd(bytes)){SetStatus("Live 上传缓冲已满，请检查网络后重连。");cancellation.Cancel();socket.Abort();}};
                         microphone.Failed+=delegate(string failure){SetStatus(failure);cancellation.Cancel();socket.Abort();};
                         sending=Task.Run(async delegate {try{foreach(byte[] bytes in queue.GetConsumingEnumerable(token))await socket.SendTextAsync(Json(new {realtimeInput=new {audio=new {data=Convert.ToBase64String(bytes),mimeType="audio/pcm;rate=16000"}}}),token).ConfigureAwait(false);}catch(OperationCanceledException){}catch(Exception){SetStatus("Live 音频上传中断，请检查网络或代理。");cancellation.Cancel();socket.Abort();}});
-                        microphone.Start();SetStatus("Live 已连接 · 正在听 · 再次点击结束");configured.TrySetResult(true);
+                        microphone.Start();Interlocked.Increment(ref successfulConnections);SetStatus("Live 已连接 · 正在听 · 再次点击结束");configured.TrySetResult(true);
                     }
                     object raw;if(!json.TryGetValue("serverContent",out raw))continue;
                     if(!ready)throw new ApiException("Live 未完成初始化便返回音频，请检查服务协议。");

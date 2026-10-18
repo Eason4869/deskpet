@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -106,9 +106,15 @@ namespace Dafeiyu.Tests
             string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"safe-guide-"+Guid.NewGuid().ToString("N"),"queue.json");var api=new Api{Release=new TaskCompletionSource<bool>()};var cfg=new PetSettings{ReadReplies=false,Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"}};
             using(var session=new ConversationSession(api,new Speech(),()=>null))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",path)){
                 queue.Enqueue("active");await Until(()=>api.Calls.Count==1);queue.Enqueue("later");await queue.SteerAsync("guide safely");
-                Check(session.IsBusy && session.History.Messages.Last().Status=="pending" && api.Calls.Count==1,"safe guidance never cancels the active response");
+                Check(session.IsBusy && session.History.Messages.Last(m=>m.Role=="assistant").Status=="pending" && api.Calls.Count==1,"safe guidance never cancels the active response");
+                Check(session.History.Messages.Count(m=>m.Role=="user" && m.Content=="guide safely")==1,"accepted guidance is visible immediately without a duplicate user turn");
                 Check(queue.Items[0].IsGuidance && queue.Items[0].Text=="guide safely","guidance is durable and prioritized without interrupting work");
                 api.Release.SetResult(true);await Until(()=>!queue.IsRunning && !session.IsBusy);Check(String.Join(",",api.Calls)=="active,guide safely,later" && session.History.Messages.All(m=>m.Status!="cancelled"),"plain conversation guidance waits for completion and preserves queue order");
+            }
+            var interruptApi=new Api{WaitForCancellation="active with guidance"};
+            using(var session=new ConversationSession(interruptApi,new Speech(),()=>null))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",path+".interrupt")){
+                queue.Enqueue("active with guidance");await Until(()=>interruptApi.Calls.Count==1);await queue.SteerAsync("accepted guide");await queue.InterruptAsync("explicit interrupt");await Until(()=>!queue.IsRunning && !session.IsBusy);
+                var request=interruptApi.Requests.Single(r=>r.Last().Content=="explicit interrupt");Check(request.Any(m=>m.Content=="active with guidance")&&request.Any(m=>m.Content.Contains("未完成")),"an immediate guidance receipt does not hide the active partial reply from explicit interrupt");
             }
         }
         static void Check(bool value,string message){if(!value)throw new Exception(message);passed++;Console.WriteLine("PASS "+message);}

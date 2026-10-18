@@ -22,21 +22,22 @@ namespace Dafeiyu.Tests
             {
                 var cfg=new PetSettings {GreetingEnabled=false,Wander=false,AutoUpdate=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                cfg.Text=new ConnectionSettings{BaseUrl="https://example.com/v1",Model="configured"};
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();Pump();
                 settings=new SettingsWindow(pet);settings.Show();Pump();
                 var nav=(ListBox)settings.FindControl("SettingsNavigation");
                 Check(nav.Items.Count==5,"five primary settings destinations");
                 Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","快捷键","关于"}),"navigation combines companion and persona");
                 bool guide=false;settings.GuideRequested+=delegate {guide=true;};Click(settings,"OpenOnboarding");Check(guide,"sidebar guide entry invokes guide event");
-                settings.SelectPage(2);Pump();var model=(TextBox)settings.FindControl("TextServiceModel");string original=model.Text;model.Text="navigation-draft";
+                settings.SelectPage(2);Pump();var model=(TextBox)settings.FindControl("TextProviderName");string original=model.Text;model.Text="navigation-draft";
                 settings.SelectPage(3);Pump();Check(settings.FindControl("TranscriptionModel")!=null && nav.SelectedIndex==1,"legacy ASR route opens AI secondary page");
                 settings.SelectPage(4);Pump();Check(settings.FindControl("SpeechVoice")!=null,"legacy TTS route opens voice field");
                 settings.SelectPage(5);Pump();Check(settings.FindControl("LiveServiceUrl")!=null,"legacy Live route opens realtime settings");
-                settings.SelectPage(2);Pump();Check(((TextBox)settings.FindControl("TextServiceModel")).Text=="navigation-draft","secondary navigation preserves unsaved draft");
+                settings.SelectPage(2);Pump();Check(((TextBox)settings.FindControl("TextProviderName")).Text=="navigation-draft","secondary navigation preserves unsaved draft");
                 settings.SelectPage(0);Pump();var picker=(ComboBox)settings.FindControl("SkinPicker");string skinBefore=pet.Skin.Id;picker.SelectedItem=pet.Catalog.Skins.First(s=>s.Id!=skinBefore);Pump();
                 Check(pet.Skin.Id==skinBefore && ((SkinDefinition)picker.SelectedItem).Id==skinBefore,"switching partner protects AI draft");
-                settings.SelectPage(2);Pump();((TextBox)settings.FindControl("TextServiceModel")).Text=original;
-                string[] tabs={"AiTextTab","AiAsrTab","AiSpeechTab","AiLiveTab"};string[] fields={"TextServiceModel","TranscriptionModel","SpeechVoice","LiveVoice"};
+                settings.SelectPage(2);Pump();((TextBox)settings.FindControl("TextProviderName")).Text=original;
+                string[] tabs={"AiTextTab","AiAsrTab","AiSpeechTab","AiLiveTab"};string[] fields={"TextProviderName","TranscriptionModel","SpeechVoice","LiveVoice"};
                 for(int index=0;index<4;index++)
                 {
                     Click(settings,tabs[index]);Pump();Check(settings.FindControl(fields[index])!=null,"secondary button opens "+fields[index]);

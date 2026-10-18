@@ -8,8 +8,11 @@ namespace Dafeiyu
     public sealed class ConnectionSettingsPanel : Grid
     {
         readonly PetWindow pet;readonly TextProviderEditor text,recognition,synthesis,live;readonly ComboBox voice,liveVoice;
-        readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl();readonly UIElement[] sections;
+        readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
         string speechContext,liveContext;
+        internal int SpeechTestRevision {get;private set;}
+        internal bool SpeechTestSucceeded {get;private set;}
+        int speechTestGeneration;
         readonly System.Collections.Generic.Dictionary<string,string> voiceDrafts=new System.Collections.Generic.Dictionary<string,string>();
         readonly System.Collections.Generic.Dictionary<string,string> voiceSavedValues=new System.Collections.Generic.Dictionary<string,string>();
         public bool HasUnsavedChanges
@@ -36,9 +39,10 @@ namespace Dafeiyu
             modes.SelectionChanged+=delegate {if(refreshingMode)return;if(pet.DialogueBusy){refreshingMode=true;modes.SelectedIndex=pet.Settings.VoiceMode=="live"?1:0;refreshingMode=false;if(notice!=null)notice.Text="请先结束当前对话，再切换语音模式。";return;}pet.Settings.VoiceMode=modes.SelectedIndex==1 ? "live" : "pipeline";pet.SaveSettings();pet.RefreshChatAppearance();};Ui.Label(live.Extras,"聊天窗口默认语音模式",modes);
             var testSpeech=Ui.Button("测试朗读",true);testSpeech.Name="PreviewSpeech";testSpeech.Click+=async delegate{
                 if(pet.DialogueBusy){notice.Text="请先结束当前对话，再测试朗读。";return;}if(!SaveGuideSection(2))return;testSpeech.IsEnabled=false;
-                try{await pet.Conversation.PreviewSpeechAsync(pet.Settings,pet.Skin.Name);notice.Text=pet.Conversation.LastNotice;}catch(Exception e){ShowError(e);}finally{testSpeech.IsEnabled=true;}
+                int generation=++speechTestGeneration;SpeechTestSucceeded=false;
+                try{await pet.Conversation.PreviewSpeechAsync(pet.Settings,pet.Skin.Name);notice.Text=pet.Conversation.LastNotice;SpeechTestSucceeded=generation==speechTestGeneration&&pet.Conversation.LastNotice=="朗读测试完成。";}catch(Exception e){ShowError(e);}finally{SpeechTestRevision++;testSpeech.IsEnabled=true;}
             };
-            var speechTests=new WrapPanel{Margin=new Thickness(0,12,0,0)};speechTests.Children.Add(testSpeech);var stop=Ui.Button("停止朗读");stop.Name="StopPreviewSpeech";stop.Click+=delegate{pet.StopReplySpeech();};speechTests.Children.Add(stop);synthesis.Extras.Children.Add(speechTests);
+            var speechTests=new WrapPanel{Margin=new Thickness(0,12,0,0)};speechTests.Children.Add(testSpeech);var stop=Ui.Button("停止朗读");stop.Name="StopPreviewSpeech";stop.Click+=delegate{speechTestGeneration++;SpeechTestSucceeded=false;pet.StopReplySpeech();};speechTests.Children.Add(stop);synthesis.Extras.Children.Add(speechTests);
             var testLive=Ui.Button("测试 Live 通话",true);testLive.Name="PreviewLive";testLive.HorizontalAlignment=HorizontalAlignment.Left;testLive.Margin=new Thickness(0,12,0,0);
             testLive.Click+=delegate{if(pet.DialogueBusy){notice.Text="请先结束当前对话，再测试 Live。";return;}if(!SaveGuideSection(3))return;var host=Window.GetWindow(this);if(host!=null)pet.ShowLiveCall(host);};live.Extras.Children.Add(testLive);
             live.Extras.Children.Add(Ui.Text("测试使用当前 Live 模型和音色；连接成功后收音，结束通话返回设置。",11,Ui.Muted));
@@ -68,7 +72,7 @@ namespace Dafeiyu
                 string model=provider.Connection.Model;provider.Name=selected.Name;provider.BrandId=selected.BrandId;provider.Connection=selected.Connection.Copy();provider.Connection.Model=model;
                 if(saved==null)pet.Settings.TextProviders.Add(provider);else pet.Settings.TextProviders[pet.Settings.TextProviders.IndexOf(saved)]=provider;
                 pet.Settings.ActiveTextProviderId=provider.Id;pet.Settings.Text=provider.Connection.Copy();pet.SaveSettings();text.ConnectionSaved(pet.Settings);pet.RefreshChatAppearance();
-                notice.Text=String.IsNullOrEmpty(pet.Notice)?"连接已保存，获取后勾选需要的模型。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                notice.Text=String.IsNullOrEmpty(pet.Notice)?"连接已保存，获取列表后逐个添加需要的模型。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }catch(Exception e){ShowError(e);return false;}
         }
         public void RefreshPersonaVoices()
@@ -104,7 +108,7 @@ namespace Dafeiyu
                 foreach(var provider in nextProviders)ValidateAddress(provider.Connection,ApiClient.ChatPath(provider.Connection));ValidateAddress(nextAsr,ApiClient.AsrPath(nextAsr));ValidateAddress(nextSpeech,ApiClient.SpeechPath(nextSpeech));
                 var probe=nextLive.Copy();if(!String.IsNullOrWhiteSpace(probe.BaseUrl)){if(String.IsNullOrWhiteSpace(probe.Model))probe.Model="validation";if(String.IsNullOrEmpty(probe.ApiKey))probe.ApiKey="validation";GeminiLiveSocket.Endpoint(probe);}
                 PersonaProfiles.SaveVoices(pet.Settings);
-                pet.Settings.TextProviders=nextProviders;pet.Settings.ActiveTextProviderId=text.SelectedProviderId;pet.Settings.Text=nextText;pet.Settings.ApplyProviders("asr",nextAsrProviders,recognition.SelectedProviderId,nextAsr);pet.Settings.ApplyProviders("speech",nextSpeechProviders,synthesis.SelectedProviderId,nextSpeech);pet.Settings.ApplyProviders("live",nextLiveProviders,live.SelectedProviderId,nextLive);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=voice.Text.Trim();pet.Settings.LiveVoice=liveVoice.Text.Trim();SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);pet.SaveSettings();ClearVoiceDrafts();text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?"已保存。打开对话开始使用。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                pet.Settings.TextProviders=nextProviders;pet.Settings.ActiveTextProviderId=text.SelectedProviderId;pet.Settings.Text=nextText;pet.Settings.ApplyProviders("asr",nextAsrProviders,recognition.SelectedProviderId,nextAsr);pet.Settings.ApplyProviders("speech",nextSpeechProviders,synthesis.SelectedProviderId,nextSpeech);pet.Settings.ApplyProviders("live",nextLiveProviders,live.SelectedProviderId,nextLive);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=voice.Text.Trim();pet.Settings.LiveVoice=liveVoice.Text.Trim();SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);for(int index=0;index<4;index++)InvalidateGuideTest(index);pet.SaveSettings();ClearVoiceDrafts();text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?"已保存。打开对话开始使用。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }
             catch(Exception e){ShowError(e);return false;}
         }
@@ -113,13 +117,18 @@ namespace Dafeiyu
             try
             {
                 var draft=pet.Settings.Copy();ConnectionSettings service;
-                if(index==0){var provider=text.ReadConnectionProvider();service=provider.Connection;ProxyConfiguration.Endpoint(ProxyConfiguration.Normalize(service.ProxyAddress));var probe=service.Copy();probe.Model="guide-validation";ApiClient.ValidateConnection(probe,ApiClient.ChatPath(probe));if(String.IsNullOrWhiteSpace(service.Model) || !provider.Models.Contains(service.Model))throw new InvalidOperationException("请获取列表并勾选“添加所选模型”，或手填模型后点击“添加 / 更新”，再选择要使用的模型。");}
+                if(index==0){var provider=text.ReadConnectionProvider();service=provider.Connection;ProxyConfiguration.Endpoint(ProxyConfiguration.Normalize(service.ProxyAddress));var probe=service.Copy();probe.Model="guide-validation";ApiClient.ValidateConnection(probe,ApiClient.ChatPath(probe));if(String.IsNullOrWhiteSpace(service.Model) || !provider.Models.Contains(service.Model))throw new InvalidOperationException("请获取列表并逐个添加模型，或手填模型后点击“添加 / 更新”，再选择要使用的模型。");}
                 else if(index==1){draft.Transcription=recognition.Read();service=draft.TranscriptionConnection();ApiClient.ValidateConnection(service,ApiClient.AsrPath(service));}
                 else if(index==2 && cloud.IsChecked==true){draft.Speech=synthesis.Read();service=draft.SpeechConnection();ApiClient.ValidateConnection(service,ApiClient.SpeechPath(service));if(String.IsNullOrWhiteSpace(voice.Text) || voice.Text.Trim().Length>512)throw new InvalidOperationException("请选择或填写有效音色。");}
                 else if(index==3){GeminiLiveSocket.Endpoint(live.Read());if(String.IsNullOrWhiteSpace(liveVoice.Text) || liveVoice.Text.Trim().Length>512)throw new InvalidOperationException("请选择或填写 Live 音色。");}
                 error="";return true;
             }
             catch(Exception e){error=e is ApiException || e is InvalidOperationException?e.Message:"请检查当前服务的填写内容。";return false;}
+        }
+        void InvalidateGuideTest(int index)
+        {
+            string id=new[]{"text.test","chat.dictation","speech.test","live.test"}[index];
+            pet.Settings.OnboardingVerifiedLessons.Remove(id);pet.Settings.OnboardingCompletedLessons.Remove(id);
         }
         public bool SaveGuideSection(int index)
         {
@@ -144,7 +153,7 @@ namespace Dafeiyu
                     draft.Live=live.Read();GeminiLiveSocket.Endpoint(draft.Live);draft.LiveVoice=liveVoice.Text.Trim();if(draft.LiveVoice.Length==0 || draft.LiveVoice.Length>512)throw new InvalidOperationException("请选择或填写 Live 音色。");
                     pet.Settings.ApplyProviders("live",live.ReadProviders(),live.SelectedProviderId,draft.Live);pet.Settings.LiveVoice=draft.LiveVoice;PersonaProfiles.SaveVoices(pet.Settings);
                 }
-                if(index==2 || index==3){SaveVoiceDrafts(index==2?"speech":"live");PersonaProfiles.SaveVoices(pet.Settings);}pet.SaveSettings();if(index==2 || index==3)ClearVoiceDrafts(index==2?"speech":"live");text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?"当前引导项已保存。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                InvalidateGuideTest(index);if(index==2 || index==3){SaveVoiceDrafts(index==2?"speech":"live");PersonaProfiles.SaveVoices(pet.Settings);}pet.SaveSettings();if(index==2 || index==3)ClearVoiceDrafts(index==2?"speech":"live");text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?"当前引导项已保存。":pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }
             catch(Exception e){ShowError(e);return false;}
         }
@@ -173,7 +182,7 @@ namespace Dafeiyu
                 streamReplies=Ui.Toggle("流式回复",settings.StreamReplies,v=>{});streamReplies.Name=prefix+"StreamReplies";
                 Children.Add(Pair("服务预设",presets,"接口协议",protocol));
                 Ui.Label(this,kind=="live"?"完整 WSS 地址":"服务地址（保留 /v1 等前缀）",address);
-                Children.Add(Pair("API 密钥",key,"当前模型 ID",model));
+                if(kind=="text"){Ui.Label(this,"API 密钥",key);model.Visibility=Visibility.Collapsed;Children.Add(model);}else Children.Add(Pair("API 密钥",key,"当前模型 ID",model));
                 var toggles=new WrapPanel();proxy.Margin=new Thickness(0,8,24,4);toggles.Children.Add(proxy);
                 if(kind=="text"){streamReplies.Margin=new Thickness(0,8,0,4);toggles.Children.Add(streamReplies);}Children.Add(toggles);
                 Ui.Label(this,"代理地址（仅开启代理时使用）",proxyAddress);Children.Add(hint);

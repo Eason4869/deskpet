@@ -12,8 +12,8 @@ namespace Dafeiyu
         // so it needs no extra layout and hides itself whenever the draft is
         // non-empty. Tests and the prediction controller resolve it here.
         public static readonly DependencyProperty ComposerPlaceholderProperty=DependencyProperty.RegisterAttached("ComposerPlaceholder",typeof(TextBlock),typeof(ChatUi),new PropertyMetadata(null));
-        public static void SetComposerPlaceholder(TextBox input,TextBlock value){input.SetValue(ComposerPlaceholderProperty,value);}
-        public static TextBlock GetComposerPlaceholder(TextBox input){return (TextBlock)input.GetValue(ComposerPlaceholderProperty);}
+        public static void SetComposerPlaceholder(MarkdownEditor input,TextBlock value){input.SetValue(ComposerPlaceholderProperty,value);}
+        public static TextBlock GetComposerPlaceholder(MarkdownEditor input){return (TextBlock)input.GetValue(ComposerPlaceholderProperty);}
         static ControlTemplate actionTemplate;
         static ControlTemplate menuTemplate;
         static ControlTemplate menuItemTemplate;
@@ -45,25 +45,22 @@ namespace Dafeiyu
             if(!readOnly)menu.Items.Add(new MenuItem{Header="粘贴",InputGestureText="Ctrl+V",Command=System.Windows.Input.ApplicationCommands.Paste,CommandTarget=editor});
             menu.Items.Add(new Separator());menu.Items.Add(new MenuItem{Header="全选",InputGestureText="Ctrl+A",Command=System.Windows.Input.ApplicationCommands.SelectAll,CommandTarget=editor});return menu;
         }
-        public static FrameworkElement Composer(TextBox input,UIElement leading,UIElement trailing,TextBlock status,bool compact,UIElement attachments=null)
+        public static string SendHint(PetSettings settings){return settings.SendOnEnter?"Enter 发送 · Shift + Enter 换行":"Ctrl + Enter 发送 · Enter 换行";}
+        public static FrameworkElement Composer(MarkdownEditor input,UIElement leading,UIElement trailing,TextBlock status,bool compact,UIElement attachments=null)
         {
             input.BorderThickness=new Thickness(0);input.Background=Brushes.Transparent;
             // The composer has its own white surface; do not inherit form-field focus fills.
             input.FocusVisualStyle=null;
-            input.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='Transparent'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border></ControlTemplate>");
+            input.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='RichTextBox'><Border Background='Transparent'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border></ControlTemplate>");
             input.Padding=new Thickness(4,6,4,6);input.FontSize=14;input.VerticalContentAlignment=VerticalAlignment.Top;
             input.MinHeight=48;input.MaxHeight=compact?92:140;
             input.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;
             System.Windows.Automation.AutomationProperties.SetName(input,"消息输入框");
             var field=new Grid();int inputRow=0;
             if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.Children.Add(attachments);inputRow=1;}
-            var markdownPreview=new MarkdownView{Name="ComposerMarkdownPreview",IsHitTestVisible=false,MaxHeight=compact?72:108,Margin=new Thickness(4,6,4,2),Visibility=Visibility.Collapsed};
-            var previewSurface=new Border{Name="ComposerMarkdownPreviewSurface",Child=markdownPreview,Background=Ui.Brush("#FAFBFD"),BorderBrush=Ui.Brush("#E8EBEF"),BorderThickness=new Thickness(0,1,0,0),Padding=new Thickness(4,6,4,4),Visibility=Visibility.Collapsed};
-            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(previewSurface,inputRow++);field.Children.Add(previewSurface);
             field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,inputRow);field.Children.Add(input);
             var placeholder=new TextBlock{Name="ComposerPlaceholder",Text="和伙伴一起工作",FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
             SetComposerPlaceholder(input,placeholder);
-            Action syncMarkdown=delegate{string draft=input.Text??"";bool has=draft.Contains("**")||draft.Contains("`")||draft.Contains("\n#")||draft.StartsWith("#")||draft.Contains("\n- ")||draft.Contains("\n> ")||draft.Contains("[");markdownPreview.Text=draft;previewSurface.Visibility=has?Visibility.Visible:Visibility.Collapsed;};
             Action syncPlaceholder=delegate {
                 bool show=input.Text.Length==0;
                 placeholder.Visibility=show?Visibility.Visible:Visibility.Collapsed;
@@ -74,11 +71,11 @@ namespace Dafeiyu
                 var margin=new Thickness(origin.X,origin.Y,0,0);
                 if(placeholder.Margin!=margin)placeholder.Margin=margin;
             };
-            input.TextChanged+=delegate{syncMarkdown();syncPlaceholder();};
+            input.TextChanged+=delegate{syncPlaceholder();};
             input.GotKeyboardFocus+=delegate{syncPlaceholder();};
             input.LostKeyboardFocus+=delegate{syncPlaceholder();};
             input.LayoutUpdated+=delegate{syncPlaceholder();};
-            syncMarkdown();syncPlaceholder();
+            syncPlaceholder();
             var body=new Grid();body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.Children.Add(field);
             var toolbar=new Grid{Name="ComposerToolbar",Margin=new Thickness(2,8,2,0),MinWidth=0};toolbar.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});toolbar.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
             if(leading!=null)toolbar.Children.Add(leading);

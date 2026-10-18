@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -40,7 +40,7 @@ namespace Dafeiyu
         {
             get
             {
-                var cfg=pet.Settings.Copy();
+                var cfg=pet.ConversationSettings(session);
                 if(!String.IsNullOrEmpty(taskWorkspace))try{cfg.AgentWorkspace=System.IO.Path.GetFullPath(taskWorkspace);}catch(ArgumentException){}
                 return cfg;
             }
@@ -71,7 +71,7 @@ namespace Dafeiyu
             }body.Children.Add(Section("命令与验证"));body.Children.Add(commands);
             if(!String.IsNullOrEmpty(task.Notice))body.Children.Add(Ui.Text(task.Notice,11,Ui.Muted));
             var actions=new WrapPanel{Margin=new Thickness(0,7,0,2)};var resume=Small("继续任务","ContinueAgentTask");resume.IsEnabled=!busy && pet.Settings.AgentEnabled && task.Status!="running";resume.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.ResumeAgentTaskAsync(TaskSettings,pet.Skin.Name);}catch(Exception e){Error(e);}finally{if(resumeQueue)queue.Resume();}};actions.Children.Add(resume);
-            var settings=Small("命令设置","OpenAgentCommandSettings");settings.Click+=delegate{pet.ShowWorkSettings();};actions.Children.Add(settings);
+            var settings=Small("工作设置","OpenAgentWorkSettings");settings.Click+=delegate{pet.ShowWorkSettings();};actions.Children.Add(settings);
             var clear=Small("清除任务记录","ClearAgentCheckpoint");clear.IsEnabled=!busy;clear.Click+=async delegate{try{await session.ClearAgentTaskAsync(TaskSettings);}catch(Exception e){Error(e);}};actions.Children.Add(clear);if(!String.IsNullOrEmpty(session.AgentTaskWarning)){var retry=Small("重试保存","RetryAgentCheckpoint");retry.IsEnabled=!busy;retry.Click+=async delegate{try{await session.RetryAgentTaskSaveAsync();notice.Text=String.IsNullOrEmpty(session.AgentTaskWarning)?"任务记录已保存。":session.AgentTaskWarning;}catch(Exception e){Error(e);}};actions.Children.Add(retry);}body.Children.Add(actions);body.Children.Add(notice);
         }
         internal async Task ShowDiff(string path)

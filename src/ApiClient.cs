@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -86,7 +86,7 @@ namespace Dafeiyu
         {
             return new StringContent(new JavaScriptSerializer { MaxJsonLength = 32*1024*1024 }.Serialize(value), Encoding.UTF8, "application/json");
         }
-        public async Task<IList<string>> ListModelsAsync(ConnectionSettings settings,CancellationToken cancel)
+        public async Task<IList<string>> ListModelsAsync(ConnectionSettings settings,CancellationToken cancel,Dictionary<string,int> contextWindows=null)
         {
             // Listing models must work before the user has selected a model.
             var probe=settings.Copy();probe.Model="model-catalog";
@@ -113,6 +113,7 @@ namespace Dafeiyu
                                     if(item==null || !item.TryGetValue("id",out value) || !(value is string))continue;
                                     string id=((string)value).Trim();
                                     if(id.Length==0 || id.Length>256 || id.IndexOfAny(new[]{'\r','\n','\t'})>=0)continue;
+                                    if(contextWindows!=null){int capacity=ModelContextCapacity.Read(item);if(capacity>0)contextWindows[id]=capacity;}
                                     models.Add(id);if(models.Count>=1000)return new List<string>(models);
                                 }
                                 if(!json.TryGetValue("has_more",out raw) || !Object.Equals(raw,true))return new List<string>(models);
@@ -137,7 +138,7 @@ namespace Dafeiyu
             string system=""; bool anthropic=settings.Protocol=="anthropic";
             foreach (ChatMessage message in messages)
             { if(anthropic && message.Role=="system") system+=message.Content+"\n"; else serialized.Add(new { role=message.Role,content=ChatAttachment.Content(message,anthropic) }); }
-            object body=anthropic ? (object)new { model=settings.Model,messages=serialized,system=system.Trim(),max_tokens=4096,stream=false } : new {model=settings.Model,messages=serialized,stream=false};
+            object body=anthropic ? (object)new { model=settings.Model,messages=serialized,system=system.Trim(),max_tokens=settings.ContextWindowTokens>0?Math.Min(4096,settings.ContextWindowTokens/4):4096,stream=false } : new {model=settings.Model,messages=serialized,stream=false};
             using (var request = Request(settings, ChatPath(settings), Json(body)))
             {
                 byte[] bytes = await SendAsync(settings,request, MaxJsonBytes, cancel).ConfigureAwait(false);
@@ -175,7 +176,7 @@ namespace Dafeiyu
             var serialized = new List<object>(); string system = ""; bool anthropic = settings.Protocol == "anthropic";
             foreach(ChatMessage message in messages)
             { if(anthropic && message.Role == "system") system += message.Content + "\n"; else serialized.Add(new { role = message.Role, content = ChatAttachment.Content(message,anthropic) }); }
-            object body = anthropic ? (object)new { model = settings.Model, messages = serialized, system = system.Trim(), max_tokens = 4096, stream = true } : new { model = settings.Model, messages = serialized, stream = true };
+            object body = anthropic ? (object)new { model = settings.Model, messages = serialized, system = system.Trim(), max_tokens = settings.ContextWindowTokens>0?Math.Min(4096,settings.ContextWindowTokens/4):4096, stream = true } : new { model = settings.Model, messages = serialized, stream = true };
             using(var request = Request(settings, ChatPath(settings), Json(body)))
             using(var proxyHttp = settings.UseProxy ? ProxyConfiguration.CreateHttpClient(settings.ProxyAddress, false) : null)
             using(var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancel))

@@ -1,0 +1,58 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+namespace Dafeiyu.Tests
+{
+    public static class DetailedGuideTests
+    {
+        static int checks; static readonly BindingFlags hidden = BindingFlags.Instance | BindingFlags.NonPublic;
+        static void Check(bool ok, string message) { if (!ok) throw new Exception(message); checks++; Console.WriteLine("PASS " + message); }
+        static void Pump() { var frame = new DispatcherFrame(); var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) }; timer.Tick += delegate { timer.Stop(); frame.Continue = false; }; timer.Start(); Dispatcher.PushFrame(frame); }
+        static T Field<T>(object value, string name) { return (T)value.GetType().GetField(name, hidden).GetValue(value); }
+        static IEnumerable<T> All<T>(DependencyObject node) where T : DependencyObject { if (node is T) yield return (T)node; for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) foreach (var e in All<T>(VisualTreeHelper.GetChild(node, i))) yield return e; }
+        static Button Button(Window window, string name) { return All<Button>(window).Single(b => b.Name == name); }
+        static void Click(Window window, string name) { var button = Button(window, name); Check(button.IsEnabled, "enabled action: " + name); button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent)); Pump(); }
+        internal static void Go(OnboardingWindow guide, string id) { typeof(OnboardingWindow).GetField("index", hidden).SetValue(guide, Array.FindIndex(OnboardingLessons.All, l => l.Id == id)); typeof(OnboardingWindow).GetMethod("Navigate", hidden).Invoke(guide, null); Pump(); }
+        static void Capture(Window window, string path) { var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32); bitmap.Render(window); var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap)); using (var output = File.Create(path)) png.Save(output); }
+        [STAThread]
+        public static int Main()
+        {
+            var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown }; PetWindow pet = null; string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "detailed-guide-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root); try
+            {
+                Check(OnboardingLessons.All.Length >= 100, "guide contains at least 100 actionable small lessons"); Check(OnboardingLessons.All.Select(l => l.Id).Distinct().Count() == OnboardingLessons.All.Length, "every small lesson has a stable unique ID"); Check(OnboardingLessons.All.GroupBy(l => l.Chapter).Count() == 17, "all existing chapters remain covered"); Check(OnboardingLessons.All.Count(l => l.Chapter == 10) >= 15, "TTS includes engine, cloud setup, save, playback and troubleshooting");
+                var cfg = new PetSettings { AutoUpdate = false, GreetingEnabled = false, ReadReplies = false, ShowPredictedMessages = false, FollowCursor = false, Wander = false, HideOnFullscreen = false, UseCloudVoice = false, OnboardingState = "deferred", OnboardingStep = 10 }; foreach (var key in cfg.Hotkeys.Keys.ToArray()) cfg.Hotkeys[key] = ""; pet = new PetWindow(null, cfg, new SettingsStore(Path.Combine(root, "settings.json")), null); var speech = new HeldSpeech(); typeof(PetWindow).GetField("conversation", hidden).SetValue(pet, new ConversationSession(new Api(), speech, () => null)); pet.Show(); pet.ShowOnboarding(); Pump(); var settings = Field<SettingsWindow>(pet, "preferences"); var guide = Field<OnboardingWindow>(pet, "guide");
+                Check(guide.CurrentLessonId == "speech.intro" && !pet.LiveActive && speech.Calls == 0, "legacy chapter progress resumes at its first small lesson without audio or network"); Check(Button(guide, "GuideNext").IsEnabled, "introductory lessons do not demand complete credentials");
+                Go(guide, "speech.engine"); Click(guide, "GuideNext"); Check(guide.CurrentLessonId == "speech.windows", "system speech takes the non-cloud branch"); Click(guide, "GuideNext"); Check(guide.CurrentLessonId == "speech.save", "system path bypasses all cloud-only credentials"); Click(guide, "GuideNext"); Check(guide.CurrentLessonId == "speech.test" && !Button(guide, "GuideNext").IsEnabled && speech.Calls == 0, "saving TTS does not count as testing or auto-play");
+                All<CheckBox>(guide).Single(c => c.Name == "GuideHeardSpeech").IsChecked = true; Pump(); Check(!Button(guide, "GuideNext").IsEnabled, "hearing checkbox alone cannot fake a successful test"); Click(settings, "PreviewSpeech"); Check(speech.Calls == 1 && !Button(guide, "GuideNext").IsEnabled, "test requires waiting for real playback task completion"); speech.Complete(); Pump(); Check(Button(guide, "GuideNext").IsEnabled, "completed playback plus explicit hearing confirmation permits continuing"); Click(guide, "GuideNext"); Check(cfg.OnboardingVerifiedLessons.Contains("speech.test"), "successful explicit test is recorded separately");
+                Go(guide, "speech.test"); Click(settings, "PreviewSpeech"); Click(settings, "StopPreviewSpeech"); speech.Complete(); Pump(); Check(!settings.GuideSpeechTestSucceeded, "stopped playback cannot publish a false success"); Check(!cfg.OnboardingVerifiedLessons.Contains("speech.test"), "retesting clears stale verification until a fresh success"); Click(settings, "PreviewSpeech"); speech.Complete(); Pump(); All<CheckBox>(guide).Single(c => c.Name == "GuideHeardSpeech").IsChecked = true; Click(guide, "GuideNext");
+                Go(guide, "speech.engine"); ((CheckBox)settings.FindControl("UseCloudVoice")).IsChecked = true; Click(guide, "GuideNext"); Check(guide.CurrentLessonId == "speech.provider", "cloud toggle immediately selects the detailed cloud branch");
+                Go(guide, "speech.key"); string resume = guide.CurrentLessonId; guide.Close(); Pump(); Check(cfg.OnboardingState == "deferred" && cfg.OnboardingLessonId == resume, "closing preserves an exact resumable small step"); var saved = pet.Store.Load(); Check(saved.OnboardingLessonId == resume && saved.OnboardingVerifiedLessons.Contains("speech.test"), "small-step progress and test evidence survive settings persistence"); pet.ShowOnboarding(); Pump(); guide = Field<OnboardingWindow>(pet, "guide"); Check(guide.CurrentLessonId == resume, "reopening continues at the saved field"); Click(guide, "GuideLater"); Check(cfg.OnboardingSkippedLessons.Contains(resume) && !cfg.OnboardingCompletedLessons.Contains(resume), "skip never counts as completed or tested");
+                Go(guide, "persona.edit"); ((TextBox)settings.FindControl("PersonaPrompt")).Text = "GUIDE_DRAFT_PRESERVED"; Click(guide, "GuideNext"); Check(((TextBox)settings.FindControl("PersonaPrompt")).Text == "GUIDE_DRAFT_PRESERVED", "small-step navigation preserves unsaved drafts");
+                Go(guide, "chat.resize"); var chat = app.Windows.OfType<ChatWindow>().Single(w => w.IsVisible); Click(guide, "GuideMaximizeChat"); Check(chat.WindowState == WindowState.Maximized && Button(guide, "GuideNext").IsEnabled, "window resize lesson reveals the actual sidebar");
+                Go(guide, "section.create"); Check(!Button(guide, "GuideNext").IsEnabled, "section practice waits for a real new section"); var sidebar = All<ProjectSidebar>(chat).Single(); sidebar.CreateSection("引导演示分区"); Pump(); Check(Button(guide, "GuideNext").IsEnabled, "real sidebar section creation completes the exercise"); Click(guide, "GuideNext");
+                Go(guide, "project.create"); Check(!Button(guide, "GuideNext").IsEnabled, "project practice waits for a real project"); sidebar.CreateProject("引导演示项目", root); Pump(); Check(Button(guide, "GuideNext").IsEnabled, "project creation is permitted during workspace practice");
+                Go(guide, "chat.new"); Click(chat, "WorkspaceConversation"); Check(Button(guide, "GuideNext").IsEnabled, "new conversation exercise observes a new draft in the same window");
+                Go(guide, "chat.work"); var composer = Field<object>(chat, "composer"); composer.GetType().GetMethod("SetMode", hidden).Invoke(composer, new object[] { true }); Pump(); Check(Button(guide, "GuideNext").IsEnabled && chat.CanChooseProject, "working mode practice exposes project selection");
+                Go(guide, "project.choose"); var workspace = Field<ConversationWorkspace>(chat, "workspace"); workspace.FollowProject(pet.Projects.Projects.Last()); chat.RefreshAppearance(); Pump(); Check(Button(guide, "GuideNext").IsEnabled, "choosing a real project completes selection practice");
+                Go(guide, "chat.private"); composer.GetType().GetMethod("SetMode", hidden).Invoke(composer, new object[] { false }); Pump(); Check(Button(guide, "GuideNext").IsEnabled && !chat.CanChooseProject && !All<Button>(chat).Any(b => b.Name == "ConversationProjectPicker"), "ordinary chat practice hides and disables project selection");
+                Go(guide, "work.prompt"); Check(settings.FindControl("AgentSystemPrompt").IsVisible, "shared work prompt guide opens its dedicated settings tab");
+                Go(guide, "speech.intro"); settings.Width = 700; settings.Height = 430; Pump(); Check(guide.ActualHeight <= DesktopInterop.WorkArea(new System.Windows.Interop.WindowInteropHelper(guide).Handle).Height && All<ScrollViewer>(guide).Any(), "guide remains scrollable within a small desktop work area"); Capture(guide, Path.Combine(root, "guide-small-card.png")); Capture(settings, Path.Combine(root, "guide-small-settings.png"));
+                Go(guide, "finish.summary"); Capture(guide, Path.Combine(root, "guide-summary.png")); Check(All<TextBlock>(guide).Any(t => t.Text.Contains("实际验证 1")), "summary distinguishes actual verification from reading and skipped items"); Click(guide, "GuideNext"); Check(cfg.OnboardingState == "completed" && !pet.GuideWorkspacePractice && settings.FindControl("SettingsNavigation").IsEnabled, "finishing restores all guide locks");
+                Console.WriteLine("Detailed guide tests: " + checks + " passed; screenshots: " + root); return 0;
+            }
+            catch (Exception e) { Console.WriteLine("FAIL " + e); return 1; }
+            finally { foreach (var g in app.Windows.OfType<OnboardingWindow>().ToArray()) g.Close(); foreach (var c in app.Windows.OfType<ChatWindow>().ToArray()) c.Close(); if (pet != null) pet.Close(); app.Shutdown(); }
+        }
+        sealed class HeldSpeech : IReplySpeech { TaskCompletionSource<bool> pending; public int Calls; public Task SpeakAsync(string text, PetSettings cfg, CancellationToken token) { Calls++; pending = new TaskCompletionSource<bool>(); return pending.Task; } public void Complete() { if (pending != null) pending.TrySetResult(true); } public void Stop() { Complete(); } public void SetVolume(int volume) { } public void Dispose() { Complete(); } }
+        sealed class Api : IConversationApi { public Task<string> ChatAsync(ConnectionSettings s, IList<ChatMessage> m, CancellationToken t) { throw new Exception("Unexpected network test"); } public Task<string> TranscribeAsync(ConnectionSettings s, byte[] data, CancellationToken t) { throw new Exception("Unexpected recording"); } public Task<byte[]> SpeechAsync(ConnectionSettings s, string voice, string text, CancellationToken t) { throw new Exception("Unexpected cloud request"); } public void Dispose() { } }
+    }
+}

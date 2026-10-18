@@ -27,7 +27,7 @@ namespace Dafeiyu.Tests
             {
                 string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"task-binding-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
                 var session=new ConversationSession(new Api(),new Speech(),()=>null);var model=new AgentSessionModel("chat-1","project-1","conversation-1");var sessionStore=new AgentSessionStore(Path.Combine(root,"sessions"));session.ConfigureKernelSession(model,sessionStore);
-                PetSettings cfg=new PetSettings{ReadReplies=false,SaveChatHistory=false,AgentEnabled=true,AgentWorkspace=root};cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture";
+                PetSettings cfg=new PetSettings{ReadReplies=false,SaveChatHistory=true,AgentEnabled=true,AgentWorkspace=root};cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture";
                 session.SendTextAsync("hello",cfg,"pet").GetAwaiter().GetResult();
                 Check(model.Projection.DeliveredCount==1 && model.Projection.Step==1,"real conversation input is admitted and closes one kernel step");
                 Check(sessionStore.Load("project-1","conversation-1").Projection.DeliveredCount==1,"real conversation input is persisted in the kernel session store");

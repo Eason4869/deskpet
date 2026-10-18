@@ -99,7 +99,7 @@ namespace Dafeiyu
         internal void SetTools(IEnumerable<AgentToolEvent> tools) { ToolEvents=tools==null?null:tools.Select(t=>t.Copy()).ToList(); }
         internal void SetAttachments(IEnumerable<ChatAttachment> files) { Attachments=files==null?null:files.Select(f=>f.Copy()).ToList(); }
         internal void SetReasoning(string text,long milliseconds) { Reasoning=text??"";ReasoningMilliseconds=milliseconds; }
-        internal void StartProcessing(bool workMode) { WorkMode=workMode;ProcessingStartedAt=DateTime.UtcNow;ProcessingMilliseconds=0; }
+        internal void StartProcessing(bool workMode,DateTime? startedAt=null) { WorkMode=workMode;ProcessingStartedAt=startedAt??DateTime.UtcNow;ProcessingMilliseconds=0; }
         internal void SetProcessingTime(long milliseconds) { ProcessingMilliseconds=Math.Max(0,milliseconds); }
         public string ProcessingLabel(DateTime now)
         {
@@ -135,7 +135,18 @@ namespace Dafeiyu
         {
             lock(gate) { string turn=Guid.NewGuid().ToString("N");var u=new ChatMessage("user",text,turn,"complete",source);var a=new ChatMessage("assistant","",turn,"pending",source);messages.Add(u);messages.Add(a);Trim();user=u.Copy();return a.Copy(); }
         }
-        public ChatMessage StartProcessing(string id,bool workMode) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode);return message.Copy();} }
+        // Show accepted guidance immediately; its stable turn ID lets delivery reuse
+        // this receipt without sending an unpaired user message in normal history.
+        public ChatMessage RegisterGuidance(string id,string text,IEnumerable<ChatAttachment> attachments)
+        {
+            lock(gate){string turn="guide-"+id;var user=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(user==null){user=new ChatMessage("user",text,turn,"complete","guide");messages.Add(user);}else user.Update(text,"complete");user.SetAttachments(attachments);Trim();return user.Copy();}
+        }
+        public ChatMessage BeginGuidance(string id,string text,out ChatMessage user)
+        {
+            lock(gate){string turn="guide-"+id;var u=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(u==null){u=new ChatMessage("user",text,turn,"complete","guide");messages.Add(u);}var reply=messages.Find(m=>m.TurnId==turn && m.Role=="assistant");if(reply==null){reply=new ChatMessage("assistant","",turn,"pending","guide");messages.Insert(messages.IndexOf(u)+1,reply);}else reply.Update("","pending");Trim();user=u.Copy();return reply.Copy();}
+        }
+        public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt);return message.Copy();} }
+        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
         internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.AgentTaskId=taskId;}}
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
