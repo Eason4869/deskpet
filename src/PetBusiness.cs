@@ -167,9 +167,6 @@ namespace Dafeiyu
             lock(gate) {
                 var pairs=new List<ChatMessage>();
                 for(int i=0;i+1<messages.Count;i++) { var u=messages[i];var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { pairs.Add(u.Copy());pairs.Add(a.Copy());i++; } }
-                if(pairs.Count>20)pairs.RemoveRange(0,pairs.Count-20);
-                long characters=pairs.Sum(m=>(long)m.Content.Length);
-                while(pairs.Count>0 && characters>100000){characters-=pairs[0].Content.Length+pairs[1].Content.Length;pairs.RemoveRange(0,2);}
                 result.AddRange(pairs);
             }
             result.Add(new ChatMessage("user", user)); return result;
@@ -188,13 +185,8 @@ namespace Dafeiyu
         public static void BudgetRequest(List<ChatMessage> request)
         {
             Func<ChatMessage,long> size=m=>Encoding.UTF8.GetByteCount(m.Content??"")+ChatAttachment.StoredSize(m.Attachments)+1024;
-            while(request.Sum(size)>7L*1024*1024)
-            {
-                int first=request.FindIndex(m=>m.Role!="system");
-                if(first<0 || first>=request.Count-1)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
-                string turn=request[first].TurnId;request.RemoveAt(first);
-                if(first<request.Count-1 && request[first].Role=="assistant")request.RemoveAt(first);
-            }
+            var current=request.LastOrDefault(m=>m.Role=="user");
+            if(request.Where(m=>m.Role=="system"||Object.ReferenceEquals(m,current)).Sum(size)>7L*1024*1024)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
         }
         public void Clear() { lock(gate)messages.Clear(); }
     }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -63,7 +63,7 @@ namespace Dafeiyu
 
         public void ShowForPet()
         {
-            if(closed || pet.DialogueBusy)return;
+            if(closed || pet.IsUpdating)return;
             if(!IsVisible)invocationPoint=DesktopInterop.Cursor();
             if(!IsVisible){Opacity=0;new WindowInteropHelper(this).EnsureHandle();UpdateLayout();PlaceNearPet();Show();}
             UpdateLayout();PlaceNearPet();Opacity=1;Activate();
@@ -115,7 +115,7 @@ namespace Dafeiyu
             button.MouseEnter+=delegate{selection.Text=label;hint.Text=Description(action);};button.GotKeyboardFocus+=delegate{selection.Text=label;hint.Text=Description(action);};
             button.Click+=delegate
             {
-                if(pet.DialogueBusy){RefreshAvailability();return;}
+                if(pet.IsUpdating){RefreshAvailability();return;}
                 if(interaction)pet.PlayInteraction(action=="sleeping" && pet.IsSleeping?"wake":action);
                 else pet.PlayAction(action,action=="jumping"?.7:2);
                 pet.NotifyGuideInteraction("wheel");Close();
@@ -169,7 +169,7 @@ namespace Dafeiyu
 
         void RefreshAvailability()
         {
-            bool enabled=!pet.DialogueBusy;
+            bool enabled=!pet.IsUpdating;
             foreach(var button in actionButtons)button.IsEnabled=enabled;
             if(!enabled)hint.Text="当前对话或更新结束后，就能继续互动。";
         }

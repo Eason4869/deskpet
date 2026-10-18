@@ -5,8 +5,8 @@ namespace Dafeiyu
 {
     public static class ReleaseInfo
     {
-        public const string AssemblyVersion="0.7.0.0";
-        public const string DisplayVersion="0.7.0";
+        public const string AssemblyVersion="0.8.0.0";
+        public const string DisplayVersion="0.8.0";
         public const string ProductName="桌面伙伴";
         public const string Author="彧晟Eason";
         public const string RepositoryUrl="https://github.com/Eason4869/deskpet";

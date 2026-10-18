@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
@@ -17,7 +17,14 @@ namespace Dafeiyu
             var doc=new FlowDocument{PagePadding=new Thickness(0),FontFamily=family,FontSize=14,Foreground=foreground,ColumnWidth=Double.PositiveInfinity};
             var renderer=new MarkdownDocument(editable);formatted=false;
             foreach(var node in MarkdownContent.Parse(text)){formatted|=Formatted(node);doc.Blocks.Add(renderer.Block(node));}
-            if(doc.Blocks.Count==0)doc.Blocks.Add(new Paragraph{Margin=new Thickness(0)});return doc;
+            if(doc.Blocks.Count==0)doc.Blocks.Add(new Paragraph{Margin=new Thickness(0)});
+            // Markdown parsers discard terminal blank lines; an editable draft must
+            // retain them so the caret can actually stay on the user's new line.
+            var last=doc.Blocks.LastBlock as Paragraph;
+            if(editable){int trailing=0,existing=0;string normalized=(text??"").Replace("\r\n","\n").Replace('\r','\n');for(int i=normalized.Length-1;i>=0&&normalized[i]=='\n';i--)trailing++;
+                if(trailing>0 && last==null){last=new Paragraph{Tag="draft-tail",Margin=new Thickness(0)};doc.Blocks.Add(last);existing=1;}
+                if(last!=null){for(Inline inline=last.Inlines.LastInline;inline is LineBreak;inline=inline.PreviousInline)existing++;for(int i=existing;i<trailing;i++)last.Inlines.Add(new LineBreak());}}
+            return doc;
         }
         static bool Formatted(MarkdownNode node){if(node.Kind!="paragraph" && node.Kind!="text" && node.Kind!="break")return true;foreach(var child in node.Children)if(Formatted(child))return true;return false;}
         internal Block Block(MarkdownNode node)

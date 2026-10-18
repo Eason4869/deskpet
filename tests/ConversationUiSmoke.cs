@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -160,6 +160,6 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> VisualAll<T>(DependencyObject root) where T:DependencyObject{if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in VisualAll<T>(VisualTreeHelper.GetChild(root,i)))yield return child;}
         static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(160)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         static void Wait(Func<bool> ready){var limit=DateTime.UtcNow.AddSeconds(5);while(!ready() && DateTime.UtcNow<limit)Pump();if(!ready())throw new Exception("UI timeout");}
-        static void Save(FrameworkElement w,string path){var bitmap=new RenderTargetBitmap((int)w.ActualWidth,(int)w.ActualHeight,96,96,PixelFormats.Pbgra32);if(w is Window)bitmap.Render(w);else{var visual=new DrawingVisual();using(var drawing=visual.RenderOpen())drawing.DrawRectangle(new VisualBrush(w),null,new Rect(0,0,w.ActualWidth,w.ActualHeight));bitmap.Render(visual);}var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(path))png.Save(stream);}
+        static void Save(FrameworkElement w,string path){w.BringIntoView();var host=Window.GetWindow(w);if(host!=null)host.UpdateLayout();Pump();w.UpdateLayout();if(w.ActualWidth<=0||w.ActualHeight<=0)throw new Exception("Cannot capture unrendered control "+w.Name+" visibility="+w.Visibility+" actual="+w.ActualWidth+","+w.ActualHeight);var bitmap=new RenderTargetBitmap((int)w.ActualWidth,(int)w.ActualHeight,96,96,PixelFormats.Pbgra32);if(w is Window)bitmap.Render(w);else{var visual=new DrawingVisual();using(var drawing=visual.RenderOpen())drawing.DrawRectangle(new VisualBrush(w),null,new Rect(0,0,w.ActualWidth,w.ActualHeight));bitmap.Render(visual);}var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(path))png.Save(stream);}
     }
 }

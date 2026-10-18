@@ -10,7 +10,7 @@ namespace Dafeiyu.Tests
         [STAThread]public static void Main()
         {
             var form=new MenuBlankFixture{Text="DeskPet menu fixture",Location=new System.Drawing.Point(30,40),Size=new System.Drawing.Size(600,450),FormBorderStyle=FormBorderStyle.None,TopMost=true,ShowInTaskbar=false,StartPosition=FormStartPosition.Manual};
-            var timeout=new Timer{Interval=30000};timeout.Tick+=delegate{form.Close();};timeout.Start();Application.Run(form);timeout.Dispose();
+            var timeout=new Timer{Interval=180000};timeout.Tick+=delegate{form.Close();};timeout.Start();Application.Run(form);timeout.Dispose();
         }
     }
 }

@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Dafeiyu
 {
     public sealed class AgentToolDefinition
     {
-        internal string Name,Description;internal bool ReadOnly;internal Dictionary<string,object> Properties;internal string[] Required;
+        internal string Name,Description,ApprovalResource;internal bool ReadOnly;internal Dictionary<string,object> Properties;internal string[] Required;
     }
     // Both protocol schemas and execution's plan-mode policy use this catalogue.
     internal static class AgentToolCatalog
@@ -39,7 +39,7 @@ namespace Dafeiyu
             D("github_comment","向 GitHub Issue 或 PR 添加评论。",false,Fields("number",P("integer","Issue/PR 编号"),"body",P("string","评论正文")),"number","body"),
             D("github_list_pull_requests","列出 GitHub Pull Requests。",true,Fields("state",P("string","open/closed/all"))),
             D("github_create_pull_request","创建 GitHub Pull Request。",false,Fields("title",P("string","标题"),"body",P("string","正文"),"head",P("string","来源分支"),"base",P("string","目标分支")),"title","head","base"),
-            D("spawn_subagent","启动一个受权限约束的子 Agent 会话。",false,Fields("profile",P("string","explore/general"),"input",P("string","子任务输入")),"profile","input"),
+            D("spawn_subagent","启动真正独立的只读 explore worker。最大并行 4、深度 1，不允许写入或终端。",true,Fields("profile",P("string","explore"),"input",P("string","子任务输入")),"profile","input"),
             D("complete_subagent","完成子 Agent 并记录结果。",false,Fields("id",P("string","子 Agent ID"),"result",P("string","结果")),"id","result"),
             D("interrupt_subagent","中断正在运行的子 Agent。",false,Fields("id",P("string","子 Agent ID")),"id")
         };
@@ -48,7 +48,7 @@ namespace Dafeiyu
         internal static void Schemas(bool plan,bool commands,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic,Func<string,bool> enabled=null)
         {
             var a=new List<object>();var b=new List<object>();var all=Definitions.Concat(extra??new AgentToolDefinition[0]);
-            foreach(var d in all.Where(d=>d!=null && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
+            foreach(var d in all.Where(d=>d!=null && d.Name!="complete_subagent" && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
                 var schema=new{type="object",properties=d.Properties??new Dictionary<string,object>(),required=d.Required??new string[0],additionalProperties=false};
                 a.Add(new{type="function",function=new{name=d.Name,description=d.Description??"",parameters=schema}});
                 b.Add(new{name=d.Name,description=d.Description??"",input_schema=schema});

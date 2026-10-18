@@ -15,7 +15,7 @@ namespace Dafeiyu
         public AgentSessionStore(string root){directory=Path.GetFullPath(root);}
         public void Save(AgentSessionModel session)
         {
-            if(session==null)throw new ArgumentNullException("session");string path=PathFor(session.ConversationId),temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
+            if(session==null)throw new ArgumentNullException("session");string path=PathFor(session.ConversationId),temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
             lock(gate){try{
                 byte[] plain;using(var memory=new MemoryStream()){new DataContractJsonSerializer(typeof(AgentSessionModel)).WriteObject(memory,session);plain=memory.ToArray();}
                 if(plain.Length>MaxBytes)throw new SerializationException("会话恢复记录超出大小限制。");var cipher=SecretProtection.Protect(plain);if(cipher.Length>MaxBytes)throw new SerializationException();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -88,6 +88,7 @@ namespace Dafeiyu
             if(kind=="text"){
                 contextCapacity=Ui.Field();contextCapacity.Name="TextModelContextCapacity";contextCapacity.MaxLength=7;contextCapacity.ToolTip="留空使用服务端识别值；可手动填写 1024–2000000 Token";Ui.Label(modelForm,"上下文容量（Token，留空自动）",contextCapacity);
                 contextDetected=Ui.Text("",11,Ui.Muted);contextDetected.Name="DetectedModelContextCapacity";modelForm.Children.Add(contextDetected);
+                AddCapabilityFields();
                 contextCapacity.TextChanged+=delegate{if(updating||selected==null)return;string id=newModel.Text.Trim();int value;if(contextCapacity.Text.Trim().Length==0)selected.ModelContextOverrides.Remove(id);else if(Int32.TryParse(contextCapacity.Text,out value)&&value>=1024&&value<=ModelContextCapacity.Maximum)selected.ModelContextOverrides[id]=value;RefreshContextDescription();RaiseChanged();};
             }
             var removeModel=Ui.Button("移除选中模型");removeModel.Name=N("RemoveTextModel");removeModel.HorizontalAlignment=HorizontalAlignment.Left;removeModel.FontSize=11;removeModel.MinHeight=28;removeModel.Margin=new Thickness(0,6,0,0);removeModel.Click+=delegate {RemoveModel();};detail.Children.Add(removeModel);detail.Children.Add(modelForm);
@@ -118,6 +119,7 @@ namespace Dafeiyu
         {
             if(selected==null || connection==null)return;
             selected.Name=providerName.Text.Trim();selected.Connection=connection.Draft();selected.Connection.ContextWindowTokens=selected.ContextCapacity(selected.Connection.Model);
+            selected.ApplyModelCapabilities(selected.Connection);
             if(includeCurrentModel && kind!="text")selected.Models.Clear();
             if(includeCurrentModel && selected.Connection.Model.Length>0 && !selected.Models.Contains(selected.Connection.Model))selected.Models.Add(selected.Connection.Model);
         }
@@ -205,9 +207,9 @@ namespace Dafeiyu
             refreshModels.IsEnabled=false;refreshModels.Content="获取中…";loading.Visibility=Visibility.Visible;feedback.Foreground=Ui.Muted;feedback.Text="正在获取此服务商的模型列表…";
             try
             {
-                var capacities=new Dictionary<string,int>();IList<string> found;using(var api=new ApiClient(TimeSpan.FromSeconds(15)))found=await api.ListModelsAsync(draft,cancel.Token,capacities);
+                var capacities=new Dictionary<string,int>();var capabilityMetadata=new Dictionary<string,ModelCapabilitySetting>();IList<string> found;using(var api=new ApiClient(TimeSpan.FromSeconds(15)))found=await api.ListModelsAsync(draft,cancel.Token,capacities,capabilityMetadata);
                 if(cancel.IsCancellationRequested || selected!=provider || !SameCatalog(draft,CatalogDraft()) || !IsLoaded || !IsVisible)return;
-                foreach(var pair in capacities)provider.ModelContextWindows[pair.Key]=pair.Value;RefreshContextDescription();RaiseChanged();
+                foreach(var pair in capacities)provider.ModelContextWindows[pair.Key]=pair.Value;provider.ServerCapabilities=capabilityMetadata;provider.ApplyModelCapabilities(provider.Connection);RefreshContextDescription();RaiseChanged();
                 catalogs[provider.Id]=found;catalogConnections[provider.Id]=draft.Copy();RefreshModels();feedback.Foreground=Ui.Muted;feedback.Text=found.Count==0?"服务返回了空模型列表，可继续手动添加。":"已获取 "+found.Count+" 个模型，请点击 + 逐个添加；已配置模型与显示名称保留。";
                 var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=false;
                 if(reveal && discovered.Items.Count>0)Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(IsVisible && selected==provider)discoveryPanel.BringIntoView();}));
@@ -220,7 +222,7 @@ namespace Dafeiyu
             finally{if(fetching==cancel){fetching=null;fetchingProviderId=null;refreshModels.IsEnabled=true;refreshModels.Content="获取模型列表";loading.Visibility=Visibility.Collapsed;}cancel.Dispose();}
         }
         void ValidateContextCapacity(){if(kind!="text"||contextCapacity==null||String.IsNullOrWhiteSpace(contextCapacity.Text))return;int value;if(!Int32.TryParse(contextCapacity.Text,out value)||value<1024||value>ModelContextCapacity.Maximum)throw new InvalidOperationException("模型上下文容量应为 1024–2000000 的整数，或留空自动识别。");}
-        void RefreshContextField(){if(contextCapacity==null||selected==null)return;int value;contextCapacity.Text=selected.ModelContextOverrides.TryGetValue(newModel.Text.Trim(),out value)?value.ToString():"";RefreshContextDescription();}
+        void RefreshContextField(){RefreshCapabilityFields();if(contextCapacity==null||selected==null)return;int value;contextCapacity.Text=selected.ModelContextOverrides.TryGetValue(newModel.Text.Trim(),out value)?value.ToString():"";RefreshContextDescription();}
         void RefreshContextDescription(){if(contextDetected==null||selected==null)return;int value;contextDetected.Text=selected.ModelContextWindows.TryGetValue(newModel.Text.Trim(),out value)?"服务端识别："+value.ToString("N0")+" Token；手动值优先。":"服务端未提供上下文容量，请手动填写；不会根据名称猜测。";}
         void SetDisplayName(string id){string label=modelDisplayName.Text.Trim();if(label.Length==0)selected.ModelDisplayNames.Remove(id);else selected.ModelDisplayNames[id]=label;}
         void AddProvider()
@@ -238,17 +240,17 @@ namespace Dafeiyu
         {
             string value=newModel.Text.Trim();if(value.Length==0){feedback.Text="请先填写完整的模型 ID。";return false;}Capture();
             if(selected.Models.Count>=TextProviderSettings.MaximumModels && !selected.Models.Contains(value)){feedback.Text="每个服务商最多保存 "+TextProviderSettings.MaximumModels+" 个模型。";return false;}
-            if(!selected.Models.Contains(value))selected.Models.Add(value);SetDisplayName(value);selected.Connection.Model=value;connection.SetModel(value);RefreshModels();feedback.Text="已添加到当前服务商；保存后可在对话框切换。";RaiseChanged();return true;
+            if(!selected.Models.Contains(value))selected.Models.Add(value);SetDisplayName(value);SaveCapabilityFields(value);selected.Connection.Model=value;selected.ApplyModelCapabilities(selected.Connection);connection.SetModel(value);RefreshModels();feedback.Text="已添加到当前服务商；保存后可在对话框切换。";RaiseChanged();return true;
         }
         void RemoveModel()
         {
-            var item=models.SelectedItem as ListBoxItem;string value=item==null?null:item.Tag as string;if(value==null)return;selected.Models.Remove(value);selected.ModelDisplayNames.Remove(value);selected.ModelContextWindows.Remove(value);selected.ModelContextOverrides.Remove(value);
+            var item=models.SelectedItem as ListBoxItem;string value=item==null?null:item.Tag as string;if(value==null)return;selected.Models.Remove(value);selected.ModelDisplayNames.Remove(value);selected.ModelContextWindows.Remove(value);selected.ModelContextOverrides.Remove(value);selected.ModelCapabilities.Remove(value);
             if(connection.Draft().Model==value){selected.Connection.Model=selected.Models.Count==0?"":selected.Models[0];connection.SetModel(selected.Connection.Model);}
             updating=true;newModel.Text=selected.Connection.Model;modelDisplayName.Text=selected.ModelDisplayNames.ContainsKey(selected.Connection.Model)?selected.ModelDisplayNames[selected.Connection.Model]:"";updating=false;RefreshModels();RaiseChanged();
         }
         public ConnectionSettings Preview(){return connection.Preview();}
         public void ExpandConnection(){var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=true;}
-        public ConnectionSettings Read(){ValidateContextCapacity();Capture();var result=connection.Read();result.ContextWindowTokens=selected.ContextCapacity(result.Model);return result;}
+        public ConnectionSettings Read(){ValidateContextCapacity();Capture();var result=connection.Read();result.ContextWindowTokens=selected.ContextCapacity(result.Model);selected.ApplyModelCapabilities(result);return result;}
         public TextProviderSettings ReadConnectionProvider(){Capture(false);if(String.IsNullOrWhiteSpace(selected.Name))throw new InvalidOperationException("请填写服务商名称。");return selected.Copy();}
         public void ConnectionSaved(PetSettings settings){baseline=settings.ProviderView(kind).Copy();}
         public List<TextProviderSettings> ReadProviders()

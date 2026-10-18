@@ -10,15 +10,25 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 namespace Dafeiyu
 {
-    public sealed class McpToolDefinition { public string Name,Description;public Dictionary<string,object> InputSchema; }
+    public sealed class McpToolDefinition { public string Name,Description,ApprovalResource;public Dictionary<string,object> InputSchema; }
     public interface IMcpTransport
     {
         Task<McpToolDefinition[]> ListToolsAsync(CancellationToken cancel);
         Task<string> CallAsync(string name,Dictionary<string,object> args,CancellationToken cancel);
     }
-    public sealed class McpHttpTransport : IMcpTransport
+    public sealed class McpHttpTransport : IMcpTransport,IDisposable
     {
         readonly Uri endpoint;readonly HttpClient http;readonly string token;
+        string sessionId="";
+        public async Task InitializeAsync(CancellationToken cancel)
+        {
+            await CallRpcAsync("initialize",new Dictionary<string,object>{{"protocolVersion","2025-03-26"},{"capabilities",new Dictionary<string,object>()},{"clientInfo",new{name="DeskPet",version="1"}}},cancel).ConfigureAwait(false);
+            var payload=new Dictionary<string,object>{{"jsonrpc","2.0"},{"method","notifications/initialized"}};
+            using(var request=CreateRequest(payload))using(var response=await http.SendAsync(request,cancel).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException("MCP 初始化通知失败。");}
+        }
+        HttpRequestMessage CreateRequest(object payload)
+        {var request=new HttpRequestMessage(HttpMethod.Post,endpoint);request.Content=new StringContent(Serialize(payload),Encoding.UTF8,"application/json");request.Headers.Accept.ParseAdd("application/json");request.Headers.Accept.ParseAdd("text/event-stream");if(sessionId.Length>0)request.Headers.Add("Mcp-Session-Id",sessionId);if(!String.IsNullOrEmpty(token))request.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",token);return request;}
+        public void Dispose(){http.Dispose();}
         public McpHttpTransport(Uri endpoint,HttpMessageHandler handler,string token)
         {
             if(endpoint==null)throw new ArgumentNullException("endpoint");this.endpoint=endpoint;this.token=token??"";
@@ -37,13 +47,18 @@ namespace Dafeiyu
         async Task<string> CallRpcAsync(string method,Dictionary<string,object> parameters,CancellationToken cancel)
         {
             var payload=new Dictionary<string,object>{{"jsonrpc","2.0"},{"id",Guid.NewGuid().ToString("N")},{"method",method},{"params",parameters}};
-            using(var request=new HttpRequestMessage(HttpMethod.Post,endpoint)){request.Content=new StringContent(Serialize(payload),Encoding.UTF8,"application/json");if(!String.IsNullOrEmpty(token))request.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",token);using(var response=await http.SendAsync(request,cancel).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException("MCP 请求失败。");return await response.Content.ReadAsStringAsync().ConfigureAwait(false);}}
+            using(var request=CreateRequest(payload))using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,cancel).ConfigureAwait(false)){
+                if(!response.IsSuccessStatusCode)throw new ApiException("MCP 请求失败。");
+                if(response.Content.Headers.ContentType!=null&&response.Content.Headers.ContentType.MediaType=="text/event-stream")throw new ApiException("当前 MCP 连接仅支持 JSON 响应，不支持 SSE。");
+                IEnumerable<string> ids;if(response.Headers.TryGetValues("Mcp-Session-Id",out ids))sessionId=ids.First();
+                using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))using(var output=new MemoryStream()){byte[] buffer=new byte[8192];int read;while((read=await stream.ReadAsync(buffer,0,buffer.Length,cancel).ConfigureAwait(false))>0){if(output.Length+read>2*1024*1024)throw new ApiException("MCP 响应超过 2 MiB。");output.Write(buffer,0,read);}string json=Encoding.UTF8.GetString(output.ToArray());if(GetMap(Deserialize(json),"error")!=null)throw new ApiException("MCP 返回协议错误。");return json;}}
         }
         internal static string ParseToolResult(string json)
         {
-            var root=Deserialize(json);var error=GetMap(root,"error");if(error!=null)throw new ApiException("MCP 工具调用失败："+GetString(error,"message","未知错误"));var result=GetMap(root,"result");var content=GetList(result,"content");
-            foreach(var item in content){var map=item as Dictionary<string,object>;if(map!=null && GetString(map,"type","")=="text")return GetString(map,"text","");}
-            return json;
+            var root=Deserialize(json);var error=GetMap(root,"error");if(error!=null)throw new ApiException("MCP 工具调用失败。");var result=GetMap(root,"result");var content=GetList(result,"content");
+            object failed;if(result!=null&&result.TryGetValue("isError",out failed)&&failed is bool&&(bool)failed)throw new ApiException("MCP 工具返回错误。");
+            if(content.Count==1 && (result==null||!result.ContainsKey("structuredContent"))){var map=content[0] as Dictionary<string,object>;if(map!=null && GetString(map,"type","")=="text")return GetString(map,"text","");}
+            return Serialize(result??root);
         }
         internal static Dictionary<string,object> Deserialize(string json){return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.DeserializeObject(json??"") as Dictionary<string,object>??new Dictionary<string,object>();}
         internal static string Serialize(object value){return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.Serialize(value);}
@@ -102,21 +117,20 @@ namespace Dafeiyu
     }
     public sealed class McpStdioTransport : IMcpTransport, IDisposable
     {
-        readonly string fileName,arguments,workingDirectory;readonly object gate=new object();Process process;McpStdioProtocol protocol;bool disposed;
+        readonly string fileName,arguments,workingDirectory;readonly object gate=new object();WindowsCommandRunner.StdioProcess process;McpStdioProtocol protocol;bool disposed;
         public McpStdioTransport(string fileName,string arguments,string workingDirectory){if(String.IsNullOrWhiteSpace(fileName))throw new ArgumentException("MCP stdio 命令不能为空。");this.fileName=fileName;this.arguments=arguments??"";this.workingDirectory=workingDirectory??"";}
-        public Task<McpToolDefinition[]> ListToolsAsync(CancellationToken cancel){return EnsureProtocol().ListToolsAsync(cancel);}
-        public Task<string> CallAsync(string name,Dictionary<string,object> args,CancellationToken cancel){return EnsureProtocol().CallAsync(name,args,cancel);}
+        public Task<McpToolDefinition[]> ListToolsAsync(CancellationToken cancel){cancel.ThrowIfCancellationRequested();return EnsureProtocol().ListToolsAsync(cancel);}
+        public Task<string> CallAsync(string name,Dictionary<string,object> args,CancellationToken cancel){cancel.ThrowIfCancellationRequested();return EnsureProtocol().CallAsync(name,args,cancel);}
         McpStdioProtocol EnsureProtocol()
         {
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("McpStdioTransport");if(protocol!=null)return protocol;
-                var info=new ProcessStartInfo{FileName=fileName,Arguments=arguments,WorkingDirectory=workingDirectory,UseShellExecute=false,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=false,CreateNoWindow=true};
-                try{process=Process.Start(info);if(process==null)throw new ApiException("MCP stdio 进程启动失败。");process.StandardInput.AutoFlush=true;protocol=new McpStdioProtocol(process.StandardOutput,process.StandardInput);return protocol;}
+                try{process=WindowsCommandRunner.StartStdioRaw(fileName,arguments,workingDirectory);protocol=new McpStdioProtocol(process.Output,process.Input);return protocol;}
                 catch(Exception e){throw new ApiException("MCP stdio 进程启动失败："+e.Message);}
             }
         }
-        public void Dispose(){lock(gate){if(disposed)return;disposed=true;if(process!=null){try{if(!process.HasExited)process.Kill();}catch(Exception){}try{process.Dispose();}catch(Exception){}process=null;}protocol=null;}}
+        public void Dispose(){lock(gate){if(disposed)return;disposed=true;if(process!=null){process.Dispose();process=null;}protocol=null;}}
     }
     public sealed class McpToolAdapter
     {
@@ -128,7 +142,7 @@ namespace Dafeiyu
             foreach(var tool in tools??new McpToolDefinition[0])
             {
                 if(tool==null || !ValidName(tool.Name))continue;
-                string name="mcp_"+tool.Name.Replace("-","_");if(runtime.Has(name))continue;var schema=tool.InputSchema??new Dictionary<string,object>();var properties=McpHttpTransport.GetMap(schema,"properties")??schema;var required=McpHttpTransport.GetList(schema,"required").Select(v=>Convert.ToString(v)).Where(v=>!String.IsNullOrWhiteSpace(v)).ToArray();var definition=new AgentToolDefinition{Name=name,Description=tool.Description??"MCP tool",ReadOnly=false,Properties=properties,Required=required};
+                string name="mcp_"+tool.Name.Replace("-","_");if(runtime.Has(name))continue;var schema=tool.InputSchema??new Dictionary<string,object>();var properties=McpHttpTransport.GetMap(schema,"properties")??schema;var required=McpHttpTransport.GetList(schema,"required").Select(v=>Convert.ToString(v)).Where(v=>!String.IsNullOrWhiteSpace(v)).ToArray();var definition=new AgentToolDefinition{Name=name,Description=tool.Description??"MCP tool",ApprovalResource=tool.ApprovalResource,ReadOnly=false,Properties=properties,Required=required};
                 runtime.Register(definition,(args,context,cancel)=>transport.CallAsync(tool.Name,args??new Dictionary<string,object>(),cancel));output.Add(definition);
             }
             return output.ToArray();

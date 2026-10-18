@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 namespace Dafeiyu
@@ -42,7 +42,7 @@ namespace Dafeiyu
         }
         public PetSettings EffectiveSettings()
         {
-            var cfg=settings().Copy();if(!String.IsNullOrEmpty(Definition.Mode)){cfg.AgentEnabled=Definition.Mode=="work";}cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;cfg.AgentCommandsEnabled=project.CommandsEnabled;cfg.AgentCommandRecipes=project.CommandRecipes;cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentContextTokenLimit=project.ContextTokenLimit;return cfg;
+            var cfg=settings().Copy();if(!String.IsNullOrEmpty(Definition.Mode)){cfg.AgentEnabled=Definition.Mode=="work";}cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;cfg.AgentCommandsEnabled=project.CommandsEnabled;cfg.AgentCommandRecipes=project.CommandRecipes;cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentTerminalPolicy=project.TerminalPolicy;cfg.AgentTrustProjectInstructions=project.TrustProjectInstructions;cfg.AgentGlobalInstructions=project.GlobalInstructions;cfg.AgentSkillsDirectory=project.SkillsDirectory;cfg.AgentContextTokenLimit=project.ContextTokenLimit;return cfg;
         }
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {

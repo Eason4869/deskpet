@@ -12,6 +12,7 @@ namespace Dafeiyu
 {
     public sealed partial class OnboardingWindow : Window
     {
+        CancellationTokenSource approvalDemo;bool approvalDemoReviewed;
         readonly PetWindow pet; readonly SettingsWindow settings; readonly TextBlock title, instruction, status, progress; readonly StackPanel actions; readonly Button next, back; readonly ComboBox contents;
         readonly DispatcherTimer readiness = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) }; readonly List<GuideFocusScope> otherScopes = new List<GuideFocusScope>();
         GuideFocusScope focusScope, petScope; FrameworkElement target; AdornerLayer layer; GuideAdorner highlight; Expander networkPreview; bool networkWasExpanded;
@@ -38,6 +39,13 @@ namespace Dafeiyu
             Loaded += delegate { pet.SetGuideLock(true); Navigate(); readiness.Start(); }; readiness.Tick += delegate { RefreshReadiness(); }; pet.GuideInteractionCompleted += InteractionCompleted; settings.Closing += OwnerClosing; settings.LocationChanged += OwnerMoved; settings.SizeChanged += OwnerSized; Closing += ClosingGuide; Closed += ClosedGuide;
         }
         static Button Small(string text, string name) { var b = Ui.Button(text); b.Name = name; b.FontSize = 11; b.MinHeight = 27; b.Padding = new Thickness(2, 3, 7, 3); b.Margin = new Thickness(0); b.Background = Brushes.Transparent; b.BorderBrush = Brushes.Transparent; b.Foreground = Ui.Muted; return b; }
+        async void ShowApprovalDemo()
+        {
+            if(approvalDemo!=null)return;var cancel=new CancellationTokenSource();approvalDemo=cancel;
+            try{var request=new AgentApprovalRequest{ToolName="审批练习（不会执行）：exec_command",Action="shell",Resource="仅演示：隔离 fixture 目录；不会运行",ProjectId="guide-demo",TaskId="guide-demo",CallId=Guid.NewGuid().ToString("N"),Arguments="{\"command\":\"Write-Output 'DeskPet approval demo'\",\"working_directory\":\"guide-demo\",\"timeout_seconds\":5}"};await new AgentApprovalController(this).ApproveAsync(request,cancel.Token);if(cancel.IsCancellationRequested||finished)return;approvalDemoReviewed=true;status.Text="已完成审批练习；没有执行命令，不保存授权，也不代表终端已验证。";RefreshReadiness();}
+            catch(OperationCanceledException){}finally{if(ReferenceEquals(approvalDemo,cancel))approvalDemo=null;cancel.Dispose();}
+        }
+        void CancelApprovalDemo(){var cancel=approvalDemo;if(cancel!=null)cancel.Cancel();}
         void ActionButton(string caption, string name, Action action) { var b = Ui.Button(caption); b.Name = name; b.Margin = new Thickness(0, 0, 0, 7); b.HorizontalAlignment = HorizontalAlignment.Left; b.Click += delegate { try { action(); } catch (Exception e) { status.Text = "操作未完成：" + e.Message; } }; actions.Children.Add(b); }
         bool Applies(OnboardingLesson lesson) { if (lesson.Branch == "cloud" || lesson.Branch == "system") { var toggle = settings.FindControl("UseCloudVoice") as CheckBox; return (toggle != null ? toggle.IsChecked == true : pet.Settings.UseCloudVoice) == (lesson.Branch == "cloud"); } if (lesson.Branch == "unknown-context") { return pet.Settings.Text == null || pet.Settings.Text.ContextWindowTokens <= 0; } return true; }
         bool CanLeave() { if (pet.LiveActive || pet.DictationActive) { status.Text = "请先挂断通话或停止／取消录音，再离开当前步骤。"; return false; } return true; }
@@ -63,6 +71,7 @@ namespace Dafeiyu
         void RefreshReadiness()
         {
             if (finished || navigating) return; bool ready = true; string reason = ""; string a = Current.Action; var control = a == "nonempty" || a == "url" ? FindTarget(Current.Target) : null;
+            if(a=="approval-demo"){ready=approvalDemoReviewed;reason="请主动体验审批练习，或跳过；练习不会执行命令。";}
             if (a == "gesture") { ready = gestureDone; reason = "请完成本步实操，或跳过。"; }
             if (a == "nonempty") { var t = control as TextBox; var c = control as ComboBox; ready = t != null ? !String.IsNullOrWhiteSpace(t.Text) : c != null && !String.IsNullOrWhiteSpace(c.Text); reason = "请填写本项，未准备好可跳过。"; }
             if (a == "url") { Uri uri; ready = control is TextBox && Uri.TryCreate(((TextBox)control).Text, UriKind.Absolute, out uri) && (uri.Scheme == "http" || uri.Scheme == "https"); reason = "请输入有效的 http 或 https 接口地址。"; }
@@ -73,7 +82,7 @@ namespace Dafeiyu
             if (a == "text-test") { ready = textTestSucceeded; reason = "请显式发送文字测试，或跳过；保存不能代替真实回复验证。"; }
             if (a == "live-test") { ready = pet.Live.SuccessfulConnections > liveRevision && !pet.LiveActive && heard.IsChecked == true; reason = "请显式连接，成功后挂断；未测试可跳过。"; }
             var chat = Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible);
-            if (a == "dictation-test") { ready = pet.Dictation.SuccessfulRecognitions > dictationRevision && !pet.DictationActive && chat != null && Walk(chat).OfType<TextBox>().Any(t => t.Name == "MessageInput" && !String.IsNullOrWhiteSpace(t.Text)); reason = "请实际录音并停止，等待识别文字填入草稿，或跳过。"; }
+            if (a == "dictation-test") { ready = pet.Dictation.SuccessfulRecognitions > dictationRevision && !pet.DictationActive && chat != null && Walk(chat).OfType<MarkdownEditor>().Any(t => t.Name == "MessageInput" && !String.IsNullOrWhiteSpace(t.Text)); reason = "请实际录音并停止，等待识别文字填入草稿，或跳过。"; }
             if (a == "wide") { ready = chat != null && chat.ActualWidth >= 960; reason = "请拉宽或最大化完整对话窗口，直到左侧栏出现。"; }
             if (a == "section") { ready = pet.Projects.Sections.Count > sectionCount; reason = "请从分区 … 新建分区并保存，或跳过。"; }
             if (a == "project") { ready = pet.Projects.Projects.Count > projectCount; reason = "请点击分区 + 新建项目并保存，或跳过。"; }
@@ -88,13 +97,13 @@ namespace Dafeiyu
         {
             if (finished || navigating) return; navigating = true; try
             {
-                ReleaseScopes(); RestoreNetworkPreview(); RemoveHighlight(); pet.SetGuideInteraction(""); gestureDone = false; status.Text = ""; actions.Children.Clear(); heard = null; textTestSucceeded = false; liveRevision = pet.Live.SuccessfulConnections; dictationRevision = pet.Dictation.SuccessfulRecognitions; if (textTest != null) textTest.Cancel(); pet.GuideWorkspacePractice = Step == 14 || Current.Action == "live-test";
+                CancelApprovalDemo();approvalDemoReviewed=false;ReleaseScopes(); RestoreNetworkPreview(); RemoveHighlight(); pet.SetGuideInteraction(""); gestureDone = false; status.Text = ""; actions.Children.Clear(); heard = null; textTestSucceeded = false; liveRevision = pet.Live.SuccessfulConnections; dictationRevision = pet.Dictation.SuccessfulRecognitions; if (textTest != null) textTest.Cancel(); pet.GuideWorkspacePractice = Step == 14 || Current.Action == "live-test";
                 if (PetLesson) { Owner = pet; settings.Hide(); pet.SetGuideInteraction(new[] { "drag", "menu", "wheel", "click", "double-click" }[Step - 3]); } else if (Step == 14) { Owner = pet; settings.Hide(); pet.ShowChat(); Owner = (Window)Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible) ?? pet; } else { if (!settings.IsVisible) settings.Show(); Owner = settings; SelectSettingsPage(); }
                 title.Text = Current.Title; instruction.Text = Current.Text; TargetName = Current.Target; var lessons = OnboardingLessons.All.Where(l => l.Chapter == Step && (l == Current || Applies(l))).ToArray(); progress.Text = "第 " + (Step + 1) + " / 17 章 · 小步骤 " + (Array.IndexOf(lessons, Current) + 1) + " / " + lessons.Length; updatingContents = true; contents.SelectedIndex = Step; updatingContents = false; back.IsEnabled = index > 0; next.Content = Current.Action == "summary" ? "完成引导" : Current.Action.StartsWith("ai") || new[] { "persona", "hotkey", "greeting", "work-save", "prompt-save", "network" }.Contains(Current.Action) ? "保存并继续" : "下一步";
                 if (Step == 14) { sectionCount = pet.Projects.Sections.Count; projectCount = pet.Projects.Projects.Count; var practice = Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible); draftId = practice == null ? null : practice.ConversationId; if (Current.Action == "wide") ActionButton("最大化完整对话窗口", "GuideMaximizeChat", delegate { var chat = Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible); if (chat != null) { chat.WindowState = WindowState.Maximized; chat.Activate(); } }); if (Current.Action == "section") ActionButton("打开分区更多菜单", "GuideOpenSectionMore", delegate { Click(FindTarget("SectionMore_projects")); }); }
                 if (Current.Action == "speech-test") { speechRevision = settings.GuideSpeechTestRevision; heard = new CheckBox { Name = "GuideHeardSpeech", Content = "我确实听到了测试声音", Margin = new Thickness(0, 8, 0, 6) }; heard.Checked += delegate { RefreshReadiness(); }; heard.Unchecked += delegate { RefreshReadiness(); }; actions.Children.Add(heard); }
                 if (Current.Action == "live-test") { heard = new CheckBox { Name = "GuideConfirmedLive", Content = "我已确认字幕与返回声音", Margin = new Thickness(0, 8, 0, 6) }; heard.Checked += delegate { RefreshReadiness(); }; actions.Children.Add(heard); }
-                if (Current.Action == "text-test") ActionButton("发送文字测试（可能消耗额度）", "GuideTestText", TestText); if (Current.Action == "summary") foreach (var group in OnboardingLessons.All.GroupBy(l => l.Chapter)) { var text = Ui.Text(OnboardingLessons.Chapters[group.Key] + "：完成 " + group.Count(l => pet.Settings.OnboardingCompletedLessons.Contains(l.Id)) + "，跳过 " + group.Count(l => pet.Settings.OnboardingSkippedLessons.Contains(l.Id)) + "，实际验证 " + group.Count(l => pet.Settings.OnboardingVerifiedLessons.Contains(l.Id)), 11, Ui.Muted); text.Margin = new Thickness(0, 0, 0, 5); actions.Children.Add(text); }
+                if(Current.Action=="approval-demo")ActionButton("审批练习（不执行命令）","GuideApprovalDemo",ShowApprovalDemo);if (Current.Action == "text-test") ActionButton("发送文字测试（可能消耗额度）", "GuideTestText", TestText); if (Current.Action == "summary") foreach (var group in OnboardingLessons.All.GroupBy(l => l.Chapter)) { var text = Ui.Text(OnboardingLessons.Chapters[group.Key] + "：完成 " + group.Count(l => pet.Settings.OnboardingCompletedLessons.Contains(l.Id)) + "，跳过 " + group.Count(l => pet.Settings.OnboardingSkippedLessons.Contains(l.Id)) + "，实际验证 " + group.Count(l => pet.Settings.OnboardingVerifiedLessons.Contains(l.Id)), 11, Ui.Muted); text.Margin = new Thickness(0, 0, 0, 5); actions.Children.Add(text); }
                 Locate(); if (Current.Action != "speech-test") { var preview = settings.FindControl("PreviewSpeech"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
                 if (Current.Action != "live-test") { var preview = settings.FindControl("PreviewLive"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
                 foreach (Window w in Application.Current.Windows.Cast<Window>().ToArray()) if (w != this && w != settings && w != pet && !(Step == 14 && w is ChatWindow) && w.Content is UIElement) otherScopes.Add(new GuideFocusScope((UIElement)w.Content)); Persist();
@@ -111,6 +120,7 @@ namespace Dafeiyu
                 case 12: settings.SelectCompanionSection(2); break;
                 case 13: settings.SelectPage(7); break;
                 case 15:
+                    if(Current.Id.StartsWith("mcp.",StringComparison.Ordinal)){settings.SelectMcpSettings();break;}
                     if (settings.FindControl("WorkSettingsPanel") == null) settings.SelectWorkSettings();
                     Click(settings.FindControl(Current.Id.StartsWith("work.prompt") ? "WorkSettingsPromptTab" : "WorkSettingsGeneralTab"));
                     break;
@@ -137,7 +147,7 @@ namespace Dafeiyu
                 case 11: return "GuideLiveProviderSection";
                 case 12: return "GuideGreetingSection";
                 case 13: return TargetName.StartsWith("Hotkey") ? "GuideShortcut" + TargetName.Substring(6) : TargetName;
-                case 15: return "WorkSettingsPanel";
+                case 15: return Current.Id.StartsWith("mcp.",StringComparison.Ordinal)?"McpSettingsPanel":"WorkSettingsPanel";
                 default: return "UpdateNetwork";
             }
         }
@@ -164,7 +174,7 @@ namespace Dafeiyu
         void RestoreNetworkPreview() { if (networkPreview != null) { networkPreview.IsExpanded = networkWasExpanded; networkPreview = null; } }
         void Persist() { pet.Settings.OnboardingLessonId = CurrentLessonId; pet.Settings.OnboardingStep = Step; pet.SaveSettings(); }
         void Finish(string state) { if (finished) return; pet.Settings.OnboardingState = state; Persist(); finished = true; Close(); }
-        void ClosingGuide(object sender, CancelEventArgs e) { if (!finished) { pet.Settings.OnboardingState = "deferred"; Persist(); finished = true; } }
+        void ClosingGuide(object sender, CancelEventArgs e) { CancelApprovalDemo();if (!finished) { pet.Settings.OnboardingState = "deferred"; Persist(); finished = true; } }
         void ClosedGuide(object sender, EventArgs args) { readiness.Stop(); if (textTest != null) textTest.Cancel(); pet.GuideWorkspacePractice = false; RestoreNetworkPreview(); ReleaseScopes(); RemoveHighlight(); pet.SetGuideLock(false); pet.SetGuideInteraction(""); pet.GuideInteractionCompleted -= InteractionCompleted; settings.Closing -= OwnerClosing; settings.LocationChanged -= OwnerMoved; settings.SizeChanged -= OwnerSized; if (!ownerClosing && !settings.IsVisible && settings.IsLoaded) settings.Show(); }
     }
 }

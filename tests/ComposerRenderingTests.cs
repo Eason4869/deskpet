@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -58,6 +59,22 @@ namespace Dafeiyu.Tests
                     Check(input.Text.Contains("**测试新增**"),"editing rendered bold serializes valid Markdown");
                     input.Text="";input.Selection.Text="**现场输入**";Pump();Check(input.Document.Blocks.OfType<Paragraph>().Any(p=>p.Inlines.OfType<Bold>().Any()) && !new TextRange(input.Document.ContentStart,input.Document.ContentEnd).Text.Contains("**"),"typed Markdown transforms in the real input document");
                     input.Undo();input.Redo();Pump();Check(input.Text.Contains("现场输入"),"native undo and redo retain edited content");
+                    input.Text="**测试**";input.Focus();input.CaretIndex=input.Text.Length;
+                    EditingCommands.EnterLineBreak.Execute(null,input);Pump();
+                    input.Selection.Text="下一行";Pump();
+                    Check(input.Text.Contains("\n") && input.Text.Contains("下一行"),"bold draft keeps a real newline and following input");
+                    Check(!input.Text.Contains("下一行**"),"newline ends bold formatting for subsequent input");
+                    input.Text="**测试**";input.CaretIndex=input.Text.Length;TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input," "));Pump();TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input,"普通文字"));Pump();
+                    Check(input.Text=="**测试** 普通文字","space ends bold formatting without removing preceding emphasis: "+input.Text);
+                    foreach(string formattedDraft in new[]{"*斜体*","~~删除线~~","`代码`"}){
+                        input.Text=formattedDraft;input.CaretIndex=input.Text.Length;TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input," "));Pump();TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input,"普通"));Pump();
+                        Check(input.Text==formattedDraft+" 普通","space ends inline style: "+formattedDraft+" actual="+input.Text);
+                    }
+                    input.Text="**测试**\n";input.CaretIndex=input.Text.Length;TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input,"新行"));Pump();
+                    Check(input.Text.Contains("\n") && input.Text.Contains("新行"),"rendering and editing retains trailing draft newline");
+                    input.Text="**测试**";input.CaretIndex=input.Text.Length;EditingCommands.EnterParagraphBreak.Execute(null,input);Pump();TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input,"段落"));Pump();
+                    Check(input.Text.Contains("\n")&&!input.Text.Contains("段落**"),"paragraph break also resets inline emphasis");
+                    input.Text="# 标题";input.CaretIndex=input.Text.Length;EditingCommands.EnterParagraphBreak.Execute(null,input);Pump();TextCompositionManager.StartComposition(new TextComposition(InputManager.Current,input,"正文"));Pump();Check(input.Document.Blocks.OfType<Paragraph>().Last().FontWeight==FontWeights.Normal&&input.Text.Contains("\n\n正文"),"newline after heading starts an ordinary paragraph");
                     input.Text="";input.RaiseEvent(new DataObjectPastingEventArgs(new DataObject(DataFormats.UnicodeText,"https://github.com/Eason4869/deskpet"),false,DataFormats.UnicodeText){RoutedEvent=DataObject.PastingEvent});input.Selection.Text="https://github.com/Eason4869/deskpet";Pump();Check(input.Document.Blocks.OfType<Paragraph>().SelectMany(p=>p.Inlines.OfType<Hyperlink>()).Any(),"pasted URL renders as an editable link without changing the clipboard");
                     input.Text="https://www.bilibili.com/";Pump();Check(All<FrameworkElement>(input).Any(v=>v.Name=="MarkdownGlobeIcon") && !All<Border>(input).Any(b=>b.Name=="MarkdownDomainChip"),"editor uses a globe and clickable URL without a domain chip");var website=input.Document.Blocks.OfType<Paragraph>().SelectMany(p=>p.Inlines.OfType<Hyperlink>()).Single();Check(website.NavigateUri.AbsoluteUri=="https://www.bilibili.com/" && new TextRange(website.ContentStart,website.ContentEnd).Text.Contains("https://www.bilibili.com/"),"website link preserves its visible address and navigation target");
                     Capture(host,host is QuickChatWindow?"quick-links.png":"full-links.png");

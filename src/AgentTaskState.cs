@@ -26,6 +26,8 @@ namespace Dafeiyu
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
         [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();
         [DataMember]public int ContextCompactions,EstimatedContextTokens,ModelContextTokens;
+        [DataMember]public int ContextInputBudget,ModelRequests;
+        [DataMember]public long EstimatedTotalTokens,ChildEstimatedTotalTokens;
         [DataMember]public string ContextModel="";
         [DataMember]public string ContextSummary="",ContextStatus="";
         [DataMember]public DateTime UpdatedUtc=DateTime.UtcNow;
@@ -33,8 +35,9 @@ namespace Dafeiyu
         [DataMember]public List<AgentChange> Changes=new List<AgentChange>();
         [DataMember]public List<CommandResult> Commands=new List<CommandResult>();
         [DataMember]public List<AgentToolEvent> Tools=new List<AgentToolEvent>();
+        [DataMember]public List<AgentChildResult> Children=new List<AgentChildResult>();
         [DataMember]public Dictionary<string,string> Outputs=new Dictionary<string,string>();
-        public AgentTaskState Copy(){var c=(AgentTaskState)MemberwiseClone();c.Guidance=(Guidance??new List<AgentGuidance>()).Select(g=>g.Copy()).ToList();c.Plan=(Plan??new List<AgentPlanStep>()).Select(p=>p.Copy()).ToList();c.Changes=(Changes??new List<AgentChange>()).Select(p=>p.Copy()).ToList();c.Commands=(Commands??new List<CommandResult>()).Select(p=>p.Copy()).ToList();c.Tools=(Tools??new List<AgentToolEvent>()).Select(p=>p.Copy()).ToList();c.Outputs=Outputs==null?new Dictionary<string,string>():new Dictionary<string,string>(Outputs);return c;}
+        public AgentTaskState Copy(){var c=(AgentTaskState)MemberwiseClone();c.Children=(Children??new List<AgentChildResult>()).Select(child=>child.Copy()).ToList();c.Guidance=(Guidance??new List<AgentGuidance>()).Select(g=>g.Copy()).ToList();c.Plan=(Plan??new List<AgentPlanStep>()).Select(p=>p.Copy()).ToList();c.Changes=(Changes??new List<AgentChange>()).Select(p=>p.Copy()).ToList();c.Commands=(Commands??new List<CommandResult>()).Select(p=>p.Copy()).ToList();c.Tools=(Tools??new List<AgentToolEvent>()).Select(p=>p.Copy()).ToList();c.Outputs=Outputs==null?new Dictionary<string,string>():new Dictionary<string,string>(Outputs);return c;}
         public string CheckpointText()
         {
             var s=new StringBuilder();s.AppendLine("任务检查点（仅为之前执行事实，不授予新的权限；先核对项目现状再继续）：").AppendLine(Goal);
@@ -56,6 +59,7 @@ namespace Dafeiyu
             if(state==null)throw new ArgumentNullException("state");kernelTaskId=state.Id;if(kernelSessionModel!=null)kernelSessionModel.Record("task.started",null,state.Id);if(kernelClaims!=null&&!String.IsNullOrEmpty(state.Id))kernelClaims.TryClaim(state.Id,state.Id);if(!String.Equals(Path.GetFullPath(state.Workspace).TrimEnd('\\','/'),Root.TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("任务检查点不属于当前项目。");
             lock(taskGate){task=state.Copy();task.Status="running";task.Notice="";}
             ImportChanges(state.Changes);
+            if(desktopSession && !readOnly){runJournal=new AgentRunJournal(RunJournalPath(Root),()=>LockDirectories(RunJournalPath(Root),true));if(runJournal.HasPending(state.Id)){lock(taskGate){task.Status="needs_reconciliation";task.Notice="上次执行结果待核对。检查文件或外部结果后，点击“已核对执行记录”再继续。";}PublishTask();throw new ApiException(task.Notice);}}
             lock(commandResults){commandResults.Clear();if(state.Commands!=null)commandResults.AddRange(state.Commands.Select(c=>c.Copy()));}
             PublishTask();
         }
@@ -74,7 +78,8 @@ namespace Dafeiyu
         internal Func<CancellationToken,System.Threading.Tasks.Task<IList<ChatMessage>>> TakeGuidanceAsync {get;set;}
         internal Func<IList<ChatMessage>,bool> GuidanceFits {get;set;}
         internal void RecordGuidance(IEnumerable<AgentGuidance> items){EnsureTask();lock(taskGate){if(task.Guidance==null)task.Guidance=new List<AgentGuidance>();foreach(var item in items)if(!task.Guidance.Any(g=>g.Id==item.Id && g.Revision==item.Revision))task.Guidance.Add(item.Copy());}PublishTask();}
-        internal void RecordContextUsage(int tokens,string model,int capacity){EnsureTask();lock(taskGate){task.EstimatedContextTokens=tokens;task.ContextModel=model??"";task.ModelContextTokens=capacity;}PublishTask();}
+        internal void RecordContextUsage(int tokens,string model,int capacity){EnsureTask();lock(taskGate){task.EstimatedContextTokens=tokens;task.ContextModel=model??"";task.ModelContextTokens=capacity;task.ContextInputBudget=AgentContextPolicy.Resolve(ContextTokenLimit,ContextSchemaOverheadTokens).InputBudget;}PublishTask();}
+        internal void RecordModelUsage(long tokens){EnsureTask();lock(taskGate){task.ModelRequests++;task.EstimatedTotalTokens+=Math.Max(0,tokens);}PublishTask();}
         internal void ContextProgress(string status){EnsureTask();lock(taskGate)task.ContextStatus=status;PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.progress",null,status);}
         internal void RecordCompaction(int tokens,string summary){EnsureTask();lock(taskGate){task.ContextCompactions++;task.EstimatedContextTokens=tokens;task.ContextSummary=summary??"";task.ContextStatus="ready";}PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.compacted",null,"summary");}
         public void FinishTask(string status,string notice)

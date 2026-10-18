@@ -8,6 +8,8 @@
 
 当前正式版本为 **[0.7.0](https://github.com/Eason4869/deskpet/releases/tag/v0.7.0)**，提供 Windows 安装版、便携版和 macOS 双架构预览。以下新界面与操作说明以 Windows 版为准；macOS 为独立预览客户端，功能差异见下方平台说明。
 
+**dev 开发版本：[0.8.0 源码标签](https://github.com/Eason4869/deskpet/tree/v0.8.0)**，包含 Agent 与互动改进，使用流程见 [工作、互动与工具使用](docs/agent-workflows.md)。此标签不代表正式发布，当前预览保持不变。
+
 ## 选一位伙伴
 
 无需接入 AI，伙伴也能看向鼠标、散步、打招呼，接受摸头和投喂，或在忙碌时安静陪着你。

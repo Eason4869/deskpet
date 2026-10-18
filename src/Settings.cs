@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -34,6 +34,11 @@ namespace Dafeiyu
         [DataMember] public string BaseUrl { get; set; }
         [DataMember] public string Model { get; set; }
         [DataMember] public int ContextWindowTokens {get;set;}
+        internal int RequestContextCapacity {get;set;}
+        [DataMember] public CapabilitySupport ToolSupport {get;set;}
+        [DataMember] public CapabilitySupport ImageSupport {get;set;}
+        [DataMember] public CapabilitySupport MetadataToolSupport {get;set;}
+        [DataMember] public CapabilitySupport MetadataImageSupport {get;set;}
         [DataMember] public string EncryptedKey { get; set; }
         [DataMember] public string Protocol { get; set; }
         [DataMember] public bool StreamReplies { get; set; }
@@ -58,7 +63,7 @@ namespace Dafeiyu
         }
         public ConnectionSettings Copy()
         {
-            return new ConnectionSettings { BaseUrl = BaseUrl, Model = Model, ContextWindowTokens=ContextWindowTokens, EncryptedKey = EncryptedKey, Protocol = Protocol, StreamReplies=StreamReplies, UseProxy = UseProxy, ProxyAddress=ProxyAddress };
+            return new ConnectionSettings { BaseUrl = BaseUrl, Model = Model, ContextWindowTokens=ContextWindowTokens, RequestContextCapacity=RequestContextCapacity, ToolSupport=ToolSupport, ImageSupport=ImageSupport, MetadataToolSupport=MetadataToolSupport, MetadataImageSupport=MetadataImageSupport, EncryptedKey = EncryptedKey, Protocol = Protocol, StreamReplies=StreamReplies, UseProxy = UseProxy, ProxyAddress=ProxyAddress };
         }
         public void Normalize() { BaseUrl = (BaseUrl ?? "").Trim(); Model = (Model ?? "").Trim(); EncryptedKey = EncryptedKey ?? ""; Protocol = String.IsNullOrWhiteSpace(Protocol) ? "auto" : Protocol; ProxyAddress=ProxyConfiguration.Normalize(ProxyAddress); }
     }
@@ -101,6 +106,13 @@ namespace Dafeiyu
         [DataMember] public Dictionary<string,string> ModelDisplayNames { get; set; }
         [DataMember] public Dictionary<string,int> ModelContextWindows=new Dictionary<string,int>();
         [DataMember] public Dictionary<string,int> ModelContextOverrides=new Dictionary<string,int>();
+        [DataMember] public string CapabilityEndpoint="";
+        [DataMember] public Dictionary<string,ModelCapabilitySetting> ServerCapabilities=new Dictionary<string,ModelCapabilitySetting>();
+        [DataMember] public Dictionary<string,ModelCapabilitySetting> ModelCapabilities=new Dictionary<string,ModelCapabilitySetting>();
+        public ModelCapabilitySetting Capabilities(string model)
+        {ModelCapabilitySetting value;return ModelCapabilities!=null && ModelCapabilities.TryGetValue(model??"",out value)&&value!=null?value.Copy():new ModelCapabilitySetting();}
+        public void ApplyModelCapabilities(ConnectionSettings target)
+        {var caps=Capabilities(target.Model);target.ToolSupport=caps.Tools;target.ImageSupport=caps.Images;ModelCapabilitySetting server;server=ServerCapabilities!=null&&ServerCapabilities.TryGetValue(target.Model??"",out server)?server:null;target.MetadataToolSupport=server==null?CapabilitySupport.Unknown:server.Tools;target.MetadataImageSupport=server==null?CapabilitySupport.Unknown:server.Images;}
         public int ContextCapacity(string model){int value;if(ModelContextOverrides!=null && ModelContextOverrides.TryGetValue(model,out value))return value;return ModelContextWindows!=null && ModelContextWindows.TryGetValue(model,out value)?value:0;}
         public TextProviderSettings() { Id=Guid.NewGuid().ToString("N");Name="自定义服务";Connection=new ConnectionSettings();Models=new List<string>();ModelDisplayNames=new Dictionary<string,string>(); }
         public void Normalize()
@@ -116,13 +128,20 @@ namespace Dafeiyu
             if(selected.Length>0 && selected.Length<=256 && !clean.Contains(selected)) { if(clean.Count>=MaximumModels)clean.RemoveAt(clean.Count-1);clean.Add(selected); }
             if(!clean.Contains(selected))Connection.Model=clean.Count>0?clean[0]:"";
             Models=clean;
+            string endpoint=Connection.BaseUrl.TrimEnd('/')+"|"+(Connection.Protocol=="auto"?"openai":Connection.Protocol);
+            if(!String.IsNullOrEmpty(CapabilityEndpoint)&&CapabilityEndpoint.EndsWith("|auto",StringComparison.Ordinal))CapabilityEndpoint=CapabilityEndpoint.Substring(0,CapabilityEndpoint.Length-4)+"openai";
+            if(!String.IsNullOrEmpty(CapabilityEndpoint) && CapabilityEndpoint!=endpoint){ServerCapabilities=new Dictionary<string,ModelCapabilitySetting>();ModelCapabilities=new Dictionary<string,ModelCapabilitySetting>();ModelContextWindows=new Dictionary<string,int>();ModelContextOverrides=new Dictionary<string,int>();}
+            CapabilityEndpoint=endpoint;
+            ModelCapabilities=(ModelCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>clean.Contains(p.Key)&&p.Value!=null).ToDictionary(p=>p.Key,p=>new ModelCapabilitySetting{Tools=AgentCapabilityResolver.Valid(p.Value.Tools),Images=AgentCapabilityResolver.Valid(p.Value.Images)});
+            ServerCapabilities=(ServerCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).Take(1000).ToDictionary(p=>p.Key,p=>new ModelCapabilitySetting{Tools=AgentCapabilityResolver.Valid(p.Value.Tools),Images=AgentCapabilityResolver.Valid(p.Value.Images)});
+            ApplyModelCapabilities(Connection);
             var labels=new Dictionary<string,string>(StringComparer.Ordinal);
             if(ModelDisplayNames!=null)foreach(var pair in ModelDisplayNames){string label=(pair.Value ?? "").Trim();if(clean.Contains(pair.Key) && label.Length>0){if(label.Length>80)label=label.Substring(0,80);labels[pair.Key]=label;}}
             ModelDisplayNames=labels;
             ModelContextWindows=ModelContextCapacity.Clean(ModelContextWindows,clean);ModelContextOverrides=ModelContextCapacity.Clean(ModelContextOverrides,clean);Connection.ContextWindowTokens=ContextCapacity(Connection.Model);
         }
         public string DisplayName(string model) {string label;return ModelDisplayNames!=null && model!=null && ModelDisplayNames.TryGetValue(model,out label) && !String.IsNullOrWhiteSpace(label)?label:model ?? "";}
-        public TextProviderSettings Copy() { return new TextProviderSettings {Id=Id,Name=Name,BrandId=BrandId,ModelContextWindows=ModelContextCapacity.Copy(ModelContextWindows),ModelContextOverrides=ModelContextCapacity.Copy(ModelContextOverrides),ModelDisplayNames=ModelDisplayNames==null?new Dictionary<string,string>():new Dictionary<string,string>(ModelDisplayNames),Connection=(Connection ?? new ConnectionSettings()).Copy(),Models=Models==null?new List<string>():new List<string>(Models)}; }
+        public TextProviderSettings Copy() { return new TextProviderSettings {Id=Id,Name=Name,BrandId=BrandId,CapabilityEndpoint=CapabilityEndpoint,ServerCapabilities=(ServerCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelCapabilities=(ModelCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelContextWindows=ModelContextCapacity.Copy(ModelContextWindows),ModelContextOverrides=ModelContextCapacity.Copy(ModelContextOverrides),ModelDisplayNames=ModelDisplayNames==null?new Dictionary<string,string>():new Dictionary<string,string>(ModelDisplayNames),Connection=(Connection ?? new ConnectionSettings()).Copy(),Models=Models==null?new List<string>():new List<string>(Models)}; }
         public override string ToString() {return Name;}
     }
 
@@ -167,6 +186,11 @@ namespace Dafeiyu
         [DataMember] public bool AgentCommandsEnabled {get;set;}
         [DataMember] public string AgentCommandRecipes {get;set;}
         [DataMember] public int AgentCommandTimeoutSeconds {get;set;}
+        [DataMember] public AgentTerminalPolicy AgentTerminalPolicy {get;set;}
+        [DataMember] public bool AgentTrustProjectInstructions {get;set;}
+        [DataMember] public string AgentGlobalInstructions {get;set;}
+        [DataMember] public string AgentSkillsDirectory {get;set;}
+        [DataMember] public List<McpServerConfiguration> McpServers {get;set;}
         [DataMember] public bool AgentFullAccess { get; set; }
         [DataMember] public bool AgentBackupFiles { get; set; }
         [DataMember] public bool ShowPredictedMessages {get;set;}
@@ -260,6 +284,8 @@ namespace Dafeiyu
         public void Normalize()
         {
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
+            var mcpIds=new HashSet<string>();McpServers=(McpServers??new List<McpServerConfiguration>()).Where(c=>c!=null).Take(16).Select(c=>{var copy=c.Copy();if(String.IsNullOrWhiteSpace(copy.Id)||copy.Id.Length>80||!mcpIds.Add(copy.Id)){copy.Id=Guid.NewGuid().ToString("N");mcpIds.Add(copy.Id);}return copy;}).ToList();
+            if(!Enum.IsDefined(typeof(AgentTerminalPolicy),AgentTerminalPolicy))AgentTerminalPolicy=AgentTerminalPolicy.Disabled;
             if(OnboardingState!="new" && OnboardingState!="deferred" && OnboardingState!="skipped" && OnboardingState!="completed")OnboardingState="completed";
             if(FollowUpBehavior!="steer")FollowUpBehavior="queue";
             if(String.IsNullOrWhiteSpace(AgentWorkspace))AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository=(GitHubRepository??"").Trim();GitHub=GitHub??new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};GitHub.Normalize();
@@ -323,7 +349,7 @@ namespace Dafeiyu
             EnsureTextProviders();
             var provider=TextProviders.Find(p=>p.Id==providerId);
             if(provider==null || !provider.Models.Contains(model ?? ""))return false;
-            provider.Connection.Model=model;provider.Connection.ContextWindowTokens=provider.ContextCapacity(model);Text=provider.Connection.Copy();ActiveTextProviderId=provider.Id;return true;
+            provider.Connection.Model=model;provider.Connection.ContextWindowTokens=provider.ContextCapacity(model);provider.ApplyModelCapabilities(provider.Connection);Text=provider.Connection.Copy();ActiveTextProviderId=provider.Id;return true;
         }
         public PetSettings ProviderView(string kind)
         {
@@ -361,7 +387,7 @@ namespace Dafeiyu
             if(VoiceProfiles!=null)foreach(var pair in VoiceProfiles)if(pair.Value!=null)voiceProfiles[pair.Key]=pair.Value.Copy();
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandsEnabled=AgentCommandsEnabled,AgentCommandRecipes=AgentCommandRecipes,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
+            return new PetSettings { OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandsEnabled=AgentCommandsEnabled,AgentCommandRecipes=AgentCommandRecipes,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
                 AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,

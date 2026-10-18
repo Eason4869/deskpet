@@ -14,7 +14,7 @@ namespace Dafeiyu.Tests
             Run("display retains earlier turns while model context uses last ten",delegate {
                 var log=new ConversationLog();for(int i=0;i<12;i++)log.Commit("u"+i,"a"+i);
                 Check(log.Messages.Count==24,"earlier display turns were lost");
-                var request=log.ForRequest("persona","new");Check(request.Count==22 && request[1].Content=="u2","model context is not last ten pairs");
+                var request=log.ForRequest("persona","new");Check(request.Count==26 && request[1].Content=="u0","request retains stored complete pairs for budget selection");
             });
             Run("pending turns restore as interrupted and never enter model context",delegate {
                 var log=new ConversationLog();log.Commit("ok","answer");ChatMessage user;var partial=log.BeginTurn("cancel","text",out user);log.Update(partial.Id,"partial","pending");
@@ -43,8 +43,8 @@ namespace Dafeiyu.Tests
                 var log=new ConversationLog();log.Commit("old",new string('界',2800000));log.Commit("new","answer");Check(log.Messages.Count==2 && log.Messages[0].Content=="new","oversized turn survived or trimming split it");
             });
             Run("cancel retains partial display but excludes incomplete pair from context",delegate { CancelRetainsAsync().GetAwaiter().GetResult(); });
-            Run("model context drops oldest complete pairs to bound large requests",delegate {
-                var log=new ConversationLog();for(int i=0;i<3;i++)log.Commit("u"+i,new string('a',45000));var request=log.ForRequest("","new");Check(request.Count==5 && request[0].Content=="u1","large complete context was not bounded by whole pair");
+            Run("request passes complete history to the shared context budget",delegate {
+                var log=new ConversationLog();for(int i=0;i<3;i++)log.Commit("u"+i,new string('a',45000));var request=log.ForRequest("","new");Check(request.Count==7 && request[0].Content=="u0","complete history was discarded before budget selection");
             });
             Run("stream updates same id and cancelled partial survives restart",delegate { StreamingCancelAsync().GetAwaiter().GetResult(); });
             Run("failed stream retains partial and safe error status",delegate { StreamingErrorAsync().GetAwaiter().GetResult(); });

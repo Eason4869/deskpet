@@ -18,6 +18,7 @@ internal sealed class WorkSettingsView : StackPanel
         owner = controller; host = window; Name = "WorkSettings"; Spacing = 14;
         var settings = owner.Settings; bool supported = OperatingSystem.IsWindows();
         Children.Add(Ui.Text("工作设置", 20)); Children.Add(notice);
+        Children.Add(Ui.Text("每条命令确认、MCP 连接及技能配置目前由 Windows 经典界面提供；本跨平台界面尚未提供这些配置入口。系统沙箱保持禁用。", 12));
         if (!supported) Children.Add(Ui.Text("macOS 版暂不支持文件 Agent；专属设置可查看，暂不能使用。", 12));
         var permission = new ComboBox { Name = "AgentAccess", ItemsSource = new[] { "完整访问", "仅工作目录" }, SelectedIndex = settings.AgentFullAccess ? 0 : 1, IsEnabled = supported, HorizontalAlignment = HorizontalAlignment.Stretch };
         permission.SelectionChanged += (_, _) => { if (permission.SelectedIndex < 0) return; bool full = permission.SelectedIndex == 0; if (settings.AgentFullAccess == full) return; settings.AgentFullAccess = full; Save(); };
@@ -34,9 +35,9 @@ internal sealed class WorkSettingsView : StackPanel
         var backup = Ui.Check("5. 写文件前保留原文件备份", settings.AgentBackupFiles, value => { if (settings.AgentBackupFiles == value) return; settings.AgentBackupFiles = value; Save(); }); backup.Name = "AgentBackupFiles"; backup.IsEnabled = supported; Children.Add(backup);
         var openBackup = Ui.AsyncButton("打开备份目录", OpenBackupAsync, owner.Error); openBackup.Name = "OpenAgentBackups"; openBackup.IsEnabled = supported; Children.Add(openBackup);
         Children.Add(Ui.Text("完整访问时，备份在原文件所在目录的 .deskpet-agent-backups；仅工作目录时，备份集中在工作目录中。", 12));
-        var context = new NumericUpDown { Name = "AgentContextTokenLimit", Minimum = 8192, Maximum = 131072, Value = settings.AgentContextTokenLimit, IsEnabled = supported };
+        var context = new NumericUpDown { Name = "AgentContextTokenLimit", Minimum = 8192, Maximum = 2000000, Value = settings.AgentContextTokenLimit, IsEnabled = supported };
         context.ValueChanged += (_, _) => { if (context.Value is not { } value || settings.AgentContextTokenLimit == (int)value) return; settings.AgentContextTokenLimit = (int)value; Save(); };
-        Children.Add(Ui.Field("6. 上下文预算（tokens）", context));
+        Children.Add(Ui.Field("6. 未知模型上下文容量兜底（已知容量跟随模型配置）", context));
         Children.Add(Ui.Text("自动压缩旧上下文；任务持续到完成或手动停止。", 12));
         var detail = Ui.Check("7. 显示详细工作过程", settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
     }

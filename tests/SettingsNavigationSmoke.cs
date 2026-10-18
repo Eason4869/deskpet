@@ -26,8 +26,8 @@ namespace Dafeiyu.Tests
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();Pump();
                 settings=new SettingsWindow(pet);settings.Show();Pump();
                 var nav=(ListBox)settings.FindControl("SettingsNavigation");
-                Check(nav.Items.Count==5,"five primary settings destinations");
-                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","快捷键","关于"}),"navigation combines companion and persona");
+                Check(nav.Items.Count==6,"six primary settings destinations including MCP");
+                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","快捷键","关于","MCP 扩展"}),"navigation combines companion and persona");
                 bool guide=false;settings.GuideRequested+=delegate {guide=true;};Click(settings,"OpenOnboarding");Check(guide,"sidebar guide entry invokes guide event");
                 settings.SelectPage(2);Pump();var model=(TextBox)settings.FindControl("TextProviderName");string original=model.Text;model.Text="navigation-draft";
                 settings.SelectPage(3);Pump();Check(settings.FindControl("TranscriptionModel")!=null && nav.SelectedIndex==1,"legacy ASR route opens AI secondary page");

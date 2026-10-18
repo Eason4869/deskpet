@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -23,14 +23,14 @@ namespace Dafeiyu.Tests
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;ChatWindow chat=null;
             try{
                 string output=Path.Combine(Directory.GetCurrentDirectory(),"work","agent-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(output);string project=Path.Combine(output,"project");Directory.CreateDirectory(project);File.WriteAllText(Path.Combine(project,"one.txt"),"before",new UTF8Encoding(false));
-                var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=project,AgentCommandsEnabled=true,ReadReplies=false,GreetingEnabled=false,AutoUpdate=false};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture";
+                var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=project,AgentCommandsEnabled=true,ReadReplies=false,GreetingEnabled=false,AutoUpdate=false};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture";cfg.Text.ToolSupport=CapabilitySupport.Supported;
                 cfg.AgentCommandRecipes=new JavaScriptSerializer().Serialize(new[]{new AgentCommand{Id="check",Executable=Assembly.GetExecutingAssembly().Location,Arguments=new[]{"--command-fixture"},Workspace=project}});
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(output,"data","settings.json")),null);
-                var session=new ConversationSession(new Model(),new Speech(),()=>null,new HistoryStore(Path.Combine(output,"data","history")));
+                var model=new Model();var session=new ConversationSession(model,new Speech(),()=>null,new HistoryStore(Path.Combine(output,"data","history")));
                 session.SelectPersona(pet.Skin.Id);typeof(PetWindow).GetField("conversation",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,session);
                 var panelType=typeof(PetWindow).Assembly.GetType("Dafeiyu.AgentTaskPanel");Check(panelType!=null,"new task controls are available without replacing the chat layout");
                 chat=new ChatWindow(pet);chat.Show();Pump();Check(All<Expander>(chat).Any(p=>p.Name=="AgentTaskDetails"),"full chat mounts the additive task panel");
-                var send=session.SendTextAsync("修改 one.txt 并执行检查",cfg,pet.Skin.Name);Wait(()=>All<TextBlock>(chat).Any(t=>t.Name=="ContextCompactionLabel" && t.Text=="正在压缩，请稍后"));Check(true,"compaction in progress displays the requested waiting message");var changeStatus=All<TextBlock>(chat).Single(t=>t.Name=="AgentLiveChangeStatus");string liveChange=String.Join("",changeStatus.Inlines.OfType<System.Windows.Documents.Run>().Select(r=>r.Text));Check(changeStatus.IsVisible && liveChange.Contains("4 个文件已更改"),"running task shows its live change count above the composer");Wait(()=>send.IsCompleted);send.GetAwaiter().GetResult();Pump();Check(!changeStatus.IsVisible,"live change count collapses once the task ends");
+                var send=session.SendTextAsync("修改 one.txt 并执行检查",cfg,pet.Skin.Name);Wait(()=>All<TextBlock>(chat).Any(t=>t.Name=="ContextCompactionLabel" && t.Text=="正在压缩，请稍后"));Check(true,"compaction in progress displays the requested waiting message");var changeStatus=All<TextBlock>(chat).Single(t=>t.Name=="AgentLiveChangeStatus");string liveChange=String.Join("",changeStatus.Inlines.OfType<System.Windows.Documents.Run>().Select(r=>r.Text));Check(changeStatus.IsVisible && liveChange.Contains("4 个文件已更改"),"running task shows its live change count above the composer");model.Release.TrySetResult(true);Wait(()=>send.IsCompleted);send.GetAwaiter().GetResult();Pump();Check(!changeStatus.IsVisible,"live change count collapses once the task ends");
                 var completedTask=session.CurrentAgentTask;var taskButton=All<Button>(chat).Single(b=>b.Name=="WorkspaceTaskDetails");
                 pet.Settings.AgentWorkspace=Path.Combine(output,"other-project");Pump();
                 Check(session.CurrentAgentTask.Id==completedTask.Id && completedTask.Workspace==project && All<TextBlock>(taskButton).Any(t=>t.Text==completedTask.Goal) && !All<Button>(chat).Any(b=>b.Name=="WorkspaceProject"),"sidebar keeps the completed task attached to its actual project");
@@ -79,10 +79,11 @@ namespace Dafeiyu.Tests
         static void Save(Window w,string path){w.UpdateLayout();var image=new RenderTargetBitmap((int)w.ActualWidth,(int)w.ActualHeight,96,96,PixelFormats.Pbgra32);image.Render(w);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var stream=File.Create(path))encoder.Save(stream);}
         sealed class Model:IConversationApi,IAgentConversationApi
         {
+            public readonly TaskCompletionSource<bool> Release=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public async Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> m,AgentWorkspace w,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken token){if(m.Any(x=>x.Role=="user"&&x.Content=="第二次任务")){d("第二次完成");return "第二次完成";}
                 var serializer=new JavaScriptSerializer();await w.ExecuteAsync("update_plan",serializer.Serialize(new{steps=new[]{new{text="修改文件并验证",status="in_progress"}}}),token);
                 await w.ExecuteAsync("read_file","{\"path\":\"one.txt\"}",token);await w.ExecuteAsync("apply_patch",serializer.Serialize(new{edits=new[]{new{path="one.txt",old_text="before",new_text="after"}}}),token);
-                await w.ExecuteAsync("apply_patch",serializer.Serialize(new{edits=new[]{new{path="two.txt",content="second"},new{path="three.txt",content="third"},new{path="four.txt",content="fourth"}}}),token);w.ContextProgress("compacting");await Task.Delay(350,token);w.RecordCompaction(8123,"Fixture retained task facts");
+                await w.ExecuteAsync("apply_patch",serializer.Serialize(new{edits=new[]{new{path="two.txt",content="second"},new{path="three.txt",content="third"},new{path="four.txt",content="fourth"}}}),token);w.ContextProgress("compacting");await AgentAuthorizationService.AwaitCancellation(Release.Task,token);w.RecordCompaction(8123,"Fixture retained task facts");
                 Check((await w.ExecuteAsync("run_command","{\"command_id\":\"check\"}",token)).StartsWith("错误："),"legacy command is refused by the application workspace");await w.ExecuteAsync("update_plan",serializer.Serialize(new{steps=new[]{new{text="修改文件并验证",status="complete"}}}),token);d("文件已修改，项目命令未执行。");return "文件已修改，项目命令未执行。";
             }
             public Task<string> ChatAsync(ConnectionSettings c,IList<ChatMessage>m,CancellationToken t){throw new NotSupportedException();}public Task<string> TranscribeAsync(ConnectionSettings c,byte[]w,CancellationToken t){throw new NotSupportedException();}public Task<byte[]> SpeechAsync(ConnectionSettings c,string v,string x,CancellationToken t){throw new NotSupportedException();}public void Dispose(){}

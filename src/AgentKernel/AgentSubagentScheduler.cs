@@ -8,12 +8,13 @@ namespace Dafeiyu
         readonly AgentSubagentManager manager;readonly int maxConcurrent;readonly object gate=new object();readonly List<AgentSubagentState> queued=new List<AgentSubagentState>();
         public AgentSubagentScheduler(AgentSubagentManager manager,int maxConcurrent){if(manager==null)throw new ArgumentNullException("manager");this.manager=manager;this.maxConcurrent=Math.Max(1,maxConcurrent);}
         public int MaxConcurrent {get{return maxConcurrent;}}
+        public event Action<AgentSubagentState> Started;
         public AgentSubagentState Schedule(string parentId,AgentProfile profile,string input)
         {
             if(profile==null || profile.Mode!="subagent")throw new ArgumentException("只有 subagent Profile 可以作为子 Agent 启动。");
             lock(gate)
             {
-                if(manager.List(parentId).Count(s=>s.Status=="running")<maxConcurrent)return manager.Spawn(parentId,profile,input);
+                if(manager.List(parentId).Count(s=>s.Status=="running")<maxConcurrent){var running=manager.Spawn(parentId,profile,input);if(Started!=null)Started(running);return running;}
                 var state=new AgentSubagentState{Id=Guid.NewGuid().ToString("N"),ParentId=parentId??"",ProfileId=profile.Id,Input=input??"",Status="queued"};queued.Add(state);return state;
             }
         }
@@ -56,7 +57,7 @@ namespace Dafeiyu
         {
             if(manager.List(parentId).Count(s=>s.Status=="running")>=maxConcurrent)return null;
             var next=queued.FirstOrDefault(s=>s.ParentId==(parentId??""));if(next==null)return null;queued.Remove(next);
-            return manager.StartQueued(next);
+            var running=manager.StartQueued(next);if(Started!=null)Started(running);return running;
         }
     }
 }

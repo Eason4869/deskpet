@@ -13,17 +13,21 @@ namespace Dafeiyu
             this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
         }
         public int OpenCount {get{lock(gate)return workspaces.Count;}}
+        public event Action StateChanged;
+        public IAgentApprovalProvider ApprovalProvider {get;set;}
+        public McpConnectionManager McpConnections {get;set;}
+        void NotifyState(){var changed=StateChanged;if(!disposed && changed!=null)changed();}
         public IList<ConversationWorkspace> OpenWorkspaces {get{lock(gate)return workspaces.ToArray();}}
         public bool Busy {get{lock(gate)return workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
         {
             if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
-            var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);lock(gate)workspaces.Add(workspace);return workspace;
+            var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);workspace.Session.ApprovalProvider=ApprovalProvider;workspace.Session.McpConnections=McpConnections;workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;lock(gate)workspaces.Add(workspace);return workspace;
         }
         public async Task CloseWorkspaceAsync(string id)
         {
             ConversationWorkspace workspace;lock(gate){workspace=workspaces.SingleOrDefault(w=>w.Id==id);if(workspace!=null)workspaces.Remove(workspace);}
-            if(workspace!=null)await workspace.CloseAsync().ConfigureAwait(false);
+            if(workspace!=null){workspace.Session.StateChanged-=NotifyState;workspace.Queue.Changed-=NotifyState;await workspace.CloseAsync().ConfigureAwait(false);NotifyState();}
         }
         public async Task SaveAllAsync()
         {
@@ -38,7 +42,7 @@ namespace Dafeiyu
         public void Dispose()
         {
             if(disposed)return;disposed=true;ConversationWorkspace[] snapshot;lock(gate){snapshot=workspaces.ToArray();workspaces.Clear();}
-            foreach(var workspace in snapshot)workspace.Dispose();
+            foreach(var workspace in snapshot){workspace.Session.StateChanged-=NotifyState;workspace.Queue.Changed-=NotifyState;workspace.Dispose();}
         }
     }
 }

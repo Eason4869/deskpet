@@ -86,7 +86,7 @@ namespace Dafeiyu
         {
             return new StringContent(new JavaScriptSerializer { MaxJsonLength = 32*1024*1024 }.Serialize(value), Encoding.UTF8, "application/json");
         }
-        public async Task<IList<string>> ListModelsAsync(ConnectionSettings settings,CancellationToken cancel,Dictionary<string,int> contextWindows=null)
+        public async Task<IList<string>> ListModelsAsync(ConnectionSettings settings,CancellationToken cancel,Dictionary<string,int> contextWindows=null,Dictionary<string,ModelCapabilitySetting> capabilities=null)
         {
             // Listing models must work before the user has selected a model.
             var probe=settings.Copy();probe.Model="model-catalog";
@@ -114,6 +114,7 @@ namespace Dafeiyu
                                     string id=((string)value).Trim();
                                     if(id.Length==0 || id.Length>256 || id.IndexOfAny(new[]{'\r','\n','\t'})>=0)continue;
                                     if(contextWindows!=null){int capacity=ModelContextCapacity.Read(item);if(capacity>0)contextWindows[id]=capacity;}
+                                    if(capabilities!=null)capabilities[id]=ModelCapabilitySetting.Read(item);
                                     models.Add(id);if(models.Count>=1000)return new List<string>(models);
                                 }
                                 if(!json.TryGetValue("has_more",out raw) || !Object.Equals(raw,true))return new List<string>(models);
@@ -128,6 +129,11 @@ namespace Dafeiyu
                 catch(OperationCanceledException){if(cancel.IsCancellationRequested)throw;throw new ApiException("获取模型列表超时，可点击刷新重试或手动添加。");}
             }
         }
+        internal static Dictionary<string,object> PlainRequestBody(ConnectionSettings settings,IList<object> messages,string system,bool stream)
+        {
+            var body=new Dictionary<string,object>{{"model",settings.Model},{"messages",messages},{"stream",stream}};
+            if(settings.Protocol=="anthropic"){body["system"]=system;body["max_tokens"]=AgentContextPolicy.Resolve(ModelContextCapacity.Budget(settings,settings.RequestContextCapacity>0?settings.RequestContextCapacity:8192)).OutputReserve;}return body;
+        }
         public async Task<string> ChatAsync(ConnectionSettings settings, IList<ChatMessage> messages, CancellationToken cancel)
         { return await ChatReplyAsync(settings,messages,null,cancel).ConfigureAwait(false); }
         public Task<string> ChatWithReasoningAsync(ConnectionSettings settings,IList<ChatMessage> messages,Action<string> onDelta,Action<string> onReasoning,bool stream,CancellationToken cancel)
@@ -138,7 +144,8 @@ namespace Dafeiyu
             string system=""; bool anthropic=settings.Protocol=="anthropic";
             foreach (ChatMessage message in messages)
             { if(anthropic && message.Role=="system") system+=message.Content+"\n"; else serialized.Add(new { role=message.Role,content=ChatAttachment.Content(message,anthropic) }); }
-            object body=anthropic ? (object)new { model=settings.Model,messages=serialized,system=system.Trim(),max_tokens=settings.ContextWindowTokens>0?Math.Min(4096,settings.ContextWindowTokens/4):4096,stream=false } : new {model=settings.Model,messages=serialized,stream=false};
+            object body=PlainRequestBody(settings,serialized,system.Trim(),false);
+            if(!AgentContextBudget.FitsWireBytes(body))throw new ApiException("对话请求超过附件或上下文字节预算，请减少附件或压缩历史。");
             using (var request = Request(settings, ChatPath(settings), Json(body)))
             {
                 byte[] bytes = await SendAsync(settings,request, MaxJsonBytes, cancel).ConfigureAwait(false);
@@ -176,7 +183,8 @@ namespace Dafeiyu
             var serialized = new List<object>(); string system = ""; bool anthropic = settings.Protocol == "anthropic";
             foreach(ChatMessage message in messages)
             { if(anthropic && message.Role == "system") system += message.Content + "\n"; else serialized.Add(new { role = message.Role, content = ChatAttachment.Content(message,anthropic) }); }
-            object body = anthropic ? (object)new { model = settings.Model, messages = serialized, system = system.Trim(), max_tokens = settings.ContextWindowTokens>0?Math.Min(4096,settings.ContextWindowTokens/4):4096, stream = true } : new { model = settings.Model, messages = serialized, stream = true };
+            object body=PlainRequestBody(settings,serialized,system.Trim(),true);
+            if(!AgentContextBudget.FitsWireBytes(body))throw new ApiException("对话请求超过附件或上下文字节预算，请减少附件或压缩历史。");
             using(var request = Request(settings, ChatPath(settings), Json(body)))
             using(var proxyHttp = settings.UseProxy ? ProxyConfiguration.CreateHttpClient(settings.ProxyAddress, false) : null)
             using(var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancel))

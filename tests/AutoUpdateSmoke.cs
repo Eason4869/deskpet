@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -23,7 +23,7 @@ namespace Dafeiyu.Tests
             {
                 string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"auto-update-smoke",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
                 File.Copy(Assembly.GetExecutingAssembly().Location,Path.Combine(directory,UpdateInstall.ExecutableName));
-                pet=new PetWindow(new SpriteAtlas(),new PetSettings{AutoUpdate=false,FollowCursor=false,ReadReplies=false},new SettingsStore(Path.Combine(directory,"data","settings.json")),null);pet.Show();pet.ShowChat();Pump(.2);
+                pet=new PetWindow(new SpriteAtlas(),new PetSettings{AutoUpdate=false,FollowCursor=false,ReadReplies=false,Text=new ConnectionSettings{Model="fixture"}},new SettingsStore(Path.Combine(directory,"data","settings.json")),null);pet.Show();pet.ShowChat();Pump(.2);
                 CoordinatorPackageNames(pet);
                 using(var feed=new Feed())using(var controller=new UpdateCoordinator(pet,feed,job=>{throw new Exception("must not apply while chat is visible");},ReleaseInfo.DisplayVersion))
                 {
@@ -44,11 +44,11 @@ namespace Dafeiyu.Tests
                 }
                 foreach(var chat in app.Windows.OfType<ChatWindow>().ToArray())chat.Close();
                 pet.ShowSettings();Pump(.2);var settings=app.Windows.OfType<SettingsWindow>().Single();
-                settings.SelectPage(6);Pump(.1);Check(pet.CanApplyUpdate(true),"未编辑的关于页允许手动安装");
-                settings.SelectPage(2);Pump(.1);var model=Find<TextBox>(settings,"TextServiceModel");string original=model.Text;model.Text="unsaved-model";
+                settings.SelectPage(6);Pump(.1);if(!pet.CanApplyUpdate(true))Console.WriteLine("Update gate diagnostic: dirty="+settings.HasUnsavedEdits+" busy="+pet.DialogueBusy+" history="+pet.HasHistorySaveWarning+" foreground="+DesktopInterop.ForegroundIsFullScreen()+" drafts="+String.Join(",",app.Windows.OfType<ChatWindow>().Select(w=>w.HasDraft)));Check(pet.CanApplyUpdate(true),"未编辑的关于页允许手动安装");
+                settings.SelectPage(2);settings.FocusGuideTarget("TextProviderName");Pump(.1);var model=Find<TextBox>(settings,"TextProviderName");string original=model.Text;model.Text="unsaved-model";
                 settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"切换到关于页仍保留模型草稿，安装等待保存");
-                settings.SelectPage(2);Pump(.1);model=Find<TextBox>(settings,"TextServiceModel");model.Text=original;
-                var key=Find<PasswordBox>(settings,"TextServiceKey");key.Password="test-only-unsaved-key";settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"密钥草稿也会阻止更新重启");
+                settings.SelectPage(2);Pump(.1);model=Find<TextBox>(settings,"TextProviderName");model.Text=original;
+                settings.FocusGuideTarget("TextServiceKey");Pump(.1);Wait(()=>Find<PasswordBox>(settings,"TextServiceKey")!=null,2);var key=Find<PasswordBox>(settings,"TextServiceKey");key.Password="test-only-unsaved-key";settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"密钥草稿也会阻止更新重启");
                 settings.SelectPage(2);Pump(.1);key.Password="";settings.SelectPage(1);Pump(.1);var prompt=Find<TextBox>(settings,"PersonaPrompt");string persona=prompt.Text;prompt.Text="未保存人格";
                 settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"人格草稿跨页面保留时阻止重启");
                 settings.SelectPage(1);prompt.Text=persona;settings.SelectPage(6);Pump(.1);Check(pet.CanApplyUpdate(true),"恢复全部草稿后允许手动更新");settings.Close();
@@ -149,7 +149,7 @@ namespace Dafeiyu.Tests
                 pet=null;
                 Console.WriteLine("Auto update smoke: "+passed+" passed");return 0;
             }
-            catch(Exception e){Console.WriteLine("FAIL Auto update: "+e.Message);return 1;}
+            catch(Exception e){Console.WriteLine("FAIL Auto update: "+e);return 1;}
             finally{if(pet!=null)pet.Close();app.Shutdown();}
         }
         static void CoordinatorPackageNames(PetWindow pet)

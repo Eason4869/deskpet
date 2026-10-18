@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -425,6 +425,12 @@ namespace Dafeiyu
                     triggerItems.Add(new TriggerItem{Title="计划模式",Hint=WorkSettings.AgentPlanMode?"关闭计划模式":"只分析、读取并提出计划",Icon="target",Action=delegate{SetPlanMode(!WorkSettings.AgentPlanMode);}});
                     triggerItems.Add(new TriggerItem{Title="目标",Hint="设置要持续追求的目标",Icon="target",Action=ShowGoal});
                 }
+            }
+            var cfg=WorkSettings;
+            if(!conversationOnly&&cfg.AgentEnabled&&cfg.AgentTrustProjectInstructions&&AgentCapabilityResolver.Resolve(cfg,null).SupportsTools)
+            {
+                try{var catalog=new AgentSkills(new[]{System.IO.Path.Combine(cfg.AgentWorkspace,".agents","skills"),cfg.AgentSkillsDirectory});foreach(var entry in catalog.Catalog){var name=entry.Name;triggerItems.Add(new TriggerItem{Group="技能",Title=name,Hint=entry.Description,Icon="file",Action=delegate{input.Text="请使用 load_skill 加载技能 "+name+"，按该技能协助完成：";input.CaretIndex=input.Text.Length;input.Focus();}});}}
+                catch(Exception e){status.Text="技能目录未能加载："+e.Message;}
             }
             triggerItems.Add(new TriggerItem{Title="模型",Hint="选择文字模型",Icon="settings",Action=OpenModels});
             triggerItems.Add(new TriggerItem{Title="听写",Hint="语音输入一段文字",Icon="mic",Action=delegate{Try(delegate{dictation.Start(this);recordingTime.Restart();waveform.Clear();});}});

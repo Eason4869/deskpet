@@ -28,10 +28,11 @@ namespace Dafeiyu
         private readonly AboutPanel about;
         private readonly QuietPanel quiet;
         private readonly WorkSettingsPanel work;
+        private readonly McpSettingsPanel mcp;
         private bool refreshing;
         private string displayedSkinId;
         public event Action GuideRequested;
-        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || connections.HasUnsavedChanges || about.HasUnsavedChanges || quiet.HasUnsavedChanges || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString();}}
+        public bool HasUnsavedEdits {get{return (mcp!=null&&mcp.HasUnsavedChanges) || (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || connections.HasUnsavedChanges || about.HasUnsavedChanges || quiet.HasUnsavedChanges || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString();}}
         public SettingsWindow(PetWindow companion)
         {
             pet=companion; Ui.Window(this,"桌面伙伴 · 设置",960,790);
@@ -104,10 +105,10 @@ namespace Dafeiyu
             hello.Children.Add(Ui.Text("可设置 1–1440 分钟；移开焦点后保存并重新计时。问候不会加入聊天记录，也不会自动朗读。",11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
-            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet);work=new WorkSettingsPanel(pet);content=new ContentControl{Name="SettingsContentHost",HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
+            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet);work=new WorkSettingsPanel(pet);mcp=new McpSettingsPanel(pet);content=new ContentControl{Name="SettingsContentHost",HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(12,0,12,0),Padding=new Thickness(0)};
-            string[] navigationLabels={"伙伴","模型配置","工作设置","快捷键","关于"};
-            string[] navigationNames={"CompanionNavigation","AiNavigation","WorkNavigation","QuietNavigation","AboutNavigation"};
+            string[] navigationLabels={"伙伴","模型配置","工作设置","快捷键","关于","MCP 扩展"};
+            string[] navigationNames={"CompanionNavigation","AiNavigation","WorkNavigation","QuietNavigation","AboutNavigation","McpNavigation"};
             for(int index=0;index<navigationLabels.Length;index++)navigation.Items.Add(new ListBoxItem{Name=navigationNames[index],Content=navigationLabels[index],Style=Ui.NavigationItemStyle,Padding=new Thickness(12,12,12,12),Margin=new Thickness(0,0,0,6),FontSize=13});
             var shell=new Grid();shell.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(182)});shell.ColumnDefinitions.Add(new ColumnDefinition());
             var sidebar=new Grid();sidebar.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});sidebar.RowDefinitions.Add(new RowDefinition());sidebar.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
@@ -118,7 +119,7 @@ namespace Dafeiyu
             var guideButton=Ui.Button("配置引导");guideButton.Name="OpenOnboarding";guideButton.HorizontalAlignment=HorizontalAlignment.Left;guideButton.Margin=new Thickness(0,0,0,10);guideButton.Click+=delegate {if(GuideRequested!=null)GuideRequested();};sidebarFooter.Children.Add(guideButton);
             sidebarFooter.Children.Add(Ui.Text("版本 "+ReleaseInfo.DisplayVersion,11,Ui.Muted));Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=GlassSurface.Panel(),BorderBrush=Ui.Brush("#DFFFFFFF"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
-            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){work.RefreshState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;};navigation.SelectedIndex=0;Closed+=delegate {about.Dispose();};
+            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){work.RefreshState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;else if(index==5)content.Content=mcp;};navigation.SelectedIndex=0;Closed+=delegate {mcp.Dispose();about.Dispose();};
             Loaded+=delegate {if(WindowState==WindowState.Normal)DesktopInterop.PlaceBeside(new WindowInteropHelper(this).Handle,new WindowInteropHelper(pet).Handle);};
             RefreshState(); ShowNotice(pet.Notice ?? pet.Store.Warning);
         }
@@ -184,6 +185,7 @@ namespace Dafeiyu
         }
         public void SelectCompanionSection(int index){companionPage.SelectSection(index);navigation.SelectedIndex=0;}
         public void SelectAiSection(int index){aiConfiguration.SelectSection(index);navigation.SelectedIndex=1;}
+        internal void SelectMcpSettings(){navigation.SelectedIndex=5;}
         public void SelectWorkSettings(){work.RefreshState();navigation.SelectedIndex=2;}
         public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
         public bool ValidateGuideNetwork(out string error){return about.ValidateNetwork(out error);}

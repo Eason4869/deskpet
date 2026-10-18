@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Dafeiyu
@@ -25,7 +25,7 @@ namespace Dafeiyu
             add(2, "behavior.size", "调整桌宠大小", "拖动滑块，观察桌宠大小；这是即时生效的设置。保留当前大小也可以，不会要求你修改每个开关。", "SizeSlider", "read", "");
             add(2, "behavior.follow", "选择视线与散步", "“跟随鼠标”控制视线，“散步”控制自动移动，二者独立。可以按工作习惯开关。", "FollowCursor", "read", "");
             add(2, "behavior.wander", "设置自动散步", "不希望伙伴走动时关闭散步；仍可手动拖动。免打扰会暂停散步。", "Wander", "read", "");
-            add(2, "behavior.stumble", "拖放反应", "拖放踉跄控制松手后的反馈，是否有此动作取决于当前外观。关闭不会阻止拖动。", "StumbleEnabled", "read", "");
+            add(2, "behavior.stumble", "拖放反应", "拖放踉跄控制松手后的反馈，是否有此动作取决于当前外观。关闭不会阻止拖动。思考和工作中仍可拖动、点击互动或打开动作轮盘，结束后恢复当前任务动作。", "StumbleEnabled", "read", "");
             add(2, "behavior.sleep", "自动小憩", "开启后，伙伴空闲一段时间可以进入小憩；互动后恢复。引导期间暂停自动小憩，避免遮住实操。", "AutoSleepEnabled", "read", "");
             add(2, "behavior.top", "设置置顶", "需要伙伴显示在其他窗口上方时开启置顶。若挡住内容，可关闭或拖到屏幕边缘。", "Topmost", "read", "");
             add(2, "behavior.startup", "是否开机启动", "只有你主动开启“自启”才会注册启动项。可以保持关闭，之后在此处修改。", "AutoStart", "read", "");
@@ -43,6 +43,7 @@ namespace Dafeiyu
             add(8, "text.add", "逐个添加模型", "在获取结果中点击某个模型右侧的添加按钮，逐个添加。弹出的模型窗口可设置显示名、能力和上下文容量，点击保存或添加确认。没有批量框选。", "DiscoveredTextModels", "read", "");
             add(8, "text.manual", "列表不可用时手动添加", "点击“自定义模型”，输入厂商给出的完整模型 ID。列表查询失败不一定代表该模型不能聊天；不确定时先核对账号权限。", "CustomTextModel", "read", "");
             add(8, "text.capacity", "填写模型上下文容量", "在模型的编辑窗口填写厂商公布的上下文 Token 容量。已识别时可以保留自动值；未知可保留 0，运行时使用工作设置中的兜底值。图像、工具能力也应以实际模型为准。", "TextProviderModels", "read", "");
+            add(8, "text.capabilities", "核对工具与图片能力", "在模型编辑窗口分别选择工具调用、图片理解的自动／支持／不支持。用户设置优先，其次是当前服务返回的明确元数据；都没有时才沿用未经验证的旧兼容判断。更换服务地址会清除旧元数据。开启不代表服务一定可用，也不会扩大项目权限。", "TextProviderModels", "read", "");
             add(8, "text.select", "选择当前使用模型", "在已添加模型中选择一个作为当前模型。切换模型从下一次请求生效；不会自动发送已有草稿。", "TextProviderModels", "read", "");
             add(8, "text.stream", "是否使用流式回复", "开启后文字逐段显示；有些兼容接口仅支持非流式，遇到空回复或协议错误时可关闭重试。", "TextServiceStreamReplies", "read", "");
             add(8, "text.save", "保存文字配置", "“保存并继续”只保存文字服务这一页，不会连带保存尚未完成的识别、朗读或 Live 配置。", "TextProviderModels", "ai0", "");
@@ -115,20 +116,31 @@ namespace Dafeiyu
             add(15, "work.directory", "设置默认工作目录", "相对路径从此目录解析。点击选择文件夹可选实际存在的目录；它不是普通聊天存放路径，也不会把已有项目自动搬走。", "AgentWorkspace", "nonempty", "");
             add(15, "work.access", "选择文件权限范围", "“仅工作目录”限制文件访问边界；“完整文件访问”沿用当前 Windows 账户权限，可访问账户能操作的其他位置，不会提权。根据任务选择，模型能力不会因这个开关变强。", "AgentAccessMode", "read", "");
             add(15, "work.plan", "计划模式只读", "需要先分析时开启计划模式，禁止写文件和打开目录等操作。关闭后才允许执行当前实现支持的修改；停止任务不会撤销已经完成的修改。", "AgentPlanMode", "read", "");
+            add(15, "work.terminal", "终端默认关闭，按条确认", "终端与文件权限分开。关闭时不提供 exec_command；选择每条命令确认后，每次核对命令、目录和超时，以当前账户执行。仅工作目录限制不提供系统级终端隔离，文件与网络均未隔离。系统沙箱不可用，保持禁用，不会自动降级。", "AgentTerminalPolicy", "read", "");
+            add(15, "work.approval", "练习一次审批，不执行命令", "点击下方审批练习，核对示例命令、目录、任务和调用编号，再允许或拒绝。本练习只展示真实确认窗口，不创建进程、不修改文件，不保存可复用授权，也不表示终端已经验证。可跳过。实际命令需在以后每一次请求中重新确认。", "AgentTerminalPolicy", "approval-demo", "");
+            add(15, "work.instructions", "先决定是否信任说明与技能", "仅在信任项目时开启。随后任务可读取项目范围内的 AGENTS.md，/ 菜单列出真实发现的技能；正文按需 load_skill 读取。说明会带来源与校验值，不能覆盖用户要求、扩大工具权限或自动执行脚本。未信任时不加载。", "AgentTrustProjectInstructions", "read", "");
+            add(15, "work.skills", "可选的附加说明与技能目录", "附加说明指定一个允许读取的 UTF-8 文件；附加技能目录只发现目录下有效的 SKILL.md。可留空。不会自动安装技能或运行目录内脚本，保存设置后用于下一次任务。", "AgentSkillsDirectory", "read", "");
             add(15, "work.backup", "保留修改前备份", "建议开启自动备份。完整访问时备份在原文件旁的 .deskpet-agent-backups；受限工作目录时备份位于项目中。文件已被外部更改时会检查冲突，不应无条件覆盖。", "AgentBackupFiles", "read", "");
             add(15, "work.goal", "设置持续目标", "可写入该工作范围后续请求需要遵守的目标。目标是额外提示，不代替本次任务指令；保存不会自动运行。", "AgentGoal", "read", "");
-            add(15, "work.context", "上下文自动跟随模型", "已配置模型容量时自动使用模型能力，并预留输出与工具空间。接近容量会压缩旧内容；界面用量是估算，摘要可能增加模型请求。无需在此重复填写已知模型容量。", "WorkContextSummary", "read", "");
+            add(15, "work.context", "上下文自动跟随模型", "已配置模型容量时自动使用模型能力，并预留输出与工具空间。输入预算会扣除输出、安全、工具与协议开销。接近预算会压缩旧内容，摘要失败保留失败并停止该请求；界面用量是估算，摘要可能增加模型请求。无需在此重复填写已知模型容量。", "WorkContextSummary", "read", "");
             add(15, "work.fallback", "仅未知容量使用兜底值", "只有当前模型没有可用容量时才出现兜底值。按实际模型能力填写 Token 上限，不要填得高于服务能力；更换为已知容量模型后会自动使用其容量。", "AgentContextTokenLimit", "nonempty", "unknown-context");
             add(15, "work.process", "执行过程展开方式", "可控制执行过程是否默认展开。界面与编辑器偏好属于全局设置，项目编辑时需返回全局工作设置修改。", "AgentDetailedProcess", "read", "");
             add(15, "editor.prediction", "显示预测消息", "在编辑器分组选择是否显示预测消息，默认开启。模型会根据最近对话预测下一条输入，可能产生额外请求。预测内容先进入草稿，不会自动发送；不需要时可关闭。", "ShowPredictedMessages", "read", "");
-            add(15, "editor.markdown", "选择输入区编辑格式", "纯文本编辑器默认关闭：直接编辑粗体、标题、列表、代码和链接，隐藏 Markdown 标记。开启后按原始语法编辑。切换保留草稿；只改变输入方式，不会关闭发送后消息的 Markdown 显示。", "PlainTextEditor", "read", "");
+            add(15, "editor.markdown", "选择输入区编辑格式", "纯文本编辑器默认关闭：直接编辑粗体、标题、列表、代码和链接，隐藏 Markdown 标记。行内格式末尾输入空格或换行后，后续文字回到普通格式；代码、列表、引用后的草稿换行会保留。开启后按原始语法编辑。切换保留草稿；只改变输入方式，不会关闭发送后消息的 Markdown 显示。", "PlainTextEditor", "read", "");
             add(15, "editor.context", "显示或隐藏上下文用量", "开启后，模型选择器旁显示用量圆环，可查看上下文估算与压缩预算。关闭只隐藏指示器，不会停用自动压缩。模型容量仍在模型配置中填写。", "ShowContextUsage", "read", "");
             add(15, "editor.send", "选择发送快捷键", "Enter 发送时使用 Shift + Enter 换行；Ctrl + Enter 发送时，单独 Enter 换行。更改后需保存。输入法仍在选字时不会提交消息。按钮发送不受快捷键选择影响。", "SendShortcut", "read", "");
             add(15, "editor.followup", "选择运行中跟进方式", "排队会等本轮完成再处理；引导会继续当前已开始的操作，在下一处可调整的工具或模型请求边界接入纠偏，不取消任务。已经发出的模型请求不能中途修改。运行中 Ctrl + Enter 使用相反方式；停止并立即发送需明确选择。", "FollowUpBehavior", "read", "");
-            add(15, "work.boundary", "确认当前 Agent 能力边界", "当前桌面端支持已接入的文件与目录工具、搜索和文件修改。不能把模型文字里的“已运行”当作执行证据。未接入的项目命令、真实子代理执行、MCP 连接和 GitHub 写操作不会因为提示词而获得；GitHub 读取需实际配置连接。", "WorkSettingsPanel", "read", "");
+            add(15, "work.boundary", "确认当前 Agent 能力边界", "当前桌面端支持已接入的文件与目录工具、搜索和文件修改。不能把模型文字里的“已运行”当作执行证据。终端必须选择按条确认，MCP 必须主动连接，子任务只读，GitHub 需配置实际仓库且写入按次确认。未开放的工具不会因为提示词而获得。", "WorkSettingsPanel", "read", "");
+            add(15, "work.workers", "独立只读子任务", "模型支持工具且开启工作模式时，父任务可以委派真实 explore worker。最多四个并行、一级深度，其余排队；各自拥有历史、工具与预算，并继承父任务拒绝规则。它们不能写文件、执行命令或继续派生。停止父任务也会停止它们；结果与累计用量在任务面板查看。", "WorkSettingsPanel", "read", "");
+            add(15, "work.recovery", "以执行证据核对结果", "任务面板展示真实文件变更、命令退出码、输出和独立 worker 结果。中断后若操作可能已经发生，会显示待核对并停止后续调用；先检查文件或外部结果，再点击已核对执行记录。不会盲目重放旧命令或沿用旧审批。", "WorkSettingsPanel", "read", "");
+            add(15, "work.facts", "项目事实由你手动维护", "任务面板的项目事实可手动新增、编辑和删除，保留来源任务／文件与时间；仅供同项目后续任务引用。删除后不再注入。不会自动沉淀长期记忆，也不会从模型结论推断验证成功。", "WorkSettingsPanel", "read", "");
             add(15, "work.save", "保存工作设置", "点击“保存并继续”验证目录、兜底值等并保存。本步不执行文件工具。保存失败时停留在这里，可以修正或跳过。", "SaveWorkSettings", "work-save", "");
             add(15, "work.prompt", "单独配置工作提示词", "切换到“工作提示词”标签。所有桌宠与项目的工作模式共用它；普通聊天仍使用各自人格。提示词不能扩大文件权限，也不能启用未接入的工具。", "AgentSystemPrompt", "read", "");
             add(15, "work.prompt-save", "保存工作提示词", "可保留默认值，或填写自己的工作风格与结果要求。不能为空。“保存并继续”只保存此标签的工作提示词，不覆盖前面尚未保存的其他设置。", "AgentSystemPrompt", "prompt-save", "");
+            add(15, "mcp.intro", "可选：连接你信任的 MCP 服务器", "不使用扩展可跳过这些步骤。点击添加服务器，填写独立配置。保存和重开应用都不会自动连接；stdio 仅在主动连接时启动所填可执行文件。计划模式不开放 MCP 工具。", "AddMcpServer", "read", "");
+            add(15, "mcp.transport", "核对协议与目标", "当前支持标注的 stdio 和 HTTP JSON 子集，HTTP SSE 不支持。HTTP 填 HTTPS 服务地址；stdio 填已有程序绝对路径、JSON 参数数组和工作目录。不要把密钥写进参数。", "McpServerTransport", "read", "");
+            add(15, "mcp.credentials", "使用独立凭证并保存", "HTTP 凭证单独填写，在本地加密保存，不复用文字模型密钥。手动点击保存配置；有误时先修正。保存成功只证明本地配置保存，不代表连接、工具调用或账号权限已通过验证。", "McpServerKey", "read", "");
+            add(15, "mcp.connect", "主动连接，再查看真实状态", "只有主动点击连接才访问服务器或启动 stdio。连接成功后，新任务才会获得实际工具目录；未知操作按次确认，窗口列出服务器、目标、原始操作和参数。可断开以移除工具并结束本次拥有的 stdio 进程。无服务器可直接跳过，不会标为连接已验证。", "ConnectMcpServer", "read", "");
             add(16, "network.intro", "更新网络与 AI 网络分开", "这里仅控制检查更新与下载更新包。文字、识别、TTS、Live 各自的代理需在各自服务中设置。本引导不会自动检查或安装更新。", "UpdateNetwork", "read", "");
             add(16, "network.route", "选择更新访问方式", "不使用 GitHub 加速、使用 GitHub 加速、使用网络代理三种方式互斥。先选符合网络环境的方式；无需代理时保持直连。", "UpdateNetwork", "read", "");
             add(16, "network.test", "可选：手动测试加速地址", "点击“测试连通性”查询镜像状态与耗时；只有你点击才请求网络，不安装更新。自定义镜像地址应先填写并测试，失败会回退 GitHub 直连。", "TestUpdateMirror", "read", "");

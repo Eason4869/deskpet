@@ -25,7 +25,7 @@ namespace Dafeiyu.Tests
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Process blank=null;Point cursor=DesktopInterop.Cursor();
             try
             {
-                blank=Process.Start(new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"MenuBlankFixture.exe")){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden});Pump(.4);
+                blank=Process.Start(new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"MenuBlankFixture.exe")){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Normal});Pump(.4);
                 string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"menu-smoke-"+Guid.NewGuid().ToString("N"));
                 var settings=new PetSettings{FollowCursor=false,Wander=false,AutoUpdate=false,GreetingEnabled=false,HideOnFullscreen=false,OnboardingState="deferred",OnboardingStep=4};
                 foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
@@ -47,7 +47,7 @@ namespace Dafeiyu.Tests
         }
         static void Exercise(PetWindow pet,Process blank,string scenario,bool guided,string folder)
         {
-            Place(pet,blank);Point target=OpaquePoint(pet);Move(target);Pump(.05);RequireHit(target,new WindowInteropHelper(pet).Handle);
+            pet.SetPaused(true);Place(pet,blank);Point target=OpaquePoint(pet);Move(target);Pump(.05);RequireHit(target,new WindowInteropHelper(pet).Handle);
             mouse_event(8,0,0,0,IntPtr.Zero);Pump(.12);mouse_event(16,0,0,0,IntPtr.Zero);Pump(.8);
             Check(pet.ContextMenu.IsOpen,scenario+": native right click leaves context menu open");
             var appearance=pet.ContextMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="QuickAppearanceMenu");
@@ -58,7 +58,7 @@ namespace Dafeiyu.Tests
             Check(appearance.Items.OfType<MenuItem>().All(m=>m.IsEnabled!=guided),scenario+": submenu action availability is correct");
             Directory.CreateDirectory(folder);var menu=pet.ContextMenu;var bitmap=new RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth),(int)Math.Ceiling(menu.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(menu);
             using(var file=File.Create(Path.Combine(folder,scenario.Replace(' ','-')+".png"))){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(file);}
-            var outside=new Point(80,130);Move(outside);Pump(.03);uint process;GetWindowThreadProcessId(WindowFromPoint(new PointNative{X=80,Y=130}),out process);if(process!=(uint)blank.Id)throw new Exception("Outside click is not on the isolated blank fixture");
+            Point? outside=null;blank.Refresh();var blankBounds=DesktopInterop.Bounds(blank.MainWindowHandle);if(blank.MainWindowHandle==IntPtr.Zero||blankBounds.Width<20||blankBounds.Height<20)blankBounds=new Rect(30,40,600,450);for(double y=blankBounds.Top+25;y<blankBounds.Bottom-25&&!outside.HasValue;y+=35)for(double x=blankBounds.Left+25;x<blankBounds.Right-25;x+=35){uint process;GetWindowThreadProcessId(WindowFromPoint(new PointNative{X=(int)x,Y=(int)y}),out process);if(process==(uint)blank.Id){outside=new Point(x,y);break;}}if(!outside.HasValue)throw new Exception("No unobstructed owned blank fixture point: exited="+blank.HasExited+" handle="+blank.MainWindowHandle+" bounds="+blankBounds);Move(outside.Value);Pump(.03);
             mouse_event(2,0,0,0,IntPtr.Zero);mouse_event(4,0,0,0,IntPtr.Zero);Pump(.4);
             Check(!pet.ContextMenu.IsOpen,scenario+": native outside click dismisses menu");
         }

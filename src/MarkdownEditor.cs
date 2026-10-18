@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,6 +32,7 @@ namespace Dafeiyu
             TextCompositionManager.AddPreviewTextInputHandler(this,delegate{composing=false;});
             LostKeyboardFocus+=delegate{composing=false;};
             CommandManager.AddPreviewExecutedHandler(this,delegate(object sender,ExecutedRoutedEventArgs e){if(e.Command==ApplicationCommands.Undo || e.Command==ApplicationCommands.Redo){undoing=true;Dispatcher.BeginInvoke(new Action(delegate{undoing=false;}));}});
+            CommandManager.AddPreviewExecutedHandler(this,delegate(object sender,ExecutedRoutedEventArgs e){if(e.Command==EditingCommands.EnterLineBreak || e.Command==EditingCommands.EnterParagraphBreak){if(ExitHeadingAtEnd()){e.Handled=true;return;}ExitInlineAtEnd();}});
             DataObject.AddPastingHandler(this,delegate{pasting=true;Dispatcher.BeginInvoke(new Action(delegate{pasting=false;}));});
             Render("",0);
         }
@@ -66,6 +67,33 @@ namespace Dafeiyu
                 }
             }
             base.OnTextChanged(e);
+        }
+        Inline EndingSpan()
+        {
+            if(plain || !Selection.IsEmpty)return null;
+            var element=CaretPosition.Parent as FrameworkContentElement;Inline outer=element is Run && ((Run)element).Tag as string=="code"?(Inline)element:null;
+            while(element!=null && !(element is Paragraph)){if(element is Span)outer=(Span)element;element=element.Parent as FrameworkContentElement;}
+            return outer!=null && new TextRange(CaretPosition,outer.ContentEnd).Text.Length==0?outer:null;
+        }
+        bool ExitInlineAtEnd(string separator="")
+        {
+            var span=EndingSpan();if(span==null)return false;
+            var parent=span.Parent as Paragraph;if(parent==null)return false;
+            var next=new Run(separator){FontWeight=FontWeights.Normal,FontStyle=FontStyles.Normal,TextDecorations=null};parent.Inlines.InsertAfter(span,next);CaretPosition=next.ContentEnd;
+            Selection.ApplyPropertyValue(TextElement.FontWeightProperty,FontWeights.Normal);
+            Selection.ApplyPropertyValue(TextElement.FontStyleProperty,FontStyles.Normal);
+            Selection.ApplyPropertyValue(Inline.TextDecorationsProperty,null);
+            return true;
+        }
+        bool ExitHeadingAtEnd()
+        {
+            var paragraph=CaretPosition.Paragraph;if(plain||!Selection.IsEmpty||paragraph==null||!((paragraph.Tag as string)??"").StartsWith("heading:")||!(paragraph.Parent is FlowDocument)||new TextRange(CaretPosition,paragraph.ContentEnd).Text.Length!=0)return false;
+            BeginChange();try{var next=new Paragraph(new Run("")){Margin=new Thickness(0),FontWeight=FontWeights.Normal,FontSize=14};Document.Blocks.InsertAfter(paragraph,next);CaretPosition=next.ContentStart;}finally{EndChange();}return true;
+        }
+        protected override void OnPreviewTextInput(TextCompositionEventArgs e)
+        {
+            if(e.Text==" " && ExitInlineAtEnd(" ")){e.Handled=true;return;}
+            base.OnPreviewTextInput(e);
         }
         static bool HasTypedLink(InlineCollection inlines)
         {
@@ -104,7 +132,7 @@ namespace Dafeiyu
         }
         void Blocks(BlockCollection blocks,string prefix)
         {
-            bool first=true;foreach(Block block in blocks){if(!first)text.Append("\n\n");first=false;WriteBlock(block,prefix);}
+            bool first=true;foreach(Block block in blocks){if(!first)text.Append((block.Tag as string)=="draft-tail"?"\n":"\n\n");first=false;WriteBlock(block,prefix);}
         }
         void WriteBlock(Block block,string prefix)
         {
