@@ -1,0 +1,50 @@
+name: Promote verified macOS release assets
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable release version
+        required: true
+        default: '0.7.0'
+      commit:
+        description: Full commit SHA targeted by the release tag
+        required: true
+      run_id:
+        description: Successful native macOS workflow run ID
+        required: true
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: promote-macos-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify promotion safety guards
+        run: python tests/PromoteReleaseTests.py
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run_id }}
+          pattern: DeskPet-macOS-*-preview-${{ inputs.commit }}
+          path: work/macos
+      - name: Verify tagged app identity and upload to existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID"
+      - name: Preserve verified upload manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-upload-manifest-${{ inputs.version }}
+          path: work/promoted/mac-upload-manifest.json
+          if-no-files-found: error
+          retention-days: 7
