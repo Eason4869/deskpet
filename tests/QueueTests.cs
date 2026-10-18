@@ -128,10 +128,12 @@ namespace Dafeiyu.Tests
             using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(root,"queue.json"))){
                 var work=session.SendTextAsync("original task",cfg,"fixture");await model.Started.Task;queue.Hold();
                 await queue.SteerAsync("race-old",attachments:new[]{ChatAttachment.FromText("brief.txt","UNIQUE-GUIDANCE-ATTACHMENT")});string id=queue.Items.Single().Id;
-                protection.Block=true;model.Boundary.SetResult(true);
+                // .NET may run the awaited boundary inline; release it on another thread
+                // so this test can reach the storage latch and unblock the protector.
+                protection.Block=true;var boundary=Task.Run(()=>model.Boundary.SetResult(true));
                 if(!protection.Entered.WaitOne(5000))throw new Exception("checkpoint did not reach the controlled storage boundary");
                 try{queue.Edit(id,"race-new");}finally{protection.Release.Set();}
-                await model.Applied.Task;editRetained=queue.Items.Any(m=>m.Id==id && m.Text=="race-new");
+                await boundary;await model.Applied.Task;editRetained=queue.Items.Any(m=>m.Id==id && m.Text=="race-new");
                 await session.StopAsync();try{await work;}catch(OperationCanceledException){}
                 // Leave the revised pending guide for a later task; this resume must
                 // recover the already accepted attachment from its task checkpoint.
@@ -176,7 +178,7 @@ namespace Dafeiyu.Tests
         sealed class GuidanceProtection:ISecretProtector
         {
             public bool Block;public readonly ManualResetEvent Entered=new ManualResetEvent(false),Release=new ManualResetEvent(false);
-            public byte[] Protect(byte[] value){string text=System.Text.Encoding.UTF8.GetString(value);if(Block && text.Contains("\"Guidance\"") && text.Contains("race-old")){Entered.Set();Release.WaitOne();}return value;}
+            public byte[] Protect(byte[] value){string text=System.Text.Encoding.UTF8.GetString(value);if(Block && text.Contains("\"Guidance\"") && text.Contains("race-old")){Entered.Set();if(!Release.WaitOne(10000))throw new TimeoutException("controlled checkpoint latch was not released");}return value;}
             public byte[] Unprotect(byte[] value){return value;}
         }
         class GuidanceApi:IConversationApi,IAgentConversationApi
