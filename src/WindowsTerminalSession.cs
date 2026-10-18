@@ -64,9 +64,8 @@ namespace Dafeiyu
                     reader=Task.Factory.StartNew(ReadOutput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
                     job=CreateJobObject(IntPtr.Zero,null);if(job==IntPtr.Zero)throw new Win32Exception(Marshal.GetLastWin32Error());var limits=new JobLimits();limits.Basic.LimitFlags=0x2000;Check(SetInformationJobObject(job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))));
                     environment=BuildEnvironment(sandbox);
-                    string setup="$ProgressPreference='SilentlyContinue'; $OutputEncoding=[Console]::InputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false); if(Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue){Set-PSReadLineOption -HistorySaveStyle SaveNothing}; ";
-                    if(isolated)setup+="New-PSDrive -Name workspace -PSProvider FileSystem -Root "+PowerShellLiteral(workspace)+" -Scope Global | Out-Null; Set-Location workspace:\\;";
-                    else setup+="Set-Location -LiteralPath "+PowerShellLiteral(workspace)+";";
+                    string setup=(isolated?AgentCommandExecutor.SandboxBootstrap(workspace):"")+"$ProgressPreference='SilentlyContinue'; $OutputEncoding=[Console]::InputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false); if(Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue){Set-PSReadLineOption -HistorySaveStyle SaveNothing}; ";
+                    if(!isolated)setup+="Set-Location -LiteralPath "+PowerShellLiteral(workspace)+";";
                     var command=new StringBuilder(Quote(executable)).Append(" -NoLogo -NoProfile -NoExit -OutputFormat Text -EncodedCommand ").Append(Convert.ToBase64String(Encoding.Unicode.GetBytes(setup)));
                     if(sandbox==null)WindowsSandboxLease.CreateWithPseudoConsole(executable,command,environment,workspace,console,out child);
                     else sandbox.CreatePseudoConsoleProcess(executable,command,environment,workspace,console,out child);
