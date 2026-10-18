@@ -9,7 +9,7 @@ namespace Dafeiyu.Tests
     public static class QueueTests
     {
         static int passed;
-        public static int Main(){try{Run().GetAwaiter().GetResult();SafeGuide().GetAwaiter().GetResult();GuidanceReliability().GetAwaiter().GetResult();GuidanceSaveFailure().GetAwaiter().GetResult();Console.WriteLine("Queue tests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
+        public static int Main(){try{Run().GetAwaiter().GetResult();SafeGuide().GetAwaiter().GetResult();if(Environment.OSVersion.Platform==PlatformID.Win32NT){GuidanceReliability().GetAwaiter().GetResult();GuidanceSaveFailure().GetAwaiter().GetResult();}else Console.WriteLine("SKIP Windows file-Agent checkpoint and sharing-lock fixtures: unsupported on this platform");Console.WriteLine("Queue tests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
         static async Task Run()
         {
             string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"queue-test-"+Guid.NewGuid().ToString("N"),"queue.json");
@@ -126,7 +126,7 @@ namespace Dafeiyu.Tests
             var model=new GuidanceApi();bool editRetained=false,attachmentRecovered=false;
             using(var session=new ConversationSession(model,new Speech(),()=>null,new HistoryStore(Path.Combine(root,"history"))))
             using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(root,"queue.json"))){
-                var work=session.SendTextAsync("original task",cfg,"fixture");await model.Started.Task;queue.Hold();
+                var work=session.SendTextAsync("original task",cfg,"fixture");await Until(()=>model.Started.Task.IsCompleted);await model.Started.Task;queue.Hold();
                 await queue.SteerAsync("race-old",attachments:new[]{ChatAttachment.FromText("brief.txt","UNIQUE-GUIDANCE-ATTACHMENT")});string id=queue.Items.Single().Id;
                 // .NET may run the awaited boundary inline; release it on another thread
                 // so this test can reach the storage latch and unblock the protector.
@@ -159,7 +159,7 @@ namespace Dafeiyu.Tests
             foreach(bool lockTask in new[]{true,false}){
                 string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"guide-save-failure-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var history=new HistoryStore(Path.Combine(root,"history"));var model=new SideEffectApi{Output=Path.Combine(root,"effects.txt")};var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=root,ReadReplies=false};cfg.Text.BaseUrl="http://127.0.0.1:1";cfg.Text.Model="fixture";
                 using(var session=new ConversationSession(model,new Speech(),()=>null,history))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(root,"queue.json"))){
-                    queue.Enqueue("original task");await model.Started.Task;await session.FlushHistoryAsync();string file=Directory.GetFiles(lockTask?Path.Combine(root,"history","agent-tasks"):Path.Combine(root,"history"),lockTask?"*.task":"*.history").Single();
+                    queue.Enqueue("original task");await Until(()=>model.Started.Task.IsCompleted);await model.Started.Task;await session.FlushHistoryAsync();string file=Directory.GetFiles(lockTask?Path.Combine(root,"history","agent-tasks"):Path.Combine(root,"history"),lockTask?"*.task":"*.history").Single();
                     using(var held=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.Read)){
                         await queue.SteerAsync("append one effect");model.Boundary.SetResult(true);await Until(()=>!session.IsBusy && !queue.IsRunning);
                         Check(model.Calls==1 && File.ReadAllLines(model.Output).Length==1 && queue.Items.Count==1 && queue.IsPaused,"save failure pauses queued accepted guidance without replaying its side effect: "+lockTask);
