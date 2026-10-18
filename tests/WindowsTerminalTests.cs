@@ -33,7 +33,10 @@ namespace Dafeiyu.Tests
             try{Wait(()=>output.Text.Contains(expected),expected,milliseconds);}catch{Console.Error.WriteLine(output.Text);throw;}
         }
         static bool Gone(int pid){try{using(var process=Process.GetProcessById(pid))return process.HasExited;}catch(ArgumentException){return true;}}
-        static string Acl(string path){return new DirectoryInfo(path).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access);}
+        // SetSecurityInfo may add AI when it normalizes inherited ACL metadata.
+        // Ignore only that bit; retain protection and every ordered permission ACE.
+        static string NormalizeAcl(string sddl){var acl=new RawSecurityDescriptor(sddl);acl.SetFlags(acl.ControlFlags & ~ControlFlags.DiscretionaryAclAutoInherited);return acl.GetSddlForm(AccessControlSections.Access);}
+        static string Acl(string path){return NormalizeAcl(new DirectoryInfo(path).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access));}
         [DllImport("kernel32.dll",SetLastError=true)]static extern bool SetHandleInformation(IntPtr handle,uint mask,uint flags);
         [DllImport("kernel32.dll",SetLastError=true)]static extern bool SetEvent(IntPtr handle);
         [DllImport("kernel32.dll",SetLastError=true)]static extern bool GetHandleInformation(IntPtr handle,out uint flags);

@@ -39,12 +39,17 @@ namespace Dafeiyu.Tests
             try{return (CommandResult)method.Invoke(null,tools==null?new object[]{command,timeout,cancel}:new object[]{command,timeout,cancel,root,tools});}catch(TargetInvocationException e){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}
         }
         sealed class Allow:IAgentAuthorizationService{public Task<AgentPermissionDecision> AuthorizeAsync(AgentToolInvocation i,CancellationToken c){return Task.FromResult(new AgentPermissionDecision{Effect=AgentPermissionEffect.Allow});}}
-        static string Acl(string path){return new DirectoryInfo(path).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access);}
+        // SetSecurityInfo may add AI when it normalizes inherited ACL metadata.
+        // Ignore only that bit; retain protection and every ordered permission ACE.
+        static string NormalizeAcl(string sddl){var acl=new RawSecurityDescriptor(sddl);acl.SetFlags(acl.ControlFlags & ~ControlFlags.DiscretionaryAclAutoInherited);return acl.GetSddlForm(AccessControlSections.Access);}
+        static string Acl(string path){return NormalizeAcl(new DirectoryInfo(path).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access));}
         public static int Main(string[] args)
         {
             if(args.Length==2&&args[0]=="--handle-probe"){SetEvent(new IntPtr(Int64.Parse(args[1])));return 0;}
             string fixture=Path.Combine(Directory.GetCurrentDirectory(),"work","sandbox-"+Guid.NewGuid().ToString("N"));string root=Path.Combine(fixture,"project");TcpListener listener=null;
             try{
+                Check(NormalizeAcl("D:(A;;FR;;;BA)")==NormalizeAcl("D:AI(A;;FR;;;BA)"),"automatic inheritance completion metadata does not change permissions");
+                Check(NormalizeAcl("D:(A;;FR;;;BA)")!=NormalizeAcl("D:P(A;;FR;;;BA)")&&NormalizeAcl("D:(A;;FR;;;BA)")!=NormalizeAcl("D:(A;;FA;;;BA)")&&NormalizeAcl("D:(A;;FR;;;BA)")!=NormalizeAcl("D:(A;;FR;;;SY)"),"ACL comparisons retain protection permission masks and identities");
                 Directory.CreateDirectory(root);string originalAcl=Acl(root);string outside=Path.Combine(fixture,"private.txt");File.WriteAllText(outside,"private-sentinel");
                 // Reproduce unavailable module discovery without changing host ACLs.
                 string recovery="$PSModuleAutoloadingPreference='None'; Remove-Module Microsoft.PowerShell.Utility,Microsoft.PowerShell.Management -Force -ErrorAction SilentlyContinue; [Console]::WriteLine('NO-AUTOLOAD:'+($null -eq $ExecutionContext.InvokeCommand.GetCommand('New-Object',[System.Management.Automation.CommandTypes]::Cmdlet))); "+AgentCommandExecutor.SandboxBootstrap(root)+"if ((Get-Item workspace:\\).FullName.TrimEnd([char]92) -ne "+Q(root)+") { exit 9 }; Write-Output 'BOOTSTRAP_OK'";
