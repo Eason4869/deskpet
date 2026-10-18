@@ -12,6 +12,9 @@ on:
       run_id:
         description: Successful native macOS workflow run ID
         required: true
+      release_id:
+        description: Existing draft release numeric ID
+        required: true
 permissions:
   contents: write
   actions: read
@@ -38,8 +41,9 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_COMMIT: ${{ inputs.commit }}
           RELEASE_RUN_ID: ${{ inputs.run_id }}
+          RELEASE_ID: ${{ inputs.release_id }}
         run: |
-          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID"
+          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --release-id "$RELEASE_ID"
       - name: Preserve verified upload manifest
         if: always()
         uses: actions/upload-artifact@v4

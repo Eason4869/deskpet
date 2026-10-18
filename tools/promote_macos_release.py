@@ -17,6 +17,7 @@ def main():
     p.add_argument('--commit', required=True)
     p.add_argument('--repository', required=True)
     p.add_argument('--run-id', type=int, required=True)
+    p.add_argument('--release-id', type=int, required=True)
     a = p.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', a.version) or not re.fullmatch(r'[0-9a-f]{40}', a.commit):
         raise ValueError('Expected a stable numeric version and full commit SHA')
@@ -33,7 +34,8 @@ def main():
         ref = api('/git/tags/' + ref['sha'])['object']
     if ref['type'] != 'commit' or ref['sha'] != a.commit:
         raise ValueError('Tag target differs from expected release commit')
-    release = api('/releases/tags/' + tag)
+    # Drafts are addressed by numeric ID; tag lookup can omit unpublished releases.
+    release = api('/releases/' + str(a.release_id))
     if not release['draft'] or release['tag_name'] != tag:
         raise ValueError('Promotion requires an existing draft release')
     a.output.mkdir(parents=True, exist_ok=False)

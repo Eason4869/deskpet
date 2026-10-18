@@ -50,7 +50,7 @@ class PromotionTests(unittest.TestCase):
                 root = Path(tmp) / 'artifacts'
                 root.mkdir()
                 api = self.fixture(root, bad)
-                argv = ['promotion', '--artifact-root', str(root), '--output', str(Path(tmp) / 'out'), '--version', '0.7.0', '--commit', 'a' * 40, '--repository', 'owner/repo', '--run-id', '1']
+                argv = ['promotion', '--artifact-root', str(root), '--output', str(Path(tmp) / 'out'), '--version', '0.7.0', '--commit', 'a' * 40, '--repository', 'owner/repo', '--run-id', '1', '--release-id', '1']
                 with patch.object(sys, 'argv', argv), patch.object(promotion.subprocess, 'check_output', side_effect=api), patch.object(promotion.subprocess, 'run') as uploads:
                     if bad:
                         with self.assertRaises(ValueError):
