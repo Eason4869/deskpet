@@ -63,7 +63,10 @@ namespace Dafeiyu.Tests
             var project=new ProjectDefinition{Id="unified-fixture",Name="完整标签工作区",Workspace=root};
             var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="检查完整标签与分屏切换",Mode="work"};
             var workspace=pet.Workspaces.CreateWorkspace(project,definition);
-            full=new ChatWindow(pet,workspace){Width=1780,Height=900};full.Show();await Settle();
+            full=new ChatWindow(pet,workspace){Width=1780,Height=900};double normalMinWidth=full.MinWidth;
+            // A small CI desktop caps WPF's requested Width; MinWidth establishes this fixture's actual wide layout.
+            full.MinWidth=1780;full.Show();await Settle();
+            Check(Math.Abs(full.ActualWidth-1780)<1,"wide fixture has the actual window width required for split-layout checks");
             var shell=(Grid)Field("workspaceShell");var surface=(Grid)Field("conversationSurface");var editor=(MarkdownEditor)Field("input");var session=(ConversationSession)Field("session");const string draft="这份主聊天草稿需要在所有布局之间保留。";editor.Text=draft;
             // Populate the actual conversation renderer without submitting a request.
             for(int i=1;i<=12;i++)session.History.Commit("第 "+i+" 条历史消息：检查布局与滚动记录。","这是第 "+i+" 条本地历史回复。切换标签、隐藏工具和恢复分屏时，需要继续停留在正在阅读的位置。\n\n这里是第二段中文正文，用于产生真实的滚动内容。\n\n```csharp\nvar item = "+i+";\nConsole.WriteLine(item);\n```");
@@ -102,9 +105,11 @@ namespace Dafeiyu.Tests
             for(int step=0;step<30&&!area.HasConversation;step++){divider.RaiseEvent(new DragDeltaEventArgs(-10,0){RoutedEvent=Thumb.DragDeltaEvent});await Task.Delay(30);full.UpdateLayout();}
             divider.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});await Settle();Check(area.HasConversation,"slow consecutive ten-pixel left drags accumulate beyond the boundary into full tabs");
             area.SelectConversation();CheckMain(surface,editor,session,draft);Click("ToggleFullTabView");await Settle();Check(!area.HasConversation,"incremental drag full mode can return to split");
-            full.Width=850;await Settle();
+            full.MinWidth=normalMinWidth;full.Width=850;await Settle();
+            Check(Math.Abs(full.ActualWidth-850)<1,"narrow fixture reaches the actual width that selects automatic full tabs");
             CheckPinned(area,surface,definition.Name);Check(!full.OwnedWindows.OfType<Window>().Any(),"narrow width automatically uses the same-window full tab view");CheckMain(surface,editor,session,draft);
-            full.Width=1780;await Settle();
+            full.MinWidth=1780;full.Width=1780;await Settle();
+            Check(Math.Abs(full.ActualWidth-1780)<1,"widening restores the actual fixture width before checking split recovery");
             Check(!area.HasConversation&&ReferenceEquals(surface.Parent,shell)&&Grid.GetColumn(surface)==2,"automatic narrow full view returns to split when width recovers");
             Check(area.ToolCount==1&&ReferenceEquals(area.Selected,markdown)&&ReferenceEquals(Field("filePreview"),area),"automatic resize retains the original tool and workspace");CheckMain(surface,editor,session,draft);
             Check(retained.Releases==1&&session.History.Messages.Count==historyCount&&!session.IsBusy,"layout tests preserve the fixture history and release each closed tool once");
@@ -114,7 +119,7 @@ namespace Dafeiyu.Tests
             editor.Text="第二个会话的独立草稿";full.SwitchWorkspace(workspace);await Settle();CheckMain(surface,editor,session,draft);Check(ReferenceEquals(area.Selected,surface)&&All<TextBlock>(area).Single(t=>t.Name=="ConversationPreviewTitle").Text==definition.Name,"returning to the original workspace restores its pinned title and selects chat");Click("ToggleFullTabView");await Settle();Check(ReferenceEquals(area.Selected,markdown),"workspace round trip preserves the selected split tool");
             ToggleFull();await Settle();area.SelectConversation();area.Close(markdown);await Settle();Check(area.HasConversation&&area.ToolCount==0&&ReferenceEquals(area.Selected,surface),"closing the last tool in full mode retains the pinned main conversation");
             Click("ToggleFullTabView");await Settle();Check(Field("filePreview")==null&&!dock.IsVisible&&dock.Content==null&&ReferenceEquals(surface.Parent,shell)&&Grid.GetColumn(surface)==2,"returning to split after the last tool closes removes the empty tool workspace");CheckMain(surface,editor,session,draft);
-            full.Close();full=null;Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions/unified-workspace.png, split-workspace.png");
+            full.MinWidth=normalMinWidth;full.Close();full=null;Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions/unified-workspace.png, split-workspace.png");
         }
         [STAThread]public static int Main()
         {

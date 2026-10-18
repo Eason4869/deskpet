@@ -1,8 +1,8 @@
 # 更新日志
 
-## [0.9.0](https://github.com/Eason4869/deskpet/tree/dev) — 2026-10-19（dev）
+## [0.9.0](https://github.com/Eason4869/deskpet/releases/tag/v0.9.0) — 2026-10-19
 
-本次为 Windows 功能与界面更新，版本由 0.8.0 升至 0.9.0。提交至 dev，不创建正式 Release 或新源码标签；客户端自动更新仍以已发布附件为准。
+本次为 Windows 功能与界面更新，版本由 0.8.0 开发版升至 0.9.0。提供 Windows 安装版、便携版与 macOS Apple Silicon／Intel 双架构预览；Mac 保留独立界面和功能边界。
 
 ### 统一窗口与对话
 
