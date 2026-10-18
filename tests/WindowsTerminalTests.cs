@@ -21,8 +21,11 @@ namespace Dafeiyu.Tests
         {
             readonly StringBuilder text=new StringBuilder();readonly object gate=new object();
             internal void Add(string value){lock(gate)text.Append(value);}
+            internal int Mark{get{lock(gate)return text.Length;}}
+            internal string Since(int mark){lock(gate)return Plain(text.ToString(mark,text.Length-mark));}
+            static string Plain(string value){return Regex.Replace(value,@"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\a]*(?:\a|\x1b\\)","").Replace("\r","");}
             internal string Diagnostic{get{lock(gate)return String.Join(" ",text.ToString().Select(c=>((int)c).ToString("X4")));}}
-            internal string Text{get{lock(gate)return Regex.Replace(text.ToString(),@"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\a]*(?:\a|\x1b\\)","").Replace("\r","");}}
+            internal string Text{get{lock(gate)return Plain(text.ToString());}}
         }
         static void Wait(Func<bool> condition,string text,int milliseconds=12000)
         {
@@ -67,7 +70,7 @@ namespace Dafeiyu.Tests
                 var two=new Transcript();second=WindowsTerminalSession.Start(root,false,null,two.Add);second.Input("Write-Host ('SECOND:'+ [string]$persist+':'+[string]$env:DESKPET_TERMINAL_STATE+':'+[string]$env:DESKPET_TERMINAL_TEST_SECRET+':'+(Get-Location).ProviderPath)\r");Expect(two,"SECOND::::"+root,60000);Check(first.ProcessId!=second.ProcessId,"two live sessions have independent shells and do not inherit host secrets");
                 first.Resize(113,37);first.Input("Write-Host ('SIZE:'+ [Console]::WindowWidth+':'+[Console]::WindowHeight)\r");Expect(one,"SIZE:113:37");Check(true,"resizing ConPTY changes the actual console dimensions");
                 bool invalidSize=false;try{first.Resize(0,24);}catch(ArgumentOutOfRangeException){invalidSize=true;}Check(invalidSize,"invalid terminal sizes fail before a native call");
-                string started=Path.Combine(root,"interrupt.started");first.Input("[IO.File]::WriteAllText("+Q(started)+",'running');Start-Sleep -Seconds 30;Write-Host ('INTERRUPT-'+'FAILED')\r");Wait(()=>File.Exists(started),"long command started");first.Input("\x03");Thread.Sleep(150);first.Input("Write-Host ('AFTER-'+'INTERRUPT')\r");Expect(one,"AFTER-INTERRUPT",5000);Check(!one.Text.Contains("INTERRUPT-FAILED")&&first.IsRunning,"Ctrl+C interrupts the running command while keeping the PowerShell session alive");
+                string started=Path.Combine(root,"interrupt.started");first.Input("[IO.File]::WriteAllText("+Q(started)+",'running');Start-Sleep -Seconds 30;Write-Host ('INTERRUPT-'+'FAILED')\r");Wait(()=>File.Exists(started),"long command started");int interruptMark=one.Mark;first.Input("\x03");try{Wait(()=>Regex.Replace(one.Since(interruptMark),@"\s","").Contains(Regex.Replace("PS "+sub+">",@"\s","")),"fresh prompt after Ctrl+C");}catch{Console.Error.WriteLine("AFTER CTRL+C: "+one.Since(interruptMark));throw;}first.Input("Write-Host ('AFTER-'+'INTERRUPT')\r");Expect(one,"AFTER-INTERRUPT",5000);Check(!one.Text.Contains("INTERRUPT-FAILED")&&first.IsRunning,"Ctrl+C interrupts the running command while keeping the PowerShell session alive");
                 using(var signal=new EventWaitHandle(false,EventResetMode.ManualReset))
                 {
                     first.Input("& "+Q(Assembly.GetExecutingAssembly().Location)+" '--noop';Write-Host ('NOOP:'+ $LASTEXITCODE)\r");Expect(one,"NOOP:0");
