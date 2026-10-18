@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -21,6 +21,10 @@ namespace Dafeiyu
         internal Action<string,IList<AgentGuidance>> GuidanceApplied;
         internal string ActiveAgentWorkspace{get{lock(gate)return active!=null && active.Snapshot.AgentEnabled?active.Snapshot.AgentWorkspace:null;}}
         public event Action AgentTaskChanged;
+        public IAgentApprovalProvider ApprovalProvider {get;set;}
+        internal AgentPermissionSelection PermissionOverride;
+        public McpConnectionManager McpConnections {get;set;}
+        public bool NeedsExecutionReconciliation {get{lock(gate){AgentTaskState state;return agentTasks.TryGetValue(personaId,out state)&&state.Status=="needs_reconciliation";}}}
         public string AgentTaskWarning {get{return taskStore==null?"":taskStore.Warning;}}
         public AgentTaskState CurrentAgentTask {get{lock(gate){AgentTaskState task;return agentTasks.TryGetValue(personaId,out task)?task.Copy():null;}}}
         private readonly Func<bool> saveEnabled;
@@ -31,6 +35,9 @@ namespace Dafeiyu
         private string personaId="";
         public ConversationLog History { get; private set; }
         public ConversationStage Stage { get; private set; }
+        string runtimeAction="idle";
+        public string RuntimeAction {get{return runtimeAction;}private set{runtimeAction=value;}}
+        public int TerminalRevision {get;private set;}
         public bool IsBusy { get { lock(gate) return active!=null; } }
         public Task WaitForIdleAsync(){Operation op;lock(gate)op=active;return op==null?Task.FromResult(true):op.Complete.Task;}
         public string PersonaId { get { lock(gate)return personaId; } }
@@ -44,7 +51,7 @@ namespace Dafeiyu
         {
             public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
             public readonly TaskCompletionSource<bool> Complete=new TaskCompletionSource<bool>();
-            public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing; public int Ended;
+            public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
             public Action<string> RecordingFailure;
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
@@ -109,12 +116,14 @@ namespace Dafeiyu
             {
                 if(disposed) throw new ObjectDisposedException("ConversationSession");
                 if(active!=null) throw new InvalidOperationException("正在处理当前对话，请先停止或等待完成。");
-                op=new Operation { Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; active=op; LastNotice="";CancelPredictions();
+                op=new Operation { Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);active=op; LastNotice="";CancelPredictions();
             }
             SetStage(stage); return op;
         }
         private void SetStage(ConversationStage stage)
-        { Stage=stage; if(!disposed && StateChanged!=null) StateChanged(); }
+        { Stage=stage;if(stage!=ConversationStage.Idle)RuntimeAction=stage==ConversationStage.Recording?"waiting":stage==ConversationStage.Recognizing?"review":stage==ConversationStage.Speaking?"waving":"running"; if(!disposed && StateChanged!=null) StateChanged(); }
+        void SetRuntimeAction(Operation op,string action)
+        {if(disposed || active!=op || op.Cancel.IsCancellationRequested || RuntimeAction==action)return;RuntimeAction=action;if(StateChanged!=null)StateChanged();}
         private void Emit(ChatMessage message)
         { if(!disposed && MessageAdded!=null) MessageAdded(message.Copy()); }
         internal void RegisterGuidance(string persona,string id,string text,IList<ChatAttachment> files)
@@ -131,13 +140,14 @@ namespace Dafeiyu
             op.History.RemoveEmptyReply(op.ReplyId);
             op.Partial.Clear();op.Reasoning.Clear();op.ToolEvents.RemoveAll(e=>e.Status!="running"&&e.Status!="pending");
             ChatMessage user;var reply=op.History.BeginGuidance(id,text,out user);op.History.Attach(user.Id,files);op.ReplyId=reply.Id;
-            op.History.StartProcessing(reply.Id,op.Snapshot.AgentEnabled,previous==null?null:previous.ProcessingStartedAt);
+            op.History.StartProcessing(reply.Id,op.Snapshot.AgentEnabled,previous==null?null:previous.ProcessingStartedAt,op.Snapshot.SkinId);
             if(op.Workspace!=null)op.History.LinkAgentTask(reply.Id,op.Workspace.TaskState.Id);
             op.History.Update(reply.Id,"","pending",tools:op.ToolEvents,processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);
         }
         public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null)
         {
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";
+            if(settings!=null&&settings.Text!=null&&AgentCapabilityResolver.Resolve(settings,null).Images==CapabilitySupport.Unsupported&&files.Any(f=>f.IsImage))throw new ApiException("当前模型已设置为不支持图片，请移除图片或修改模型能力配置。");
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException("请输入 1～8000 个字符。");
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
             Operation op=Begin(settings,ConversationStage.Thinking);
@@ -204,8 +214,11 @@ namespace Dafeiyu
         }
         private async Task RequestReply(Operation op,string text,string petName)
         {
+            using(UsageTracking.BeginScope(op.Snapshot.AgentEnabled?"work":"chat",kernelSession==null?null:kernelSession.ConversationId,kernelSession==null?null:kernelSession.ProjectId))
+            {
             CancellationToken token=op.Cancel.Token; token.ThrowIfCancellationRequested();
             string persona=(op.Snapshot.AgentEnabled?op.Snapshot.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt:op.Snapshot.SystemPrompt??"").Replace("{pet_name}",op.Snapshot.AgentEnabled?"工作助手":petName??"桌面伙伴");
+            if(op.Snapshot.AgentEnabled)persona+="\n若最终交付本地文件，请在最终回复使用 [文件名](<文件完整绝对路径>) 链接，路径尽量使用正斜杠，便于用户打开交付卡片。只列明确交付的文件，不把所有改动或读取的文件当作附件，不虚构文件。";
             if(!op.Snapshot.AgentEnabled)persona+="\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
             if(op.Snapshot.AgentEnabled && !String.IsNullOrWhiteSpace(op.Snapshot.AgentGoal))persona+="\n用户设置的持续目标（在当前请求范围内推进，不能声称未完成的操作成功）：\n"+op.Snapshot.AgentGoal;
             if(op.Snapshot.AgentEnabled && op.Snapshot.AgentPlanMode)persona+="\n当前为计划模式：仅分析、阅读并提出计划，不执行写入或修改文件。";
@@ -223,8 +236,8 @@ namespace Dafeiyu
             lock(gate) {
                 token.ThrowIfCancellationRequested();if(disposed)throw new OperationCanceledException(token);
                 op.ProcessingTime.Restart();
-                if(op.Regenerating){op.History.StartProcessing(op.ReplyId,op.Snapshot.AgentEnabled);UpdateReply(op,"","pending",false);}
-                else {ChatMessage user;var reply=op.GuidanceId==null?op.History.BeginTurn(text,op.Source,out user):op.History.BeginGuidance(op.GuidanceId,text,out user);op.History.Attach(user.Id,op.Attachments);user.SetAttachments(op.Attachments);op.ReplyId=reply.Id;reply=op.History.StartProcessing(reply.Id,op.Snapshot.AgentEnabled);if(op.GuidanceId==null){Emit(user);Emit(reply);}else if(HistoryChanged!=null)HistoryChanged();}
+                if(op.Regenerating){op.History.StartProcessing(op.ReplyId,op.Snapshot.AgentEnabled,skinId:op.Snapshot.SkinId);UpdateReply(op,"","pending",false);}
+                else {ChatMessage user;var reply=op.GuidanceId==null?op.History.BeginTurn(text,op.Source,out user):op.History.BeginGuidance(op.GuidanceId,text,out user);op.History.Attach(user.Id,op.Attachments);user.SetAttachments(op.Attachments);op.ReplyId=reply.Id;reply=op.History.StartProcessing(reply.Id,op.Snapshot.AgentEnabled,skinId:op.Snapshot.SkinId);if(op.GuidanceId==null){Emit(user);Emit(reply);}else if(HistoryChanged!=null)HistoryChanged();}
                 Save(op.PersonaId,op.History);op.Checkpoint.Restart();op.ThinkingTime.Restart();
             }
             SetStage(ConversationStage.Thinking);string answer;
@@ -233,27 +246,30 @@ namespace Dafeiyu
                 var reasoning=api as IReasoningConversationApi;
                 var agent=api as IAgentConversationApi;
                 if(op.Snapshot.AgentEnabled && Environment.OSVersion.Platform==PlatformID.Win32NT && agent!=null){
-                    op.Workspace=OpenAgentWorkspace(op.Snapshot);op.Workspace.AttachKernelSession(kernelSession);
+                    var approval=ApprovalProvider==null?null:new AgentApprovalTracking(ApprovalProvider,action=>{lock(gate)SetRuntimeAction(op,action);});
+                    op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);op.Workspace.AttachKernelSession(kernelSession);
                     var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text};
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException("任务检查点不属于当前伙伴。");
                     op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
                 }
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
-                answer=op.Workspace!=null?await agent.ChatAgentAsync(op.Snapshot.Text,request,op.Workspace,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),item=>AppendToolEvent(op,item),op.Snapshot.Text.StreamReplies,token):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token) : await api.ChatAsync(op.Snapshot.Text,request,token);
+                answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token) : await api.ChatAsync(op.Snapshot.Text,request,token);
                 token.ThrowIfCancellationRequested();UpdateReply(op,answer,"complete",true);if(op.Workspace!=null)op.Workspace.FinishTask("complete","");
             }
             catch(Exception e) {
-                if(op.Workspace!=null)op.Workspace.FinishTask(token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",e is ApiException?e.Message:"任务中断，继续前请核对已完成操作。");
+                if(op.Workspace!=null)op.Workspace.FinishTask(op.Workspace.NeedsReconciliation?"needs_reconciliation":token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",e is ApiException?e.Message:"任务中断，继续前请核对已完成操作。");
                 UpdateReply(op,op.Partial.ToString(),token.IsCancellationRequested || e is OperationCanceledException?"cancelled":"error",true);
                 if(e is ApiException)throw new ApiException("文字对话："+e.Message);throw;
             }
-            if(op.Live.ReadReplies && op.Live.Volume>0 && !op.Live.QuietMode)
+            if(!op.SuppressSpeech && op.Live.ReadReplies && op.Live.Volume>0 && !op.Live.QuietMode)
             {
                 SetStage(ConversationStage.Speaking);
                 try { await speech.SpeakAsync(MarkdownContent.PlainText(answer),op.Live.Copy(),token); }
                 catch(OperationCanceledException) { if(token.IsCancellationRequested) throw; LastNotice="回复已保留，朗读已停止。"; }
                 catch(Exception e)
                 { if(!(e is ApiException || e is InvalidOperationException || e is System.IO.IOException || e is UnauthorizedAccessException)) throw; LastNotice="回复已保留；朗读失败："+(e is ApiException || e is InvalidOperationException ? e.Message : "请检查输出设备或音频缓存目录。"); }
+            }
+
             }
         }
         async Task<IList<ChatMessage>> ApplyGuidance(Operation op,CancellationToken cancel)
@@ -286,6 +302,7 @@ namespace Dafeiyu
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
                 if(op.Partial.Length+delta.Length>50000)throw new ApiException("文字回复超过长度限制。");
                 op.ThinkingTime.Stop();
+                SetRuntimeAction(op,"review");
                 op.Partial.Append(delta);UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
             }
         }
@@ -296,6 +313,7 @@ namespace Dafeiyu
                 if(status=="complete")op.Cancel.Token.ThrowIfCancellationRequested();
                 if(status!="pending")
                 {
+                    op.Outcome=status;
                     op.ThinkingTime.Stop();op.ProcessingTime.Stop();
                     foreach(var item in op.ToolEvents.Where(e=>e.Status=="running")){item.Status="error";item.Summary+=(status=="cancelled"?" · 已停止":" · 已中断");}
                 }
@@ -307,19 +325,20 @@ namespace Dafeiyu
         private void AppendReasoning(Operation op,string delta)
         {
             if(String.IsNullOrEmpty(delta))return;
-            lock(gate){if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;if(op.Reasoning.Length>50000-delta.Length){if(!op.Snapshot.AgentEnabled)throw new ApiException("思考内容超过长度限制。");op.Reasoning.Remove(0,Math.Min(op.Reasoning.Length,op.Reasoning.Length+delta.Length-50000));}op.Reasoning.Append(delta.Length>50000?delta.Substring(delta.Length-50000):delta);UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);}
+            lock(gate){if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;SetRuntimeAction(op,"running");if(op.Reasoning.Length>50000-delta.Length){if(!op.Snapshot.AgentEnabled)throw new ApiException("思考内容超过长度限制。");op.Reasoning.Remove(0,Math.Min(op.Reasoning.Length,op.Reasoning.Length+delta.Length-50000));}op.Reasoning.Append(delta.Length>50000?delta.Substring(delta.Length-50000):delta);UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);}
         }
         private void AppendToolEvent(Operation op,AgentToolEvent item)
         {
             lock(gate)
             {
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
+                SetRuntimeAction(op,item.Status=="waiting_approval"?"waiting":item.Status=="error"?"failed":item.Status=="complete"?"review":"running");
                 if(item.Status=="running" && op.Partial.Length>0){if(op.Reasoning.Length+op.Partial.Length<50000)op.Reasoning.AppendLine(op.Partial.ToString());op.Partial.Clear();op.ThinkingTime.Start();}
                 int index=op.ToolEvents.FindIndex(e=>e.Id==item.Id);if(index>=0)op.ToolEvents[index]=item.Copy();else{op.ToolEvents.Add(item.Copy());if(op.ToolEvents.Count>100)op.ToolEvents.RemoveAt(0);}
                 UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
             }
         }
-        public static AgentWorkspace OpenAgentWorkspace(PetSettings settings)
+        public static AgentWorkspace OpenAgentWorkspace(PetSettings settings,IAgentApprovalProvider approval=null,McpConnectionManager mcp=null,string approvalIntent=null)
         {
             string path=System.IO.Path.GetFullPath(settings.AgentWorkspace??"");
             string defaultPath=System.IO.Path.GetFullPath(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace"));
@@ -330,13 +349,13 @@ namespace Dafeiyu
                     if(directory.Exists && (directory.Attributes&System.IO.FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("Agent 工作目录不能穿过符号链接。");
                 System.IO.Directory.CreateDirectory(path);
             }
-            try{var workspace=new AgentWorkspace(path,!settings.AgentFullAccess){ReadOnly=settings.AgentPlanMode,BackupEnabled=settings.AgentBackupFiles,ContextTokenLimit=ModelContextCapacity.Budget(settings.Text,settings.AgentContextTokenLimit),CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds};workspace.ConfigureCommands(false,"[]");workspace.ConfigureGitHub(settings.GitHubRepository,settings.GitHub);string kernelRoot=System.IO.Path.Combine(path,".deskpet-agent-kernel");workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),new AgentAuditLog(kernelRoot),null,new ExecutionClaimStore(kernelRoot),null);workspace.ConfigureAgentProfile(new AgentProfileRegistry().Get(settings.AgentPlanMode?"plan":"build"));workspace.ConfigureProvider((ProviderIdentity.Brand(settings.Text.BaseUrl)+" "+settings.Text.Protocol+" "+settings.Text.Model).Trim(),settings.Text.Model);workspace.ConfigureDesktopSession();return workspace;}
+            try{var workspace=new AgentWorkspace(path,settings.AgentApprovalMode==AgentApprovalMode.Legacy&&!settings.AgentFullAccess){ReadOnly=settings.AgentPlanMode,BackupEnabled=settings.AgentBackupFiles,ContextTokenLimit=ModelContextCapacity.Budget(settings.Text,settings.AgentContextTokenLimit),CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds};workspace.ConfigureCommands(false,"[]");workspace.ConfigureGitHub(settings.GitHubRepository,settings.GitHub);string kernelRoot=System.IO.Path.Combine(path,".deskpet-agent-kernel");workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),new AgentAuditLog(kernelRoot),approval,new ExecutionClaimStore(kernelRoot),null);workspace.ConfigureAgentProfile(new AgentProfileRegistry().Get(settings.AgentPlanMode?"plan":"build"));workspace.ConfigureCapabilities(AgentCapabilityResolver.Resolve(settings,null));workspace.ConfigureInstructions(settings.AgentTrustProjectInstructions,settings.AgentGlobalInstructions,settings.AgentSkillsDirectory);workspace.ConfigureAccessPolicy(settings,approvalIntent);workspace.ConfigureWorkers(()=>new ApiClient(),settings.Text);workspace.ConfigureTerminal(settings.AgentTerminalPolicy);if(mcp!=null)foreach(var transport in mcp.ConnectedTransports())workspace.ConfigureMcp(transport);workspace.ConfigureDesktopSession();return workspace;}
             catch(Exception e){if(!(e is ArgumentException || e is UnauthorizedAccessException || e is System.IO.IOException || e is PlatformNotSupportedException))throw;throw new InvalidOperationException("Agent 工作目录不可用，请在工作设置中更改默认目录或权限，或切回对话模式。");}
         }
         void RecordAgentTask(Operation op,AgentTaskState task)
         {
-            PublishContextUsage(op,task.EstimatedContextTokens,op.Snapshot.Text.ContextWindowTokens,ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit),task.ContextStatus,task.ContextCompactions);
-            lock(gate){if(disposed || active!=op)return;agentTasks[op.PersonaId]=task.Copy();}
+            PublishContextUsage(op,task.EstimatedContextTokens,op.Snapshot.Text.ContextWindowTokens,task.ContextInputBudget>0?task.ContextInputBudget:AgentContextPolicy.Resolve(ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit)).InputBudget,task.ContextStatus,task.ContextCompactions);
+            lock(gate){if(disposed || active!=op)return;agentTasks[op.PersonaId]=task.Copy();op.History.UpdateAgentTaskSummary(task);if(task.Status!="running")Save(op.PersonaId,op.History);}
             if(taskStore!=null)taskStore.SaveAsync(task);var changed=AgentTaskChanged;if(changed!=null)changed();
         }
         public void LoadAgentTask(PetSettings settings)
@@ -365,9 +384,13 @@ namespace Dafeiyu
         public async Task RetryAgentTaskSaveAsync(){if(taskStore==null)return;await taskStore.RetryPendingAsync();if(!disposed && StateChanged!=null)StateChanged();}
         public async Task<string> GenerateTitleAsync(PetSettings settings,CancellationToken cancel)
         {
+            using(UsageTracking.BeginScope("title",kernelSession==null?null:kernelSession.ConversationId,kernelSession==null?null:kernelSession.ProjectId))
+            {
             if(settings==null)throw new ArgumentNullException("settings");var source=History.Messages.Where(m=>m.Role=="user"||m.Role=="assistant").Take(2).ToList();if(source.Count==0)return "新对话";
             var request=new List<ChatMessage>();foreach(var message in source)request.Add(new ChatMessage(message.Role,message.Content));request.Add(new ChatMessage("user","请根据上面的对话生成一个简短会话标题。最多 24 个汉字或 12 个英文单词，不加引号、标点、前缀或解释，只输出标题。"));
             string raw=await api.ChatAsync(settings.Text.Copy(),request,cancel).ConfigureAwait(false);return NormalizeTitle(raw,source.FirstOrDefault(m=>m.Role=="user"));
+
+            }
         }
         static string NormalizeTitle(string raw,ChatMessage fallback)
         {
@@ -405,8 +428,8 @@ namespace Dafeiyu
             try { await speech.SpeakAsync("你好，我是"+name+"。很高兴和你一起工作。",op.Snapshot,op.Cancel.Token); LastNotice="朗读测试完成。"; }
             finally { FinishOperation(op); }
         }
-        public void SetVolume(int volume) { speech.SetVolume(volume); }
-        public void StopSpeech() { speech.Stop(); }
+        public void SetVolume(int volume) { lock(gate)if(active!=null)active.Live.Volume=Math.Max(0,Math.Min(100,volume));speech.SetVolume(volume); }
+        public void StopSpeech() { lock(gate)if(active!=null)active.SuppressSpeech=true;speech.Stop(); }
         public async Task StopAsync()
         {
             Operation op; lock(gate){CancelPredictions();op=active;} if(op==null) { speech.Stop();await FlushHistoryAsync();return; }
@@ -425,7 +448,7 @@ namespace Dafeiyu
                 if(failures!=null && op.RecordingFailure!=null)failures.Failed-=op.RecordingFailure;
                 op.Recorder.Dispose();
             }
-            lock(gate) if(Object.ReferenceEquals(active,op)) active=null;
+            lock(gate) if(Object.ReferenceEquals(active,op)){active=null;RuntimeAction=op.Outcome=="complete"?"review":op.Outcome=="error"?"failed":"idle";TerminalRevision++;}
             if(op.Workspace!=null){op.Workspace.Dispose();op.Workspace=null;}op.Cancel.Dispose(); SetStage(ConversationStage.Idle); op.Complete.TrySetResult(true);
         }
         public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null)store.ClearAsync(personaId);if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }

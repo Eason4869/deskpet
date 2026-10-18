@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
@@ -17,7 +17,14 @@ namespace Dafeiyu
             var doc=new FlowDocument{PagePadding=new Thickness(0),FontFamily=family,FontSize=14,Foreground=foreground,ColumnWidth=Double.PositiveInfinity};
             var renderer=new MarkdownDocument(editable);formatted=false;
             foreach(var node in MarkdownContent.Parse(text)){formatted|=Formatted(node);doc.Blocks.Add(renderer.Block(node));}
-            if(doc.Blocks.Count==0)doc.Blocks.Add(new Paragraph{Margin=new Thickness(0)});return doc;
+            if(doc.Blocks.Count==0)doc.Blocks.Add(new Paragraph{Margin=new Thickness(0)});
+            // Markdown parsers discard terminal blank lines; an editable draft must
+            // retain them so the caret can actually stay on the user's new line.
+            var last=doc.Blocks.LastBlock as Paragraph;
+            if(editable){int trailing=0,existing=0;string normalized=(text??"").Replace("\r\n","\n").Replace('\r','\n');for(int i=normalized.Length-1;i>=0&&normalized[i]=='\n';i--)trailing++;
+                if(trailing>0 && last==null){last=new Paragraph{Tag="draft-tail",Margin=new Thickness(0)};doc.Blocks.Add(last);existing=1;}
+                if(last!=null){for(Inline inline=last.Inlines.LastInline;inline is LineBreak;inline=inline.PreviousInline)existing++;for(int i=existing;i<trailing;i++)last.Inlines.Add(new LineBreak());}}
+            return doc;
         }
         static bool Formatted(MarkdownNode node){if(node.Kind!="paragraph" && node.Kind!="text" && node.Kind!="break")return true;foreach(var child in node.Children)if(Formatted(child))return true;return false;}
         internal Block Block(MarkdownNode node)
@@ -65,7 +72,9 @@ namespace Dafeiyu
                     Uri uri; if (MarkdownContent.TryLink(node.Url, out uri))
                     {
                         var link = new Hyperlink { Tag=node.Kind, NavigateUri = uri, Foreground = Ui.Blue, TextDecorations = null, ToolTip = editable?"Ctrl + 单击打开链接\n"+uri.AbsoluteUri:uri.AbsoluteUri };
-                        link.RequestNavigate += delegate (object sender, System.Windows.Navigation.RequestNavigateEventArgs e) { if(!editable || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control)!=0)OpenLink(e.Uri); e.Handled = true; };
+                        bool previewImage=node.Kind=="image"&&!editable&&(uri.Scheme=="http"||uri.Scheme=="https");
+                        if(previewImage)link.ToolTip="点击预览图片（仅点击时加载）\n"+uri.AbsoluteUri;
+                        link.RequestNavigate += delegate (object sender, System.Windows.Navigation.RequestNavigateEventArgs e) { if(previewImage){var host=Window.GetWindow(link);if(host!=null)ChatImagePreview.OpenRemote(host,e.Uri,new System.Windows.Documents.TextRange(link.ContentStart,link.ContentEnd).Text);}else if(!editable || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control)!=0)OpenLink(e.Uri); e.Handled = true; };
                         string iconName = uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase) ? "github" : "globe";
                         var icon = UiIcons.Image(iconName, Ui.Blue); icon.Name = iconName == "github" ? "MarkdownGitHubIcon" : "MarkdownGlobeIcon"; icon.Width = icon.Height = 14; icon.Margin = new Thickness(0, 0, 5, 0); link.Inlines.Add(new InlineUIContainer(icon) { BaselineAlignment = BaselineAlignment.Center });
                         if (node.Children.Count > 0) Inline(link.Inlines, node.Children); else link.Inlines.Add(new Run(node.Text.Length > 0 ? node.Text : uri.AbsoluteUri));

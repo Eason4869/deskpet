@@ -13,7 +13,7 @@ namespace Dafeiyu
 {
     // Both Windows chat surfaces render the same message and keep expansion state
     // while streaming snapshots update only their text.
-    internal sealed class ChatMessageView : Border
+    internal sealed partial class ChatMessageView : Border
     {
         public readonly MarkdownView Body;
         readonly TextBlock state,thinkingLabel;
@@ -42,19 +42,19 @@ namespace Dafeiyu
             var panel=new StackPanel();Child=panel;
             elapsed=Ui.Text("",12,Ui.Brush("#969BA3"));elapsed.Name="ReplyElapsedTime";
             if(!user)panel.Children.Add(new Border{Child=elapsed,BorderBrush=Ui.Brush("#ECECEC"),BorderThickness=new Thickness(0,0,0,1),Padding=new Thickness(0,0,0,8),Margin=new Thickness(0,0,0,10)});
-            clock.Tick+=delegate{RefreshElapsed();};Loaded+=delegate{RefreshElapsed();if(!user&&current!=null&&current.Status=="pending"&&String.IsNullOrEmpty(current.Content))StartShimmer();};Unloaded+=delegate{clock.Stop();StopShimmer();};
-            thinkingLabel=Ui.Text("",12,Ui.Muted);thinkingLabel.Name="ProcessStatus";thinkingLabel.TextWrapping=TextWrapping.NoWrap;thinkingLabel.TextTrimming=TextTrimming.CharacterEllipsis;
-            thinkingLabel.SetBinding(MaxWidthProperty,new Binding("ActualWidth"){Source=this,Converter=new ChatWidthConverter(1,48)});
+            clock.Tick+=delegate{RefreshElapsed();};Loaded+=delegate{RefreshElapsed();LoadProcessMotion();};Unloaded+=delegate{clock.Stop();UnloadProcessMotion();};
+            thinkingLabel=Ui.InlineText("",12,Ui.Muted);thinkingLabel.Name="ProcessStatus";thinkingLabel.TextWrapping=TextWrapping.NoWrap;thinkingLabel.TextTrimming=TextTrimming.CharacterEllipsis;
+            thinkingLabel.SetBinding(MaxWidthProperty,new Binding("ActualWidth"){Source=this,Converter=new ChatWidthConverter(1,90)});
             details=TextBox("",13,AgentUi.Muted);details.MaxHeight=240;details.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;details.Margin=new Thickness(20,7,0,8);
-            var processDetails=new StackPanel();processDetails.Children.Add(details);processDetails.Children.Add(toolLog);
+            var processDetails=new StackPanel();InitializeProcessAvatar(message,processDetails);processDetails.Children.Add(details);processDetails.Children.Add(toolLog);
             // Collapsed by default: only the single activity line is visible.
-            var activityHeader=new StackPanel{Orientation=Orientation.Horizontal};activityHeader.Children.Add(activityIcon);activityHeader.Children.Add(thinkingLabel);
+            var activityHeader=new StackPanel{Orientation=Orientation.Horizontal};if(!user)activityHeader.Children.Add(processAvatar);activityHeader.Children.Add(activityIcon);activityHeader.Children.Add(thinkingLabel);
             thinking=new Expander{Name="ReasoningDetails",Header=activityHeader,Content=processDetails,IsExpanded=inspectThinking || detailedProcess,BorderThickness=new Thickness(0),Background=Brushes.Transparent,Visibility=Visibility.Collapsed};
             ChatUi.ProcessExpander(thinking);
             // The black milestone feed sits outside the collapsed expander so it is
             // actually visible while the work is running.
             if(!user){thoughtArea.Children.Add(thinking);thoughtArea.Children.Add(stageFeed);panel.Children.Add(thoughtArea);}
-            if(message.Attachments!=null && message.Attachments.Count>0)
+            if(user && message.Attachments!=null && message.Attachments.Count>0)
             {
                 var files=new WrapPanel{Name="SentAttachments",HorizontalAlignment=user?HorizontalAlignment.Right:HorizontalAlignment.Left,Margin=new Thickness(0,0,0,8)};
                 foreach(var file in message.Attachments)files.Children.Add(AttachmentCard(file));
@@ -64,6 +64,7 @@ namespace Dafeiyu
             if(user)panel.Children.Add(new Border{Name="SentUserBubble",HorizontalAlignment=HorizontalAlignment.Right,Background=Ui.Brush("#E8F2FF"),CornerRadius=new CornerRadius(18),Padding=new Thickness(15,10,15,10),Child=Body,Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible});
             else panel.Children.Add(Body);
             state=Ui.Text("",11,Ui.Muted);state.Margin=new Thickness(0,6,0,0);if(!user)panel.Children.Add(state);
+            if(!user){panel.Children.Add(changeSummaryHost);panel.Children.Add(outputFiles);}
             actions=new StackPanel{Name="ReplyActions",Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,7,0,0)};
             if(user)
             {
@@ -93,24 +94,25 @@ namespace Dafeiyu
         Border AttachmentCard(ChatAttachment file)
         {
             var card=new Border{Name="SentAttachmentCard",Width=file.IsImage?88:220,Height=80,CornerRadius=new CornerRadius(10),BorderBrush=Ui.Brush("#E2E3E6"),BorderThickness=new Thickness(1),Background=Ui.Brush("#FAFAFA"),Margin=new Thickness(6,0,0,0),ToolTip=String.IsNullOrWhiteSpace(file.SourcePath)?file.Name:file.SourcePath,ContextMenu=AttachmentMenu(file)};
+            if(file.IsImage)
+            {
+                card.Focusable=true;card.Cursor=System.Windows.Input.Cursors.Hand;card.ToolTip=file.Name+" · 点击放大预览";System.Windows.Automation.AutomationProperties.SetName(card,"预览图片："+file.Name);
+                card.MouseLeftButtonUp+=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);};
+                card.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);}};
+            }
             if(file.IsImage)try
             {
-                var bitmap=new BitmapImage();using(var stream=new MemoryStream(Convert.FromBase64String(file.Data))){bitmap.BeginInit();bitmap.CacheOption=BitmapCacheOption.OnLoad;bitmap.DecodePixelWidth=160;bitmap.StreamSource=stream;bitmap.EndInit();bitmap.Freeze();}
+                int width,height;bool limited;var bitmap=ChatImagePreview.DecodeImage(ChatImagePreview.DecodeBase64(file.Data,ChatAttachment.MaximumBytes),160,out width,out height,out limited);
                 // Painting the border itself clips the thumbnail to its rounded corners.
                 card.Background=new ImageBrush(bitmap){Stretch=Stretch.UniformToFill};return card;
             }
-            catch(Exception e){if(!(e is IOException || e is FormatException || e is NotSupportedException || e is ArgumentException))throw;}
+            catch(Exception e){if(!(e is IOException || e is FormatException || e is NotSupportedException || e is ArgumentException || e is InvalidOperationException || e is System.Runtime.InteropServices.ExternalException))throw;}
             var content=new Grid{Margin=new Thickness(10,8,10,6)};content.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(32)});content.ColumnDefinitions.Add(new ColumnDefinition());var icon=UiIcons.Image("file",Ui.Muted);icon.Width=icon.Height=24;icon.HorizontalAlignment=HorizontalAlignment.Left;icon.VerticalAlignment=VerticalAlignment.Top;Grid.SetColumn(icon,0);content.Children.Add(icon);
             var text=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var label=Ui.Text(file.Name,11,Ui.Blue);label.TextWrapping=TextWrapping.Wrap;label.TextTrimming=TextTrimming.CharacterEllipsis;label.MaxHeight=34;text.Children.Add(label);var detail=Ui.Text(file.MediaType=="text/plain"?"文本附件":file.MediaType??"文件",10,Ui.Muted);detail.TextTrimming=TextTrimming.CharacterEllipsis;text.Children.Add(detail);Grid.SetColumn(text,1);content.Children.Add(text);card.Child=content;return card;
         }
         ContextMenu AttachmentMenu(ChatAttachment file)
         {
-            var menu=ChatUi.Menu();var open=new MenuItem{Header="打开文件",Icon=UiIcons.Image("file",AgentUi.Muted)};open.Click+=delegate{OpenAttachment(file);};menu.Items.Add(open);
-            var openWith=new MenuItem{Header="打开方式…",Icon=UiIcons.Image("more",AgentUi.Muted)};openWith.Click+=delegate{OpenAttachmentWith(file);};menu.Items.Add(openWith);
-            var reveal=new MenuItem{Header="在资源管理器中打开",Icon=UiIcons.Image("folder-open",AgentUi.Muted)};reveal.Click+=delegate{RevealAttachment(file);};menu.Items.Add(reveal);
-            var copyPath=new MenuItem{Header="复制路径",Icon=UiIcons.Image("copy",AgentUi.Muted)};copyPath.Click+=delegate{CopyAttachmentPath(file);};menu.Items.Add(copyPath);
-            var copyContent=new MenuItem{Header="复制文件内容",Icon=UiIcons.Image("copy",AgentUi.Muted)};copyContent.Click+=delegate{CopyAttachmentContent(file);};menu.Items.Add(copyContent);
-            var saveAs=new MenuItem{Header="另存为…",Icon=UiIcons.Image("file",AgentUi.Muted)};saveAs.Click+=delegate{SaveAttachmentAs(file);};menu.Items.Add(saveAs);return menu;
+            return FileActionsMenu.Create(()=>OpenAttachment(file),()=>OpenAttachmentWith(file),()=>RevealAttachment(file),()=>CopyAttachmentPath(file),()=>CopyAttachmentContent(file),()=>SaveAttachmentAs(file),true,file.MediaType=="text/plain"||!String.IsNullOrEmpty(file.Text));
         }
         void OpenAttachment(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(EnsureAttachmentPath(file)){UseShellExecute=true});}catch(Exception e){ReportAttachmentError("打开文件失败",e);}}
         void OpenAttachmentWith(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("rundll32.exe","shell32.dll,OpenAs_RunDLL \""+EnsureAttachmentPath(file)+"\""){UseShellExecute=true});}catch(Exception e){ReportAttachmentError("打开方式失败",e);}}
@@ -142,27 +144,28 @@ namespace Dafeiyu
         {return new TextBox{Text=text,IsReadOnly=true,TextWrapping=TextWrapping.Wrap,AcceptsReturn=true,BorderThickness=new Thickness(0),Background=Brushes.Transparent,Foreground=color,Padding=new Thickness(0),FontSize=size,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled};}
         public void Update(ChatMessage message)
         {
-            current=message;
+            bool firstSnapshot=current==null;current=message;
+            UpdateOutputFiles(message);
             RefreshElapsed();
             bool detailChanged=detailedProcess!=pet.Settings.AgentDetailedProcess;
             if(detailChanged)detailedProcess=pet.Settings.AgentDetailedProcess;
             Body.Text=message.Content;Body.Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible;
-            bool hasThinking=!String.IsNullOrWhiteSpace(message.Reasoning),active=message.Status=="pending" && String.IsNullOrEmpty(message.Content);
+            bool hasThinking=!String.IsNullOrWhiteSpace(message.Reasoning),active=message.Status=="pending";
             bool hasTools=message.ToolEvents!=null && message.ToolEvents.Count>0,workMode=message.WorkMode;
-            // Work mode never shows the reasoning stream and collapses away once the
-            // reply lands. Chat mode keeps a grey one-liner while thinking, tucks it
-            // away as soon as the final answer streams, and brings it back after the
-            // reply is complete so the thought can still be opened later.
-            bool showProcess=workMode
-                ?(active || inspectThinking)
-                :(active || inspectThinking || (message.Status=="complete" && (hasThinking || hasTools)));
+            // Keep the live status above streamed output. Real process records
+            // remain available beneath the completed reply and its actions.
+            bool hasRecord=hasThinking || hasTools || (workMode && message.ProcessingStartedAt.HasValue);
+            bool showProcess=!user && (active || hasRecord);
             thoughtArea.Visibility=showProcess?Visibility.Visible:Visibility.Collapsed;
             thinking.Visibility=Visibility.Visible;
             details.Visibility=!workMode && hasThinking?Visibility.Visible:Visibility.Collapsed;
             stageFeed.Visibility=workMode && active?Visibility.Visible:Visibility.Collapsed;
             // "详细过程" keeps its meaning as an expand-by-default override; the
             // resting state stays collapsed so only the single line shows.
-            if(inspectThinking)thinking.IsExpanded=true;else if(detailChanged)thinking.IsExpanded=detailedProcess;
+            if(inspectThinking && hasRecord)thinking.IsExpanded=true;
+            else if(!active && (processWasPending || firstSnapshot))thinking.IsExpanded=false;
+            else if(active && detailChanged)thinking.IsExpanded=detailedProcess;
+            PositionProcessRecord(active);processWasPending=active;
             var events=message.ToolEvents??new List<AgentToolEvent>();
             foreach(var id in toolRows.Keys.Where(id=>!events.Any(e=>e.Id==id)).ToArray()){toolLog.Children.Remove(toolRows[id]);toolRows.Remove(id);}
             foreach(var item in events)
@@ -178,6 +181,7 @@ namespace Dafeiyu
                 ((TextBlock)row.Header).Text=(item.Status=="running"?"◌ ":item.Status=="error"?"! ":"⌘ ")+summary+(item.Status=="running"?" · 执行中":"");((TextBox)row.Content).Text=item.Summary??"";
             }
             details.Text=message.Reasoning??"";
+            RefreshProcessRecordSummary(message,events);
             UpdateProcess(message,events,active,workMode);
             state.Text=active?"":MessagePresentation.Status(message.Status);
             state.Visibility=String.IsNullOrEmpty(state.Text)?Visibility.Collapsed:Visibility.Visible;
@@ -195,11 +199,9 @@ namespace Dafeiyu
                 // Work mode: one lightweight line describing the current action.
                 thinkingLabel.Text=running!=null?ActivityVerb(running.Name)+" "+ActivityTarget(running):
                     events.Count>0?"正在整理结果":"正在思考";
-                StartShimmer();
             }
             else if(active)
             {
-                StartShimmer();
                 string last=text.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).LastOrDefault()??"";
                 thinkingLabel.Text=String.IsNullOrEmpty(last)?"正在思考":last;
             }
@@ -210,6 +212,7 @@ namespace Dafeiyu
                 thinkingLabel.Text=workMode?"处理记录":"思考记录";
             }
             RefreshStageFeed(events,active,workMode);
+            RefreshProcessMotion(SystemParameters.ClientAreaAnimation);
         }
         static string ActivityIcon(string name)
         {
@@ -255,6 +258,7 @@ namespace Dafeiyu
         // as live without animating the rest of the UI.
         void StartShimmer()
         {
+            if(user || !IsLoaded || !SystemParameters.ClientAreaAnimation)return;
             // Re-bind even when the brush already exists: the activity line's
             // Foreground is reset on every snapshot, which would otherwise drop
             // the animated brush after the first update.
@@ -271,9 +275,9 @@ namespace Dafeiyu
         }
         void StopShimmer()
         {
-            if(shimmerBrush==null)return;
-            var sweep=shimmerBrush.RelativeTransform as TranslateTransform;if(sweep!=null)sweep.BeginAnimation(TranslateTransform.XProperty,null);
+            var sweep=shimmerBrush==null?null:shimmerBrush.RelativeTransform as TranslateTransform;if(sweep!=null)sweep.BeginAnimation(TranslateTransform.XProperty,null);
             shimmerBrush=null;shimmerAnimation=null;
+            if(thinkingLabel!=null)thinkingLabel.Foreground=AgentUi.Muted;
         }
     }
     internal sealed class ChatWidthConverter : IValueConverter

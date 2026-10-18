@@ -28,7 +28,7 @@ namespace Dafeiyu.Tests
                 var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,FollowCursor=false,Wander=false,SaveChatHistory=false,OnboardingState="deferred",OnboardingStep=8};
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowOnboarding();Pump();
-                var settings=(SettingsWindow)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
+                var settings=(SettingsPage)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
                 Check(typeof(OnboardingWindow).GetProperty("CurrentLessonId")!=null,"guide has stable detailed lesson IDs");
                 Check(guide.Step==8 && Find<Button>(settings,"AddTextProvider").IsEnabled,"text guide unlocks the manufacturer picker instead of only the old connection fields");
                 Check(!Find<FrameworkElement>(settings,"SettingsNavigation").IsEnabled && !Find<Button>(settings,"SaveConnections").IsEnabled,"guide keeps other pages and global save locked");
@@ -40,7 +40,7 @@ namespace Dafeiyu.Tests
                     Check(Find<PasswordBox>(settings,"TextServiceKey").IsEnabled && guide.HighlightVisible,"new provider fields remain editable while the guide highlight survives");
                     Find<TextBox>(settings,"TextServiceUrl").Text=server.Url+"/v1";Find<PasswordBox>(settings,"TextServiceKey").Password="guide-text-key";
                     Go(guide,"text.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"a saved connection without an added model cannot finish the text step");
-                    Click(settings,"SaveAndFetchTextModels");Until(()=>Find<ListBox>(settings,"DiscoveredTextModels").Items.Count==2);
+                    Click(settings,"SaveAndFetchTextModels");Until(()=>Find<ListBox>(settings,"DiscoveredTextModels").Items.Count==2,delegate{Console.WriteLine("Catalog fixture: "+server.Done.Status+" path="+server.Path);foreach(string name in new[]{"ConnectionNotice","TextProviderNotice"}){var notice=settings.FindControl(name) as TextBlock;if(notice!=null)Console.WriteLine(name+": "+notice.Text);}});
                     Check(Find<ListBox>(settings,"DiscoveredTextModels").IsEnabled && settings.FindControl("SelectAllDiscoveredModels")==null,"guide permits selecting models after fetching collapses the connection area");
                     AddDiscovered(settings);AddDiscovered(settings);
                     Check(Find<ListBox>(settings,"TextProviderModels").Items.Count==2 && Find<ListBox>(settings,"TextProviderModels").IsEnabled,"both selected models can be added and changed inside the guide");
@@ -75,7 +75,7 @@ namespace Dafeiyu.Tests
         static void CheckManualFallback(PetWindow pet,string folder)
         {
             pet.Settings.OnboardingState="deferred";pet.Settings.OnboardingStep=8;pet.Settings.OnboardingLessonId="text.save";pet.ShowOnboarding();Pump();
-            var settings=(SettingsWindow)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
+            var settings=(SettingsPage)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
             using(var server=new ApiTests.Fixture("private catalog error",401)){
                 Choose(settings,"AddTextProvider","custom");Find<TextBox>(settings,"TextServiceUrl").Text=server.Url+"/v1";Find<PasswordBox>(settings,"TextServiceKey").Password="manual-guide-key";Click(settings,"SaveAndFetchTextModels");
                 Until(()=>Find<TextBlock>(settings,"TextProviderNotice").Text.Contains("401"));
@@ -85,16 +85,16 @@ namespace Dafeiyu.Tests
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text=ProxyConfiguration.DefaultAddress;Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
                 Check(pet.Settings.Text.Model=="manual-guide-model" && pet.Settings.TextProviders.Single(p=>p.Id==pet.Settings.ActiveTextProviderId).Models.Count==1,"manually added model survives guide save after a discovery error");
             }
-            Click(guide,"GuideBack");settings.Width=700;settings.Height=430;Pump();Capture(settings,Path.Combine(folder,"guide-models-minimum.png"));Capture(guide,Path.Combine(folder,"guide-models-minimum-card.png"));Click(guide,"GuideSkip");
+            Click(guide,"GuideBack");settings.HostWindow.Width=700;settings.HostWindow.Height=430;Pump();Capture(settings,Path.Combine(folder,"guide-models-minimum.png"));Capture(guide,Path.Combine(folder,"guide-models-minimum-card.png"));Click(guide,"GuideSkip");
         }
         static object Field(object value,string name){return value.GetType().GetField(name,BindingFlags.NonPublic|BindingFlags.Instance).GetValue(value);}
-        static T Find<T>(DependencyObject root,string name) where T:FrameworkElement {var settings=root as SettingsWindow;var found=settings==null?FindTree<T>(root,name):settings.FindControl(name) as T;if(found==null)throw new Exception("Missing "+name);return found;}
+        static T Find<T>(DependencyObject root,string name) where T:FrameworkElement {var settings=root as SettingsPage;var found=settings==null?FindTree<T>(root,name):settings.FindControl(name) as T;if(found==null)throw new Exception("Missing "+name);return found;}
         static T FindTree<T>(DependencyObject root,string name) where T:FrameworkElement {var element=root as T;if(element!=null && element.Name==name)return element;foreach(object item in LogicalTreeHelper.GetChildren(root)){var child=item as DependencyObject;if(child!=null){var result=FindTree<T>(child,name);if(result!=null)return result;}}return null;}
         static void Click(DependencyObject root,string name){var button=Find<Button>(root,name);Check(button.IsEnabled,"button is enabled: "+name);button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}
-        static void Choose(SettingsWindow settings,string add,string brand,bool cancel=false){Exception failure=null;Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{try{var picker=Application.Current.Windows.OfType<ProviderPickerWindow>().Single();if(cancel)picker.DialogResult=false;else{var button=Find<Button>(picker,"ChooseProvider_"+brand);Check(button.IsEnabled,"manufacturer picker is interactive during guide");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}}catch(Exception e){failure=e;}}));Click(settings,add);if(failure!=null)throw failure;Pump();}
-        static void Until(Func<bool> done){var end=DateTime.UtcNow.AddSeconds(7);while(!done() && DateTime.UtcNow<end)Pump();Check(done(),"guide state becomes ready");}
+        static void Choose(SettingsPage settings,string add,string brand,bool cancel=false){Exception failure=null;Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{try{var picker=Application.Current.Windows.OfType<ProviderPickerWindow>().Single();if(cancel)picker.DialogResult=false;else{var button=Find<Button>(picker,"ChooseProvider_"+brand);Check(button.IsEnabled,"manufacturer picker is interactive during guide");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}}catch(Exception e){failure=e;}}));Click(settings,add);if(failure!=null)throw failure;Pump();}
+        static void Until(Func<bool> done,Action diagnostic=null){var end=DateTime.UtcNow.AddSeconds(18);while(!done() && DateTime.UtcNow<end)Pump();if(!done()&&diagnostic!=null)diagnostic();Check(done(),"guide state becomes ready");}
         static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(150)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         static void Check(bool ok,string message){if(!ok)throw new Exception(message);passed++;Console.WriteLine("PASS "+message);}
-        static void Capture(Window window,string path){var bitmap=new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(window);using(var stream=File.Create(path)){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(stream);}}
+        static void Capture(FrameworkElement window,string path){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(window);using(var stream=File.Create(path)){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(stream);}}
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -44,12 +44,12 @@ namespace Dafeiyu.Tests
                 }
                 var task=session.SendTextAsync("请进行深度思考后，再回答",cfg,pet.Skin.Name);Pump();api.Think("先核对问题中的条件，再整理出清晰的回答。");Pump();
                 foreach(Window window in new Window[]{full,quick})
-                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(All<TextBlock>(exp.Header as DependencyObject).Any(t=>t.Name=="ProcessStatus"&&t.Text.Contains("先核对")),"process status is a separate stable heading");Check(!exp.IsExpanded && All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground is LinearGradientBrush,"reasoning streams into a collapsed animated one-liner");exp.IsExpanded=true;}
+                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(All<TextBlock>(exp.Header as DependencyObject).Any(t=>t.Name=="ProcessStatus"&&t.Text.Contains("先核对")),"process status is a separate stable heading");Check(!exp.IsExpanded && (SystemParameters.ClientAreaAnimation?All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground is LinearGradientBrush:All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground==AgentUi.Muted),"reasoning streams into a collapsed one-liner following system motion preference");exp.IsExpanded=true;}
                 api.Think("\n接着检查边界情况。");Pump();
                 Check(All<Expander>(full).Last(e=>e.Name=="ReasoningDetails").IsExpanded && All<Expander>(quick).Last(e=>e.Name=="ReasoningDetails").IsExpanded,"expansion survives streamed updates");
                 api.Answer("这是经过检查后的答复。");Pump();
                 foreach(Window window in new Window[]{full,quick})
-                {var last=All<Border>(window).Last(b=>b.Name=="AssistantMessage");Check(!All<StackPanel>(last).Single(p=>p.Name=="ThinkingProcess").IsVisible,"thinking auto-hides when final output starts");Check(!All<StackPanel>(last).Single(p=>p.Name=="ReplyActions").IsVisible,"reply actions stay hidden during streaming");}
+                {var last=All<Border>(window).Last(b=>b.Name=="AssistantMessage");var process=All<StackPanel>(last).Single(p=>p.Name=="ThinkingProcess");var body=All<MarkdownView>(last).Single();Check(process.IsVisible&&process.TranslatePoint(new Point(0,process.ActualHeight),last).Y<=body.TranslatePoint(new Point(),last).Y,"live process remains above streaming final output");Check(!All<StackPanel>(last).Single(p=>p.Name=="ReplyActions").IsVisible,"reply actions stay hidden during streaming");}
                 api.Finish();Wait(()=>task.IsCompleted);task.GetAwaiter().GetResult();Pump();
                 Check(session.History.Messages.Last().Reasoning.Contains("边界") && session.History.Messages.Last().Content=="这是经过检查后的答复。","reasoning and answer remain separate in history");
                 foreach(Window window in new Window[]{full,quick})
@@ -71,7 +71,7 @@ namespace Dafeiyu.Tests
                 processTools[0].Status="complete";processReply=processLog.Update(processReply.Id,"","pending",tools:processTools);processView.Update(processReply);
                 processReply=processLog.Update(processReply.Id,"","pending","新的推理\n继续检查");processView.Update(processReply);processExp.IsExpanded=false;Pump();
                 Check(processStatus.Text=="正在整理结果" && All<TextBlock>(processView).Any(t=>t.Name=="StageMilestone"),"finished tool shows a black stage milestone while the run settles");
-                processReply=processLog.Update(processReply.Id,"最终回答","complete");processView.Update(processReply);Pump();Check(!All<StackPanel>(processView).Single(p=>p.Name=="ThinkingProcess").IsVisible,"final answer automatically hides unified tools and reasoning");
+                processReply=processLog.Update(processReply.Id,"最终回答","complete");processView.Update(processReply);Pump();var completedProcess=All<StackPanel>(processView).Single(p=>p.Name=="ThinkingProcess");var completedActions=All<StackPanel>(processView).Single(p=>p.Name=="ReplyActions");Check(completedProcess.IsVisible&&!processExp.IsExpanded&&completedProcess.TranslatePoint(new Point(),processView).Y>=completedActions.TranslatePoint(new Point(0,completedActions.ActualHeight),processView).Y,"completed reply retains a folded process record below actions");
                 var inspect=All<Button>(processView).Single(b=>b.Name=="MoreReply").ContextMenu.Items.OfType<MenuItem>().Single(i=>i.Header as string=="查看思考与工具记录");inspect.IsChecked=true;inspect.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Pump();Check(processExp.IsExpanded && All<StackPanel>(processView).Single(p=>p.Name=="ThinkingProcess").IsVisible,"more menu reopens full process history after final answer");processHost.Close();
                 foreach(Window window in new Window[]{full,quick})
                 {
@@ -94,12 +94,8 @@ namespace Dafeiyu.Tests
                 Check(!All<Button>(quick).Any(b=>b.Name=="ConversationModePicker") && All<TextBlock>(quick).Any(t=>t.Name=="QuickChatBadge"),"quick chat shows its badge and removes the mode switch");
                 var linkDraft=All<MarkdownEditor>(full).Single(t=>t.Name=="MessageInput");linkDraft.Text="[DeskPet](https://github.com/Eason4869/deskpet)";Pump();Check(linkDraft.Document.Blocks.OfType<System.Windows.Documents.Paragraph>().SelectMany(p=>p.Inlines.OfType<System.Windows.Documents.Hyperlink>()).Any(l=>l.NavigateUri.Host=="github.com"),"input box renders links in its editable Markdown document");linkDraft.Clear();Pump();var draft=All<MarkdownEditor>(quick).Single(t=>t.Name=="QuickMessageInput");pet.Settings.AgentEnabled=false;
                 var tab=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(draft),Environment.TickCount,System.Windows.Input.Key.Tab){RoutedEvent=System.Windows.Input.Keyboard.PreviewKeyDownEvent};draft.RaiseEvent(tab);Check(!tab.Handled && !pet.Settings.AgentEnabled,"Tab no longer switches modes from the conversation-only quick chat");
-                var mode=All<Button>(full).Single(b=>b.Name=="ConversationModePicker");mode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="chat","full composer reflects the current pure conversation mode");
-                Check(mode.ContextMenu.Items.Count==2 && ((MenuItem)mode.ContextMenu.Items[0]).IsChecked,"full composer offers both modes and checks the active one");
-                ((MenuItem)mode.ContextMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));mode.ContextMenu.IsOpen=false;Check(pet.Settings.AgentEnabled && pet.Store.Load().AgentEnabled,"working mode persists agent selection");
-                Check((string)All<Border>(mode).Single(b=>b.Name=="ConversationModeGlyph").Tag=="work","working mode uses its writing pencil glyph");
-                ((MenuItem)mode.ContextMenu.Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(!pet.Settings.AgentEnabled && !pet.Store.Load().AgentEnabled,"full composer can switch back to pure conversation");
+                full.SwitchEntry(true);Pump();Check(full.WorkEntry&&All<Button>(full).Any(b=>b.Name=="AgentPermissionPicker"&&b.IsVisible),"work entry exposes permissions");
+                full.SwitchEntry(false);Pump();Check(!full.WorkEntry&&!All<Button>(full).Any(b=>b.Name=="AgentPermissionPicker"&&b.IsVisible),"chat entry hides tool permissions");
                 composer.SnapshotTargetProvider=()=>null;
                 var plus=All<Button>(quick).Single(b=>b.Name=="AddAttachment");plus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var menu=plus.ContextMenu;
                 Check(menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddFilesAndFolders") && menu.Items.OfType<MenuItem>().Any(m=>m.Name=="AddApplicationSnapshot") && !menu.Items.OfType<MenuItem>().Any(m=>m.Name=="SetAgentGoal"||m.Name=="AgentPlanMode"),"quick chat keeps attachment entries and drops work-only goal and planning");
@@ -107,7 +103,7 @@ namespace Dafeiyu.Tests
                 menu.IsOpen=false;
                 var fullPlus=All<Button>(full).Single(b=>b.Name=="AddAttachment");fullPlus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var fullMenu=fullPlus.ContextMenu;
                 Check(!fullMenu.Items.OfType<MenuItem>().Any(m=>m.Name=="AgentPlanMode"),"ordinary chat hides work-only planning controls");fullMenu.IsOpen=false;
-                ((MenuItem)mode.ContextMenu.Items[1]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));fullPlus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();fullMenu=fullPlus.ContextMenu;
+                full.SwitchEntry(true);fullPlus=All<Button>(full).Single(b=>b.Name=="AddAttachment");fullPlus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();fullMenu=fullPlus.ContextMenu;
                 var planningWorkspace=(ConversationWorkspace)typeof(ChatWindow).GetField("workspace",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(full);planningWorkspace.FollowProject(ProjectCatalogStore.CreateProject(pet.Projects,"界面测试项目",folder));
                 var plan=fullMenu.Items.OfType<MenuItem>().Single(m=>m.Name=="AgentPlanMode");plan.IsChecked=true;plan.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Check(((ConversationWorkspace)typeof(ChatWindow).GetField("workspace",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(full)).EffectiveSettings().AgentPlanMode && !pet.Settings.AgentPlanMode,"planning mode applies to the active work draft without changing global defaults");fullMenu.IsOpen=false;
                 var visual=new DrawingVisual();using(var drawing=visual.RenderOpen()){drawing.DrawRectangle(Ui.Brush("#E8F2FF"),null,new Rect(0,0,220,140));drawing.DrawText(new FormattedText("应用快照",System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface("Microsoft YaHei UI"),25,Ui.Ink,1.0),new Point(20,44));}var bitmap=new RenderTargetBitmap(220,140,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));byte[] picture;using(var memory=new MemoryStream()){encoder.Save(memory);picture=memory.ToArray();}
@@ -160,6 +156,6 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> VisualAll<T>(DependencyObject root) where T:DependencyObject{if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in VisualAll<T>(VisualTreeHelper.GetChild(root,i)))yield return child;}
         static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(160)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         static void Wait(Func<bool> ready){var limit=DateTime.UtcNow.AddSeconds(5);while(!ready() && DateTime.UtcNow<limit)Pump();if(!ready())throw new Exception("UI timeout");}
-        static void Save(FrameworkElement w,string path){var bitmap=new RenderTargetBitmap((int)w.ActualWidth,(int)w.ActualHeight,96,96,PixelFormats.Pbgra32);if(w is Window)bitmap.Render(w);else{var visual=new DrawingVisual();using(var drawing=visual.RenderOpen())drawing.DrawRectangle(new VisualBrush(w),null,new Rect(0,0,w.ActualWidth,w.ActualHeight));bitmap.Render(visual);}var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(path))png.Save(stream);}
+        static void Save(FrameworkElement w,string path){w.BringIntoView();var host=Window.GetWindow(w);if(host!=null)host.UpdateLayout();Pump();w.UpdateLayout();if(w.ActualWidth<=0||w.ActualHeight<=0)throw new Exception("Cannot capture unrendered control "+w.Name+" visibility="+w.Visibility+" actual="+w.ActualWidth+","+w.ActualHeight);var bitmap=new RenderTargetBitmap((int)w.ActualWidth,(int)w.ActualHeight,96,96,PixelFormats.Pbgra32);if(w is Window)bitmap.Render(w);else{var visual=new DrawingVisual();using(var drawing=visual.RenderOpen())drawing.DrawRectangle(new VisualBrush(w),null,new Rect(0,0,w.ActualWidth,w.ActualHeight));bitmap.Render(visual);}var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(path))png.Save(stream);}
     }
 }

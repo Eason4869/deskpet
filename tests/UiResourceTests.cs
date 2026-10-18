@@ -42,7 +42,7 @@ namespace Dafeiyu.Tests
                 var navigation = new AgentWorkspaceNavigation(pet, delegate { }); host = new Window { Content = navigation, Width = 300, Height = 600, ShowInTaskbar = false }; host.Show(); Pump(50);
                 var sidebar = (ProjectSidebar)typeof(AgentWorkspaceNavigation).GetField("projectNav", Hidden).GetValue(navigation);
                 var popup = sidebar.HoverDetails; popup.Child = new Border(); popup.PlacementTarget = sidebar; popup.IsOpen = true; Pump(30); navigation.Dispose();
-                Check(!popup.IsOpen && popup.Child == null && popup.PlacementTarget == null, "disposing navigation closes popup and releases its visual references");
+                Check(!popup.IsOpen && !Object.ReferenceEquals(popup,sidebar.HoverDetails) && sidebar.HoverDetails.Child==null && popup.Child!=null && popup.PlacementTarget==sidebar, "disposing navigation retires the old popup intact for native teardown and keeps no reusable content");
                 Check(typeof(AgentWorkspaceNavigation).GetField("project", Hidden) == null, "obsolete invisible project label is removed");
                 var art = new AdditionalInteractions(); var skin = pet.Catalog.Find("e-bao"); var first = art.Get(skin, "lifted");
                 var frame = first.Frame(0); int stride = frame.PixelWidth * 4; var pixels = new byte[stride * frame.PixelHeight]; frame.CopyPixels(pixels, stride, 0);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,12 +16,12 @@ namespace Dafeiyu.Tests
             var known=new ConnectionSettings{ContextWindowTokens=262144};
             Check(ModelContextCapacity.Budget(known,32768)==262144,"known model capacity controls compression without a stale 32K work cap");
             Check(ModelContextCapacity.Budget(new ConnectionSettings(),65536)==65536 && ModelContextCapacity.Budget(new ConnectionSettings(),0)==32768,"unknown capacity uses the configured fallback and a safe default");
-            using(var server=new ApiTests.Fixture("{\"data\":[{\"id\":\"large\",\"context_length\":1048576},{\"id\":\"unknown\"}]}"))using(var client=new ApiClient()){
-                var capacities=new Dictionary<string,int>();var models=await client.ListModelsAsync(new ConnectionSettings{BaseUrl=server.Url,ApiKey="fixture",UseProxy=false},CancellationToken.None,capacities);Check(models.Count==2&&capacities["large"]==1048576&&!capacities.ContainsKey("unknown"),"actual HTTP model catalog recognizes capacity and leaves absent values unknown");
+            using(var server=new ApiTests.Fixture("{\"data\":[{\"id\":\"large\",\"context_length\":1048576,\"supports_tools\":false,\"supports_images\":true},{\"id\":\"unknown\"}]}"))using(var client=new ApiClient()){
+                var capacities=new Dictionary<string,int>();var metadata=new Dictionary<string,ModelCapabilitySetting>();var models=await client.ListModelsAsync(new ConnectionSettings{BaseUrl=server.Url,ApiKey="fixture",UseProxy=false},CancellationToken.None,capacities,metadata);Check(models.Count==2&&capacities["large"]==1048576&&!capacities.ContainsKey("unknown"),"actual HTTP model catalog recognizes capacity and leaves absent values unknown");Check(metadata["large"].Tools==CapabilitySupport.Unsupported&&metadata["large"].Images==CapabilitySupport.Supported&&metadata["unknown"].Tools==CapabilitySupport.Unknown,"actual model catalog provides only explicit capabilities");
             }
             foreach(bool fail in new[]{false,true})using(var api=new SummaryApi(fail))using(var session=new ConversationSession(api,new Silent(),()=>null)){
                 var settings=new PetSettings{AgentEnabled=false,ReadReplies=false,AgentContextTokenLimit=8192,Text=new ConnectionSettings{Model="fixture",BaseUrl="http://127.0.0.1",ContextWindowTokens=16384}};
-                for(int i=0;i<6;i++)session.AddLiveTurn("","old user "+i,new string('旧',5000));await session.SendTextAsync("latest exact input",settings,"pet");
+                for(int i=0;i<6;i++)session.AddLiveTurn("","old user "+i,new string('旧',5000));if(fail){bool stopped=false;try{await session.SendTextAsync("latest exact input",settings,"pet");}catch(ApiException){stopped=true;}Check(stopped&&api.Calls==1&&session.CurrentContextUsage.Status=="failed"&&!session.IsBusy,"summary failure retains history and stops the request without fabricated fallback");continue;}await session.SendTextAsync("latest exact input",settings,"pet");
                 Check(api.Calls==2&&api.Last.Last().Content=="latest exact input"&&session.CurrentContextUsage.Compactions==1&&!session.IsBusy,"plain conversation automatically compresses before send, including summary failure fallback: "+fail);
                 Check(session.CurrentContextUsage.Tokens<16384&&session.CurrentContextUsage.Capacity==16384,"context preview receives compressed usage and model capacity: "+fail);
             }

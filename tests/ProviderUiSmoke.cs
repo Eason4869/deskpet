@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -217,7 +217,7 @@ namespace Dafeiyu.Tests
     var session=new GeminiLiveSession(()=>new GeminiLiveSocket(),()=>mic,()=>output);
     typeof(PetWindow).GetField("live",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(pet,session);
     try{
-     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));
+     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");try{Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));}catch(Exception e){throw new Exception("speech fixture notice: "+Find<TextBlock>(window,"ConnectionNotice").Text,e);}
      Check(tts.Path=="/v1/audio/speech" && tts.Authorization=="Bearer tts-only-key" && tts.Body.Contains("tts-1") && liveServer.Setup==null && !mic.Started,"speech test performs its own HTTP TTS request and playback without opening Live or a microphone");
      window.SelectAiSection(3);Pump();Click(window,"PreviewLive");Until(()=>mic.Started);
      Check(window.Content is LiveCallView && liveServer.Setup.Contains("models/live-fixture-model") && liveServer.Setup.Contains("Kore"),"Live test uses the actual WebSocket setup with its own model and voice, even with an invalid text draft");

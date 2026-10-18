@@ -100,13 +100,14 @@ namespace Dafeiyu.Tests
                 {
                     double angle=direction*Math.PI/8;int x=(int)Math.Round(center.X+Math.Sin(angle)*radius),y=(int)Math.Round(center.Y-Math.Cos(angle)*radius);
                     if(!SetCursorPos(x,y))throw new InvalidOperationException("Cannot move fixture cursor; Win32 "+Marshal.GetLastWin32Error());
-                    Pump(.2);pet.UpdateLayout();Pump(.035);
+                    for(int attempt=0;attempt<100;attempt++){if(!SetCursorPos(x+(attempt%2),y))throw new InvalidOperationException("Cannot move owned fixture cursor");Pump(.02);if((bool)Field(pet,"gazeActive") && (int)Field(pet,"shownRow")==9+direction/8 && (int)Field(pet,"shownCol")==direction%8)break;}CompositionTarget.Rendering-=renderer;renderingDetached=true;pet.UpdateLayout();
                     Console.WriteLine("GAZE "+direction+" cursor="+DesktopInterop.Cursor()+" target="+x+","+y+" last="+Field(pet,"lastCursor")+" elapsed="+((System.Diagnostics.Stopwatch)Field(pet,"watch")).Elapsed.TotalSeconds+" moved="+Field(pet,"lastCursorMove")+" row="+Field(pet,"shownRow")+" col="+Field(pet,"shownCol")+" state="+pet.Animation.State+" hover="+Field(pet,"hover"));
                     Check((bool)Field(pet,"gazeActive") && (int)Field(pet,"shownRow")==9+direction/8 && (int)Field(pet,"shownCol")==direction%8,"brief cursor dwell shows original gaze sector "+direction);
                     var crop=new CroppedBitmap(gaze,new Int32Rect(direction%4*480,direction/4*520,480,520));
                     Check(Pixels((BitmapSource)((Image)pet.Content).Source).SequenceEqual(Pixels(crop)),"stationary gaze pixels equal original direction "+direction);
                     gazeShots.Add(new KeyValuePair<string,BitmapSource>("gaze "+direction,Capture(pet,"gaze-"+direction+".png")));
                     if(direction==0 || direction==8)HitTest(pet,null,0,(SpriteAtlas)Field(pet,"atlas"),9+direction/8,direction%8);
+                    CompositionTarget.Rendering+=renderer;renderingDetached=false;
                 }
                 Contact(gazeShots,4,"gaze-contact.png");
                 Pump(1.5);Check(!(bool)Field(pet,"gazeActive") && (int)Field(pet,"shownRow")==0,"stationary cursor returns to idle after 1.4 seconds");

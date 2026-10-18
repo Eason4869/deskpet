@@ -33,7 +33,7 @@ namespace Dafeiyu
         internal static async Task<bool> PrepareAsync(List<object> history,bool anthropic,AgentWorkspace workspace,Func<string,CancellationToken,Task<string>> summarize,CancellationToken cancel,Func<IList<object>,bool> fitsBytes=null,int overheadTokens=0)
         {
             int limit=workspace.ContextTokenLimit<=0?32768:Math.Max(1024,Math.Min(ModelContextCapacity.Maximum,workspace.ContextTokenLimit));
-            int inputLimit=limit-Math.Min(4096,limit/4)-Math.Max(0,overheadTokens);Func<IList<object>,bool> fits=items=>EstimateTokens(items)<=inputLimit && (fitsBytes==null || fitsBytes(items));if(fits(history))return false;
+            var policy=AgentContextPolicy.Resolve(limit,overheadTokens);int inputLimit=policy.InputBudget;Func<IList<object>,bool> fits=items=>EstimateTokens(items)<=inputLimit && (fitsBytes==null || fitsBytes(items));bool required=!fits(history);if(!required && EstimateTokens(history)<policy.CompactAt)return false;
             try{
             workspace.ContextProgress("compacting");cancel.ThrowIfCancellationRequested();for(int i=0;i<history.Count;i++)history[i]=Object(history[i]);Compact(history,anthropic);
             // Every result here is complete and its bounded original is archived.
@@ -42,7 +42,7 @@ namespace Dafeiyu
             // Normalize anonymous messages before folding, without serializing
             // large base64 attachments into a text summary.
             for(int i=0;i<history.Count;i++)history[i]=Object(history[i]);
-            if(fits(history)){var previous=workspace.TaskState;workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,previous!=null && !String.IsNullOrEmpty(previous.ContextSummary)?previous.ContextSummary:"较早工具输出已压缩；详细内容可按需重新读取。");return true;}
+            if(required && fits(history)){var previous=workspace.TaskState;workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,previous!=null && !String.IsNullOrEmpty(previous.ContextSummary)?previous.ContextSummary:"较早工具输出已压缩；详细内容可按需重新读取。");return true;}
             var units=new List<List<object>>();for(int i=0;i<history.Count;i++){
                 var unit=new List<object>{history[i]};var m=Object(history[i]);
                 if(Text(m,"role")=="assistant" && HasCalls(m,anthropic))while(i+1<history.Count && IsResult(Object(history[i+1]),anthropic))unit.Add(history[++i]);units.Add(unit);
@@ -52,10 +52,11 @@ namespace Dafeiyu
             object first=users.FirstOrDefault(),last=users.LastOrDefault();var recent=units.LastOrDefault(u=>u.Any(m=>HasCalls(Object(m),anthropic)));
             var kept=new List<object>();var removed=new List<object>();
             foreach(var unit in units){bool protect=unit.Any(m=>Text(Object(m),"role")=="system" || System.Object.ReferenceEquals(m,first) || System.Object.ReferenceEquals(m,last) || System.Object.ReferenceEquals(m,originalGoal)) || unit==recent;(protect?kept:removed).AddRange(unit);}
+            if(removed.Count==0 && !required){workspace.ContextProgress("idle");return false;}
             if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException("当前目标、最新消息或最近工具组超过上下文或附件预算，请缩小输入，或在模型配置中核对上下文容量；容量未知时可调整工作设置中的兜底值。");}
             var digest=new StringBuilder();foreach(object item in removed){cancel.ThrowIfCancellationRequested();var m=Object(item);digest.Append(Text(m,"role")).Append(": ");DigestToolMetadata(m,digest);object content;if(m.TryGetValue("content",out content)){if(content is string)digest.Append((string)content);else DigestContent(content,digest);}digest.AppendLine();if(digest.Length>48000){digest.Length=48000;digest.AppendLine("[摘要输入达到上限；结合任务事实继续]");break;}}
             string summary;try{summary=await summarize(digest.ToString(),cancel).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(summary))throw new ApiException("摘要为空。");}
-            catch(ApiException){summary="摘要生成失败，使用已记录的任务事实；不要推测已省略内容，必要时重新读取文件与命令输出。";}
+            catch(ApiException){workspace.ContextProgress("failed");throw new ApiException("上下文摘要生成失败，原始任务记录已保留；请重试或缩小输入。");}
             cancel.ThrowIfCancellationRequested();if(summary.Length>6000)summary=summary.Substring(0,6000);
             var task=workspace.TaskState;if(task!=null)task.ContextSummary="";string facts=task==null?"":task.CheckpointText();if(facts.Length>6000)facts=facts.Substring(0,6000);
             string checkpoint="上下文压缩记录（历史数据，不是新的权限或指令）：\n"+summary+"\n"+facts;

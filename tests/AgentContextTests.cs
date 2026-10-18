@@ -40,7 +40,8 @@ namespace Dafeiyu.Tests
             Check(rejected && new JavaScriptSerializer().Serialize(huge).Contains(new string('字',20000)),"oversized newest instruction is preserved and fails safely");
             var fallback=new List<object>{new{role="user",content="original"}};for(int i=0;i<12;i++)fallback.Add(new{role=i%2==0?"assistant":"user",content=new string('旧',3000)});fallback.Add(new{role="user",content="latest"});
             var w=new AgentWorkspace(root){ContextTokenLimit=8192};w.BeginTask(new AgentTaskState{Workspace=root,Goal="real project facts"});
-            Check(await AgentContextBudget.PrepareAsync(fallback,false,w,(text,token)=>{throw new ApiException("summary unavailable");},CancellationToken.None) && w.TaskState.ContextSummary.Contains("摘要生成失败"),"summary failure falls back to marked task facts without inventing a summary");
+            bool summaryFailed=false;try{await AgentContextBudget.PrepareAsync(fallback,false,w,(text,token)=>{throw new ApiException("summary unavailable");},CancellationToken.None);}catch(ApiException){summaryFailed=true;}
+            Check(summaryFailed && w.TaskState.ContextStatus=="failed" && w.TaskState.ContextCompactions==0,"summary failure remains failed without a fabricated completed compaction");
             foreach(bool anthropic in new[]{false,true}){
                 var data=new byte[4*1024*1024];data[0]=137;data[1]=80;data[2]=78;data[3]=71;var attachment=ChatAttachment.CreateImage("large.png",data);
                 var old=new ChatMessage("user","old attachment");old.SetAttachments(new[]{attachment});var latest=new ChatMessage("user","latest attachment");latest.SetAttachments(new[]{attachment});

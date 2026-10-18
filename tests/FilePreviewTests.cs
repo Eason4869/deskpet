@@ -1,0 +1,71 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+namespace Dafeiyu.Tests
+{
+    public static class FilePreviewTests
+    {
+        static int checks,requests;static Application app;static PetWindow pet;
+        static void Check(bool ok,string text){if(!ok)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
+        static IEnumerable<T> All<T>(DependencyObject p)where T:DependencyObject{if(p is T)yield return(T)p;for(int i=0;i<VisualTreeHelper.GetChildrenCount(p);i++)foreach(var t in All<T>(VisualTreeHelper.GetChild(p,i)))yield return t;}
+        static async Task Ready(FilePreviewPane pane){var task=pane.Ready;if(await Task.WhenAny(task,Task.Delay(25000))!=task)throw new Exception("Preview did not finish loading in 25 seconds");await task;await Task.Delay(100);}
+        static void Capture(Window window,string name){window.UpdateLayout();var image=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);image.Render(window);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var output=File.Create(Path.Combine("work","permissions",name)))png.Save(output);}
+        static async Task<string> Script(FilePreviewPane pane,string script){var task=pane.EvaluateHtmlAsync(script);if(await Task.WhenAny(task,Task.Delay(5000))!=task)throw new Exception("WebView script timed out");return await task;}
+        static async Task Eventually(FilePreviewPane pane,string expression){for(int i=0;i<50;i++){if(await Script(pane,expression)=="true")return;await Task.Delay(100);}throw new Exception("HTML condition failed: "+expression);}
+        static async Task Run(bool nativeHtml)
+        {
+            string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","preview-fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);string md=Path.Combine(root,"说明.md"),cs=Path.Combine(root,"示例.cs"),zip=Path.Combine(root,"结果.zip"),html=Path.Combine(root,"网页.html");
+            File.WriteAllText(md,"# 交付说明\n\n**粗体** 与正文。\n\n- 一个条目\n- 第二个条目\n\n```cs\nclass Demo {}\n```",Encoding.UTF8);File.WriteAllText(cs,"// C# 文件预览\nclass Demo\n{\n    string Name = \"桌面伙伴\";\n}\n",Encoding.UTF8);File.WriteAllBytes(zip,new byte[]{80,75,0,255});
+            var pane=new FilePreviewPane(md,delegate{});var host=new Window{Content=pane,Width=820,Height=760};host.Show();await Task.Delay(100);await Ready(pane);
+            Check(All<MarkdownView>(pane).Any(v=>v.Name=="MarkdownFilePreview"&&v.Text.Contains("交付说明")),"Markdown opens as rendered document");
+            All<Button>(pane).Single(b=>b.Name=="ShowFileSource").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Ready(pane);Check(pane.SourceMode&&All<TextBox>(pane).Single(b=>b.Name=="PreviewSourceText").Text.StartsWith("# 交付说明"),"source tab shows original Markdown and selectable text");
+            All<Button>(pane).Single(b=>b.Name=="ShowFilePreview").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Ready(pane);Check(!pane.SourceMode&&All<MarkdownView>(pane).Any(),"preview tab returns to rendered Markdown");host.Content=null;pane.Dispose();
+            pane=new FilePreviewPane(cs,delegate{});host.Content=pane;await Task.Delay(100);await Ready(pane);var code=All<TextBox>(pane).Single(b=>b.Name=="PreviewSourceText");Check(code.IsReadOnly&&code.Text.Contains("class Demo")&&All<TextBlock>(pane).Single(t=>t.Name=="SourceLineNumbers").Text=="1\n2\n3\n4\n5\n6","C# opens read-only with real line numbers");
+            Check(pane.SourceMode&&All<Button>(pane).Single(b=>b.Name=="ShowFilePreview").Background==Brushes.Transparent,"code file has only source tab selected");Capture(host,"file-preview-code.png");
+            File.WriteAllText(cs,"// 已更新\nclass Updated {}",Encoding.UTF8);All<Button>(pane).Single(b=>b.Name=="ReloadFilePreview").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Ready(pane);Check(All<TextBox>(pane).Single(b=>b.Name=="PreviewSourceText").Text.Contains("class Updated"),"reload reads current disk contents");host.Content=null;pane.Dispose();
+            pane=new FilePreviewPane(zip,delegate{});host.Content=pane;await Task.Delay(100);await Ready(pane);Check(All<TextBlock>(pane).Any(t=>t.Text.Contains("暂不支持")),"binary preview does not launch external program");host.Content=null;pane.Dispose();
+            pane=new FilePreviewPane(Path.Combine(root,"已删除.md"),delegate{});host.Content=pane;await Task.Delay(100);await Ready(pane);Check(All<TextBlock>(pane).Any(t=>t.Name=="FilePreviewNotice"&&t.Text.Contains("未完成")),"missing file shows recoverable notice");host.Content=null;pane.Dispose();
+            var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ShowPredictedMessages=false,ReadReplies=false,OnboardingState="completed",AgentWorkspace=root};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);
+            var full=new ChatWindow(pet);double normalMinWidth=full.MinWidth;full.MinWidth=1450;full.Width=1450;full.Height=850;full.Show();await Task.Delay(200);full.OpenFilePreview(md);await Task.Delay(150);var dock=All<ContentControl>(full).Single(c=>c.Name=="DockedFilePreview");Check(dock.IsVisible&&dock.Content is PreviewWorkspace,"wide full chat docks output preview on the right");await Ready((FilePreviewPane)((PreviewWorkspace)dock.Content).Selected);Capture(full,"file-preview-docked.png");
+            Check(All<ChatAtmosphere>(full).Single().ArtworkOpacity==.20,"full conversation uses approved 20 percent artwork");
+            full.MinWidth=normalMinWidth;full.Width=850;await Task.Delay(200);Check(dock.IsVisible&&!full.OwnedWindows.OfType<Window>().Any(w=>w.Content is PreviewWorkspace)&&All<Button>(full).Single(b=>b.Name=="BackToConversation").IsVisible,"narrow chat expands preview within the same window");All<Button>(full).Single(b=>b.Name=="BackToConversation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);Check(!dock.IsVisible&&dock.Content is PreviewWorkspace,"return to conversation retains hidden side tabs");
+            full.MinWidth=1450;full.Width=1450;await Task.Delay(200);Check(dock.IsVisible&&!full.OwnedWindows.OfType<Window>().Any(w=>w.Content is PreviewWorkspace),"widening returns same preview to dock");
+            All<Button>(((PreviewWorkspace)dock.Content).Selected).Single(b=>b.Name=="CloseFilePreview").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(100);Check(dock.Content==null&&!dock.IsVisible,"closing preview releases content and restores layout");
+            var message=new ChatMessage("assistant","[交付说明](<"+new Uri(md).AbsoluteUri+">)");var history=new StackPanel();var view=new ChatMessageView(message,history,pet,full);history.Children.Add(view);host.Content=history;await Task.Delay(100);var card=All<Border>(view).Single(b=>b.Name=="OutputFileCard");card.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,Environment.TickCount,MouseButton.Left){RoutedEvent=UIElement.MouseLeftButtonUpEvent});await Task.Delay(200);Check(dock.Content is PreviewWorkspace,"left click delivered file opens in-app preview");Check(card.ContextMenu.Items.OfType<MenuItem>().Count()==6,"right-click menu retains six actions");full.Close();host.Content=null;
+            if(nativeHtml)await NativeHtml(host,root,html);
+            host.Close();Console.WriteLine("File preview tests: "+checks+" passed"+(nativeHtml?" (native WebView2 included)":" (text/UI only)"));
+        }
+        static async Task NativeHtml(Window host,string root,string path)
+        {
+            var tcp=new TcpListener(IPAddress.Loopback,0);tcp.Start();int port=((IPEndPoint)tcp.LocalEndpoint).Port;tcp.Stop();var listener=new HttpListener();listener.Prefixes.Add("http://127.0.0.1:"+port+"/");listener.Start();var server=Task.Run(async delegate{try{while(listener.IsListening){var request=await listener.GetContextAsync();Interlocked.Increment(ref requests);request.Response.Headers.Add("Access-Control-Allow-Origin","*");byte[] bytes=Encoding.UTF8.GetBytes("external-ok");request.Response.ContentLength64=bytes.Length;await request.Response.OutputStream.WriteAsync(bytes,0,bytes.Length);request.Response.Close();}}catch(HttpListenerException){}catch(ObjectDisposedException){}});
+            File.WriteAllText(Path.Combine(root,"local.css"),"body{background:#f5f7fb;color:#223047;font-family:sans-serif;padding:30px} h1{color:#315ff4}");File.WriteAllText(Path.Combine(root,"local.js"),"window.localScript=true;document.getElementById('state').textContent='本地脚本已运行';");
+            File.WriteAllText(path,"<!doctype html><meta charset='utf-8'><link rel='stylesheet' href='local.css'><h1>网页交付预览</h1><p id='state'>加载中</p><button onclick=\"this.textContent='已点击'\">交互按钮</button><script src='local.js'></script><script>fetch('http://127.0.0.1:"+port+"/probe').then(r=>r.text()).then(t=>window.remote=t,()=>window.remote='blocked');fetch('/%2e%2e%2foutside.txt').then(r=>window.outside=r.status);</script>",Encoding.UTF8);
+            FilePreviewPane pane=null;try{
+                pane=new FilePreviewPane(path,delegate{});host.Content=pane;await Task.Delay(150);await Ready(pane);Check(!pane.SourceMode,"installed WebView2 really renders HTML");await Eventually(pane,"window.localScript===true && window.remote==='blocked' && window.outside===403");Check(await Script(pane,"getComputedStyle(document.querySelector('h1')).color") == "\"rgb(49, 95, 244)\"","HTML loads same-folder CSS and JavaScript");Check(requests==0,"default preview prevents actual external HTTP requests");Check(await Script(pane,"document.querySelector('button').click();document.querySelector('button').textContent")=="\"已点击\"","HTML supports interactive scripts");
+                using(var stream=File.Create(Path.Combine("work","permissions","file-preview-html.png")))await pane.CaptureHtmlAsync(stream);
+                host.Content=null;var floating=new Window{Width=720,Height=650,Content=pane,Owner=host};floating.Show();await Task.Delay(200);Check(await Script(pane,"window.localScript===true")=="true","native WebView survives moving from dock host to floating window");floating.Content=null;host.Content=pane;floating.Close();await Task.Delay(150);Check(await Script(pane,"window.localScript===true")=="true","native WebView survives returning to original host");
+                All<CheckBox>(pane).Single(c=>c.Name=="PreviewExternalResources").IsChecked=true;await Ready(pane);await Eventually(pane,"window.remote==='external-ok'");Check(requests>0,"explicit external-resource opt-in permits real network fetch");
+                All<CheckBox>(pane).Single(c=>c.Name=="PreviewExternalResources").IsChecked=false;await Ready(pane);await Eventually(pane,"window.remote==='blocked'");int before=requests;await Script(pane,"fetch('http://127.0.0.1:"+port+"/again').catch(()=>{});true");await Task.Delay(250);Check(before==requests,"disabling external resources restores network blocking");
+                var type=typeof(PetWindow).Assembly.GetType("Dafeiyu.HtmlFilePreview");var resolve=type.GetMethod("ResolveResource",BindingFlags.Static|BindingFlags.NonPublic);Func<string,string> resolvePath=p=>(string)resolve.Invoke(null,new object[]{root,p});Check(resolvePath("/local.css")==Path.Combine(root,"local.css")&&resolvePath("/%2e%2e%2foutside.txt")==null&&resolvePath("/C%3a/Windows/win.ini")==null&&resolvePath("/.deskpet-agent-kernel/private.json")==null,"resource resolver rejects traversal, drive paths and internal data");
+                var udp=new UdpClient(new IPEndPoint(IPAddress.Loopback,0));try{int udpPort=((IPEndPoint)udp.Client.LocalEndPoint).Port;await Script(pane,"window.peerAttempted=false;try{const p=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:"+udpPort+"'}]});p.createDataChannel('probe');p.createOffer().then(o=>p.setLocalDescription(o));window.peerAttempted=true;}catch(e){};true");await Task.Delay(800);Check(await Script(pane,"window.peerAttempted===false")=="true"&&udp.Available==0,"real WebRTC STUN probe cannot send UDP from file preview");Check(await Script(pane,"(()=>{const f=document.createElement('iframe');document.body.appendChild(f);return typeof f.contentWindow.RTCPeerConnection;})()")=="\"undefined\"","new child frame cannot restore peer-connection API");}finally{udp.Close();}
+                string privateDir=Path.Combine(root,".deskpet-agent-kernel");Directory.CreateDirectory(privateDir);File.WriteAllText(Path.Combine(privateDir,"private.json"),"fixture only");var shortName=new StringBuilder(32768);if(GetShortPathName(privateDir,shortName,shortName.Capacity)>0&&shortName.ToString()!=privateDir){string alias=new DirectoryInfo(shortName.ToString()).Name;Check(resolvePath("/"+alias+"/private.json")==null,"actual NTFS short-name alias cannot expose reserved data");}else Console.WriteLine("INFO disk has no distinct 8.3 alias; opened-handle canonical-path guard enabled");
+                host.Content=null;pane.Dispose();pane=new FilePreviewPane(path,delegate{});host.Content=pane;await Task.Delay(20);pane.Dispose();await Ready(pane);Check(true,"closing while HTML initializes raises no async exception");
+            }finally{host.Content=null;if(pane!=null)pane.Dispose();listener.Close();}
+            await server;
+        }
+        [System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode)]static extern uint GetShortPathName(string path,StringBuilder result,int size);
+        [STAThread]public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(args.Contains("--html"));result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return result;}
+    }
+}

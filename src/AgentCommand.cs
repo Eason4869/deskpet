@@ -17,6 +17,7 @@ namespace Dafeiyu
         [DataMember]public string CommandId,Executable,Workspace,Output;
         [DataMember]public string[] Arguments;
         [DataMember]public int ExitCode;
+        [DataMember]public string ExecutionId,CommandText,IsolationDescription;
         [DataMember]public bool Truncated,TimedOut,Cancelled;
         [DataMember]public long ElapsedMilliseconds;
         public CommandResult Copy(){var c=(CommandResult)MemberwiseClone();c.Arguments=Arguments==null?null:(string[])Arguments.Clone();return c;}
@@ -25,7 +26,8 @@ namespace Dafeiyu
     {
         readonly List<AgentCommand> commands=new List<AgentCommand>();readonly List<CommandResult> commandResults=new List<CommandResult>();
         public bool CommandsEnabled {get;private set;}
-        public int CommandTimeoutSeconds {get;set;}
+        int commandTimeoutSeconds=120;
+        public int CommandTimeoutSeconds {get{return commandTimeoutSeconds;}set{commandTimeoutSeconds=value;}}
         public IList<CommandResult> CommandResults{get{lock(commandResults)return commandResults.Select(r=>r.Copy()).ToList().AsReadOnly();}}
         public void ConfigureCommands(bool enabled,string json)
         {

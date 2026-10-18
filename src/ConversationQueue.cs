@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -154,7 +154,7 @@ namespace Dafeiyu
                         entry.Context=preceding;if(original!=null)entry.Context.Add(original.Copy());
                         var partial=last;if(String.IsNullOrEmpty(partial.Content) && original!=null)partial=history.SkipWhile(m=>m.Id!=original.Id).LastOrDefault(m=>m.Role=="assistant"&&!String.IsNullOrEmpty(m.Content));
                         if(partial!=null && !String.IsNullOrEmpty(partial.Content))entry.Context.Add(new ChatMessage("assistant",partial.Content+"\n[以上是被用户打断的未完成回复，请按新的要求继续。]"));
-                        while(entry.Context.Count>2 && (entry.Context.Count>20 || entry.Context.Sum(m=>(long)m.Content.Length)>100000))entry.Context.RemoveRange(0,2);
+                        // The shared request budget selects/compacts complete context after steering.
                     }
                     Current.Remove(entry);Current.Insert(0,entry);Save();if(revision==pauseRevision)paused.Remove(persona);Notice="";
                 }

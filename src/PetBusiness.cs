@@ -75,6 +75,21 @@ namespace Dafeiyu
     }
 
     [DataContract]
+    public sealed class AgentReplyChangeSummary
+    {
+        [DataMember] public string TaskId,Workspace,Status;
+        [DataMember] public List<AgentChange> Changes=new List<AgentChange>();
+        public AgentReplyChangeSummary Copy()
+        { return new AgentReplyChangeSummary{TaskId=TaskId,Workspace=Workspace,Status=Status,Changes=CopyChanges(Changes)}; }
+        public static AgentReplyChangeSummary FromTask(AgentTaskState task)
+        { return task==null?null:new AgentReplyChangeSummary{TaskId=task.Id,Workspace=task.Workspace,Status=task.Status,Changes=CopyChanges(task.Changes)}; }
+        public AgentTaskState ToTask()
+        { return new AgentTaskState{Id=TaskId,Workspace=Workspace,Status=Status,Changes=CopyChanges(Changes)}; }
+        static List<AgentChange> CopyChanges(IEnumerable<AgentChange> changes)
+        { return changes==null?new List<AgentChange>():changes.Where(c=>c!=null).Select(c=>c.Copy()).ToList(); }
+    }
+
+    [DataContract]
     public sealed class ChatMessage
     {
         [DataMember] public string Id { get; private set; }
@@ -84,7 +99,9 @@ namespace Dafeiyu
         [DataMember] public string Reasoning { get; private set; }
         [DataMember] public long ReasoningMilliseconds { get; private set; }
         [DataMember] public bool WorkMode { get; private set; }
+        [DataMember(EmitDefaultValue=false)] public string CompanionSkinId { get; private set; }
         [DataMember] public string AgentTaskId { get; internal set; }
+        [DataMember(EmitDefaultValue=false)] public AgentReplyChangeSummary ChangeSummary { get; set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
@@ -95,11 +112,11 @@ namespace Dafeiyu
         public ChatMessage(string role, string content) : this(role,content,Guid.NewGuid().ToString("N"),"complete","text") { }
         public ChatMessage(string role,string content,string turnId,string status,string source)
         { Id=Guid.NewGuid().ToString("N");TurnId=turnId;Role=role;Content=content??"";Status=status;Source=source;Timestamp=DateTime.UtcNow; }
-        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);return copy; }
+        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
         internal void SetTools(IEnumerable<AgentToolEvent> tools) { ToolEvents=tools==null?null:tools.Select(t=>t.Copy()).ToList(); }
         internal void SetAttachments(IEnumerable<ChatAttachment> files) { Attachments=files==null?null:files.Select(f=>f.Copy()).ToList(); }
         internal void SetReasoning(string text,long milliseconds) { Reasoning=text??"";ReasoningMilliseconds=milliseconds; }
-        internal void StartProcessing(bool workMode,DateTime? startedAt=null) { WorkMode=workMode;ProcessingStartedAt=startedAt??DateTime.UtcNow;ProcessingMilliseconds=0; }
+        internal void StartProcessing(bool workMode,DateTime? startedAt=null,string skinId=null) { WorkMode=workMode;ProcessingStartedAt=startedAt??DateTime.UtcNow;ProcessingMilliseconds=0;if(!String.IsNullOrWhiteSpace(skinId))CompanionSkinId=skinId; }
         internal void SetProcessingTime(long milliseconds) { ProcessingMilliseconds=Math.Max(0,milliseconds); }
         public string ProcessingLabel(DateTime now)
         {
@@ -145,9 +162,14 @@ namespace Dafeiyu
         {
             lock(gate){string turn="guide-"+id;var u=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(u==null){u=new ChatMessage("user",text,turn,"complete","guide");messages.Add(u);}var reply=messages.Find(m=>m.TurnId==turn && m.Role=="assistant");if(reply==null){reply=new ChatMessage("assistant","",turn,"pending","guide");messages.Insert(messages.IndexOf(u)+1,reply);}else reply.Update("","pending");Trim();user=u.Copy();return reply.Copy();}
         }
-        public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt);return message.Copy();} }
+        public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null,string skinId=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt,skinId);return message.Copy();} }
         internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
-        internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.AgentTaskId=taskId;}}
+        internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null){if(message.AgentTaskId!=taskId)message.ChangeSummary=null;message.AgentTaskId=taskId;}}}
+        internal void UpdateAgentTaskSummary(AgentTaskState task)
+        {
+            if(task==null || String.IsNullOrEmpty(task.Id))return;
+            lock(gate)foreach(var message in messages.Where(m=>m.Role=="assistant" && m.AgentTaskId==task.Id))message.ChangeSummary=AgentReplyChangeSummary.FromTask(task);
+        }
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
             lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
@@ -166,10 +188,7 @@ namespace Dafeiyu
             if (!String.IsNullOrWhiteSpace(persona)) result.Add(new ChatMessage("system", persona));
             lock(gate) {
                 var pairs=new List<ChatMessage>();
-                for(int i=0;i+1<messages.Count;i++) { var u=messages[i];var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { pairs.Add(u.Copy());pairs.Add(a.Copy());i++; } }
-                if(pairs.Count>20)pairs.RemoveRange(0,pairs.Count-20);
-                long characters=pairs.Sum(m=>(long)m.Content.Length);
-                while(pairs.Count>0 && characters>100000){characters-=pairs[0].Content.Length+pairs[1].Content.Length;pairs.RemoveRange(0,2);}
+                for(int i=0;i+1<messages.Count;i++) { var u=messages[i];var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { var userCopy=u.Copy();var assistantCopy=a.Copy();userCopy.ChangeSummary=null;assistantCopy.ChangeSummary=null;pairs.Add(userCopy);pairs.Add(assistantCopy);i++; } }
                 result.AddRange(pairs);
             }
             result.Add(new ChatMessage("user", user)); return result;
@@ -188,13 +207,8 @@ namespace Dafeiyu
         public static void BudgetRequest(List<ChatMessage> request)
         {
             Func<ChatMessage,long> size=m=>Encoding.UTF8.GetByteCount(m.Content??"")+ChatAttachment.StoredSize(m.Attachments)+1024;
-            while(request.Sum(size)>7L*1024*1024)
-            {
-                int first=request.FindIndex(m=>m.Role!="system");
-                if(first<0 || first>=request.Count-1)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
-                string turn=request[first].TurnId;request.RemoveAt(first);
-                if(first<request.Count-1 && request[first].Role=="assistant")request.RemoveAt(first);
-            }
+            var current=request.LastOrDefault(m=>m.Role=="user");
+            if(request.Where(m=>m.Role=="system"||Object.ReferenceEquals(m,current)).Sum(size)>7L*1024*1024)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
         }
         public void Clear() { lock(gate)messages.Clear(); }
     }

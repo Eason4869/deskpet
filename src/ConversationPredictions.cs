@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -74,6 +74,8 @@ namespace Dafeiyu
         }
         async void RunPredictionsAsync(PetSettings live,ConnectionSettings connection,IList<ChatMessage> messages,string key,int revision,CancellationTokenSource cancel,TaskCompletionSource<bool> completion)
         {
+            using(UsageTracking.BeginScope("prediction",kernelSession==null?null:kernelSession.ConversationId,kernelSession==null?null:kernelSession.ProjectId))
+            {
             string[] result=new string[0];bool publish=false;
             try
             {
@@ -100,6 +102,8 @@ namespace Dafeiyu
                 cancel.Dispose();
                 completion.TrySetResult(true);
                 if(publish)NotifyPredictions();
+            }
+
             }
         }
         static void ObservePredictionFailure(Task response)

@@ -15,6 +15,7 @@ namespace Dafeiyu
     {
         const int MaximumResponseBytes=2*1024*1024,MaximumTextChars=120000;
         readonly Uri apiRoot;readonly HttpClient http;readonly string repository,apiToken;bool disposed;
+        internal string Repository {get{return repository;}}
         internal GitHubClient(Uri root,HttpMessageHandler handler,string repository,string token)
         {
             apiRoot=root??new Uri("https://api.github.com/");this.repository=repository??"";this.apiToken=token??"";

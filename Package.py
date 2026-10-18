@@ -40,7 +40,7 @@ def include_source(file):
 source_files=[p for p in sorted(PROJECT.rglob('*')) if include_source(p)]
 # User-facing templates and documentation remain in the runtime; developer
 # verification reports, tests and intermediate artwork stay out.
-user_docs=['configuration-guide.md','skin-format.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
+user_docs=['configuration-guide.md','agent-workflows.md','skin-format.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
 runtime_text={name:(PROJECT/name).read_text(encoding='utf-8-sig') for name in ['README.md','CHANGELOG.md']+[str(Path('docs')/name) for name in user_docs]}
 readme=runtime_text['README.md']
 for pet,still in [('ebao','e-bao'),('dafeiyu','dafeiyu'),('marfu','marfu'),('xiaobei','xiaobei')]:

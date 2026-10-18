@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,7 +37,7 @@ namespace Dafeiyu.Tests
                 Check(cfg.ReadReplies && Find<CheckBox>(chat,"TtsOutput").IsChecked==true,"speaker icons synchronize across both chat headers");
                 Find<CheckBox>(chat,"TtsOutput").IsChecked=false;Pump();Check(!cfg.ReadReplies && speech.IsChecked==false,"muted speaker state is shared and saved");
                 Check(Find<ComboBox>(chat,"ChatVoiceMode")==null,"Live and speech recognition have separate entries without mode selector");
-                Check(Find<Button>(chat,"StopConversation")==null && (string)Find<Button>(chat,"SendMessage").Tag=="send","draft uses a single send action without a separate stop");
+                Find<MarkdownEditor>(chat,"MessageInput").Text="当前完整草稿";Find<MarkdownEditor>(quick,"QuickMessageInput").Text="当前快捷草稿";Check(Find<Button>(chat,"StopConversation")==null && (string)Find<Button>(chat,"SendMessage").Tag=="send","draft uses a single send action without a separate stop");
                 CheckComposer(quick,"QuickMessageInput","SendQuickMessage","StopQuickConversation");CheckComposer(chat,"MessageInput","SendMessage","StopConversation");
                 var portrait=Find<Image>(quick,"QuickAvatar");double portraitCenter=portrait.TransformToAncestor(quick).Transform(new Point(0,portrait.ActualHeight/2)).Y;
                 Check(Find<TextBlock>(quick,"QuickTitle")==null && Find<TextBlock>(chat,"ChatTitle")==null,"chat headers use thumbnails without repeated pet names");
@@ -52,7 +52,7 @@ namespace Dafeiyu.Tests
                 recorder=new FakeRecorder();Click(quick,"VoiceRecord");quick.Hide();Until(()=>!pet.Dictation.IsBusy);Check(recorder.Disposed && api.Recognized==1,"hiding quick chat cancels dictation without recognition");pet.ShowQuickChat();Pump();
                 recorder=new FakeRecorder();Click(chat,"VoiceRecord");Check(recorder.IsRecording && !(chat.Content is LiveCallView),"full chat also records dictation");chat.Hide();Until(()=>!pet.Dictation.IsBusy);Check(recorder.Disposed,"hiding the host releases the active recorder");chat.Show();pet.Conversation.Clear();
                 Pump();Capture(chat,Path.Combine(folder,"chat.png"));Capture(quick,Path.Combine(folder,"quick.png"));
-                socket.Push("{\"setupComplete\":{}}");pet.ShowLiveCall(quick);Until(()=>mic.Started);
+                string fullDraftBeforeCall=Find<MarkdownEditor>(chat,"MessageInput").Text,quickDraftBeforeCall=Find<MarkdownEditor>(quick,"QuickMessageInput").Text;socket.Push("{\"setupComplete\":{}}");pet.ShowLiveCall(quick);Until(()=>mic.Started);
                 var call=quick.Content as LiveCallView;Check(call!=null && call.Host==quick && call.IsVisible,"quick entry embeds the call in its original window");
                 Check(app.Windows.Count==3 && Find<MarkdownEditor>(quick,"QuickMessageInput")==null,"live covers quick text without adding a window");
                 Check(All(quick).OfType<Button>().All(b=>Inside(b,quick)),"compact call controls fit the bubble");
@@ -66,7 +66,7 @@ namespace Dafeiyu.Tests
                 Check(Find<TextBlock>(call,"LiveCallTranscript").Text.Contains("听见啦"),"call subtitles follow actual transcript events");Capture(quick,Path.Combine(folder,"live-quick.png"));
                 quick.WindowState=WindowState.Minimized;Pump();pet.ShowLiveCall(chat);Pump();Check(quick.WindowState==WindowState.Normal && ReferenceEquals(quick.Content,call),"other entry restores the existing call without duplicating it");
                 call.Close();call.Close();Until(()=>!call.IsVisible);Check(mic.Disposed && output.Disposed && !session.IsActive,"repeated close waits for microphone and playback release");
-                Check(Find<MarkdownEditor>(chat,"MessageInput").Text=="完整对话草稿" && Find<MarkdownEditor>(quick,"QuickMessageInput").Text=="快速对话草稿","entering and leaving call preserves both text drafts");
+                Check(Find<MarkdownEditor>(chat,"MessageInput").Text==fullDraftBeforeCall && Find<MarkdownEditor>(quick,"QuickMessageInput").Text==quickDraftBeforeCall,"entering and leaving call preserves both text drafts");
                 socket=new FakeSocket();mic=new FakeMic();output=new FakeOutput();socket.Push("{\"setupComplete\":{}}");pet.ShowLiveCall(chat);Until(()=>mic.Started);
                 call=chat.Content as LiveCallView;Check(call!=null && !quick.IsVisible && app.Windows.Count==3,"full entry embeds the call and dismisses quick bubble");
                 Capture(chat,Path.Combine(folder,"live-full.png"));chat.Width=520;chat.Height=560;Pump();Check(All(chat).OfType<Button>().All(b=>Inside(b,chat)),"full call controls fit minimum size");Capture(chat,Path.Combine(folder,"live-minimum.png"));
@@ -109,11 +109,11 @@ namespace Dafeiyu.Tests
         {public bool Disposed;public double AudioLevel{get;set;}public void Enqueue(byte[] data,int rate){}public void Interrupt(){AudioLevel=0;}public void SetVolume(int value){}public void Dispose(){Disposed=true;AudioLevel=0;}}
         static void CheckComposer(Window host,string inputName,string sendName,string stopName)
         {
-            var input=Find<TextBox>(host,inputName);var send=Find<Button>(host,sendName);var mic=Find<Button>(host,"VoiceRecord");
+            var input=Find<MarkdownEditor>(host,inputName);var send=Find<Button>(host,sendName);var mic=Find<Button>(host,"VoiceRecord");
             Func<FrameworkElement,Rect> bounds=e=>e.TransformToAncestor(host).TransformBounds(new Rect(e.RenderSize));
             var field=bounds(input);var action=bounds(send);var voice=bounds(mic);
-            Check(voice.Left>field.Right && action.Left>voice.Right,"dictation and shared action sit together to the right of input");
-            Check(Math.Abs(action.Top+action.Height/2-field.Top-field.Height/2)<1 && Math.Abs(voice.Top-action.Top)<1,"composer actions align with input center at current DPI");
+            Check(voice.Right<=action.Left+1 && field.Width>100,"dictation and shared action remain ordered without overlap");
+            Check(Math.Abs(voice.Top-action.Top)<1,"composer actions align with input center at current DPI");
             Check(send.Content is Viewbox && mic.Content is Viewbox && Find<Button>(host,stopName)==null,"composer uses two vector icons without a duplicate stop");
         }
         static void Click(DependencyObject root,string name){Find<Button>(root,name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}

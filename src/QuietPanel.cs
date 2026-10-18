@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,8 +15,8 @@ namespace Dafeiyu
         public QuietPanel(PetWindow owner)
         {
             pet=owner;VerticalScrollBarVisibility=ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;
-            var root=new StackPanel{Margin=new Thickness(24,22,24,24)};root.Children.Add(Ui.Text("快捷键",25));
-            root.Children.Add(Ui.Text("按你的工作节奏，决定伙伴何时出现。",12,Ui.Muted));
+            var root=new StackPanel{Margin=new Thickness(24,22,24,24)};root.Children.Add(Ui.Text("通用",25));
+            root.Children.Add(Ui.Text("设置伙伴的显示、交互、全局快捷键与本地记录。",12,Ui.Muted));
             var behavior=new StackPanel{Margin=new Thickness(0,14,0,0)};
             quiet=Ui.Toggle("免打扰",pet.Settings.QuietMode,delegate(bool enabled){if(!refreshing)pet.SetQuietMode(enabled);});quiet.Name="QuietMode";behavior.Children.Add(quiet);
             behavior.Children.Add(Ui.Text("暂停主动问候、散步和回复自动朗读；保留朗读偏好与正在进行的 Live。",12,Ui.Muted));

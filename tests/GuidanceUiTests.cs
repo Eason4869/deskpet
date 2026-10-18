@@ -24,6 +24,7 @@ namespace Dafeiyu.Tests
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown }; PetWindow pet = null; ChatWindow full = null; QuickChatWindow quick = null;
             try
             {
+                Console.WriteLine("System client-area animation="+SystemParameters.ClientAreaAnimation);
                 string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "guide-live-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
                 var cfg = new PetSettings { AgentEnabled = true, AgentWorkspace = root, AutoUpdate = false, GreetingEnabled = false, ReadReplies = false, SaveChatHistory = false, ShowPredictedMessages = false }; cfg.Text.BaseUrl = "http://127.0.0.1:1/v1"; cfg.Text.Model = "fixture"; foreach (var key in cfg.Hotkeys.Keys.ToArray()) cfg.Hotkeys[key] = "";
                 pet = new PetWindow(null, cfg, new SettingsStore(Path.Combine(root, "settings.json")), null); var api = new Api(); var session = new ConversationSession(api, new Speech(), () => null); session.SelectPersona(pet.Skin.Id); typeof(PetWindow).GetField("conversation", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(pet, session);
@@ -37,7 +38,7 @@ namespace Dafeiyu.Tests
                 Check(!history.Any(m => m.Status == "cancelled" || m.Status == "interrupted") && !history.SelectMany(m => m.ToolEvents ?? new List<AgentToolEvent>()).Any(t => t.Status == "error" || t.Summary.Contains("已中断")), "guidance creates no interrupted warning or failed tool");
                 foreach (Window host in new Window[] { full, quick })
                 {
-                    var view = All<ChatMessageView>(host).Single(v => (string)v.Tag == pending.Id); var label = All<TextBlock>(view).Single(t => t.Name == "ProcessStatus"); Check(label.IsVisible && label.Foreground is LinearGradientBrush, "continued activity remains animated in " + host.GetType().Name);
+                    var view = All<ChatMessageView>(host).Single(v => (string)v.Tag == pending.Id); var label = All<TextBlock>(view).Single(t => t.Name == "ProcessStatus"); Check(label.IsVisible,"continued activity remains visible in "+host.GetType().Name);Check(SystemParameters.ClientAreaAnimation?label.Foreground is LinearGradientBrush:label.Foreground==AgentUi.Muted,"continued activity follows system motion preference in "+host.GetType().Name);
                     var stack = (StackPanel)view.Parent; var guide = All<ChatMessageView>(host).Single(v => (string)v.Tag == latest.Id); Check(stack.Children.IndexOf(view) > stack.Children.IndexOf(guide), "activity is positioned after guidance in " + host.GetType().Name);
                 }
                 api.Boundary.SetResult(true); Until(() => api.Admitted);

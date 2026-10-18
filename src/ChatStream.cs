@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -102,6 +102,7 @@ namespace Dafeiyu
             {
                 var json = new JavaScriptSerializer { MaxJsonLength = MaxEventCharacters }.DeserializeObject(value) as Dictionary<string,object>;
                 if(json == null) throw new FormatException();
+                UsageTracking.Observe(json,anthropic);
                 if(json.ContainsKey("error")) throw InvalidStream();
                 if(anthropic)
                 {

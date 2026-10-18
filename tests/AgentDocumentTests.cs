@@ -40,6 +40,9 @@ namespace Dafeiyu.Tests
                 string firstHash=Hash(docxPath);
                 var change=w.Changes.First(c=>Path.GetFileName(c.Path)=="notes.docx");
                 Check(change.AddedLines.HasValue && change.AddedLines.Value>=3,"document writes report readable added line counts");
+                // The rewrite is a separate task with an existing document baseline.
+                // A newly created file has no prior document bytes to restore.
+                w.Dispose();w=new AgentWorkspace(root);
                 Check(!Call(w,"write_file",new{path="notes.docx",content="第二版\n内容"}).StartsWith("错误："),"an existing .docx can be fully rewritten");
                 string restore=Call(w,"restore_file",new{path="notes.docx"});Check(!restore.StartsWith("错误：") && Hash(docxPath)==firstHash,"restore_file returns the exact original document bytes");
                 string edit=Call(w,"edit_file",new{path="notes.docx",old_text="重点",new_text="其他"});

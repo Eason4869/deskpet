@@ -14,11 +14,10 @@ namespace Dafeiyu.Tests
             {
                 string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"subagent-tool-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var workspace=new AgentWorkspace(root);var audit=new AgentAuditLog(root);var claims=new ExecutionClaimStore(Path.Combine(root,"claims"));
                 workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),audit,null,claims,"parent-1");workspace.ConfigureAgentProfile(new AgentProfileRegistry().Get("build"));
-                string spawned=workspace.ExecuteAsync("spawn_subagent",new JavaScriptSerializer().Serialize(new{profile="explore",input="inspect"}),CancellationToken.None).GetAwaiter().GetResult();
-                var spawnedObject=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(spawned);string id=spawnedObject.ContainsKey("id")?spawnedObject["id"].ToString():spawnedObject["Id"].ToString();
-                Check(spawned.Contains("running") && workspace.Subagents.List("parent-1").Count==1,"spawn_subagent creates a running child lifecycle");
-                string completed=workspace.ExecuteAsync("complete_subagent",new JavaScriptSerializer().Serialize(new{id=id,result="done"}),CancellationToken.None).GetAwaiter().GetResult();
-                Check(completed.Contains("complete") && workspace.Subagents.List("parent-1")[0].Status=="complete","complete_subagent finalizes the child lifecycle");
+                var child=workspace.SubagentScheduler.Schedule("parent-1",new AgentProfileRegistry().Get("explore"),"inspect");
+                Check(child.Status=="running" && workspace.Subagents.List("parent-1").Count==1,"internal scheduler retains child lifecycle API");
+                string completed=workspace.ExecuteAsync("complete_subagent",new JavaScriptSerializer().Serialize(new{id=child.Id,result="forged"}),CancellationToken.None).GetAwaiter().GetResult();
+                Check(completed.StartsWith("错误：") && workspace.SubagentScheduler.Complete(child.Id,"internal worker result"),"model completion is rejected while internal worker completion remains available");
                 Console.WriteLine("Agent subagent tool tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -97,7 +97,7 @@ namespace Dafeiyu.Tests
                 typeof(PetWindow).GetField("conversation",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,session);
                 cfg.Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9876",Model="palette-fixture",StreamReplies=false};
                 var request=session.SendTextAsync("busy",cfg,pet.Skin.Name);Pump(.3);
-                Check(pet.DialogueBusy && Actions(palette).All(b=>!b.IsEnabled),"busy conversation disables every action");
+                Check(pet.DialogueBusy && Actions(palette).All(b=>b.IsEnabled),"busy conversation keeps every supported action available");
                 palette.Close();var stopped=session.StopAsync();var deadline=DateTime.UtcNow.AddSeconds(5);while((!stopped.IsCompleted || !request.IsCompleted) && DateTime.UtcNow<deadline)Pump();Check(stopped.IsCompleted && request.IsCompleted,"busy fixture stops cleanly");try{request.GetAwaiter().GetResult();}catch(OperationCanceledException){}
                 string legacy=Path.Combine(folder,"legacy.png");using(var input=typeof(SpriteAtlas).Assembly.GetManifestResourceStream("Dafeiyu.Atlas"))using(var output=File.Create(legacy))input.CopyTo(output);
                 Check(pet.SelectSkin(pet.Catalog.Import(legacy)),"imported pet selected");palette=new ActionPaletteWindow(pet);palette.ShowForPet();Pump();

@@ -490,7 +490,7 @@ try
     var workView = settings.GetLogicalDescendants().OfType<WorkSettingsView>().Distinct().Single();
     T WorkControl<T>(string name) where T : Control => workView.GetLogicalDescendants().OfType<T>().Distinct().Single(c => c.Name == name);
     var accessSetting = WorkControl<ComboBox>("AgentAccess"); var contextSetting = WorkControl<NumericUpDown>("AgentContextTokenLimit");
-    Check(accessSetting.Items.Count == 2 && contextSetting.Minimum == 8192 && contextSetting.Maximum == 131072 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
+    Check(accessSetting.Items.Count == 2 && contextSetting.Minimum == 8192 && contextSetting.Maximum == 2000000 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
     var workBefore = controller.Settings.Copy(); var historyBeforeWork = controller.Session.History.Messages.Count;
     if (OperatingSystem.IsWindows())
     {

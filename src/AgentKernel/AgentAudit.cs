@@ -7,7 +7,7 @@ namespace Dafeiyu
 {
     public sealed class AgentAuditEvent
     {
-        public string CallId,TaskId,Tool,Action,Resource,Result;public long DurationMs;public DateTime CreatedUtc;
+        public string CallId,TaskId,Tool,Action,Resource,Result,Reason,PayloadHash,SessionId,ProjectId;public long DurationMs;public DateTime CreatedUtc;
     }
     public sealed class AgentAuditLog
     {

@@ -21,9 +21,9 @@ namespace Dafeiyu.Tests
                 Check(store.Warning.Length>0,"B successful save cleared A failure");store.Load("b");Check(store.Warning.Length>0,"B load cleared A failure");
                 store.SaveAsync("a",log.Messages).GetAwaiter().GetResult();Check(store.Warning.Length==0,"repairing A did not clear its warning");
             });
-            Run("two allowed image turns fit the actual model request budget",()=>{
+            Run("two image turns within the total byte budget retain their actual attachments",()=>{
                 SecretProtection.Configure(new Protection());var api=new Model();var settings=new PetSettings{ReadReplies=false};settings.Text.BaseUrl="http://127.0.0.1:1";settings.Text.Model="fixture";
-                var bytes=new byte[4*1024*1024-1024];bytes[0]=137;bytes[1]=80;bytes[2]=78;bytes[3]=71;var file=ChatAttachment.CreateImage("large.png",bytes);
+                var bytes=new byte[2*1024*1024];bytes[0]=137;bytes[1]=80;bytes[2]=78;bytes[3]=71;var file=ChatAttachment.CreateImage("large.png",bytes);
                 using(var session=new ConversationSession(api,new Speech(),()=>null)){
                     session.SendTextAsync("first",settings,"test",attachments:new[]{file}).GetAwaiter().GetResult();
                     session.SendTextAsync("second",settings,"test",attachments:new[]{file}).GetAwaiter().GetResult();

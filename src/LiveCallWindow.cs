@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,7 +19,7 @@ namespace Dafeiyu
             pet=companion;session=pet.Live;host=origin;previousContent=host.Content;previousTitle=host.Title;
             bool compact=host is QuickChatWindow;Background=Ui.Brush("#F7F9FD");
             var root=new Grid{Margin=new Thickness(compact?16:28,compact?12:22,compact?16:28,compact?12:24)};root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var header=new DockPanel();var back=UiIcons.Button("back",host is SettingsWindow?"结束测试并返回设置":compact?"结束通话并返回快速对话":"结束通话并返回完整对话");back.Name="LiveBackToText";back.Click+=delegate{Close();};DockPanel.SetDock(back,Dock.Right);header.Children.Add(back);
+            var header=new DockPanel();var back=UiIcons.Button("back",(host is SettingsWindow || host is ChatWindow && ((ChatWindow)host).CurrentPage=="settings")?"结束测试并返回设置":compact?"结束通话并返回快速对话":"结束通话并返回完整对话");back.Name="LiveBackToText";back.Click+=delegate{Close();};DockPanel.SetDock(back,Dock.Right);header.Children.Add(back);
             var heading=new StackPanel();var title=Ui.Text(pet.Skin.Name,compact?16:24);title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);heading.Children.Add(Ui.Text(compact?"快速语音通话":"Live 语音通话",11,Ui.Muted));header.Children.Add(heading);root.Children.Add(header);
             var center=new Grid{Margin=new Thickness(0,compact?2:12,0,compact?4:12)};center.RowDefinitions.Add(new RowDefinition());center.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var stage=new Grid{MaxWidth=compact?146:330,MaxHeight=compact?146:330};orbit=new VoiceOrbit{Name="LiveVoiceOrbit",ClipToBounds=true};stage.Children.Add(orbit);
@@ -49,7 +49,7 @@ namespace Dafeiyu
         void Transcript(string role,string text){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>Transcript(role,text)));return;}subtitle.Text=(role=="user"?"你：":pet.Skin.Name+"：")+text;}
         public void Show()
         {
-            host.Content=this;host.Title=pet.Skin.Name+" · Live 通话";Activate();Focus();
+            var main=host as ChatWindow;if(main!=null)main.MountLiveContent(this);else host.Content=this;host.Title=pet.Skin.Name+" · Live 通话";Activate();Focus();
         }
         public void Activate()
         {
@@ -70,7 +70,7 @@ namespace Dafeiyu
             {
                 closed=true;session.StateChanged-=Refresh;session.PartialTranscript-=Transcript;
                 host.Closing-=ClosingHost;host.IsVisibleChanged-=HostVisibilityChanged;
-                host.Content=previousContent;host.Title=previousTitle;
+                var main=host as ChatWindow;if(main!=null)main.UnmountLiveContent(this);else host.Content=previousContent;host.Title=previousTitle;
                 if(Closed!=null)Closed();
                 var quick=host as QuickChatWindow;if(quick!=null && quick.IsVisible)quick.FocusInput();
             }

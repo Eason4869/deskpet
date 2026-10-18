@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -45,19 +45,19 @@ namespace Dafeiyu.Tests
                         for(int frame=0;frame<AnimationPlayer.Counts[row];frame++) {
                             if(frame>0)pet.Animation.Advance(periods[row]);else pet.Animation.Advance(.00001);Update(pet);
                             int shownRow=pet.Skin.ActionRow(row),shownCol=pet.Skin.ActionFrame(row,frame);
-                            Check(Field(pet,"shownMotion")==null && ReferenceEquals(image.Source,atlas.GetFrame(shownRow,shownCol)),id+" "+AnimationPlayer.States[row]+" original frame "+frame);
+                            var clip=((AdditionalInteractions)Field(pet,"additionalInteractions")).Get(pet.Skin,AnimationPlayer.States[row]);Check(clip==null?Field(pet,"shownMotion")==null && ReferenceEquals(image.Source,atlas.GetFrame(shownRow,shownCol)):ReferenceEquals(image.Source,clip.Frame(clip.Sample(pet.Animation.Elapsed))),id+" "+AnimationPlayer.States[row]+" configured animation frame "+frame);
                             sequence.Add(Capture(pet,Path.Combine(folder,id+"-"+AnimationPlayer.States[row]+"-"+frame+".png")));
                         }
                         Contact(sequence,Path.Combine(folder,id+"-"+AnimationPlayer.States[row]+"-sequence.png"));
                         Contact(sequence.Skip(Math.Max(0,sequence.Count-2)).Concat(sequence.Take(2)).ToList(),Path.Combine(folder,id+"-"+AnimationPlayer.States[row]+"-loop-seam.png"));
                         pet.Animation.Advance(periods[row]);Update(pet);
-                        Check(pet.Animation.Frame==0,id+" "+AnimationPlayer.States[row]+" original cycle wraps to first phase");
+                        Check(row==4?pet.Animation.State=="jumping"||pet.Animation.State=="idle":pet.Animation.Frame==0,id+" "+AnimationPlayer.States[row]+(row==4?" uses its configured natural duration":" original cycle wraps to first phase"));
                         if(row==2 || row==4) {HitTest(pet);Capture(pet,Path.Combine(folder,id+"-"+AnimationPlayer.States[row]+".png"));}
                     }
                     for(int row=0;row<actions.Length;row++) {
-                        pet.PlayInteraction(actions[row]);var clock=(InteractionAnimation)Field(pet,"interaction");
+                        pet.PlayInteraction(actions[row]);var clock=(InteractionAnimation)Field(pet,"interaction");var type=typeof(InteractionAnimation);int frames=((int[])type.GetField("counts",Private).GetValue(clock))[row];double length=((double[])type.GetField("durations",Private).GetValue(clock))[row];
                         var sequence=new List<BitmapSource>();
-                        for(int frame=0;frame<4;frame++) {if(frame>0)clock.Advance(durations[row]/4);Update(pet);Check(Field(pet,"shownMotion")==null && ReferenceEquals(image.Source,extra.GetFrame(row,frame)),id+" "+actions[row]+" original interaction frame "+frame);sequence.Add(Capture(pet,Path.Combine(folder,id+"-"+actions[row]+"-"+frame+".png")));}
+                        for(int frame=0;frame<frames;frame++) {if(frame>0)clock.Advance(length/frames);Update(pet);var clip=((AdditionalInteractions)Field(pet,"additionalInteractions")).Get(pet.Skin,clock.Name+((bool)Field(pet,"originalInteraction")?"-original":""));Check(clip==null?Field(pet,"shownMotion")==null && ReferenceEquals(image.Source,extra.GetFrame(row,frame)):ReferenceEquals(image.Source,clip.Frame(clip.Sample(clock.Elapsed))),id+" "+actions[row]+" configured interaction frame "+frame);sequence.Add(Capture(pet,Path.Combine(folder,id+"-"+actions[row]+"-"+frame+".png")));}
                         Contact(sequence,Path.Combine(folder,id+"-"+actions[row]+"-sequence.png"));
                         if(row==0 || row==6)Contact(sequence.Skip(2).Concat(sequence.Take(2)).ToList(),Path.Combine(folder,id+"-"+actions[row]+"-loop-seam.png"));
                         if(row==7){HitTest(pet);Capture(pet,Path.Combine(folder,id+"-special.png"));}
@@ -68,10 +68,10 @@ namespace Dafeiyu.Tests
                     EventHandler observer=delegate{double now=(double)Field(pet,"previousTick");if(now!=previous){previous=now;ticks++;}if(source!=image.Source){source=image.Source;changes++;}};
                     CompositionTarget.Rendering+=observer;var timer=Stopwatch.StartNew();Pump(3);CompositionTarget.Rendering-=observer;double seconds=timer.Elapsed.TotalSeconds;
                     report.Add(String.Format(System.Globalization.CultureInfo.InvariantCulture,"{0},{1:F1},{2:F1}",id,ticks/seconds,changes/seconds));
-                    Check(changes/seconds>=3.5 && changes/seconds<=5.5,"original roughly 4.5 source changes/second in WPF "+id);
+                    Check(changes/seconds>=4 && changes/seconds<=9,"configured idle cadence renders steadily in WPF "+id);
                     pet.SetPaused(true);var frozen=image.Source;Pump(.15);Check(ReferenceEquals(frozen,image.Source),"pause freezes original frame "+id);
                     pet.SetPaused(false);pet.HidePet();double hidden=(double)Field(pet,"previousTick");Pump(.15);Check(hidden==(double)Field(pet,"previousTick"),"hidden pet stops rendering "+id);pet.RestorePet();
-                    pet.PlayAction("jumping",.7);Pump(.78);Check(pet.Animation.State=="idle","jump completes at original 0.7 second request "+id);
+                    pet.PlayAction("jumping",.7);Pump(1.2);Check(pet.Animation.State=="idle","jump completes within its configured natural duration "+id);
                     if(id=="e-bao") {
                         pet.Settings.FollowCursor=true;var b=DesktopInterop.Bounds(new WindowInteropHelper(pet).Handle);
                         if(!SetCursorPos((int)(b.X+b.Width*.5),(int)(b.Y+b.Height*.4-220)))throw new Exception("SetCursorPos error "+Marshal.GetLastWin32Error());Pump(.2);

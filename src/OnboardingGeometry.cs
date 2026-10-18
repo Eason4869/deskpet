@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,7 +26,7 @@ namespace Dafeiyu
             if (!IsVisible || positioning) return; positioning = true;
             try
             {
-                IntPtr mine = new WindowInteropHelper(this).Handle, owner = new WindowInteropHelper(target != null ? Window.GetWindow(target) ?? settings : settings).Handle;
+                IntPtr mine = new WindowInteropHelper(this).Handle, owner = new WindowInteropHelper(target != null ? Window.GetWindow(target) ?? settingsHost : settingsHost).Handle;
                 if (mine == IntPtr.Zero || owner == IntPtr.Zero) return;
                 Rect area = DesktopInterop.WorkArea(owner), editor = DesktopInterop.Bounds(owner), bounds = DesktopInterop.Bounds(mine);
                 var source = PresentationSource.FromVisual(this); Matrix toDevice = source == null ? Matrix.Identity : source.CompositionTarget.TransformToDevice;

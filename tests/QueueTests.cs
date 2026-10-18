@@ -139,6 +139,9 @@ namespace Dafeiyu.Tests
                 // recover the already accepted attachment from its task checkpoint.
                 queue.Dispose();model.Resume=true;await session.ResumeAgentTaskAsync(cfg,"fixture");
                 attachmentRecovered=model.Last.SelectMany(m=>m.Attachments??new List<ChatAttachment>()).Any(a=>a.Text=="UNIQUE-GUIDANCE-ATTACHMENT");
+                // Match normal workspace/application close: request completion does
+                // not wait for the asynchronous history and checkpoint writers.
+                await session.FlushHistoryAsync();
             }
             Check(editRetained,"an edit made while guidance is saving survives acknowledgement of the older revision");
             Check(attachmentRecovered,"an accepted guidance attachment survives stop and explicit task continuation");

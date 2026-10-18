@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -170,7 +170,7 @@ namespace Dafeiyu.Tests
                     {
                         var workspace=new AgentWorkspace(folder.Path,false);var events=new List<AgentToolEvent>();string opened=null;workspace.DirectoryOpener=p=>opened=p;
                         Equal("完成",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,events.Add,false,CancellationToken.None));await Within(server.Done);
-                        Equal("private-content-must-not-be-a-summary",File.ReadAllText(file));Equal("已创建目录 "+directory,events[1].Summary);Equal("已写入 "+file,events[3].Summary);Equal("已打开目录 "+directory,events[5].Summary);Equal(directory,opened);
+                        Equal("private-content-must-not-be-a-summary",File.ReadAllText(file));Equal("已创建目录 "+(directory.Length>110?directory.Substring(0,110)+"…":directory),events[1].Summary);Equal("已写入 "+(file.Length>110?file.Substring(0,110)+"…":file),events[3].Summary);Equal("已打开目录 "+(directory.Length>110?directory.Substring(0,110)+"…":directory),events[5].Summary);Equal(directory,opened);
                         Assert(!events[3].Summary.Contains("private-content"),"summary leaked write content");
                         var request=Object(server.Bodies[0]);string prompt=anthropic?(string)request["system"]:(string)((Dictionary<string,object>)((object[])request["messages"])[0])["content"];
                         Assert(prompt.Contains("完整访问") && prompt.Contains("相对路径"),"full access scope missing");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -110,12 +110,12 @@ namespace Dafeiyu.Tests
             pet.SelectSkin(pet.Catalog.Find("e-bao"));pet.Settings.FollowCursor=true;pet.PlayAction("idle",0);
             var bounds=DesktopInterop.Bounds(new WindowInteropHelper(pet).Handle);var area=DesktopInterop.WorkArea(new WindowInteropHelper(pet).Handle);
             SetCursorPos((int)area.Left+5,(int)area.Top+5);Pump(.15);
-            var point=OpaquePoint(pet,false);SetCursorPos((int)point.X,(int)point.Y);Pump(.15);
+            var point=OpaquePoint(pet,false,false);SetCursorPos((int)point.X,(int)point.Y);Pump(.15);
             Check(pet.Animation.State=="jumping","native hover starts a single jump");Pump(1.1);
             Check(pet.Animation.State=="idle" && !(bool)Field(pet,"gazeActive"),"stationary hover returns to idle without repeating or following gaze");
             SetCursorPos((int)area.Left+5,(int)area.Top+5);Pump(.15);
             Check((bool)Field(pet,"gazeActive"),"leaving pet resumes configured gaze following");
-            pet.Settings.FollowCursor=false;pet.PlayAction("idle",0);point=OpaquePoint(pet,false);SetCursorPos((int)point.X,(int)point.Y);Pump(.15);
+            pet.Settings.FollowCursor=false;pet.PlayAction("idle",0);point=OpaquePoint(pet,false,false);SetCursorPos((int)point.X,(int)point.Y);Pump(.15);
             Check(pet.Animation.State=="jumping","reentering triggers jump even with gaze disabled");Pump(.8);
             SetCursorPos((int)area.Left+5,(int)area.Top+5);Pump(.1);pet.PlayAction("idle",0);
             typeof(PetWindow).GetField("random",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(pet,originalRandom);
@@ -196,7 +196,7 @@ namespace Dafeiyu.Tests
             Task request = session.SendTextAsync("busy fixture", pet.Settings, pet.Skin.Name);
             Check(session.IsBusy && !State(pet).Active, "starting real conversation state cancels sleep");
             pet.PlayInteraction("petting");
-            Check(!State(pet).Active && pet.Animation.State == "running", "busy conversation keeps priority over explicit interaction");
+            Check(State(pet).Active && State(pet).Name == "petting", "busy conversation preserves explicit interaction");
             Task stop = session.StopAsync();
             for (int i = 0; i < 100 && (!stop.IsCompleted || !request.IsCompleted); i++) Pump(.02);
             Check(stop.IsCompleted && request.IsCompleted && !session.IsBusy, "conversation fixture stops cleanly");
@@ -243,14 +243,14 @@ namespace Dafeiyu.Tests
             Check(checkedBody && checkedBackground, "aligned hit test samples body and margin");
         }
 
-        private static Point OpaquePoint(PetWindow pet, bool head)
+        private static Point OpaquePoint(PetWindow pet, bool head,bool primeHover=true)
         {
             var motion=(MotionClip)Field(pet,"shownMotion");int sample=(int)Field(pet,"shownSample");
             if(motion!=null) {
                 Rect b=DesktopInterop.Bounds(new WindowInteropHelper(pet).Handle);
                 for(int y=head?60:165;y<(head?130:225);y+=3)for(int x=85;x<155;x+=3) {
                     bool solid=true;for(int dy=-5;dy<=5 && solid;dy+=2)for(int dx=-5;dx<=5;dx+=2)if(motion.AlphaAt(sample,(x+dx)*motion.Width/240,(y+dy)*motion.Height/260)<240)solid=false;
-                    if(solid)return new Point(b.Left+x/240d*b.Width,b.Top+y/260d*b.Height);
+                    if(solid){var point=new Point(b.Left+x/240d*b.Width,b.Top+y/260d*b.Height);if(WindowFromPoint(new NativePoint{X=(int)point.X,Y=(int)point.Y})!=new WindowInteropHelper(pet).Handle)continue;if(primeHover)((HoverInteraction)Field(pet,"hover")).Update(true,true,false);return point;}
                 }
             }
             var atlas = (SpriteAtlas)Field(pet, "atlas");
@@ -260,7 +260,7 @@ namespace Dafeiyu.Tests
             {
                 bool solid = true;
                 for(int dy = -8; dy <= 8 && solid; dy += 4) for(int dx = -8; dx <= 8; dx += 4) if(atlas.AlphaAt(row, col, x + dx, y + dy) < 240) {solid = false; break;}
-                if (solid) {var offset=(Point)Field(pet,"shownOffset");bool mirrored=(bool)Field(pet,"shownMirrored");return new Point(bounds.Left + ((mirrored?479-x:x)+offset.X) / 480d * bounds.Width, bounds.Top + (y+offset.Y) / 520d * bounds.Height);}
+                if (solid) {var offset=(Point)Field(pet,"shownOffset");bool mirrored=(bool)Field(pet,"shownMirrored");var point=new Point(bounds.Left + ((mirrored?479-x:x)+offset.X) / 480d * bounds.Width, bounds.Top + (y+offset.Y) / 520d * bounds.Height);if(WindowFromPoint(new NativePoint{X=(int)point.X,Y=(int)point.Y})!=new WindowInteropHelper(pet).Handle)continue;if(primeHover)((HoverInteraction)Field(pet,"hover")).Update(true,true,false);return point;}
             }
             throw new Exception("No opaque gesture target");
         }

@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -38,8 +39,9 @@ namespace Dafeiyu
         public bool BackupEnabled { get; set; }
         public int ContextTokenLimit {get;set;}
         internal Action<string> DirectoryOpener { get; set; }
-        public object[] OpenAITools { get; private set; }
-        public object[] AnthropicTools { get; private set; }
+        object[] openAITools,anthropicTools;
+        public object[] OpenAITools { get{BuildSchemas();return openAITools;} private set{openAITools=value;} }
+        public object[] AnthropicTools { get{BuildSchemas();return anthropicTools;} private set{anthropicTools=value;} }
         private bool readOnly,disposed,desktopSession,githubConnected;private GitHubClient github;private AgentPermissionRuntime kernelPermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();private AgentAuditLog kernelAudit;private IAgentApprovalProvider kernelApproval;private ExecutionClaimStore kernelClaims;private string kernelTaskId;private AgentSessionModel kernelSessionModel;private AgentProfile kernelProfile;private AgentModelCapabilities providerCapabilities;private AgentSubagentManager subagents;private AgentSubagentScheduler subagentScheduler;private AgentToolRuntime kernelTools;private readonly List<AgentToolDefinition> dynamicTools=new List<AgentToolDefinition>();private readonly List<IMcpTransport> mcpTransports=new List<IMcpTransport>();
         public bool PlanMode {get{return readOnly;}set{readOnly=value;BuildSchemas();}}
         public bool ReadOnly {get{return PlanMode;}set{PlanMode=value;}}
@@ -79,27 +81,53 @@ namespace Dafeiyu
         }
 
         internal void ConfigureGitHub(string repository,ConnectionSettings connection){if(github!=null)github.Dispose();github=new GitHubClient(repository,connection);githubConnected=!String.IsNullOrWhiteSpace(repository);BuildSchemas();}
+        internal void ConfigureGitHub(GitHubClient client){if(github!=null)github.Dispose();github=client;githubConnected=client!=null&&!String.IsNullOrWhiteSpace(client.Repository);BuildSchemas();}
         internal void AttachKernelSession(AgentSessionModel model){kernelSessionModel=model;}
         internal void ConfigureProvider(string provider,string model){providerCapabilities=new AgentProviderRegistry().Resolve(provider,model);BuildSchemas();}
-        internal void ConfigureMcp(IMcpTransport transport){if(transport==null)throw new ArgumentNullException("transport");if(!mcpTransports.Contains(transport))mcpTransports.Add(transport);kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
+        internal void ConfigureCapabilities(AgentCapabilitySnapshot snapshot){providerCapabilities=snapshot.ToLegacy();BuildSchemas();}
+        internal void ConfigureMcp(IMcpTransport transport){if(transport==null)throw new ArgumentNullException("transport");if(!mcpTransports.Contains(transport))mcpTransports.Add(transport);if(transport is IMcpConnectionState)kernelPermissions.Add(new AgentPermissionRule{Action="mcp",Resource="**",Effect=AgentPermissionEffect.Ask});kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
         public AgentModelCapabilities ProviderCapabilities{get{return providerCapabilities;}}public AgentSubagentManager Subagents{get{return subagents;}}public AgentSubagentScheduler SubagentScheduler{get{return subagentScheduler;}}public AgentToolRuntime KernelTools{get{return kernelTools;}}
         internal void ConfigureAgentProfile(AgentProfile profile){kernelProfile=profile;if(profile!=null)kernelPermissions=new AgentProfileRegistry().PermissionRuntime(profile.Id);kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);RegisterMcpTools();BuildSchemas();}
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit){ConfigureKernel(permissions,audit,null,null,null);}
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId){ConfigureKernel(permissions,audit,approval,claims,taskId,null);}
         internal void ConfigureKernel(AgentPermissionRuntime permissions,AgentAuditLog audit,IAgentApprovalProvider approval,ExecutionClaimStore claims,string taskId,AgentSessionModel sessionModel){kernelPermissions=permissions??AgentPermissionRuntime.DefaultWorkspacePolicy();kernelAudit=audit;kernelApproval=approval;kernelClaims=claims;kernelTaskId=taskId;kernelSessionModel=sessionModel;kernelTools=new AgentToolRuntime(kernelPermissions,kernelAudit,kernelApproval);if(kernelClaims!=null){subagents=new AgentSubagentManager(kernelClaims);subagentScheduler=new AgentSubagentScheduler(subagents,4);}RegisterMcpTools();BuildSchemas();}
         internal void ConfigureDesktopSession(){desktopSession=true;BuildSchemas();}
+        internal int CumulativeTokenLimit {get;set;}
+        internal AgentPermissionRuntime FreezePermissions(){return kernelPermissions.Copy();}
         bool DesktopToolAvailable(string name)
         {
-            if(name=="run_command" || name=="list_commands" || name=="spawn_subagent" || name=="complete_subagent" || name=="interrupt_subagent")return false;
-            return !name.StartsWith("github_",StringComparison.Ordinal) || (githubConnected && AgentPermissionRuntime.ActionForTool(name)=="github_read");
+            IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection) && !connection.Connected)return false;
+            if(name=="exec_command")return TerminalAvailable;
+            if(name=="spawn_subagent" || name=="interrupt_subagent" || name=="get_subagent" || name=="wait_subagents")return childWorkers!=null;
+            if(name=="run_command" || name=="list_commands" || name=="complete_subagent")return false;
+            return !name.StartsWith("github_",StringComparison.Ordinal) || (githubConnected && (AgentPermissionRuntime.ActionForTool(name)=="github_read" || kernelApproval!=null));
         }
         public Task<string> ExecuteAsync(string name,string argumentsJson,CancellationToken token){return ExecuteAsync(name,argumentsJson,Guid.NewGuid().ToString("N"),token);}
-        public async Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
+        readonly AgentExecutionGuard executionGuard=new AgentExecutionGuard();
+        public Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();if(name=="complete_subagent")return Task.FromResult("错误：只有真实 worker 可以记录子任务完成。");if(ChildToolBudget>0 && Interlocked.Increment(ref childToolCalls)>ChildToolBudget)throw new ApiException("只读子任务工具预算已用尽。");Dictionary<string,object> args;
+            try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return Task.FromResult("错误：工具参数必须是 JSON 对象。");}
+            if(args==null)return Task.FromResult("错误：工具参数必须是 JSON 对象。");
+            if(name=="exec_command")NormalizeTerminalArguments(args);
+            string resource=name!=null&&name.StartsWith("github_",StringComparison.Ordinal)&&github!=null?github.Repository+" :: "+AgentPermissionRuntime.ResourceForTool(name,args):null;
+            var invocation=new AgentToolInvocation(name,args,new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,ProjectId=kernelSessionModel==null?Root:kernelSessionModel.ProjectId,AgentId=kernelProfile==null?"":kernelProfile.Id,TaskId=kernelTaskId,CallId=callId},resource??dynamicTools.Where(t=>t.Name==name).Select(t=>t.ApprovalResource).FirstOrDefault());
+            return executionGuard.RunAsync(invocation,()=>ExecuteRecordedAsync(invocation,token));
+        }
+        async Task<string> ExecuteAuthorizedAsync(AgentToolInvocation invocation,CancellationToken token,Action beforeEffect)
+        {
+            string name=invocation.ToolName,argumentsJson=invocation.Arguments,callId=invocation.CallId;
+            token.ThrowIfCancellationRequested();
+            if(providerCapabilities!=null && !providerCapabilities.CanUseTool(name))return "错误：当前模型未启用工具能力。";
+            if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return "错误：独立 worker 尚未连接，不会执行子任务。";
             if(desktopSession && !DesktopToolAvailable(name))return "错误：此工具尚未在桌面端启用或连接，不会执行操作。";
-            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=AgentPermissionRuntime.ResourceForTool(name,args);
-            var decision=await kernelPermissions.AuthorizeAsync(action,resource,kernelApproval).ConfigureAwait(false);
+            if(name=="exec_command")return await ExecuteTerminalAsync(invocation,token,beforeEffect).ConfigureAwait(false);
+            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId,ProjectId=invocation.ProjectId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token,beforeEffect).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=AgentPermissionRuntime.ResourceForTool(name,args);
+            var decision=await new AgentAuthorizationService(kernelPermissions,kernelApproval).AuthorizeAsync(invocation,token).ConfigureAwait(false);
             if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return "错误：权限拒绝："+decision.Reason;}
+            token.ThrowIfCancellationRequested();
+            if(name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")return await ExecuteChildToolAsync(name,args,token).ConfigureAwait(false);
+            if(beforeEffect!=null)beforeEffect();
             try{var result=await ExecuteCoreAsync(name,argumentsJson,callId,token).ConfigureAwait(false);if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
             catch(Exception){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="error",CreatedUtc=DateTime.UtcNow});throw;}
         }
@@ -112,7 +140,7 @@ namespace Dafeiyu
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    if(readOnly && !AgentToolCatalog.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能创建、修改或打开目录。";
+                    if(readOnly && !AgentToolCatalog.IsReadOnly(name) && !dynamicTools.Any(d=>d.Name==name&&d.ReadOnly))return "错误：当前为计划模式，只能读取和分析文件，不能创建、修改或打开目录。";
                     if (argumentsJson == null || argumentsJson.Length > MaxFileBytes * 2 + 4096)
                         return "错误：工具参数缺失或过长。";
                     var serializer = new JavaScriptSerializer { MaxJsonLength = MaxFileBytes * 2 + 4096, RecursionLimit = 12 };
@@ -120,6 +148,7 @@ namespace Dafeiyu
                     if (args == null) return "错误：工具参数必须是 JSON 对象。";
                     if(name=="spawn_subagent"||name=="complete_subagent"||name=="interrupt_subagent"){if(subagentScheduler==null)return "错误：子 Agent 生命周期尚未初始化。";var serializer2=new JavaScriptSerializer{MaxJsonLength=65536};if(name=="spawn_subagent"){var profile=new AgentProfileRegistry().Get(GetString(args,"profile","general"));if(profile==null)throw new ArgumentException("未知子 Agent Profile。");var child=subagentScheduler.Schedule(kernelTaskId,profile,GetString(args,"input",""));return serializer2.Serialize(new{child.Id,child.Status,child.ProfileId});}string id=GetString(args,"id",null);if(name=="complete_subagent"){bool ok=subagentScheduler.Complete(id,GetString(args,"result",""));return serializer2.Serialize(new{id,status=ok?"complete":"error"});}bool stopped=subagentScheduler.Interrupt(id);return serializer2.Serialize(new{id,status=stopped?"interrupted":"error"});}
                     if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return "错误：尚未连接 GitHub，请在工作设置中填写 owner/repo 和访问令牌。";return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
+                    if(name=="load_skill" || name=="read_instructions")return InstructionTool(name,args);
                     string path = Resolve(GetString(args, "path", "."));
                     if (name == "list_files") return ListPage(path, GetInt(args,"offset",0,0,1000000), GetInt(args,"limit",200,1,200), token);
                     if (name == "find_files") return FindFiles(path,GetString(args,"pattern",null),GetInt(args,"offset",0,0,1500),GetInt(args,"limit",100,1,200),token);
@@ -130,6 +159,7 @@ namespace Dafeiyu
                     if (name == "update_plan") return UpdatePlan(args);
                     if (name == "list_commands") return ListCommands();
                     if (name == "run_command") return RunCommand(GetString(args,"command_id",null),token);
+                    if (name == "read_output" && args.ContainsKey("output_id") && CommandResults.Any(c=>c.CommandId==GetString(args,"output_id",null))) return ReadOutput(GetString(args,"output_id",null),GetInt(args,"offset",0,0,256*1024),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_output" && args.ContainsKey("output_id")) return SavedOutput(GetString(args,"output_id",null),GetInt(args,"offset",0,0,24000),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_output") return ReadOutput(GetString(args,"command_id",null),GetInt(args,"offset",0,0,256*1024),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_file") return ReadFile(path, GetInt(args, "offset", 0, 0, 1000000), GetInt(args, "limit", 200, 1, 1000), token);
@@ -566,11 +596,15 @@ namespace Dafeiyu
             return (int)value;
         }
         private static string Clip(string value) { return value.Length <= MaxResultChars ? value : value.Substring(0, MaxResultChars - 20) + "\n[结果已截断]"; }
-        public void Dispose(){if(disposed)return;disposed=true;foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
-        private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
+        public void Dispose(){if(disposed)return;disposed=true;if(childWorkers!=null)childWorkers.Dispose();foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
+        readonly Dictionary<string,IMcpConnectionState> mcpAvailability=new Dictionary<string,IMcpConnectionState>();
+        private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);var state=transport as IMcpConnectionState;if(state!=null)mcpAvailability[definition.Name]=state;}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
         private void BuildSchemas()
         {
-            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b,desktopSession?new Func<string,bool>(DesktopToolAvailable):null);OpenAITools=a;AnthropicTools=b;
+            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
+        bool RuntimeToolAvailable(string name){if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(CommandsEnabled||(d.Name!="run_command"&&d.Name!="list_commands"))&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
+        internal int ContextSchemaOverheadTokens;
     }
 }
