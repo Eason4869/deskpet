@@ -1,8 +1,8 @@
 # 更新日志
 
-## [0.7.0](https://github.com/Eason4869/deskpet/tree/dev) — 2026-10-18（dev）
+## [0.7.0](https://github.com/Eason4869/deskpet/releases/tag/v0.7.0) — 2026-10-18
 
-本轮整合会话、工作区与编辑器交互，升级次版本至 **0.7.0**。更新 dev 代码与文档，不创建 GitHub Release、版本标签或正式发布附件。
+本轮整合会话、工作区与编辑器交互，升级次版本至 **0.7.0**。提供 Windows 安装／便携版、macOS 14+ Apple Silicon 与 Intel 预览（各含 DMG、ZIP）、源码、四位伙伴外观、v2 创作模板及 SHA256 校验。Mac 预览未经 Apple Developer ID 签名或公证，不包含本轮 Windows 的新版侧栏、直接编辑 Markdown、118 步配置引导或原生文件 Agent。
 
 ### 对话与项目
 

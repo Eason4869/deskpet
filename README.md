@@ -6,7 +6,7 @@
   <p><a href="https://github.com/Eason4869/deskpet/releases">下载安装</a> · <a href="#开始使用">开始使用</a> · <a href="docs/configuration-guide.md">完整配置引导</a> · <a href="CHANGELOG.md">更新日志</a></p>
 </div>
 
-当前 `dev` 版本为 **0.7.0**，本轮更新代码与文档；可下载的安装包以 [Releases](https://github.com/Eason4869/deskpet/releases) 实际附件为准。以下新界面与操作说明以 Windows 版为准；macOS 为独立预览客户端，功能差异见下方平台说明。
+当前正式版本为 **[0.7.0](https://github.com/Eason4869/deskpet/releases/tag/v0.7.0)**，提供 Windows 安装版、便携版和 macOS 双架构预览。以下新界面与操作说明以 Windows 版为准；macOS 为独立预览客户端，功能差异见下方平台说明。
 
 ## 选一位伙伴
 
@@ -87,6 +87,24 @@ Windows 内置文件 Agent，无需额外安装命令行工具。它可以查找
 3. 从设置左下角打开 **配置引导**，按自己的需要配置聊天、听写、朗读和 Live。
 
 Windows 支持 Windows 10/11 x64，需要 .NET Framework 4.8，无需 Node.js 或 Docker。安装版无需管理员权限。
+
+### 选择下载文件
+
+下表按推荐下载顺序排列；GitHub 附件区可能自行排序，请按平台与 CPU 选择。macOS 的 `preview` 表示预览客户端，不代表已同步本版 Windows 的所有功能。
+
+| 顺序 | 用途 | 文件 |
+| --- | --- | --- |
+| 1 | Windows 安装版（推荐） | [DeskPet-Windows-Setup-0.7.0.exe](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-Windows-Setup-0.7.0.exe) |
+| 2 | Windows 便携版 | [DeskPet-Windows-0.7.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-Windows-0.7.0.zip) |
+| 3 | Mac Apple Silicon 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-macOS-0.7.0-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-macOS-0.7.0-arm64-preview.zip) |
+| 4 | Mac Intel 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-macOS-0.7.0-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-macOS-0.7.0-x86_64-preview.zip) |
+| 5 | 完整源码 | [DeskPet-Source-0.7.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-Source-0.7.0.zip) |
+| 6 | 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/Ebao-HD-Skin-0.7.0.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/Dafeiyu-HD-Skin-0.7.0.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/Marfu-HD-Skin-0.7.0.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/Xiaobei-HD-Skin-0.7.0.zip) |
+| 7 | 外观创作模板 | [DeskPet-Skin-Template-v2-0.7.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/DeskPet-Skin-Template-v2-0.7.0.zip) |
+| 8 | 校验文件 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.7.0/SHA256.txt) |
+
+Mac 需要 macOS 14+，应用自包含，无需另装 .NET。预览仅 ad-hoc 签名，未经 Apple Developer ID 签名或公证。Windows 安装包目前也未做应用代码签名；下载后可用 SHA256 核对文件。包名和更新兼容说明见 [发布包命名规范](docs/release-naming.md)。
+
 
 ### 细分到每一步的配置引导
 

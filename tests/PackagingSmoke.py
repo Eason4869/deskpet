@@ -87,6 +87,13 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
 print('PASS four complete low-frame v2 skin packs and full author templates')
+installer_recipe=(checkout/'installer/DeskPet.iss').read_text(encoding='utf-8-sig')
+with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
+    for name in bundle.namelist():
+        if name.startswith('DafeiyuDeskPet/docs/') and name.endswith('.md'):
+            assert '\\docs\\'+Path(name).name+'"' in installer_recipe, 'installer documentation missing: '+name
+print('PASS installer and portable package include the same public documentation')
+
 manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
 for line in manifest:
     digest, name = line.split('  ', 1)
