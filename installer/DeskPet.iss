@@ -59,6 +59,10 @@ Source: "{#RuntimeDir}\DeskPet.Update.exe"; DestDir: "{app}"; Flags: ignoreversi
 Source: "{#RuntimeDir}\DeskPet.Update.exe.config"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RuntimeDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RuntimeDir}\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#RuntimeDir}\docs\configuration-guide.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#RuntimeDir}\docs\third-party-notices.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#RuntimeDir}\docs\native-agent-design.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#RuntimeDir}\docs\conversation-agent.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\skin-format.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\dialogue-setup.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\installation.md"; DestDir: "{app}\docs"; Flags: ignoreversion

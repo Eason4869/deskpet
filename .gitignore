@@ -8,3 +8,6 @@ data/
 docs/superpowers/
 __pycache__/
 *.pyc
+
+# Local upstream reference checkouts used for capability research; never ship or commit.
+research/

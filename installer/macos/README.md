@@ -2,7 +2,7 @@
 
 目标：macOS 14+；分别支持 Apple Silicon（arm64）与 Intel（x86_64）。当前用户没有 Apple Developer 签名证书，默认构建 **preview**：仅做 ad-hoc 完整性签名，不是 Developer ID 签名、不经过 Apple 公证、不自动发布 GitHub Release。
 
-0.6.0 当前仅建立开发标签、运行 CI 预览验证，尚不创建 GitHub Release 或提供公开下载包。功能与验证边界见 [0.6.0 就绪矩阵](../../docs/macos-readiness-0.6.0.md)。
+0.7.0 Release 提供双架构 preview DMG 与 ZIP；发布预览包不等于通过正式签名、公证及全部人工验收。Windows 新版侧栏、富文本输入、118 步引导和文件 Agent 不代表已在 Mac 实现。基础功能与验证边界见 [0.6.0 就绪矩阵](../../docs/macos-readiness-0.6.0.md)。
 
 ## 在 Mac 构建预览
 

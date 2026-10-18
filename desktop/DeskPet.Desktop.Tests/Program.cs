@@ -135,6 +135,9 @@ try
     using (var signed = Release(Asset(intelDmg), Asset("DeskPet-macOS-0.6.0-x86_64.dmg"))) Check(AboutWindow.SelectMacAsset(signed.RootElement, "Eason4869/deskpet", "x64") is { Preview: false }, "prefer signed release over preview of the same format");
     using (var zipFallback = Release(Asset(intelZip))) Check(AboutWindow.SelectMacAsset(zipFallback.RootElement, "Eason4869/deskpet", "x86_64")?.Name == intelZip, "ZIP remains valid when no compatible DMG exists");
 
+    var runningVersion = new Version(ReleaseInfo.DisplayVersion);
+    var runningSeries = runningVersion.Major + "." + runningVersion.Minor;
+    var followingSeries = runningVersion.Major + "." + (runningVersion.Minor + 1);
     var migrationDirectory = Path.Combine(directory, "upgrade-from-0.5.6");
     var legacy = new PetSettings { OnboardingState = "completed", OnboardingStep = 12, LastOnboardingSeries = "0.5" };
     Check(!OnboardingUpgrade.Prepare(legacy, "0.5.6").ShowGuide, "actual 0.5.6 completed configuration is already claimed in 0.5 series");
@@ -142,15 +145,15 @@ try
     var migrationStore = new SettingsStore(Path.Combine(migrationDirectory, "settings.json")); migrationStore.Save(legacy);
     using (var upgraded = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
-        Check(upgraded.ShouldShowAutomaticGuide && upgraded.Settings.OnboardingState == "new" && upgraded.Settings.OnboardingStep == 0, "actual saved 0.5.6 configuration triggers 0.6.0 UI guide at first step");
-        Check(migrationStore.Load().LastOnboardingSeries == "0.6", "0.6 upgrade is persisted before opening UI guide");
+        Check(upgraded.ShouldShowAutomaticGuide && upgraded.Settings.OnboardingState == "new" && upgraded.Settings.OnboardingStep == 0, "actual saved 0.5.6 configuration triggers current-version UI guide at first step");
+        Check(migrationStore.Load().LastOnboardingSeries == runningSeries, "current series upgrade is persisted before opening UI guide");
         var upgradedGuide = new GuideWindow(upgraded); upgradedGuide.Show(); upgradedGuide.Close(); Dispatcher.UIThread.RunJobs();
         Check(migrationStore.Load().OnboardingState == "deferred", "closing upgraded UI guide persists the deferred state");
         upgraded.Pet.Close();
     }
     using (var reopened = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
-        Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == "0.6", "restarting actual 0.6.0 after closing upgrade guide never opens it again");
+        Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == runningSeries, "restarting current version after closing upgrade guide never opens it again");
         reopened.Pet.Close();
     }
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
@@ -301,9 +304,9 @@ try
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var scrollbarFrame = scrollHost.CaptureRenderedFrame()) scrollbarFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "slim-scrollbar.png"), new PngBitmapEncoderOptions()); scrollHost.Close();
     controller.Settings.OnboardingState = "completed"; controller.Save();
     using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")))) { Check(!restarted.ShouldShowAutomaticGuide, "same-series restart does not reopen completed guide"); restarted.Pet.Close(); }
-    Check(!OnboardingUpgrade.Prepare(controller.Settings, "0.6.99").ShowGuide, "patch upgrade does not show UI guide");
-    var upgrade = OnboardingUpgrade.Prepare(controller.Settings, "0.7.0"); Check(upgrade.ShowGuide && controller.Settings.OnboardingStep == 0, "next series upgrade resets actual UI guide state");
-    Check(!OnboardingUpgrade.Prepare(controller.Settings, "0.7.1").ShowGuide, "claimed next series guide not retriggered");
+    Check(!OnboardingUpgrade.Prepare(controller.Settings, runningSeries + ".99").ShowGuide, "patch upgrade does not show UI guide");
+    var upgrade = OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".0"); Check(upgrade.ShowGuide && controller.Settings.OnboardingStep == 0, "next series upgrade resets actual UI guide state");
+    Check(!OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".1").ShowGuide, "claimed next series guide not retriggered");
     Check(!OnboardingUpgrade.Prepare(controller.Settings, "0.6.0").ShowGuide, "downgrade does not reopen UI guide");
     var windows = new Window[] { new ChatWindow(controller, true), new ChatWindow(controller, false), new SettingsWindow(controller), new AboutWindow(controller), new LiveWindow(controller) };
     foreach (var window in windows) { window.Show(); window.Measure(new Size(900, 800)); window.Arrange(new Rect(0, 0, 900, 800)); Dispatcher.UIThread.RunJobs(); Check(window.IsVisible && window.Bounds.Width > 0, window.GetType().Name + " opens with actual controls"); }
@@ -311,7 +314,7 @@ try
     Check(composerChat.GetLogicalDescendants().OfType<AvatarView>().Single(a => a.Name == "ChatPartnerAvatar").Skin.Id == controller.Skin.Id && windows[4].GetLogicalDescendants().OfType<AvatarView>().Any(), "chat and Live use the current companion portrait");
     var partnerSettings = (SettingsWindow)windows[2]; partnerSettings.SelectSection("partner"); Dispatcher.UIThread.RunJobs();
     Check(partnerSettings.GetLogicalDescendants().OfType<ComboBox>().Distinct().Single(c => ReferenceEquals(c.ItemsSource, controller.Skins)).ItemTemplate != null && controller.Pet.ContextMenu!.Items.OfType<MenuItem>().Count(i => i.Icon is AvatarView) == controller.Skins.Count, "partner selector and every partner menu entry use avatar views");
-    Check(!new PetSettings().AgentEnabled, "new settings default to pure conversation without file Agent");
+    Check(!controller.Settings.AgentEnabled, "new Avalonia client defaults to pure conversation without file Agent");
     var modeButton = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatModeAction");
     var modeItems = modeButton.ContextMenu!.Items.OfType<MenuItem>().ToList();
     Check(modeItems[0].Icon is Control { Name: "ConversationBubbleGlyph" } && modeItems[1].Icon is Control { Name: "WorkPencilGlyph" } && modeButton.GetLogicalDescendants().OfType<Avalonia.Controls.Shapes.Path>().Any(p => p.Name == "ConversationBubbleGlyph"), "mode menu distinguishes the chat bubble from the work pencil and defaults to the chat glyph");
@@ -486,17 +489,17 @@ try
     settings.SelectSection("work"); Dispatcher.UIThread.RunJobs();
     var workView = settings.GetLogicalDescendants().OfType<WorkSettingsView>().Distinct().Single();
     T WorkControl<T>(string name) where T : Control => workView.GetLogicalDescendants().OfType<T>().Distinct().Single(c => c.Name == name);
-    var accessSetting = WorkControl<ComboBox>("AgentAccess"); var roundSetting = WorkControl<NumericUpDown>("AgentMaxTurns"); var timeoutSetting = WorkControl<NumericUpDown>("AgentTimeoutMinutes");
-    Check(accessSetting.Items.Count == 2 && roundSetting.Minimum == 1 && roundSetting.Maximum == 48 && timeoutSetting.Minimum == 1 && timeoutSetting.Maximum == 60 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
+    var accessSetting = WorkControl<ComboBox>("AgentAccess"); var contextSetting = WorkControl<NumericUpDown>("AgentContextTokenLimit");
+    Check(accessSetting.Items.Count == 2 && contextSetting.Minimum == 8192 && contextSetting.Maximum == 131072 && WorkControl<Button>("OpenAgentBackups").IsEnabled == OperatingSystem.IsWindows(), "work settings expose permission choices, valid budgets and platform-aware backup actions");
     var workBefore = controller.Settings.Copy(); var historyBeforeWork = controller.Session.History.Messages.Count;
     if (OperatingSystem.IsWindows())
     {
         accessSetting.SelectedIndex = 1; WorkControl<CheckBox>("WorkPlanMode").IsChecked = true; WorkControl<CheckBox>("AgentBackupFiles").IsChecked = false;
-        roundSetting.Value = 17; timeoutSetting.Value = 7; WorkControl<TextBox>("WorkGoal").Text = "检查当前项目并给出执行计划";
+        contextSetting.Value = 16384; WorkControl<TextBox>("WorkGoal").Text = "检查当前项目并给出执行计划";
         var selectedWorkDir = Path.Combine(directory, "work-settings-directory"); Directory.CreateDirectory(selectedWorkDir); WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir;
         WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
         var savedWork = new SettingsStore(settingsFile).Load();
-        Check(!savedWork.AgentFullAccess && savedWork.AgentPlanMode && !savedWork.AgentBackupFiles && savedWork.AgentMaxTurns == 17 && savedWork.AgentTimeoutMinutes == 7 && savedWork.AgentGoal == "检查当前项目并给出执行计划" && savedWork.AgentWorkspace == selectedWorkDir, "all work fields persist without changing current conversation or starting a task");
+        Check(!savedWork.AgentFullAccess && savedWork.AgentPlanMode && !savedWork.AgentBackupFiles && savedWork.AgentContextTokenLimit == 16384 && savedWork.AgentGoal == "检查当前项目并给出执行计划" && savedWork.AgentWorkspace == selectedWorkDir, "all work fields persist without changing current conversation or starting a task");
         WorkControl<TextBox>("AgentWorkspaceInput").Text = Path.Combine(directory, "does-not-exist"); WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Check(controller.Settings.AgentWorkspace == selectedWorkDir, "invalid work directory leaves the previous valid selection unchanged"); WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir;
         var defaultWorkDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "agent-workspace"); bool defaultWorkExisted = Directory.Exists(defaultWorkDir);
@@ -504,11 +507,11 @@ try
         Check(controller.Settings.AgentWorkspace == defaultWorkDir && new SettingsStore(settingsFile).Load().AgentWorkspace == defaultWorkDir && Directory.Exists(defaultWorkDir) == defaultWorkExisted, "reset saves the default work location without creating it before a task runs");
         WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir; WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
-    else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !roundSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
+    else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !contextSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
     WorkControl<CheckBox>("AgentDetailedProcess").IsChecked = true; Dispatcher.UIThread.RunJobs();
     Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && workView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("下一次任务") == true), "detailed process preference persists with a next-task notice and never submits a model request");
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var workFrame = settings.CaptureRenderedFrame()) workFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "work-settings.png"), new PngBitmapEncoderOptions());
-    controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentMaxTurns = workBefore.AgentMaxTurns; controller.Settings.AgentTimeoutMinutes = workBefore.AgentTimeoutMinutes; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
+    controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentContextTokenLimit = workBefore.AgentContextTokenLimit; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
     settings.SelectSection("text"); Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
     using (var rendered = settings.CaptureRenderedFrame())
     {

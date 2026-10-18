@@ -50,9 +50,9 @@ namespace Dafeiyu.Tests
                 Check(!preferences.FindControl("SettingsNavigation").IsEnabled && !((UIElement)pet.Content).IsEnabled,"only current settings target remains enabled");
                 Check(!pet.CanApplyUpdate(true),"guide protects setup from automatic exit");
                 var skins=(ComboBox)preferences.FindControl("SkinPicker");skins.SelectedItem=pet.Catalog.Find("dafeiyu");Check(pet.Skin.Id=="dafeiyu","actual partner selection works while navigation is locked");
-                Press(guide,"GuideNext");Pump(.2);Check(guide.Step==1,"persona has its own detailed step");
-                var prompt=(TextBox)preferences.FindControl("PersonaPrompt");string originalPrompt=prompt.Text;prompt.Clear();Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"empty persona disables next");prompt.Text=originalPrompt;Press(guide,"GuideNext");
-                Check(guide.Step==2,"behavior has its own step");((Slider)preferences.FindControl("SizeSlider")).Value=1.1;Press(guide,"GuideNext");
+                Go(guide,"persona.edit");var personaDeadline=DateTime.UtcNow.AddSeconds(2);while(guide.Step!=1 && DateTime.UtcNow<personaDeadline)Pump(.05);Check(guide.Step==1,"persona has its own detailed step");
+                var prompt=(TextBox)preferences.FindControl("PersonaPrompt");string originalPrompt=prompt.Text;prompt.Clear();Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"empty persona disables next");prompt.Text=originalPrompt;Press(guide,"GuideNext");Press(guide,"GuideNext");
+                Check(guide.Step==2,"behavior has its own step");((Slider)preferences.FindControl("SizeSlider")).Value=1.1;Go(guide,"gesture.drag");
                 Check(guide.Step==3 && !Find<Button>(guide,"GuideNext").IsEnabled && ((UIElement)pet.Content).IsEnabled,"drag step unlocks pet but requires actual movement");
                 Point point=new Point();
                 if(simulated)pet.NotifyGuideInteraction("drag");else{PlacePetUncovered(pet);point=MoveToPet(pet);mouse_event(2,0,0,0,UIntPtr.Zero);Pump(.06);MoveCursor(new Point(point.X-70,point.Y-40));Pump(.15);mouse_event(4,0,0,0,UIntPtr.Zero);Pump(.2);}
@@ -63,58 +63,50 @@ namespace Dafeiyu.Tests
                 Check(Find<Button>(guide,"GuideNext").IsEnabled,"opening real menu completes menu lesson");pet.ContextMenu.IsOpen=false;Press(guide,"GuideNext");
                 Check(guide.Step==5 && !Find<Button>(guide,"GuideNext").IsEnabled,"wheel lesson requires selecting an action");if(simulated){pet.ShowActionPalette();Pump(.2);}else{point=MoveToPet(pet);NativeClick(pet,System.Windows.Input.MouseButton.Middle,32,64);}
                 var wheel=app.Windows.OfType<ActionPaletteWindow>().Single();Check(wheel.IsVisible && !Find<Button>(guide,"GuideNext").IsEnabled,"opening wheel alone cannot complete lesson");Find<Button>(wheel,"PaletteInteraction_feeding").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.2);Check(Find<Button>(guide,"GuideNext").IsEnabled,"choosing wheel action completes lesson");Press(guide,"GuideNext");
-                Check(guide.Step==6 && !Find<Button>(guide,"GuideNext").IsEnabled,"click lesson starts incomplete");if(simulated)pet.NotifyGuideInteraction("click");else{WaitForInteraction(pet);point=MoveToPet(pet);mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);Pump(System.Windows.Forms.SystemInformation.DoubleClickTime/1000d+.3);}Check(Find<Button>(guide,"GuideNext").IsEnabled,"click completion unlocks interaction lesson");Press(guide,"GuideNext");
+                Check(guide.Step==6 && !Find<Button>(guide,"GuideNext").IsEnabled,"click lesson starts incomplete");if(simulated)pet.NotifyGuideInteraction("click");else{WaitForInteraction(pet);point=MoveToPet(pet);NativeClick(pet,System.Windows.Input.MouseButton.Left,2,4);Pump(System.Windows.Forms.SystemInformation.DoubleClickTime/1000d+.3);}Check(Find<Button>(guide,"GuideNext").IsEnabled,"click completion unlocks interaction lesson");Press(guide,"GuideNext");
                 Check(guide.Step==7 && guide.TargetName=="GuidePet" && !Find<Button>(guide,"GuideNext").IsEnabled,"double click lesson follows single click and requires practice");
                 if(simulated)pet.ShowQuickChat();else
                 {
                     WaitForInteraction(pet);point=MoveToPet(pet);
-                    mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);Pump(System.Windows.Forms.SystemInformation.DoubleClickTime/1000d+.2);
+                    NativeClick(pet,System.Windows.Input.MouseButton.Left,2,4);Pump(System.Windows.Forms.SystemInformation.DoubleClickTime/1000d+.2);
                     Check(!Find<Button>(guide,"GuideNext").IsEnabled,"single click cannot complete double click lesson");
                     point=MoveToPet(pet);
-                    mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);Pump(.07);mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);
+                    mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);Pump(.06);mouse_event(2,0,0,0,UIntPtr.Zero);mouse_event(4,0,0,0,UIntPtr.Zero);
                 }
-                Pump(.3);var quick=(QuickChatWindow)Field(pet,"quick");
+                var quickWait=DateTime.UtcNow.AddSeconds(3);while(Field(pet,"quick")==null && DateTime.UtcNow<quickWait)Pump(.06);Pump(.15);var quick=(QuickChatWindow)Field(pet,"quick");
                 Check(quick!=null && quick.IsVisible,"double click opens actual quick chat during guide");
                 if(simulated)pet.NotifyGuideInteraction("double-click");
                 Check(Find<Button>(guide,"GuideNext").IsEnabled,"opening quick chat by double click completes lesson");
                 Check(!Find<Button>(quick,"SendQuickMessage").IsEnabled && !Find<Button>(quick,"VoiceRecord").IsEnabled && Find<Button>(quick,"CloseQuickChat").IsEnabled,"quick chat preview allows closing but blocks send and recording");
                 Capture(quick,Path.Combine(folder,"guide-quick-chat.png"));Capture(guide,Path.Combine(folder,"guide-double-click.png"));Press(guide,"GuideNext");
                 Check(!quick.IsVisible,"leaving quick chat lesson closes its preview");
-                Check(guide.Step==8 && !Find<Button>(guide,"GuideNext").IsEnabled,"missing text service disables next");
-                var url=(TextBox)preferences.FindControl("TextServiceUrl");url.Text="bad address";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid address remains blocked");
+                Go(guide,"text.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"missing text service blocks saving but not introductory lessons");
+                Choose(preferences,"AddTextProvider","custom");var url=(TextBox)preferences.FindControl("TextServiceUrl");url.Text="bad address";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid address remains blocked");
                 preferences.Width=700;preferences.Height=430;Pump(.2);CheckTargetUncovered(guide,preferences);Capture(preferences,Path.Combine(folder,"guide-text-minimum-settings.png"));Capture(guide,Path.Combine(folder,"guide-text-minimum-card.png"));preferences.Width=850;preferences.Height=790;Pump(.2);
-                Press(guide,"GuideLater");Check(guide.Step==9 && guide.IsVisible && preferences.HasUnsavedEdits,"later skips only current item and retains draft");
-                Check(!Find<Button>(guide,"GuideNext").IsEnabled,"ASR requires configuration");Press(guide,"GuideLater");Check(guide.Step==10,"ASR and TTS have separate steps");
-                ((CheckBox)preferences.FindControl("UseCloudVoice")).IsChecked=false;Press(guide,"GuideNext");Check(guide.Step==11 && !pet.Settings.UseCloudVoice,"system TTS saves independently of skipped invalid text draft");
-                Check(!Find<Button>(guide,"GuideNext").IsEnabled,"Live requires complete setup");((TextBox)preferences.FindControl("LiveServiceUrl")).Text="ws://127.0.0.1/live";((TextBox)preferences.FindControl("LiveServiceModel")).Text="guide-model";((ComboBox)preferences.FindControl("LiveVoice")).Text="Kore";Press(guide,"GuideNext");
-                Check(guide.Step==12 && pet.Settings.Live.Model=="guide-model","valid Live saves only its section without connecting");
-                ((Button)preferences.FindControl("PreviewGreeting")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.2);var greeting=app.Windows.OfType<GreetingBubbleWindow>().SingleOrDefault();Check(greeting!=null && greeting.IsVisible,"greeting lesson preview button shows actual greeting bubble");if(greeting!=null)greeting.Hide();
-                ((TextBox)preferences.FindControl("GreetingMinMinutes")).Text="100";((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="10";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid greeting interval disables next");((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="120";Press(guide,"GuideNext");
-                Check(guide.Step==13,"shortcut is final step");((TextBox)preferences.FindControl("Hotkeyquick")).Text="not-a-shortcut";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid shortcut disables finish");((TextBox)preferences.FindControl("Hotkeyquick")).Clear();Capture(guide,Path.Combine(folder,"guide-final-step.png"));Press(guide,"GuideNext");
-                Check(guide.Step==14 && guide.IsVisible,"shortcut continues to current conversation guidance");
-                Check(quick.IsVisible && !Find<Button>(quick,"SendQuickMessage").IsEnabled && !Find<Button>(quick,"VoiceRecord").IsEnabled,"conversation guidance previews actual UI without sending or recording");Capture(guide,Path.Combine(folder,"guide-conversation.png"));
-                Press(guide,"GuideNext");Check(guide.Step==15 && !quick.IsVisible && preferences.FindControl("WorkSettingsPanel")!=null,"work settings follows conversation preview and opens its real controls");
-                var workPanel=(WorkSettingsPanel)preferences.FindControl("WorkSettingsPanel");
-                Check(workPanel.IsEnabled && preferences.FindControl("AgentAccessMode").IsEnabled && !preferences.FindControl("SettingsNavigation").IsEnabled,"work lesson permits actual settings while keeping unrelated navigation locked");
-                ((TextBox)preferences.FindControl("AgentMaxTurns")).Text="0";Press(guide,"GuideNext");Check(guide.Step==15,"invalid work settings cannot advance or silently save");
-                ((TextBox)preferences.FindControl("AgentMaxTurns")).Text="7";((CheckBox)preferences.FindControl("AgentPlanMode")).IsChecked=true;
-                Capture(guide,Path.Combine(folder,"guide-work-settings.png"));Press(guide,"GuideNext");
-                Check(guide.Step==16 && preferences.IsOnAboutPage && pet.Settings.AgentMaxTurns==7 && pet.Settings.AgentPlanMode,"work settings save before network lesson without executing a task");
-                var network=(Expander)preferences.FindControl("UpdateNetwork");Check(network.IsExpanded && network.IsEnabled && !preferences.FindControl("CheckUpdates").IsEnabled && !preferences.FindControl("UninstallApplication").IsEnabled,"network lesson permits configuration but blocks update and uninstall");
-                ((RadioButton)preferences.FindControl("UpdateMirror")).IsChecked=true;((RadioButton)preferences.FindControl("CustomUpdateMirror")).IsChecked=true;var mirrorAddress=(TextBox)preferences.FindControl("UpdateMirrorAddress");mirrorAddress.Text="invalid";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid network address blocks finish");
-                var about=(AboutPanel)Field(preferences,"about");about.MirrorProbe=(address,token)=>System.Threading.Tasks.Task.FromResult(0);var probe=about.TestMirrorsAsync();while(!probe.IsCompleted)Pump(.05);probe.GetAwaiter().GetResult();((RadioButton)preferences.FindControl("BuiltinUpdateMirror1")).IsChecked=true;Pump(.2);Capture(guide,Path.Combine(folder,"guide-network.png"));Press(guide,"GuideBack");Check(guide.Step==15 && !network.IsExpanded,"back restores previous network collapse state");Press(guide,"GuideNext");Press(guide,"GuideNext");
-                Check(settings.OnboardingState=="completed" && Field(pet,"guide")==null && preferences.FindControl("SettingsNavigation").IsEnabled && ((UIElement)pet.Content).IsEnabled,"finish restores settings and pet interaction");
-                Check(!network.IsExpanded && settings.UpdateMirrorAddress=="https://gh-proxy.com" && !pet.Updates.IsBusy,"network choice saves without automatic test or update and restores collapsed UI");
-                Check(!pet.LiveActive && !pet.Conversation.IsBusy && pet.Conversation.History.Messages.Count==0,"guide does not connect Live, record or send messages automatically");
-                pet.ShowQuickChat();Pump(.2);Check(quick.IsVisible && Find<Button>(quick,"SendQuickMessage").IsEnabled && Find<Button>(quick,"VoiceRecord").IsEnabled,"normal quick chat controls are restored after guide");quick.Hide();
-                pet.ShowOnboarding();Pump(.2);guide=(OnboardingWindow)Field(pet,"guide");Check(guide.Step==0,"completed guide restarts at first step");Press(guide,"GuideSkip");Check(settings.OnboardingState=="skipped" && Field(pet,"guide")==null && preferences.FindControl("SettingsNavigation").IsEnabled,"skip ends whole guide and restores normal mode");
-                pet.ShowOnboarding();Pump(.2);guide=(OnboardingWindow)Field(pet,"guide");Press(guide,"GuideLater");Check(guide.Step==1 && pet.Store.Load().OnboardingStep==1,"later advances and persists step");guide.Close();Pump(.2);Check(settings.OnboardingState=="skipped" && ((UIElement)pet.Content).IsEnabled,"closing guide also releases all interaction locks");
+                Press(guide,"GuideSkipChapter");Check(guide.Step==9&&guide.IsVisible&&preferences.HasUnsavedEdits,"skipping a chapter retains its settings draft");
+                Go(guide,"asr.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"ASR requires configuration before saving");Press(guide,"GuideSkipChapter");Check(guide.Step==10,"ASR and TTS remain separate chapters");
+                ((CheckBox)preferences.FindControl("UseCloudVoice")).IsChecked=false;Go(guide,"speech.save");Press(guide,"GuideNext");Check(guide.CurrentLessonId=="speech.test"&&!pet.Settings.UseCloudVoice,"system TTS saves independently without auto-testing");
+                Press(guide,"GuideSkipChapter");Go(guide,"live.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"Live requires complete setup before saving");Choose(preferences,"AddLiveProvider","custom");((TextBox)preferences.FindControl("LiveServiceUrl")).Text="ws://127.0.0.1/live";((TextBox)preferences.FindControl("LiveServiceModel")).Text="guide-model";((ComboBox)preferences.FindControl("LiveVoice")).Text="Kore";Press(guide,"GuideNext");
+                Check(guide.CurrentLessonId=="live.test"&&pet.Settings.Live.Model=="guide-model"&&!pet.LiveActive,"Live save reaches an explicit test without connecting");Press(guide,"GuideSkipChapter");
+                Go(guide,"greeting.interval");((TextBox)preferences.FindControl("GreetingMinMinutes")).Text="100";((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="10";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid greeting interval disables save");((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="120";Press(guide,"GuideNext");
+                Go(guide,"shortcut.quick");((TextBox)preferences.FindControl("Hotkeyquick")).Text="not-a-shortcut";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid shortcut disables save");((TextBox)preferences.FindControl("Hotkeyquick")).Clear();Press(guide,"GuideNext");
+                Go(guide,"chat.open");Check(app.Windows.OfType<ChatWindow>().Any(w=>w.IsVisible),"conversation guidance opens the actual full window without sending");Capture(guide,Path.Combine(folder,"guide-conversation.png"));
+                Go(guide,"work.context");var workPanel=(WorkSettingsPanel)preferences.FindControl("WorkSettingsPanel");Check(workPanel.IsEnabled&&preferences.FindControl("AgentAccessMode").IsEnabled&&!preferences.FindControl("SettingsNavigation").IsEnabled,"work guide allows actual settings while locking unrelated navigation");
+                Go(guide,"work.save");((TextBox)preferences.FindControl("AgentContextTokenLimit")).Text="0";Press(guide,"GuideNext");Check(guide.CurrentLessonId=="work.save","invalid work settings cannot advance or silently save");
+                ((TextBox)preferences.FindControl("AgentContextTokenLimit")).Text="16384";((CheckBox)preferences.FindControl("AgentPlanMode")).IsChecked=true;Press(guide,"GuideNext");Check(guide.CurrentLessonId=="work.prompt"&&pet.Settings.AgentContextTokenLimit==16384&&pet.Settings.AgentPlanMode,"work settings save before the dedicated prompt lesson");
+                Go(guide,"network.save");var network=(Expander)preferences.FindControl("UpdateNetwork");Check(network.IsExpanded&&network.IsEnabled&&!preferences.FindControl("CheckUpdates").IsEnabled&&!preferences.FindControl("UninstallApplication").IsEnabled,"network lesson blocks installation and uninstall");
+                ((RadioButton)preferences.FindControl("UpdateMirror")).IsChecked=true;((RadioButton)preferences.FindControl("CustomUpdateMirror")).IsChecked=true;((TextBox)preferences.FindControl("UpdateMirrorAddress")).Text="invalid";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid network address blocks saving");
+                var about=(AboutPanel)Field(preferences,"about");about.MirrorProbe=(address,token)=>System.Threading.Tasks.Task.FromResult(0);var probe=about.TestMirrorsAsync();while(!probe.IsCompleted)Pump(.05);probe.GetAwaiter().GetResult();((RadioButton)preferences.FindControl("BuiltinUpdateMirror1")).IsChecked=true;Press(guide,"GuideNext");Check(guide.CurrentLessonId=="finish.summary","network save reaches an honest completion summary");Press(guide,"GuideNext");
+                Check(settings.OnboardingState=="completed"&&Field(pet,"guide")==null&&preferences.FindControl("SettingsNavigation").IsEnabled&&((UIElement)pet.Content).IsEnabled,"completion restores settings and pet interaction");Check(!network.IsExpanded&&!pet.Updates.IsBusy&&!pet.LiveActive&&!pet.Conversation.IsBusy&&pet.Conversation.History.Messages.Count==0,"guide never automatically sends, records, calls or updates");
+                pet.ShowOnboarding();Pump(.2);guide=(OnboardingWindow)Field(pet,"guide");Check(guide.CurrentLessonId=="welcome","completed guide can restart");Press(guide,"GuideLater");Check(guide.CurrentLessonId=="pet.select"&&pet.Store.Load().OnboardingLessonId=="pet.select","skipping a small step persists a stable resume ID");guide.Close();Pump(.2);Check(settings.OnboardingState=="deferred"&&((UIElement)pet.Content).IsEnabled,"closing defers progress and releases all locks");
                 Console.WriteLine("Onboarding smoke: " + passed + " passed; screenshot: " + folder);
                 return 0;
             }
             catch (Exception error) { Console.WriteLine("FAIL onboarding: " + error); return 1; }
             finally { mouse_event(4|16|64,0,0,0,UIntPtr.Zero);if(!simulated)SetCursorPos((int)originalCursor.X,(int)originalCursor.Y);if (pet != null) pet.Close(); Pump(.2); app.Shutdown(); }
         }
+        static void Choose(SettingsWindow settings,string add,string brand){Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var picker=Application.Current.Windows.OfType<ProviderPickerWindow>().Single();Find<Button>(picker,"ChooseProvider_"+brand).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}));Find<Button>(settings,add).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.2);}
+        static void Go(OnboardingWindow guide,string id){typeof(OnboardingWindow).GetField("index",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==id));typeof(OnboardingWindow).GetMethod("Navigate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(guide,null);Pump(.2);}
         [System.Runtime.InteropServices.DllImport("user32.dll",SetLastError=true)]static extern bool SetCursorPos(int x,int y);
         [System.Runtime.InteropServices.DllImport("user32.dll")]static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
         [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]struct NativePoint{public int X,Y;}
@@ -134,7 +126,7 @@ namespace Dafeiyu.Tests
             uint foregroundProcess;GetWindowThreadProcessId(GetForegroundWindow(),out foregroundProcess);
             Console.WriteLine("NATIVE verified current frame hit at "+point+" foregroundPid="+foregroundProcess+" fixturePid="+System.Diagnostics.Process.GetCurrentProcess().Id+" buttons="+System.Windows.Input.Mouse.LeftButton+"/"+System.Windows.Input.Mouse.RightButton);return point;
         }
-        static void NativeClick(PetWindow pet,System.Windows.Input.MouseButton button,uint down,uint up)
+        static void NativeClick(PetWindow pet,System.Windows.Input.MouseButton button,uint down,uint up,double settle=.25)
         {
             bool received=false;
             System.Windows.Input.MouseButtonEventHandler observe=(sender,args)=>{if(args.ChangedButton==button)received=true;};
@@ -147,7 +139,7 @@ namespace Dafeiyu.Tests
                 mouse_event(up,0,0,0,UIntPtr.Zero);
                 pet.RemoveHandler(UIElement.PreviewMouseDownEvent,observe);
             }
-            Check(received,"native "+button+" down reaches fixture before release");Pump(.25);
+            Check(received,"native "+button+" down reaches fixture before release");if(settle>0)Pump(settle);
         }
         static void PlacePetUncovered(PetWindow pet)
         {

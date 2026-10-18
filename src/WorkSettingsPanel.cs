@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -13,58 +13,59 @@ namespace Dafeiyu
         const string BackupFolder=".deskpet-agent-backups";
         readonly PetWindow pet;
         readonly ComboBox access;
-        readonly TextBox workspace,goal,turns,timeout;
-        readonly CheckBox plan,backup,detailed;
-        readonly TextBlock notice,permissionDescription;
-        PetSettings baseline;
+        readonly TextBox projectName,workspace,goal,contextBudget;
+        readonly CheckBox plan,backup,detailed,predicted,plainText,showContext;readonly ComboBox sendShortcut,followUp;
+        readonly TextBlock scopeLabel,contextSummary;readonly FrameworkElement fallbackRow;
+        readonly TextBlock notice,permissionDescription;readonly TextBox workPrompt;string promptBaseline;bool promptVisible;
+        PetSettings baseline;ProjectDefinition project;
         public bool HasUnsavedChanges
         {
             get
             {
-                return baseline!=null && (access.SelectedIndex!=(baseline.AgentFullAccess?0:1) || workspace.Text!=(baseline.AgentWorkspace??"") || goal.Text!=(baseline.AgentGoal??"") ||
-                    plan.IsChecked!=baseline.AgentPlanMode || backup.IsChecked!=baseline.AgentBackupFiles || detailed.IsChecked!=baseline.AgentDetailedProcess ||
-                    turns.Text!=baseline.AgentMaxTurns.ToString(CultureInfo.InvariantCulture) || timeout.Text!=baseline.AgentTimeoutMinutes.ToString(CultureInfo.InvariantCulture));
+                return baseline!=null && (workPrompt.Text!=promptBaseline || (project!=null && projectName.Text.Trim()!=project.Name) || access.SelectedIndex!=(baseline.AgentFullAccess?0:1) || workspace.Text!=(baseline.AgentWorkspace??"") || goal.Text!=(baseline.AgentGoal??"") ||
+                    plan.IsChecked!=baseline.AgentPlanMode || backup.IsChecked!=baseline.AgentBackupFiles || (project==null && detailed.IsChecked!=baseline.AgentDetailedProcess) ||
+                    contextBudget.Text!=baseline.AgentContextTokenLimit.ToString(CultureInfo.InvariantCulture) || (project==null && (predicted.IsChecked!=baseline.ShowPredictedMessages || plainText.IsChecked!=baseline.PlainTextEditor || showContext.IsChecked!=baseline.ShowContextUsage || sendShortcut.SelectedIndex!=(baseline.SendOnEnter?0:1) || followUp.SelectedIndex!=(baseline.FollowUpBehavior=="steer"?1:0))));
             }
         }
         public WorkSettingsPanel(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");pet=companion;Name="WorkSettingsPanel";
-            var root=new StackPanel{Margin=new Thickness(24,22,24,24)};
-            root.Children.Add(Ui.Text("工作设置",25));root.Children.Add(Ui.Text("这些设置在下一次请求生效；保存不会发起任务。文件工具仅在工作模式中启用。",12,Ui.Muted));
-            var permissions=new StackPanel();permissions.Children.Add(Heading("权限与目录"));
-            permissions.Children.Add(Label("文件访问权限"));
-            access=new ComboBox{Name="AgentAccessMode",ItemsSource=new[]{"完整访问","仅工作目录"},MinHeight=36,FocusVisualStyle=null,Margin=new Thickness(0,0,0,7)};
-            permissions.Children.Add(access);permissionDescription=Ui.Text("",12,Ui.Muted);permissions.Children.Add(permissionDescription);access.SelectionChanged+=delegate{RefreshPermissionDescription();};
-            permissions.Children.Add(Label("默认工作目录"));
-            workspace=Ui.Field();workspace.Name="AgentWorkspace";workspace.MaxLength=32767;permissions.Children.Add(workspace);
-            var directoryButtons=new WrapPanel{Margin=new Thickness(0,8,0,5)};var change=Ui.Button("更改目录…");change.Name="ChangeAgentWorkspace";change.Click+=delegate{ChangeDirectory();};directoryButtons.Children.Add(change);
-            var reset=Ui.Button("重置默认目录");reset.Name="ResetAgentWorkspace";reset.Click+=delegate{workspace.Text=DefaultWorkspace;notice.Text="默认目录已填入；保存后生效，首次执行任务时才会创建。";};directoryButtons.Children.Add(reset);permissions.Children.Add(directoryButtons);
-            permissions.Children.Add(Ui.Text("相对工具路径以此目录为起点。完整访问可使用其他目录；仅工作目录会阻止越界路径与链接。",12,Ui.Muted));
-            backup=Ui.Toggle("修改文件前自动备份",true,delegate{});backup.Name="AgentBackupFiles";permissions.Children.Add(backup);
-            var open=Ui.Button("打开备份文件夹…");open.Name="OpenAgentBackups";open.HorizontalAlignment=HorizontalAlignment.Left;open.Click+=delegate{OpenBackups();};permissions.Children.Add(open);
-            permissions.Children.Add(Ui.Text("完整访问的备份保存在原文件所在文件夹的 "+BackupFolder+"；仅工作目录的备份统一保存在工作目录下。此入口使用已保存的权限与目录。",11,Ui.Muted));
-            root.Children.Add(Card(permissions));
-
-            var tasks=new StackPanel();tasks.Children.Add(Heading("任务与过程"));
-            plan=Ui.Toggle("计划模式：只读取与分析",false,delegate{});plan.Name="AgentPlanMode";tasks.Children.Add(plan);
-            tasks.Children.Add(Ui.Text("计划模式不创建、修改文件，也不打开资源管理器。关闭后从下一次请求恢复可写权限。",12,Ui.Muted));
-            tasks.Children.Add(Label("持续目标"));goal=Ui.Field("",true);goal.Name="AgentGoal";goal.MaxLength=4000;goal.MinHeight=100;goal.MaxHeight=180;tasks.Children.Add(goal);
-            tasks.Children.Add(Ui.Text("最多 4000 个字符；留空可清除。与输入框 + 菜单中的目标和计划模式共用设置。",11,Ui.Muted));
-            var limits=new Grid{Margin=new Thickness(0,12,0,8)};limits.ColumnDefinitions.Add(new ColumnDefinition());limits.ColumnDefinitions.Add(new ColumnDefinition());
-            turns=Ui.Field();turns.Name="AgentMaxTurns";turns.MaxLength=10;timeout=Ui.Field();timeout.Name="AgentTimeoutMinutes";timeout.MaxLength=10;
-            var turnGroup=new StackPanel{Margin=new Thickness(0,0,12,0)};turnGroup.Children.Add(Label("最多模型轮数（1～48）"));turnGroup.Children.Add(turns);limits.Children.Add(turnGroup);
-            var timeoutGroup=new StackPanel();timeoutGroup.Children.Add(Label("任务时限（1～60 分钟）"));timeoutGroup.Children.Add(timeout);Grid.SetColumn(timeoutGroup,1);limits.Children.Add(timeoutGroup);tasks.Children.Add(limits);
-            tasks.Children.Add(Ui.Text("一轮代表一次模型请求。多轮任务与附件按当前服务商规则计费；达到轮数或时限后停止后续操作，已完成的修改会保留。",12,Ui.Muted));
-            detailed=Ui.Toggle("默认显示详细过程",false,delegate{});detailed.Name="AgentDetailedProcess";tasks.Children.Add(detailed);
-            tasks.Children.Add(Ui.Text("展示模型实际返回的思考与工具记录；正式正文开始后仍自动隐藏过程，可在回复的更多菜单中重新查看。",12,Ui.Muted));root.Children.Add(Card(tasks));
-            var save=Ui.Button("保存工作设置",true);save.Name="SaveWorkSettings";save.HorizontalAlignment=HorizontalAlignment.Left;save.Click+=delegate{Save();};root.Children.Add(save);
-            notice=Ui.Text("",12,Ui.Muted);notice.Name="WorkSettingsNotice";notice.Margin=new Thickness(0,10,0,0);root.Children.Add(notice);
-            Content=new ScrollViewer{Content=root,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled};RefreshState();
+            Background=System.Windows.Media.Brushes.White;
+            var shell=new DockPanel{LastChildFill=true};
+            notice=Ui.Text("设置仅影响下一次请求，保存不会启动任务。",11,AgentUi.Muted);notice.Name="WorkSettingsNotice";notice.VerticalAlignment=VerticalAlignment.Center;notice.Margin=new Thickness(0,0,12,0);
+            var save=Ui.Button("保存工作设置",true);save.Name="SaveWorkSettings";save.Margin=new Thickness(0);save.Click+=delegate{Save();};
+            var footer=new DockPanel{LastChildFill=true,Margin=new Thickness(24,14,24,16)};DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);footer.Children.Add(notice);var footerBorder=new Border{Child=footer,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(0,1,0,0)};DockPanel.SetDock(footerBorder,Dock.Bottom);shell.Children.Add(footerBorder);
+            var heading=new StackPanel{Margin=new Thickness(26,24,26,16)};heading.Children.Add(Ui.Text("工作设置",26,AgentUi.Ink));scopeLabel=Ui.Text("",12,AgentUi.Muted);scopeLabel.Name="WorkSettingsScope";scopeLabel.Margin=new Thickness(0,7,0,0);heading.Children.Add(scopeLabel);DockPanel.SetDock(heading,Dock.Top);shell.Children.Add(heading);
+            var tabs=new WrapPanel{Margin=new Thickness(26,0,26,12)};var generalTab=AgentUi.Nav("常规设置","WorkSettingsGeneralTab");var promptTab=AgentUi.Nav("工作提示词","WorkSettingsPromptTab");tabs.Children.Add(generalTab);tabs.Children.Add(promptTab);DockPanel.SetDock(tabs,Dock.Top);shell.Children.Add(tabs);
+            var content=new StackPanel{Margin=new Thickness(26,0,26,24)};
+            var location=new StackPanel();projectName=Ui.Field();projectName.Name="ProjectName";projectName.MaxLength=80;location.Children.Add(SettingRow("项目名称","在侧栏显示的名称。",projectName));
+            workspace=Ui.Field();workspace.Name="AgentWorkspace";workspace.MaxLength=32767;var directory=new StackPanel();directory.Children.Add(workspace);var directoryActions=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right};var change=AgentUi.Nav("选择文件夹…","ChangeAgentWorkspace");change.Click+=delegate{ChangeDirectory();};directoryActions.Children.Add(change);var reset=AgentUi.Nav("重置默认","ResetAgentWorkspace");reset.Click+=delegate{workspace.Text=DefaultWorkspace;notice.Text="默认目录已填入，保存后生效。";};directoryActions.Children.Add(reset);directory.Children.Add(directoryActions);location.Children.Add(SettingRow("工作目录","相对路径的起点；限制访问时也作为文件边界。",directory));AddGroup(content,"项目",location);
+            var permissions=new StackPanel();access=new ComboBox{Name="AgentAccessMode",ItemsSource=new[]{"完整文件访问","仅工作目录"},MinHeight=36};permissions.Children.Add(SettingRow("文件访问范围","两种范围互斥，不影响模型本身的能力。",access));permissionDescription=Ui.Text("",12,AgentUi.Muted);permissionDescription.Margin=new Thickness(0,8,0,12);permissions.Children.Add(permissionDescription);access.SelectionChanged+=delegate{RefreshPermissionDescription();};
+            plan=Ui.Toggle("",false,delegate{});plan.Name="AgentPlanMode";permissions.Children.Add(SettingRow("计划模式","只读取和分析；禁止修改文件、打开目录及执行操作。",plan));AddGroup(content,"权限",permissions);
+            var protection=new StackPanel();backup=Ui.Toggle("",true,delegate{});backup.Name="AgentBackupFiles";protection.Children.Add(SettingRow("修改前自动备份","保存原文件，发生外部修改冲突时拒绝覆盖。",backup));var open=AgentUi.Nav("查看文件备份…","OpenAgentBackups");open.HorizontalAlignment=HorizontalAlignment.Right;open.Click+=delegate{OpenBackups();};protection.Children.Add(SettingRow("文件备份","完整访问存放在原文件旁；仅工作目录时存放在项目下的 "+BackupFolder+"。",open));protection.Children.Add(Ui.Text("停止任务会保留已完成的修改。恢复操作会核对后续改动。",11,AgentUi.Muted));AddGroup(content,"文件保护",protection);
+            var tasks=new StackPanel();goal=Ui.Field("",true);goal.Name="AgentGoal";goal.MaxLength=4000;goal.MinHeight=80;goal.MaxHeight=150;tasks.Children.Add(SettingRow("持续目标","为后续请求补充任务目标；保存不会自动开始任务。",goal));AddGroup(content,"任务",tasks);
+            var context=new StackPanel();contextSummary=Ui.Text("",12,AgentUi.Ink);contextSummary.Name="WorkContextSummary";contextSummary.TextWrapping=TextWrapping.Wrap;context.Children.Add(SettingRow("上下文自动管理","跟随模型配置中的上下文容量，自动预留输出和工具空间。",contextSummary));contextBudget=Ui.Field();contextBudget.Name="AgentContextTokenLimit";contextBudget.MaxLength=7;contextBudget.TextChanged+=delegate{RefreshContextInfo();};fallbackRow=SettingRow("未知模型兜底值","模型未提供容量且未手动配置时使用，单位 Token。",contextBudget);fallbackRow.Name="ContextFallbackRow";context.Children.Add(fallbackRow);context.Children.Add(Ui.Text("接近可用容量时自动压缩旧历史与输出，保留当前要求和完整工具协议组。用量为估算；摘要可能产生额外模型请求。",11,AgentUi.Muted));AddGroup(content,"上下文",context);
+            var preferences=new StackPanel();detailed=Ui.Toggle("",false,delegate{});detailed.Name="AgentDetailedProcess";preferences.Children.Add(SettingRow("展开执行过程","全局偏好，控制回复中执行过程的默认展开方式。",detailed));predicted=Ui.Toggle("",false,delegate{});predicted.Name="ShowPredictedMessages";var editorSettings=new StackPanel();editorSettings.Children.Add(SettingRow("显示预测消息","全局偏好；根据最近对话预测输入，可能产生额外模型请求。",predicted));AddGroup(content,"界面偏好",preferences);
+            plainText=Ui.Toggle("",false,delegate{});plainText.Name="PlainTextEditor";editorSettings.Children.Add(SettingRow("纯文本编辑器","开启后保留代码、Markdown 和链接的原始语法；关闭后直接编辑排版后的内容。仅影响输入区，发送后的消息仍支持 Markdown。",plainText));
+            showContext=Ui.Toggle("",true,delegate{});showContext.Name="ShowContextUsage";editorSettings.Children.Add(SettingRow("显示上下文窗口使用情况","在模型选择器旁显示用量。隐藏不会关闭自动压缩。",showContext));
+            sendShortcut=new ComboBox{Name="SendShortcut",ItemsSource=new[]{"按 Enter 键","按 Ctrl + Enter 键"},MinHeight=36};editorSettings.Children.Add(SettingRow("发送快捷键","Enter 发送时，Shift + Enter 换行；Ctrl + Enter 发送时，Enter 换行。",sendShortcut));
+            followUp=new ComboBox{Name="FollowUpBehavior",ItemsSource=new[]{"排队","引导"},MinHeight=36};editorSettings.Children.Add(SettingRow("跟进处理方式","运行中发送新消息时：排队等待本轮完成；引导在下一处可调整的执行边界纠偏，不取消当前操作。Ctrl + Enter 执行相反方式。",followUp));AddGroup(content,"编辑器",editorSettings);
+            var abilities=new StackPanel();abilities.Children.Add(Ui.Text("文件：查找、搜索、读取和修改文本及支持的文档；创建目录，查看与恢复本任务变更。",12,AgentUi.Muted));abilities.Children.Add(Ui.Text("网络：可读取公开网页；GitHub 读取依赖已配置的仓库与连接。",12,AgentUi.Muted));abilities.Children.Add(Ui.Text("当前页面不授予通用终端、管理员权限或桌面点击控制。文件完整访问也不代表这些能力。",12,AgentUi.Muted));var details=new Expander{Header=Ui.Text("更多能力边界",12,AgentUi.Muted),Margin=new Thickness(0,12,0,0),Content=Ui.Text("具体工具取决于模型和连接。GitHub 写入需要确认能力，当前桌面端尚未接通；MCP 尚无用户连接入口，子 Agent 的生命周期接口不等同于自动执行子任务。",11,AgentUi.Muted)};ChatUi.ProcessExpander(details);abilities.Children.Add(details);AddGroup(content,"能力说明",abilities);
+            var scroll=Ui.Scroll(content);scroll.Name="WorkSettingsScroll";var pages=new Grid();pages.Children.Add(scroll);var promptBody=new StackPanel{Margin=new Thickness(26,10,26,20)};promptBody.Children.Add(Ui.Text("工作模式提示词",20,AgentUi.Ink));promptBody.Children.Add(Ui.Text("所有桌宠、项目和工作对话共用。普通聊天仍使用各自桌宠的人格提示词。项目目标和权限会另外加入实际请求，修改此处不会改变权限。",12,AgentUi.Muted));workPrompt=Ui.Field("",true);workPrompt.Name="AgentSystemPrompt";workPrompt.MaxLength=16000;workPrompt.MinHeight=230;workPrompt.MaxHeight=460;workPrompt.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;workPrompt.Margin=new Thickness(0,18,0,12);promptBody.Children.Add(workPrompt);var resetPrompt=Ui.Button("恢复默认提示词");resetPrompt.Name="ResetAgentSystemPrompt";resetPrompt.HorizontalAlignment=HorizontalAlignment.Left;resetPrompt.Click+=delegate{workPrompt.Text=PetSettings.DefaultAgentSystemPrompt;notice.Text="默认提示词已填入，点击保存后生效。";};promptBody.Children.Add(resetPrompt);var promptScroll=Ui.Scroll(promptBody);promptScroll.Name="WorkPromptScroll";promptScroll.Visibility=Visibility.Collapsed;pages.Children.Add(promptScroll);shell.Children.Add(pages);generalTab.Background=AgentUi.Soft;generalTab.Click+=delegate{promptVisible=false;scroll.Visibility=Visibility.Visible;promptScroll.Visibility=Visibility.Collapsed;generalTab.Background=AgentUi.Soft;promptTab.Background=System.Windows.Media.Brushes.Transparent;save.Content="保存工作设置";};promptTab.Click+=delegate{promptVisible=true;scroll.Visibility=Visibility.Collapsed;promptScroll.Visibility=Visibility.Visible;promptTab.Background=AgentUi.Soft;generalTab.Background=System.Windows.Media.Brushes.Transparent;save.Content="保存工作提示词";};Content=shell;RefreshState();
+        }
+        static FrameworkElement SettingRow(string title,string description,FrameworkElement control)
+        {
+            var row=new Grid{Margin=new Thickness(0,0,0,14)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});var labels=new StackPanel{Margin=new Thickness(0,4,20,0)};var caption=Ui.Text(title,13,AgentUi.Ink);caption.FontWeight=FontWeights.SemiBold;labels.Children.Add(caption);var help=Ui.Text(description,11,AgentUi.Muted);help.Margin=new Thickness(0,5,0,0);help.TextWrapping=TextWrapping.Wrap;labels.Children.Add(help);row.Children.Add(labels);System.Windows.Automation.AutomationProperties.SetName(control,title);control.HorizontalAlignment=control is CheckBox || control is Button?HorizontalAlignment.Right:HorizontalAlignment.Stretch;control.VerticalAlignment=VerticalAlignment.Center;control.Margin=new Thickness(0);Grid.SetColumn(control,1);row.Children.Add(control);return row;
+        }
+        static void AddGroup(StackPanel parent,string title,StackPanel body)
+        {
+            var heading=Ui.Text(title,15,AgentUi.Ink);heading.FontWeight=FontWeights.SemiBold;heading.Margin=new Thickness(0,14,0,12);parent.Children.Add(heading);parent.Children.Add(new Border{Child=body,Padding=new Thickness(20,18,20,4),CornerRadius=new CornerRadius(16),BorderThickness=new Thickness(1),BorderBrush=AgentUi.Line,Background=System.Windows.Media.Brushes.White});
+        }
+        void RefreshContextInfo()
+        {
+            if(contextSummary==null)return;var model=pet.Settings.Text;int capacity=model==null?0:model.ContextWindowTokens;string name=model==null||String.IsNullOrWhiteSpace(model.Model)?"尚未选择模型":model.Model;int fallback;Int32.TryParse(contextBudget==null?"":contextBudget.Text,out fallback);contextSummary.Text=capacity>0?name+"\n"+capacity.ToString("N0")+" Token · 跟随模型配置":name+"\n容量未知 · 兜底 "+(fallback>=8192&&fallback<=ModelContextCapacity.Maximum?fallback.ToString("N0"):"待填写")+" Token";if(fallbackRow!=null)fallbackRow.Visibility=capacity>0?Visibility.Collapsed:Visibility.Visible;
         }
         static string DefaultWorkspace {get{return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace"));}}
-        static TextBlock Heading(string text){var value=Ui.Text(text,17);value.FontWeight=FontWeights.SemiBold;value.Margin=new Thickness(0,0,0,8);return value;}
-        static TextBlock Label(string text){var value=Ui.Text(text,12,Ui.Muted);value.Margin=new Thickness(0,10,0,5);return value;}
-        static Border Card(UIElement content){var card=Ui.Card(content);card.Background=System.Windows.Media.Brushes.White;card.Margin=new Thickness(0,16,0,0);return card;}
         void RefreshPermissionDescription()
         {
             if(permissionDescription==null)return;
@@ -72,40 +73,48 @@ namespace Dafeiyu
         }
         public void RefreshState()
         {
-            if(HasUnsavedChanges)return;
-            baseline=pet.Settings.Copy();access.SelectedIndex=baseline.AgentFullAccess?0:1;workspace.Text=baseline.AgentWorkspace??"";goal.Text=baseline.AgentGoal??"";
-            plan.IsChecked=baseline.AgentPlanMode;backup.IsChecked=baseline.AgentBackupFiles;detailed.IsChecked=baseline.AgentDetailedProcess;
-            turns.Text=baseline.AgentMaxTurns.ToString(CultureInfo.InvariantCulture);timeout.Text=baseline.AgentTimeoutMinutes.ToString(CultureInfo.InvariantCulture);RefreshPermissionDescription();
+            RefreshContextInfo();if(HasUnsavedChanges)return;
+            workPrompt.Text=pet.Settings.AgentSystemPrompt;promptBaseline=workPrompt.Text;project=pet.CurrentEditingProject;baseline=project==null?pet.Settings.Copy():ProjectSettings(project);projectName.Text=project==null?"全局默认设置":project.Name;projectName.IsEnabled=project!=null;access.SelectedIndex=baseline.AgentFullAccess?0:1;workspace.Text=baseline.AgentWorkspace??"";goal.Text=baseline.AgentGoal??"";
+            plan.IsChecked=baseline.AgentPlanMode;backup.IsChecked=baseline.AgentBackupFiles;detailed.IsChecked=pet.Settings.AgentDetailedProcess;detailed.IsEnabled=project==null;predicted.IsEnabled=project==null;plainText.IsEnabled=showContext.IsEnabled=sendShortcut.IsEnabled=followUp.IsEnabled=project==null;plainText.IsChecked=pet.Settings.PlainTextEditor;showContext.IsChecked=pet.Settings.ShowContextUsage;sendShortcut.SelectedIndex=pet.Settings.SendOnEnter?0:1;followUp.SelectedIndex=pet.Settings.FollowUpBehavior=="steer"?1:0;scopeLabel.Text=project==null?"全局默认 · 用于无项目对话":"当前项目 · "+project.Name+"（界面偏好在全局设置中修改）";
+            contextBudget.Text=baseline.AgentContextTokenLimit.ToString(CultureInfo.InvariantCulture);predicted.IsChecked=pet.Settings.ShowPredictedMessages;RefreshPermissionDescription();RefreshContextInfo();
+        }
+        bool SavePrompt()
+        {
+            string value=workPrompt.Text.Trim();if(value.Length<1 || value.Length>16000){notice.Text="工作提示词需为 1～16000 个字符。";return false;}string previous=pet.Settings.AgentSystemPrompt;pet.Settings.AgentSystemPrompt=value;pet.SaveSettings();if(!String.IsNullOrEmpty(pet.Notice)){pet.Settings.AgentSystemPrompt=previous;notice.Text=pet.Notice;return false;}workPrompt.Text=value;promptBaseline=value;notice.Text="工作提示词已保存，所有工作对话从下一次请求生效。";return true;
         }
         public bool Save()
         {
-            PetSettings candidate;
+            if(promptVisible)return SavePrompt();
+            PetSettings candidate;string projectNameValue;
             try
             {
                 if(access.SelectedIndex!=0 && access.SelectedIndex!=1)throw new InvalidOperationException("请选择完整访问或仅工作目录。");
-                int maxTurns,maxMinutes;
-                if(!Int32.TryParse(turns.Text,NumberStyles.None,CultureInfo.InvariantCulture,out maxTurns) || maxTurns<1 || maxTurns>48)throw new InvalidOperationException("最多模型轮数应为 1～48 的整数。");
-                if(!Int32.TryParse(timeout.Text,NumberStyles.None,CultureInfo.InvariantCulture,out maxMinutes) || maxMinutes<1 || maxMinutes>60)throw new InvalidOperationException("任务时限应为 1～60 的整数分钟。");
+                int contextTokens;if(!Int32.TryParse(contextBudget.Text,NumberStyles.None,CultureInfo.InvariantCulture,out contextTokens) || contextTokens<8192 || contextTokens>2000000)throw new InvalidOperationException("上下文兜底值应为 8192–2000000 的整数。");
                 string target=ValidateDirectory(workspace.Text,access.SelectedIndex==1);
                 if(goal.Text.Length>4000)throw new InvalidOperationException("持续目标不能超过 4000 个字符，请缩短后保存。");
-                candidate=pet.Settings.Copy();candidate.AgentFullAccess=access.SelectedIndex==0;candidate.AgentWorkspace=target;candidate.AgentPlanMode=plan.IsChecked==true;
-                candidate.AgentGoal=goal.Text.Trim();candidate.AgentBackupFiles=backup.IsChecked==true;candidate.AgentMaxTurns=maxTurns;candidate.AgentTimeoutMinutes=maxMinutes;candidate.AgentDetailedProcess=detailed.IsChecked==true;
+                projectNameValue=projectName.Text.Trim();if(project!=null && (projectNameValue.Length<1 || projectNameValue.Length>80))throw new InvalidOperationException("项目名称应为 1～80 个字符。");
+                candidate=pet.Settings.Copy();candidate.AgentCommandsEnabled=false;candidate.AgentCommandRecipes="[]";
+                candidate.AgentFullAccess=access.SelectedIndex==0;candidate.AgentWorkspace=target;candidate.AgentPlanMode=plan.IsChecked==true;
+                candidate.AgentGoal=goal.Text.Trim();candidate.AgentBackupFiles=backup.IsChecked==true;candidate.AgentContextTokenLimit=contextTokens;candidate.ShowPredictedMessages=predicted.IsChecked==true;candidate.PlainTextEditor=plainText.IsChecked==true;candidate.ShowContextUsage=showContext.IsChecked==true;candidate.SendOnEnter=sendShortcut.SelectedIndex==0;candidate.FollowUpBehavior=followUp.SelectedIndex==1?"steer":"queue";candidate.AgentDetailedProcess=detailed.IsChecked==true;
             }
             catch(Exception e){if(!ValidationError(e))throw;notice.Text=e.Message;return false;}
-            var previous=pet.Settings.Copy();
+            var previous=pet.Settings.Copy();var previousProject=project==null?null:project.Copy();
             try
             {
-                ApplyWorkFields(candidate,pet.Settings);pet.SaveSettings();
-                if(!String.IsNullOrEmpty(pet.Notice)){ApplyWorkFields(previous,pet.Settings);notice.Text=pet.Notice;return false;}
+                if(project!=null){project.Name=projectNameValue;ApplyProjectFields(candidate,project);pet.ProjectStore.Save(pet.Projects);}else{ApplyWorkFields(candidate,pet.Settings);pet.SaveSettings();}
+                if(project==null && !String.IsNullOrEmpty(pet.Notice)){ApplyWorkFields(previous,pet.Settings);notice.Text=pet.Notice;return false;}
                 // Establish the clean baseline before refreshing other views, which may re-enter this panel.
-                baseline=null;RefreshState();pet.RefreshChatAppearance();notice.Text="工作设置已保存，从下一次请求生效。";return true;
+                string promptDraft=workPrompt.Text;bool promptDirty=promptDraft!=promptBaseline;baseline=null;RefreshState();if(promptDirty)workPrompt.Text=promptDraft;pet.RefreshChatAppearance();notice.Text="工作设置已保存，从下一次请求生效。";return true;
             }
-            catch(Exception e){ApplyWorkFields(previous,pet.Settings);if(!ValidationError(e))throw;notice.Text="保存未完成："+e.Message;return false;}
+            catch(Exception e){if(project==null)ApplyWorkFields(previous,pet.Settings);else if(previousProject!=null){project.Name=previousProject.Name;ApplyProjectFields(ProjectSettings(previousProject),project);}if(!ValidationError(e))throw;notice.Text="保存未完成："+e.Message;return false;}
         }
+        static PetSettings ProjectSettings(ProjectDefinition value){var result=new PetSettings();result.AgentCommandsEnabled=value.CommandsEnabled;result.AgentCommandRecipes=value.CommandRecipes;result.AgentCommandTimeoutSeconds=value.CommandTimeoutSeconds;result.AgentFullAccess=value.FullAccess;result.AgentWorkspace=value.Workspace;result.AgentPlanMode=value.PlanMode;result.AgentGoal=value.Goal;result.AgentBackupFiles=value.BackupFiles;result.AgentContextTokenLimit=value.ContextTokenLimit;return result;}
+        static void ApplyProjectFields(PetSettings from,ProjectDefinition to){to.CommandsEnabled=from.AgentCommandsEnabled;to.CommandRecipes=from.AgentCommandRecipes;to.CommandTimeoutSeconds=from.AgentCommandTimeoutSeconds;to.FullAccess=from.AgentFullAccess;to.Workspace=from.AgentWorkspace;to.PlanMode=from.AgentPlanMode;to.Goal=from.AgentGoal;to.BackupFiles=from.AgentBackupFiles;to.ContextTokenLimit=from.AgentContextTokenLimit;}
         static void ApplyWorkFields(PetSettings from,PetSettings to)
         {
+            to.AgentCommandsEnabled=from.AgentCommandsEnabled;to.AgentCommandRecipes=from.AgentCommandRecipes;to.AgentCommandTimeoutSeconds=from.AgentCommandTimeoutSeconds;
             to.AgentFullAccess=from.AgentFullAccess;to.AgentWorkspace=from.AgentWorkspace;to.AgentPlanMode=from.AgentPlanMode;to.AgentGoal=from.AgentGoal;
-            to.AgentBackupFiles=from.AgentBackupFiles;to.AgentMaxTurns=from.AgentMaxTurns;to.AgentTimeoutMinutes=from.AgentTimeoutMinutes;to.AgentDetailedProcess=from.AgentDetailedProcess;
+            to.AgentBackupFiles=from.AgentBackupFiles;to.AgentContextTokenLimit=from.AgentContextTokenLimit;to.ShowPredictedMessages=from.ShowPredictedMessages;to.PlainTextEditor=from.PlainTextEditor;to.ShowContextUsage=from.ShowContextUsage;to.SendOnEnter=from.SendOnEnter;to.FollowUpBehavior=from.FollowUpBehavior;to.AgentDetailedProcess=from.AgentDetailedProcess;
         }
         static bool ValidationError(Exception e){return e is ArgumentException || e is InvalidOperationException || e is IOException || e is UnauthorizedAccessException || e is NotSupportedException || e is System.Security.SecurityException;}
         static string ValidateDirectory(string text,bool restricted)
@@ -136,7 +145,7 @@ namespace Dafeiyu
         {
             try
             {
-                var settings=pet.Settings.Copy();string parent;
+                var settings=baseline??pet.Settings;string parent;
                 if(settings.AgentFullAccess){parent=PickFolder("选择原文件所在的文件夹，以查看其中的自动备份",settings.AgentWorkspace);if(parent==null)return;}
                 else parent=ValidateDirectory(settings.AgentWorkspace,true);
                 string path=Path.Combine(parent,BackupFolder);

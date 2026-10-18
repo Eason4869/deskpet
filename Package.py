@@ -31,7 +31,7 @@ retired_source_tools={'PackDrawnMotion.py','PackXiaobei.py','tests/MotionSourceE
 def include_source(file):
     relative=file.relative_to(PROJECT)
     if not file.is_file() or OUTPUT in file.resolve().parents:return False
-    if any(part.lower() in {'work','bin','obj','data','outputs','__pycache__','.git','.superpowers','.codex','.agents','.aws','.ssh'} for part in relative.parts):return False
+    if any(part.lower() in {'work','bin','obj','data','outputs','research','__pycache__','.git','.superpowers','.codex','.agents','.aws','.ssh'} for part in relative.parts):return False
     if file.name.lower() in {'.env','credentials','credentials.json','auth.json','id_rsa','id_ed25519'} or file.name.lower().startswith('.env.'):return False
     name=relative.as_posix()
     if name.startswith(('docs/superpowers/','assets/drawn-source','assets/motion-source/','assets/motion/')) or name in retired_source_tools:return False
@@ -40,7 +40,7 @@ def include_source(file):
 source_files=[p for p in sorted(PROJECT.rglob('*')) if include_source(p)]
 # User-facing templates and documentation remain in the runtime; developer
 # verification reports, tests and intermediate artwork stay out.
-user_docs=['skin-format.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
+user_docs=['configuration-guide.md','skin-format.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
 runtime_text={name:(PROJECT/name).read_text(encoding='utf-8-sig') for name in ['README.md','CHANGELOG.md']+[str(Path('docs')/name) for name in user_docs]}
 readme=runtime_text['README.md']
 for pet,still in [('ebao','e-bao'),('dafeiyu','dafeiyu'),('marfu','marfu'),('xiaobei','xiaobei')]:

@@ -12,6 +12,12 @@ namespace Dafeiyu.Tests
 {
     public static class OnboardingModelSmoke
     {
+        static void AddDiscovered(FrameworkElement root)
+        {
+            var list=Find<ListBox>(root,"DiscoveredTextModels");var item=(ListBoxItem)list.Items[0];
+            root.Dispatcher.BeginInvoke(new Action(delegate{var dialog=Application.Current.Windows.OfType<Window>().First(w=>w.Title=="添加模型");Find<Button>(dialog,"AddTextModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}),DispatcherPriority.Background);
+            Find<Button>(item,"AddDiscoveredModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        }
         static int passed;
         [STAThread] public static int Main()
         {
@@ -23,6 +29,7 @@ namespace Dafeiyu.Tests
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowOnboarding();Pump();
                 var settings=(SettingsWindow)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
+                Check(typeof(OnboardingWindow).GetProperty("CurrentLessonId")!=null,"guide has stable detailed lesson IDs");
                 Check(guide.Step==8 && Find<Button>(settings,"AddTextProvider").IsEnabled,"text guide unlocks the manufacturer picker instead of only the old connection fields");
                 Check(!Find<FrameworkElement>(settings,"SettingsNavigation").IsEnabled && !Find<Button>(settings,"SaveConnections").IsEnabled,"guide keeps other pages and global save locked");
                 int before=Find<ListBox>(settings,"TextProviderList").Items.Count;Choose(settings,"AddTextProvider","",true);
@@ -32,30 +39,30 @@ namespace Dafeiyu.Tests
                     Choose(settings,"AddTextProvider","deepseek");
                     Check(Find<PasswordBox>(settings,"TextServiceKey").IsEnabled && guide.HighlightVisible,"new provider fields remain editable while the guide highlight survives");
                     Find<TextBox>(settings,"TextServiceUrl").Text=server.Url+"/v1";Find<PasswordBox>(settings,"TextServiceKey").Password="guide-text-key";
-                    Check(!Find<Button>(guide,"GuideNext").IsEnabled,"a saved connection without an added model cannot finish the text step");
+                    Go(guide,"text.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"a saved connection without an added model cannot finish the text step");
                     Click(settings,"SaveAndFetchTextModels");Until(()=>Find<ListBox>(settings,"DiscoveredTextModels").Items.Count==2);
-                    Check(Find<ListBox>(settings,"DiscoveredTextModels").IsEnabled && Find<Button>(settings,"SelectAllDiscoveredModels").IsEnabled,"guide permits selecting models after fetching collapses the connection area");
-                    Click(settings,"SelectAllDiscoveredModels");Click(settings,"AddSelectedTextModels");
+                    Check(Find<ListBox>(settings,"DiscoveredTextModels").IsEnabled && settings.FindControl("SelectAllDiscoveredModels")==null,"guide permits selecting models after fetching collapses the connection area");
+                    AddDiscovered(settings);AddDiscovered(settings);
                     Check(Find<ListBox>(settings,"TextProviderModels").Items.Count==2 && Find<ListBox>(settings,"TextProviderModels").IsEnabled,"both selected models can be added and changed inside the guide");
                     Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Capture(settings,Path.Combine(folder,"guide-models-added.png"));Capture(guide,Path.Combine(folder,"guide-models-card.png"));
                     Click(guide,"GuideNext");
                     var saved=pet.Store.Load();var active=saved.TextProviders.Single(p=>p.Id==saved.ActiveTextProviderId);
-                    Check(guide.Step==9 && active.Models.Count==2 && active.Models.Contains(saved.Text.Model),"next saves configured text models and advances only to ASR");
+                    Check(guide.CurrentLessonId=="text.test" && active.Models.Count==2 && active.Models.Contains(saved.Text.Model),"next saves configured text models and advances only to ASR");
                 }
-                Choose(settings,"AddAsrProvider","xiaomimimo");
+                Go(guide,"asr.provider");Choose(settings,"AddAsrProvider","xiaomimimo");
                 Check(Find<TextBox>(settings,"TranscriptionModel").IsEnabled && Find<TextBox>(settings,"TranscriptionModel").Text=="mimo-v2.5-asr" && settings.FindControl("FetchAsrModels")==null,"ASR guide allows manufacturer selection and its editable prefilled model without discovery");
-                Find<PasswordBox>(settings,"TranscriptionKey").Password="guide-asr-key";Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
-                Check(guide.Step==10 && pet.Settings.Transcription.ApiKey=="guide-asr-key" && pet.Settings.Text.ApiKey=="guide-text-key","ASR next saves its independent key without changing the text key");
-                Check(Find<CheckBox>(settings,"UseCloudVoice").IsEnabled,"TTS guide unlocks the moved cloud toggle");
-                Choose(settings,"AddSpeechProvider","xiaomimimo");Find<CheckBox>(settings,"UseCloudVoice").IsChecked=true;Find<PasswordBox>(settings,"SpeechKey").Password="guide-speech-key";
+                Find<PasswordBox>(settings,"TranscriptionKey").Password="guide-asr-key";Go(guide,"asr.save");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
+                Check(guide.CurrentLessonId=="asr.operate" && pet.Settings.Transcription.ApiKey=="guide-asr-key" && pet.Settings.Text.ApiKey=="guide-text-key","ASR next saves its independent key without changing the text key");
+                Go(guide,"speech.intro");Check(Find<CheckBox>(settings,"UseCloudVoice").IsEnabled,"TTS guide unlocks the moved cloud toggle");
+                Choose(settings,"AddSpeechProvider","xiaomimimo");Find<CheckBox>(settings,"UseCloudVoice").IsChecked=true;Go(guide,"speech.key");Find<PasswordBox>(settings,"SpeechKey").Password="guide-speech-key";
                 Check(Find<ComboBox>(settings,"SpeechVoice").IsEnabled && Find<Slider>(settings,"VoiceVolume").IsEnabled,"TTS guide permits editing voice and volume outside connection fields");
-                Check(!Find<Button>(settings,"PreviewSpeech").IsEnabled && !Find<Button>(settings,"StopPreviewSpeech").IsEnabled,"guide blocks speech tests while setup is unfinished");
+                Check(!Find<Button>(settings,"PreviewSpeech").IsEnabled && Find<Button>(settings,"StopPreviewSpeech").IsEnabled,"guide blocks starting speech tests before the dedicated lesson while retaining stop");Go(guide,"speech.save");
                 Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
-                Choose(settings,"AddLiveProvider","gemini");Find<PasswordBox>(settings,"LiveServiceKey").Password="guide-live-key";
+                Go(guide,"live.provider");Choose(settings,"AddLiveProvider","gemini");Find<PasswordBox>(settings,"LiveServiceKey").Password="guide-live-key";
                 Check(Find<ComboBox>(settings,"LiveVoice").IsEnabled && Find<TextBox>(settings,"LiveServiceModel").Text=="gemini-3.8-live","Live guide enables the manufacturer, prefilled model and independent voice");
                 Check(!Find<Button>(settings,"PreviewLive").IsEnabled && !pet.LiveActive,"guide blocks the Live test and never connects automatically");
-                Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
-                Check(guide.Step==12 && pet.Settings.Live.ApiKey=="guide-live-key" && !pet.LiveActive,"Live next saves only Live configuration without a call");
+                Go(guide,"live.save");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
+                Check(guide.CurrentLessonId=="live.test" && pet.Settings.Live.ApiKey=="guide-live-key" && !pet.LiveActive,"Live next saves only Live configuration without a call");
                 Click(guide,"GuideBack");Check(!Find<Button>(settings,"PreviewLive").IsEnabled,"returning to Live keeps its test guarded during the guide");
                 Click(guide,"GuideSkip");Check(Find<Button>(settings,"PreviewLive").IsEnabled && Find<Button>(settings,"SaveConnections").IsEnabled,"leaving the guide restores page tests and global save");
                 CheckManualFallback(pet,folder);
@@ -64,16 +71,17 @@ namespace Dafeiyu.Tests
             catch(Exception e){Console.WriteLine("FAIL onboarding models: "+e);return 1;}
             finally{if(pet!=null)pet.Close();Pump();app.Shutdown();}
         }
+        static void Go(OnboardingWindow guide,string id){typeof(OnboardingWindow).GetField("index",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==id));typeof(OnboardingWindow).GetMethod("Navigate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(guide,null);Pump();}
         static void CheckManualFallback(PetWindow pet,string folder)
         {
-            pet.Settings.OnboardingState="deferred";pet.Settings.OnboardingStep=8;pet.ShowOnboarding();Pump();
+            pet.Settings.OnboardingState="deferred";pet.Settings.OnboardingStep=8;pet.Settings.OnboardingLessonId="text.save";pet.ShowOnboarding();Pump();
             var settings=(SettingsWindow)Field(pet,"preferences");var guide=(OnboardingWindow)Field(pet,"guide");
             using(var server=new ApiTests.Fixture("private catalog error",401)){
                 Choose(settings,"AddTextProvider","custom");Find<TextBox>(settings,"TextServiceUrl").Text=server.Url+"/v1";Find<PasswordBox>(settings,"TextServiceKey").Password="manual-guide-key";Click(settings,"SaveAndFetchTextModels");
-                Until(()=>Find<TextBlock>(settings,"TextProviderNotice").Text.Contains("401"));Find<TextBox>(settings,"TextProviderNewModel").Text="manual-guide-model";Pump();
-                Check(!Find<Button>(guide,"GuideNext").IsEnabled,"typing an unadded model does not silently complete the guide");
-                Check(Find<Button>(settings,"AddTextModel").IsEnabled,"failed discovery leaves manual model addition usable in the guide");Click(settings,"AddTextModel");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);
-                Find<TextBox>(settings,"TextServiceProxyAddress").Text="socks5://127.0.0.1:7890";Pump();Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid proxy settings cannot mark the text guide ready before save");
+                Until(()=>Find<TextBlock>(settings,"TextProviderNotice").Text.Contains("401"));
+                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var dialog=Application.Current.Windows.OfType<Window>().Single(w=>w.Title=="添加模型");Find<TextBox>(dialog,"TextProviderNewModel").Text="manual-guide-model";Pump();Check(!Find<Button>(guide,"GuideNext").IsEnabled,"typing an unadded model does not silently complete the guide");Click(dialog,"AddTextModel");}));
+                Check(Find<Button>(settings,"CustomTextModel").IsEnabled,"failed discovery leaves manual model addition usable in the guide");Click(settings,"CustomTextModel");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);
+                Find<TextBox>(settings,"TextServiceProxyAddress").Text="socks5://127.0.0.1:7890";Until(()=>!Find<Button>(guide,"GuideNext").IsEnabled);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid proxy settings cannot mark the text guide ready before save");
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text=ProxyConfiguration.DefaultAddress;Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
                 Check(pet.Settings.Text.Model=="manual-guide-model" && pet.Settings.TextProviders.Single(p=>p.Id==pet.Settings.ActiveTextProviderId).Models.Count==1,"manually added model survives guide save after a discovery error");
             }

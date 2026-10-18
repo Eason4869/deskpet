@@ -22,7 +22,7 @@ options = arguments.parse_args()
 root = PROJECT / 'work' / ('source-smoke-' + uuid.uuid4().hex)
 checkout = root / 'DafeiyuDeskPet'
 shutil.copytree(PROJECT, checkout, ignore=shutil.ignore_patterns(
-    '.git', 'work', 'bin', 'obj', 'data', '__pycache__', '.superpowers', 'superpowers',
+    '.git', 'work', 'bin', 'obj', 'data', '__pycache__', '.superpowers', 'superpowers', 'research',
     'motion', 'motion-source', 'drawn-source*', 'PackDrawnMotion.py', 'PackXiaobei.py', 'MotionSourceExport.cs', 'SmoothMotionTests.cs'))
 assert not (checkout/'assets/motion').exists(), 'Clean builds must not depend on retired motion artwork'
 assert (checkout/'templates/high-fps-v2/pet.json').is_file(), 'Author template must be in the repository'
@@ -81,10 +81,19 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei']:
 with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
+    assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
+    assert '118' in bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
     assert 'DafeiyuDeskPet/templates/grid-guide.svg' in bundle.namelist()
     assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
 print('PASS four complete low-frame v2 skin packs and full author templates')
+installer_recipe=(checkout/'installer/DeskPet.iss').read_text(encoding='utf-8-sig')
+with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
+    for name in bundle.namelist():
+        if name.startswith('DafeiyuDeskPet/docs/') and name.endswith('.md'):
+            assert '\\docs\\'+Path(name).name+'"' in installer_recipe, 'installer documentation missing: '+name
+print('PASS installer and portable package include the same public documentation')
+
 manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
 for line in manifest:
     digest, name = line.split('  ', 1)

@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -10,51 +8,57 @@ namespace Dafeiyu
 {
     internal sealed class MarkdownView : RichTextBox
     {
-        string text="";
-        public string Text {get{return text;}set{value=value??"";if(text==value)return;text=value;var doc=new FlowDocument{PagePadding=new Thickness(0),FontFamily=FontFamily,FontSize=14,Foreground=Foreground,ColumnWidth=Double.PositiveInfinity};foreach(var node in MarkdownContent.Parse(value))doc.Blocks.Add(Block(node));Document=doc;}}
-        public MarkdownView()
-        {IsReadOnly=true;IsDocumentEnabled=true;BorderThickness=new Thickness(0);Background=Brushes.Transparent;Foreground=Ui.Ink;Padding=new Thickness(0);VerticalScrollBarVisibility=ScrollBarVisibility.Disabled;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;ContextMenu=ChatUi.EditorMenu(this,true);}
-        static Block Block(MarkdownNode node)
+        string text = "";
+        internal bool FitContentWidth;
+        double naturalWidth = Double.NaN;
+        internal bool HasFormatting { get; private set; }
+        public string Text { get { return text; } set { value=value??"";if(text==value)return;text=value;naturalWidth=Double.NaN;bool formatted;Document=MarkdownDocument.Create(value,FontFamily,Foreground,false,out formatted);HasFormatting=formatted; } }
+        protected override Size MeasureOverride(Size constraint)
         {
-            if(node.Kind=="codeblock")
-            {
-                var section=new Section{Background=Ui.Brush("#F4F5F7"),Padding=new Thickness(12),Margin=new Thickness(0,5,0,12)};
-                if(node.Info.Length>0)section.Blocks.Add(new Paragraph(new Run(node.Info)){Foreground=Ui.Muted,FontSize=11,Margin=new Thickness(0,0,0,6)});
-                section.Blocks.Add(new Paragraph(new Run(node.Text)){FontFamily=new FontFamily("Consolas"),FontSize=12,Margin=new Thickness(0)});return section;
-            }
-            if(node.Kind=="list" || node.Kind=="ordered")
-            {
-                var list=new List{MarkerStyle=node.Kind=="ordered"?TextMarkerStyle.Decimal:TextMarkerStyle.Disc,StartIndex=node.Start,Padding=new Thickness(22,0,0,0),Margin=new Thickness(0,0,0,9)};
-                foreach(var item in node.Children){var row=new ListItem{Margin=new Thickness(0,2,0,2)};foreach(var child in item.Children)row.Blocks.Add(Block(child));list.ListItems.Add(row);}return list;
-            }
-            if(node.Kind=="table")
-            {
-                var table=new Table{CellSpacing=0,Margin=new Thickness(0,6,0,12)};var group=new TableRowGroup();table.RowGroups.Add(group);
-                int columns=node.Children.Count==0?0:node.Children[0].Children.Count;for(int i=0;i<columns;i++)table.Columns.Add(new TableColumn{Width=new GridLength(1,GridUnitType.Star)});
-                foreach(var row in node.Children){var rendered=new TableRow();if(row.Header){rendered.Background=Ui.Brush("#F2F4F7");rendered.FontWeight=FontWeights.SemiBold;}foreach(var cell in row.Children){var content=new TableCell{BorderBrush=Ui.Brush("#DDE1E7"),BorderThickness=new Thickness(.5),Padding=new Thickness(7,5,7,5)};foreach(var child in cell.Children)content.Blocks.Add(Block(child));rendered.Cells.Add(content);}group.Rows.Add(rendered);}return table;
-            }
-            if(node.Kind=="quote" || node.Kind=="group" || node.Kind=="item")
-            {
-                var section=new Section{Margin=new Thickness(0,3,0,9)};if(node.Kind=="quote"){section.BorderBrush=Ui.Brush("#CDD3DD");section.BorderThickness=new Thickness(3,0,0,0);section.Padding=new Thickness(12,2,0,2);section.Foreground=Ui.Muted;}foreach(var child in node.Children)section.Blocks.Add(Block(child));return section;
-            }
-            var paragraph=new Paragraph{Margin=new Thickness(0,0,0,8)};
-            if(node.Kind=="rule"){paragraph.BorderBrush=Ui.Brush("#E2E5EA");paragraph.BorderThickness=new Thickness(0,0,0,1);paragraph.Margin=new Thickness(0,8,0,12);}
-            else{Inline(paragraph.Inlines,node.Children);if(node.Kind=="heading"){paragraph.FontSize=node.Level==1?23:node.Level==2?20:node.Level==3?17:15;paragraph.FontWeight=FontWeights.SemiBold;paragraph.Margin=new Thickness(0,8,0,9);}}
-            return paragraph;
+            if (!FitContentWidth) return base.MeasureOverride(constraint);
+            if (Double.IsNaN(naturalWidth)) naturalWidth = NaturalWidth(Document.Blocks);
+            double width = Math.Min(constraint.Width, Math.Max(1, Math.Ceiling(naturalWidth) + 12));
+            return base.MeasureOverride(new Size(width, constraint.Height));
         }
-        static void Inline(InlineCollection target,IEnumerable<MarkdownNode> nodes)
+        static double NaturalWidth(BlockCollection blocks)
         {
-            foreach(var node in nodes)
+            double width = 0;
+            foreach (Block block in blocks)
             {
-                if(node.Kind=="break"){target.Add(new LineBreak());continue;}
-                if(node.Kind=="bold" || node.Kind=="italic" || node.Kind=="strike")
-                {Span span=node.Kind=="bold"?(Span)new Bold():node.Kind=="italic"?new Italic():new Span{TextDecorations=TextDecorations.Strikethrough};Inline(span.Inlines,node.Children);target.Add(span);continue;}
-                if(node.Kind=="link" || node.Kind=="image")
+                double current; var paragraph = block as Paragraph; var section = block as Section;var list=block as System.Windows.Documents.List;var table=block as Table;
+                if (paragraph != null)
                 {
-                    Uri uri;if(MarkdownContent.TryLink(node.Url,out uri)){var link=new Hyperlink{NavigateUri=uri,Foreground=Ui.Blue,ToolTip=node.Url};if(node.Kind=="image")link.Inlines.Add(new Run("图片："));if(node.Text.Length>0)link.Inlines.Add(new Run(node.Text));Inline(link.Inlines,node.Children);link.RequestNavigate+=delegate(object sender,System.Windows.Navigation.RequestNavigateEventArgs e){try{Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});}catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}e.Handled=true;};target.Add(link);}else Inline(target,node.Children);continue;
+                    var measure = new TextBlock { FontFamily = paragraph.FontFamily, FontSize = paragraph.FontSize, FontWeight = paragraph.FontWeight, FontStyle = paragraph.FontStyle, TextWrapping = TextWrapping.NoWrap };
+                    foreach (Inline inline in paragraph.Inlines) measure.Inlines.Add(MeasureInline(inline));
+                    measure.Measure(new Size(Double.PositiveInfinity, Double.PositiveInfinity)); current = measure.DesiredSize.Width;
                 }
-                if(node.Text.Length>0){var run=new Run(node.Text);if(node.Kind=="code"){run.FontFamily=new FontFamily("Consolas");run.Background=Ui.Brush("#EFF1F5");run.FontSize=12;}target.Add(run);}if(node.Children.Count>0)Inline(target,node.Children);
+                else if (section != null) current = NaturalWidth(section.Blocks);
+                else if(list!=null){current=0;foreach(var item in list.ListItems)current=Math.Max(current,NaturalWidth(item.Blocks)+24);}
+                else if(table!=null)
+                {
+                    var columns=new double[table.Columns.Count];
+                    foreach(var group in table.RowGroups)foreach(var row in group.Rows)
+                    {
+                        int column=0;foreach(var cell in row.Cells){if(column<columns.Length)columns[column]=Math.Max(columns[column],NaturalWidth(cell.Blocks)+Horizontal(cell.Padding)+Horizontal(cell.BorderThickness));column++;}
+                    }
+                    current=table.CellSpacing*(columns.Length+1);foreach(double column in columns)current+=column;
+                }
+                else return Double.PositiveInfinity;
+                width = Math.Max(width, current + Horizontal(block.Padding)+Horizontal(block.Margin)+Horizontal(block.BorderThickness));
             }
+            return width;
         }
+        static double Horizontal(Thickness value){return (Double.IsNaN(value.Left)?0:value.Left)+(Double.IsNaN(value.Right)?0:value.Right);}
+        static Inline MeasureInline(Inline inline)
+        {
+            Inline result; var run = inline as Run; var span = inline as Span; var element = inline as InlineUIContainer;
+            if (run != null) result = new Run(run.Text);
+            else if (span != null) { var copy = new Span(); foreach (Inline child in span.Inlines) copy.Inlines.Add(MeasureInline(child)); result = copy; }
+            else if (element != null && element.Child != null) { element.Child.Measure(new Size(Double.PositiveInfinity, Double.PositiveInfinity)); result = new InlineUIContainer(new Border { Width = element.Child.DesiredSize.Width, Height = element.Child.DesiredSize.Height }); }
+            else result = new LineBreak();
+            result.FontFamily = inline.FontFamily; result.FontSize = inline.FontSize; result.FontWeight = inline.FontWeight; result.FontStyle = inline.FontStyle; result.FontStretch = inline.FontStretch; return result;
+        }
+        public MarkdownView()
+        { IsReadOnly = true; IsDocumentEnabled = true; BorderThickness = new Thickness(0); Background = Brushes.Transparent; Foreground = Ui.Ink; Padding = new Thickness(0); VerticalScrollBarVisibility = ScrollBarVisibility.Disabled; HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; ContextMenu = ChatUi.EditorMenu(this, true); }
     }
 }

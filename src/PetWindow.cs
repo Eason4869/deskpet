@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,13 +60,15 @@ namespace Dafeiyu
             if(guideInteraction==action && (action!="wheel" || guideWheelOpened) && GuideInteractionCompleted!=null)GuideInteractionCompleted(action);
         }
         internal void SetGuideLock(bool active){trayMenu.Enabled=!active;if(active && quick!=null)quick.Hide();}
-        bool ReturnToGuide(){if(!GuideActive)return false;if(guide.WindowState==WindowState.Minimized)guide.WindowState=WindowState.Normal;guide.Activate();return true;}
+        internal bool GuideWorkspacePractice;
+        internal bool GuideIsRunning {get{return GuideActive;}}
+        bool ReturnToGuide(){if(!GuideActive||GuideWorkspacePractice)return false;if(guide.WindowState==WindowState.Minimized)guide.WindowState=WindowState.Normal;guide.Activate();return true;}
 
         private ActionPaletteWindow palette;
         private ChatWindow chat;
         private LiveCallView call;
         private ConversationSession conversation;
-        private ConversationQueue inputQueue;
+        private ConversationQueue inputQueue;private ProjectCatalog projectCatalog;private ProjectDefinition editingProject;private ProjectCatalogStore projectCatalogStore;private ConversationWorkspaceManager workspaces;private readonly HashSet<string> titleGenerationStarted=new HashSet<string>();private ConversationWorkspace quickWorkspace;internal event Action ProjectsChanged;
         private DictationSession dictation;
         public DictationSession Dictation{get{return dictation ?? (dictation=new DictationSession(new ApiClient(),()=>new AudioRecorder(),()=>Settings));}}
         public bool DictationActive{get{return dictation!=null && dictation.IsBusy;}}
@@ -77,7 +80,7 @@ namespace Dafeiyu
                 return inputQueue;
             }
         }
-        bool HasQueuedMessages {get{return (inputQueue!=null || File.Exists(Path.Combine(Store.DirectoryPath,"queued-messages.json"))) && InputQueue.HasPending;}}
+        bool HasQueuedMessages {get{return ((inputQueue!=null || File.Exists(Path.Combine(Store.DirectoryPath,"queued-messages.json"))) && InputQueue.HasPending) || (workspaces!=null&&workspaces.OpenWorkspaces.Any(w=>w.Queue.HasPending));}}
         private QuickChatWindow quick;
         private GreetingBubbleWindow greeting;
         private GreetingSchedule greetingSchedule;
@@ -92,18 +95,19 @@ namespace Dafeiyu
         private UpdateCoordinator updates;
         private UpdateNoticeWindow updateNotice;
         public bool IsUpdating {get{return updates!=null && updates.IsApplying;}}
-        public bool HasHistorySaveWarning {get{return Settings.SaveChatHistory && conversation!=null && !String.IsNullOrEmpty(conversation.HistoryWarning);}}
+        public bool HasHistorySaveWarning {get{return conversation!=null && ((Settings.SaveChatHistory && !String.IsNullOrEmpty(conversation.HistoryWarning)) || !String.IsNullOrEmpty(conversation.AgentTaskWarning));}}
+        public string PendingSaveWarning {get{return conversation!=null && !String.IsNullOrEmpty(conversation.AgentTaskWarning)?conversation.AgentTaskWarning:"聊天记录尚未保存，请先导出或处理保存问题后再更新。";}}
         public UpdateCoordinator Updates {get{return updates ?? (updates=new UpdateCoordinator(this));}}
         public bool CanApplyUpdate(bool manual)
         {
-            return !closing && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
+            return !closing && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
                 (chat==null || (!chat.HasDraft && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
                 (preferences==null || (!preferences.HasUnsavedEdits && (manual || !preferences.IsVisible))) && (guide==null || !guide.IsVisible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen();
         }
         public async Task PrepareUpdateAsync()
         {
-            if(conversation!=null)await conversation.FlushHistoryAsync();
-            if(HasHistorySaveWarning)throw new InvalidOperationException("聊天记录尚未保存，请先导出或处理保存问题后再更新。");
+            if(conversation!=null)await conversation.FlushHistoryAsync();if(workspaces!=null)await workspaces.SaveAllAsync();
+            if(HasHistorySaveWarning)throw new InvalidOperationException(PendingSaveWarning);
             SavePosition();
             try{Store.Save(Settings);}
             catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException))throw;throw new InvalidOperationException("设置尚未保存，请检查目录权限后重试更新。",error);}
@@ -146,6 +150,31 @@ namespace Dafeiyu
         public bool Paused { get; private set; }
         public bool IsSleeping {get{return interaction.IsSleeping;}}
         public string Notice { get; private set; }
+        public ProjectDefinition CurrentEditingProject {get{return editingProject;}}
+        public ProjectCatalog Projects
+        {
+            get
+            {
+                if(projectCatalog==null)
+                {
+                    projectCatalogStore=new ProjectCatalogStore(Path.Combine(Store.DirectoryPath,"projects.json"));
+                    try{
+                        projectCatalog=projectCatalogStore.Load();var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
+                        if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);projectCatalog=upgraded;}
+                    }catch(Exception){projectCatalogStore.PreserveAfterReadFailure();if(projectCatalog==null)projectCatalog=new ProjectCatalog();Notice="项目记录读取或归属升级未完成，原文件与加密历史已保留；请检查本地存储后重新打开。";}
+                }
+                return projectCatalog;
+            }
+        }
+        public ProjectCatalogStore ProjectStore {get{if(projectCatalogStore==null){var ignored=Projects;}return projectCatalogStore;}}
+        public ConversationWorkspaceManager Workspaces
+        {
+            get
+            {
+                if(workspaces==null)workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});
+                return workspaces;
+            }
+        }
         public ConversationSession Conversation
         {
             get
@@ -159,7 +188,7 @@ namespace Dafeiyu
             }
         }
         public bool LiveActive {get{return live!=null && live.IsActive;}}
-        public bool DialogueBusy {get{return IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy);}}
+        public bool DialogueBusy {get{return IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy) || (workspaces!=null && workspaces.Busy);}}
         public GeminiLiveSession Live
         {
             get
@@ -623,7 +652,9 @@ namespace Dafeiyu
                 if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin);if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier); UpdateFrame();
-                Title="桌面伙伴 · "+skin.Name; tray.Text=Title;if(chat!=null)chat.ReloadHistory();if(quick!=null)quick.RefreshPersona();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
+                Title="桌面伙伴 · "+skin.Name; tray.Text=Title;
+                if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
+                if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(ProjectCatalogStore.QuickProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
             }
             catch(Exception e)
             {
@@ -642,6 +673,118 @@ namespace Dafeiyu
             if(!preferences.IsVisible) preferences.Show(); preferences.Activate(); preferences.RefreshState();
             if(connections) preferences.SelectConnections();
         }
+        internal PetSettings ConversationSettings(ConversationSession session)
+        {
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));return workspace==null?Settings.Copy():workspace.EffectiveSettings();
+        }
+        internal void SetConversationPlanMode(ConversationSession session,bool enabled){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentPlanMode=enabled;});}
+        internal void SetConversationGoal(ConversationSession session,string goal){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentGoal=goal;});}
+        void UpdateConversationSettings(ConversationSession session,Action<PetSettings> update)
+        {
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));
+            if(workspace==null || workspace.ProjectId==ProjectCatalogStore.UnassignedProjectId){update(Settings);if(workspace!=null){var globalSettings=Settings.Copy();update(globalSettings);workspace.Project.PlanMode=globalSettings.AgentPlanMode;workspace.Project.Goal=globalSettings.AgentGoal;}SaveSettings();return;}
+            var cfg=workspace.EffectiveSettings();update(cfg);var project=workspace.Project;bool oldPlan=project.PlanMode;string oldGoal=project.Goal;
+            try{project.PlanMode=cfg.AgentPlanMode;project.Goal=cfg.AgentGoal;ProjectStore.Save(Projects);}
+            catch{project.PlanMode=oldPlan;project.Goal=oldGoal;throw;}
+            RefreshChatAppearance();
+        }
+        public void ShowWorkSettings(){editingProject=null;ShowWorkSettingsCore();}
+        void ShowWorkSettingsCore(){if(ReturnToGuide())return;ShowSettings();if(preferences!=null)preferences.SelectWorkSettings();}
+
+        public void EditProject(ProjectDefinition project)
+        {
+            if(project==null)return;var dialog=new NewProjectDialog(project);bool accepted=dialog.ShowDialog()==true;if(dialog.RemoveRequested){DeleteProject(project);return;}if(dialog.WorkSettingsRequested){editingProject=project;ShowWorkSettingsCore();return;}if(!accepted)return;
+            if(Workspaces.OpenWorkspaces.Any(w=>w.ProjectId==project.Id&&(w.Session.IsBusy||w.Queue.HasPending))){MessageBox.Show("请先结束项目中正在运行或排队的任务，再编辑项目。","项目正在使用");return;}
+            string name=project.Name,path=project.Workspace;try{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
+        }
+        public void ArchiveProject(ProjectDefinition project)
+        {
+            if(project==null)return;bool wasCurrent=chat!=null && project.Conversations.Any(c=>c.Id==chat.ConversationId);project.Archived=true;foreach(var conversation in project.Conversations)conversation.Status="idle";SaveProjectsAfterChange(project.Id);CloseProjectWorkspaces(project.Id);if(wasCurrent)SwitchToAvailableConversation(null);
+        }
+        public void RestoreProject(ProjectDefinition project)
+        {
+            if(project==null)return;project.Archived=false;SaveProjectsAfterChange(null);if(chat!=null)chat.RefreshAppearance();
+        }
+        public void ArchiveConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null || conversation==null)return;bool wasCurrent=chat!=null && chat.ConversationId==conversation.Id;conversation.Archived=true;conversation.Status="idle";SaveProjectsAfterChange(null);CloseConversationWorkspace(conversation.Id);if(wasCurrent)SwitchToAvailableConversation(null);
+        }
+        public void RestoreConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null || conversation==null)return;conversation.Archived=false;SaveProjectsAfterChange(null);if(chat!=null)chat.RefreshAppearance();
+        }
+        public void DeleteProject(ProjectDefinition project)
+        {
+            if(project==null || MessageBox.Show("确定永久删除项目“"+project.Name+"”吗？\n只会删除 DeskPet 的项目记录和任务缓存，不会删除工作目录中的源文件。","永久删除项目",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+            bool wasCurrent=chat!=null && project.Conversations.Any(c=>c.Id==chat.ConversationId);CloseProjectWorkspaces(project.Id);Projects.Projects.Remove(project);if(editingProject!=null && editingProject.Id==project.Id)editingProject=null;SaveProjectsAfterChange(project.Id);DeleteProjectData(project);if(wasCurrent)SwitchToAvailableConversation(null);
+        }
+        public async void DeleteConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null || conversation==null)return;
+            var dialog=new DeleteConversationDialog(conversation.Name);if(dialog.ShowDialog()!=true)return;
+            int index=project.Conversations.IndexOf(conversation);if(index<0)return;
+            bool wasCurrent=chat!=null && chat.ConversationId==conversation.Id;project.Conversations.RemoveAt(index);
+            try{ProjectStore.Save(Projects);}catch(Exception error){project.Conversations.Insert(index,conversation);new DeleteConversationDialog(conversation.Name,"聊天记录尚未删除，请检查本地存储权限或空间。\n"+error.Message).ShowDialog();return;}
+            if(wasCurrent)SwitchToAvailableConversation(null);
+            try{await Workspaces.CloseWorkspaceAsync(conversation.Id);}
+            catch(Exception error){project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);try{ProjectStore.Save(Projects);}catch(Exception){}new DeleteConversationDialog(conversation.Name,"聊天记录未能关闭，原文件已保留。\n"+error.Message).ShowDialog();return;}
+            if(quickWorkspace!=null && quickWorkspace.Id==conversation.Id && quick!=null)quick.Close();
+            DeleteConversationData(project.Id,conversation.Id);NotifyProjectsChanged();
+        }
+        void SaveProjectsAfterChange(string removedProjectId)
+        {
+            if(!String.IsNullOrEmpty(removedProjectId) && Projects.ActiveProjectId==removedProjectId){var nextProject=Projects.Projects.FirstOrDefault(p=>!p.Archived);Projects.ActiveProjectId=nextProject==null?"":nextProject.Id;}try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);}
+        }
+        void CloseProjectWorkspaces(string projectId)
+        {
+            foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==projectId).ToArray())CloseConversationWorkspace(workspace.Id);
+        }
+        void CloseConversationWorkspace(string conversationId)
+        {
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversationId);if(workspace!=null)try{Workspaces.CloseWorkspaceAsync(workspace.Id).GetAwaiter().GetResult();}catch(Exception){}
+        }
+        void DeleteProjectData(ProjectDefinition project)
+        {
+            foreach(var conversation in project.Conversations)DeleteConversationData(project.Id,conversation.Id);
+            DeleteDataDirectory(Path.Combine(Store.DirectoryPath,"projects",project.Id));
+        }
+        void DeleteConversationData(string projectId,string conversationId)
+        {
+            DeleteDataDirectory(Path.Combine(Store.DirectoryPath,"projects",projectId,"chats",conversationId));
+            DeleteDataDirectory(Path.Combine(Store.DirectoryPath,"conversations",conversationId));
+        }
+        void DeleteDataDirectory(string path)
+        {
+            try{string root=Path.GetFullPath(Path.Combine(Store.DirectoryPath,"projects"));string target=Path.GetFullPath(path);string conversations=Path.GetFullPath(Path.Combine(Store.DirectoryPath,"conversations"));if((target.StartsWith(root+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase) || target.StartsWith(conversations+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)) && Directory.Exists(target))Directory.Delete(target,true);}catch(Exception){}
+        }
+        void SwitchToAvailableConversation(string removedId)
+        {
+            if(chat==null)return;var project=Projects.Projects.FirstOrDefault(p=>!p.Archived && p.Conversations.Any(c=>!c.Archived));if(project!=null){var conversation=project.Conversations.FirstOrDefault(c=>!c.Archived);if(conversation!=null){OpenProjectConversation(project,conversation);return;}}if(chat!=null)BeginDraftConversation(null);
+        }        public void RenameProject(ProjectDefinition project)
+        {
+            if(project==null)return;var dialog=new ConversationRenameDialog(project.Name,"重命名项目","项目名称");if(dialog.ShowDialog()!=true)return;var name=dialog.ConversationName;if(name.Length<1 || name.Length>80)return;project.Name=name;try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);return;}if(chat!=null)chat.RefreshAppearance();
+        }
+        public void RenameConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null || conversation==null)return;var dialog=new ConversationRenameDialog(conversation.Name);if(dialog.ShowDialog()!=true)return;var name=dialog.ConversationName;if(name.Length<1 || name.Length>80)return;
+            conversation.Name=name;conversation.NameEdited=true;conversation.LastOpenedUtcTicks=DateTime.UtcNow.Ticks;try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);return;}if(chat!=null)chat.RefreshAppearance();
+        }
+        void WatchConversationTitle(ProjectDefinition project,ConversationDefinition conversation,ConversationWorkspace workspace)
+        {
+            if(workspace.UiObserved)return;workspace.UiObserved=true;string lastComplete=workspace.Session.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete")==null?"":workspace.Session.History.Messages.Last(m=>m.Role=="assistant"&&m.Status=="complete").Id;bool wasBusy=false;Action refresh=delegate{if(workspace.Session==null || workspace.Queue==null || closing)return;Action update=delegate{if(workspace.Session==null || workspace.Queue==null || closing)return;var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==workspace.Id);if(current==null&&!workspace.IsDraft)return;conversation=current??conversation;QueueConversationTitle(project,conversation,workspace);bool busy=workspace.Session.IsBusy||workspace.Queue.IsRunning;string status=busy?"running":"idle";var reply=workspace.Session.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete");bool changed=conversation.Status!=status;conversation.Status=status;if(wasBusy&&!busy&&reply!=null&&reply.Id!=lastComplete){lastComplete=reply.Id;conversation.HasUnreadCompletion=!IsConversationVisible(conversation.Id);changed=true;}wasBusy=busy;if(changed){try{ProjectStore.Save(Projects);}catch(Exception){Notice="项目状态尚未保存，请检查本地存储。";}NotifyProjectsChanged();}};if(Dispatcher.CheckAccess())update();else Dispatcher.BeginInvoke(update);};workspace.Session.HistoryChanged+=refresh;workspace.Session.StateChanged+=refresh;workspace.Queue.Changed+=refresh;
+        }
+        async void QueueConversationTitle(ProjectDefinition project,ConversationDefinition conversation,ConversationWorkspace workspace)
+        {
+            if(workspace.Session==null || conversation==null || conversation.NameEdited || conversation.Name!="新对话" || titleGenerationStarted.Contains(conversation.Id) || workspace.Session.IsBusy)return;
+            if(!workspace.Session.History.Messages.Any(m=>m.Role=="assistant" && m.Status=="complete" && !String.IsNullOrWhiteSpace(m.Content)))return;
+            titleGenerationStarted.Add(conversation.Id);var snapshot=Settings.Copy();try
+            {
+                string title=await workspace.Session.GenerateTitleAsync(snapshot,CancellationToken.None).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(title))return;
+                Dispatcher.Invoke(new Action(delegate{var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==conversation.Id);if(current==null || current.NameEdited)return;current.Name=title;current.NameEdited=false;try{ProjectStore.Save(Projects);}catch(Exception){Notice="对话标题尚未保存，请检查本地存储。";}if(chat!=null)chat.RefreshAppearance();}));
+            }
+            catch(Exception){titleGenerationStarted.Remove(conversation.Id);}
+        }
+
         public void ShowLiveSettings(){if(ReturnToGuide())return;ShowSettings(true);if(preferences!=null)preferences.SelectAiSection(3);}
         public void ShowOnboarding()
         {
@@ -650,15 +793,103 @@ namespace Dafeiyu
             if(DialogueBusy || DictationActive || LiveActive){ShowSettings();preferences.ShowNotice("请先结束当前对话、听写或通话，再打开配置引导。");return;}
             ShowSettings();guide=new OnboardingWindow(this,preferences);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
         }
+        public void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(closing || IsUpdating || ReturnToGuide())return;
+            if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;if(project.Id==ProjectCatalogStore.UnassignedProjectId||project.Id==ProjectCatalogStore.QuickProjectId)project=ProjectCatalogStore.FindProject(Projects,project.Id,Settings);if(!String.IsNullOrEmpty(conversation.Mode)){Settings.AgentEnabled=conversation.Mode=="work";SaveSettings();}
+            Projects.ActiveProjectId=project.Id==ProjectCatalogStore.UnassignedProjectId||project.Id==ProjectCatalogStore.QuickProjectId?"":project.Id;conversation.HasUnreadCompletion=false;conversation.LastOpenedUtcTicks=DateTime.UtcNow.Ticks;try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);}var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversation.Id)??Workspaces.CreateWorkspace(project,conversation);
+            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();
+        }
+        async Task CloseConversationWorkspacesAsync()
+        {
+            var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);
+        }
+        // New chats remain drafts until the first submission; their project is chosen in the composer.
+        public void NewActiveConversation(){BeginDraftConversation(null);}
+        public void NewProjectConversation(ProjectDefinition project){Settings.AgentEnabled=true;BeginDraftConversation(project);}
+        internal ConversationWorkspace CreateDraftConversation(ProjectDefinition project,bool work)
+        {
+            project=work?(project??ProjectCatalogStore.UnassignedProject(Projects,Settings)):ProjectCatalogStore.QuickProject(Projects,Settings);
+            var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="新对话",Mode=work?"work":"chat",PetId=work?"":Skin.Id,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
+            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;WatchConversationTitle(project,definition,workspace);return workspace;
+        }
+        void BeginDraftConversation(ProjectDefinition project)
+        {
+            if(closing || IsUpdating || ReturnToGuide())return;
+            var workspace=CreateDraftConversation(project,Settings.AgentEnabled);
+            if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,workspace);chat.SwitchWorkspace(workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);
+            if(!chat.IsVisible)chat.Show();chat.Activate();
+        }
+        internal Action PrepareConversationSubmission(ConversationWorkspace workspace)
+        {
+            if(workspace==null || !workspace.IsDraft)return null;
+            var owner=ProjectCatalogStore.FindProject(Projects,workspace.ProjectId,Settings);if(owner==null || owner.Archived)throw new InvalidOperationException("所选项目已归档或删除，请重新选择。");
+            var definition=workspace.Definition;string previousActive=Projects.ActiveProjectId;
+            if(owner.Conversations.Any(c=>c.Id==definition.Id))return null;
+            owner.Conversations.Add(definition);Projects.ActiveProjectId=owner.Id==ProjectCatalogStore.UnassignedProjectId||owner.Id==ProjectCatalogStore.QuickProjectId?"":owner.Id;
+            try{ProjectStore.Save(Projects);}catch{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;throw;}
+            return delegate{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;ProjectStore.Save(Projects);};
+        }
+        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.IsDraft=false;NotifyProjectsChanged();}}
+        internal ProjectDefinition CreateProjectForConversation()
+        {
+            var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return null;var previous=Projects.Copy();try{var project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);project.Conversations.Clear();ProjectStore.Save(Projects);NotifyProjectsChanged();return project;}catch{RestoreProjectCatalog(previous);throw;}
+        }
+        public void ActivateProject(ProjectDefinition project)
+        {
+            if(project==null)return;var previous=Projects.Copy();
+            try{Projects.ActiveProjectId=project.Id;ProjectStore.Save(Projects);}catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return;}
+            if(project.Conversations.Count>0)OpenProjectConversation(project,project.Conversations[0]);
+        }
+        public bool MoveConversation(ProjectDefinition from,ProjectDefinition to,ConversationDefinition conversation)
+        {
+            if(from==null || to==null || conversation==null)return false;var open=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversation.Id);if(open!=null && (open.Session.IsBusy || open.Queue.IsRunning)){Notice="请先停止当前任务，再移动对话。";return false;}var previous=Projects.Copy();
+            try{ConversationWorkspace.ResolveDataDirectory(Store.DirectoryPath,conversation.Id);ProjectCatalogStore.MoveConversation(Projects,from.Id,to.Id,conversation.Id);ProjectStore.Save(Projects);}
+            catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return false;}
+            // An open workspace keeps the conversation Id but must follow the new
+            // project so its agent tools and task records use the new directory.
+            if(open!=null)open.FollowProject(to);
+            if(chat!=null)chat.RefreshAppearance();return true;
+        }
+        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
+        void ShowProjectSaveError(Exception error){MessageBox.Show(error.Message,"项目记录未保存",MessageBoxButton.OK,MessageBoxImage.Warning);}
+        public void OpenProjectWorkspace(ProjectDefinition project)
+        {
+            if(project==null || !Directory.Exists(project.Workspace))return;Process.Start(new ProcessStartInfo("explorer.exe","\""+project.Workspace+"\""){UseShellExecute=true});
+        }
+        public void ShowNewProjectDialog()
+        {
+            var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return;var previous=Projects.Copy();ProjectDefinition project;try{project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);ProjectStore.Save(Projects);}catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return;}ActivateProject(project);
+        }
         public void ShowChat()
-        {if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quick!=null)quick.Hide();DismissGreeting();if(chat==null){chat=new ChatWindow(this);chat.Closed+=delegate {chat=null;};}if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        {if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:project.Conversations.FirstOrDefault(c=>c.Id==quickWorkspace.Id);quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
+        void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
+        async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)
+        {
+            try{if(workspace.Session==null)return;await workspace.Session.WaitForIdleAsync();if(workspace.Queue!=null)await workspace.Queue.FlushAsync();if(!closing && (chat==null || chat.ConversationId!=workspace.Id)&&(quickWorkspace==null||quickWorkspace.Id!=workspace.Id))await Workspaces.CloseWorkspaceAsync(workspace.Id);}catch(Exception){Notice="快速对话保存未完成，请检查本地存储。";}
+        }
         public void ShowQuickChat()
         {
             RecordPetInteraction();
             bool preview=GuideActive && guideInteraction=="double-click";
             if(closing || IsUpdating || (!preview && ReturnToGuide()))return;if(call!=null){call.Activate();return;}
             CancelInteraction();UpdateFrame();DismissGreeting();visibility.OverrideFullscreen=true;visibility.UserVisible=true;ApplyVisibility();
-            if(quick==null){quick=new QuickChatWindow(this);quick.Closed+=delegate {quick=null;visibility.OverrideFullscreen=false;PollVisibility();};}
+            if(quick==null)
+            {
+                var project=ProjectCatalogStore.EnsureQuickChatProject(Projects,Settings);
+                var definition=ProjectCatalogStore.CreateConversation(Projects,project.Id,"新对话");
+                definition.Mode="quick";definition.PetId=Skin.Id;ProjectStore.Save(Projects);
+                quickWorkspace=Workspaces.CreateWorkspace(project,definition);
+                WatchConversationTitle(project,definition,quickWorkspace);
+                var current=quickWorkspace;quick=new QuickChatWindow(this,current);
+                quick.Closed+=delegate
+                {
+                    quick=null;quickWorkspace=null;visibility.OverrideFullscreen=false;PollVisibility();
+                    var ignored=ReleaseQuickWorkspaceAsync(current);
+                };
+                NotifyProjectsChanged();
+            }
             if(!quick.IsVisible)quick.Show();quick.FollowPet();quick.SetGuidePreview(preview);quick.Activate();if(!preview)quick.FocusInput();
         }
         internal void UpdateStateChanged(UpdateCoordinator controller)
@@ -798,10 +1029,10 @@ namespace Dafeiyu
             {
                 args.Cancel=true;if(closing)return;closing=true;DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();if(call!=null)await call.CloseAsync();CancelInteraction();
                 timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
-                try{if(dictation!=null)await dictation.CancelAsync();if(inputQueue!=null)await inputQueue.PauseAsync();if(live!=null)await live.StopAsync();if(conversation!=null){await conversation.StopAsync();await conversation.FlushHistoryAsync();}}
+                try{if(dictation!=null)await dictation.CancelAsync();if(inputQueue!=null)await inputQueue.PauseAsync();if(workspaces!=null)await workspaces.SaveAllAsync();if(live!=null)await live.StopAsync();if(conversation!=null){await conversation.StopAsync();await conversation.FlushHistoryAsync();}}
                 catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
             }
-            SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Close();
+            SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Close();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
         }

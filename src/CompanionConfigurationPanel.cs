@@ -10,7 +10,7 @@ namespace Dafeiyu
     {
         readonly Button[] tabs=new Button[3];
         readonly UIElement[] pages;
-        readonly ContentControl body=new ContentControl();
+        readonly ContentControl body=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
         public CompanionConfigurationPanel(UIElement partner,UIElement behavior,UIElement greetings,TextBlock notice)
         {
             pages=new[]{partner,behavior,greetings};Margin=new Thickness(24,22,24,20);

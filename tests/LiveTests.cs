@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +32,7 @@ namespace Dafeiyu.Tests
             Check(session.Status=="Live 输出设备没有播放进展。" && mic.Disposed && speaker.Disposed,"asynchronous output failure ends the call with its device error and releases the microphone");session.Dispose();
             socket=new FakeSocket();mic=new FakeMic();speaker=new FakeOutput();session=new GeminiLiveSession(()=>socket,()=>mic,()=>speaker);socket.Push("{\"error\":{\"code\":401,\"message\":\"dummy-key provider private details\"}}");
             try{await session.StartAsync(cfg,"角色");throw new Exception("server failure accepted");}catch(ApiException e){Check(!e.Message.Contains("dummy-key") && !e.Message.Contains("private") && e.Message.Contains("Live"),"Live service error is actionable without leaking response details");}
-            await session.StopAsync();Check(!mic.Started && socket.Disposed,"failed setup never starts a microphone");session.Dispose();
+            await session.StopAsync();Check(!mic.Started && socket.Disposed,"failed setup never starts a microphone");Check(session.SuccessfulConnections==0,"failed setup cannot mark guide connection test passed");session.Dispose();
             foreach(bool binary in new[]{false,true})
             using(var server=new WebSocketFixture(binary))
             {

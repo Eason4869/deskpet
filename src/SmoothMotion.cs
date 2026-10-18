@@ -56,7 +56,7 @@ namespace Dafeiyu
             bool imported=definition!=null && definition.Illustrated;
             if(!imported && !Counts.TryGetValue(skin+"-"+action,out count))return null;
             MotionClip clip;
-            if(clips.TryGetValue(action,out clip)){recent.Remove(action);recent.AddLast(action);return clip;}
+            if(clips.TryGetValue(action,out clip)){if(recent.Last.Value!=action){var node=recent.Find(action);recent.Remove(node);recent.AddLast(node);}return clip;}
             if(imported) {
                 var spec=definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]];
                 string path=IllustratedPack.AssetPath(definition.Source,spec.File);

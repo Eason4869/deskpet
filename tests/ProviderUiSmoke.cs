@@ -10,6 +10,12 @@ namespace Dafeiyu.Tests
 {
  public static class ProviderUiSmoke
  {
+        static void AddDiscovered(FrameworkElement root)
+        {
+            var list=FindIn<ListBox>(root,"DiscoveredTextModels");var item=(ListBoxItem)list.Items[0];
+            root.Dispatcher.BeginInvoke(new Action(delegate{var dialog=Application.Current.Windows.OfType<Window>().First(w=>w.Title=="添加模型");FindIn<Button>(dialog,"AddTextModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}),DispatcherPriority.Background);
+            FindIn<Button>(item,"AddDiscoveredModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        }
   static int passed;
   [STAThread] public static int Main()
   {
@@ -74,8 +80,8 @@ namespace Dafeiyu.Tests
      Until(()=>FindIn<ListBox>(editor,"DiscoveredTextModels")!=null && FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==2);
      Check(server.Headers.StartsWith("GET /v1/models ") && server.Authorization=="Bearer catalog-test-key","configured provider automatically retrieves its model list without a selected remote model");
      var list=FindIn<ListBox>(editor,"TextProviderModels");Check(list.Items.Count==1,"fetching lists candidates without automatically adding models");
-     foreach(ListBoxItem item in FindIn<ListBox>(editor,"DiscoveredTextModels").Items)((CheckBox)item.Content).IsChecked=true;
-     FindIn<Button>(editor,"AddSelectedTextModels").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+     Check(FindCheckBox(FindIn<ListBox>(editor,"DiscoveredTextModels"))==null && FindIn<Button>(editor,"AddSelectedTextModels")==null,"discovery has no checkbox or bulk-add control");
+     AddDiscovered(editor);Check(list.Items.Count==2,"one plus click adds exactly one model");AddDiscovered(editor);
      Check(list.Items.Count==3,"multiple fetched models can be explicitly selected and added while the manual model survives");
      list.SelectedValue="remote-b";FindIn<TextBox>(editor,"TextModelDisplayName").Text="深度思考";
      search.Text="深度";Pump();Check(list.Items.Count==1 && (string)((ListBoxItem)list.Items[0]).Tag=="remote-b","model search matches a custom Chinese alias");
@@ -125,6 +131,7 @@ namespace Dafeiyu.Tests
     }finally{host.Close();Pump();}
    }
   }
+  static CheckBox FindCheckBox(DependencyObject root){if(root is CheckBox)return (CheckBox)root;foreach(object child in LogicalTreeHelper.GetChildren(root)){var node=child as DependencyObject;if(node!=null){var found=FindCheckBox(node);if(found!=null)return found;}}return null;}
   static void Until(Func<bool> done){var end=DateTime.UtcNow.AddSeconds(6);while(!done() && DateTime.UtcNow<end)Pump();Check(done(),"automatic model request completes");}
   static void CheckCatalogInvalidation()
   {
@@ -135,11 +142,10 @@ namespace Dafeiyu.Tests
     var editor=new TextProviderEditor(cfg);var host=new Window();Ui.Window(host,"候选列表切换测试",740,760);host.Content=Ui.Scroll(editor);
     try {
      host.Show();Until(()=>FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==1);
-     ((CheckBox)((ListBoxItem)FindIn<ListBox>(editor,"DiscoveredTextModels").Items[0]).Content).IsChecked=true;
+     Check(FindIn<Button>((ListBoxItem)FindIn<ListBox>(editor,"DiscoveredTextModels").Items[0],"AddDiscoveredModel")!=null,"candidate has an individual add action");
      FindIn<TextBox>(editor,"TextServiceUrl").Text=second.Url+"/v1";Pump();
-     Check(FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==0 && !FindIn<Button>(editor,"AddSelectedTextModels").IsEnabled,"changing a connection immediately clears old candidates and checked selections");
+     Check(FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==0,"changing a connection immediately clears old candidates and checked selections");
      Until(()=>FindIn<TextBlock>(editor,"TextProviderNotice").Text.Contains("401"));
-     FindIn<Button>(editor,"AddSelectedTextModels").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
      Check(editor.ReadProviders()[0].Models.Count==1,"a failed replacement endpoint cannot add stale candidates");
     }finally{host.Close();Pump();}
    }
@@ -149,6 +155,7 @@ namespace Dafeiyu.Tests
    using(var server=new ApiTests.Fixture("{\"data\":[{\"id\":\"model-alpha\"},{\"id\":\"model-beta\"}]}"))
    {
     var cfg=new PetSettings{GreetingEnabled=false,AutoUpdate=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,SaveChatHistory=false,ReadReplies=false};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+    cfg.Text=new ConnectionSettings{BaseUrl="https://first.example/v1",Model="manual-first",ApiKey="first-secret"};
     var store=new SettingsStore(Path.Combine(folder,"new-provider-settings.json"));var pet=new PetWindow(null,cfg,store,null);var window=new SettingsWindow(pet);
     try
     {
@@ -159,10 +166,9 @@ namespace Dafeiyu.Tests
      Click(window,"SaveAndFetchTextModels");Until(()=>Find<ListBox>(window,"DiscoveredTextModels").Items.Count==2);
      var saved=store.Load();var active=saved.TextProviders.Single(p=>p.Id==saved.ActiveTextProviderId);
      Check(active.BrandId=="deepseek" && active.Name=="DeepSeek" && active.Connection.ApiKey=="new-provider-secret" && active.Models.Count==0 && !File.ReadAllText(Path.Combine(folder,"new-provider-settings.json")).Contains("new-provider-secret"),"save and fetch persists encrypted connection before any model is added");
-     Check(saved.TextProviders[0].Models.Count==0,"saving a connection does not commit another provider's unfinished model draft");
+     Check(saved.TextProviders[0].Models.SequenceEqual(new[]{"manual-first"}),"saving a connection does not commit another provider's unfinished model draft");
      Capture(window,Path.Combine(folder,"models-select.png"));
-     foreach(ListBoxItem item in Find<ListBox>(window,"DiscoveredTextModels").Items)((CheckBox)item.Content).IsChecked=true;
-     Click(window,"AddSelectedTextModels");Check(Find<ListBox>(window,"TextProviderModels").Items.Count==2,"chosen multiple models enter the configured list");
+     AddDiscovered(window);AddDiscovered(window);Check(Find<ListBox>(window,"TextProviderModels").Items.Count==2,"chosen multiple models enter the configured list");
      Check(store.Load().TextProviders.Single(p=>p.Id==saved.ActiveTextProviderId).Models.Count==0,"adding models remains a draft until final save");
      Click(window,"SaveConnections");saved=store.Load();active=saved.TextProviders.Single(p=>p.Id==saved.ActiveTextProviderId);
      Check(active.Models.Count==2 && active.Models.Contains(saved.Text.Model),"final save persists the selected models and a usable current model");Capture(window,Path.Combine(folder,"models-configured.png"));

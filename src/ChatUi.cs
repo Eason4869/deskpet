@@ -8,6 +8,12 @@ namespace Dafeiyu
     // A shared composer keeps the small bubble and full conversation consistent.
     internal static class ChatUi
     {
+        // The prediction ghost reuses the composer placeholder created below,
+        // so it needs no extra layout and hides itself whenever the draft is
+        // non-empty. Tests and the prediction controller resolve it here.
+        public static readonly DependencyProperty ComposerPlaceholderProperty=DependencyProperty.RegisterAttached("ComposerPlaceholder",typeof(TextBlock),typeof(ChatUi),new PropertyMetadata(null));
+        public static void SetComposerPlaceholder(MarkdownEditor input,TextBlock value){input.SetValue(ComposerPlaceholderProperty,value);}
+        public static TextBlock GetComposerPlaceholder(MarkdownEditor input){return (TextBlock)input.GetValue(ComposerPlaceholderProperty);}
         static ControlTemplate actionTemplate;
         static ControlTemplate menuTemplate;
         static ControlTemplate menuItemTemplate;
@@ -16,7 +22,7 @@ namespace Dafeiyu
         {
             if(processTemplate==null)processTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse(@"<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Expander'>
 <StackPanel><ToggleButton x:Name='ProcessToggle' FocusVisualStyle='{x:Null}' Background='Transparent' BorderThickness='0' HorizontalContentAlignment='Left' IsChecked='{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}' Content='{TemplateBinding Header}' AutomationProperties.Name='展开或收起过程详情'>
-<ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border Background='Transparent' Padding='0,3'><StackPanel Orientation='Horizontal'><ContentPresenter VerticalAlignment='Center'/><Path x:Name='ProcessChevron' Data='M 0,0 L 4,4 L 0,8' Stroke='#969BA3' StrokeThickness='1.2' Width='6' Height='10' Margin='6,0,2,0' VerticalAlignment='Center' Opacity='0' RenderTransformOrigin='0.5,0.5'/></StackPanel></Border><ControlTemplate.Triggers>
+<ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border Background='Transparent' Padding='0,3'><Grid><Grid.ColumnDefinitions><ColumnDefinition Width='*'/><ColumnDefinition Width='Auto'/></Grid.ColumnDefinitions><ContentPresenter Grid.Column='0' VerticalAlignment='Center' HorizontalAlignment='Left'/><Path x:Name='ProcessChevron' Grid.Column='1' Data='M 0,0 L 4,4 L 0,8' Stroke='#969BA3' StrokeThickness='1.2' Width='6' Height='10' Margin='6,0,2,0' VerticalAlignment='Center' Opacity='0' RenderTransformOrigin='0.5,0.5'/></Grid></Border><ControlTemplate.Triggers>
 <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='ProcessChevron' Property='Opacity' Value='1'/></Trigger>
 <Trigger Property='IsChecked' Value='True'><Setter TargetName='ProcessChevron' Property='RenderTransform'><Setter.Value><RotateTransform Angle='90'/></Setter.Value></Setter></Trigger>
 </ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter x:Name='ProcessContent' ContentSource='Content' Visibility='Collapsed' Margin='0,5,0,0'/></StackPanel>
@@ -39,22 +45,22 @@ namespace Dafeiyu
             if(!readOnly)menu.Items.Add(new MenuItem{Header="粘贴",InputGestureText="Ctrl+V",Command=System.Windows.Input.ApplicationCommands.Paste,CommandTarget=editor});
             menu.Items.Add(new Separator());menu.Items.Add(new MenuItem{Header="全选",InputGestureText="Ctrl+A",Command=System.Windows.Input.ApplicationCommands.SelectAll,CommandTarget=editor});return menu;
         }
-        public static FrameworkElement Composer(TextBox input,UIElement leading,UIElement trailing,TextBlock status,bool compact,UIElement attachments=null)
+        public static string SendHint(PetSettings settings){return settings.SendOnEnter?"Enter 发送 · Shift + Enter 换行":"Ctrl + Enter 发送 · Enter 换行";}
+        public static FrameworkElement Composer(MarkdownEditor input,UIElement leading,UIElement trailing,TextBlock status,bool compact,UIElement attachments=null)
         {
             input.BorderThickness=new Thickness(0);input.Background=Brushes.Transparent;
             // The composer has its own white surface; do not inherit form-field focus fills.
             input.FocusVisualStyle=null;
-            input.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='Transparent'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border></ControlTemplate>");
+            input.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='RichTextBox'><Border Background='Transparent'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border></ControlTemplate>");
             input.Padding=new Thickness(4,6,4,6);input.FontSize=14;input.VerticalContentAlignment=VerticalAlignment.Top;
             input.MinHeight=48;input.MaxHeight=compact?92:140;
             input.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;
             System.Windows.Automation.AutomationProperties.SetName(input,"消息输入框");
-            var field=new Grid();field.Children.Add(input);
-            // Match the native editor's line metrics rather than Ui.Text's
-            // paragraph spacing. The content host also contributes its own inset.
-            var placeholder=new TextBlock{Name="ComposerPlaceholder",Text="和伙伴一起工作",FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};
-            field.Children.Add(placeholder);
-            if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,1);Grid.SetRow(placeholder,1);field.Children.Add(attachments);}
+            var field=new Grid();int inputRow=0;
+            if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.Children.Add(attachments);inputRow=1;}
+            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,inputRow);field.Children.Add(input);
+            var placeholder=new TextBlock{Name="ComposerPlaceholder",Text="和伙伴一起工作",FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
+            SetComposerPlaceholder(input,placeholder);
             Action syncPlaceholder=delegate {
                 bool show=input.Text.Length==0;
                 placeholder.Visibility=show?Visibility.Visible:Visibility.Collapsed;

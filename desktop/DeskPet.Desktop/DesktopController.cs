@@ -43,7 +43,12 @@ internal sealed class DesktopController : IDisposable
         DataDirectory = runtime.DataDirectory;
         Directory.CreateDirectory(DataDirectory);
         runtime.InitializeProtection();
-        store = new SettingsStore(Path.Combine(DataDirectory, "settings.json")); Settings = store.Load();
+        var settingsPath = Path.Combine(DataDirectory, "settings.json");
+        bool firstLaunch = !File.Exists(settingsPath);
+        store = new SettingsStore(settingsPath); Settings = store.Load();
+        // The Avalonia client starts in chat; Mac has no local file Agent.
+        // Shared settings also serve the WPF client, whose default is work.
+        if (firstLaunch || !OperatingSystem.IsWindows()) Settings.AgentEnabled = false;
         var onboarding = OnboardingUpgrade.Prepare(Settings, ReleaseInfo.DisplayVersion);
         if (onboarding.Changed) store.Save(Settings);
         showAutomaticGuide = onboarding.ShowGuide;
