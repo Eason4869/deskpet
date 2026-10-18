@@ -44,7 +44,7 @@ namespace Dafeiyu.Tests
                 }
                 var task=session.SendTextAsync("请进行深度思考后，再回答",cfg,pet.Skin.Name);Pump();api.Think("先核对问题中的条件，再整理出清晰的回答。");Pump();
                 foreach(Window window in new Window[]{full,quick})
-                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(All<TextBlock>(exp.Header as DependencyObject).Any(t=>t.Name=="ProcessStatus"&&t.Text.Contains("先核对")),"process status is a separate stable heading");Check(!exp.IsExpanded && All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground is LinearGradientBrush,"reasoning streams into a collapsed animated one-liner");exp.IsExpanded=true;}
+                {var exp=All<Expander>(window).Last(e=>e.Name=="ReasoningDetails");Check(All<TextBlock>(exp.Header as DependencyObject).Any(t=>t.Name=="ProcessStatus"&&t.Text.Contains("先核对")),"process status is a separate stable heading");Check(!exp.IsExpanded && (SystemParameters.ClientAreaAnimation?All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground is LinearGradientBrush:All<TextBlock>(exp.Header as DependencyObject).Single(t=>t.Name=="ProcessStatus").Foreground==AgentUi.Muted),"reasoning streams into a collapsed one-liner following system motion preference");exp.IsExpanded=true;}
                 api.Think("\n接着检查边界情况。");Pump();
                 Check(All<Expander>(full).Last(e=>e.Name=="ReasoningDetails").IsExpanded && All<Expander>(quick).Last(e=>e.Name=="ReasoningDetails").IsExpanded,"expansion survives streamed updates");
                 api.Answer("这是经过检查后的答复。");Pump();
