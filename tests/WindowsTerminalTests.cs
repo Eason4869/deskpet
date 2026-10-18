@@ -21,6 +21,7 @@ namespace Dafeiyu.Tests
         {
             readonly StringBuilder text=new StringBuilder();readonly object gate=new object();
             internal void Add(string value){lock(gate)text.Append(value);}
+            internal string Diagnostic{get{lock(gate)return String.Join(" ",text.ToString().Select(c=>((int)c).ToString("X4")));}}
             internal string Text{get{lock(gate)return Regex.Replace(text.ToString(),@"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\a]*(?:\a|\x1b\\)","").Replace("\r","");}}
         }
         static void Wait(Func<bool> condition,string text,int milliseconds=12000)
@@ -47,7 +48,13 @@ namespace Dafeiyu.Tests
                 string root=Path.Combine(fixture,"project");string sub=Path.Combine(root,"子目录");Directory.CreateDirectory(sub);
                 Environment.SetEnvironmentVariable("DESKPET_TERMINAL_TEST_SECRET","host-secret");
                 var one=new Transcript();int firstExit=Int32.MinValue;first=WindowsTerminalSession.Start(root,false,null,one.Add,code=>Volatile.Write(ref firstExit,code));
-                first.Input("Write-Host ('启动'+'就绪')\r");Expect(one,"启动就绪");Check(first.IsRunning&&first.ProcessId>0&&one.Text.Contains("PS "),"ConPTY starts persistent interactive PowerShell and captures the initial prompt");
+                first.Input("Write-Host ('启动'+'就绪')\r");
+                try{Expect(one,"启动就绪");}catch{
+                    Console.Error.WriteLine("Terminal readiness: running="+first.IsRunning+", pid="+first.ProcessId+", exit="+first.ExitCode+", raw UTF-16="+one.Diagnostic);
+                    if(!Gone(first.ProcessId))using(var shell=Process.GetProcessById(first.ProcessId))Console.Error.WriteLine("Shell CPU="+shell.TotalProcessorTime+", threads="+shell.Threads.Count);
+                    throw;
+                }
+                Check(first.IsRunning&&first.ProcessId>0&&one.Text.Contains("PS "),"ConPTY starts persistent interactive PowerShell and captures the initial prompt");
                 first.Input("Write-Host ('中文'+'持续终端')\r");Expect(one,"中文持续终端");Check(true,"UTF-8 Chinese input and output survive the real ConPTY pipes");
                 first.Input("$persist=41;$env:DESKPET_TERMINAL_STATE='first';Set-Location -LiteralPath "+Q(sub)+";Write-Host ('STATE:'+ $persist+':'+$env:DESKPET_TERMINAL_STATE+':'+(Get-Location).ProviderPath)\r");Expect(one,"STATE:41:first:"+sub);
                 first.Input("$persist++;Write-Host ('NEXT:'+ $persist+':'+$env:DESKPET_TERMINAL_STATE+':'+(Get-Location).ProviderPath)\r");Expect(one,"NEXT:42:first:"+sub);Check(true,"separate input calls retain current directory shell variables and environment");

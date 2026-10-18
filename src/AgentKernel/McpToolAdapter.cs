@@ -24,7 +24,8 @@ namespace Dafeiyu
         {
             await CallRpcAsync("initialize",new Dictionary<string,object>{{"protocolVersion","2025-03-26"},{"capabilities",new Dictionary<string,object>()},{"clientInfo",new{name="DeskPet",version="1"}}},cancel).ConfigureAwait(false);
             var payload=new Dictionary<string,object>{{"jsonrpc","2.0"},{"method","notifications/initialized"}};
-            using(var request=CreateRequest(payload))using(var response=await http.SendAsync(request,cancel).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException("MCP 初始化通知失败。");}
+            // Notification responses need only their status; never buffer an unbounded body.
+            using(var request=CreateRequest(payload))using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,cancel).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException("MCP 初始化通知失败。");}
         }
         HttpRequestMessage CreateRequest(object payload)
         {var request=new HttpRequestMessage(HttpMethod.Post,endpoint);request.Content=new StringContent(Serialize(payload),Encoding.UTF8,"application/json");request.Headers.Accept.ParseAdd("application/json");request.Headers.Accept.ParseAdd("text/event-stream");if(sessionId.Length>0)request.Headers.Add("Mcp-Session-Id",sessionId);if(!String.IsNullOrEmpty(token))request.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",token);return request;}
