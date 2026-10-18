@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 namespace Dafeiyu
 {
-    internal static class WindowsCommandRunner
+    internal static partial class WindowsCommandRunner
     {
         // Suspended creation closes the spawn/assign race: no project code runs
         // until it belongs to a kill-on-close Job, including all descendants.
-        internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false)
+        internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false,WindowsSandboxLease sandbox=null)
         {
             if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("项目命令目前仅支持 Windows。");
             token.ThrowIfCancellationRequested();IntPtr job=IntPtr.Zero,input=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
@@ -30,8 +30,9 @@ namespace Dafeiyu
                 var start=new StartupInfo{Size=Marshal.SizeOf(typeof(StartupInfo)),Flags=0x100,Input=input,Output=writeOut.DangerousGetHandle(),Error=writeError.DangerousGetHandle()};
                 var line=new StringBuilder(Quote(command.Executable));foreach(string arg in command.Arguments)line.Append(' ').Append(Quote(arg));
                 if(line.Length>30000)throw new ArgumentException("命令参数超过 Windows 长度限制。");
-                if(cleanEnvironment)environment=BuildEnvironment();
-                Check(CreateProcess(command.Executable,line,IntPtr.Zero,IntPtr.Zero,true,0x08000004|(cleanEnvironment?0x400u:0u),environment,command.Workspace,ref start,out process));
+                if(cleanEnvironment)environment=BuildEnvironment(sandbox);
+                if(sandbox==null)WindowsSandboxLease.CreateWithHandles(command.Executable,line,environment,command.Workspace,ref start,out process,IntPtr.Zero);
+                else sandbox.CreateProcess(command.Executable,line,environment,command.Workspace,ref start,out process);
                 // On assignment failure the child is still suspended; finally kills it.
                 Check(AssignProcessToJobObject(job,process.Process));
                 writeOut.Dispose();writeOut=null;writeError.Dispose();writeError=null;CloseHandle(input);input=IntPtr.Zero;
@@ -65,10 +66,11 @@ namespace Dafeiyu
                 char[] block=new char[4096];int n;while((n=reader.Read(block,0,block.Length))>0){if(label.Length>0)output.Add(label.ToCharArray(),label.Length);output.Add(block,n);}
             }
         }
-        static IntPtr BuildEnvironment()
+        static IntPtr BuildEnvironment(WindowsSandboxLease sandbox=null)
         {
             var values=new System.Collections.Generic.SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach(string key in new[]{"SystemRoot","WINDIR","COMSPEC","PATH","PATHEXT","TEMP","TMP","USERPROFILE","APPDATA","LOCALAPPDATA","ProgramFiles","ProgramFiles(x86)","ProgramData","HOMEDRIVE","HOMEPATH"}){string value=Environment.GetEnvironmentVariable(key);if(!String.IsNullOrEmpty(value))values[key]=value;}
+            if(sandbox!=null)foreach(string key in new[]{"TEMP","TMP","USERPROFILE","APPDATA","LOCALAPPDATA"})values[key]=sandbox.TemporaryDirectory;
             var block=new StringBuilder();foreach(var pair in values)block.Append(pair.Key).Append('=').Append(pair.Value).Append('\0');block.Append('\0');return Marshal.StringToHGlobalUni(block.ToString());
         }
         internal sealed class StdioProcess:IDisposable
@@ -86,7 +88,7 @@ namespace Dafeiyu
                 Check(SetHandleInformation(inputWrite,1,0));Check(SetHandleInformation(outputRead,1,0));Check(SetHandleInformation(errorRead,1,0));
                 result.Job=CreateJobObject(IntPtr.Zero,null);if(result.Job==IntPtr.Zero)throw new Win32Exception(Marshal.GetLastWin32Error());var limits=new JobLimits();limits.Basic.LimitFlags=0x2000;Check(SetInformationJobObject(result.Job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))));
                 var start=new StartupInfo{Size=Marshal.SizeOf(typeof(StartupInfo)),Flags=0x100,Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()};var line=new StringBuilder(Quote(command.Executable));foreach(string arg in command.Arguments)line.Append(' ').Append(Quote(arg));if(line.Length>30000)throw new ArgumentException("MCP 参数超过 Windows 限制。");
-                environment=BuildEnvironment();Check(CreateProcess(command.Executable,line,IntPtr.Zero,IntPtr.Zero,true,0x08000404,environment,command.Workspace,ref start,out process));result.Process=process.Process;Check(AssignProcessToJobObject(result.Job,process.Process));
+                environment=BuildEnvironment();WindowsSandboxLease.CreateWithHandles(command.Executable,line,environment,command.Workspace,ref start,out process,IntPtr.Zero);result.Process=process.Process;Check(AssignProcessToJobObject(result.Job,process.Process));
                 inputRead.Dispose();inputRead=null;outputWrite.Dispose();outputWrite=null;errorWrite.Dispose();errorWrite=null;
                 result.Input=new StreamWriter(new FileStream(inputWrite,FileAccess.Write),new UTF8Encoding(false)){AutoFlush=true};inputWrite=null;result.Output=new StreamReader(new FileStream(outputRead,FileAccess.Read),new UTF8Encoding(false));outputRead=null;
                 var error=errorRead;errorRead=null;result.ErrorDrain=Task.Factory.StartNew(()=>Drain(error,new BoundedOutput(),""),CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
@@ -116,8 +118,8 @@ namespace Dafeiyu
         }
         static void Check(bool ok){if(!ok)throw new Win32Exception(Marshal.GetLastWin32Error());}
         [StructLayout(LayoutKind.Sequential)]struct SecurityAttributes{public int Length;public IntPtr Descriptor;[MarshalAs(UnmanagedType.Bool)]public bool Inherit;}
-        [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]struct StartupInfo{public int Size;public string Reserved,Desktop,Title;public int X,Y,XSize,YSize,XChars,YChars,Fill,Flags;public short Show,ReservedSize;public IntPtr ReservedData,Input,Output,Error;}
-        [StructLayout(LayoutKind.Sequential)]struct ProcessInfo{public IntPtr Process,Thread;public uint ProcessId,ThreadId;}
+        [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]internal struct StartupInfo{public int Size;public string Reserved,Desktop,Title;public int X,Y,XSize,YSize,XChars,YChars,Fill,Flags;public short Show,ReservedSize;public IntPtr ReservedData,Input,Output,Error;}
+        [StructLayout(LayoutKind.Sequential)]internal struct ProcessInfo{public IntPtr Process,Thread;public uint ProcessId,ThreadId;}
         [StructLayout(LayoutKind.Sequential)]struct BasicLimits{public long ProcessTime,JobTime;public uint LimitFlags;public UIntPtr MinimumWorkingSet,MaximumWorkingSet;public uint ActiveProcesses;public UIntPtr Affinity;public uint PriorityClass,SchedulingClass;}
         [StructLayout(LayoutKind.Sequential)]struct IoCounters{public ulong ReadOps,WriteOps,OtherOps,ReadBytes,WriteBytes,OtherBytes;}
         [StructLayout(LayoutKind.Sequential)]struct JobLimits{public BasicLimits Basic;public IoCounters Io;public UIntPtr ProcessMemory,JobMemory,PeakProcessMemory,PeakJobMemory;}

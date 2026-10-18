@@ -40,9 +40,9 @@ namespace Dafeiyu
         public async Task<AgentPermissionDecision> AuthorizeAsync(AgentToolInvocation invocation,CancellationToken cancel)
         {
             cancel.ThrowIfCancellationRequested();int version=permissions.Version;
-            var decision=permissions.Decide(invocation.Action,invocation.Resource);if(decision.Effect!=AgentPermissionEffect.Ask)return decision;
+            var decision=permissions.Decide(invocation.Action,invocation.Resource);if(permissions.AccessPolicy!=null)decision=permissions.AccessPolicy.Decide(invocation,decision);if(decision.Effect!=AgentPermissionEffect.Ask)return decision;
             if(approval==null)return Denied(invocation,"当前入口不支持确认");
-            var request=new AgentApprovalRequest{Id=Guid.NewGuid().ToString("N"),Action=invocation.Action,Resource=invocation.Resource,Risk="仅本次",PayloadHash=invocation.PayloadHash,SessionId=invocation.SessionId,ProjectId=invocation.ProjectId,TaskId=invocation.TaskId,CallId=invocation.CallId,ToolName=invocation.ToolName,Arguments=invocation.Arguments};
+            var request=new AgentApprovalRequest{Id=Guid.NewGuid().ToString("N"),Action=invocation.Action,Resource=invocation.Resource,Risk=decision.Reason,PayloadHash=invocation.PayloadHash,SessionId=invocation.SessionId,ProjectId=invocation.ProjectId,TaskId=invocation.TaskId,CallId=invocation.CallId,ToolName=invocation.ToolName,Arguments=invocation.Arguments};
             var cancellable=approval as ICancellableAgentApprovalProvider;
             bool allowed=await AwaitCancellation(cancellable!=null?cancellable.ApproveAsync(request,cancel):approval.ApproveAsync(request),cancel).ConfigureAwait(false);
             cancel.ThrowIfCancellationRequested();if(permissions.Version!=version)return Denied(invocation,"等待期间权限已改变，请重新发起调用");

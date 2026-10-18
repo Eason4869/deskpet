@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -52,6 +52,8 @@ namespace Dafeiyu
         }
         public async Task<string> GenerateAsync(PetSettings settings,string id,string name,IList<ChatMessage> memory,DateTime time,int phrase,IList<string> recent,CancellationToken cancel)
         {
+            using(UsageTracking.BeginScope("greeting"))
+            {
             cancel.ThrowIfCancellationRequested();
             var snapshot=settings.Copy();var previous=recent==null?new List<string>():recent.ToList();
             string fallback=Fallback(id,name,time,phrase,previous);
@@ -85,6 +87,8 @@ namespace Dafeiyu
                     if(!(error is ApiException || error is HttpRequestException || error is IOException || error is ObjectDisposedException || error is InvalidOperationException))throw;
                     cancel.ThrowIfCancellationRequested();return fallback;
                 }
+            }
+
             }
         }
         static void Observe(Task task){task.ContinueWith(t=>{var observed=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted,TaskScheduler.Default);}

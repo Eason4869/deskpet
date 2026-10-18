@@ -10,6 +10,7 @@ namespace Dafeiyu
     {
         [DataMember] public string Id="",Name="新对话",Status="idle";[DataMember] public bool NameEdited,Archived,HasUnreadCompletion,Pinned;
         [DataMember] public string Mode="work",PetId="";
+        [DataMember] public bool HasPermissionOverride,SandboxEnabled;[DataMember] public AgentApprovalMode ApprovalMode;
         [DataMember] public long CreatedUtcTicks,LastOpenedUtcTicks;
         public ConversationDefinition Copy(){return (ConversationDefinition)MemberwiseClone();}
     }
@@ -20,11 +21,13 @@ namespace Dafeiyu
         [DataMember] public bool FullAccess=true,BackupFiles=true,PlanMode=false,CommandsEnabled=false;
         [DataMember] public string CommandRecipes="[]";
         [DataMember] public AgentTerminalPolicy TerminalPolicy;
+        [DataMember] public AgentApprovalMode ApprovalMode=AgentApprovalMode.Auto;[DataMember] public bool SandboxEnabled=true;[DataMember] public string SandboxReadDirectories;
         [DataMember] public bool TrustProjectInstructions;
         [DataMember] public string GlobalInstructions="",SkillsDirectory="";
         [DataMember] public int CommandTimeoutSeconds=120,ContextTokenLimit=32768;
         [DataMember] public long LastOpenedUtcTicks;[DataMember] public bool Archived;
         [DataMember] public List<ConversationDefinition> Conversations=new List<ConversationDefinition>();
+        [OnDeserializing] void BeforeDeserialize(StreamingContext context){ApprovalMode=AgentApprovalMode.Legacy;SandboxEnabled=false;}
         public ProjectDefinition Copy(){var copy=(ProjectDefinition)MemberwiseClone();copy.Conversations=(Conversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();return copy;}
     }
     [DataContract] public sealed class SidebarSection
@@ -53,7 +56,7 @@ namespace Dafeiyu
         public static ProjectDefinition QuickProject(ProjectCatalog catalog,PetSettings settings=null){var result=UnassignedProject(catalog,settings);result.Id=QuickProjectId;result.Name="快速对话";result.Conversations=catalog.QuickConversations;return result;}
         public static ProjectDefinition UnassignedProject(ProjectCatalog catalog,PetSettings settings=null)
         {
-            return new ProjectDefinition{Id=UnassignedProjectId,Name="无项目",Workspace=settings==null?AppDomain.CurrentDomain.BaseDirectory:settings.AgentWorkspace,FullAccess=settings!=null&&settings.AgentFullAccess,BackupFiles=settings==null||settings.AgentBackupFiles,PlanMode=settings!=null&&settings.AgentPlanMode,Goal=settings==null?"":settings.AgentGoal,CommandsEnabled=settings!=null&&settings.AgentCommandsEnabled,CommandRecipes=settings==null?"[]":settings.AgentCommandRecipes,TerminalPolicy=settings==null?AgentTerminalPolicy.Disabled:settings.AgentTerminalPolicy,TrustProjectInstructions=settings!=null&&settings.AgentTrustProjectInstructions,GlobalInstructions=settings==null?"":settings.AgentGlobalInstructions,SkillsDirectory=settings==null?"":settings.AgentSkillsDirectory,CommandTimeoutSeconds=settings==null?120:settings.AgentCommandTimeoutSeconds,ContextTokenLimit=settings==null?32768:settings.AgentContextTokenLimit,Conversations=catalog.UnassignedConversations};
+            return new ProjectDefinition{Id=UnassignedProjectId,Name="无项目",Workspace=settings==null?AppDomain.CurrentDomain.BaseDirectory:settings.AgentWorkspace,FullAccess=settings!=null&&settings.AgentFullAccess,BackupFiles=settings==null||settings.AgentBackupFiles,PlanMode=settings!=null&&settings.AgentPlanMode,Goal=settings==null?"":settings.AgentGoal,CommandsEnabled=settings!=null&&settings.AgentCommandsEnabled,CommandRecipes=settings==null?"[]":settings.AgentCommandRecipes,TerminalPolicy=settings==null?AgentTerminalPolicy.Disabled:settings.AgentTerminalPolicy,ApprovalMode=settings==null?AgentApprovalMode.Legacy:settings.AgentApprovalMode,SandboxEnabled=settings!=null&&settings.AgentSandboxEnabled,SandboxReadDirectories=settings==null?"":settings.AgentSandboxReadDirectories,TrustProjectInstructions=settings!=null&&settings.AgentTrustProjectInstructions,GlobalInstructions=settings==null?"":settings.AgentGlobalInstructions,SkillsDirectory=settings==null?"":settings.AgentSkillsDirectory,CommandTimeoutSeconds=settings==null?120:settings.AgentCommandTimeoutSeconds,ContextTokenLimit=settings==null?32768:settings.AgentContextTokenLimit,Conversations=catalog.UnassignedConversations};
         }
         public static ProjectDefinition FindProject(ProjectCatalog catalog,string id,PetSettings settings=null){return id==QuickProjectId?QuickProject(catalog,settings):id==UnassignedProjectId?UnassignedProject(catalog,settings):catalog.Projects.SingleOrDefault(p=>p.Id==id);}
         readonly string path;readonly object gate=new object();bool readFailed;

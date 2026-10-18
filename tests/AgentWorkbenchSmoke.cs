@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -50,19 +50,30 @@ namespace Dafeiyu.Tests
                 // A hosted desktop may be narrower than 1400 DIPs; force the fixture minimum
                 // so Windows does not clamp the requested normal-window size to its monitor.
                 chat.MinWidth=1400;chat.Width=1400;Pump();Console.WriteLine("Wide fixture: actual="+chat.ActualWidth+" desktop="+SystemParameters.WorkArea.Width);Check(All<FrameworkElement>(chat).Any(e=>e.Name=="AgentWorkspaceInspector" && e.IsVisible),"manually widened window also reveals task inspector");Save(chat,Path.Combine(output,"chat-1400.png"));
-                Check(!All<Button>(chat).Single(b=>b.Name=="ChatSettings").IsVisible && All<Button>(chat).Single(b=>b.Name=="WorkspaceProjectSettings").IsVisible,"wide layout has one settings icon next to the sidebar identity");
+                Check(!All<Button>(chat).Any(b=>b.Name=="ChatSettings") && All<Button>(chat).Single(b=>b.Name=="ShellSettings").IsVisible,"wide layout keeps settings only in the persistent icon rail");
                 chat.MinWidth=520;chat.Width=520;Pump();Check(!All<FrameworkElement>(chat).Any(e=>e.Name=="AgentWorkspaceSidebar" && e.IsVisible),"narrowing normal window restores compact layout without losing draft");
-                Check(All<Button>(chat).Single(b=>b.Name=="ChatSettings").IsVisible,"compact layout retains an accessible settings entry");
+                Check(All<Button>(chat).Single(b=>b.Name=="ShellSettings").IsVisible,"compact layout retains an accessible settings entry");
                 chat.WindowState=WindowState.Maximized;Pump();Check(All<FrameworkElement>(chat).Any(e=>e.Name=="AgentWorkspaceSidebar" && e.IsVisible),"maximized chat reveals functional project and task navigation");
                 Check(All<FrameworkElement>(chat).Any(e=>e.Name=="AgentWorkspaceInspector" && e.IsVisible)==(chat.ActualWidth>=1280) && All<Expander>(chat).Count(e=>e.Name=="AgentTaskDetails")==1,"maximized layout respects available width and reuses the same live task controls");Save(chat,Path.Combine(output,"chat-maximized.png"));
                 panel.IsExpanded=false;All<Button>(chat).Single(b=>b.Name=="WorkspaceTaskDetails").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(panel.IsExpanded,"sidebar task navigation expands the actual inspector");
                 var conversation=All<Button>(chat).Single(b=>b.Name=="WorkspaceConversation");var conversationLabel=(TextBlock)((Grid)conversation.Content).Children.OfType<TextBlock>().Single();Check(conversationLabel.Text=="新建对话","sidebar conversation action creates a new conversation");conversation.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(app.Windows.OfType<ChatWindow>().Count(w=>w.IsVisible)==1 && Object.ReferenceEquals(chat,app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible)),"new conversation switches within one visible chat window");chat.SwitchWorkspace(null);Check(input.Text=="keep this draft","switching back restores the original conversation draft");panel=All<Expander>(chat).Single(p=>p.Name=="AgentTaskDetails");panel.IsExpanded=true;
-                All<Button>(chat).Single(b=>b.Name=="WorkspaceProjectSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();var preferences=app.Windows.OfType<SettingsWindow>().Single();Check(All<WorkSettingsPanel>(preferences).Any(p=>p.IsVisible),"sidebar project action opens the real work settings section");
-                for(int section=0;section<3;section++){var workScroll=All<ScrollViewer>(preferences).Single(b=>b.Name=="WorkSettingsScroll");workScroll.ScrollToVerticalOffset(section*600);Pump();Check(All<Button>(preferences).Single(b=>b.Name=="SaveWorkSettings").IsVisible,"work settings save remains visible on section "+section);Save(preferences,Path.Combine(output,"work-settings-"+section+".png"));}preferences.Close();
+                pet.ShowWorkSettings();Pump();var preferences=All<SettingsPage>(chat).Single();Check(All<WorkSettingsPanel>(preferences).Any(p=>p.IsVisible),"sidebar project action opens the real work settings section");
+                for(int section=0;section<3;section++){var workScroll=All<ScrollViewer>(preferences).Single(b=>b.Name=="WorkSettingsScroll");workScroll.ScrollToVerticalOffset(section*600);Pump();Check(All<Button>(preferences).Single(b=>b.Name=="SaveWorkSettings").IsVisible,"work settings save remains visible on section "+section);Save(chat,Path.Combine(output,"work-settings-"+section+".png"));}chat.ShowHomePage();
 
                 chat.WindowState=WindowState.Normal;Pump();var finalPanel=All<Expander>(chat).SingleOrDefault(e=>e.Name=="AgentTaskDetails");Check(!All<FrameworkElement>(chat).Any(e=>e.Name=="AgentWorkspaceSidebar" && e.IsVisible) && input.Text=="keep this draft" && Object.ReferenceEquals(finalPanel,panel),"restoring normal size keeps draft and original compact task layout: input="+input.Text+" panel="+((finalPanel==null)?"missing":Object.ReferenceEquals(finalPanel,panel).ToString()));Save(chat,Path.Combine(output,"chat-restored.png"));
-                var diff=All<Button>(panel).First(b=>b.Name=="ShowAgentDiff");diff.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
-                var viewer=app.Windows.Cast<Window>().FirstOrDefault(w=>w.Name=="AgentChangePreview");Check(viewer!=null,"change details open actual before/current content");Check(All<FrameworkElement>(viewer).Any(e=>e.Name=="AgentDiffView"),"change preview defaults to a real line diff");Check(All<FrameworkElement>(viewer).Any(e=>e.Name=="AgentDiffAdded") && All<FrameworkElement>(viewer).Any(e=>e.Name=="AgentDiffRemoved"),"line diff renders added and removed rows");Save(viewer,Path.Combine(output,"change.png"));viewer.Close();
+                var diff=All<Button>(panel).First(b=>b.Name=="ShowAgentDiff");diff.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                // PreviewAgentChangeAsync reads the checkpoint and backup on a
+                // worker. One fixed 80 ms pump can expire before its continuation
+                // mounts the new tab, especially on the first cold invocation.
+                Wait(()=>All<PreviewWorkspace>(chat).Any(area=>area.Selected!=null&&All<AgentDiffView>(area.Selected).Any()) || app.Windows.OfType<Window>().Any(w=>w.Name=="AgentChangePreview"));
+                var previewArea=All<PreviewWorkspace>(chat).SingleOrDefault(area=>area.Selected!=null&&All<AgentDiffView>(area.Selected).Any());
+                Check(previewArea!=null&&!app.Windows.OfType<Window>().Any(w=>w.Name=="AgentChangePreview"),"change details open actual before/current content in the same-window preview tab");
+                var detail=previewArea.Selected;chat.UpdateLayout();Pump();
+                Check(All<FrameworkElement>(detail).Any(e=>e.Name=="AgentDiffView"&&e.IsVisible),"change preview defaults to a real line diff");
+                Check(All<FrameworkElement>(detail).Any(e=>e.Name=="AgentDiffAdded") && All<FrameworkElement>(detail).Any(e=>e.Name=="AgentDiffRemoved"),"line diff renders added and removed rows");
+                var originals=All<Expander>(detail).Single(e=>e.Header as string=="原文对照");originals.IsExpanded=true;chat.UpdateLayout();Pump();
+                Check(All<TextBox>(originals).Any(box=>box.Text=="before")&&All<TextBox>(originals).Any(box=>box.Text=="after"),"change detail tab retains actual original backup and current file text");
+                Save(chat,Path.Combine(output,"change.png"));previewArea.Close(detail);
                 session.FlushHistoryAsync().GetAwaiter().GetResult();string checkpoint=Directory.GetFiles(Path.Combine(output,"data","history","agent-tasks"),"*.task").Single();
                 using(var held=new FileStream(checkpoint,FileMode.Open,FileAccess.Read,FileShare.Read)){
                     var restore=All<Button>(panel).First(b=>b.Name=="RestoreAgentFile");restore.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Wait(()=>!session.IsBusy && File.ReadAllText(Path.Combine(project,"one.txt"))=="before");session.FlushHistoryAsync().GetAwaiter().GetResult();

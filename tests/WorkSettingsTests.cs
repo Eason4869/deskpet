@@ -50,9 +50,25 @@ namespace Dafeiyu.Tests
                 var editorCopy=editorSaved.Copy();Check(editorCopy.PlainTextEditor && !editorCopy.ShowContextUsage && !editorCopy.SendOnEnter && editorCopy.FollowUpBehavior=="steer","editor preferences survive settings snapshots");
                 var snapshot=cfg.Copy();snapshot.Text.BaseUrl="https://api.xiaomimimo.com/v1";snapshot.Text.Model="mimo-v2.5-flash";cfg.AgentPlanMode=false;cfg.AgentFullAccess=true;cfg.AgentBackupFiles=true;cfg.AgentContextTokenLimit=8192;
                 var workspace=ConversationSession.OpenAgentWorkspace(snapshot);
-                Check(workspace.RestrictToRoot && workspace.ReadOnly && !workspace.BackupEnabled && workspace.ContextTokenLimit==131072,"workspace factory uses the saved settings snapshot instead of later changes");
+                var policy=workspace.FreezePermissions().AccessPolicy;
+                Check(!workspace.RestrictToRoot && workspace.Root==project && workspace.ReadOnly && !workspace.BackupEnabled && workspace.ContextTokenLimit==131072 && policy!=null && policy.Mode==AgentApprovalMode.Auto && policy.Sandbox,"workspace factory preserves saved plan, backup, budget and automatic sandbox policy instead of later changes");
+                string outside=Path.Combine(scratch,"outside.txt");File.WriteAllText(outside,"outside-permission-sentinel");
+                Check(PolicyDecision(policy,"read_file",outside)==AgentPermissionEffect.Ask && PolicyDecision(policy,"write_file",outside)==AgentPermissionEffect.Ask,"saved automatic policy requires approval for outside reads and writes without a legacy hard root restriction");
                 string target=Path.Combine(project,"must-not-exist.txt");var result=workspace.ExecuteAsync("write_file","{\"path\":\"must-not-exist.txt\",\"content\":\"no\"}",CancellationToken.None).GetAwaiter().GetResult();
                 Check(result.StartsWith("错误：",StringComparison.Ordinal) && !File.Exists(target) && workspace.OpenAITools.Length>=3 && !new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(workspace.OpenAITools).Contains("write_file"),"planning snapshot rejects actual writes and exposes only read tools");
+                workspace.Dispose();
+                var ask=snapshot.Copy();ask.AgentPlanMode=false;ask.AgentApprovalMode=AgentApprovalMode.Ask;ask.Text.ToolSupport=CapabilitySupport.Supported;var serializer=new System.Web.Script.Serialization.JavaScriptSerializer();
+                using(var restricted=ConversationSession.OpenAgentWorkspace(ask)){
+                    string inside=Path.Combine(project,"inside.txt");File.WriteAllText(inside,"inside-permission-sentinel");
+                    string insideRead=restricted.ExecuteAsync("read_file",serializer.Serialize(new{path=inside}),CancellationToken.None).GetAwaiter().GetResult();
+                    string outsideRead=restricted.ExecuteAsync("read_file",serializer.Serialize(new{path=outside}),CancellationToken.None).GetAwaiter().GetResult();
+                    string outsideWrite=restricted.ExecuteAsync("write_file",serializer.Serialize(new{path=outside,content="must not overwrite"}),CancellationToken.None).GetAwaiter().GetResult();
+                    Check(!restricted.ReadOnly && insideRead.Contains("inside-permission-sentinel") && outsideRead.StartsWith("错误：",StringComparison.Ordinal) && !outsideRead.Contains("outside-permission-sentinel") && outsideWrite.StartsWith("错误：",StringComparison.Ordinal) && File.ReadAllText(outside)=="outside-permission-sentinel","new ask policy permits actual inside reads and rejects outside reads and writes when no approval provider is available");
+                }
+                var legacySnapshot=ask.Copy();legacySnapshot.AgentApprovalMode=AgentApprovalMode.Legacy;legacySnapshot.AgentSandboxEnabled=false;legacySnapshot.AgentFullAccess=false;
+                using(var restricted=ConversationSession.OpenAgentWorkspace(legacySnapshot))Check(restricted.RestrictToRoot,"explicit legacy restricted snapshot retains the original hard workspace boundary");
+                legacySnapshot.AgentFullAccess=true;
+                using(var complete=ConversationSession.OpenAgentWorkspace(legacySnapshot))Check(!complete.RestrictToRoot && complete.ExecuteAsync("read_file",serializer.Serialize(new{path=outside}),CancellationToken.None).GetAwaiter().GetResult().Contains("outside-permission-sentinel"),"explicit legacy complete-file snapshot retains its original outside read behavior");
                 Refresh(panel);Check(!Dirty(panel) && Access(panel).SelectedIndex==0 && !Toggle(panel,"AgentPlanMode").IsChecked.Value && Field(panel,"AgentContextTokenLimit").Text=="8192","clean form refreshes externally changed shared settings");
                 Field(panel,"AgentGoal").Text="本地草稿";cfg.AgentGoal="从输入框设置的目标";cfg.AgentPlanMode=true;Refresh(panel);
                 Check(Field(panel,"AgentGoal").Text=="本地草稿" && !Toggle(panel,"AgentPlanMode").IsChecked.Value && Dirty(panel),"external changes do not discard a pending local form");
@@ -65,7 +81,7 @@ namespace Dafeiyu.Tests
                 Access(panel).SelectedIndex=1;Field(panel,"AgentWorkspace").Text=Path.GetPathRoot(project);var before=State(cfg);
                 Check(!Save(panel) && State(cfg)==before,"restricted access rejects a disk root without partial changes");
                 Access(panel).SelectedIndex=0;Check(Save(panel),"complete access accepts an existing disk root without elevation");
-                var unrestricted=ConversationSession.OpenAgentWorkspace(cfg.Copy());Check(!unrestricted.RestrictToRoot && Directory.Exists(unrestricted.Root),"complete access selection reaches the workspace factory");
+                using(var unrestricted=ConversationSession.OpenAgentWorkspace(cfg.Copy()))Check(!unrestricted.RestrictToRoot && Directory.Exists(unrestricted.Root) && unrestricted.FreezePermissions().AccessPolicy.Mode==AgentApprovalMode.Auto,"complete file selection preserves the selected automatic approval policy at the workspace factory");
                 Field(panel,"AgentWorkspace").Text=project;Field(panel,"AgentContextTokenLimit").Text="8192";Field(panel,"AgentGoal").Text=new string('目',4000);
                 Check(Save(panel) && pet.Store.Load().AgentGoal.Length==4000,"minimum context budget and a 4000-character goal save successfully");
                 cfg.Text.ContextWindowTokens=262144;Refresh(panel);Check(All<FrameworkElement>(panel).Single(e=>e.Name=="ContextFallbackRow").Visibility==Visibility.Collapsed && All<TextBlock>(panel).Single(t=>t.Name=="WorkContextSummary").Text.Contains("262,144"),"known model hides fallback and shows its actual configured capacity");
@@ -75,6 +91,11 @@ namespace Dafeiyu.Tests
             }
             catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
             finally{if(pet!=null){pet.Close();Pump();}app.Shutdown();}
+        }
+        static AgentPermissionEffect PolicyDecision(AgentAccessPolicy policy,string tool,string path)
+        {
+            var call=new AgentToolInvocation(tool,new Dictionary<string,object>{{"path",path}},new AgentToolExecutionContext{CallId=Guid.NewGuid().ToString("N")});
+            return policy.Decide(call,AgentPermissionRuntime.DefaultWorkspacePolicy().Decide(call.Action,call.Resource)).Effect;
         }
         static void CaptureEditor(UserControl panel,string folder)
         {

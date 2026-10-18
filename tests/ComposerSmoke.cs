@@ -204,14 +204,14 @@ namespace Dafeiyu.Tests
             var rows=(StackPanel)typeof(ConversationComposer).GetField("rows",flags).GetValue(composer);
             var source=rows.Children.OfType<Grid>().Single(r=>(string)r.Tag==c);var grip=Find<Button>(source,"ReorderQueuedMessage");
             source.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice,Environment.TickCount){RoutedEvent=Mouse.MouseEnterEvent});Check(grip.Opacity==1,"hover exposes six-dot reorder handle");
-            Point start=source.TranslatePoint(new Point(8,13),rows);controller.Begin(grip,source,start);controller.Move(new Point(start.X+7,start.Y-60));Pump(.08);
+            Point start=source.TranslatePoint(new Point(8,13),rows);controller.Begin(grip,source,start);var queueScroll=(ScrollViewer)typeof(QueueReorderController).GetField("scroll",flags).GetValue(controller);queueScroll.ScrollToTop();queueScroll.UpdateLayout();var firstRow=rows.Children.OfType<Grid>().Single(r=>(string)r.Tag==a);Point destination=firstRow.TranslatePoint(new Point(15,13),rows);controller.Move(destination);Pump(.08);
             Check(controller.IsDragging && source.Opacity==0,"drag uses a floating preview while preserving the source layout slot");
             var ghost=typeof(QueueReorderController).GetField("ghost",flags).GetValue(controller);var bitmap=(BitmapSource)ghost.GetType().GetField("bitmap",flags).GetValue(ghost);var pixels=new byte[bitmap.PixelWidth*bitmap.PixelHeight*4];bitmap.CopyPixels(pixels,bitmap.PixelWidth*4,0);
             Check(Enumerable.Range(0,pixels.Length/4).Count(i=>pixels[i*4+3]>30)>100,"floating drag preview retains visible message text and tools");
             var displaced=rows.Children.OfType<Grid>().First(r=>(string)r.Tag==a).RenderTransform as TranslateTransform;
             Check(displaced!=null && displaced.Y>0,"neighbor rows animate toward the insertion gap");
             Check(pet.InputQueue.Items[0].Id==a,"drag preview does not prematurely reorder pending requests");
-            Save(window,window is QuickChatWindow?"quick-queue-dragging.png":"chat-queue-dragging.png");controller.Drop();Pump(.25);
+            Save(window,window is QuickChatWindow?"quick-queue-dragging.png":"chat-queue-dragging.png");controller.Drop();Until(()=>String.Join(",",pet.InputQueue.Items.Select(m=>m.Id))==String.Join(",",new[]{c,a,b}));
             Check(String.Join(",",pet.InputQueue.Items.Select(m=>m.Id))==String.Join(",",new[]{c,a,b}),"dropping commits the new pending sequence");
             var otherComposer=Find<ConversationComposer>(other,"");var otherRows=(StackPanel)typeof(ConversationComposer).GetField("rows",flags).GetValue(otherComposer);
             Check(String.Join(",",otherRows.Children.OfType<Grid>().Select(r=>(string)r.Tag))==String.Join(",",new[]{c,a,b}),"reordered sequence appears in both shared composers");

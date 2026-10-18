@@ -24,8 +24,8 @@ namespace Dafeiyu
         void Refresh()
         {
             var task=session.CurrentAgentTask;Inlines.Clear();if(!session.IsBusy || task==null || task.Status!="running"){Visibility=Visibility.Collapsed;return;}
-            var files=task.Changes.GroupBy(c=>c.Path,StringComparer.OrdinalIgnoreCase).Select(g=>g.Last()).Where(c=>c.Status!="restored").ToList();if(files.Count==0){Visibility=Visibility.Collapsed;return;}
-            Inlines.Add(new Run(files.Count+" 个文件已更改"));if(files.All(c=>c.AddedLines.HasValue && c.RemovedLines.HasValue)){Inlines.Add(new Run("  +"+files.Sum(c=>c.AddedLines.Value)){Foreground=Ui.Brush("#159A5A")});Inlines.Add(new Run("  −"+files.Sum(c=>c.RemovedLines.Value)){Foreground=Ui.Brush("#D65151")});}
+            var summary=AgentChangeSummaryData.FromTask(task);var files=summary.ActiveFiles;if(files.Count==0){Visibility=Visibility.Collapsed;return;}
+            Inlines.Add(new Run(files.Count+" 个文件已更改"));if(summary.AddedLines.HasValue&&summary.RemovedLines.HasValue){Inlines.Add(new Run("  +"+summary.AddedLines.Value){Foreground=Ui.Brush("#159A5A")});Inlines.Add(new Run("  −"+summary.RemovedLines.Value){Foreground=Ui.Brush("#D65151")});}
             ToolTip=String.Join(Environment.NewLine,files.Take(5).Select(c=>Path.GetFileName(c.Path)))+(files.Count>5?Environment.NewLine+"…":"");Visibility=Visibility.Visible;
         }
         void Closed(object sender,EventArgs e){Dispose();}

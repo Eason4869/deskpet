@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -108,7 +108,7 @@ namespace Dafeiyu
             var caption=Ui.Text(label,13.5);caption.HorizontalAlignment=HorizontalAlignment.Center;tile.Children.Add(caption);
             var content=new Canvas{Width=Diameter,Height=Diameter,IsHitTestVisible=false};content.Children.Add(tile);
             Canvas.SetLeft(tile,Center+153*Math.Cos(radians)-38);Canvas.SetTop(tile,Center+153*Math.Sin(radians)-(basic?39:48));
-            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/><Setter TargetName='sector' Property='StrokeThickness' Value='2'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
             var button=new Button{Template=sectorTemplate,Width=Diameter,Height=Diameter,Background=Glass(false),BorderBrush=Ui.Brush("#DBFFFFFF"),Cursor=Cursors.Hand,Content=content,Tag=Sector(angle,360.0/count)};
             button.Name=(interaction?"PaletteInteraction_":"PaletteAction_")+action.Replace('-','_');button.ToolTip=Description(action);
             System.Windows.Automation.AutomationProperties.SetName(button,label);
@@ -156,8 +156,8 @@ namespace Dafeiyu
                 case "special":return pet.Skin.SpecialAction+"：看看伙伴的反应。";
                 case "special2":return AdditionalInteractions.SpecialName(pet.Skin)+"：看看伙伴的新花样。";
                 case "idle":return "回到平静的待机姿态。";
-                case "running-right":return "原地演示向右奔跑的动作。";
-                case "running-left":return "原地演示向左奔跑的动作。";
+                case "running-right":return "向右奔跑一小段距离；锁定位置时原地演示。";
+                case "running-left":return "向左奔跑一小段距离；锁定位置时原地演示。";
                 case "waving":return "挥挥手，和你打个招呼。";
                 case "jumping":return "轻快地跳一下。";
                 case "failed":return "露出委屈的小表情。";

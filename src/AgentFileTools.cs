@@ -9,11 +9,11 @@ namespace Dafeiyu
 {
     public sealed partial class AgentWorkspace
     {
-        static readonly HashSet<string> IgnoredDirectories=new HashSet<string>(StringComparer.OrdinalIgnoreCase){".git",".svn","node_modules","bin","obj","dist","build",".venv","venv","__pycache__",BackupFolder};
+        static readonly HashSet<string> IgnoredDirectories=new HashSet<string>(StringComparer.OrdinalIgnoreCase){".git",".svn","node_modules","bin","obj","dist","build",".venv","venv","__pycache__",BackupFolder,".deskpet-agent-kernel"};
         string ListPage(string path,int offset,int limit,CancellationToken token)
         {
             using(LockDirectories(path,false)){
-                var entries=Directory.EnumerateFileSystemEntries(path).Where(p=>Path.GetFileName(p)!=BackupFolder && (!RestrictToRoot || !Path.GetFileName(p).Equals(".git",StringComparison.OrdinalIgnoreCase))).OrderBy(p=>Path.GetFileName(p),StringComparer.OrdinalIgnoreCase).ToArray();
+                var entries=Directory.EnumerateFileSystemEntries(path).Where(p=>!Path.GetFileName(p).Equals(BackupFolder,StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(p).Equals(".deskpet-agent-kernel",StringComparison.OrdinalIgnoreCase) && (!RestrictToRoot || !Path.GetFileName(p).Equals(".git",StringComparison.OrdinalIgnoreCase))).OrderBy(p=>Path.GetFileName(p),StringComparer.OrdinalIgnoreCase).ToArray();
                 var output=new StringBuilder();foreach(string p in entries.Skip(offset).Take(limit)){
                     token.ThrowIfCancellationRequested();var a=File.GetAttributes(p);output.Append((a&FileAttributes.ReparsePoint)!=0?"[跳过链接] ":(a&FileAttributes.Directory)!=0?"[目录] ":"[文件] ").AppendLine(Path.GetFileName(p));
                 }

@@ -82,7 +82,12 @@ with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
-    assert '118' in bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
+    guide = bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
+    lesson_titles = re.findall(r'add\(\d+,\s*"[^"]+",\s*"([^"]+)"', (checkout/'src/OnboardingLessons.cs').read_text(encoding='utf-8-sig'))
+    assert lesson_titles, 'application lesson titles must be extracted from the current source'
+    assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'
+    guide_titles = re.findall(r'^### \d+\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
+    assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'
     assert 'DafeiyuDeskPet/templates/grid-guide.svg' in bundle.namelist()
     assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())

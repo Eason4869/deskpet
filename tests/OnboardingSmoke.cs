@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -16,12 +16,13 @@ namespace Dafeiyu.Tests
     public static class OnboardingSmoke
     {
         private static int passed;
-        [STAThread] public static int Main()
+        [STAThread] public static int Main(string[] args)
         {
+            if(args.Length>0 && (args.Length!=1 || args[0]!="--simulated")){Console.Error.WriteLine("Usage: OnboardingSmoke.exe [--simulated]");return 2;}
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             PetWindow pet = null;
             Point originalCursor=DesktopInterop.Cursor();
-            bool simulated=Environment.GetEnvironmentVariable("DESKPET_TEST_SIMULATED_GESTURES")=="1";if(simulated)Console.WriteLine("INFO gesture completion uses explicit fixtures; native mouse input is NOT verified by this run.");
+            bool simulated=args.Contains("--simulated") || Environment.GetEnvironmentVariable("DESKPET_TEST_SIMULATED_GESTURES")=="1";if(simulated)Console.WriteLine("INFO gesture completion uses explicit fixtures; native mouse input is NOT verified by this run.");
             string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "onboarding-smoke-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
             try
@@ -42,9 +43,11 @@ namespace Dafeiyu.Tests
                 Check(Field(pet, "guide") == null, "constructing a pet does not auto-popup outside Program startup");
                 pet.ShowOnboarding(); Pump(.25);
                 var guide = (OnboardingWindow)Field(pet, "guide");
-                var preferences = (SettingsWindow)Field(pet, "preferences");
-                Check(guide.IsVisible && guide.Owner == preferences && !guide.ShowInTaskbar, "guide floats over real settings as owned window");
-                Check(guide.Step == 0 && guide.TargetName == "SkinPicker" && guide.HighlightVisible, "first step outlines actual skin picker");
+                var preferences = (SettingsPage)Field(pet, "preferences");
+                Check(guide.IsVisible && guide.Owner == preferences.HostWindow && !guide.ShowInTaskbar, "guide floats over the real settings host as owned window");
+                Check(guide.CurrentLessonId=="welcome" && String.IsNullOrEmpty(guide.TargetName) && !guide.HighlightVisible,"introduction precedes configuration without highlighting a target");
+                Press(guide,"GuideNext");
+                Check(guide.CurrentLessonId=="pet.select" && guide.Step == 0 && guide.TargetName == "SkinPicker" && guide.HighlightVisible, "starting the guide outlines the actual skin picker");
                 CheckTargetUncovered(guide,preferences);
                 Capture(preferences,Path.Combine(folder,"guide-partner-settings.png"));Capture(guide,Path.Combine(folder,"guide-partner-card.png"));
                 Check(!preferences.FindControl("SettingsNavigation").IsEnabled && !((UIElement)pet.Content).IsEnabled,"only current settings target remains enabled");
@@ -82,7 +85,7 @@ namespace Dafeiyu.Tests
                 Check(!quick.IsVisible,"leaving quick chat lesson closes its preview");
                 Go(guide,"text.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"missing text service blocks saving but not introductory lessons");
                 Choose(preferences,"AddTextProvider","custom");var url=(TextBox)preferences.FindControl("TextServiceUrl");url.Text="bad address";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid address remains blocked");
-                preferences.Width=700;preferences.Height=430;Pump(.2);CheckTargetUncovered(guide,preferences);Capture(preferences,Path.Combine(folder,"guide-text-minimum-settings.png"));Capture(guide,Path.Combine(folder,"guide-text-minimum-card.png"));preferences.Width=850;preferences.Height=790;Pump(.2);
+                preferences.HostWindow.Width=700;preferences.HostWindow.Height=430;Pump(.2);CheckTargetUncovered(guide,preferences);Capture(preferences,Path.Combine(folder,"guide-text-minimum-settings.png"));Capture(guide,Path.Combine(folder,"guide-text-minimum-card.png"));preferences.HostWindow.Width=850;preferences.HostWindow.Height=790;Pump(.2);
                 Press(guide,"GuideSkipChapter");Check(guide.Step==9&&guide.IsVisible&&preferences.HasUnsavedEdits,"skipping a chapter retains its settings draft");
                 Go(guide,"asr.save");Check(!Find<Button>(guide,"GuideNext").IsEnabled,"ASR requires configuration before saving");Press(guide,"GuideSkipChapter");Check(guide.Step==10,"ASR and TTS remain separate chapters");
                 ((CheckBox)preferences.FindControl("UseCloudVoice")).IsChecked=false;Go(guide,"speech.save");Press(guide,"GuideNext");Check(guide.CurrentLessonId=="speech.test"&&!pet.Settings.UseCloudVoice,"system TTS saves independently without auto-testing");
@@ -91,13 +94,13 @@ namespace Dafeiyu.Tests
                 Go(guide,"greeting.interval");((TextBox)preferences.FindControl("GreetingMinMinutes")).Text="100";((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="10";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid greeting interval disables save");((TextBox)preferences.FindControl("GreetingMaxMinutes")).Text="120";Press(guide,"GuideNext");
                 Go(guide,"shortcut.quick");((TextBox)preferences.FindControl("Hotkeyquick")).Text="not-a-shortcut";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid shortcut disables save");((TextBox)preferences.FindControl("Hotkeyquick")).Clear();Press(guide,"GuideNext");
                 Go(guide,"chat.open");Check(app.Windows.OfType<ChatWindow>().Any(w=>w.IsVisible),"conversation guidance opens the actual full window without sending");Capture(guide,Path.Combine(folder,"guide-conversation.png"));
-                Go(guide,"work.context");var workPanel=(WorkSettingsPanel)preferences.FindControl("WorkSettingsPanel");Check(workPanel.IsEnabled&&preferences.FindControl("AgentAccessMode").IsEnabled&&!preferences.FindControl("SettingsNavigation").IsEnabled,"work guide allows actual settings while locking unrelated navigation");
+                Go(guide,"work.access");var workPanel=(WorkSettingsPanel)preferences.FindControl("WorkSettingsPanel");Check(workPanel.IsEnabled&&preferences.FindControl("AgentApprovalMode").IsEnabled&&!preferences.FindControl("SettingsNavigation").IsEnabled,"approval lesson unlocks the actual three-mode setting while locking unrelated navigation");
                 Go(guide,"work.save");((TextBox)preferences.FindControl("AgentContextTokenLimit")).Text="0";Press(guide,"GuideNext");Check(guide.CurrentLessonId=="work.save","invalid work settings cannot advance or silently save");
                 ((TextBox)preferences.FindControl("AgentContextTokenLimit")).Text="16384";((CheckBox)preferences.FindControl("AgentPlanMode")).IsChecked=true;Press(guide,"GuideNext");Check(guide.CurrentLessonId=="work.prompt"&&pet.Settings.AgentContextTokenLimit==16384&&pet.Settings.AgentPlanMode,"work settings save before the dedicated prompt lesson");
                 Go(guide,"network.save");var network=(Expander)preferences.FindControl("UpdateNetwork");Check(network.IsExpanded&&network.IsEnabled&&!preferences.FindControl("CheckUpdates").IsEnabled&&!preferences.FindControl("UninstallApplication").IsEnabled,"network lesson blocks installation and uninstall");
                 ((RadioButton)preferences.FindControl("UpdateMirror")).IsChecked=true;((RadioButton)preferences.FindControl("CustomUpdateMirror")).IsChecked=true;((TextBox)preferences.FindControl("UpdateMirrorAddress")).Text="invalid";Pump(.2);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid network address blocks saving");
                 var about=(AboutPanel)Field(preferences,"about");about.MirrorProbe=(address,token)=>System.Threading.Tasks.Task.FromResult(0);var probe=about.TestMirrorsAsync();while(!probe.IsCompleted)Pump(.05);probe.GetAwaiter().GetResult();((RadioButton)preferences.FindControl("BuiltinUpdateMirror1")).IsChecked=true;Press(guide,"GuideNext");Check(guide.CurrentLessonId=="finish.summary","network save reaches an honest completion summary");Press(guide,"GuideNext");
-                Check(settings.OnboardingState=="completed"&&Field(pet,"guide")==null&&preferences.FindControl("SettingsNavigation").IsEnabled&&((UIElement)pet.Content).IsEnabled,"completion restores settings and pet interaction");Check(!network.IsExpanded&&!pet.Updates.IsBusy&&!pet.LiveActive&&!pet.Conversation.IsBusy&&pet.Conversation.History.Messages.Count==0,"guide never automatically sends, records, calls or updates");
+                Check(guide.CurrentLessonId=="finish.congratulations","summary enters congratulations before completion");Press(guide,"GuideNext");Check(settings.OnboardingState=="completed"&&Field(pet,"guide")==null&&preferences.FindControl("SettingsNavigation").IsEnabled&&((UIElement)pet.Content).IsEnabled,"completion restores settings and pet interaction");Check(!network.IsExpanded&&!pet.Updates.IsBusy&&!pet.LiveActive&&!pet.Conversation.IsBusy&&pet.Conversation.History.Messages.Count==0,"guide never automatically sends, records, calls or updates");
                 pet.ShowOnboarding();Pump(.2);guide=(OnboardingWindow)Field(pet,"guide");Check(guide.CurrentLessonId=="welcome","completed guide can restart");Press(guide,"GuideLater");Check(guide.CurrentLessonId=="pet.select"&&pet.Store.Load().OnboardingLessonId=="pet.select","skipping a small step persists a stable resume ID");guide.Close();Pump(.2);Check(settings.OnboardingState=="deferred"&&((UIElement)pet.Content).IsEnabled,"closing defers progress and releases all locks");
                 Console.WriteLine("Onboarding smoke: " + passed + " passed; screenshot: " + folder);
                 return 0;
@@ -105,7 +108,7 @@ namespace Dafeiyu.Tests
             catch (Exception error) { Console.WriteLine("FAIL onboarding: " + error); return 1; }
             finally { mouse_event(4|16|64,0,0,0,UIntPtr.Zero);if(!simulated)SetCursorPos((int)originalCursor.X,(int)originalCursor.Y);if (pet != null) pet.Close(); Pump(.2); app.Shutdown(); }
         }
-        static void Choose(SettingsWindow settings,string add,string brand){Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var picker=Application.Current.Windows.OfType<ProviderPickerWindow>().Single();Find<Button>(picker,"ChooseProvider_"+brand).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}));Find<Button>(settings,add).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.2);}
+        static void Choose(SettingsPage settings,string add,string brand){Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var picker=Application.Current.Windows.OfType<ProviderPickerWindow>().Single();Find<Button>(picker,"ChooseProvider_"+brand).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}));Find<Button>(settings,add).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.2);}
         static void Go(OnboardingWindow guide,string id){typeof(OnboardingWindow).GetField("index",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==id));typeof(OnboardingWindow).GetMethod("Navigate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(guide,null);Pump(.2);}
         [System.Runtime.InteropServices.DllImport("user32.dll",SetLastError=true)]static extern bool SetCursorPos(int x,int y);
         [System.Runtime.InteropServices.DllImport("user32.dll")]static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
@@ -171,22 +174,23 @@ namespace Dafeiyu.Tests
             throw new Exception("No opaque target");
         }
         private static object Field(object target, string name) { return target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target); }
-        private static void CheckTargetUncovered(OnboardingWindow guide,SettingsWindow settings)
+        private static void CheckTargetUncovered(OnboardingWindow guide,SettingsPage settings)
         {
             var target=settings.FindControl(guide.TargetName);Point a=target.PointToScreen(new Point()),b=target.PointToScreen(new Point(target.ActualWidth,target.ActualHeight));
             Rect targetBounds=new Rect(a,b),guideBounds=DesktopInterop.Bounds(new WindowInteropHelper(guide).Handle);
             Check(Rect.Intersect(targetBounds,guideBounds).IsEmpty,"floating guide leaves actual target uncovered");
-            Check(DesktopInterop.WorkArea(new WindowInteropHelper(settings).Handle).Contains(guideBounds),"floating guide stays inside current monitor work area");
+            Check(DesktopInterop.WorkArea(new WindowInteropHelper(settings.HostWindow).Handle).Contains(guideBounds),"floating guide stays inside current monitor work area");
         }
         private static T Find<T>(DependencyObject root, string name) where T : FrameworkElement
         {
+            var page=root as SettingsPage;if(page!=null)return page.FindControl(name) as T;
             var match = root as T; if (match != null && match.Name == name) return match;
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) { var child = Find<T>(VisualTreeHelper.GetChild(root, i), name); if (child != null) return child; }
             return null;
         }
         private static void Press(Window window, string name) { Pump(.15);var button = Find<Button>(window, name); Check(button != null && button.IsEnabled, "guide action available " + name); button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
         private static void Check(bool value, string message) { if (!value) throw new Exception(message); passed++; Console.WriteLine("PASS " + message); }
-        private static void Capture(Window window, string path) { var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(window); using (var stream = File.Create(path)) { var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap)); png.Save(stream); } }
+        private static void Capture(FrameworkElement window, string path) { window.UpdateLayout();var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(window); using (var stream = File.Create(path)) { var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap)); png.Save(stream); } }
         private static void Pump(double seconds) { var frame = new DispatcherFrame(); var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) }; timer.Tick += delegate { timer.Stop(); frame.Continue = false; }; timer.Start(); Dispatcher.PushFrame(frame); }
     }
 }

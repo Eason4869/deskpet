@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -187,6 +187,10 @@ namespace Dafeiyu
         [DataMember] public string AgentCommandRecipes {get;set;}
         [DataMember] public int AgentCommandTimeoutSeconds {get;set;}
         [DataMember] public AgentTerminalPolicy AgentTerminalPolicy {get;set;}
+        [DataMember] public AgentApprovalMode AgentApprovalMode {get;set;}
+        [DataMember] public bool ShowProjectSidebar {get;set;}
+        [DataMember] public bool AgentSandboxEnabled {get;set;}
+        [DataMember] public string AgentSandboxReadDirectories {get;set;}
         [DataMember] public bool AgentTrustProjectInstructions {get;set;}
         [DataMember] public string AgentGlobalInstructions {get;set;}
         [DataMember] public string AgentSkillsDirectory {get;set;}
@@ -255,7 +259,7 @@ namespace Dafeiyu
         [DataMember] public ConnectionSettings Transcription { get; set; }
         [DataMember] public ConnectionSettings Speech { get; set; }
         public PetSettings() { Defaults(); }
-        [OnDeserializing] private void BeforeDeserialize(StreamingContext context) { Defaults();OnboardingVersion=0;OnboardingState="legacy";LastOnboardingSeries=OnboardingUpgrade.LegacySeries;LiveVoice="Kore"; }
+        [OnDeserializing] private void BeforeDeserialize(StreamingContext context) { Defaults();AgentApprovalMode=AgentApprovalMode.Legacy;AgentSandboxEnabled=false;OnboardingVersion=0;OnboardingState="legacy";LastOnboardingSeries=OnboardingUpgrade.LegacySeries;LiveVoice="Kore"; }
         private void Defaults()
         {
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
@@ -265,6 +269,7 @@ namespace Dafeiyu
             // conversation-only and switches its own requests regardless.
             AgentEnabled=true;AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository="";GitHub=new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};
             AgentPlanMode=false;AgentGoal="";AgentCommandsEnabled=false;AgentCommandRecipes="[]";AgentCommandTimeoutSeconds=120;
+            ShowProjectSidebar=true;AgentApprovalMode=AgentApprovalMode.Auto;AgentSandboxEnabled=true;AgentTerminalPolicy=AgentTerminalPolicy.Disabled;
             Hotkeys=new Dictionary<string,string> { {"quick","Ctrl+Alt+Space"},{"hide","Ctrl+Alt+H"},{"quiet","Ctrl+Alt+D"},{"passthrough","Ctrl+Alt+P"} };
             Scale = 1.25; Volume = 50; Topmost = true; FollowCursor = true; Wander = false; StumbleEnabled=true;AutoSleepEnabled=true;
             GreetingEnabled=true; AiGreetingEnabled=false; GreetingMinMinutes=30; GreetingMaxMinutes=60;
@@ -286,6 +291,8 @@ namespace Dafeiyu
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
             var mcpIds=new HashSet<string>();McpServers=(McpServers??new List<McpServerConfiguration>()).Where(c=>c!=null).Take(16).Select(c=>{var copy=c.Copy();if(String.IsNullOrWhiteSpace(copy.Id)||copy.Id.Length>80||!mcpIds.Add(copy.Id)){copy.Id=Guid.NewGuid().ToString("N");mcpIds.Add(copy.Id);}return copy;}).ToList();
             if(!Enum.IsDefined(typeof(AgentTerminalPolicy),AgentTerminalPolicy))AgentTerminalPolicy=AgentTerminalPolicy.Disabled;
+            if(!Enum.IsDefined(typeof(AgentApprovalMode),AgentApprovalMode))AgentApprovalMode=AgentApprovalMode.Legacy;
+            if(AgentApprovalMode==AgentApprovalMode.Full)AgentSandboxEnabled=false;
             if(OnboardingState!="new" && OnboardingState!="deferred" && OnboardingState!="skipped" && OnboardingState!="completed")OnboardingState="completed";
             if(FollowUpBehavior!="steer")FollowUpBehavior="queue";
             if(String.IsNullOrWhiteSpace(AgentWorkspace))AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository=(GitHubRepository??"").Trim();GitHub=GitHub??new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};GitHub.Normalize();
@@ -387,7 +394,7 @@ namespace Dafeiyu
             if(VoiceProfiles!=null)foreach(var pair in VoiceProfiles)if(pair.Value!=null)voiceProfiles[pair.Key]=pair.Value.Copy();
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandsEnabled=AgentCommandsEnabled,AgentCommandRecipes=AgentCommandRecipes,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
+            return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandsEnabled=AgentCommandsEnabled,AgentCommandRecipes=AgentCommandRecipes,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
                 AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,

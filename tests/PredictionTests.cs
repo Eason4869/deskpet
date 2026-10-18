@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -91,12 +91,12 @@ namespace Dafeiyu.Tests
                 var firstInput=new MarkdownEditor();firstInput.Name="FirstInput";var firstComposer=new ConversationComposer(pet,first,firstInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),false);first.Content=firstComposer;
                 var secondInput=new MarkdownEditor();secondInput.Name="SecondInput";var secondComposer=new ConversationComposer(pet,second,secondInput,UiIcons.Button("mic","听写"),Ui.Text("",11,Ui.Muted),true,true);second.Content=secondComposer;
                 first.Show();second.Show();Pump(650);
-                Check(All<Button>(first).Any(b=>b.Name=="ConversationModePicker") && !All<Button>(second).Any(b=>b.Name=="ConversationModePicker"),"only the full composer keeps the mode switch");
-                Check(api.Calls==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="和伙伴一起工作","default-off prediction issues no request and keeps the plain placeholder");
+                Check(All<Button>(first).Any(b=>b.Name=="AgentPermissionPicker") && !All<Button>(second).Any(b=>b.Name=="AgentPermissionPicker"),"only the full work composer exposes permissions");
+                Check(api.Calls==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="想聊点什么？","default-off prediction issues no request and keeps the plain placeholder");
                 settings.ShowPredictedMessages=true;firstComposer.RefreshModels();secondComposer.RefreshModels();Pump(700);
                 Check(api.Calls==1,"two real composers debounce into one shared provider call");
                 firstInput.Text="已有草稿";api.Complete("[\"不会覆盖草稿\"]");Pump(150);
-                Check(session.Predictions.Count==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="和伙伴一起工作","draft invalidates the pending response in both windows");
+                Check(session.Predictions.Count==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="想聊点什么？","draft invalidates the pending response in both windows");
                 api.Reset();firstInput.Clear();Pump(700);
                 Check(api.Calls==2,"cleared draft permits a fresh shared request");api.Complete("[\"请给我一个具体的方案\",\"先比较两种做法\"]");Pump(150);
                 string ghost="请给我一个具体的方案";
@@ -106,7 +106,7 @@ namespace Dafeiyu.Tests
                 int calls=api.Calls,history=session.History.Messages.Count;
                 var confirm=Key(firstInput,System.Windows.Input.Key.Enter,System.Windows.Input.Keyboard.PreviewKeyDownEvent);Pump(80);
                 Check(confirm.Handled && firstInput.Text==ghost && api.Calls==calls && session.History.Messages.Count==history && pet.InputQueue.Items.Count==0,"first Enter only confirms the ghost into the draft");
-                Check(GhostText(secondInput)=="和伙伴一起工作","confirming one draft collapses the shared ghost");
+                Check(GhostText(secondInput)=="想聊点什么？","confirming one draft collapses the shared ghost");
                 var repeat=Key(firstInput,System.Windows.Input.Key.Enter,System.Windows.Input.Keyboard.PreviewKeyDownEvent);Pump(80);
                 Check(repeat.Handled && api.Calls==calls && pet.InputQueue.Items.Count==0 && session.History.Messages.Count==history,"held Enter repeats cannot send the confirmed draft");
                 Key(firstInput,System.Windows.Input.Key.Enter,System.Windows.Input.Keyboard.PreviewKeyUpEvent);Pump(40);api.Reset();
@@ -116,8 +116,11 @@ namespace Dafeiyu.Tests
                 api.Reset();Pump(700);api.Complete("[\"总结一下当前进度\"]");Pump(150);
                 Check(GhostText(firstInput)=="总结一下当前进度" && GhostVisible(firstInput),"a new completed reply generates a fresh ghost");
                 int afterGhost=api.Calls;
+                var tabAccept=Key(firstInput,System.Windows.Input.Key.Tab,System.Windows.Input.Keyboard.PreviewKeyDownEvent);Pump(80);
+                Check(tabAccept.Handled && firstInput.Text=="总结一下当前进度" && api.Calls==afterGhost,"Tab confirms the ghost without sending");
+                firstInput.Clear();api.Reset();Pump(700);api.Complete("[\"总结一下当前进度\"]");Pump(150);afterGhost=api.Calls;
                 var escape=Key(firstInput,System.Windows.Input.Key.Escape,System.Windows.Input.Keyboard.PreviewKeyDownEvent);Pump(80);
-                Check(escape.Handled && session.Predictions.Count==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="和伙伴一起工作","Escape dismisses the shared ghost in both composers");
+                Check(escape.Handled && session.Predictions.Count==0 && GhostText(firstInput)=="和伙伴一起工作" && GhostText(secondInput)=="想聊点什么？","Escape dismisses the shared ghost in both composers");
                 firstComposer.RefreshModels();secondComposer.RefreshModels();Pump(700);
                 Check(api.Calls==afterGhost && session.Predictions.Count==0,"the dismissed suggestion is not regenerated for the same reply");
                 first.Close();second.Close();first=second=null;session.Dispose();
@@ -125,7 +128,7 @@ namespace Dafeiyu.Tests
             finally{if(first!=null)first.Close();if(second!=null)second.Close();if(pet!=null)pet.Close();app.Shutdown();}
         }
         static string GhostText(MarkdownEditor input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder==null?"":placeholder.Text;}
-        static bool GhostVisible(MarkdownEditor input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder!=null && placeholder.IsVisible && placeholder.Text!="和伙伴一起工作";}
+        static bool GhostVisible(MarkdownEditor input){var placeholder=ChatUi.GetComposerPlaceholder(input);return placeholder!=null && placeholder.IsVisible && placeholder.Text!="和伙伴一起工作" && placeholder.Text!="想聊点什么？";}
         static System.Windows.Input.KeyEventArgs Key(MarkdownEditor input,System.Windows.Input.Key key,System.Windows.RoutedEvent routed)
         {var args=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,PresentationSource.FromVisual(input),Environment.TickCount,key){RoutedEvent=routed};input.RaiseEvent(args);return args;}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(System.Windows.Media.VisualTreeHelper.GetChild(root,i)))yield return item;}        static void Pump(int milliseconds)

@@ -11,7 +11,7 @@ namespace Dafeiyu
     public sealed class AgentCommandRequest
     {
         public string ExecutionId=Guid.NewGuid().ToString("N"),Command,WorkingDirectory,Shell;
-        public int TimeoutSeconds=120;public AgentToolInvocation Invocation;
+        public int TimeoutSeconds=120;public AgentToolInvocation Invocation;public bool Sandbox;public string SandboxRoot;public string[] SandboxReadDirectories;
     }
     public sealed class AgentCommandResult
     {
@@ -28,7 +28,7 @@ namespace Dafeiyu
         {
             if(request==null || request.Invocation==null)throw new ArgumentException("命令缺少归属信息。");
             // Freeze everything before the first await; process arguments come only from the approved payload.
-            var invocation=request.Invocation;int maximumTimeout=request.TimeoutSeconds;
+            var invocation=request.Invocation;int maximumTimeout=request.TimeoutSeconds;bool sandbox=request.Sandbox;string sandboxRoot=request.SandboxRoot;var readDirectories=request.SandboxReadDirectories==null?new string[0]:(string[])request.SandboxReadDirectories.Clone();
             var args=invocation.ReadArguments();object raw;
             string command=args.TryGetValue("command",out raw)?raw as string:null;
             string directory=args.TryGetValue("working_directory",out raw)?raw as string:null;
@@ -44,11 +44,12 @@ namespace Dafeiyu
             cancel.ThrowIfCancellationRequested();var started=DateTime.UtcNow;
             if(progress!=null)progress.Report(new AgentProcessEvent{ExecutionId=executionId,State="started"});
             // Explicit UTF-8 affects this process only and avoids console codepage dependence.
-            string script="$OutputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)\r\n"+command+"\r\n$deskpetCommandSucceeded = $?\r\nif ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\r\nif (-not $deskpetCommandSucceeded) { exit 1 }";
-            var process=new AgentCommand{Id=executionId,Executable=shell,Workspace=directory,Arguments=new[]{"-NoLogo","-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-EncodedCommand",Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}};
-            var result=await Task.Run(()=>WindowsCommandRunner.Run(process,timeout,cancel,true),CancellationToken.None).ConfigureAwait(false);
-            return new AgentCommandResult{ExecutionId=executionId,OutputId=executionId,ExitCode=result.ExitCode,Output=result.Output,Truncated=result.Truncated,TimedOut=result.TimedOut,Cancelled=result.Cancelled,StartedUtc=started,FinishedUtc=DateTime.UtcNow,IsolationDescription=AgentExecutionIsolation.Resolve(AgentTerminalPolicy.ConfirmEach).Description};
+            string script="$OutputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)\r\n$ProgressPreference='SilentlyContinue'\r\n"+(sandbox?SandboxBootstrap(directory):"")+command+"\r\n$deskpetCommandSucceeded = $?\r\nif ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\r\nif (-not $deskpetCommandSucceeded) { exit 1 }";
+            var process=new AgentCommand{Id=executionId,Executable=shell,Workspace=directory,Arguments=new[]{"-NoLogo","-NoProfile","-NonInteractive","-OutputFormat","Text","-ExecutionPolicy","Bypass","-EncodedCommand",Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}};
+            var result=await Task.Run(()=>sandbox?WindowsCommandRunner.RunSandboxedWithTools(process,timeout,cancel,sandboxRoot??directory,readDirectories):WindowsCommandRunner.Run(process,timeout,cancel,true),CancellationToken.None).ConfigureAwait(false);
+            return new AgentCommandResult{ExecutionId=executionId,OutputId=executionId,ExitCode=result.ExitCode,Output=result.Output,Truncated=result.Truncated,TimedOut=result.TimedOut,Cancelled=result.Cancelled,StartedUtc=started,FinishedUtc=DateTime.UtcNow,IsolationDescription=sandbox?result.IsolationDescription:AgentExecutionIsolation.Resolve(AgentTerminalPolicy.ConfirmEach).Description};
         }
         internal static string PowerShellPath(){string path=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe");if(!File.Exists(path))throw new PlatformNotSupportedException("未找到系统 PowerShell。");return path;}
+        internal static string SandboxBootstrap(string directory){return "New-PSDrive -Name workspace -PSProvider FileSystem -Root '"+directory.Replace("'","''")+"' -Scope Global | Out-Null\r\nSet-Location workspace:\\\r\n";}
     }
 }

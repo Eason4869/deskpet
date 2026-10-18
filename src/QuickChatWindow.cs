@@ -17,7 +17,7 @@ namespace Dafeiyu
         {
             pet=companion;session=workspace==null?pet.Conversation:workspace.Session;queue=workspace==null?pet.InputQueue:workspace.Queue;Icon=Ui.ApplicationIcon();Width=400;Height=Math.Min(470,Math.Max(300,SystemParameters.WorkArea.Height-24));AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=12;Foreground=Ui.Ink;SlimScrollBars.Install(this);UseLayoutRounding=true;
             var root=new Grid();root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(14)});
-            var panel=new Grid{Margin=new Thickness(18,14,18,12)};
+            var panel=new Grid{Margin=new Thickness(18,14,18,4)};
             panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var header=new DockPanel();
             close=UiIcons.Button("close","关闭快速对话");close.Name="CloseQuickChat";close.Margin=new Thickness(0);close.Click+=delegate {Close();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);

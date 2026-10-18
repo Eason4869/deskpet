@@ -35,9 +35,10 @@ namespace Dafeiyu
         {
             lock(changes){var change=changes.FirstOrDefault(c=>String.Equals(c.Path,path,StringComparison.OrdinalIgnoreCase) && c.Status!="restored");
                 if(change==null){change=new AgentChange{Path=path,BeforeHash=before,BackupPath=backup};changes.Add(change);}
-                // A file first created by the task has no backup yet; a later
-                // overwrite must fill the backup so restore stays possible.
-                else if(change.BackupPath==null && backup!=null){change.BackupPath=backup;change.BeforeHash=before;}
+                // The original baseline never moves. A backup captured after a
+                // task-created file's first write is generated output, not a
+                // pre-task original, and must not become an undo target.
+                else if(change.BackupPath==null && backup!=null && change.BeforeHash!=null && change.BeforeHash==before)change.BackupPath=backup;
                 change.AfterHash=after;change.Status="modified";
                 bool known=true;if(change.BeforeHash==null)beforeText="";else if(change.BackupPath!=null){try{byte[] original=ReadBytes(change.BackupPath,CancellationToken.None);if(ContentHash(original)!=change.BeforeHash)known=false;else beforeText=DecodeText(original);}catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is ArgumentException))throw;known=false;}}else if(change.BeforeHash!=before)known=false;
                 int? add=null,remove=null;if(known)AgentLineChanges.Count(beforeText,afterText,out add,out remove);change.AddedLines=add;change.RemovedLines=remove;

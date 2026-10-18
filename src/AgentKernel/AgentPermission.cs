@@ -8,13 +8,14 @@ namespace Dafeiyu
     public enum AgentPermissionEffect { Allow,Deny,Ask }
     public sealed class AgentPermissionRule { public string Action,Resource;public AgentPermissionEffect Effect; }
     public sealed class AgentPermissionDecision { public string Action,Resource;public AgentPermissionEffect Effect;public string Reason; }
-    public sealed class AgentApprovalRequest { public string Id,Action,Resource,Risk,PayloadHash,SessionId,ProjectId,TaskId,CallId,ToolName,Arguments; }
+    public sealed class AgentApprovalRequest { public string Id,Action,Resource,Risk,PayloadHash,SessionId,ProjectId,TaskId,CallId,ToolName,Arguments,UserIntent,IsolationDescription,ReviewReason; }
     public interface IAgentApprovalProvider { Task<bool> ApproveAsync(AgentApprovalRequest request); }
     public sealed class AgentPermissionRuntime
     {
         readonly object gate=new object();readonly List<AgentPermissionRule> rules=new List<AgentPermissionRule>();
+        internal AgentAccessPolicy AccessPolicy;
         int version;public int Version {get{lock(gate)return version;}}
-        public AgentPermissionRuntime Copy(){var copy=new AgentPermissionRuntime();lock(gate)foreach(var rule in rules)copy.Add(rule);return copy;}
+        public AgentPermissionRuntime Copy(){var copy=new AgentPermissionRuntime();copy.AccessPolicy=AccessPolicy;lock(gate)foreach(var rule in rules)copy.Add(rule);return copy;}
         public void Add(AgentPermissionRule rule){if(rule==null || String.IsNullOrWhiteSpace(rule.Action) || String.IsNullOrWhiteSpace(rule.Resource))throw new ArgumentException("权限规则不完整。");lock(gate){rules.Add(new AgentPermissionRule{Action=rule.Action,Resource=rule.Resource,Effect=rule.Effect});version++;}}
         public AgentPermissionDecision Decide(string action,string resource)
         {

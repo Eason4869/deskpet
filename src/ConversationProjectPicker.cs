@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +18,7 @@ namespace Dafeiyu
             var current=workspace;
             var row=new DockPanel{LastChildFill=true};var settings=UiIcons.Button("settings","项目工作设置");settings.Name="ConversationProjectSettings";settings.Width=settings.Height=26;settings.Padding=new Thickness(4);settings.Margin=new Thickness(0);settings.Click+=delegate{if(current.ProjectId==ProjectCatalogStore.UnassignedProjectId)pet.ShowWorkSettings();else pet.EditProject(current.Project);};DockPanel.SetDock(settings,Dock.Right);row.Children.Add(settings);
             var button=Ui.Button("");projectPickerAnchor=button;button.Name="ConversationProjectPicker";button.Background=Brushes.Transparent;button.BorderBrush=Brushes.Transparent;button.HorizontalAlignment=HorizontalAlignment.Left;button.Padding=new Thickness(5,2,7,2);button.MinHeight=26;button.IsEnabled=current.IsDraft;
-            var content=new StackPanel{Orientation=Orientation.Horizontal};var icon=UiIcons.Image("folder",AgentUi.Muted);icon.Width=icon.Height=15;icon.Margin=new Thickness(0,0,7,0);content.Children.Add(icon);content.Children.Add(Ui.Text(current.ProjectId==ProjectCatalogStore.UnassignedProjectId?(current.IsDraft?"选择项目":"无项目"):current.Project.Name,12,AgentUi.Muted));button.Content=content;row.Children.Add(button);
+            var content=new StackPanel{Orientation=Orientation.Horizontal};var icon=UiIcons.Image("folder",AgentUi.Muted);icon.Width=icon.Height=15;icon.Margin=new Thickness(0,0,7,0);icon.VerticalAlignment=VerticalAlignment.Center;content.Children.Add(icon);content.Children.Add(Ui.InlineText(current.ProjectId==ProjectCatalogStore.UnassignedProjectId?(current.IsDraft?"选择项目":"无项目"):current.Project.Name,12,AgentUi.Muted));button.Content=content;row.Children.Add(button);
             var panel=new Border{Name="ConversationProjectHeader",Child=row,Background=Ui.Brush("#F2F3F5"),CornerRadius=new CornerRadius(14,14,0,0),Padding=new Thickness(10,5,10,13),Margin=new Thickness(2,6,2,-9)};
             button.Click+=delegate{OpenProjectPicker(button,current);};composer.SetProjectHeader(panel);
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,11 +13,15 @@ namespace Dafeiyu
         readonly ProjectCatalogStore store;readonly ProjectCatalog catalog;
         readonly Action<ProjectDefinition> projectActivated;readonly Action<ProjectDefinition,ConversationDefinition> conversationActivated;
         readonly Action<ProjectDefinition> editProject,openWorkspace;readonly Action<ProjectDefinition> newConversation;readonly Action<ProjectDefinition,ConversationDefinition> renameConversation;readonly Action<ProjectDefinition> renameProject;readonly Action<ProjectDefinition> archiveProject,deleteProject,restoreProject;readonly Action<ProjectDefinition,ConversationDefinition> archiveConversation,deleteConversation,restoreConversation;readonly Func<ProjectDefinition,ProjectDefinition,ConversationDefinition,bool> moveConversation;string activeConversationId="",renderedSignature="";
-        string personaId="";
+        string personaId="";bool? workEntry;internal void SetEntry(bool work){workEntry=work;Refresh();}
+        readonly ContentControl currentTaskHost=new ContentControl{Name="CurrentProjectTaskHost",HorizontalContentAlignment=HorizontalAlignment.Stretch};bool currentTaskAvailable,activeConversationRendered;
+        internal void SetCurrentTaskShortcut(FrameworkElement shortcut,bool available){currentTaskHost.Content=shortcut;currentTaskAvailable=available;RefreshCurrentTaskShortcut();}
+        void RefreshCurrentTaskShortcut(){currentTaskHost.Visibility=currentTaskAvailable&&!activeConversationRendered&&workEntry!=false&&SectionIsExpanded("projects")?Visibility.Visible:Visibility.Collapsed;}
         internal void SetPersona(string id){personaId=id??"";}
-        bool Visible(ConversationDefinition conversation){return ProjectCatalogStore.VisibleForPet(conversation,personaId);}
+        bool Visible(ConversationDefinition conversation){return (!workEntry.HasValue||(conversation.Mode=="work")==workEntry.Value)&&ProjectCatalogStore.VisibleForPet(conversation,personaId);}
         public void SetActiveConversation(string id){activeConversationId=id??"";}
-        Popup hover=new Popup{Name="ProjectHoverDetails",Placement=PlacementMode.Right,HorizontalOffset=6,VerticalOffset=-8,StaysOpen=false,AllowsTransparency=true};ProjectDefinition hovered;
+        static Popup NewHover(){return new Popup{Name="ProjectHoverDetails",Placement=PlacementMode.Right,HorizontalOffset=6,VerticalOffset=-8,StaysOpen=false,AllowsTransparency=true};}
+        Popup hover=NewHover();ProjectDefinition hovered;
         // A short close delay keeps the details open while the pointer crosses the
         // gap between the row and the popup; without it the popup flickers.
         readonly System.Windows.Threading.DispatcherTimer hoverClose=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(180)};bool hoverPinned;bool hoverLatched;
@@ -76,12 +80,16 @@ namespace Dafeiyu
             body.Background=Brushes.White;var card=new Border{Child=body,Background=Brushes.White,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(2)};
             // Pointer over the card must count as still hovering the row, otherwise
             // moving toward the details closes and reopens them in a loop.
-            card.MouseEnter+=delegate{hoverPinned=true;hoverClose.Stop();};
-            card.MouseLeave+=delegate{hoverPinned=false;HideHover();};
+            var cardPopup=hover;card.MouseEnter+=delegate{if(!ReferenceEquals(hover,cardPopup))return;hoverPinned=true;hoverClose.Stop();};
+            card.MouseLeave+=delegate{if(!ReferenceEquals(hover,cardPopup))return;hoverPinned=false;HideHover();};
             hover.Child=card;hover.PlacementTarget=row;hover.IsOpen=true;
         }
         void HideHover(){if(hover==null || !hover.IsOpen)return;hoverClose.Stop();hoverClose.Start();}
-        void CloseHover(){hoverClose.Stop();hoverPinned=false;hoverLatched=false;hovered=null;if(hover!=null){hover.IsOpen=false;hover.Child=null;hover.PlacementTarget=null;}}
+        void CloseHover(){hoverClose.Stop();hoverPinned=false;hoverLatched=false;hovered=null;if(hover==null||hover.Child==null&&!hover.IsOpen)return;
+            // Native Popup teardown completes later. Never replace its visual child
+            // while its old HWND can still process a queued resize/layout event.
+            var retiring=hover;hover=NewHover();retiring.IsOpen=false;
+        }
         public void Dispose(){CloseHover();}
         // Suppresses the next open after a rebuild so a refresh under the cursor
         // does not immediately pop the card back up.
@@ -111,7 +119,7 @@ namespace Dafeiyu
     {
         readonly TextBox name=new TextBox{MaxLength=80,BorderThickness=new Thickness(0),Background=Brushes.Transparent};
         string workspacePath="";readonly TextBlock notice=Ui.Text("",11,AgentUi.Muted);
-        readonly TextBlock folderHint=Ui.Text("在此电脑上添加文件夹",13,AgentUi.Muted);
+        readonly TextBlock folderHint=Ui.InlineText("在此电脑上添加文件夹",13,AgentUi.Muted);
         readonly TextBlock folderPath=Ui.Text("",12,AgentUi.Muted);
         public string ProjectName {get{return name.Text.Trim();}}
         public string Workspace {get{return workspacePath.Trim();}}
@@ -148,7 +156,7 @@ namespace Dafeiyu
             folderPath.TextWrapping=TextWrapping.Wrap;folderPath.HorizontalAlignment=HorizontalAlignment.Center;folderPath.Margin=new Thickness(0,2,0,0);folderPath.Visibility=Visibility.Collapsed;dropBody.Children.Add(folderPath);
             var add=Ui.Button("");add.Name="AddProjectSourceFolder";add.Background=Ui.Brush("#F1F4F9");add.BorderBrush=Ui.Brush("#D8DEE7");add.Padding=new Thickness(13,5,13,5);add.Margin=new Thickness(0,10,0,0);add.Cursor=System.Windows.Input.Cursors.Hand;
             var addRow=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-            var addIcon=UiIcons.Image("folder",Ui.Ink);addIcon.Width=addIcon.Height=15;addIcon.Margin=new Thickness(0,0,6,0);addIcon.VerticalAlignment=VerticalAlignment.Center;addRow.Children.Add(addIcon);addRow.Children.Add(Ui.Text("添加",13,Ui.Ink));add.Content=addRow;
+            var addIcon=UiIcons.Image("folder",Ui.Ink);addIcon.Width=addIcon.Height=15;addIcon.Margin=new Thickness(0,0,6,0);addIcon.VerticalAlignment=VerticalAlignment.Center;addRow.Children.Add(addIcon);addRow.Children.Add(Ui.InlineText("添加",13,Ui.Ink));add.Content=addRow;
             add.Click+=delegate{Browse();};dropBody.Children.Add(add);if(initial!=null){var removeSource=Ui.Button("移除源文件夹");removeSource.Name="RemoveProjectSourceFolder";removeSource.Background=Brushes.Transparent;removeSource.BorderBrush=Brushes.Transparent;removeSource.FontSize=11;removeSource.Click+=delegate{workspacePath="";RefreshFolder();};dropBody.Children.Add(removeSource);}
             drop.Child=new ScrollViewer{Content=dropBody,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,VerticalContentAlignment=VerticalAlignment.Center};
             // Dropping a folder is the fastest way to point at a source directory.

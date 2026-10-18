@@ -19,6 +19,7 @@ namespace Dafeiyu
         TextBlock placeholder;string defaultPlaceholder="";
         internal Func<bool> AdditionalBlocker {get;set;}
         internal bool GhostActive{get{return ghost;}}
+        internal bool EnterHeld{get{return enterHeld;}}
         public PredictionSuggestions(PetWindow pet,ConversationSession sessionOverride,ConversationQueue queueOverride,MarkdownEditor input,Window host)
         {
             this.pet=pet;this.input=input;this.host=host;session=sessionOverride??pet.Conversation;queue=queueOverride??pet.InputQueue;

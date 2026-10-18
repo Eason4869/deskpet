@@ -188,6 +188,12 @@ namespace Dafeiyu
         }
         void CancelFetch()
         {fetchDelay.Stop();var current=fetching;string providerId=fetchingProviderId;fetching=null;fetchingProviderId=null;if(current!=null){attempted.Remove(providerId);current.Cancel();feedback.Text="获取已取消；返回此页后自动重试。";}refreshModels.IsEnabled=true;refreshModels.Content="获取模型列表";loading.Visibility=Visibility.Collapsed;}
+        void UpdateCatalogUi(Action update)
+        {
+            if(Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)return;
+            try{if(Dispatcher.CheckAccess())update();else Dispatcher.Invoke(update);}
+            catch(OperationCanceledException){if(!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)throw;}
+        }
         void ScheduleFetch()
         {
             if(kind!="text")return;
@@ -207,19 +213,21 @@ namespace Dafeiyu
             refreshModels.IsEnabled=false;refreshModels.Content="获取中…";loading.Visibility=Visibility.Visible;feedback.Foreground=Ui.Muted;feedback.Text="正在获取此服务商的模型列表…";
             try
             {
-                var capacities=new Dictionary<string,int>();var capabilityMetadata=new Dictionary<string,ModelCapabilitySetting>();IList<string> found;using(var api=new ApiClient(TimeSpan.FromSeconds(15)))found=await api.ListModelsAsync(draft,cancel.Token,capacities,capabilityMetadata);
+                var capacities=new Dictionary<string,int>();var capabilityMetadata=new Dictionary<string,ModelCapabilitySetting>();IList<string> found;using(var api=new ApiClient(TimeSpan.FromSeconds(15)))found=await api.ListModelsAsync(draft,cancel.Token,capacities,capabilityMetadata).ConfigureAwait(false);
+                UpdateCatalogUi(delegate {
                 if(cancel.IsCancellationRequested || selected!=provider || !SameCatalog(draft,CatalogDraft()) || !IsLoaded || !IsVisible)return;
                 foreach(var pair in capacities)provider.ModelContextWindows[pair.Key]=pair.Value;provider.ServerCapabilities=capabilityMetadata;provider.ApplyModelCapabilities(provider.Connection);RefreshContextDescription();RaiseChanged();
                 catalogs[provider.Id]=found;catalogConnections[provider.Id]=draft.Copy();RefreshModels();feedback.Foreground=Ui.Muted;feedback.Text=found.Count==0?"服务返回了空模型列表，可继续手动添加。":"已获取 "+found.Count+" 个模型，请点击 + 逐个添加；已配置模型与显示名称保留。";
                 var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=false;
                 if(reveal && discovered.Items.Count>0)Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(IsVisible && selected==provider)discoveryPanel.BringIntoView();}));
+                });
             }
             catch(OperationCanceledException){}
             catch(Exception e)
             {
-                if(!cancel.IsCancellationRequested && selected==provider && SameCatalog(draft,CatalogDraft())){feedback.Foreground=Ui.Brush("#AC425D");feedback.Text=(e is ApiException?e.Message:"获取模型列表失败，请检查连接配置。")+" 原列表已保留，可手动添加或点击刷新。";}
+                UpdateCatalogUi(delegate {if(!cancel.IsCancellationRequested && selected==provider && SameCatalog(draft,CatalogDraft())){feedback.Foreground=Ui.Brush("#AC425D");feedback.Text=(e is ApiException?e.Message:"获取模型列表失败，请检查连接配置。")+" 原列表已保留，可手动添加或点击刷新。";}});
             }
-            finally{if(fetching==cancel){fetching=null;fetchingProviderId=null;refreshModels.IsEnabled=true;refreshModels.Content="获取模型列表";loading.Visibility=Visibility.Collapsed;}cancel.Dispose();}
+            finally{try{UpdateCatalogUi(delegate {if(fetching==cancel){fetching=null;fetchingProviderId=null;refreshModels.IsEnabled=true;refreshModels.Content="获取模型列表";loading.Visibility=Visibility.Collapsed;}});}finally{cancel.Dispose();}}
         }
         void ValidateContextCapacity(){if(kind!="text"||contextCapacity==null||String.IsNullOrWhiteSpace(contextCapacity.Text))return;int value;if(!Int32.TryParse(contextCapacity.Text,out value)||value<1024||value>ModelContextCapacity.Maximum)throw new InvalidOperationException("模型上下文容量应为 1024–2000000 的整数，或留空自动识别。");}
         void RefreshContextField(){RefreshCapabilityFields();if(contextCapacity==null||selected==null)return;int value;contextCapacity.Text=selected.ModelContextOverrides.TryGetValue(newModel.Text.Trim(),out value)?value.ToString():"";RefreshContextDescription();}

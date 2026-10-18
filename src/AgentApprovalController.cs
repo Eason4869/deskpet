@@ -21,7 +21,8 @@ namespace Dafeiyu
                 var panel=new StackPanel{Margin=new Thickness(24)};panel.Children.Add(Ui.Text("是否允许本次操作？",20));
                 var operation=Ui.Text(request.ToolName+"\n"+request.Resource,14);operation.TextWrapping=TextWrapping.Wrap;operation.Margin=new Thickness(0,16,0,12);panel.Children.Add(operation);
                 var scope=Ui.Text("项目："+request.ProjectId+"\n任务："+request.TaskId+"\n调用："+request.CallId,11,Ui.Muted);scope.TextWrapping=TextWrapping.Wrap;panel.Children.Add(scope);
-                if(request.Action=="shell"){var isolation=Ui.Text("将在当前账户下执行。工作目录不提供文件或网络隔离；请核对命令及其可能访问的资源。",12);isolation.TextWrapping=TextWrapping.Wrap;isolation.Margin=new Thickness(0,12,0,8);panel.Children.Add(isolation);}
+                if(request.Action=="shell"){var isolation=Ui.Text(request.IsolationDescription??"将在当前账户下执行。工作目录不提供文件或网络隔离；请核对命令及其可能访问的资源。",12);isolation.TextWrapping=TextWrapping.Wrap;isolation.Margin=new Thickness(0,12,0,8);panel.Children.Add(isolation);}
+                if(!String.IsNullOrEmpty(request.ReviewReason)){var review=Ui.Text(request.ReviewReason,12,Ui.Muted);review.TextWrapping=TextWrapping.Wrap;panel.Children.Add(review);}
                 var detail=new TextBox{Name="AgentApprovalArguments",Text=request.Arguments??"",IsReadOnly=true,TextWrapping=TextWrapping.Wrap,AcceptsReturn=true,MaxHeight=220,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(0,10,0,12)};panel.Children.Add(detail);
                 var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
                 var reject=Ui.Button("拒绝");reject.Name="RejectAgentOperation";reject.Click+=delegate{result.TrySetResult(false);window.Close();};buttons.Children.Add(reject);

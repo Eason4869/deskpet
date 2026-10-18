@@ -37,6 +37,7 @@ namespace Dafeiyu
                         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                         app.DispatcherUnhandledException += delegate(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs args)
                         {
+                            RuntimeDiagnostics.Record(args.Exception);
                             MessageBox.Show("桌宠遇到了一个运行问题。可以退出后重新打开，设置仍保存在 data 文件夹。", "桌面伙伴", MessageBoxButton.OK, MessageBoxImage.Information);
                             args.Handled = true; app.Shutdown(1);
                         };
@@ -48,8 +49,9 @@ namespace Dafeiyu
                         pet.Loaded+=delegate {pet.Updates.StartAutomaticChecks();if(onboarding.ShowGuide)pet.Dispatcher.BeginInvoke(new Action(pet.ShowOnboarding));};
                         pet.Closed += delegate { app.Shutdown(); }; app.Run(pet);
                     }
-                    catch (Exception)
+                    catch (Exception error)
                     {
+                        RuntimeDiagnostics.Record(error);
                         MessageBox.Show("桌面伙伴无法启动。请将完整文件夹解压到可写入的位置，并确认 Windows 已安装 .NET Framework 4.8。", ReleaseInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     finally { mutex.ReleaseMutex(); }

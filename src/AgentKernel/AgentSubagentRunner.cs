@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -35,6 +35,8 @@ namespace Dafeiyu
         }
         async Task RunAsync(AgentSubagentState child,CancellationTokenSource cancel)
         {
+            using(UsageTracking.BeginScope("subagent"))
+            {
             Notify();IAgentConversationApi api=null;
             try{
                 cancel.Token.ThrowIfCancellationRequested();api=factory();if(api==null)throw new InvalidOperationException("子任务 worker 不可用。");
@@ -50,6 +52,8 @@ namespace Dafeiyu
             }catch(OperationCanceledException){lock(gate){results[child.Id].Status="cancelled";results[child.Id].Result="已停止";}scheduler.Interrupt(child.Id);}
             catch(Exception){bool cancelled=cancel.IsCancellationRequested;lock(gate){results[child.Id].Status=cancelled?"cancelled":"failed";results[child.Id].Result=cancelled?"已停止":"独立 worker 执行失败，未验证。";}if(cancelled)scheduler.Interrupt(child.Id);else scheduler.Fail(child.Id,"worker failed");}
             finally{var disposable=api as IDisposable;if(disposable!=null)disposable.Dispose();lock(gate){cancellations.Remove(child.Id);done[child.Id].TrySetResult(true);}cancel.Dispose();Notify();}
+
+            }
         }
         public async Task<AgentChildResult[]> WaitAsync(string[] ids,int seconds,CancellationToken cancel)
         {

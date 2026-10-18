@@ -101,7 +101,7 @@ namespace Dafeiyu.Tests
                 var cfg=new PetSettings {GreetingEnabled=false,Wander=false,AutoUpdate=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowSettings();Pump();
-                var settings=app.Windows.OfType<SettingsWindow>().Single();
+                var settings=SettingsPageFor(pet);
                 foreach(string id in new[]{"e-bao","dafeiyu","marfu"})
                 {
                     settings.SelectPage(0);Pump();((ComboBox)settings.FindControl("SkinPicker")).SelectedItem=pet.Catalog.Find(id);Pump();Equal(id,pet.Skin.Id);
@@ -128,7 +128,7 @@ namespace Dafeiyu.Tests
                     ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=3;Pump();Equal("voice-"+id+"-openai",Editable(voice).Text);Assert(settings.SaveAiConfiguration(),"restored provider save failed");
                     settings.SelectAiSection(3);Pump();Equal("voice-"+id+"-live",Editable((ComboBox)settings.FindControl("LiveVoice")).Text);
                 }
-                settings.Close();pet.ShowSettings();Pump();settings=app.Windows.OfType<SettingsWindow>().Single();settings.SelectAiSection(2);Pump();Equal("voice-marfu-openai",Editable((ComboBox)settings.FindControl("SpeechVoice")).Text);
+                settings.HostWindow.Close();pet.ShowSettings();Pump();settings=SettingsPageFor(pet);settings.SelectAiSection(2);Pump();Equal("voice-marfu-openai",Editable((ComboBox)settings.FindControl("SpeechVoice")).Text);
                 settings.SelectAiSection(3);Pump();var restored=(ComboBox)settings.FindControl("LiveVoice");Equal("voice-marfu-live",Editable(restored).Text);restored.BringIntoView();Pump();Capture(settings,Path.Combine(folder,"marfu-live-reopened.png"));
                 Console.WriteLine("Voice UI previews: "+folder);
             }
@@ -136,7 +136,8 @@ namespace Dafeiyu.Tests
         }
         private static TextBox Editable(ComboBox box){var field=box.Template.FindName("PART_EditableTextBox",box) as TextBox;Assert(box.IsEditable && field!=null && field.Visibility==Visibility.Visible,"visible editable voice part missing");return field;}
         private static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer {Interval=TimeSpan.FromMilliseconds(120)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
-        private static void Capture(Window window,string path){var bitmap=new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(window);using(var stream=File.Create(path)){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(stream);}}
+        private static SettingsPage SettingsPageFor(PetWindow pet){return (SettingsPage)typeof(PetWindow).GetField("preferences",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);}
+        private static void Capture(FrameworkElement window,string path){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(window);using(var stream=File.Create(path)){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(stream);}}
         private static IList<VoicePreset> For(string kind, string url, string model, string protocol)
         {
             return VoicePresets.For(kind, new ConnectionSettings {BaseUrl=url,Model=model,Protocol=protocol});

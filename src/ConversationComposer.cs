@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,7 +13,7 @@ namespace Dafeiyu
     {
         static readonly ControlTemplate hintTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ToolTip'><Border Background='#202329' CornerRadius='8' Padding='9,6'><ContentPresenter/></Border></ControlTemplate>");
         PredictionSuggestions predictionSuggestions;AgentChangeStatus changeStatus;
-        readonly PetWindow pet;readonly Window host;readonly MarkdownEditor input;readonly TextBlock status;ConversationQueue queue;ConversationSession session;
+        readonly PetWindow pet;readonly Window host;readonly MarkdownEditor input;readonly TextBlock status,aiNotice;ConversationQueue queue;ConversationSession session;
         readonly Button primary,options;readonly Border queueBox;readonly StackPanel rows;readonly TextBlock queueLabel;readonly Button resume;
         readonly Button modelPicker;readonly TextBlock modelLabel;readonly ContextMenu modelMenu;
         readonly Button modePicker;readonly TextBlock modeLabel;readonly Border modeIcon;
@@ -48,7 +49,7 @@ namespace Dafeiyu
             predictionSuggestions=new PredictionSuggestions(pet,sessionOverride,queueOverride,input,host){AdditionalBlocker=()=>HasEdit};Children.Add(predictionSuggestions);
             // The running task's real change count sits directly above the queue
             // rows and the input box, and collapses outside a running task.
-            changeStatus=new AgentChangeStatus(pet,host,sessionOverride);Children.Add(changeStatus);
+            if(!(host is ChatWindow)){changeStatus=new AgentChangeStatus(pet,host,sessionOverride);Children.Add(changeStatus);}
             var queueBody=new StackPanel();var heading=new DockPanel{Margin=new Thickness(10,4,7,1)};
             resume=SmallText("继续队列","ResumeQueue");resume.Foreground=Ui.Blue;resume.Click+=delegate{Try(delegate{queue.Resume();});};DockPanel.SetDock(resume,Dock.Right);heading.Children.Add(resume);
             queueLabel=Ui.Text("",10,Ui.Muted);queueLabel.VerticalAlignment=VerticalAlignment.Center;heading.Children.Add(queueLabel);queueBody.Children.Add(heading);
@@ -68,7 +69,7 @@ namespace Dafeiyu
                 if(session.IsBusy || queue.IsRunning){try{await queue.PauseAsync();}catch(Exception e){Error(e);}return;}
                 pet.ShowLiveCall(host);
             };
-            modelLabel=Ui.Text("",12,Ui.Muted);modelLabel.Name="CurrentTextModel";modelLabel.TextWrapping=TextWrapping.NoWrap;modelLabel.TextTrimming=TextTrimming.CharacterEllipsis;modelLabel.VerticalAlignment=VerticalAlignment.Center;
+            modelLabel=Ui.InlineText("",12,Ui.Muted);modelLabel.Name="CurrentTextModel";modelLabel.TextWrapping=TextWrapping.NoWrap;modelLabel.TextTrimming=TextTrimming.CharacterEllipsis;modelLabel.VerticalAlignment=VerticalAlignment.Center;
             var modelContent=new DockPanel();var arrow=UiIcons.Image("down",Ui.Muted);arrow.Width=arrow.Height=12;arrow.Margin=new Thickness(7,0,0,0);arrow.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(arrow,Dock.Right);modelContent.Children.Add(arrow);modelContent.Children.Add(modelLabel);
             modelPicker=Ui.Button("");modelPicker.Name="TextModelPicker";modelPicker.Content=modelContent;modelPicker.MinHeight=32;modelPicker.MinWidth=0;modelPicker.MaxWidth=280;modelPicker.Padding=new Thickness(7,3,7,3);modelPicker.Margin=new Thickness(0,0,6,0);modelPicker.Background=Brushes.Transparent;modelPicker.BorderBrush=Brushes.Transparent;modelPicker.HorizontalAlignment=HorizontalAlignment.Right;
             modelPicker.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='9' Padding='{TemplateBinding Padding}'><ContentPresenter HorizontalAlignment='Stretch' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
@@ -79,29 +80,33 @@ namespace Dafeiyu
             // the composer body with a real microphone waveform and explicit controls.
             addAttachment=UiIcons.Button("plus","添加文件或图片");addAttachment.Name="AddAttachment";addAttachment.Width=addAttachment.Height=addAttachment.MinHeight=32;addAttachment.Padding=new Thickness(5);addAttachment.Margin=new Thickness(0);addAttachment.Content=new TextBlock{Text="+",FontSize=23,Foreground=Ui.Ink,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
             addAttachment.Click+=delegate{OpenAddMenu();};Hint(addAttachment,"添加文件等内容");
-            // Quick chat is conversation-only, so its switch and Tab shortcut
-            // are removed; the full composer keeps both.
+            // Quick chat always uses personal conversation settings. Permissions
+            // belong to the full work entry; Tab only accepts predictions.
             if(!conversationOnly)
             {
-                modeLabel=Ui.Text("",12,Ui.Muted);modeLabel.VerticalAlignment=VerticalAlignment.Center;modeLabel.RenderTransform=new TranslateTransform(0,4);
-                var modeContent=new StackPanel{Orientation=Orientation.Horizontal,RenderTransform=new TranslateTransform(-4,0)};modeIcon=new Border{Name="ConversationModeGlyph",Width=13,Height=13,Margin=new Thickness(0,0,5,0),VerticalAlignment=VerticalAlignment.Center};modeContent.Children.Add(modeIcon);modeContent.Children.Add(modeLabel);
-                modePicker=SmallText("","ConversationModePicker");modePicker.Content=modeContent;modePicker.Width=100;modePicker.Height=32;modePicker.MinHeight=32;modePicker.Padding=new Thickness(5,3,5,3);modePicker.HorizontalAlignment=HorizontalAlignment.Left;modePicker.VerticalAlignment=VerticalAlignment.Center;modePicker.Click+=delegate{OpenModes();};Hint(modePicker,"Tab 切换对话／工作模式，从下一次请求生效");
+                modeLabel=Ui.Text("",13,Ui.Muted);modeLabel.Name="AgentPermissionLabel";modeLabel.Height=18;modeLabel.LineHeight=18;modeLabel.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;modeLabel.VerticalAlignment=VerticalAlignment.Center;
+                var modeContent=new StackPanel{Orientation=Orientation.Horizontal};modeIcon=new Border{Name="ConversationModeGlyph",Width=16,Height=18,Margin=new Thickness(0,0,6,0),VerticalAlignment=VerticalAlignment.Center};modeContent.Children.Add(modeIcon);modeContent.Children.Add(modeLabel);
+                modePicker=SmallText("","AgentPermissionPicker");modePicker.Content=modeContent;modePicker.Width=118;modePicker.Height=32;modePicker.MinHeight=32;modePicker.Padding=new Thickness(5,3,5,3);modePicker.HorizontalAlignment=HorizontalAlignment.Left;modePicker.VerticalAlignment=VerticalAlignment.Center;modePicker.Click+=delegate{OpenPermissions();};Hint(modePicker,"更改权限");
             }
             attachmentArea=new ScrollViewer{Content=attachmentChips,MaxHeight=compact?124:146,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Visibility=Visibility.Collapsed};
             var modelControls=CreateContextControls();
             var leading=new Grid{MinWidth=0};leading.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(36)});leading.Children.Add(addAttachment);
             if(conversationOnly){leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modelControls,1);leading.Children.Add(modelControls);}
-            else{leading.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(100)});leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modePicker,1);leading.Children.Add(modePicker);Grid.SetColumn(modelControls,2);leading.Children.Add(modelControls);}
+            else{leading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});leading.ColumnDefinitions.Add(new ColumnDefinition{MinWidth=0});Grid.SetColumn(modePicker,1);leading.Children.Add(modePicker);Grid.SetColumn(modelControls,2);leading.Children.Add(modelControls);}
             modelPicker.HorizontalAlignment=HorizontalAlignment.Right;modelPicker.VerticalAlignment=VerticalAlignment.Center;modelPicker.Margin=new Thickness(0,0,2,0);modelPicker.RenderTransform=new TranslateTransform(0,4);
             record.Padding=new Thickness(5);primary.Padding=new Thickness(0);options.Padding=new Thickness(1);
-            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);Children.Add(normalSurface);
+            normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);if(conversationOnly)ChatUi.GetComposerPlaceholder(input).Text="想聊点什么？";Children.Add(normalSurface);
             var recordingBody=new StackPanel();var recordingLabel=Ui.Text("正在听写…",12,Ui.Muted);recordingLabel.MinHeight=48;recordingLabel.Padding=new Thickness(4,6,4,6);recordingBody.Children.Add(recordingLabel);var recordingControls=new DockPanel{Margin=new Thickness(2,8,2,0)};
             stopDictation=UiIcons.Button("stop-solid","停止听写");stopDictation.Name="StopDictation";stopDictation.Width=32;stopDictation.Height=32;stopDictation.MinHeight=32;stopDictation.Content=UiIcons.Image("stop-solid",Ui.Brush("#202329"));stopDictation.Margin=new Thickness(0,0,5,0);stopDictation.Click+=async delegate{await FinishDictation(false);};
             finishDictation=ChatUi.Action("send","发送听写");finishDictation.Name="FinishDictation";finishDictation.Width=finishDictation.Height=finishDictation.MinHeight=32;finishDictation.Background=Ui.Brush("#202329");finishDictation.BorderBrush=finishDictation.Background;finishDictation.Content=UiIcons.Image("send",Brushes.White);finishDictation.Click+=async delegate{await FinishDictation(true);};DockPanel.SetDock(finishDictation,Dock.Right);recordingControls.Children.Add(finishDictation);
             DockPanel.SetDock(stopDictation,Dock.Right);recordingControls.Children.Add(stopDictation);
             waveform=new DictationWaveform{Height=32};recordingControls.Children.Add(waveform);recordingBody.Children.Add(recordingControls);
             recordingSurface=new Border{Child=recordingBody,Background=Brushes.White,BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(22),Padding=new Thickness(8),Visibility=Visibility.Collapsed};Children.Add(recordingSurface);
-            status.Margin=new Thickness(3,7,3,0);status.MinHeight=16;status.MaxHeight=38;Children.Add(status);
+            var footer=new Grid{Name="ComposerFooter",Margin=new Thickness(3,3,3,0)};footer.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});footer.ColumnDefinitions.Add(new ColumnDefinition());
+            status.Margin=new Thickness(0);status.MinHeight=0;status.MaxHeight=28;status.TextWrapping=TextWrapping.NoWrap;status.TextTrimming=TextTrimming.CharacterEllipsis;status.VerticalAlignment=VerticalAlignment.Center;footer.Children.Add(status);
+            status.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=status});
+            aiNotice=Ui.Text("",10,Ui.Brush("#969BA2"));aiNotice.Name="AiAccuracyNotice";aiNotice.TextAlignment=TextAlignment.Right;aiNotice.TextWrapping=TextWrapping.NoWrap;aiNotice.TextTrimming=TextTrimming.CharacterEllipsis;aiNotice.LineHeight=12;aiNotice.Margin=new Thickness(8,0,0,0);aiNotice.VerticalAlignment=VerticalAlignment.Center;aiNotice.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=aiNotice});Grid.SetColumn(aiNotice,1);if(!conversationOnly)footer.Children.Add(aiNotice);Children.Add(footer);
+            footer.SizeChanged+=delegate{status.MaxWidth=Math.Max(80,footer.ActualWidth*(conversationOnly?1:.4));};
             Hint(record,"听写");Hint(stopDictation,"停止听写");Hint(finishDictation,"发送听写");record.Click+=delegate{Try(delegate{dictation.Start(this);recordingTime.Restart();waveform.Clear();});};
             meter.Tick+=async delegate{if(!dictation.Owns(this)){meter.Stop();return;}waveform.Push(dictation.InputLevel);if(dictation.Stage==DictationStage.Recording && recordingTime.Elapsed.TotalSeconds>=60)await FinishDictation(false);};
             host.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape && dictation.Owns(this)){e.Handled=true;try{await dictation.CancelAsync(this);}catch(Exception error){Error(error);}}};
@@ -112,8 +117,11 @@ namespace Dafeiyu
             input.LostKeyboardFocus+=delegate{CloseTrigger();};input.SelectionChanged+=delegate{RefreshTrigger();};input.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e)
             {
                 if(HandleTriggerKey(e))return;
-                if(!conversationOnly && e.Key==Key.Tab && Keyboard.Modifiers==ModifierKeys.None){e.Handled=true;SetMode(!pet.Settings.AgentEnabled);return;}
-                if(e.Key!=Key.Enter || input.IsComposing || (Keyboard.Modifiers&ModifierKeys.Shift)!=0)return;bool control=(Keyboard.Modifiers&ModifierKeys.Control)!=0;if(!pet.Settings.SendOnEnter && !control)return;e.Handled=true;
+                if(e.Key==Key.Tab && Keyboard.Modifiers==ModifierKeys.None && !input.IsComposing && predictionSuggestions!=null && predictionSuggestions.TryAcceptGhost()){e.Handled=true;return;}
+                if(e.Key!=Key.Enter || input.IsComposing || (Keyboard.Modifiers&ModifierKeys.Shift)!=0)return;bool control=(Keyboard.Modifiers&ModifierKeys.Control)!=0;
+                if(!control&&predictionSuggestions!=null&&predictionSuggestions.GhostActive){e.Handled=true;if(predictionSuggestions.AllowEnter())predictionSuggestions.TryAcceptGhost();return;}
+                if(predictionSuggestions!=null&&predictionSuggestions.EnterHeld){e.Handled=true;return;}
+                if(!pet.Settings.SendOnEnter && !control)return;e.Handled=true;
                 if(predictionSuggestions!=null && !predictionSuggestions.AllowEnter())return;
                 // Only a plain Enter confirms the ghost; Ctrl+Enter keeps its
                 // dedicated steer / stop-and-send meaning.
@@ -151,10 +159,11 @@ namespace Dafeiyu
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
-            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);changeStatus.Rebind(nextSession);RefreshModels();Refresh();
+            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RefreshModels();Refresh();
         }
         public void RefreshModels()
         {
+            aiNotice.Text=pet.Skin.Name+"是人工智能，有时会出错。请仔细核对回答。";
             if(predictionSuggestions!=null)predictionSuggestions.RefreshState();
             input.PlainTextMode=pet.Settings.PlainTextEditor;input.ToolTip=ChatUi.SendHint(pet.Settings)+" · 运行中 Ctrl + Enter 执行相反跟进方式";if(status.Text.StartsWith("Enter 发送") || status.Text.StartsWith("Ctrl + Enter 发送"))status.Text=ChatUi.SendHint(pet.Settings);RefreshAction();
             RefreshContextUsage();pet.Settings.EnsureTextProviders();var provider=pet.Settings.TextProviders.FirstOrDefault(p=>p.Id==pet.Settings.ActiveTextProviderId);
@@ -165,14 +174,12 @@ namespace Dafeiyu
         }
         void RefreshMode()
         {
-            bool work=pet.ConversationSettings(session).AgentEnabled;if(modeLabel!=null)modeLabel.Text=work?"工作模式":"对话模式";
-            if(modeIcon!=null){var image=UiIcons.Image(work?"edit":"chat",Ui.Muted);image.Width=image.Height=13;modeIcon.Child=image;modeIcon.Tag=work?"work":"chat";}
-        }
-        void SetMode(bool work){if(conversationOnly || pet.IsUpdating || pet.LiveActive)return;var chatHost=host as ChatWindow;if(chatHost!=null)chatHost.ChangeConversationMode(work);pet.Settings.AgentEnabled=work;pet.SaveSettings();pet.RefreshChatAppearance();RefreshMode();}
-        void OpenModes()
-        {
-            var menu=ChatUi.Menu();var chat=new MenuItem{Name="SelectConversationMode",Header=AddMenuLabel("对话模式","仅聊天，不调用任何 Agent 工具"),Icon=UiIcons.Image("chat",Ui.Muted),IsCheckable=true,IsChecked=!pet.ConversationSettings(session).AgentEnabled};chat.Click+=delegate{SetMode(false);};menu.Items.Add(chat);
-            var work=new MenuItem{Name="SelectWorkingMode",Header=AddMenuLabel("工作模式","按工作设置使用文件和目录工具"),Icon=UiIcons.Image("edit",Ui.Muted),IsCheckable=true,IsChecked=pet.ConversationSettings(session).AgentEnabled};work.Click+=delegate{SetMode(true);};menu.Items.Add(work);modePicker.ContextMenu=menu;menu.PlacementTarget=modePicker;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.IsOpen=true;
+            var cfg=WorkSettings;bool work=cfg.AgentEnabled;var shownMode=AgentAccessPolicy.DisplayMode(cfg);
+            if(modeLabel!=null)modeLabel.Text=AgentAccessPolicy.Label(cfg).Split('·')[0].Trim();
+            var color=shownMode==AgentApprovalMode.Full?Ui.Brush("#F36C21"):AgentUi.Muted;
+            if(modeLabel!=null){modeLabel.Foreground=color;modeLabel.RenderTransform=null;}
+            if(modeIcon!=null){modeIcon.Child=PermissionGlyph(shownMode,color);modeIcon.Tag="permissions";}
+            if(modePicker!=null){modePicker.Width=Double.NaN;modePicker.MaxWidth=170;modePicker.Padding=new Thickness(6,0,8,0);modePicker.Margin=new Thickness(0,0,8,0);modePicker.Background=Brushes.Transparent;modePicker.BorderBrush=Brushes.Transparent;modePicker.Visibility=work?Visibility.Visible:Visibility.Collapsed;Hint(modePicker,"更改权限");System.Windows.Automation.AutomationProperties.SetName(modePicker,"更改权限，"+AgentAccessPolicy.Label(cfg));}
         }
         void OpenModels()
         {
@@ -199,6 +206,7 @@ namespace Dafeiyu
         async void Submit(bool opposite=false)
         {
             if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;
+            if(TryExecutePermissionCommand(input.Text)){input.Clear();return;}
             if(session.IsBusy && !opposite && pet.Settings.FollowUpBehavior=="steer"){await InterruptDraft();return;}
             Try(delegate{Action rollback=PrepareSubmission==null?null:PrepareSubmission();try{queue.Enqueue(input.Text,Attachments,conversationOnly);}catch{if(rollback!=null)rollback();throw;}if(Submitted!=null)Submitted();Attachments.Clear();RefreshAttachments();input.Clear();input.Focus();});
         }
@@ -211,6 +219,7 @@ namespace Dafeiyu
             var menu=ChatUi.Menu();menu.Items.Add(new MenuItem{Header="添加",IsEnabled=false,Foreground=Ui.Muted});
             var files=new MenuItem{Header="文件和文件夹",Name="AddFilesAndFolders",Icon=UiIcons.Image("attachment",Ui.Muted)};
             files.Click+=async delegate{await PickAttachments();};menu.Items.Add(files);
+            var fullChat=host as ChatWindow;if(!conversationOnly&&fullChat!=null){var terminal=new MenuItem{Header="打开终端",Name="OpenTerminal",Icon=UiIcons.Image("terminal",Ui.Muted)};terminal.Click+=delegate{fullChat.OpenTerminal();};menu.Items.Add(terminal);}
             var target=SnapshotTargetProvider();
             var snapshots=new MenuItem{Header=target==null?"附加应用快照":"附加 "+target.AppName,Name="AddApplicationSnapshot",Icon=UiIcons.Image("snapshot",Ui.Muted),IsEnabled=target!=null,ToolTip=target==null?"没有可附加的应用窗口":target.Title};
             if(target!=null){snapshots.Icon=SnapshotIcon(target);snapshots.Click+=async delegate{await CaptureApplication(target);};}menu.Items.Add(snapshots);
@@ -222,7 +231,7 @@ namespace Dafeiyu
             addAttachment.ContextMenu=menu;menu.PlacementTarget=addAttachment;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.IsOpen=true;
         }
         static FrameworkElement AddMenuLabel(string title,string description)
-        {var row=new StackPanel{Orientation=Orientation.Horizontal};row.Children.Add(Ui.Text(title,13));var hint=Ui.Text(description.Replace("\r"," ").Replace("\n"," "),12,Ui.Brush("#A0A4AB"));hint.MaxWidth=210;hint.TextWrapping=TextWrapping.NoWrap;hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.Margin=new Thickness(9,0,0,0);row.Children.Add(hint);return row;}
+        {var row=new StackPanel{Orientation=Orientation.Horizontal};row.Children.Add(Ui.InlineText(title,13));var hint=Ui.InlineText(description.Replace("\r"," ").Replace("\n"," "),12,Ui.Brush("#A0A4AB"));hint.MaxWidth=210;hint.TextWrapping=TextWrapping.NoWrap;hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.Margin=new Thickness(9,0,0,0);row.Children.Add(hint);return row;}
         static FrameworkElement SnapshotIcon(ApplicationSnapshotTarget target)
         {
             if(target.IconPng!=null)try
@@ -261,32 +270,33 @@ namespace Dafeiyu
         internal async System.Threading.Tasks.Task AddPathsAsync(string[] paths)
         {
             if(!CanAdd())return;string draftKey=AttachmentKey;loadingAttachments=true;RefreshAction();
+            System.Collections.Generic.List<ChatAttachment> files=null;Exception failure=null;
             try
             {
-                if(paths==null || paths.Length==0)return;
-                if(paths.Length+Attachments.Count>4)throw new ApiException("最多添加 4 个附件。");
-                var files=await System.Threading.Tasks.Task.Run(()=>paths.Select(path=>
+                if(paths!=null&&paths.Length>0){if(paths.Length+Attachments.Count>4)throw new ApiException("最多添加 4 个附件。");files=await System.Threading.Tasks.Task.Run(()=>paths.Select(path=>
                 {
                     if(!System.IO.Directory.Exists(path))return ChatAttachment.Read(path);
                     string full=System.IO.Path.GetFullPath(path);string name=System.IO.Path.GetFileName(full.TrimEnd('\\','/'));if(String.IsNullOrEmpty(name))name="文件夹";
                     return ChatAttachment.FromText(name+"-文件夹.txt","附加文件夹："+full+"\n按用户要求读取需要的文件。此附件不会改变工作设置中的目录或权限。");
-                }).ToList());
-                if(!closed && AttachmentKey==draftKey)AddAttachments(files);
+                }).ToList());}
             }
-            catch(Exception e){if(e is System.IO.IOException || e is UnauthorizedAccessException || e is System.IO.InvalidDataException || e is System.Xml.XmlException)status.Text="无法读取附件，请检查文件格式、占用及访问权限。";else Error(e);}
-            finally{loadingAttachments=false;if(!closed)RefreshAction();}
+            catch(Exception error){failure=error;}
+            await Dispatcher.InvokeAsync(new Action(delegate
+            {
+                try{if(!closed){if(failure!=null){if(failure is System.IO.IOException||failure is UnauthorizedAccessException||failure is System.IO.InvalidDataException||failure is System.Xml.XmlException)status.Text="无法读取附件，请检查文件格式、占用及访问权限。";else Error(failure);}else if(files!=null&&AttachmentKey==draftKey)AddAttachments(files);}}
+                finally{loadingAttachments=false;if(!closed)RefreshAction();}
+            }));
         }
         async System.Threading.Tasks.Task AddBitmapAsync(System.Windows.Media.Imaging.BitmapSource source,string prefix)
         {
-            if(!CanAdd())return;string draftKey=AttachmentKey;loadingAttachments=true;RefreshAction();
-            try
+            if(!CanAdd())return;string draftKey=AttachmentKey;loadingAttachments=true;RefreshAction();byte[] png=null;Exception failure=null;
+            try{var bitmap=source.Clone();bitmap.Freeze();png=await System.Threading.Tasks.Task.Run(delegate{var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using(var memory=new System.IO.MemoryStream()){encoder.Save(memory);return memory.ToArray();}});}
+            catch(Exception error){failure=error;}
+            await Dispatcher.InvokeAsync(new Action(delegate
             {
-                var bitmap=source.Clone();bitmap.Freeze();
-                byte[] png=await System.Threading.Tasks.Task.Run(delegate{var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using(var memory=new System.IO.MemoryStream()){encoder.Save(memory);return memory.ToArray();}});
-                if(!closed && AttachmentKey==draftKey)AddAttachments(new[]{ChatAttachment.CreateImage(prefix+DateTime.Now.ToString("HHmmssfff")+".png",png)});
-            }
-            catch(Exception e){if(e is ApiException)Error(e);else status.Text="无法添加这张图片，请通过 + 选择图片文件重试。";}
-            finally{loadingAttachments=false;if(!closed)RefreshAction();}
+                try{if(!closed){if(failure!=null){if(failure is ApiException)Error(failure);else status.Text="无法添加这张图片，请通过 + 选择图片文件重试。";}else if(AttachmentKey==draftKey)AddAttachments(new[]{ChatAttachment.CreateImage(prefix+DateTime.Now.ToString("HHmmssfff")+".png",png)});}}
+                finally{loadingAttachments=false;if(!closed)RefreshAction();}
+            }));
         }
         void RefreshAttachments()
         {
@@ -355,8 +365,8 @@ namespace Dafeiyu
                 var row=new Grid{Name="ComposerCommand",Cursor=item.Action==null?Cursors.Arrow:Cursors.Hand,MinHeight=28,IsEnabled=item.Action!=null};
                 row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(24)});row.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});row.ColumnDefinitions.Add(new ColumnDefinition());
                 var icon=UiIcons.Image(item.Icon??"chat",AgentUi.Muted);icon.Width=icon.Height=15;icon.VerticalAlignment=VerticalAlignment.Center;row.Children.Add(icon);
-                var title=Ui.Text(item.Title??"",12,item.Action==null?Ui.Brush("#BABDC2"):AgentUi.Ink);title.MaxWidth=150;title.TextTrimming=TextTrimming.CharacterEllipsis;title.VerticalAlignment=VerticalAlignment.Center;title.Margin=new Thickness(2,0,10,0);Grid.SetColumn(title,1);row.Children.Add(title);
-                var hint=Ui.Text(item.Hint??"",11,Ui.Brush("#A0A4AB"));hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(hint,2);row.Children.Add(hint);
+                var title=Ui.InlineText(item.Title??"",12,item.Action==null?Ui.Brush("#BABDC2"):AgentUi.Ink);title.MaxWidth=150;title.TextTrimming=TextTrimming.CharacterEllipsis;title.VerticalAlignment=VerticalAlignment.Center;title.Margin=new Thickness(2,0,10,0);Grid.SetColumn(title,1);row.Children.Add(title);
+                var hint=Ui.InlineText(item.Hint??"",11,Ui.Brush("#A0A4AB"));hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(hint,2);row.Children.Add(hint);
                 var captured=item;int index=i;
                 // Only the highlight moves: rebuilding the list here would yank the
                 // row from under the pointer and make the menu flicker.
@@ -418,8 +428,7 @@ namespace Dafeiyu
             triggerItems.Add(new TriggerItem{Title="新对话",Hint="开启空白对话",Icon="chat",Action=delegate{pet.NewActiveConversation();}});
             if(!conversationOnly)
             {
-                triggerItems.Add(new TriggerItem{Title="对话模式",Hint="仅聊天，不调用任何 Agent 工具",Icon="chat",Action=delegate{SetMode(false);}});
-                triggerItems.Add(new TriggerItem{Title="工作模式",Hint="按工作设置使用文件和目录工具",Icon="edit",Action=delegate{SetMode(true);}});
+                if(WorkSettings.AgentEnabled){triggerItems.Add(new TriggerItem{Title="permissions 权限",Hint="更改当前会话的审批模式",Icon="target",Action=OpenPermissions});triggerItems.Add(new TriggerItem{Title="sandbox 沙箱",Hint="查看当前工作区隔离状态",Icon="target",Action=delegate{status.Text=AgentAccessPolicy.Label(WorkSettings);}});}
                 if(WorkSettings.AgentEnabled)
                 {
                     triggerItems.Add(new TriggerItem{Title="计划模式",Hint=WorkSettings.AgentPlanMode?"关闭计划模式":"只分析、读取并提出计划",Icon="target",Action=delegate{SetPlanMode(!WorkSettings.AgentPlanMode);}});
@@ -427,15 +436,15 @@ namespace Dafeiyu
                 }
             }
             var cfg=WorkSettings;
-            if(!conversationOnly&&cfg.AgentEnabled&&cfg.AgentTrustProjectInstructions&&AgentCapabilityResolver.Resolve(cfg,null).SupportsTools)
+            if(!conversationOnly&&cfg.AgentEnabled&&AgentCapabilityResolver.Resolve(cfg,null).SupportsTools)
             {
-                try{var catalog=new AgentSkills(new[]{System.IO.Path.Combine(cfg.AgentWorkspace,".agents","skills"),cfg.AgentSkillsDirectory});foreach(var entry in catalog.Catalog){var name=entry.Name;triggerItems.Add(new TriggerItem{Group="技能",Title=name,Hint=entry.Description,Icon="file",Action=delegate{input.Text="请使用 load_skill 加载技能 "+name+"，按该技能协助完成：";input.CaretIndex=input.Text.Length;input.Focus();}});}}
+                try{var projectDirectories=cfg.AgentTrustProjectInstructions?new[]{System.IO.Path.Combine(cfg.AgentWorkspace,".agents","skills"),cfg.AgentSkillsDirectory}:new string[0];IEnumerable<AgentSkillInfo> installedSkills=null;if(!String.IsNullOrWhiteSpace(ManagedSkillLibrary.ActiveDirectory))installedSkills=new ManagedSkillLibrary(ManagedSkillLibrary.ActiveDirectory).List().Where(skill=>skill.Enabled).Select(skill=>new AgentSkillInfo{Name=skill.Name,Description=skill.Description,Directory=skill.Directory});var catalog=new AgentSkills(projectDirectories,installedSkills);foreach(var entry in catalog.Catalog){var name=entry.Name;triggerItems.Add(new TriggerItem{Group="技能",Title=name,Hint=entry.Description,Icon="file",Action=delegate{input.Text="请使用 load_skill 加载技能 "+name+"，按该技能协助完成：";input.CaretIndex=input.Text.Length;input.Focus();}});}}
                 catch(Exception e){status.Text="技能目录未能加载："+e.Message;}
             }
             triggerItems.Add(new TriggerItem{Title="模型",Hint="选择文字模型",Icon="settings",Action=OpenModels});
             triggerItems.Add(new TriggerItem{Title="听写",Hint="语音输入一段文字",Icon="mic",Action=delegate{Try(delegate{dictation.Start(this);recordingTime.Restart();waveform.Clear();});}});
             triggerItems.Add(new TriggerItem{Group="记录",Title="清空记录",Hint="清空当前聊天记录",Icon="trash",Action=delegate{Try(delegate{session.Clear();status.Text="已清空当前会话。";});}});
-            triggerItems.Add(new TriggerItem{Group="记录",Title="导出记录",Hint="导出当前对话为 Markdown",Icon="file",Action=delegate{status.Text="请从完整对话窗口的“导出记录”按钮导出。";}});
+            triggerItems.Add(new TriggerItem{Group="记录",Title="导出记录",Hint="导出当前对话为 Markdown",Icon="file",Action=delegate{status.Text="请从顶栏“文件 → 导出当前会话”导出。";}});
             triggerItems.Add(new TriggerItem{Title="设置",Hint="打开设置与模型配置",Icon="settings",Action=delegate{pet.ShowSettings(true);}});
         }
         internal void Detach()
@@ -484,9 +493,9 @@ namespace Dafeiyu
                     var dots=new System.Windows.Controls.Primitives.UniformGrid{Rows=3,Columns=2,Width=8,Height=12};for(int dot=0;dot<6;dot++)dots.Children.Add(new System.Windows.Shapes.Ellipse{Width=2,Height=2,Fill=Ui.Muted});grip.Content=dots;leading.Children.Add(grip);
                     var queueArrow=UiIcons.Image("queue",Ui.Muted);queueArrow.Name="QueueMessageIcon";queueArrow.Width=queueArrow.Height=13;queueArrow.VerticalAlignment=VerticalAlignment.Center;queueArrow.Margin=new Thickness(1,0,2,0);leading.Children.Add(queueArrow);
                     row.MouseEnter+=delegate{grip.Opacity=1;};row.MouseLeave+=delegate{if(!grip.IsKeyboardFocusWithin && !grip.IsMouseCaptured)grip.Opacity=0;};grip.GotKeyboardFocus+=delegate{grip.Opacity=1;};grip.LostKeyboardFocus+=delegate{if(!row.IsMouseOver)grip.Opacity=0;};reorder.Attach(grip,row);
-                    var text=Ui.Text((item.IsGuidance?"引导待重试 · ":"")+item.Text.Replace("\r"," ").Replace("\n"," "),12);text.TextWrapping=TextWrapping.NoWrap;text.TextTrimming=TextTrimming.CharacterEllipsis;text.VerticalAlignment=VerticalAlignment.Center;text.Margin=new Thickness(2,0,5,0);text.ToolTip=(item.IsGuidance?"当前操作结束后接入\n":"")+item.Text;Grid.SetColumn(text,1);row.Children.Add(text);
+                    var text=Ui.InlineText((item.IsGuidance?"引导待重试 · ":"")+item.Text.Replace("\r"," ").Replace("\n"," "),12);text.TextWrapping=TextWrapping.NoWrap;text.TextTrimming=TextTrimming.CharacterEllipsis;text.VerticalAlignment=VerticalAlignment.Center;text.Margin=new Thickness(2,0,5,0);text.ToolTip=(item.IsGuidance?"当前操作结束后接入\n":"")+item.Text;Grid.SetColumn(text,1);row.Children.Add(text);
                     var tools=new StackPanel{Orientation=Orientation.Horizontal};Grid.SetColumn(tools,2);row.Children.Add(tools);
-                    var guide=SmallText("引导","GuideQueuedMessage");var guideLabel=new StackPanel{Orientation=Orientation.Horizontal};var guideArrow=UiIcons.Image("steer",Ui.Muted);guideArrow.Width=guideArrow.Height=12;guideArrow.Margin=new Thickness(0,0,3,0);guideArrow.VerticalAlignment=VerticalAlignment.Center;guideLabel.Children.Add(guideArrow);guideLabel.Children.Add(Ui.Text("引导",11,Ui.Muted));guide.Content=guideLabel;guide.ToolTip="提交，但不中断模型运行";guide.Click+=async delegate{try{await queue.SteerAsync(captured.Text,captured.Id);}catch(Exception e){Error(e);}};tools.Children.Add(guide);
+                    var guide=SmallText("引导","GuideQueuedMessage");var guideLabel=new StackPanel{Orientation=Orientation.Horizontal};var guideArrow=UiIcons.Image("steer",Ui.Muted);guideArrow.Width=guideArrow.Height=12;guideArrow.Margin=new Thickness(0,0,3,0);guideArrow.VerticalAlignment=VerticalAlignment.Center;guideLabel.Children.Add(guideArrow);guideLabel.Children.Add(Ui.InlineText("引导",11,Ui.Muted));guide.Content=guideLabel;guide.ToolTip="提交，但不中断模型运行";guide.Click+=async delegate{try{await queue.SteerAsync(captured.Text,captured.Id);}catch(Exception e){Error(e);}};tools.Children.Add(guide);
                     var remove=SmallIcon("trash","删除排队消息","RemoveQueuedMessage");remove.Click+=delegate{Try(()=>queue.Remove(captured.Id));};tools.Children.Add(remove);
                     var edit=SmallIcon("edit","编辑消息","EditQueuedMessage");edit.Click+=delegate{resumeAfterEdit=!queue.IsPaused;editRevision=queue.PauseRevision;editingId=captured.Id;queue.Hold();Refresh();if(editor!=null){editor.Focus();editor.SelectAll();}};tools.Children.Add(edit);
                 }

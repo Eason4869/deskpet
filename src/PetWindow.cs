@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -40,8 +40,8 @@ namespace Dafeiyu
         private readonly Random random=new Random();
         private readonly Forms.NotifyIcon tray;
         private readonly System.Drawing.Icon trayIcon;
-        private readonly Forms.ContextMenuStrip trayMenu;
-        private SettingsWindow preferences;
+        private readonly TrayContextMenu trayMenu;
+        private SettingsPage preferences;
         private OnboardingWindow guide;
         string guideInteraction="";bool guidePaused,guideWheelOpened;
         GuideFocusScope guideMenuScope;
@@ -102,7 +102,7 @@ namespace Dafeiyu
         public bool CanApplyUpdate(bool manual)
         {
             return !closing && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
-                (chat==null || (!chat.HasDraft && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
+                (chat==null || (!chat.HasDraft && !chat.HasUnsavedMcpEdits && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
                 (preferences==null || (!preferences.HasUnsavedEdits && (manual || !preferences.IsVisible))) && (guide==null || !guide.IsVisible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen();
         }
         public async Task PrepareUpdateAsync()
@@ -118,14 +118,14 @@ namespace Dafeiyu
 
         private readonly VisibilityPolicy visibility=new VisibilityPolicy();
         private HotkeyRegistry hotkeys;
-        private Forms.ToolStripMenuItem quietItem,clickThroughItem;
+        private MenuItem quietItem,clickThroughItem;
         private bool exitPrepared;
         public string HotkeyWarning {get;private set;}
         public bool UserVisible {get{return visibility.UserVisible;}}
         public bool AutoHidden {get{return visibility.AutoHidden;}}
         private bool petDisplayed=true;
         public bool IsPetVisible {get{return IsVisible && petDisplayed;}}
-        private Forms.ToolStripMenuItem visibilityItem;
+        private MenuItem visibilityItem;
         private IntPtr handle;
         private bool dragging,moved,closing,walking;
         private double manualActionUntil;
@@ -220,7 +220,7 @@ namespace Dafeiyu
 
         public PetWindow(SpriteAtlas source,PetSettings settings,SettingsStore store,EventWaitHandle wakeSignal)
         {
-            atlas=source; Settings=settings; Store=store; wake=wakeSignal; Settings.Normalize();
+            atlas=source; Settings=settings; Store=store; wake=wakeSignal; Settings.Normalize();ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
             Catalog=new SkinCatalog(store.DirectoryPath); Skin=Catalog.Find(Settings.SkinId);
@@ -270,16 +270,17 @@ namespace Dafeiyu
                 UpdateFrame(); timer.Start();
             };
             using(Stream stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Icon")) trayIcon=(System.Drawing.Icon)new System.Drawing.Icon(stream).Clone();
-            trayMenu=new Forms.ContextMenuStrip();
-            visibilityItem=new Forms.ToolStripMenuItem("显示 / 隐藏伙伴"){Checked=true};visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
-            quietItem=new Forms.ToolStripMenuItem("免打扰"){Checked=Settings.QuietMode};quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
-            clickThroughItem=new Forms.ToolStripMenuItem("鼠标穿透"){Checked=Settings.ClickThrough};clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
-            trayMenu.Opening+=delegate {visibilityItem.Checked=visibility.UserVisible;quietItem.Checked=Settings.QuietMode;clickThroughItem.Checked=Settings.ClickThrough;};
-            AddTray("快速对话",ShowQuickChat);AddTray("打开完整对话",ShowChat); AddTray("设置",ShowSettings);
-            AddTray("回到屏幕角落",ReturnHome);
-            trayMenu.Items.Add(new Forms.ToolStripSeparator()); AddTray("退出桌宠",Close);
-            tray=new Forms.NotifyIcon { Icon=trayIcon,Text="桌面伙伴 · "+Skin.Name,ContextMenuStrip=trayMenu,Visible=true };
-            tray.DoubleClick+=delegate { Dispatcher.BeginInvoke(new Action(delegate { RestorePet(); ShowSettings(); })); };
+            trayMenu=new TrayContextMenu();
+            visibilityItem=new MenuItem{Header="显示 / 隐藏伙伴",Name="TrayVisibility",Icon=UiIcons.Image("pet-visible",Ui.Muted),IsCheckable=true,IsChecked=true};visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
+            quietItem=new MenuItem{Header="免打扰",Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode};quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
+            clickThroughItem=new MenuItem{Header="鼠标穿透",Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough};clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
+            trayMenu.Opening+=delegate {visibilityItem.IsChecked=visibility.UserVisible;quietItem.IsChecked=Settings.QuietMode;clickThroughItem.IsChecked=Settings.ClickThrough;};
+            AddTray("快速对话",ShowQuickChat,"TrayQuickChat","chat");AddTray("打开完整对话",ShowChat,"TrayFullChat","full-view");AddTray("设置",ShowSettings,"TraySettings","settings");
+            AddTray("回到屏幕角落",ReturnHome,"TrayReturnHome","back");
+            trayMenu.Items.Add(new Separator());AddTray("退出桌宠",Close,"TrayExit","close");
+            tray=new Forms.NotifyIcon { Icon=trayIcon,Text="桌面伙伴 · "+Skin.Name,Visible=true };
+            tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
+            tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
             timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
             IsVisibleChanged+=delegate { RefreshRendering(); };
@@ -290,8 +291,11 @@ namespace Dafeiyu
             if(IsPetVisible && !closing) { previousTick=watch.Elapsed.TotalSeconds;nextRender=previousTick;CompositionTarget.Rendering+=RenderFrame; }
             else CancelInteraction();
         }
-        private void AddTray(string text,Action action)
-        { trayMenu.Items.Add(text,null,delegate { Dispatcher.BeginInvoke(action); }); }
+        private void AddTray(string text,Action action,string name,string icon)
+        {var item=new MenuItem{Header=text,Name=name,Icon=UiIcons.Image(icon,Ui.Muted)};item.Click+=delegate {Dispatcher.BeginInvoke(action);};trayMenu.Items.Add(item);}
+        internal void ShowTrayMenu(){if(!closing&&trayMenu.Enabled)trayMenu.ShowMenu();}
+        internal void HandleTrayDoubleClick()
+        {Dispatcher.BeginInvoke(new Action(delegate{if(closing||IsUpdating||!trayMenu.Enabled||ReturnToGuide())return;RestorePet();ShowChat();}));}
         private ContextMenu CreateMenu()
         {
             var menu=ChatUi.Menu();
@@ -371,7 +375,7 @@ namespace Dafeiyu
             bool allowed=!closing && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && Animation.State=="idle" &&
                 !DialogueBusy && !DictationActive && !HasQueuedMessages && !GuideActive && !sessionLocked &&
                 !clickTimer.IsEnabled && (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
-                !WindowInUse(quick) && !WindowInUse(chat) && !WindowInUse(preferences) && (updates==null || !updates.HasRestartCountdown) && greetingRequest==null;
+                !WindowInUse(quick) && !WindowInUse(chat) && !WindowInUse(preferences==null?null:preferences.HostWindow) && (updates==null || !updates.HasRestartCountdown) && greetingRequest==null;
             if(!idleSleep.TrySleep(now,systemIdle,allowed,Settings.AutoSleepEnabled))return false;
             StartInteraction("sleeping");return true;
         }
@@ -379,7 +383,7 @@ namespace Dafeiyu
         {
             return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
                 (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
-                !WindowInUse(quick) && !WindowInUse(chat) && (preview || !WindowInUse(preferences)) && !fullscreen;
+                !WindowInUse(quick) && !WindowInUse(chat) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
         }
         private static bool WindowInUse(Window window){return window!=null && window.IsVisible && window.WindowState!=WindowState.Minimized;}
         private void RenderFrame(object sender,EventArgs args)
@@ -395,7 +399,8 @@ namespace Dafeiyu
             Point cursor=DesktopInterop.Cursor(); if((cursor-lastCursor).Length>2) { lastCursor=cursor; lastCursorMove=now; }
             int beforeHover=interactionRevision;
             UpdateHover(cursor);
-            if(!dragging && !interaction.Active && guideInteraction.Length==0) Wander(delta,now,cursor);
+            bool manuallyRunning=AdvanceManualRun(delta);
+            if(!manuallyRunning && !dragging && !interaction.Active && guideInteraction.Length==0) Wander(delta,now,cursor);
             if(dropMotion.Active)
             {
                 dropMotion.Advance(Math.Min(delta,.125));var dropBounds=DesktopInterop.Bounds(handle);
@@ -517,7 +522,7 @@ namespace Dafeiyu
             if(dropMotion.Active){dropMotion.Cancel();SavePosition();}
             RecordPetInteraction();
             CancelPendingClick();DismissGreeting();
-            walking=false; dragStart=DesktopInterop.Cursor(); Rect bounds=DesktopInterop.Bounds(handle); windowStart=bounds.TopLeft;
+            StopManualRun();walking=false; dragStart=DesktopInterop.Cursor(); Rect bounds=DesktopInterop.Bounds(handle); windowStart=bounds.TopLeft;
             pendingHeadClick=dragStart.Y-bounds.Top<bounds.Height*.55;
             moved=false;dragDisplaced=false;dragging=true;image.CaptureMouse();args.Handled=true;
         }
@@ -569,7 +574,7 @@ namespace Dafeiyu
             return IntPtr.Zero;
         }
         public void PlayAction(string state,double duration)
-        { RecordPetInteraction();CancelInteraction();manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);if(AdditionalInteractions.Has(Skin,state))previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
+        { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void PlayInteraction(string name)
         { PlayInteraction(name,null); }
         private void PlayInteraction(string name,bool? originalStyle)
@@ -622,6 +627,7 @@ namespace Dafeiyu
         private void CancelPendingClick(){if(clickTimer!=null)clickTimer.Stop();}
         private void CancelInteraction()
         {
+            StopManualRun();
             if(dropMotion.Active){dropMotion.Cancel();SavePosition();}
             CancelPendingClick();bool active=interaction.Active;interaction.Cancel();fallbackInteraction="";originalInteraction=false;
             dragging=false;moved=false;dragDisplaced=false;if(image!=null && image.IsMouseCaptured)image.ReleaseMouseCapture();
@@ -631,6 +637,7 @@ namespace Dafeiyu
         { if(Paused!=value){RecordPetInteraction();DismissGreeting(true);}if(value)CancelInteraction();Paused=value; if(value && walking) { walking=false; Animation.Play("idle",0); SavePosition(); }UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void ApplySettings()
         {
+            StopManualRun();
             RecordPetInteraction();
             Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
             Width=192*Settings.Scale; Height=208*Settings.Scale; Topmost=Settings.Topmost;
@@ -668,16 +675,13 @@ namespace Dafeiyu
         { ShowSettings(false); }
         public void ShowSettings(bool connections)
         {
-            if(closing || IsUpdating || ReturnToGuide())return;
-            RecordPetInteraction();
-            DismissGreeting();
-            if(preferences==null) { preferences=new SettingsWindow(this); preferences.GuideRequested+=ShowOnboarding;preferences.Closed+=delegate {CancelPendingGreeting();preferences=null;}; }
-            if(!preferences.IsVisible) preferences.Show(); preferences.Activate(); preferences.RefreshState();
-            if(connections) preferences.SelectConnections();
+            if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();DismissGreeting();
+            var window=EnsureAppWindow();if(preferences==null){preferences=new SettingsPage(this);preferences.GuideRequested+=ShowOnboarding;}
+            preferences.RefreshState();window.ShowSettingsPage(preferences);ShowAppWindow(window);if(connections)preferences.SelectConnections();
         }
         internal PetSettings ConversationSettings(ConversationSession session)
         {
-            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));return workspace==null?Settings.Copy():workspace.EffectiveSettings();
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var cfg=workspace==null?Settings.Copy():workspace.EffectiveSettings();if(workspace==null&&session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}return cfg;
         }
         internal void SetConversationPlanMode(ConversationSession session,bool enabled){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentPlanMode=enabled;});}
         internal void SetConversationGoal(ConversationSession session,string goal){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentGoal=goal;});}
@@ -690,12 +694,12 @@ namespace Dafeiyu
             catch{project.PlanMode=oldPlan;project.Goal=oldGoal;throw;}
             RefreshChatAppearance();
         }
-        public void ShowWorkSettings(){editingProject=null;ShowWorkSettingsCore();}
+        public void ShowWorkSettings(){if(preferences!=null&&!preferences.CanChangeWorkSettingsProject(null)){ShowSettings();preferences.SelectWorkSettings();return;}editingProject=null;ShowWorkSettingsCore();}
         void ShowWorkSettingsCore(){if(ReturnToGuide())return;ShowSettings();if(preferences!=null)preferences.SelectWorkSettings();}
 
         public void EditProject(ProjectDefinition project)
         {
-            if(project==null)return;var dialog=new NewProjectDialog(project);bool accepted=dialog.ShowDialog()==true;if(dialog.RemoveRequested){DeleteProject(project);return;}if(dialog.WorkSettingsRequested){editingProject=project;ShowWorkSettingsCore();return;}if(!accepted)return;
+            if(project==null)return;var dialog=new NewProjectDialog(project);bool accepted=dialog.ShowDialog()==true;if(dialog.RemoveRequested){DeleteProject(project);return;}if(dialog.WorkSettingsRequested){if(preferences!=null&&!preferences.CanChangeWorkSettingsProject(project)){ShowSettings();preferences.SelectWorkSettings();return;}editingProject=project;ShowWorkSettingsCore();return;}if(!accepted)return;
             if(Workspaces.OpenWorkspaces.Any(w=>w.ProjectId==project.Id&&(w.Session.IsBusy||w.Queue.HasPending))){MessageBox.Show("请先结束项目中正在运行或排队的任务，再编辑项目。","项目正在使用");return;}
             string name=project.Name,path=project.Workspace;try{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
         }
@@ -807,18 +811,18 @@ namespace Dafeiyu
             var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);
         }
         // New chats remain drafts until the first submission; their project is chosen in the composer.
-        public void NewActiveConversation(){BeginDraftConversation(null);}
-        public void NewProjectConversation(ProjectDefinition project){Settings.AgentEnabled=true;BeginDraftConversation(project);}
+        public void NewActiveConversation(){BeginDraftConversation(null,chat==null?Settings.AgentEnabled:chat.WorkEntry);}
+        public void NewProjectConversation(ProjectDefinition project){BeginDraftConversation(project,true);}
         internal ConversationWorkspace CreateDraftConversation(ProjectDefinition project,bool work)
         {
             project=work?(project??ProjectCatalogStore.UnassignedProject(Projects,Settings)):ProjectCatalogStore.QuickProject(Projects,Settings);
             var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="新对话",Mode=work?"work":"chat",PetId=work?"":Skin.Id,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
             var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;WatchConversationTitle(project,definition,workspace);return workspace;
         }
-        void BeginDraftConversation(ProjectDefinition project)
+        void BeginDraftConversation(ProjectDefinition project,bool? workEntry=null)
         {
             if(closing || IsUpdating || ReturnToGuide())return;
-            var workspace=CreateDraftConversation(project,Settings.AgentEnabled);
+            var workspace=CreateDraftConversation(project,workEntry??Settings.AgentEnabled);
             if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,workspace);chat.SwitchWorkspace(workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);
             if(!chat.IsVisible)chat.Show();chat.Activate();
         }
@@ -864,7 +868,7 @@ namespace Dafeiyu
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return;var previous=Projects.Copy();ProjectDefinition project;try{project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);ProjectStore.Save(Projects);}catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return;}ActivateProject(project);
         }
         public void ShowChat()
-        {if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:project.Conversations.FirstOrDefault(c=>c.Id==quickWorkspace.Id);quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        {if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:project.Conversations.FirstOrDefault(c=>c.Id==quickWorkspace.Id);quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
         bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
         void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
         async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)
@@ -995,12 +999,12 @@ namespace Dafeiyu
                 walking=false;Animation.Play("idle",0);petDisplayed=false;IsHitTestVisible=false;
                 Opacity=0;if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,true);RefreshRendering();
             }
-            if(visibilityItem!=null)visibilityItem.Checked=visibility.UserVisible;
+            if(visibilityItem!=null)visibilityItem.IsChecked=visibility.UserVisible;
         }
         public void SetQuietMode(bool enabled)
-        {Settings.QuietMode=enabled;DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.Checked=enabled;if(preferences!=null)preferences.RefreshState();}
+        {Settings.QuietMode=enabled;DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public void SetClickThrough(bool enabled)
-        {RecordPetInteraction();Settings.ClickThrough=enabled;if(enabled){CancelInteraction();UpdateFrame();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,enabled || !petDisplayed);SaveSettings();if(clickThroughItem!=null)clickThroughItem.Checked=enabled;if(preferences!=null)preferences.RefreshState();}
+        {RecordPetInteraction();Settings.ClickThrough=enabled;if(enabled){CancelInteraction();UpdateFrame();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,enabled || !petDisplayed);SaveSettings();if(clickThroughItem!=null)clickThroughItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public bool UpdateHotkey(string action,string value,out string error)
         {error="";if(hotkeys!=null && !hotkeys.TryBind(action,value,out error))return false;Settings.Hotkeys[action]=(value ?? "").Trim();SaveSettings();return true;}
         public void ReturnHome()
@@ -1027,7 +1031,7 @@ namespace Dafeiyu
                 try{if(dictation!=null)await dictation.CancelAsync();if(inputQueue!=null)await inputQueue.PauseAsync();if(workspaces!=null)await workspaces.SaveAllAsync();if(live!=null)await live.StopAsync();if(conversation!=null){await conversation.StopAsync();await conversation.FlushHistoryAsync();}}
                 catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
             }
-            SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(mcpConnections!=null)mcpConnections.Dispose();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Close();
+            SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(mcpConnections!=null)mcpConnections.Dispose();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
         }

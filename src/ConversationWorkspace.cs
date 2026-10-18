@@ -42,7 +42,16 @@ namespace Dafeiyu
         }
         public PetSettings EffectiveSettings()
         {
-            var cfg=settings().Copy();if(!String.IsNullOrEmpty(Definition.Mode)){cfg.AgentEnabled=Definition.Mode=="work";}cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;cfg.AgentCommandsEnabled=project.CommandsEnabled;cfg.AgentCommandRecipes=project.CommandRecipes;cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentTerminalPolicy=project.TerminalPolicy;cfg.AgentTrustProjectInstructions=project.TrustProjectInstructions;cfg.AgentGlobalInstructions=project.GlobalInstructions;cfg.AgentSkillsDirectory=project.SkillsDirectory;cfg.AgentContextTokenLimit=project.ContextTokenLimit;return cfg;
+            var cfg=settings().Copy();
+            if(project.Id!=ProjectCatalogStore.UnassignedProjectId && project.Id!=ProjectCatalogStore.QuickProjectId){
+                cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;
+                cfg.AgentCommandsEnabled=project.CommandsEnabled;cfg.AgentCommandRecipes=project.CommandRecipes;cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentTerminalPolicy=project.TerminalPolicy;
+                cfg.AgentSandboxReadDirectories=project.SandboxReadDirectories;cfg.AgentApprovalMode=project.ApprovalMode;cfg.AgentSandboxEnabled=project.SandboxEnabled;
+                cfg.AgentTrustProjectInstructions=project.TrustProjectInstructions;cfg.AgentGlobalInstructions=project.GlobalInstructions;cfg.AgentSkillsDirectory=project.SkillsDirectory;cfg.AgentContextTokenLimit=project.ContextTokenLimit;
+            }
+            if(!String.IsNullOrEmpty(Definition.Mode))cfg.AgentEnabled=Definition.Mode=="work";
+            if(Definition.HasPermissionOverride){cfg.AgentApprovalMode=Definition.ApprovalMode;cfg.AgentSandboxEnabled=Definition.SandboxEnabled;}
+            ProjectWorkspace=cfg.AgentWorkspace;return cfg;
         }
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {
