@@ -10,9 +10,9 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-**当前版本：[0.9.1](https://github.com/Eason4869/deskpet/releases/tag/v0.9.1)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
+**当前版本：[0.9.2](https://github.com/Eason4869/deskpet/releases/tag/v0.9.2)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
 
-0.9.1 修复发送时偶发卡住、链接输入、处理中图标、草稿图片预览，以及终端审批与 MCP 工具兼容问题，详见 [更新日志](CHANGELOG.md)。
+0.9.2 修复侧栏悬浮闪烁、拖动排序和用量矩阵间距；聊天新增默认分区，完整窗口与快速窗口分别保存记录，两种模式均可新建和重命名分区，详见 [更新日志](CHANGELOG.md)。
 
 ## 先认识你的伙伴
 
@@ -43,17 +43,17 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
   <img src="previews/readme-workspace.svg" width="1200" alt="Windows 0.9.1 统一主窗口完整截图：左侧功能入口、六条示例会话、聊天正文及完整输入区">
 </picture>
 
-<sub>展示 Windows 0.9.1 的真实界面，保留完整窗口；会话列表和聊天内容为隔离的本地示例，不含个人记录，未请求模型服务。可点击查看 [主窗口原图](previews/workspace-0.9.1.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
+<sub>界面示例来自 Windows 0.9.1，保留完整窗口；会话列表和聊天内容为隔离的本地示例，不含个人记录，未请求模型服务。可点击查看 [主窗口原图](previews/workspace-0.9.1.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
 
 ### 从一句话，到一个项目
 
 | 场景 | 怎么用 |
 | --- | --- |
 | **快速对话** | 双击伙伴，在头顶聊两句。重新打开会开始新话题，已有记录保留在当前伙伴的“快速对话”分组。 |
-| **聊天** | 使用伙伴的人格，适合闲聊、讨论和整理想法。各会话分别保留上下文与草稿。 |
+| **聊天** | 使用伙伴的人格，完整窗口聊天保存在“默认分区”或自选聊天分区，分别保留上下文与草稿。 |
 | **工作** | 绑定项目目录，读取、搜索和修改文件，查看实际执行记录。需要支持原生工具调用的文字模型。 |
 
-项目和对话支持置顶、归档与分组。切换页面或会话保留草稿与阅读位置；侧栏可用顶栏按钮或 **Ctrl + Shift + S** 收起。
+聊天分区直接管理会话，工作分区管理项目及下属会话。两种模式均支持新建、重命名分区；会话点击后保持原位，可拖动排序并保存，也可将工作会话拖入其他项目、普通聊天拖入其他聊天分区。项目和对话支持置顶、归档与分组。切换页面或会话保留草稿与阅读位置；侧栏可用顶栏按钮或 **Ctrl + Shift + S** 收起。
 
 ### 写得顺手，看得完整
 
@@ -73,24 +73,24 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 ## 下载安装
 
-Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.9.1 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.9.1)。
+Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.9.2 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.9.2)。
 
 | 平台 | 下载 |
 | --- | --- |
-| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.9.1.exe](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-Windows-Setup-0.9.1.exe) |
-| Windows 便携版 | [DeskPet-Windows-0.9.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-Windows-0.9.1.zip) |
-| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-macOS-0.9.1-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-macOS-0.9.1-arm64-preview.zip) |
-| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-macOS-0.9.1-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-macOS-0.9.1-x86_64-preview.zip) |
+| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.9.2.exe](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-Windows-Setup-0.9.2.exe) |
+| Windows 便携版 | [DeskPet-Windows-0.9.2.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-Windows-0.9.2.zip) |
+| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-macOS-0.9.2-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-macOS-0.9.2-arm64-preview.zip) |
+| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-macOS-0.9.2-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-macOS-0.9.2-x86_64-preview.zip) |
 
 <details>
 <summary>源码、外观包、创作模板与 SHA256</summary>
 
 | 附件 | 下载 |
 | --- | --- |
-| 完整源码 | [DeskPet-Source-0.9.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-Source-0.9.1.zip) |
-| 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/Ebao-HD-Skin-0.9.1.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/Dafeiyu-HD-Skin-0.9.1.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/Marfu-HD-Skin-0.9.1.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/Xiaobei-HD-Skin-0.9.1.zip) |
-| 外观创作模板 | [DeskPet-Skin-Template-v2-0.9.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/DeskPet-Skin-Template-v2-0.9.1.zip) |
-| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.9.1/SHA256.txt) |
+| 完整源码 | [DeskPet-Source-0.9.2.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-Source-0.9.2.zip) |
+| 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/Ebao-HD-Skin-0.9.2.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/Dafeiyu-HD-Skin-0.9.2.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/Marfu-HD-Skin-0.9.2.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/Xiaobei-HD-Skin-0.9.2.zip) |
+| 外观创作模板 | [DeskPet-Skin-Template-v2-0.9.2.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/DeskPet-Skin-Template-v2-0.9.2.zip) |
+| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.9.2/SHA256.txt) |
 
 </details>
 

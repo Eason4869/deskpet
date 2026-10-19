@@ -17,7 +17,12 @@ namespace Dafeiyu
             row.Children.Add(chat);Grid.SetColumn(work,1);row.Children.Add(work);var workBody=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};workBody.Children.Add(Label("工作"));busy=new Border{Name="BackgroundWorkIndicator",Width=5,Height=5,CornerRadius=new CornerRadius(3),Background=Ui.Blue,Margin=new Thickness(6,0,0,0),VerticalAlignment=VerticalAlignment.Center,Visibility=Visibility.Collapsed};workBody.Children.Add(busy);work.Content=workBody;
         }
         static TextBlock Label(string title){return new TextBlock{Text=title,FontSize=13,Foreground=AgentUi.Ink,LineHeight=18,LineStackingStrategy=LineStackingStrategy.BlockLineHeight,VerticalAlignment=VerticalAlignment.Center};}
-        static Button Choice(string title,string name,Action action){var b=AgentUi.Nav(title,name);b.Content=Label(title);b.Height=30;b.MinHeight=30;b.Padding=new Thickness(14,0,14,0);b.Margin=new Thickness(0);b.HorizontalContentAlignment=HorizontalAlignment.Center;b.VerticalContentAlignment=VerticalAlignment.Center;b.Click+=delegate{action();};return b;}
+        static Button Choice(string title,string name,Action action)
+        {
+            // A stronger neutral hover remains visible against the gray tab rail.
+            var b=AgentUi.Nav(title,name,true);
+            b.Content=Label(title);b.Height=30;b.MinHeight=30;b.Padding=new Thickness(14,0,14,0);b.Margin=new Thickness(0);b.HorizontalContentAlignment=HorizontalAlignment.Center;b.VerticalContentAlignment=VerticalAlignment.Center;b.Click+=delegate{action();};return b;
+        }
         internal void Refresh(bool isWork,bool running){chat.Background=isWork?Brushes.Transparent:Brushes.White;work.Background=isWork?Brushes.White:Brushes.Transparent;chat.Tag=!isWork;work.Tag=isWork;busy.Visibility=running?Visibility.Visible:Visibility.Collapsed;work.ToolTip=running?"工作任务正在后台运行":"项目与任务";}
     }
     public sealed partial class ChatWindow
