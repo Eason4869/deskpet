@@ -55,24 +55,24 @@ namespace Dafeiyu.Tests
             protected override void Dispose(bool disposing){Released=true;base.Dispose(disposing);}
         }
         public static int Main(string[] args){if(args.Length>0&&args[0]=="--server")return Server(args);try{if(args.Contains("--schema-regression"))SchemaRegression();else if(args.Contains("--error-regression"))ErrorRegression().GetAwaiter().GetResult();else{SchemaRegression();ErrorRegression().GetAwaiter().GetResult();Run().GetAwaiter().GetResult();}Console.WriteLine("MCP connection tests: "+count+" passed");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
-        internal static int PortableRegression(){try{SchemaRegression();ErrorRegression().GetAwaiter().GetResult();Console.WriteLine("MCP portable tests: "+count+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
-        static Dictionary<string,object> SchemaFor(AgentWorkspace workspace,bool anthropic)
+        internal static int PortableRegression(){try{SchemaRegression();ErrorRegression(true).GetAwaiter().GetResult();Console.WriteLine("MCP portable tests: "+count+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+        static Dictionary<string,object> SchemaFor(AgentToolDefinition[] definitions,bool anthropic)
         {
-            var tools=(object[])new JavaScriptSerializer().DeserializeObject(new JavaScriptSerializer().Serialize(anthropic?workspace.AnthropicTools:workspace.OpenAITools));
+            object[] openai,anthropicTools;AgentToolCatalog.Schemas(false,false,null,definitions,out openai,out anthropicTools);
+            var tools=(object[])new JavaScriptSerializer().DeserializeObject(new JavaScriptSerializer().Serialize(anthropic?anthropicTools:openai));
             var tool=tools.Cast<Dictionary<string,object>>().Single(item=>anthropic?McpHttpTransport.GetString(item,"name","")=="mcp_schema_probe":McpHttpTransport.GetString(McpHttpTransport.GetMap(item,"function"),"name","")=="mcp_schema_probe");
             return anthropic?McpHttpTransport.GetMap(tool,"input_schema"):McpHttpTransport.GetMap(McpHttpTransport.GetMap(tool,"function"),"parameters");
         }
         static void SchemaRegression()
         {
-            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"mcp-schema-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             foreach(string json in new[]{"{\"type\":\"object\"}","{}","{\"type\":\"object\",\"properties\":{\"value\":{\"$ref\":\"#/$defs/Value\"}},\"$defs\":{\"Value\":{\"type\":\"string\",\"minLength\":1}},\"required\":[\"value\"],\"allOf\":[{\"minProperties\":1}],\"additionalProperties\":true}"})
             {
-                var transport=new SchemaTransport(json);using(var workspace=new AgentWorkspace(root))
+                var transport=new SchemaTransport(json);
                 {
-                    workspace.ConfigureProvider("openai","gpt-fixture");workspace.ConfigureMcp(transport);
+                    var definitions=new McpToolAdapter(transport).Register(new AgentToolRuntime(AgentPermissionRuntime.DefaultWorkspacePolicy(),null));
                     foreach(bool anthropic in new[]{false,true})
                     {
-                        var schema=SchemaFor(workspace,anthropic);var properties=McpHttpTransport.GetMap(schema,"properties");
+                        var schema=SchemaFor(definitions,anthropic);var properties=McpHttpTransport.GetMap(schema,"properties");
                         Check(McpHttpTransport.GetString(schema,"type","")=="object"&&properties!=null&&!properties.ContainsKey("type"),"empty MCP input remains an object with an empty property map: "+anthropic);
                         if(json.Contains("$defs"))
                         {
@@ -80,20 +80,20 @@ namespace Dafeiyu.Tests
                         }
                     }
                     transport.Schema["type"]="array";
-                    Check(McpHttpTransport.GetString(SchemaFor(workspace,false),"type","")=="object","registered MCP schema is an immutable snapshot of the remote catalogue");
+                    Check(McpHttpTransport.GetString(SchemaFor(definitions,false),"type","")=="object","registered MCP schema is an immutable snapshot of the remote catalogue");
                     if(json.Contains("$defs"))
                     {
                         McpHttpTransport.GetMap(McpHttpTransport.GetMap(transport.Schema,"$defs"),"Value")["type"]="integer";
-                        Check(McpHttpTransport.GetString(McpHttpTransport.GetMap(McpHttpTransport.GetMap(SchemaFor(workspace,false),"$defs"),"Value"),"type","")=="string","remote catalogue mutation cannot alter a nested definition after registration");
+                        Check(McpHttpTransport.GetString(McpHttpTransport.GetMap(McpHttpTransport.GetMap(SchemaFor(definitions,false),"$defs"),"Value"),"type","")=="string","remote catalogue mutation cannot alter a nested definition after registration");
                     }
                 }
             }
             foreach(string json in new[]{"{\"type\":\"array\"}","{\"type\":\"object\",\"properties\":[]}","{\"type\":\"object\",\"required\":\"value\"}"})
             {
-                using(var workspace=new AgentWorkspace(root)){bool rejected=false;try{workspace.ConfigureMcp(new SchemaTransport(json));}catch(ApiException error){rejected=error.Message.Contains("schema_probe")&&error.Message.Contains("schema");}Check(rejected,"unsupported root schema fails locally with tool-specific diagnostics");}
+                bool rejected=false;try{new McpToolAdapter(new SchemaTransport(json)).Register(new AgentToolRuntime(AgentPermissionRuntime.DefaultWorkspacePolicy(),null));}catch(InvalidOperationException error){rejected=error.Message.Contains("schema_probe")&&error.Message.Contains("schema");}Check(rejected,"unsupported root schema fails locally with tool-specific diagnostics");
             }
         }
-        static async Task ErrorRegression()
+        static async Task ErrorRegression(bool portable=false)
         {
             foreach(string mode in new[]{"business","rpc","cancel","protocol","transport"})
             {
@@ -107,6 +107,12 @@ namespace Dafeiyu.Tests
                         Check(manager.Status.Single().State=="connected"&&!handler.Released,"tool/request error retains the connection: "+mode);
                         Check(await bound.CallAsync(tool,new Dictionary<string,object>(),CancellationToken.None)=="recovered","corrected MCP call succeeds on the same transport: "+mode);
                         string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"mcp-failure-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+                        var runtimePermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();runtimePermissions.Add(new AgentPermissionRule{Action="mcp",Resource="**",Effect=AgentPermissionEffect.Ask});
+                        var runtimeAudit=new AgentAuditLog(root);var runtime=new AgentToolRuntime(runtimePermissions,runtimeAudit,new Approval());new McpToolAdapter(bound).Register(runtime);handler.ToolCalls=0;
+                        string runtimeFailure=await runtime.ExecuteAsync("mcp_"+tool,new Dictionary<string,object>(),new AgentToolExecutionContext{CallId="bad-arguments",TaskId="recovery"},CancellationToken.None);
+                        Check(runtimeFailure.StartsWith("错误：")&&runtimeAudit.Events.Any(entry=>entry.Result=="error")&&manager.Status.Single().State=="connected","shared runtime records the failed tool without losing its MCP session: "+mode);
+                        Check(await runtime.ExecuteAsync("mcp_"+tool,new Dictionary<string,object>(),new AgentToolExecutionContext{CallId="corrected-arguments",TaskId="recovery"},CancellationToken.None)=="recovered","shared runtime retries corrected arguments on the same transport: "+mode);
+                        if(!portable)
                         using(var workspace=new AgentWorkspace(root))
                         {
                             var audit=new AgentAuditLog(root);workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),audit,new Approval(),null,"recovery");workspace.ConfigureProvider("openai","gpt-fixture");workspace.ConfigureMcp(bound);handler.ToolCalls=0;

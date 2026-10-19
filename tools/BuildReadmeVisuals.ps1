@@ -75,7 +75,7 @@ function New-Hero([switch]$Mobile) {
         $body += New-Label '桌面伙伴 · DeskPet' 48 52 33 '#d9dcff'
         $body += New-Label '让桌面，多一个伙伴。' 48 130 58 '#ffffff' -Bold
         $body += New-Label '摸摸头，聊聊天，一起做点事。' 48 225 32 '#dbdff7'
-        $body += New-Label ("Windows $script:DevelopmentVersion dev  /  macOS 预览") 48 300 27 '#cbd4ff'
+        $body += New-Label ("Windows $script:DevelopmentVersion  /  macOS 预览") 48 300 27 '#cbd4ff'
         $body += New-Image 'previews/e-bao.png' 52 443 180 420 '146 95 193 412'
         $body += New-Image 'previews/dafeiyu.png' 229 405 190 420 '108 95 267 421'
         $body += New-Image 'previews/marfu.png' 430 427 196 420 '118 110 254 387'
@@ -91,7 +91,7 @@ function New-Hero([switch]$Mobile) {
         $body += New-Label '摸摸头，聊聊天；' 68 384 30 '#dbdff7'
         $body += New-Label '需要时，也能一起做点事。' 68 432 30 '#dbdff7'
         $body += "<rect x='64' y='528' width='570' height='62' rx='31' fill='#ffffff' fill-opacity='.1' stroke='#aaa9ee'/>"
-        $body += New-Label ("Windows $script:DevelopmentVersion dev  /  macOS 预览") 88 541 25 '#eff0ff'
+        $body += New-Label ("Windows $script:DevelopmentVersion  /  macOS 预览") 88 541 25 '#eff0ff'
         $body += New-Label 'E包  ·  大肥鱼  ·  马尔芙  ·  小贝' 68 644 24 '#cbd0ef'
         $body += New-Image 'previews/e-bao.png' 772 175 177 380 '146 95 193 412'
         $body += New-Image 'previews/dafeiyu.png' 963 80 220 370 '108 95 267 421'

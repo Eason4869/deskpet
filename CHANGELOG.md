@@ -1,8 +1,8 @@
 # 更新日志
 
-## [0.9.1](https://github.com/Eason4869/deskpet/tree/dev) — 2026-10-19（dev）
+## [0.9.1](https://github.com/Eason4869/deskpet/releases/tag/v0.9.1) — 2026-10-19
 
-开发分支更新，包含本轮修复和 README 改版；本次不创建标签或 GitHub Release，正式下载仍为 0.9.0。
+补丁更新，包含输入与预览修复、终端审批加固、MCP 兼容和 README 改版。提供 Windows 安装版、便携版，以及 macOS Apple Silicon／Intel 双架构预览；Mac 仍保留独立界面和功能边界。
 
 - 修复“请求批准／帮我批准”下终端命令可能通过 PowerShell 别名或 .NET 文件 API 绕过敏感确认的问题；任意 Agent 终端代码均逐条人工确认，拒绝或取消后不启动，保留 AppContainer 隔离。
 - MCP 完整保留输入 schema 的根级定义、引用与约束，正确处理无参数工具，注册时明确报告不支持的根结构；OpenAI 与 Anthropic 使用同一份独立快照。
@@ -11,6 +11,7 @@
 - 修复处理中工具图标裁切；未发送图片支持点击和键盘预览，完整聊天与快速对话均保留草稿和移除操作。
 - README 重写为统一蓝紫视觉，加入真实完整界面和桌宠图卡，提供窄屏版素材，并同步权限、平台与安装说明。
 - 修正引导冒烟测试的时序竞争：操作前有界等待按钮就绪，不再用短于校验周期的固定等待判断失败。
+- MCP 共享回归直接验证跨平台的工具目录与运行时，Windows 工作区集成单独保留，避免 macOS 测试误构造 Windows 专用文件 Agent。
 
 ## [0.9.0](https://github.com/Eason4869/deskpet/releases/tag/v0.9.0) — 2026-10-19
 
