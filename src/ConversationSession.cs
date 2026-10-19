@@ -29,6 +29,7 @@ namespace Dafeiyu
         public AgentTaskState CurrentAgentTask {get{lock(gate){AgentTaskState task;return agentTasks.TryGetValue(personaId,out task)?task.Copy():null;}}}
         private readonly Func<bool> saveEnabled;
         private readonly object gate=new object();
+        internal object SynchronizationRoot { get { return gate; } }
         private Operation active;
         private bool disposed;private AgentSessionModel kernelSession;private AgentSessionStore kernelStore;private string kernelWarning="";private bool kernelReadFailed;
         private readonly Dictionary<string,ConversationLog> histories=new Dictionary<string,ConversationLog>();

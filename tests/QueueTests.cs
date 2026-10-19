@@ -9,7 +9,25 @@ namespace Dafeiyu.Tests
     public static class QueueTests
     {
         static int passed;
-        public static int Main(){try{Run().GetAwaiter().GetResult();SafeGuide().GetAwaiter().GetResult();if(Environment.OSVersion.Platform==PlatformID.Win32NT){GuidanceReliability().GetAwaiter().GetResult();GuidanceSaveFailure().GetAwaiter().GetResult();}else Console.WriteLine("SKIP Windows file-Agent checkpoint and sharing-lock fixtures: unsupported on this platform");Console.WriteLine("Queue tests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
+        public static int Main(){try{LockOrder();Run().GetAwaiter().GetResult();SafeGuide().GetAwaiter().GetResult();if(Environment.OSVersion.Platform==PlatformID.Win32NT){GuidanceReliability().GetAwaiter().GetResult();GuidanceSaveFailure().GetAwaiter().GetResult();}else Console.WriteLine("SKIP Windows file-Agent checkpoint and sharing-lock fixtures: unsupported on this platform");Console.WriteLine("Queue tests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
+        static void LockOrder()
+        {
+            var session=new ConversationSession(new Api(),new Speech(),()=>null);
+            var cfg=new PetSettings();
+            var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"queue-lock-"+Guid.NewGuid().ToString("N"),"queue.json"));
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+            var queueGate=typeof(ConversationQueue).GetField("gate",flags).GetValue(queue);
+            var sessionGate=typeof(ConversationSession).GetField("gate",flags).GetValue(session);
+            bool sharedGate=Object.ReferenceEquals(queueGate,sessionGate);
+            var changed=(Action)typeof(ConversationSession).GetField("StateChanged",flags).GetValue(session);
+            var queueHeld=new ManualResetEvent(false);var sessionHeld=new ManualResetEvent(false);
+            Exception readerError=null,notifierError=null;
+            var reader=new Thread(delegate(){try{lock(queueGate){queueHeld.Set();if(!sharedGate&&!sessionHeld.WaitOne(2000))throw new TimeoutException("session gate fixture did not start");var items=queue.Items;}}catch(Exception error){readerError=error;}}){IsBackground=true};
+            var notifier=new Thread(delegate(){try{if(!queueHeld.WaitOne(2000))throw new TimeoutException("queue gate fixture did not start");lock(sessionGate){sessionHeld.Set();changed();}}catch(Exception error){notifierError=error;}}){IsBackground=true};
+            reader.Start();notifier.Start();bool returned=reader.Join(3000);returned=notifier.Join(3000)&&returned;
+            Check(returned&&readerError==null&&notifierError==null,"session notification and queue read cannot invert their locks");
+            queue.Dispose();session.Dispose();queueHeld.Dispose();sessionHeld.Dispose();
+        }
         static async Task Run()
         {
             string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"queue-test-"+Guid.NewGuid().ToString("N"),"queue.json");
