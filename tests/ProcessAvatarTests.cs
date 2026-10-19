@@ -46,6 +46,14 @@ namespace Dafeiyu.Tests
                     var history=new StackPanel();var host=new Window{Content=history,Width=640,Height=700};var view=new ChatMessageView(message,history,pet,host,session);history.Children.Add(view);host.Show();host.UpdateLayout();Pump();
                     var avatar=All<Border>(view).SingleOrDefault(b=>b.Name=="ProcessAvatar");Check(avatar!=null,"process header renders a pet avatar");
                     var face=(Image)avatar.Child;var label=All<TextBlock>(view).Single(t=>t.Name=="ProcessStatus");var record=All<Expander>(view).Single(e=>e.Name=="ReasoningDetails");var process=All<StackPanel>(view).Single(p=>p.Name=="ThinkingProcess");var actions=All<StackPanel>(view).Single(p=>p.Name=="ReplyActions");
+                    var activity=All<Border>(view).Single(b=>b.Name=="ProcessActivityIcon");
+                    foreach(string toolName in new[]{"read_file","write_file","run_command","search_files","fetch_url"})
+                    {
+                        message.SetTools(new[]{new AgentToolEvent{Id="tool",Name=toolName,Summary="fixture.txt",Status="running"}});view.Update(message);host.UpdateLayout();
+                        Rect iconBounds=activity.Child.TransformToAncestor(activity).TransformBounds(new Rect(activity.Child.RenderSize));
+                        Check(iconBounds.Left>=-.1&&iconBounds.Top>=-.1&&iconBounds.Right<=activity.ActualWidth+.1&&iconBounds.Bottom<=activity.ActualHeight+.1,"entire activity glyph fits its slot: "+toolName);
+                    }
+                    message.SetTools(new[]{new AgentToolEvent{Id="tool",Name="read_file",Summary="读取 fixture.txt\n真实工具详情",Status="running"}});view.Update(message);host.UpdateLayout();
                     Check(avatar.ActualWidth==20&&avatar.ActualHeight==20&&avatar.CornerRadius.TopLeft==4&&face.Clip is RectangleGeometry,"avatar uses a real 20px rounded image");
                     Check(avatar.TranslatePoint(new Point(20,10),view).X<label.TranslatePoint(new Point(0,0),view).X,"avatar is left of process status text");
                     Check(face.Source==SkinCatalog.GetAvatar(pet.Catalog.Skins.Single(s=>s.Id=="dafeiyu")),"avatar follows message session persona instead of currently selected pet");var originalFace=face.Source;

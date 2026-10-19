@@ -53,7 +53,7 @@ namespace Dafeiyu
             // Remote tools have their own boundary; annotations do not make them trusted.
             if(call.Action=="mcp"||call.Action=="github_write")return Decision(call,AgentPermissionEffect.Ask,"远程工具独立确认，不受本机沙箱保护");
             if(Mode==AgentApprovalMode.Full)return Decision(call,AgentPermissionEffect.Allow,"用户选择完全访问；以当前账户权限执行");
-            if(call.Action=="shell")return Decision(call,Sandbox&&!Sensitive(call)?AgentPermissionEffect.Allow:AgentPermissionEffect.Ask,Sandbox?"沙箱内执行；敏感操作需审批":"无系统隔离，终端需审批");
+            if(call.Action=="shell")return Decision(call,AgentPermissionEffect.Ask,Sandbox?"沙箱内的任意终端代码仍需逐条确认":"无系统隔离，终端需审批");
             if(call.Action=="network" || call.Action=="github_read")return Decision(call,AgentPermissionEffect.Ask,"联网访问需审批");
             if(call.ToolName=="open_directory")return Decision(call,AgentPermissionEffect.Ask,"打开宿主目录需确认");
             foreach(string path in Paths(call.ReadArguments()))if(!Inside(path))return Decision(call,AgentPermissionEffect.Ask,"访问工作区外的文件需审批");

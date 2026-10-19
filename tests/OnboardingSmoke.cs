@@ -188,7 +188,15 @@ namespace Dafeiyu.Tests
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) { var child = Find<T>(VisualTreeHelper.GetChild(root, i), name); if (child != null) return child; }
             return null;
         }
-        private static void Press(Window window, string name) { Pump(.15);var button = Find<Button>(window, name); Check(button != null && button.IsEnabled, "guide action available " + name); button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
+        private static void Press(Window window, string name)
+        {
+            Pump(.15);
+            var button = Find<Button>(window, name);
+            var deadline = DateTime.UtcNow.AddSeconds(2);
+            while (button != null && !button.IsEnabled && DateTime.UtcNow < deadline) Pump(.02);
+            Check(button != null && button.IsEnabled, "guide action available " + name);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        }
         private static void Check(bool value, string message) { if (!value) throw new Exception(message); passed++; Console.WriteLine("PASS " + message); }
         private static void Capture(FrameworkElement window, string path) { window.UpdateLayout();var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(window); using (var stream = File.Create(path)) { var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap)); png.Save(stream); } }
         private static void Pump(double seconds) { var frame = new DispatcherFrame(); var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) }; timer.Tick += delegate { timer.Stop(); frame.Continue = false; }; timer.Start(); Dispatcher.PushFrame(frame); }

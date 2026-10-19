@@ -56,7 +56,7 @@ namespace Dafeiyu
         async Task<string> CallAsync(string id,int generation,string name,Dictionary<string,object> args,CancellationToken cancel)
         {
             Entry entry;IMcpTransport transport;CancellationToken lifetime;lock(gate){if(!entries.TryGetValue(id,out entry)||!IsConnected(id,generation))throw new InvalidOperationException("MCP 连接已失效，请重新连接。");transport=entry.Transport;lifetime=entry.Cancel.Token;}
-            using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime))try{return await transport.CallAsync(name,args,linked.Token).ConfigureAwait(false);}catch(Exception){Disconnect(id,generation);throw;}
+            using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime))try{return await transport.CallAsync(name,args,linked.Token).ConfigureAwait(false);}catch(OperationCanceledException){if(!(transport is McpHttpTransport)||!cancel.IsCancellationRequested)Disconnect(id,generation);throw;}catch(Exception){Disconnect(id,generation);throw;}
         }
         sealed class BoundTransport:IMcpTransport,IMcpConnectionState
         {

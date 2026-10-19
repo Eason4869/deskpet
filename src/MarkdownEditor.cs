@@ -97,7 +97,7 @@ namespace Dafeiyu
         }
         static bool HasTypedLink(InlineCollection inlines)
         {
-            foreach(Inline inline in inlines){if(inline is Hyperlink)continue;var run=inline as Run;var span=inline as Span;if(run!=null && Regex.IsMatch(run.Text,@"https?://[^\s]+\s"))return true;if(span!=null && HasTypedLink(span.Inlines))return true;}return false;
+            foreach(Inline inline in inlines){if(inline is Hyperlink){if((inline.Tag as string)=="autolink")return true;continue;}var run=inline as Run;var span=inline as Span;if(run!=null && Regex.IsMatch(run.Text,@"https?://[^\s]+\s"))return true;if(span!=null && HasTypedLink(span.Inlines))return true;}return false;
         }
         static bool HasTypedMarkup(BlockCollection blocks)
         {
@@ -164,7 +164,7 @@ namespace Dafeiyu
                 if(inline is LineBreak){text.Append('\n');continue;}
                 bool b=!literal && inline.FontWeight.ToOpenTypeWeight()>=600;bool i=!literal && inline.FontStyle==FontStyles.Italic;bool code=!literal && (inline.Tag as string)=="code";
                 bool strike=!literal && inline.TextDecorations!=null && inline.TextDecorations.Contains(TextDecorations.Strikethrough[0]);
-                if(link!=null && link.NavigateUri!=null){text.Append((link.Tag as string)=="image"?"![":"[");Inlines(link.Inlines,bold,italic,literal);text.Append("]("+link.NavigateUri.AbsoluteUri+")");continue;}
+                if(link!=null && link.NavigateUri!=null){if((link.Tag as string)=="autolink"){Inlines(link.Inlines,bold,italic,literal);continue;}text.Append((link.Tag as string)=="image"?"![":"[");Inlines(link.Inlines,bold,italic,literal);text.Append("]("+link.NavigateUri.AbsoluteUri+")");continue;}
                 string marker=(b&&!bold?"**":"")+(i&&!italic?"*":"")+(strike?"~~":"")+(code?"`":"");text.Append(marker);
                 if(run!=null){segments.Add(new Segment{Start=run.ContentStart,End=run.ContentEnd,Offset=text.Length,Length=run.Text.Length});text.Append(run.Text);}
                 else if(span!=null)Inlines(span.Inlines,b,i,literal);
