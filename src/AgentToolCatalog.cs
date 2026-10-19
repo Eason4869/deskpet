@@ -5,7 +5,7 @@ namespace Dafeiyu
 {
     public sealed class AgentToolDefinition
     {
-        internal string Name,Description,ApprovalResource;internal bool ReadOnly;internal Dictionary<string,object> Properties;internal string[] Required;
+        internal string Name,Description,ApprovalResource;internal bool ReadOnly;internal Dictionary<string,object> Properties,InputSchema;internal string[] Required;
     }
     // Both protocol schemas and execution's plan-mode policy use this catalogue.
     internal static class AgentToolCatalog
@@ -49,7 +49,7 @@ namespace Dafeiyu
         {
             var a=new List<object>();var b=new List<object>();var all=Definitions.Concat(extra??new AgentToolDefinition[0]);
             foreach(var d in all.Where(d=>d!=null && d.Name!="complete_subagent" && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
-                var schema=new{type="object",properties=d.Properties??new Dictionary<string,object>(),required=d.Required??new string[0],additionalProperties=false};
+                object schema=d.InputSchema??(object)new{type="object",properties=d.Properties??new Dictionary<string,object>(),required=d.Required??new string[0],additionalProperties=false};
                 a.Add(new{type="function",function=new{name=d.Name,description=d.Description??"",parameters=schema}});
                 b.Add(new{name=d.Name,description=d.Description??"",input_schema=schema});
             }

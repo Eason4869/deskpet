@@ -12,7 +12,7 @@ namespace Dafeiyu
 {
     public sealed class MarkdownNode
     {
-        public string Kind = "", Text = "", Url = "", Info = ""; public int Level, Start = 1; public bool Header;
+        public string Kind = "", Text = "", Url = "", Info = ""; public int Level, Start = 1; public bool Header,AutoLink;
         public readonly List<MarkdownNode> Children = new List<MarkdownNode>();
     }
     // The neutral render tree is shared by WPF and Avalonia. No HTML is executed.
@@ -64,8 +64,8 @@ namespace Dafeiyu
                 if (literal != null) node.Text = literal.Content.ToString();
                 else if (code != null) { node.Kind = "code"; node.Text = code.Content; }
                 else if (emphasis != null) { node.Kind = emphasis.DelimiterChar == '~' ? "strike" : emphasis.DelimiterCount >= 2 ? "bold" : "italic"; node.Children.AddRange(Inlines(emphasis)); }
-                else if (link != null) { node.Kind = link.IsImage ? "image" : "link"; node.Url = link.Url ?? ""; node.Children.AddRange(Inlines(link)); }
-                else if (auto != null) { node.Kind = "link"; node.Url = auto.IsEmail ? "mailto:" + auto.Url : auto.Url; node.Text = auto.Url; }
+                else if (link != null) { node.Kind = link.IsImage ? "image" : "link"; node.AutoLink=link.IsAutoLink; node.Url = link.Url ?? ""; node.Children.AddRange(Inlines(link)); }
+                else if (auto != null) { node.Kind = "link"; node.AutoLink=true; node.Url = auto.IsEmail ? "mailto:" + auto.Url : auto.Url; node.Text = auto.Url; }
                 else if (inline is LineBreakInline) { node.Kind = "break"; node.Text = "\n"; }
                 else if (task != null) node.Text = task.Checked ? "☑ " : "☐ ";
                 else if (inline is ContainerInline) node.Children.AddRange(Inlines((ContainerInline)inline));

@@ -70,6 +70,26 @@ namespace Dafeiyu.Tests
                 string root=Path.Combine(Directory.GetCurrentDirectory(),"work","image-preview-"+Guid.NewGuid().ToString("N"));var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ShowPredictedMessages=false,OnboardingState="completed"};foreach(string hotkey in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[hotkey]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);
                 appHost=new ChatWindow(pet){ShowActivated=false,ShowInTaskbar=false,WindowStartupLocation=WindowStartupLocation.Manual,Left=-10000,Top=0,Width=1000,Height=720};appHost.Show();Pump();var appRoot=appHost.Content;int appWindows=app.Windows.Count;var samplePath=Path.Combine(Directory.GetCurrentDirectory(),"assets","pet-preview-hd.png");var sample=File.Exists(samplePath)?ChatAttachment.CreateImage("伙伴预览.png",File.ReadAllBytes(samplePath)):attachment;var appPreview=(FrameworkElement)Invoke(previewType,null,"OpenAttachment",appHost,sample);Pump();Capture(appHost,"image-real-chat.png");Check(Object.ReferenceEquals(appHost.Content,appRoot)&&app.Windows.Count==appWindows,"real chat app shell hosts same inline floating preview without another window");Invoke(previewType,appPreview,"Close");appHost.Close();appHost=null;
                 foreach(string role in new[]{"user","assistant"}){var message=new ChatMessage(role,"image");message.SetAttachments(new[]{attachment});var view=new ChatMessageView(message,history,pet,host);history.Children.Add(view);host.UpdateLayout();var card=All<Border>(view).Single(b=>b.Name==(role=="user"?"SentAttachmentCard":"OutputFileCard"));Check(card.Focusable&&card.Cursor==System.Windows.Input.Cursors.Hand&&card.ContextMenu!=null,role+" image attachment has keyboard-accessible preview and keeps file actions");var activation=new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,System.Windows.PresentationSource.FromVisual(host),0,System.Windows.Input.Key.Enter){RoutedEvent=System.Windows.Input.Keyboard.KeyDownEvent};card.RaiseEvent(activation);Check(grid.Children.OfType<FrameworkElement>().Any(e=>e.Name=="ChatImagePreviewOverlay"),role+" attachment opens preview with Enter");var active=grid.Children.OfType<FrameworkElement>().Single(e=>e.Name=="ChatImagePreviewOverlay");Invoke(previewType,active,"Close");history.Children.Clear();}
+                foreach(bool quickDraft in new[]{false,true})
+                {
+                    Window composerHost=quickDraft?(Window)new QuickChatWindow(pet):new ChatWindow(pet);
+                    composerHost.ShowActivated=false;composerHost.ShowInTaskbar=false;composerHost.WindowStartupLocation=WindowStartupLocation.Manual;composerHost.Left=-10000;composerHost.Top=0;
+                    try
+                    {
+                        composerHost.Show();Pump();var composer=All<ConversationComposer>(composerHost).Single();composer.AddAttachments(new[]{attachment});composerHost.UpdateLayout();Pump();
+                        var input=All<MarkdownEditor>(composerHost).Single();input.Text="保留未发送的草稿";
+                        var card=All<Border>(composerHost).Single(b=>b.Name=="AttachmentCard");
+                        var thumbnail=All<Image>(card).Single(i=>i.Name=="AttachmentThumbnail");ClickBlankOrImage(thumbnail);Pump();
+                        var active=All<FrameworkElement>(composerHost).SingleOrDefault(e=>e.Name=="ChatImagePreviewOverlay");
+                        Check(active!=null,"unsent image thumbnail opens inline preview: "+composerHost.GetType().Name);Invoke(previewType,active,"Close");
+                        Check(input.Text=="保留未发送的草稿"&&All<Border>(composerHost).Count(b=>b.Name=="AttachmentCard")==1,"preview keeps draft and attachment intact");
+                        card.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,System.Windows.PresentationSource.FromVisual(composerHost),0,System.Windows.Input.Key.Enter){RoutedEvent=System.Windows.Input.Keyboard.KeyDownEvent});
+                        active=All<FrameworkElement>(composerHost).SingleOrDefault(e=>e.Name=="ChatImagePreviewOverlay");Check(active!=null,"unsent image supports keyboard preview");Invoke(previewType,active,"Close");
+                        All<Button>(card).Single(b=>b.Name=="RemoveAttachment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                        Check(!All<FrameworkElement>(composerHost).Any(e=>e.Name=="ChatImagePreviewOverlay")&&!All<Border>(composerHost).Any(b=>b.Name=="AttachmentCard"),"removing draft image never opens its preview");
+                    }
+                    finally{composerHost.Close();Pump();}
+                }
                 byte[] original=Picture();
                 using(var remote=new RemoteFixture(original,original.Length,false))
                 {

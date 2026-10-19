@@ -15,6 +15,12 @@ namespace Dafeiyu.Tests
         static int checks;
         static void Check(bool ok,string text){if(!ok)throw new Exception(text);checks++;}
         sealed class User:ICancellableAgentApprovalProvider{public int Calls;public bool Allow=true;public Task<bool> ApproveAsync(AgentApprovalRequest r){return ApproveAsync(r,CancellationToken.None);}public Task<bool> ApproveAsync(AgentApprovalRequest r,CancellationToken ct){Calls++;return Task.FromResult(Allow);}}
+        sealed class WaitingUser:IAgentApprovalProvider
+        {
+            internal readonly TaskCompletionSource<bool> Answer=new TaskCompletionSource<bool>();
+            internal readonly TaskCompletionSource<AgentApprovalRequest> Requested=new TaskCompletionSource<AgentApprovalRequest>();
+            public Task<bool> ApproveAsync(AgentApprovalRequest request){Requested.TrySetResult(request);return Answer.Task;}
+        }
         sealed class Reviewer:IAgentRiskReviewer{public int Calls;public AgentReviewVerdict Verdict;public bool Fail;public Task<AgentReviewResult> ReviewAsync(AgentApprovalRequest r,CancellationToken ct){Calls++;if(Fail)throw new IOException("fixture unavailable");return Task.FromResult(new AgentReviewResult{Verdict=Verdict,Reason="fixture review"});}}
         sealed class ChildModel:IAgentConversationApi{public async Task<string> ChatAgentAsync(ConnectionSettings s,IList<ChatMessage> messages,AgentWorkspace w,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tool,bool stream,CancellationToken cancel){return await w.ExecuteAsync("read_file",new JavaScriptSerializer().Serialize(new{path=messages.Last().Content}),cancel);}}
         sealed class Silent:IReplySpeech{public Task SpeakAsync(string s,PetSettings p,CancellationToken ct){return Task.FromResult(0);}public void Stop(){}public void SetVolume(int n){}public void Dispose(){}}
@@ -43,10 +49,38 @@ namespace Dafeiyu.Tests
             Check(Decide(cfg,Call("write_file",new{path=outside,content="ok"}))==AgentPermissionEffect.Ask,"outside write requires approval");
             Check(Decide(cfg,Call("read_files",new{paths=new[]{"inside.txt",outside}}))==AgentPermissionEffect.Ask,"batch read cannot hide outside path");
             Check(Decide(cfg,Call("apply_patch",new{edits=new[]{new{path=outside,content="ok"}}}))==AgentPermissionEffect.Ask,"batch edit cannot hide outside path");
-            Check(Decide(cfg,Call("exec_command",new{command="Get-ChildItem"}))==AgentPermissionEffect.Allow,"ordinary sandbox command is allowed");
+            Check(Decide(cfg,Call("exec_command",new{command="Get-ChildItem"}))==AgentPermissionEffect.Ask,"arbitrary sandbox commands require an exact approval rather than a blacklist exemption");
             Check(Decide(cfg,Call("exec_command",new{command="Remove-Item -Recurse ."}))==AgentPermissionEffect.Ask,"destructive sandbox command requires confirmation");
+            foreach(var mode in new[]{AgentApprovalMode.Ask,AgentApprovalMode.Auto})
+            {
+                string deniedRoot=Path.Combine(root,"denied-commands-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(deniedRoot);string victim=Path.Combine(deniedRoot,"victim.txt");File.WriteAllText(victim,"keep-me");
+                var deniedSettings=cfg.Copy();deniedSettings.AgentWorkspace=deniedRoot;deniedSettings.AgentApprovalMode=mode;deniedSettings.Text.ToolSupport=CapabilitySupport.Supported;deniedSettings.Text.Model="gpt-fixture";var refusing=new User{Allow=false};
+                using(var workspace=ConversationSession.OpenAgentWorkspace(deniedSettings,refusing))
+                {
+                    foreach(string command in new[]{"ri -LiteralPath (Join-Path $PWD.ProviderPath 'victim.txt') -Force","Microsoft.PowerShell.Management\\Remove-Item -LiteralPath (Join-Path $PWD.ProviderPath 'victim.txt')","[System.IO.File]::Delete([System.IO.Path]::Combine($PWD.ProviderPath,'victim.txt'))","& ('Rem'+'ove-Item') -LiteralPath (Join-Path $PWD.ProviderPath 'victim.txt')","Write-Output ready; ri -LiteralPath (Join-Path $PWD.ProviderPath 'victim.txt')"})
+                    {
+                        Check(Decide(deniedSettings,Call("exec_command",new{command}))==AgentPermissionEffect.Ask,"all command spellings require approval: "+mode+" / "+command);
+                        int priorCalls=refusing.Calls;string rejected=workspace.ExecuteAsync("exec_command",new JavaScriptSerializer().Serialize(new{command}),CancellationToken.None).GetAwaiter().GetResult();
+                        Check(rejected.StartsWith("错误：")&&refusing.Calls==priorCalls+1&&File.ReadAllText(victim)=="keep-me"&&workspace.CommandResults.Count==0,"refused command never executes or deletes its fixture: "+mode+"; calls="+refusing.Calls+" prior="+priorCalls+"; result="+rejected);
+                    }
+                }
+                var waiting=new WaitingUser();using(var workspace=ConversationSession.OpenAgentWorkspace(deniedSettings,waiting))using(var cancellation=new CancellationTokenSource())
+                {
+                    var execution=workspace.ExecuteAsync("exec_command","{\"command\":\"Get-ChildItem\"}",cancellation.Token);
+                    Check(waiting.Requested.Task.Wait(5000),"terminal waits for its exact approval before process start");cancellation.Cancel();bool stopped=false;
+                    try{execution.GetAwaiter().GetResult();}catch(OperationCanceledException){stopped=true;}finally{waiting.Answer.TrySetResult(false);}
+                    Check(stopped&&workspace.CommandResults.Count==0&&File.ReadAllText(victim)=="keep-me","cancelling a pending approval never starts a command");
+                }
+            }
             cfg.AgentSandboxEnabled=false;Check(Decide(cfg,Call("exec_command",new{command="Get-ChildItem"}))==AgentPermissionEffect.Ask,"unsandboxed command requires confirmation");
             cfg.AgentApprovalMode=AgentApprovalMode.Full;Check(Decide(cfg,Call("write_file",new{path=outside,content="ok"}))==AgentPermissionEffect.Allow,"explicit full mode permits outside files");
+            Check(Decide(cfg,Call("exec_command",new{command="Get-ChildItem"}))==AgentPermissionEffect.Allow,"explicit full mode retains its selected command authority");
+            var approvedSettings=cfg.Copy();approvedSettings.AgentApprovalMode=AgentApprovalMode.Ask;approvedSettings.AgentSandboxEnabled=true;approvedSettings.Text.ToolSupport=CapabilitySupport.Supported;approvedSettings.Text.Model="gpt-fixture";approvedSettings.AgentWorkspace=Path.Combine(root,"approved-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(approvedSettings.AgentWorkspace);var approving=new User();
+            using(var workspace=ConversationSession.OpenAgentWorkspace(approvedSettings,approving))
+            {
+                string result=workspace.ExecuteAsync("exec_command",new JavaScriptSerializer().Serialize(new{command="[IO.File]::WriteAllText((Join-Path $PWD.ProviderPath 'approved.txt'),'ok'); Write-Output 'APPROVED_SANDBOX'"}),CancellationToken.None).GetAwaiter().GetResult();
+                Check(approving.Calls==1&&result.Contains("APPROVED_SANDBOX")&&result.Contains("AppContainer")&&File.ReadAllText(Path.Combine(approvedSettings.AgentWorkspace,"approved.txt"))=="ok","approved command executes once through the actual AppContainer path");
+            }
             cfg.AgentApprovalMode=AgentApprovalMode.Auto;cfg.AgentSandboxEnabled=true;
             var user=new User();var reviewer=new Reviewer{Verdict=AgentReviewVerdict.Allow};var provider=new AgentPolicyApprovalProvider(user,reviewer,new AgentAccessPolicy(cfg,"读取指定外部文档"));var request=new AgentApprovalRequest{Action="read",ToolName="read_file",Arguments="{}"};
             Check(provider.ApproveAsync(request).Result&&reviewer.Calls==1&&user.Calls==0,"auto review can approve exact bounded request");

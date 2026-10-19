@@ -309,7 +309,14 @@ namespace Dafeiyu
                 if(file.IsImage)try{var bitmap=new System.Windows.Media.Imaging.BitmapImage();using(var stream=new System.IO.MemoryStream(Convert.FromBase64String(file.Data))){bitmap.BeginInit();bitmap.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;bitmap.DecodePixelWidth=240;bitmap.StreamSource=stream;bitmap.EndInit();bitmap.Freeze();}visual=new Image{Name="AttachmentThumbnail",Source=bitmap,Stretch=Stretch.UniformToFill};}catch(Exception e){if(!(e is System.IO.IOException || e is FormatException || e is NotSupportedException || e is ArgumentException))throw;}
                 card.Children.Add(visual);var name=Ui.Text(file.Name,11);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.Margin=new Thickness(7,4,7,3);Grid.SetRow(name,1);card.Children.Add(name);
                 var remove=SmallText("×","RemoveAttachment");remove.ToolTip="移除 "+file.Name;remove.Width=remove.Height=remove.MinHeight=22;remove.Background=Brushes.White;remove.HorizontalAlignment=HorizontalAlignment.Right;remove.VerticalAlignment=VerticalAlignment.Top;remove.Margin=new Thickness(0,3,3,0);remove.Click+=delegate{Attachments.Remove(file);RefreshAttachments();RefreshAction();};card.Children.Add(remove);
-                attachmentChips.Children.Add(new Border{Name="AttachmentCard",Child=card,Background=Ui.Brush("#F7F7F8"),BorderBrush=Ui.Brush("#E4E5E8"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(9),Margin=new Thickness(0,0,7,6),ClipToBounds=true,ToolTip=file.Name});
+                var attachmentCard=new Border{Name="AttachmentCard",Child=card,Background=Ui.Brush("#F7F7F8"),BorderBrush=Ui.Brush("#E4E5E8"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(9),Margin=new Thickness(0,0,7,6),ClipToBounds=true,ToolTip=file.Name};
+                if(file.IsImage)
+                {
+                    attachmentCard.Focusable=true;attachmentCard.Cursor=Cursors.Hand;attachmentCard.ToolTip=file.Name+" · 点击放大预览";System.Windows.Automation.AutomationProperties.SetName(attachmentCard,"预览图片："+file.Name);
+                    attachmentCard.MouseLeftButtonUp+=delegate(object sender,MouseButtonEventArgs e){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);};
+                    attachmentCard.KeyDown+=delegate(object sender,KeyEventArgs e){if(ReferenceEquals(e.OriginalSource,attachmentCard)&&(e.Key==Key.Enter||e.Key==Key.Space)){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);}};
+                }
+                attachmentChips.Children.Add(attachmentCard);
             }
             attachmentArea.Visibility=Attachments.Count==0?Visibility.Collapsed:Visibility.Visible;
         }

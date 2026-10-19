@@ -193,7 +193,7 @@ namespace Dafeiyu
             var running=events.LastOrDefault(t=>t.Status=="running" || t.Status=="pending");
             string icon=running==null?null:ActivityIcon(running.Name);
             activityIcon.Visibility=active&&workMode&&icon!=null?Visibility.Visible:Visibility.Collapsed;
-            if(icon!=null&&!String.Equals(activityIcon.Tag as string,icon,StringComparison.Ordinal)){activityIcon.Tag=icon;activityIcon.Child=UiIcons.Image(icon,AgentUi.Muted);}
+            if(icon!=null&&!String.Equals(activityIcon.Tag as string,icon,StringComparison.Ordinal)){activityIcon.Tag=icon;var glyph=UiIcons.Image(icon,AgentUi.Muted);glyph.Width=activityIcon.Width;glyph.Height=activityIcon.Height;activityIcon.Child=glyph;}
             if(active && workMode)
             {
                 // Work mode: one lightweight line describing the current action.
