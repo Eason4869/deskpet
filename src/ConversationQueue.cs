@@ -27,7 +27,7 @@ namespace Dafeiyu
     {
         [DataContract] sealed class StoredQueue{[DataMember] public int Version=1;[DataMember] public string Payload;}
         readonly ConversationSession session;readonly Func<PetSettings> settings;readonly Func<string> name;readonly string path;
-        readonly object gate=new object();readonly Dictionary<string,List<QueuedMessage>> queues;
+        readonly object gate;readonly Dictionary<string,List<QueuedMessage>> queues;
         readonly HashSet<string> paused=new HashSet<string>();bool running,steering,disposed,loadFailed;QueuedMessage inFlight;
         Task runTask=Task.FromResult(0);public string Notice {get;private set;}int pauseRevision;
         public int PauseRevision {get{lock(gate)return pauseRevision;}}
@@ -35,7 +35,7 @@ namespace Dafeiyu
         public event Action Changed;
         public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path)
         {
-            this.session=session;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
+            this.session=session;gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
             queues=new Dictionary<string,List<QueuedMessage>>();
             if(File.Exists(path))try
             {
