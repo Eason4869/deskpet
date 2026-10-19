@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +10,7 @@ namespace Dafeiyu
     {
         [DataMember] public string Id="",Name="新对话",Status="idle";[DataMember] public bool NameEdited,Archived,HasUnreadCompletion,Pinned;
         [DataMember] public string Mode="work",PetId="";
+        [DataMember] public string SectionId="";
         [DataMember] public bool HasPermissionOverride,SandboxEnabled;[DataMember] public AgentApprovalMode ApprovalMode;
         [DataMember] public long CreatedUtcTicks,LastOpenedUtcTicks;
         public ConversationDefinition Copy(){return (ConversationDefinition)MemberwiseClone();}
@@ -32,6 +33,7 @@ namespace Dafeiyu
     }
     [DataContract] public sealed class SidebarSection
     {
+        [DataMember] public string Mode="work";
         [DataMember] public string Id="",Name="";
         public SidebarSection Copy(){return (SidebarSection)MemberwiseClone();}
     }
@@ -46,13 +48,15 @@ namespace Dafeiyu
         [DataMember] public List<ProjectDefinition> Projects=new List<ProjectDefinition>();
         [DataMember] public List<ConversationDefinition> UnassignedConversations=new List<ConversationDefinition>();
         [DataMember] public List<ConversationDefinition> QuickConversations=new List<ConversationDefinition>();
+        [DataMember] public Dictionary<string,List<string>> SidebarConversationOrder=new Dictionary<string,List<string>>();
+        [DataMember] public Dictionary<string,string> SidebarSectionLabels=new Dictionary<string,string>();
         [DataMember] public bool RecentIncludeProjects=true;
         [DataMember] public List<SidebarSection> Sections=new List<SidebarSection>{new SidebarSection{Id="projects",Name="项目"}};
-        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects};copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();return copy;}
+        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects};copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.SidebarConversationOrder=(SidebarConversationOrder??new Dictionary<string,List<string>>()).ToDictionary(x=>x.Key,x=>new List<string>(x.Value??new List<string>()));copy.SidebarSectionLabels=new Dictionary<string,string>(SidebarSectionLabels??new Dictionary<string,string>());return copy;}
     }
     public sealed partial class ProjectCatalogStore
     {
-        public const string UnassignedProjectId="unassigned",QuickProjectId="quick";
+        public const string UnassignedProjectId="unassigned",QuickProjectId="quick",DefaultChatSectionId="default_chat";
         public static ProjectDefinition QuickProject(ProjectCatalog catalog,PetSettings settings=null){var result=UnassignedProject(catalog,settings);result.Id=QuickProjectId;result.Name="快速对话";result.Conversations=catalog.QuickConversations;return result;}
         public static ProjectDefinition UnassignedProject(ProjectCatalog catalog,PetSettings settings=null)
         {
@@ -85,7 +89,7 @@ namespace Dafeiyu
         {
             if(catalog==null)throw new ArgumentNullException("catalog");name=(name??"").Trim();if(name.Length<1 || name.Length>80)throw new ArgumentException("项目名称应为 1～80 个字符。");
             if(String.IsNullOrWhiteSpace(workspace) || !Path.IsPathRooted(workspace) || !Directory.Exists(workspace))throw new ArgumentException("项目工作区必须是已存在的绝对目录。");
-            NormalizeDefaults(catalog);if(!catalog.Sections.Any(s=>s.Id==sectionId))throw new ArgumentException("分区不存在。");
+            NormalizeDefaults(catalog);if(!catalog.Sections.Any(s=>s.Id==sectionId&&s.Mode=="work"))throw new ArgumentException("分区不存在。");
             var project=new ProjectDefinition{Id=Guid.NewGuid().ToString("N"),Name=name,SectionId=sectionId,Workspace=Path.GetFullPath(workspace).TrimEnd('\\','/'),LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
             project.Conversations.Add(new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="新对话",Status="active",CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks});
             catalog.Projects.Add(project);catalog.ActiveProjectId=project.Id;Validate(catalog);return project;
@@ -120,9 +124,9 @@ namespace Dafeiyu
         {
             return new ProjectCatalog();
         }
-        public static SidebarSection CreateSection(ProjectCatalog catalog,string name)
+        public static SidebarSection CreateSection(ProjectCatalog catalog,string name,string mode="work")
         {
-            NormalizeDefaults(catalog);name=SectionName(name);var section=new SidebarSection{Id=Guid.NewGuid().ToString("N"),Name=name};catalog.Sections.Add(section);return section;
+            NormalizeDefaults(catalog);if(mode!="chat"&&mode!="work")throw new ArgumentException("分区模式无效。");name=SectionName(name);var section=new SidebarSection{Id=Guid.NewGuid().ToString("N"),Name=name,Mode=mode};catalog.Sections.Add(section);return section;
         }
         public static void RenameSection(ProjectCatalog catalog,string id,string name)
         {
@@ -139,8 +143,16 @@ namespace Dafeiyu
             if(catalog.Sections==null){catalog.Sections=new List<SidebarSection>();catalog.RecentIncludeProjects=true;}
             if(catalog.UnassignedConversations==null)catalog.UnassignedConversations=new List<ConversationDefinition>();
             if(catalog.QuickConversations==null)catalog.QuickConversations=new List<ConversationDefinition>();
+            if(catalog.SidebarConversationOrder==null)catalog.SidebarConversationOrder=new Dictionary<string,List<string>>();
+            if(catalog.SidebarSectionLabels==null)catalog.SidebarSectionLabels=new Dictionary<string,string>();
+            foreach(var section in catalog.Sections)if(section!=null&&String.IsNullOrEmpty(section.Mode))section.Mode="work";
+            if(!catalog.Sections.Any(s=>s!=null&&s.Id==DefaultChatSectionId))catalog.Sections.Add(new SidebarSection{Id=DefaultChatSectionId,Name="默认分区",Mode="chat"});
+            // Full-window chats were previously stored beside quick-window chats.
+            // Stable IDs keep history and queue files in their original locations.
+            foreach(var chat in catalog.QuickConversations.Where(c=>c!=null&&c.Mode=="chat").ToArray()){catalog.QuickConversations.Remove(chat);if(!catalog.UnassignedConversations.Any(c=>c.Id==chat.Id))catalog.UnassignedConversations.Add(chat);}
+            foreach(var chat in catalog.UnassignedConversations.Where(c=>c!=null&&c.Mode=="chat"))if(!catalog.Sections.Any(s=>s!=null&&s.Mode=="chat"&&s.Id==chat.SectionId))chat.SectionId=DefaultChatSectionId;
             catalog.Sections.RemoveAll(section=>section!=null&&section.Id=="chat");if(!catalog.Sections.Any(section=>section!=null&&section.Id=="projects"))catalog.Sections.Insert(0,new SidebarSection{Id="projects",Name="项目"});
-            foreach(var project in catalog.Projects.ToArray())if(project!=null){if(project.IsQuickChatDefault){foreach(var conversation in project.Conversations??new List<ConversationDefinition>()){if(!catalog.QuickConversations.Any(c=>c.Id==conversation.Id)){conversation.Mode="legacy-quick";catalog.QuickConversations.Add(conversation);}}catalog.Projects.Remove(project);if(catalog.ActiveProjectId==project.Id)catalog.ActiveProjectId="";}else if(String.IsNullOrEmpty(project.SectionId)||project.SectionId=="chat")project.SectionId="projects";}
+            foreach(var project in catalog.Projects.ToArray())if(project!=null){if(project.IsQuickChatDefault){foreach(var conversation in project.Conversations??new List<ConversationDefinition>()){if(!catalog.QuickConversations.Any(c=>c.Id==conversation.Id)){conversation.Mode="legacy-quick";catalog.QuickConversations.Add(conversation);}}catalog.Projects.Remove(project);if(catalog.ActiveProjectId==project.Id)catalog.ActiveProjectId="";}else if(!catalog.Sections.Any(s=>s!=null&&s.Id==project.SectionId&&s.Mode=="work"))project.SectionId="projects";}
         }        static void Validate(ProjectCatalog catalog)
         {
             if(catalog==null || catalog.Version!=1 || catalog.Projects==null)throw new SerializationException();
@@ -149,7 +161,7 @@ namespace Dafeiyu
             foreach(var project in catalog.Projects)
             {
                 if(project==null || String.IsNullOrWhiteSpace(project.Id) || !ids.Add(project.Id) || String.IsNullOrWhiteSpace(project.Name) || project.Name.Length>80 || String.IsNullOrWhiteSpace(project.Workspace) || !Path.IsPathRooted(project.Workspace))throw new SerializationException();
-                if(project.Conversations==null || !catalog.Sections.Any(s=>s.Id==project.SectionId))throw new SerializationException();
+                if(project.Conversations==null || !catalog.Sections.Any(s=>s.Id==project.SectionId&&s.Mode=="work"))throw new SerializationException();
                 foreach(var chat in project.Conversations)ValidateConversation(chat,conversationIds);
             }
             if(catalog.UnassignedConversations==null)throw new SerializationException();foreach(var chat in catalog.UnassignedConversations)ValidateConversation(chat,conversationIds);foreach(var chat in catalog.QuickConversations)ValidateConversation(chat,conversationIds);

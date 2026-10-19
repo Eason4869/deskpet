@@ -25,7 +25,7 @@ namespace Dafeiyu {
     if(privateBatches.Count==0 && !keepWork){definition.Mode="quick";definition.PetId=currentPet??"";}
     for(int index=0;index<privateBatches.Count;index++){
      var batch=privateBatches[index];var personal=!keepWork&&index==0?definition:definition.Copy();if(!Object.ReferenceEquals(personal,definition))personal.Id=Guid.NewGuid().ToString("N");personal.Mode=wasQuick?"quick":"chat";personal.PetId=batch.Item1;
-     if(sourceOwner!=null)sourceOwner.Conversations.Remove(personal);catalog.UnassignedConversations.Remove(personal);if(!catalog.QuickConversations.Contains(personal))catalog.QuickConversations.Add(personal);
+     if(sourceOwner!=null)sourceOwner.Conversations.Remove(personal);catalog.UnassignedConversations.Remove(personal);if(personal.Mode=="quick"){if(!catalog.QuickConversations.Contains(personal))catalog.QuickConversations.Add(personal);}else{personal.SectionId=DefaultChatSectionId;catalog.UnassignedConversations.Add(personal);}
      var target=new HistoryStore(Path.Combine(ConversationWorkspace.ResolveDataDirectory(dataRoot,personal.Id),"history"));WriteHistory(target,personal.PetId,batch.Item2);
     }
    }
