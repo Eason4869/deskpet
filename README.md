@@ -40,10 +40,10 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 <picture>
   <source media="(max-width: 640px)" srcset="previews/readme-workspace-mobile.svg">
-  <img src="previews/readme-workspace.svg" width="1200" alt="Windows统一主窗口完整截图：左侧首页、用量、插件与设置入口，项目和对话侧栏，伙伴欢迎页及完整输入区">
+  <img src="previews/readme-workspace.svg" width="1200" alt="Windows 0.9.1 统一主窗口完整截图：左侧功能入口、六条示例会话、聊天正文及完整输入区">
 </picture>
 
-<sub>展示 Windows 0.9.0 的真实界面，窗口未裁切。可点击查看 [主窗口原图](previews/workspace-0.9.0.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
+<sub>展示 Windows 0.9.1 的真实界面，保留完整窗口；会话列表和聊天内容为隔离的本地示例，不含个人记录，未请求模型服务。可点击查看 [主窗口原图](previews/workspace-0.9.1.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
 
 ### 从一句话，到一个项目
 
