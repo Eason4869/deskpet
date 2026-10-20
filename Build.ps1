@@ -104,6 +104,9 @@ if (Test-Path -LiteralPath $bundledSkinRoot -PathType Container) {
     }
 }
 }
+# UpdateApplyTests copies itself into its synthetic app/helper ZIP; keep that
+# fixture small rather than embedding the complete companion artwork twice.
+if ($Target -eq 'UpdateApplyTests') { $assets = @() }
 $arguments = @('/nologo','/optimize+','/codepage:65001','/utf8output','/platform:anycpu',('/out:' + $destination)) + $references + $options + $assets + $sources
 $responseFile = Join-Path $workRoot ($Target + '.rsp')
 $responseLines = @($arguments | ForEach-Object { '"' + ($_ -replace '(?<!\\)"','\"') + '"' })
