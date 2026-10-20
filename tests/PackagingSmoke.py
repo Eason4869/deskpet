@@ -61,10 +61,10 @@ for worker in [runtime / 'DeskPet.Update.exe'] + ([options.legacy_worker.resolve
                     '--work-directory', str(PROJECT/'work')], check=True, timeout=120)
 print('PASS real update engine accepts the complete release archive and preserves personal data')
 with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
-    for document in ['skin-format.md', 'dialogue-setup.md', 'conversation-agent.md', 'native-agent-design.md', 'third-party-notices.md', 'sources.md', 'installation.md', 'daily-use.md', 'voice-presets.md', 'release-naming.md', 'interaction-extension.md']:
+    for document in ['skin-format.md', 'character-packs.md', 'dialogue-setup.md', 'conversation-agent.md', 'native-agent-design.md', 'third-party-notices.md', 'sources.md', 'installation.md', 'daily-use.md', 'voice-presets.md', 'release-naming.md', 'interaction-extension.md']:
         assert bundle.read('DafeiyuDeskPet/docs/' + document).decode('utf-8-sig').replace('\r\n','\n') == (checkout / 'docs' / document).read_text(encoding='utf-8-sig')
 print('PASS runtime includes the exact daily-use and voice-preset guides')
-for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei']:
+for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
     archive = output / (pet + '-HD-Skin-' + version + '.zip')
     assert archive.is_file(), 'versioned ASCII skin archive missing: ' + archive.name
     with ZipFile(archive) as bundle:
@@ -74,10 +74,15 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei']:
         assert skin['system_prompt'] and skin['special_action']
         expected_counts=[6,8,8,4,5,8,6,6,6]+[4]*8
         action_names=['idle','running-right','running-left','waving','jumping','failed','waiting','running','review','lifted','landing','petting','poked','feeding','happy','sleeping','special']
-        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet=='Xiaobei' else expected_counts)
+        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet in ('Xiaobei','gugugaga') else expected_counts)
         for record in skin['animations'].values():
             assert record['columns']==8 and 1<=record['frames']<=8 and record['file'] in bundle.namelist()
         assert skin['gaze']['file'] in bundle.namelist() and skin['preview'] in bundle.namelist()
+        if pet=='gugugaga':
+            assert skin['id']=='gugugaga' and skin['pack_version']==version
+            assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech']
+            for clips in (skin['extra_animations'],skin['alternate_animations']):
+                assert all(clip['file'] in bundle.namelist() for clip in clips.values())
 with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
@@ -91,7 +96,7 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/templates/grid-guide.svg' in bundle.namelist()
     assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
-print('PASS four complete low-frame v2 skin packs and full author templates')
+print('PASS five complete low-frame v2 skin packs and full author templates')
 installer_recipe=(checkout/'installer/DeskPet.iss').read_text(encoding='utf-8-sig')
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     for name in bundle.namelist():

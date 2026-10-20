@@ -52,8 +52,8 @@ internal sealed class DesktopController : IDisposable
         var onboarding = OnboardingUpgrade.Prepare(Settings, ReleaseInfo.DisplayVersion);
         if (onboarding.Changed) store.Save(Settings);
         showAutomaticGuide = onboarding.ShowGuide;
-        Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId) ?? Skins[0];
-        PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt);
+        Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.PackageId == Settings.SkinId) ?? Skins[0];
+        PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Api = new ApiClient();
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
         Session.SelectPersona(Skin.Id);
@@ -87,7 +87,7 @@ internal sealed class DesktopController : IDisposable
     {
         await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
         PersonaProfiles.SaveVoices(Settings); Skin = skin;
-        PersonaProfiles.Activate(Settings, skin.Id, skin.Prompt); Session.SelectPersona(skin.Id);
+        PersonaProfiles.Activate(Settings, skin.Id, skin.Prompt, skin.Voices); Session.SelectPersona(skin.Id);
         Pet.SelectSkin(); Save(); if (tray != null) tray.ToolTipText = "DeskPet · " + skin.Name;
     }
     public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp(); }

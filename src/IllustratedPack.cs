@@ -29,20 +29,20 @@ namespace Dafeiyu
     public static class IllustratedPack
     {
         public static readonly string[] Actions={"idle","running-right","running-left","waving","jumping","failed","waiting","running","review","lifted","landing","petting","poked","feeding","happy","sleeping","special"};
+        public static HashSet<string> Files(SkinManifest manifest)
+        {
+            var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase){manifest.Preview,manifest.Gaze.File};
+            foreach(var set in new[]{manifest.Animations,manifest.ExtraAnimations,manifest.AlternateAnimations})if(set!=null)foreach(var clip in set.Values){if(clip==null)throw new InvalidOperationException("角色动作说明不完整。");files.Add(clip.File);}
+            if(!String.IsNullOrEmpty(manifest.Avatar))files.Add(manifest.Avatar);return files;
+        }
         public static string AssetPath(string folder,string relative)
         {
-            if(String.IsNullOrWhiteSpace(relative) || relative.Length>200 || relative.IndexOfAny(new[]{'\\',':','\0'})>=0 || relative.StartsWith("/") || !relative.EndsWith(".png",StringComparison.OrdinalIgnoreCase))
+            if(String.IsNullOrWhiteSpace(relative) || !relative.EndsWith(".png",StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("素材必须是包内的相对 PNG 路径。");
-            string[] parts=relative.Split('/');
-            if(parts.Any(p=>p.Length==0 || p=="." || p==".." || p.EndsWith(".") || p.EndsWith(" ") || p.IndexOfAny(Path.GetInvalidFileNameChars())>=0))throw new InvalidOperationException("素材路径无效。");
-            string root=Path.GetFullPath(folder),current=root;
+            string root=Path.GetFullPath(folder);
             if(root.StartsWith(@"\\"))throw new InvalidOperationException("请先将外观包复制到本地文件夹。");
-            if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("素材目录不能是链接。");
-            foreach(string part in parts) {
-                current=Path.Combine(current,part);
-                if((File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("素材不能通过链接读取包外文件。");
-            }
-            return current;
+            try {return CompanionPackStorage.AssetPath(root,relative);}
+            catch(InvalidDataException error){throw new InvalidOperationException(error.Message,error);}
         }
         public static IList<string> Validate(string folder,SkinManifest manifest,bool inspectFrames)
         {
@@ -69,6 +69,35 @@ namespace Dafeiyu
             if(size>256L*1024*1024)throw new InvalidOperationException("外观素材总大小不能超过 256 MB。");
             ValidateImage(gazePath,1920,2080,inspectFrames,16,4);
             ValidateImage(preview,480,520,inspectFrames,1,1);
+            if(!String.IsNullOrEmpty(manifest.PackageId) && !CompanionPackStorage.ValidId(manifest.PackageId))throw new InvalidOperationException("角色包 ID 无效。");
+            if((manifest.PackVersion??"").Length>32 || (manifest.SpecialAction2??"").Length>32)throw new InvalidOperationException("角色包版本或动作名称过长。");
+            var voices=manifest.VoicePresets;
+            if(voices!=null && ((voices.Description??"").Length>280 || (voices.SampleText??"").Length>200 ||
+                new[]{voices.Speech,voices.Live}.Any(v=>v!=null && (v.Length>16 || v.Any(id=>String.IsNullOrWhiteSpace(id) || id.Length>64)))))throw new InvalidOperationException("角色包音色预设无效。");
+            foreach(var set in new[]{manifest.ExtraAnimations,manifest.AlternateAnimations})if(set!=null)foreach(var item in set) {
+                bool extra=ReferenceEquals(set,manifest.ExtraAnimations);
+                string[] allowed=extra?new[]{"stumble","special2"}:new[]{"lifted","landing","feeding","happy","sleeping","special","special2","stumble","jumping"};
+                var clip=item.Value;
+                if(!allowed.Contains(item.Key) || clip==null || clip.Columns!=8 || clip.Frames<1 || clip.Frames>128 || Double.IsNaN(clip.Fps) || Double.IsInfinity(clip.Fps) || clip.Fps<1 || clip.Fps>60)throw new InvalidOperationException("扩展动作说明无效。");
+                if(!extra) {
+                    IllustratedAnimation first;
+                    if(!manifest.Animations.TryGetValue(item.Key,out first) && (manifest.ExtraAnimations==null || !manifest.ExtraAnimations.TryGetValue(item.Key,out first)))throw new InvalidOperationException("第二套动作缺少第一套。");
+                    if(clip.Loop!=first.Loop || item.Key=="jumping" && Math.Abs(clip.Frames/clip.Fps-first.Frames/first.Fps)>1e-8)throw new InvalidOperationException("两套动作的循环或跳跃时长不一致。");
+                }
+                string asset=AssetPath(folder,clip.File);if(files.Add(clip.File))size+=new FileInfo(asset).Length;
+                frames+=clip.Frames;if(size>256L*1024*1024 || frames>1024)throw new InvalidOperationException("角色包素材总量过大。");
+                ValidateImage(asset,3840,520*((clip.Frames+7)/8),inspectFrames,clip.Frames,8);
+            }
+            if(!String.IsNullOrEmpty(manifest.Avatar)) {
+                string avatar=AssetPath(folder,manifest.Avatar);if(files.Add(manifest.Avatar))size+=new FileInfo(avatar).Length;
+                using(var input=File.OpenRead(avatar)) {
+                    if(input.Length>25L*1024*1024 || size>256L*1024*1024)throw new InvalidOperationException("角色头像过大。");
+                    var header=new byte[33];if(input.Read(header,0,header.Length)!=header.Length)throw new InvalidOperationException("角色头像不完整。");
+                    int width=ReadInt(header,16),height=ReadInt(header,20);
+                    if(width!=height || width<64 || width>2048)throw new InvalidOperationException("角色头像需要 64–2048 像素的正方形 PNG。");
+                    ReadImage(avatar,width,height);
+                }
+            }
             return files.ToList();
         }
         static void ValidateImage(string path,int width,int height,bool inspect,int frames,int columns)

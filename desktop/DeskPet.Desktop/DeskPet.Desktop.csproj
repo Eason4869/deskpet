@@ -23,8 +23,9 @@
     <AvaloniaResource Include="../../assets/avatars/**/*.png" Link="Assets/avatars/%(RecursiveDir)%(Filename)%(Extension)" />
     <AvaloniaResource Include="../../assets/additional/*.png" Link="Assets/additional/%(Filename)%(Extension)" />
     <AvaloniaResource Include="../../assets/companion-animations/**/*.png" Link="Assets/companion-animations/%(RecursiveDir)%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/bundled-skins/xiaobei/**/*.png" Link="Assets/bundled-skins/xiaobei/%(RecursiveDir)%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/bundled-skins/xiaobei/pet.json" Link="Assets/bundled-skins/xiaobei/pet.json" />
+    <AvaloniaResource Include="../../assets/bundled-skins/**/*.png" Link="Assets/bundled-skins/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Include="../../assets/bundled-skins/**/pet.json" Link="Assets/bundled-skins/%(RecursiveDir)pet.json" />
+    <AvaloniaResource Include="../../assets/bundled-skins/catalog.json" Link="Assets/bundled-skins/catalog.json" />
     <AvaloniaResource Include="../../assets/provider-logos.json" Link="Assets/provider-logos.json" />
     <AvaloniaResource Include="../../assets/pet.ico" Link="Assets/pet.ico" />
   </ItemGroup>

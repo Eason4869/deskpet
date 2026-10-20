@@ -2,6 +2,8 @@
 
 所有可安装包、运行 ZIP、源码、外观和模板包含版本号；平台包显式区分 Windows 与 macOS，Mac 再区分 CPU。当前 0.9.2 提供 Windows 安装／便携版与 macOS 双架构预览。
 
+dev 当前版本为 0.9.3，尚未发布正式 Release。新构建的运行包、源码及模板使用 0.9.3；第五位伙伴的完整素材包为 `gugugaga-HD-Skin-0.9.3.zip`，其文件名和内置说明读取 `pet.json` 的 `pack_version`。下表保留已发布 0.9.2 的附件名作为参考。
+
 | 用途（推荐下载顺序） | 0.5.6（兼容旧名） | 0.9.2 |
 | --- | --- | --- |
 | Windows 安装（推荐） | `DeskPet-Setup-0.5.6.exe` | `DeskPet-Windows-Setup-0.9.2.exe` |

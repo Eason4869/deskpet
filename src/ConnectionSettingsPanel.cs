@@ -9,6 +9,7 @@ namespace Dafeiyu
     {
         readonly PetWindow pet;readonly TextProviderEditor text,recognition,synthesis,live;readonly ComboBox voice,liveVoice;
         readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
+        readonly TextBlock speechAdvice,liveAdvice;
         string speechContext,liveContext;
         internal int SpeechTestRevision {get;private set;}
         internal bool SpeechTestSucceeded {get;private set;}
@@ -28,12 +29,14 @@ namespace Dafeiyu
             text=new TextProviderEditor(pet.Settings);text.SaveConnection=SaveTextConnection;recognition=new TextProviderEditor(pet.Settings,"asr");synthesis=new TextProviderEditor(pet.Settings,"speech");live=new TextProviderEditor(pet.Settings,"live");
             cloud=Ui.Toggle("使用云端 TTS",pet.Settings.UseCloudVoice,v=>SetCloud(v));cloud.Name="UseCloudVoice";synthesis.Options.Children.Add(cloud);
             voice=VoiceField(pet.Settings.VoiceName,"SpeechVoice");Ui.Label(synthesis.Extras,"音色（可选择或手动填写）",voice);synthesis.Extras.Children.Add(Ui.Text("音色按宠物和服务模型保存，切换伙伴时同步切换。\n首次推荐仅供试听；关闭云端 TTS 时使用 Windows 系统语音。",11,Ui.Muted));SetCloud(pet.Settings.UseCloudVoice);
+            speechAdvice=Ui.Text("",11,Ui.Muted);speechAdvice.Name="SpeechCharacterRecommendation";synthesis.Extras.Children.Add(speechAdvice);
             var sound=new StackPanel{Margin=new Thickness(0,16,0,0)};
             sound.Children.Add(Ui.ReplySpeechToggle(pet));
             var label=Ui.Text("音量 · "+pet.Settings.Volume+"%",12,Ui.Blue);sound.Children.Add(label);
             var volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
             volume.ValueChanged+=delegate {int value=(int)Math.Round(volume.Value);label.Text="音量 · "+value+"%";pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.SaveSettings();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
             liveVoice=VoiceField(pet.Settings.LiveVoice,"LiveVoice");Ui.Label(live.Extras,"Live 音色（可选择或手动填写）",liveVoice);live.Extras.Children.Add(Ui.Text("例如 Kore。模型与音色以服务账号可用范围为准。\n点击快速或完整对话中的声波图标进入 Live 通话；连接成功才会打开麦克风，挂断后停止收音。",12,Ui.Muted));
+            liveAdvice=Ui.Text("",11,Ui.Muted);liveAdvice.Name="LiveCharacterRecommendation";live.Extras.Children.Add(liveAdvice);
             var modes=new ComboBox{Name="VoiceMode",ItemsSource=new[]{"ASR + TTS · 分步语音","Live · 实时语音"},SelectedIndex=pet.Settings.VoiceMode=="live" ? 1 : 0,MinHeight=38,Padding=new Thickness(8)};
             bool refreshingMode=false;
             modes.SelectionChanged+=delegate {if(refreshingMode)return;if(pet.DialogueBusy){refreshingMode=true;modes.SelectedIndex=pet.Settings.VoiceMode=="live"?1:0;refreshingMode=false;if(notice!=null)notice.Text="请先结束当前对话，再切换语音模式。";return;}pet.Settings.VoiceMode=modes.SelectedIndex==1 ? "live" : "pipeline";pet.SaveSettings();pet.RefreshChatAppearance();};Ui.Label(live.Extras,"聊天窗口默认语音模式",modes);
@@ -89,9 +92,15 @@ namespace Dafeiyu
             }
             var next=VoicePresets.For(kind,settings);
             TextSearch.SetTextPath(field,"Id");field.ItemsSource=next;field.SelectedIndex=-1;
-            field.Text=String.IsNullOrWhiteSpace(current)?PersonaProfiles.RecommendedVoice(pet.Skin.Id,kind,settings):current;
+            field.Text=String.IsNullOrWhiteSpace(current)?PersonaProfiles.RecommendedVoice(pet.Skin.Id,kind,settings,pet.Settings.ActiveVoiceRecommendations):current;
             if(!voiceSavedValues.ContainsKey(kind+":"+context))voiceSavedValues[kind+":"+context]=field.Text.Trim();
             previousContext=context;
+            var advice=kind=="live"?liveAdvice:speechAdvice;
+            if(advice!=null) {
+                string recommended=PersonaProfiles.RecommendedVoice(pet.Skin.Id,kind,settings,pet.Settings.ActiveVoiceRecommendations);
+                advice.Text=pet.Skin.Name+" · "+(recommended.Length==0?"此模型未提供预置音色，可手动填写。":"首次推荐："+recommended+"，已有选择优先保留。")+
+                    (pet.Settings.ActiveVoiceRecommendations==null?"":"\n"+pet.Settings.ActiveVoiceRecommendations.Description);
+            }
         }
         void SaveVoiceDrafts(string kind=null)
         {

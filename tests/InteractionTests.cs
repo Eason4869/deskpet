@@ -1,5 +1,8 @@
 ﻿using System;
 
+using System.IO;
+using System.Linq;
+
 namespace Dafeiyu.Tests
 {
     public static class InteractionTests
@@ -16,6 +19,7 @@ namespace Dafeiyu.Tests
                 NamedHoverChoices();
                 ReferenceMatchedClips();
                 OriginalVariantClips();
+                GugaVariantClips();
                 DropMotionRules();
                 WanderRules();
                 EmbeddedLegacyTiming();
@@ -146,6 +150,23 @@ namespace Dafeiyu.Tests
             motion.Start(490,208,700);motion.Advance(1);Check(motion.Position==492,"fall is clamped to available screen space");
             motion.Start(500,208,700);motion.Advance(1);Check(motion.Position==500,"release never moves upward even outside screen bounds");
             motion.Start(100,208,700);motion.Advance(.1);double interrupted=motion.Position;motion.Cancel();motion.Advance(1);Check(motion.Position==interrupted,"interruption freezes fall without deferred movement");
+        }
+        private static void GugaVariantClips()
+        {
+            var skin=new SkinCatalog(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"guga-interaction-data")).Find("gugugaga");
+            Check(skin.Id=="gugugaga","Guga catalog identity exists");
+            var art=new AdditionalInteractions();
+            foreach(string action in AdditionalInteractions.Actions.Concat(new[]{"jumping"})) {
+                Check(AdditionalInteractions.Has(skin,action) && AdditionalInteractions.HasOriginal(skin,action),"Guga has both variants "+action);
+                var first=art.Get(skin,action+"-original");var second=art.Get(skin,action);
+                Check(first!=null && second!=null && first.Count==8 && second.Count==8,"Guga variants decode eight poses "+action);
+                Check(first.Duration==1 && second.Duration==1,"Guga variants share eight FPS "+action);
+            }
+            Check(!AdditionalInteractions.HasOriginal(new SkinDefinition("gugugaga","导入咕嘎","",null,false),"lifted"),"matching imported Guga cannot borrow built-in variants");
+            SkinManifest manifest;using(var input=File.OpenRead(Path.Combine(skin.Source,"pet.json")))manifest=SkinCatalog.ReadManifest(input);
+            manifest.AlternateAnimations=null;manifest.ExtraAnimations.Remove("stumble");manifest.SpecialAction2=null;
+            var standalone=new SkinDefinition("test-signature",skin.Source,manifest);
+            Check(HoverActions.Choices(standalone,null,DateTime.Today).Any(a=>a.Id=="special2"),"second signature remains available independently of stumble and has a fallback name");
         }
         private static void OriginalVariantClips()
         {

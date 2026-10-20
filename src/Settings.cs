@@ -172,6 +172,7 @@ namespace Dafeiyu
     [DataContract]
     public sealed class PetSettings
     {
+        [IgnoreDataMember] public VoiceRecommendations ActiveVoiceRecommendations {get;set;}
         public const int OnboardingLastStep=16;
         [DataMember] public string OnboardingState { get; set; }
         [DataMember] public string OnboardingLessonId {get;set;}

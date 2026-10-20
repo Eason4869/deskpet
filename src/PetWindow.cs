@@ -28,6 +28,7 @@ namespace Dafeiyu
         private IdleSleepSchedule idleSleep;
         private int interactionRevision;
         private bool originalInteraction;
+        private bool originalAction;
         private readonly DropMotion dropMotion=new DropMotion();
         public IHolidayHoverActionProvider HolidayHoverActions {get;set;}
         private readonly DispatcherTimer clickTimer;
@@ -319,7 +320,7 @@ namespace Dafeiyu
             var sleep=new MenuItem {Header="小憩"};sleep.Click+=delegate {PlayInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
             var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayInteraction("special");};interactions.Items.Add(firstSkill);
             var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
-            menu.Opened+=delegate{RecordPetInteraction();firstSkill.Header=Skin.SpecialAction;extraSkill.Header=AdditionalInteractions.SpecialName(Skin);extraSkill.Visibility=AdditionalInteractions.Supports(Skin)?Visibility.Visible:Visibility.Collapsed;};
+            menu.Opened+=delegate{RecordPetInteraction();firstSkill.Header=Skin.SpecialAction;extraSkill.Header=AdditionalInteractions.SpecialName(Skin);extraSkill.Visibility=AdditionalInteractions.Has(Skin,"special2")?Visibility.Visible:Visibility.Collapsed;};
             menu.Opened+=delegate {CancelPendingClick();sleep.Header=interaction.IsSleeping ? "叫醒" : "小憩";interactions.IsEnabled=!IsUpdating;};
             var pause=new MenuItem { Header="暂停动画",IsCheckable=true };
             pause.Click+=delegate { SetPaused(pause.IsChecked); }; menu.Items.Add(pause);
@@ -457,7 +458,7 @@ namespace Dafeiyu
         }
         private void UpdateFrame(double delta=0)
         {
-            var extra=additionalInteractions.Get(Skin,interaction.Active?interaction.Name+(originalInteraction?"-original":""):Animation.State);
+            var extra=additionalInteractions.Get(Skin,interaction.Active?interaction.Name+(originalInteraction?"-original":""):Animation.State+(originalAction && AdditionalInteractions.HasOriginal(Skin,Animation.State)?"-original":""));
             if(extra!=null)
             {
                 int sample=extra.Sample(interaction.Active?interaction.Elapsed:Animation.Elapsed);
@@ -574,14 +575,14 @@ namespace Dafeiyu
             return IntPtr.Zero;
         }
         public void PlayAction(string state,double duration)
-        { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
+        { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();originalAction=AdditionalInteractions.HasOriginal(Skin,state) && random.Next(2)==0;manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void PlayInteraction(string name)
         { PlayInteraction(name,null); }
         private void PlayInteraction(string name,bool? originalStyle)
         {
             if(closing || IsUpdating)return;
             RecordPetInteraction();
-            if((name=="stumble" || name=="special2") && !AdditionalInteractions.Supports(Skin)){if(name=="special2")return;name="landing";}
+            if((name=="stumble" || name=="special2") && !AdditionalInteractions.Has(Skin,name)){if(name=="special2")return;name="landing";}
             CancelInteraction();StartInteraction(name,originalStyle);
         }
         public ImageSource GetActionPreview(string action,bool isInteraction)
@@ -652,7 +653,7 @@ namespace Dafeiyu
         public bool SelectSkin(SkinDefinition skin)
         {
             RecordPetInteraction();
-            if(skin.Id==Skin.Id)return true;
+            if(Object.ReferenceEquals(skin,Skin))return true;
             if(preferences!=null && preferences.HasUnsavedEdits){Notice="请先保存当前设置，再切换伙伴。";preferences.ShowNotice(Notice);return false;}
             if(DialogueBusy || DictationActive){Notice="请先停止对话、听写或结束 Live，再切换伙伴。";return false;}
             try
@@ -660,7 +661,7 @@ namespace Dafeiyu
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
                 if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin);if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
-                shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier); UpdateFrame();
+                motion=null;motionSkin=null;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier); UpdateFrame();
                 Title="桌面伙伴 · "+skin.Name; tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
                 if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;

@@ -27,6 +27,10 @@ pet.HolidayHoverActions = new FestivalHoverActions();
 
 ## 新增动作资源
 
+咕嘎（`gugugaga`）使用完整 v2 角色包与头像，并有提起、落地、喂食、开心、小憩、摇摆、转圈、踉跄、跳跃共 9 类双套动作。第一套标准动作位于 `assets/bundled-skins/gugugaga/animations/`，第一套扩展位于 `variants/{stumble,special2}-original.png`；第二套位于 `variants/` 的 9 个动作文件。具体路径由 `pet.json` 的 `extra_animations` 与 `alternate_animations` 声明。两套均各 8 帧、8 FPS，随机选择只在动作开始发生，保留拖起到落地及喂食到开心的版本。WPF 跳跃也按本次选择读取相应动作，旧四宠时序不变。
+
+`HasOriginal` 从角色包自己的 manifest 解析双套资源。导入包使用其声明的头像和扩展，不因同名／同 ID 借用内置文件。独立发布与更新规则见 [完整角色包](character-packs.md)，生产、QA 说明见 `previews/gugugaga-production/README.md`。
+
 `assets/companion-animations/{pet}/{action}.png` 为 8 列 × 1 行透明 PNG，每格 480×520。四宠均提供 `lifted`、`landing`、`feeding`、`happy`、`sleeping`、`special`、`special2`、`stumble`，E包另有修复后的 `jumping`，共 33 条、264 帧。每条 1 秒、8 FPS；拎起与小憩循环，其他动作单次播放，投喂完成后接开心。`Build.ps1` 将全部资源嵌入主程序和测试程序，缺少任一资源即构建失败。
 
 每次 imagegen 都附原版预览参考，生成独立的洋红背景动作条。`tools/prepare_companion_animations.py` 适配 Pets create-pet 的原始组件提取、边缘去色和帧检查脚本，仅调整单元尺寸及动作表；拆出完整姿态，整条统一缩放与定位，保留原始垂直运动，仅做一次边缘去色，不混帧、不插帧。原始条、提示词、注册参数、浅／深背景接触表与 GIF 预览保存在 `work/{Ebao,Dafeiyu,Marfu,Xiaobei}-repair`。原有基础图集、摸头与戳一戳不变。
