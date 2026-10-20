@@ -65,6 +65,7 @@ Source: "{#RuntimeDir}\docs\third-party-notices.md"; DestDir: "{app}\docs"; Flag
 Source: "{#RuntimeDir}\docs\native-agent-design.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\conversation-agent.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\skin-format.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#RuntimeDir}\docs\character-packs.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\dialogue-setup.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\installation.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 Source: "{#RuntimeDir}\docs\daily-use.md"; DestDir: "{app}\docs"; Flags: ignoreversion

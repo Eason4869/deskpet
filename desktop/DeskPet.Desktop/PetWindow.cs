@@ -92,7 +92,7 @@ internal sealed class PetWindow : Window
         Add("快速对话", () => owner.ShowChat(true)); Add("完整聊天与队列", () => owner.ShowChat(false));
         Add("四格轮盘", ShowPalette); Add("喂零食", () => Interact("feeding")); Add("摸摸", () => Interact("petting"));
         Add("小憩 / 唤醒", () => { if (action == "sleeping") Play("idle", false); else Interact("sleeping"); });
-        Add("伙伴招牌", () => Interact("special")); Add("第二招牌", () => Interact("special2"));
+        Add(owner.Skin.SpecialAction, () => Interact("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(owner.Skin.SpecialAction2, () => Interact("special2"));
         Add("暂停 / 继续", () => Paused = !Paused); Add("隐藏伙伴", Hide);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
@@ -106,7 +106,7 @@ internal sealed class PetWindow : Window
     public void ShowPalette()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), RowDefinitions = new RowDefinitions("*,*") };
-        var choices = new (string, Action)[] { ("聊天", () => owner.ShowChat(true)), ("喂零食", () => Interact("feeding")), ("小憩", () => Interact("sleeping")), ("招牌动作", () => Interact(random.Next(2) == 0 ? "special" : "special2")) };
+        var choices = new (string, Action)[] { ("聊天", () => owner.ShowChat(true)), ("喂零食", () => Interact("feeding")), ("小憩", () => Interact("sleeping")), ("招牌动作", () => Interact(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
         var window = Ui.Window("伙伴互动", grid, 290, 280); window.Topmost = true;
         for (int i = 0; i < choices.Length; i++) { var c = choices[i]; var b = Ui.Button(c.Item1, () => { c.Item2(); window.Close(); }); b.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch; b.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch; b.Margin = new Thickness(5); Grid.SetColumn(b, i % 2); Grid.SetRow(b, i / 2); grid.Children.Add(b); }
         window.Show();
@@ -116,8 +116,8 @@ internal sealed class PetWindow : Window
         if (owner.GuideLocked || dragging) return;
         DismissGreeting();
         sleep.Touch(clock.Elapsed.TotalSeconds); wanderAt = WanderSchedule.Next(clock.Elapsed.TotalSeconds, random.NextDouble()); runUntil = 0; walkTarget = null; drop.Cancel();
-        if (!owner.Skin.BuiltIn && !owner.Skin.Clips.ContainsKey(name) && !SpriteAssets.Interactions.Contains(name)) return;
-        Play(name, owner.Skin.BuiltIn && random.Next(2) == 0);
+        if (!owner.Skin.BuiltIn && !owner.Skin.Clips.ContainsKey(name) && !SpriteAssets.HasExtra(owner.Skin,name) && !SpriteAssets.Interactions.Contains(name)) return;
+        Play(name, (owner.Skin.BuiltIn || owner.Skin.Alternates.ContainsKey(name)) && random.Next(2) == 0);
     }
     private void Play(string name, bool useOriginal)
     {
@@ -133,7 +133,7 @@ internal sealed class PetWindow : Window
         var point = e.GetCurrentPoint(this);
         if (!point.Properties.IsLeftButtonPressed || owner.Settings.LockPosition) return;
         dragging = true; moved = false; press = e.GetPosition(this); start = Position; drop.Cancel();
-        Play("lifted", owner.Skin.BuiltIn && random.Next(2) == 0);
+        Play("lifted", (owner.Skin.BuiltIn || owner.Skin.Alternates.ContainsKey("lifted")) && random.Next(2) == 0);
         e.Pointer.Capture(this); e.Handled = true;
     }
     private void Moved(object? sender, PointerEventArgs e)
@@ -158,7 +158,7 @@ internal sealed class PetWindow : Window
     {
         dragging = false;
         if (!moved) { Play("poked", false); return; }
-        var stumble = reaction.TryStumble(true, owner.Settings.StumbleEnabled, owner.Skin.BuiltIn, clock.Elapsed.TotalSeconds);
+        var stumble = reaction.TryStumble(true, owner.Settings.StumbleEnabled, SpriteAssets.HasExtra(owner.Skin,"stumble"), clock.Elapsed.TotalSeconds);
         playback.Land(stumble); sprite.Clip = playback.Clip; sprite.Frame = playback.Frame;
         var area = WorkArea();
         drop.Start(Position.Y, Height * RenderScaling, area.Bottom);

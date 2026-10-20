@@ -1,0 +1,2175 @@
+{
+  "generator": "built-in imagegen",
+  "poses": 240,
+  "records": [
+    {
+      "source": "work\\gugugaga-art\\raw\\idle-v1.png",
+      "source_sha256": "cee28a957fb2ef6b07dfb3437358e6c83f54b6f9ba57536633f07a3fa0622b2c",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0218340611353711,
+      "dx": 36.14410480349346,
+      "dy": -12.960698689956303,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        18
+      ],
+      "output_bounds": [
+        [
+          66,
+          35,
+          414,
+          498
+        ],
+        [
+          64,
+          32,
+          415,
+          498
+        ],
+        [
+          64,
+          34,
+          416,
+          501
+        ],
+        [
+          67,
+          35,
+          413,
+          498
+        ],
+        [
+          63,
+          37,
+          416,
+          499
+        ],
+        [
+          63,
+          36,
+          416,
+          499
+        ],
+        [
+          63,
+          33,
+          418,
+          500
+        ],
+        [
+          64,
+          35,
+          415,
+          499
+        ]
+      ],
+      "asset_sha256": "f3ac7875f639ec0404b8c28691da4ae1394a9e8097e27310f8e367a02307f76c",
+      "action": "idle",
+      "prompt": "Use case: identity-preserve.\nAsset type: production 2D desktop-pet animation source sheet. Exactly EIGHT sequential complete full-body poses of the ONE same character, arranged in FOUR equal columns and TWO equal rows, read left to right then next row. Each pose is separate with generous transparent gutters. No labels or grid lines.\nInput image: authoritative identity reference of Guga, female Endministrator penguin onesie mascot, already approved by user. Preserve exact 2D anime linework, face shape, black bob haircut and straight bangs, blue-gray eyes with warm lower iris, silver black hairclip on viewer's left, charcoal hood with white oval eyes and yellow beak above forehead, white belly, red collar clasp and large single silver carabiner clasp, yellow webbed feet and short tail on viewer's right. SAME head/body proportions, not 3D, not realistic fur.\nAction: IDLE breathing and blink loop. Keep both flippers naturally relaxed diagonally down at sides, do not hold the raised celebration pose in the reference. Round compact standing shape, head about half the total height. Gentle small smile, not permanently open shouting mouth.\nEight distinct hand-drawn key poses:\n1 relaxed neutral, eyes open;\n2 breathe in slightly, collar and belly rise subtly;\n3 breath peak, upper eyelids relax;\n4 eyes halfway closed beginning blink, body settles;\n5 eyes closed in soft natural blink, body slightly lowers;\n6 eyes halfway reopen, subtle return breathing;\n7 eyes open, very slight curious head tilt;\n8 return toward the neutral pose, eyes open.\nSmall continuous differences, relaxed and cute. Feet stay planted on exactly the same baseline within every cell, body scale identical. Do not move the whole character up and down to fake breathing.\nComposition: equal-sized complete characters, each 82 percent or less of its slot height, all accessories and feet fully visible. True transparent alpha background. No floor, no shadow outside character, no checkerboard painted in, no border, no text, no watermarks, no effects. Exactly 4 columns x 2 rows, exactly 8 poses. No stray props, no human fingers, no new costume elements.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\idle.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\running-right-v1.png",
+      "source_sha256": "3f04ea9c6ad8e5ee7e86e8e2f2b6ae3cec116728d6f65a705c8f2432eecf0c5a",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.127710843373494,
+      "dx": -18.80963855421686,
+      "dy": 6.06265060240969,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        444,
+        887
+      ],
+      "row_shifts": [
+        0,
+        2
+      ],
+      "output_bounds": [
+        [
+          44,
+          32,
+          436,
+          497
+        ],
+        [
+          57,
+          33,
+          424,
+          501
+        ],
+        [
+          55,
+          34,
+          425,
+          497
+        ],
+        [
+          57,
+          34,
+          422,
+          497
+        ],
+        [
+          58,
+          34,
+          422,
+          501
+        ],
+        [
+          57,
+          37,
+          422,
+          496
+        ],
+        [
+          56,
+          38,
+          423,
+          495
+        ],
+        [
+          51,
+          35,
+          428,
+          498
+        ]
+      ],
+      "asset_sha256": "e6338d547a967dbae04c3d52858f9e1aff28871fb94e9f87070b8a2a227e279c",
+      "action": "running-right",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. Action: one slow RIGHTWARD penguin waddle cycle. Face and belly oriented to screen RIGHT, THREE-QUARTER side view, retain enough face and hairclip to recognize her. Small short steps, round belly slightly ahead, tiny tail trails to screen LEFT. Wings relaxed diagonally DOWN, gently counter-swinging with steps. Do not turn entire body to face viewer.\nFrames: 1 left foot contacts ahead, right trailing; 2 weight onto left; 3 right passes, left support; 4 right foot contacts ahead; 5 weight onto right; 6 left passes, right support; 7 left foot extends forward; 8 near return to pose 1. No leaping, no long human legs, no running sprint, no frictionless sliding. Head, hood, hair and clasp move subtly together. Foot soles align to same cell baseline, head height only varies slightly. Exactly 4x2 poses.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\running-right.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\running-left-v1.png",
+      "source_sha256": "189f6b65df41d0771141afc14c6b8245207372d47d492b61987adfebd5983567",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0263157894736843,
+      "dx": 35.24999999999997,
+      "dy": -5.973684210526358,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        3
+      ],
+      "output_bounds": [
+        [
+          65,
+          31,
+          414,
+          497
+        ],
+        [
+          65,
+          36,
+          414,
+          493
+        ],
+        [
+          62,
+          36,
+          417,
+          495
+        ],
+        [
+          67,
+          42,
+          412,
+          500
+        ],
+        [
+          63,
+          42,
+          415,
+          496
+        ],
+        [
+          65,
+          43,
+          414,
+          484
+        ],
+        [
+          62,
+          37,
+          418,
+          498
+        ],
+        [
+          69,
+          34,
+          410,
+          501
+        ]
+      ],
+      "asset_sha256": "6cc6ec0821a597a97deae272ca5b8ec9bb679356d839b94501e673831153e1e0",
+      "action": "running-left",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: A slow LEFTWARD penguin waddle cycle, three-quarter view facing screen LEFT, round belly ahead and small tail to RIGHT. Independently draw correct anatomy; retain hairclip on anatomical right, do not mirror the reference. 8 consecutive alternating short steps: left contact, left support, passing right, right contact, right support, passing left, left reach, return. Flippers low, same ground baseline, no leaps.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\running-left.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\waving-v1.png",
+      "source_sha256": "854ca916c9b26b976712a5cf05f0c1f69770ac482f0c0f39ecbf9a90b7a4d422",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0086206896551724,
+      "dx": 38.78017241379311,
+      "dy": -2.293103448275815,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        5,
+        0
+      ],
+      "output_bounds": [
+        [
+          74,
+          34,
+          405,
+          500
+        ],
+        [
+          61,
+          34,
+          419,
+          500
+        ],
+        [
+          75,
+          34,
+          405,
+          500
+        ],
+        [
+          71,
+          32,
+          408,
+          500
+        ],
+        [
+          71,
+          33,
+          407,
+          498
+        ],
+        [
+          70,
+          32,
+          409,
+          498
+        ],
+        [
+          73,
+          32,
+          407,
+          499
+        ],
+        [
+          75,
+          32,
+          403,
+          500
+        ]
+      ],
+      "asset_sha256": "5a5f3e7e7944f2fa1ba6dcf96b53d8ac86912038454c95bfa05a458a0322a46f",
+      "action": "waving",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Friendly greeting wave, eight poses: look toward viewer, raise one flipper to cheek level, sway it outward, inward, outward, lower it, return. Small calm smile, feet planted, opposite flipper stays low.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\waving.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\jumping-v1.png",
+      "source_sha256": "944e71f313c171967eb5ad354d77980a764753a135010d24d98fad5faba2c4ed",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.1498771498771498,
+      "dx": -24.471744471744444,
+      "dy": -3.646191646191653,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        444,
+        887
+      ],
+      "row_shifts": [
+        0,
+        10
+      ],
+      "output_bounds": [
+        [
+          37,
+          50,
+          443,
+          499
+        ],
+        [
+          32,
+          113,
+          448,
+          501
+        ],
+        [
+          37,
+          43,
+          442,
+          498
+        ],
+        [
+          36,
+          31,
+          444,
+          471
+        ],
+        [
+          26,
+          37,
+          454,
+          470
+        ],
+        [
+          36,
+          50,
+          444,
+          480
+        ],
+        [
+          32,
+          127,
+          448,
+          501
+        ],
+        [
+          37,
+          48,
+          443,
+          501
+        ]
+      ],
+      "asset_sha256": "ec7fd3a9700ca7a524265ea8eb9733de26941d1d62bdec038a2ae094d7a80389",
+      "action": "jumping",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. Image 2 is ONLY a motion-reference contact sheet, not a style or identity reference. User's mandatory signature hop: flippers held slightly out and diagonally DOWN, she jumps with her ROUND WHITE BELLY THRUST FORWARD and upper body/head leaning a little BACK, short feet lifted. This belly-leading airborne silhouette is essential. Use a slight THREE-QUARTER view to make the belly projecting forward very obvious. Do NOT make a generic arms-up V victory jump, do NOT turn her into Superman or extend long legs.\nEight frames: 1 standing ready with low open wings; 2 small body squash and low wings preparing; 3 feet push off, belly starts moving forward; 4 airborne, full round belly leading, head slightly behind, yellow soles visible and flippers still diagonally down; 5 airborne apex, belly projected furthest forward, tiny feet tucked behind, low wings; 6 descend with belly still forward but weight returning; 7 soft foot contact, small squat with low flippers; 8 settle back to initial stance. Preserve real vertical displacement: feet for poses 4 and 5 must be noticeably higher in their slots than standing baseline. Keep whole character same size. No faceplant in this clip. Exactly 4x2 poses.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\jumping.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\failed-v1.png",
+      "source_sha256": "ea5bef209622be8e15de3eb24ab7298edf75680d1230b65723f797bdbba7cb3f",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.9790794979079498,
+      "dx": 44.184100418410054,
+      "dy": 7.523012552301282,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        0
+      ],
+      "output_bounds": [
+        [
+          55,
+          46,
+          425,
+          500
+        ],
+        [
+          65,
+          47,
+          415,
+          497
+        ],
+        [
+          67,
+          45,
+          413,
+          499
+        ],
+        [
+          69,
+          52,
+          410,
+          499
+        ],
+        [
+          62,
+          38,
+          418,
+          500
+        ],
+        [
+          61,
+          47,
+          420,
+          498
+        ],
+        [
+          62,
+          35,
+          417,
+          497
+        ],
+        [
+          65,
+          32,
+          414,
+          498
+        ]
+      ],
+      "asset_sha256": "e40c24c522e375b0d8245bb3146f2f512b4458d4732d4f300cf141fded53b0e2",
+      "action": "failed",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Task error / slightly sulky expression: eight poses from neutral through a tiny startled blink, lower gaze, puff cheeks with a small pout, slight head droop, thoughtful look up again. No tears, anger symbols, effects or props. Keep gentle, not distressed.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\failed.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\waiting-v1.png",
+      "source_sha256": "debca08202e2928acb8c26708dfadceb68ae3ba15cc4be476acd163f4f2acf2a",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0129870129870129,
+      "dx": 37.40259740259742,
+      "dy": -8.519480519480453,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        14
+      ],
+      "output_bounds": [
+        [
+          72,
+          40,
+          408,
+          497
+        ],
+        [
+          70,
+          36,
+          409,
+          499
+        ],
+        [
+          71,
+          46,
+          409,
+          500
+        ],
+        [
+          74,
+          43,
+          406,
+          499
+        ],
+        [
+          60,
+          31,
+          420,
+          497
+        ],
+        [
+          75,
+          31,
+          405,
+          499
+        ],
+        [
+          73,
+          34,
+          407,
+          498
+        ],
+        [
+          70,
+          34,
+          409,
+          500
+        ]
+      ],
+      "asset_sha256": "7fe714c7efa10acc9b4ef2054eb04e242d563ad0ddd93e8982882b4b9da5c36b",
+      "action": "waiting",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Quiet attentive waiting, eight subtly different poses: stand relaxed, look slightly to side, small curious head tilt, blink, ease head back, breathe, refocus on viewer. Calm closed small mouth. No props or hands outside flippers.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\waiting.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\running-v1.png",
+      "source_sha256": "8f6513769e7c2cbcefdb9e3c3007f1b48ac4f49ff23ee175b41b162e493c8ce5",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.9915254237288136,
+      "dx": 41.69491525423729,
+      "dy": 4.2372881355931895,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        1
+      ],
+      "output_bounds": [
+        [
+          61,
+          35,
+          419,
+          500
+        ],
+        [
+          64,
+          37,
+          415,
+          500
+        ],
+        [
+          66,
+          41,
+          413,
+          500
+        ],
+        [
+          66,
+          39,
+          414,
+          500
+        ],
+        [
+          57,
+          34,
+          422,
+          499
+        ],
+        [
+          61,
+          33,
+          418,
+          499
+        ],
+        [
+          62,
+          32,
+          418,
+          500
+        ],
+        [
+          66,
+          39,
+          414,
+          499
+        ]
+      ],
+      "asset_sha256": "35af92afec204b5b9d3eb37fd13ddb3b3afac381e0f0d444b96a490c313a2ddc",
+      "action": "running",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Task in progress listening/thinking, eight poses: attentive forward-facing neutral, eyes glance upper side, small head tilt, blink and tiny nod, refocus and repeat. This is a calm functional adaptation, not running on feet. No holograms, keyboard, salute or props.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\running.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\review-v1.png",
+      "source_sha256": "a6003204a35a62ac688a10525ad870ff2bfb72f08fbbc6ae31152e64a6f06d5c",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.9873417721518988,
+      "dx": 42.53164556962025,
+      "dy": 4.354430379746816,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        2
+      ],
+      "output_bounds": [
+        [
+          69,
+          39,
+          409,
+          500
+        ],
+        [
+          68,
+          38,
+          411,
+          500
+        ],
+        [
+          70,
+          42,
+          410,
+          500
+        ],
+        [
+          69,
+          35,
+          410,
+          500
+        ],
+        [
+          69,
+          32,
+          410,
+          500
+        ],
+        [
+          70,
+          41,
+          409,
+          497
+        ],
+        [
+          66,
+          35,
+          414,
+          500
+        ],
+        [
+          67,
+          33,
+          413,
+          500
+        ]
+      ],
+      "asset_sha256": "45fc66d889731b2a3287ac72ed5d1a8d1e05a667bd23536e30f9abc18c016e8a",
+      "action": "review",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Calm reviewing/thinking nod, eight distinct consecutive poses: forward attentive, eyes slightly down, tilt a little right, tiny closed-mouth hmm, blink, tiny nod down, nod up, return. No papers or screens; penguin flippers stay beside belly.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\review.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\dragged-v1.png",
+      "source_sha256": "1d16c7107360083cada7abd7fd9a35ca031bb37b28987c866d5958a8434eb21f",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.1037735849056605,
+      "dx": 19.797169811320742,
+      "dy": -46.367924528301955,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        38
+      ],
+      "output_bounds": [
+        [
+          65,
+          33,
+          414,
+          500
+        ],
+        [
+          51,
+          45,
+          429,
+          496
+        ],
+        [
+          72,
+          35,
+          407,
+          492
+        ],
+        [
+          59,
+          45,
+          422,
+          486
+        ],
+        [
+          63,
+          34,
+          415,
+          501
+        ],
+        [
+          49,
+          44,
+          430,
+          487
+        ],
+        [
+          71,
+          32,
+          408,
+          487
+        ],
+        [
+          52,
+          46,
+          428,
+          491
+        ]
+      ],
+      "asset_sha256": "af70bbad589b3aadcca23d00ee2b96d047b2e4b834edabd3fbcff2ab9fca10c8",
+      "action": "lifted",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Lifted by an unseen cursor at top of hood: eight coherent poses of a dangling round penguin, both short yellow feet above ground, flippers splay low and wiggle slightly, confused O mouth then tiny pout, subtle body sway left-center-right-center. No hand, rope, cursor, prop or marks. Keep complete silhouette and same scale; all feet about 35px higher within their slots than ordinary standing baseline.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\lifted.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\landing-v1.png",
+      "source_sha256": "ee5acc74342d44fc86ff2bb1168bd082adb783bc794426e33735f67d2991455f",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0985915492957747,
+      "dx": 19.732394366197155,
+      "dy": -41.6056338028169,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        31
+      ],
+      "output_bounds": [
+        [
+          46,
+          104,
+          432,
+          498
+        ],
+        [
+          29,
+          131,
+          450,
+          498
+        ],
+        [
+          45,
+          81,
+          434,
+          499
+        ],
+        [
+          45,
+          40,
+          434,
+          499
+        ],
+        [
+          56,
+          32,
+          423,
+          497
+        ],
+        [
+          51,
+          45,
+          427,
+          497
+        ],
+        [
+          54,
+          39,
+          425,
+          499
+        ],
+        [
+          56,
+          34,
+          420,
+          499
+        ]
+      ],
+      "asset_sha256": "f2cf636b7cd30932f48d90ced709b66bb619f2556b0902e1e059da7ec7402f2d",
+      "action": "landing",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Soft landing recovery, eight sequential frames: feet contact with body low, deepest soft squash with eyes briefly shut, round torso rebounds, head rises, wings relax down, slight forward sway, clasp settles, neutral calm. All short feet stay at ground baseline, no jump or prop.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\landing.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\petting-v1.png",
+      "source_sha256": "c6f2aac22a03e3bc68f3989e97110559848305a7454de8e1716ad6d6a95f543b",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.9811320754716981,
+      "dx": 42.792452830188665,
+      "dy": 4.5283018867924625,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        4
+      ],
+      "output_bounds": [
+        [
+          53,
+          32,
+          424,
+          498
+        ],
+        [
+          64,
+          40,
+          415,
+          498
+        ],
+        [
+          61,
+          40,
+          417,
+          500
+        ],
+        [
+          64,
+          33,
+          414,
+          498
+        ],
+        [
+          75,
+          34,
+          403,
+          499
+        ],
+        [
+          51,
+          39,
+          426,
+          499
+        ],
+        [
+          60,
+          33,
+          418,
+          499
+        ],
+        [
+          58,
+          32,
+          419,
+          499
+        ]
+      ],
+      "asset_sha256": "7626bfaa30c9605b5ab8ae1ecae2aeca692f0ccf3b184c0cf4ac9683fec6d44c",
+      "action": "petting",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Enjoy gentle head pat from unseen user: eight poses, slight head dip then eyes soften then close, small content smile, relaxed flippers, gentle left lean then center, reopen eyes. No visible hand or extra person. Feet firmly planted.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\petting.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\poked-repair-v1.png",
+      "source_sha256": "cdd3ab1ac57ea6ed98ba56595ab65a1242f8855634b34f3a85799a595cc9955e",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.9957446808510638,
+      "dx": 40.85106382978722,
+      "dy": -4.842553191489344,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        17
+      ],
+      "output_bounds": [
+        [
+          56,
+          36,
+          423,
+          500
+        ],
+        [
+          59,
+          39,
+          420,
+          499
+        ],
+        [
+          56,
+          37,
+          423,
+          498
+        ],
+        [
+          58,
+          37,
+          422,
+          497
+        ],
+        [
+          54,
+          32,
+          426,
+          500
+        ],
+        [
+          55,
+          33,
+          424,
+          500
+        ],
+        [
+          54,
+          35,
+          425,
+          500
+        ],
+        [
+          60,
+          37,
+          419,
+          500
+        ]
+      ],
+      "asset_sha256": "208162af76ff9bcdbe57f1a2bf67acdf74b291eda71a5472dbea7892ea61074e",
+      "action": "poked",
+      "prompt": "Edit this 4-column, 2-row eight-pose Guga sprite source sheet. Preserve all eight penguin-girl poses, faces, hairclip, hood, yellow feet, silver clasp, artwork style, pose placement and sizes exactly. Remove ONLY the small detached yellow surprise/emphasis marks floating beside the head of the SECOND pose (top row, second column). Fill those tiny removed areas with true transparency matching the surrounding background. There must be no floating symbols, particles or props in any pose. Preserve existing transparency; output the same whole eight-pose sheet with true transparent background.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\poked.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\feeding-v1.png",
+      "source_sha256": "24b190e47a39ced42ea690f1d7ad1e7e560a7628978389ee7ae11100303efc12",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0218340611353711,
+      "dx": 35.633187772925766,
+      "dy": -6.829694323144054,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        6
+      ],
+      "output_bounds": [
+        [
+          64,
+          40,
+          415,
+          500
+        ],
+        [
+          59,
+          38,
+          421,
+          500
+        ],
+        [
+          59,
+          39,
+          420,
+          500
+        ],
+        [
+          64,
+          39,
+          416,
+          500
+        ],
+        [
+          61,
+          32,
+          419,
+          497
+        ],
+        [
+          58,
+          33,
+          421,
+          501
+        ],
+        [
+          58,
+          32,
+          422,
+          499
+        ],
+        [
+          60,
+          32,
+          419,
+          501
+        ]
+      ],
+      "asset_sha256": "b10ea7534d61779ecc10c629ae857e5faf607bfe5e7998a23dd99cf610e54dee",
+      "action": "feeding",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Eating a small pale round snack held between rounded penguin flipper tips: eight sequential poses, lift snack to mouth, small bite, eyes happy, chew cheeks, chew blink, finish morsel, lower flippers, satisfied calm smile. One small snack only, no utensils, human hands, text or effects.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\feeding.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\happy-v1.png",
+      "source_sha256": "065065a953438efca3a3a916694df83bdb3a967efe93925ac123099f5539330a",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0285714285714285,
+      "dx": 34.80000000000001,
+      "dy": -12.2285714285714,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        14
+      ],
+      "output_bounds": [
+        [
+          60,
+          32,
+          419,
+          499
+        ],
+        [
+          72,
+          32,
+          407,
+          499
+        ],
+        [
+          68,
+          33,
+          411,
+          499
+        ],
+        [
+          62,
+          33,
+          418,
+          500
+        ],
+        [
+          65,
+          34,
+          415,
+          494
+        ],
+        [
+          56,
+          35,
+          423,
+          493
+        ],
+        [
+          65,
+          33,
+          414,
+          500
+        ],
+        [
+          67,
+          32,
+          411,
+          501
+        ]
+      ],
+      "asset_sha256": "60d85aaa315020b4cefc6066dfd4ab3362532b49ed54c694963bf38a0603efcc",
+      "action": "happy",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Happy satisfied penguin, eight sequential poses: smile, cheeks rise, tiny excited shoulder/wing lift to waist level, eyes briefly close happily, small belly sway left then right, flippers relax, return warm smile. Feet planted, no jumping, sparkles, hearts or props.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\happy.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\sleeping-v1.png",
+      "source_sha256": "c99417c71800e5b3209813106dffa5cb62af222b1655f445d7cb6bfa5e2b1dd7",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.815347721822542,
+      "dx": 76.9304556354916,
+      "dy": 110.26378896882494,
+      "target_height": 340,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        12
+      ],
+      "output_bounds": [
+        [
+          94,
+          162,
+          386,
+          499
+        ],
+        [
+          92,
+          160,
+          388,
+          500
+        ],
+        [
+          93,
+          176,
+          386,
+          500
+        ],
+        [
+          95,
+          183,
+          385,
+          500
+        ],
+        [
+          92,
+          162,
+          388,
+          499
+        ],
+        [
+          93,
+          161,
+          387,
+          499
+        ],
+        [
+          90,
+          160,
+          390,
+          500
+        ],
+        [
+          91,
+          160,
+          388,
+          500
+        ]
+      ],
+      "asset_sha256": "eee87f99fe9ecc8f92084a6b855410c0fb1a3384d4effc098922f23c5a38861f",
+      "action": "sleeping",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: Curled sleepy penguin nap, all eight poses are one stable LOW round curled sitting pose with eyes gently closed, flippers tucked beside white belly and yellow feet close together. Very small breathing changes and a subtle sleepy head dip then recovery. First and last pose close for a seamless nap loop. No bed, pillow, Z text, blanket or props. Keep hairclip, hood and carabiner visible.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\sleeping.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\special-v1.png",
+      "source_sha256": "8f269874037fd2bd51969b91b25ae0b225b9f343004af84b7fe42197b1ab964f",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.1527093596059113,
+      "dx": -25.1231527093596,
+      "dy": -1.428571428571388,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        444,
+        887
+      ],
+      "row_shifts": [
+        0,
+        4
+      ],
+      "output_bounds": [
+        [
+          42,
+          31,
+          436,
+          499
+        ],
+        [
+          55,
+          38,
+          424,
+          501
+        ],
+        [
+          54,
+          37,
+          426,
+          501
+        ],
+        [
+          50,
+          37,
+          428,
+          501
+        ],
+        [
+          46,
+          40,
+          433,
+          500
+        ],
+        [
+          49,
+          35,
+          430,
+          499
+        ],
+        [
+          48,
+          37,
+          431,
+          500
+        ],
+        [
+          38,
+          37,
+          443,
+          500
+        ]
+      ],
+      "asset_sha256": "ef446bee0d8af790b12b3638d532a581677a8ab250f001c257d5e9b2e9676cc1",
+      "action": "special",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. Image 2 is ONLY the motion reference for alternating flippers and side-to-side body sway; do not copy its 3D style, furniture or props. Action: GUGA SIDE-TO-SIDE WIGGLE, same slightly blank adorable small O-shaped human mouth and forward-looking eyes throughout.\nFrames 1 neutral small O mouth and wings slightly open; 2 lean left, left wing raised moderately and right wing lowered; 3 peak left lean, head and body tilt together, clasp gently lags; 4 passing center, wings swap; 5 lean right, right wing up and left wing down; 6 peak right lean, belly round and short feet stay planted; 7 return through center with small accessory follow-through; 8 near neutral to finish naturally. Head/hood/body form one soft coherent tilted silhouette. The motion must be a clear left-right dance, not 8 static smiles. Keep hairclip on same anatomical side. No sparkle, no hearts, no room or background. Exactly 4x2 poses.",
+      "asset": "assets\\bundled-skins\\gugugaga\\animations\\special.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\special2-v1.png",
+      "source_sha256": "f5426d47a45c9fd3baaa22313fc721059ca0f9947861049c2bff0470bb7ff47e",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0218340611353711,
+      "dx": 35.633187772925766,
+      "dy": -10.917030567685572,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        15
+      ],
+      "output_bounds": [
+        [
+          55,
+          42,
+          425,
+          493
+        ],
+        [
+          66,
+          42,
+          414,
+          495
+        ],
+        [
+          94,
+          47,
+          386,
+          500
+        ],
+        [
+          84,
+          48,
+          396,
+          487
+        ],
+        [
+          57,
+          39,
+          421,
+          477
+        ],
+        [
+          81,
+          38,
+          399,
+          479
+        ],
+        [
+          88,
+          38,
+          391,
+          500
+        ],
+        [
+          65,
+          31,
+          415,
+          494
+        ]
+      ],
+      "asset_sha256": "2a803ae300a56f4bb40668f57b408db81c12652cee543edbefd7c6c994859761",
+      "action": "special2",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: A playful FULL TURN while gently swaying flippers, 8 sequential views: front, front-right quarter, right profile, rear-right quarter, full back with penguin tail, rear-left quarter, left profile, front-left quarter almost returned. Short feet pivot in place, flippers slightly low-open. Preserve same girl and actual anatomical hairclip side: clip only visible when that side is visible. Back of hood must have NO extra face or eyes and no front carabiner. Reference penguin onesie, no salute, magic or effects.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\special2-original.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\stumble-v1.png",
+      "source_sha256": "bef6d8612845a66f6862922374fd3549ba1b63eaba644962f6508aa3ba1643e2",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0285714285714285,
+      "dx": 34.80000000000001,
+      "dy": -21.485714285714266,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        32
+      ],
+      "output_bounds": [
+        [
+          60,
+          31,
+          421,
+          493
+        ],
+        [
+          59,
+          93,
+          422,
+          488
+        ],
+        [
+          57,
+          158,
+          422,
+          501
+        ],
+        [
+          63,
+          170,
+          418,
+          499
+        ],
+        [
+          62,
+          117,
+          417,
+          492
+        ],
+        [
+          53,
+          114,
+          428,
+          491
+        ],
+        [
+          57,
+          46,
+          423,
+          496
+        ],
+        [
+          57,
+          41,
+          421,
+          501
+        ]
+      ],
+      "asset_sha256": "c7387b475338de7427cf8d399d90da35d93b23e2cca32725d9eebee0cd35b58d",
+      "action": "stumble",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: A harmless forward stumble and recovery, eight sequential full-body poses: standing slightly off balance; lean forward with belly leading; flippers extend low to brace; land softly sitting forward on round tummy with face still visible and surprised O mouth; little pout; flippers help raise torso; regain feet; return standing. Not violent, no injury or impact effects, no tears, no extra hands. Ensure low frame remains fully inside its slot and retains same character scale.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\stumble-original.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\lifted-alt-v1.png",
+      "source_sha256": "2bd6a9ed62c216a08eb973923a4d3a966952774210bcd557714867c9a949c0f7",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0240700218818382,
+      "dx": 35.18599562363238,
+      "dy": -22.27571115973751,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        36
+      ],
+      "output_bounds": [
+        [
+          68,
+          34,
+          410,
+          500
+        ],
+        [
+          70,
+          35,
+          410,
+          496
+        ],
+        [
+          71,
+          31,
+          409,
+          493
+        ],
+        [
+          72,
+          38,
+          407,
+          492
+        ],
+        [
+          69,
+          41,
+          411,
+          490
+        ],
+        [
+          71,
+          45,
+          409,
+          497
+        ],
+        [
+          73,
+          42,
+          407,
+          498
+        ],
+        [
+          66,
+          43,
+          414,
+          501
+        ]
+      ],
+      "asset_sha256": "9c1fb9413f7ded4001449767135ca53d2100db60738e684fefa20e2accb9ed00",
+      "action": "lifted-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT of cursor lifting by hood, no hand or cursor drawn: body hangs with feet dangling, eight poses gently swaying RIGHT then center then LEFT then back; flippers low-open for balance, tiny pout then curious O mouth, eyes look slightly down toward hanging feet. Same scale throughout, suspended about 35px above usual baseline. No stretching hood, no rope or prop.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\lifted.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\landing-alt-v1.png",
+      "source_sha256": "743618ccba440699ca94b51ad8661f12876feb08cbea13d52e8ec8854c383bb5",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0612244897959184,
+      "dx": 27.224489795918345,
+      "dy": -18.938775510204096,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        9
+      ],
+      "output_bounds": [
+        [
+          37,
+          56,
+          442,
+          497
+        ],
+        [
+          36,
+          89,
+          443,
+          497
+        ],
+        [
+          42,
+          60,
+          437,
+          498
+        ],
+        [
+          52,
+          42,
+          427,
+          499
+        ],
+        [
+          48,
+          34,
+          431,
+          498
+        ],
+        [
+          58,
+          34,
+          420,
+          498
+        ],
+        [
+          63,
+          33,
+          416,
+          499
+        ],
+        [
+          67,
+          33,
+          412,
+          499
+        ]
+      ],
+      "asset_sha256": "415d741bb351eca13d3cbc62fa4b1849b35b3aba9220014b81e83f0ac5156c21",
+      "action": "landing-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT soft landing: eight poses with body leaning a little toward screen left: feet contact, soft low squat, flippers low-open to balance, torso rocks backward slightly, recover upright, blink, flippers relax, neutral. No jump; both feet remain at ground baseline. Gentle harmless movement.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\landing.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\feeding-alt-v1.png",
+      "source_sha256": "aa53cdeb181bc84a2c2a47d3bcbcfbe912bc21defcf5a2b05e0ced06226c5c26",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.968944099378882,
+      "dx": 46.2111801242236,
+      "dy": 6.8074534161490305,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        7,
+        0
+      ],
+      "output_bounds": [
+        [
+          63,
+          32,
+          417,
+          500
+        ],
+        [
+          61,
+          32,
+          418,
+          500
+        ],
+        [
+          65,
+          32,
+          415,
+          500
+        ],
+        [
+          64,
+          32,
+          415,
+          500
+        ],
+        [
+          63,
+          33,
+          416,
+          500
+        ],
+        [
+          59,
+          33,
+          422,
+          500
+        ],
+        [
+          68,
+          33,
+          413,
+          499
+        ],
+        [
+          66,
+          33,
+          415,
+          500
+        ]
+      ],
+      "asset_sha256": "156af9406d0826cf3319a2adda9f810ac7bf92dc4978ca0a0eadab60b1c1c477",
+      "action": "feeding-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT of snacking: one small golden rectangular biscuit held by rounded penguin flipper tips close to white belly. Eight poses: glance at biscuit, lift it slightly, nibble one corner, delighted half-blink, chew with tiny cheek motion, last bite, lower flippers, content smile. No human fingers, utensils, text, props besides this single snack. Keep same girl and outfit.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\feeding.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\happy-alt-v1.png",
+      "source_sha256": "41239e154ff611a8b77376974464f023ada9fb4700dbd96277c49a0046367d73",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0021413276231264,
+      "dx": 39.57173447537474,
+      "dy": 1.9357601713061854,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        0
+      ],
+      "output_bounds": [
+        [
+          59,
+          36,
+          420,
+          500
+        ],
+        [
+          57,
+          39,
+          422,
+          500
+        ],
+        [
+          59,
+          37,
+          420,
+          500
+        ],
+        [
+          63,
+          44,
+          416,
+          500
+        ],
+        [
+          54,
+          35,
+          426,
+          500
+        ],
+        [
+          52,
+          34,
+          427,
+          500
+        ],
+        [
+          53,
+          32,
+          427,
+          500
+        ],
+        [
+          61,
+          34,
+          418,
+          500
+        ]
+      ],
+      "asset_sha256": "1737ebe41c22af5f27f0b71939f4ba2a804109a301fba18407e1ff299641797e",
+      "action": "happy-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT delighted reaction: eight poses, bright smile, close eyes and tilt head a little right, round body gently rocks RIGHT, flippers modestly spread low, pass center, rock LEFT, little happy blink, relax. Feet remain planted, no big jumps or effect symbols.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\happy.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\sleeping-alt-v1.png",
+      "source_sha256": "31f9d56b265509d6b9d40aabd99f56a58e2dfc1d00373032dfaf825d3a87d294",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 0.8272506082725061,
+      "dx": 74.5498783454988,
+      "dy": 108.71046228710463,
+      "target_height": 340,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        7
+      ],
+      "output_bounds": [
+        [
+          99,
+          162,
+          382,
+          500
+        ],
+        [
+          98,
+          164,
+          379,
+          500
+        ],
+        [
+          97,
+          164,
+          383,
+          500
+        ],
+        [
+          101,
+          163,
+          379,
+          500
+        ],
+        [
+          98,
+          160,
+          381,
+          500
+        ],
+        [
+          100,
+          160,
+          380,
+          500
+        ],
+        [
+          98,
+          160,
+          382,
+          500
+        ],
+        [
+          96,
+          160,
+          383,
+          500
+        ]
+      ],
+      "asset_sha256": "650b5b561c7317952edaa98e240a5c60e6ca59338853f70cdb96804de20ba890",
+      "action": "sleeping-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT quiet nap: all eight poses are a stable seated round penguin leaning a little toward screen RIGHT with closed eyes, head resting low above round white belly, flippers relaxed down and feet touching in front. Very subtle slow breathing and one tiny sleepy ear/hood settle, end near starting pose. No pillows, bed, Z text or props. Do not alternate standing with sitting.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\sleeping.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\special-alt-v1.png",
+      "source_sha256": "70b2cbc626de4637dc6896fbc66ed111aa028cbcd12d34c25d4c6c44f46fcbd0",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0086206896551724,
+      "dx": 38.78017241379311,
+      "dy": -4.310344827586164,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        9,
+        0
+      ],
+      "output_bounds": [
+        [
+          57,
+          36,
+          423,
+          498
+        ],
+        [
+          66,
+          39,
+          414,
+          497
+        ],
+        [
+          62,
+          43,
+          417,
+          500
+        ],
+        [
+          57,
+          36,
+          422,
+          500
+        ],
+        [
+          58,
+          37,
+          422,
+          497
+        ],
+        [
+          68,
+          42,
+          412,
+          497
+        ],
+        [
+          55,
+          34,
+          425,
+          500
+        ],
+        [
+          59,
+          32,
+          421,
+          500
+        ]
+      ],
+      "asset_sha256": "b0a64726e2cf9221a156c0091babe01f2c477a205744a0f15acb60ff388963d3",
+      "action": "special-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT of signature gugu-gaga wiggle. Keep cute small O mouth and viewer-facing gray-blue eyes. Eight consecutive poses: neutral, tilt RIGHT with right flipper raised, peak right with opposite flipper low, pass center, tilt LEFT with left flipper raised, peak left, return center, neutral. Opposite lead and slightly smaller sway than first variant, head and round body tilt together, feet planted. No human hands, salute or props.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\special.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\special2-alt-v1.png",
+      "source_sha256": "bc366f863848727ede4ec7d6ad6a0c116c6d5e303ae36c52870fb4bede12848d",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0129870129870129,
+      "dx": 37.909090909090935,
+      "dy": -3.454545454545382,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        4
+      ],
+      "output_bounds": [
+        [
+          62,
+          33,
+          417,
+          498
+        ],
+        [
+          73,
+          32,
+          407,
+          500
+        ],
+        [
+          85,
+          32,
+          395,
+          500
+        ],
+        [
+          86,
+          32,
+          394,
+          498
+        ],
+        [
+          62,
+          35,
+          418,
+          494
+        ],
+        [
+          81,
+          35,
+          397,
+          495
+        ],
+        [
+          84,
+          36,
+          394,
+          500
+        ],
+        [
+          68,
+          34,
+          411,
+          500
+        ]
+      ],
+      "asset_sha256": "a3041610168045b57ed70c17087fb5a464de71c8dfc95a67735598a6450b4417",
+      "action": "special2-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT of playful penguin turning dance, turning the OPPOSITE way. Eight sequential views: front, front-left quarter, left profile, rear-left quarter, full back with short tail, rear-right quarter, right profile, front-right quarter almost returned. Wings gently sway low as short yellow feet pivot in place. Same scale and ground line. Hairclip stays on anatomical right and disappears when occluded; no front face or clasp on full back. No text, props, salute or magic.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\special2.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\stumble-alt-v1.png",
+      "source_sha256": "4dc07d3c54ebd7809e9ffb1755aac1e7c5567fd26c56ebd45a536078942f3589",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.033112582781457,
+      "dx": 17.88079470198676,
+      "dy": 11.33774834437088,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        468,
+        948
+      ],
+      "row_shifts": [
+        1,
+        0
+      ],
+      "output_bounds": [
+        [
+          51,
+          46,
+          427,
+          499
+        ],
+        [
+          49,
+          44,
+          431,
+          499
+        ],
+        [
+          38,
+          82,
+          441,
+          501
+        ],
+        [
+          53,
+          112,
+          426,
+          495
+        ],
+        [
+          41,
+          104,
+          438,
+          485
+        ],
+        [
+          36,
+          84,
+          444,
+          490
+        ],
+        [
+          49,
+          38,
+          430,
+          493
+        ],
+        [
+          45,
+          32,
+          435,
+          501
+        ]
+      ],
+      "asset_sha256": "5290495f75e140933682707c135a5b309c5fbb2f28b75e8d4865c7282e25f6f5",
+      "action": "stumble-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT harmless wobble and seated recovery, eight sequential fullbody poses: stand, wobble LEFT with little O mouth, lean back flippers low open, sit softly on padded round bottom with short feet toward viewer, blink and tiny pout, lean forward to rise, regain short feet, settle upright. No violence, injury, symbols, dust, stars or tears. Every pose is same scale; seated silhouette naturally shorter.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\stumble.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\jumping-alt-v1.png",
+      "source_sha256": "bd40df95c95c48bef0e774803882773dfddce5d65b49b82e512b28485319eb22",
+      "frames": 8,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.0660592255125285,
+      "dx": 26.78815489749431,
+      "dy": -33.029612756264214,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        512,
+        1024
+      ],
+      "row_shifts": [
+        0,
+        33
+      ],
+      "output_bounds": [
+        [
+          58,
+          73,
+          422,
+          500
+        ],
+        [
+          53,
+          122,
+          426,
+          499
+        ],
+        [
+          58,
+          82,
+          422,
+          496
+        ],
+        [
+          56,
+          52,
+          424,
+          465
+        ],
+        [
+          52,
+          31,
+          427,
+          424
+        ],
+        [
+          55,
+          74,
+          424,
+          479
+        ],
+        [
+          44,
+          154,
+          436,
+          496
+        ],
+        [
+          66,
+          78,
+          415,
+          501
+        ]
+      ],
+      "asset_sha256": "c9dd857cdaa826f23e852c88430251108a54adf5b02065532dca5e538e5bb6f3",
+      "action": "jumping-alt",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly 8 sequential complete full-body poses in FOUR equal columns and TWO equal rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly eight equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: SECOND VARIANT of signature belly-forward hop. Use front-left three-quarter view, wings slightly open and angled DOWN through every airborne pose. Eight sequential poses: neutral, two tiny preparatory bobs, strong push-off with belly ahead of head, round belly forward at apex and short feet curling behind, gentle descent, squashed contact, recover neutral. Clear airborne rise. Do not raise wings above shoulders or turn it into a victory leap. Same identity and low penguin feet.",
+      "asset": "assets\\bundled-skins\\gugugaga\\variants\\jumping.png"
+    },
+    {
+      "source": "work\\gugugaga-art\\raw\\gaze-v1.png",
+      "source_sha256": "ef5983b88cb06fd441aee13ad81221e65b98e5ae285f4ade8fd8d2c995149205",
+      "frames": 16,
+      "method": "Pets 0.1.6 component groups / shared transform",
+      "scale": 1.5145631067961165,
+      "dx": -0.8155339805825292,
+      "dy": 4.737864077669883,
+      "target_height": 468,
+      "row_edges": [
+        0,
+        325,
+        650,
+        974,
+        1299
+      ],
+      "row_shifts": [
+        0,
+        0,
+        3,
+        4
+      ],
+      "output_bounds": [
+        [
+          58,
+          34,
+          421,
+          500
+        ],
+        [
+          62,
+          34,
+          416,
+          499
+        ],
+        [
+          58,
+          34,
+          421,
+          501
+        ],
+        [
+          64,
+          34,
+          416,
+          500
+        ],
+        [
+          58,
+          31,
+          422,
+          501
+        ],
+        [
+          59,
+          31,
+          422,
+          500
+        ],
+        [
+          55,
+          31,
+          422,
+          501
+        ],
+        [
+          61,
+          31,
+          419,
+          500
+        ],
+        [
+          55,
+          34,
+          426,
+          499
+        ],
+        [
+          55,
+          34,
+          421,
+          500
+        ],
+        [
+          55,
+          34,
+          424,
+          501
+        ],
+        [
+          55,
+          34,
+          426,
+          501
+        ],
+        [
+          55,
+          33,
+          422,
+          501
+        ],
+        [
+          54,
+          33,
+          426,
+          502
+        ],
+        [
+          51,
+          33,
+          429,
+          501
+        ],
+        [
+          56,
+          34,
+          424,
+          501
+        ]
+      ],
+      "asset_sha256": "1e9f6cd4a055974d45a97f415fea02a01289b5a39af61613e38bf9a1f7760553",
+      "action": "gaze",
+      "prompt": "Use case: identity-preserve. Production source sheet for Guga desktop pet. Exactly SIXTEEN complete full-body poses in FOUR columns and FOUR rows, left-to-right then next row. Generous empty gutters, no text or grid.\nImage 1 is the authoritative approved identity and 2D style reference: same female face, short black bob with straight bangs, gray-blue eyes with warm lower iris, silver/black hair clip on her anatomical right (viewer's left in front view), charcoal penguin hood with white oval eyes and yellow beak above forehead, ivory belly, small red collar clasp, large silver single carabiner clasp, yellow webbed feet, small tail. Preserve same round almost-two-head-tall body proportions, outfit, palette, smooth dark outline and restrained cel shading. No 3D, no fur rendering. Exactly sixteen equally scaled characters, no pose crops, 12 percent empty margin inside each cell.\nTrue transparent background, no ground plane or shadow or background or effect. No hands or fingers outside flippers. No new accessories or props. \nAction: a genuine MOUSE GAZE SHEET, not a body rotation turntable. All SIXTEEN poses show exactly the same FRONT-facing relaxed standing penguin body and head at exactly the same scale and baseline, flippers low. ONLY gaze direction and tiny natural head inclination differ. Move both human pupils together toward the indicated screen direction; hood cartoon eyes stay fixed. Clockwise directions from UP in order: 0 UP (12 oclock); 1 up slightly right (12:45); 2 up-right diagonal (1:30); 3 right slightly up (2:15); 4 RIGHT (3:00); 5 right slightly down (3:45); 6 down-right diagonal (4:30); 7 down slightly right (5:15); 8 DOWN (6:00); 9 down slightly left (6:45); 10 down-left (7:30); 11 left slightly down (8:15); 12 LEFT (9:00); 13 left slightly up (9:45); 14 up-left diagonal (10:30); 15 up slightly left (11:15). No arrows, captions, numbers, text or effects in output. Keep all 16 eyes open and mouth a small calm closed smile, gaze changes must be readable at small size. True transparent background. Exactly FOUR by FOUR poses.",
+      "asset": "assets\\bundled-skins\\gugugaga\\gaze.png"
+    }
+  ]
+}

@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
     <Compile Include="../../src/MarkdownContent.cs" Link="Shared/MarkdownContent.cs" />

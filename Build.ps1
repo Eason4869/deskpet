@@ -89,16 +89,20 @@ foreach ($extraPet in @('e-bao','dafeiyu','marfu','xiaobei')) {
 }
 # Bundled presets are embedded in the app and test executables, keeping the
 # portable ZIP compatible with old update workers that reject a pets directory.
-$bundledSkinRoot = Join-Path $projectRoot 'assets\bundled-skins\xiaobei'
+$bundleCatalog = Join-Path $projectRoot 'assets\bundled-skins\catalog.json'
+$assets += '/resource:' + $bundleCatalog + ',Dafeiyu.Bundled.Catalog'
+foreach ($bundle in (Get-Content -LiteralPath $bundleCatalog -Raw -Encoding UTF8 | ConvertFrom-Json)) {
+$bundledSkinRoot = Join-Path $projectRoot ('assets\bundled-skins\'+$bundle.id)
 if (Test-Path -LiteralPath $bundledSkinRoot -PathType Container) {
     $bundledResourceNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($bundledAsset in Get-ChildItem -LiteralPath $bundledSkinRoot -Recurse -File | Sort-Object FullName) {
         $bundledRelative = $bundledAsset.FullName.Substring($bundledSkinRoot.Length + 1)
         if ($bundledRelative -ne 'pet.json' -and $bundledAsset.Extension -ine '.png') { continue }
-        $bundledResource = 'Dafeiyu.Bundled.Xiaobei.' + $bundledRelative.Replace('\','.').Replace('/','.')
+        $bundledResource = $bundle.resource_prefix + $bundledRelative.Replace('\','.').Replace('/','.')
         if (!$bundledResourceNames.Add($bundledResource)) { throw "Bundled preset resource collision: $bundledRelative" }
         $assets += '/resource:' + $bundledAsset.FullName + ',' + $bundledResource
     }
+}
 }
 $arguments = @('/nologo','/optimize+','/codepage:65001','/utf8output','/platform:anycpu',('/out:' + $destination)) + $references + $options + $assets + $sources
 $responseFile = Join-Path $workRoot ($Target + '.rsp')

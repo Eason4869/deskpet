@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
+using Avalonia.Styling;
 using Dafeiyu;
 using DeskPet.Platform.Mac;
 
@@ -14,6 +16,7 @@ internal sealed class SettingsWindow : Window
     private readonly List<ProviderEditor> providers = new();
     private readonly TabControl tabs = new();
     private readonly SpriteAssets avatarAssets = new();
+    private Action? refreshVoice;
     public SettingsWindow(DesktopController controller)
     {
         owner = controller; Title = "DeskPet · 设置"; Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
@@ -22,30 +25,72 @@ internal sealed class SettingsWindow : Window
         Add("伙伴", Partner()); Add("桌面", Behavior());
         foreach (var item in new[] { ("模型配置", "text"), ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
+        tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
         Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); avatarAssets.Dispose(); };
     }
     public void SelectSection(string section) => tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 };
     private Control Partner()
     {
-        var choices = new ComboBox { ItemsSource = owner.Skins, SelectedItem = owner.Skin,
-            ItemTemplate = new FuncDataTemplate<PetSkin>((skin, _) =>
-            {
-                if (skin == null) return new TextBlock();
-                var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center;
-                return Ui.Row(new AvatarView { Assets = avatarAssets, Skin = skin }, name);
-            }) };
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
-        choices.SelectionChanged += (_, _) => { if (choices.SelectedItem is PetSkin skin) owner.Run(async () => { await owner.SelectSkinAsync(skin); prompt.Text = owner.Settings.SystemPrompt; }); };
-        return Ui.Column(Ui.Text("当前伙伴", 20), choices, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
-            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? ""); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
-            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
-            Ui.AsyncButton("导入自定义外观 pet.json（v1 / v2）", async () =>
+        var description = Ui.Text(owner.Skin.Description);
+        bool refreshingPartners = false;
+        var choices = new ComboBox { ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
+        choices.ItemTemplate = new FuncDataTemplate<PetSkin>((skin, _) => PartnerRow(skin, choices, RemoveAsync));
+        choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { if (!ReferenceEquals(owner.Skin,skin)) await owner.SelectSkinAsync(skin); prompt.Text = owner.Settings.SystemPrompt; description.Text = skin.Description; refreshVoice?.Invoke(); }); };
+        void RefreshChoices()
+        {
+            refreshingPartners = true; choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = owner.Skin; refreshingPartners = false;
+            prompt.Text = owner.Settings.SystemPrompt; description.Text = owner.Skin.Description; refreshVoice?.Invoke();
+        }
+        async Task RemoveAsync(PetSkin target)
+        {
+            if (owner.Skins.Count <= 1) return;
+            if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再删除伙伴。");
+            if (!await ConfirmRemoveCompanionAsync(target)) return;
+            if (owner.Skin.Id == target.Id) await owner.SelectSkinAsync(owner.Skins.First(s => s.Id != target.Id));
+            SpriteAssets.Remove(target, owner.DataDirectory); owner.Skins.RemoveAll(s => s.Id == target.Id); RefreshChoices();
+        }
+        return Ui.Column(Ui.Text("当前伙伴", 20), choices, description, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
+            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
+            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
+            Ui.AsyncButton("导入 / 更新角色包（ZIP / pet.json）", async () =>
             {
-                var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "选择外观 pet.json", AllowMultiple = false, FileTypeFilter = new[] { new FilePickerFileType("外观说明") { Patterns = new[] { "*.json" } } } });
+                var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "导入 / 更新角色包", AllowMultiple = false, FileTypeFilter = new[] { new FilePickerFileType("角色包 / 外观说明") { Patterns = new[] { "*.zip", "*.json" } } } });
                 var file = files.FirstOrDefault(); if (file == null) return;
                 var local = file.TryGetLocalPath() ?? throw new InvalidOperationException("请选择本地外观文件。");
-                var skin = await Task.Run(() => SpriteAssets.Import(local, owner.DataDirectory)); owner.Skins.Add(skin); await owner.SelectSkinAsync(skin); choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = skin;
-            }, owner.Error), Ui.Text("同名外观以独立 ID 保存；不会覆盖内置伙伴。外观文件需与资源一起放在同一目录。"));
+                var skin = await Task.Run(() => SpriteAssets.Import(local, owner.DataDirectory));
+                var existing = owner.Skins.FindIndex(s => s.Id == skin.Id || skin.PackageId != null && s.PackageId == skin.PackageId);
+                if (existing >= 0) owner.Skins[existing] = skin; else owner.Skins.Add(skin);
+                await owner.SelectSkinAsync(skin); RefreshChoices();
+            }, owner.Error), Ui.AsyncButton("恢复已删除伙伴", async () => {
+                if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再恢复伙伴。");
+                var id = owner.Skin.Id; CompanionPackStorage.RestoreHidden(owner.DataDirectory); var restored = SpriteAssets.LoadSkins(owner.DataDirectory);
+                owner.Skins.Clear(); owner.Skins.AddRange(restored); await owner.SelectSkinAsync(owner.Skins.FirstOrDefault(s => s.Id == id) ?? owner.Skins[0]); RefreshChoices();
+            }, owner.Error), Ui.Text("同 ID 资源包更新素材并保留个人人格、音色与聊天。无 ID 的旧外观独立保存。"));
+    }
+    private Control PartnerRow(PetSkin? skin, ComboBox choices, Func<PetSkin, Task> remove)
+    {
+        if (skin == null) return new TextBlock();
+        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center;
+        var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1, IsVisible = false };
+        ToolTip.SetTip(button, "删除伙伴（保留聊天和配置）");
+        button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();
+        button.Click += (_, e) => { e.Handled = true; choices.IsDropDownOpen = false; owner.Run(() => remove(skin)); };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("40,*,32") };
+        row.Children.Add(new AvatarView { Assets = avatarAssets, Skin = skin });
+        Grid.SetColumn(name, 1); row.Children.Add(name); Grid.SetColumn(button, 2); row.Children.Add(button);
+        return row;
+    }
+    private Task<bool> ConfirmRemoveCompanionAsync(PetSkin target)
+    {
+        var dialog = Ui.Window("删除伙伴", Ui.Text(""), 450, 260);
+        dialog.Name = "RemoveCompanionDialog"; dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        dialog.Content = new Border { Padding = new Thickness(22), Child = Ui.Column(
+            Ui.Text("要删除“" + target.Name + "”吗？", 19),
+            Ui.Text("将从列表移除。聊天、人格和音色会保留，可通过恢复或重新导入找回。"),
+            Ui.Row(Ui.Button("取消", () => dialog.Close(false)), Ui.Button("删除伙伴", () => dialog.Close(true)))) };
+        return dialog.ShowDialog<bool>(this);
     }
     private Control Behavior()
     {
@@ -85,8 +130,15 @@ internal sealed class SettingsWindow : Window
         volume.ValueChanged += (_, _) => { s.Volume = (int)volume.Value; owner.Session.SetVolume(s.Volume); owner.Live.SetVolume(s.Volume); owner.Save(); };
         var speech = Ui.Input(s.VoiceName); var live = Ui.Input(s.LiveVoice);
         var voices = new ComboBox { ItemsSource = VoicePresets.For("speech", s.SpeechConnection()).Select(v => v.Id).ToList() };
+        var advice = Ui.Text("");
+        refreshVoice = () => {
+            speech.Text = s.VoiceName; live.Text = s.LiveVoice;
+            voices.ItemsSource = VoicePresets.For("speech", s.SpeechConnection()).Select(v => v.Id).ToList();
+            advice.Text = owner.Skin.Name + " · " + (owner.Skin.Voices?.Description ?? "音色按伙伴与服务分别保存，已有选择优先。");
+        };
+        refreshVoice();
         voices.SelectionChanged += (_, _) => { if (voices.SelectedItem is string choice) speech.Text = choice; };
-        return Ui.Column(Ui.Text("语音与音色", 20), Ui.Check("自动朗读回复", s.ReadReplies, v => { s.ReadReplies = v; owner.Save(); }), Ui.Check("使用云端朗读（关闭时使用 macOS 系统朗读）", s.UseCloudVoice, v => { s.UseCloudVoice = v; owner.Save(); }), Ui.Field("音量", volume), Ui.Field("服务音色", voices), Ui.Field("朗读音色 / 系统语音名称", speech), Ui.Field("Gemini Live 音色", live),
+        return Ui.Column(Ui.Text("语音与音色", 20), advice, Ui.Check("自动朗读回复", s.ReadReplies, v => { s.ReadReplies = v; owner.Save(); }), Ui.Check("使用云端朗读（关闭时使用 macOS 系统朗读）", s.UseCloudVoice, v => { s.UseCloudVoice = v; owner.Save(); }), Ui.Field("音量", volume), Ui.Field("服务音色", voices), Ui.Field("朗读音色 / 系统语音名称", speech), Ui.Field("Gemini Live 音色", live),
             Ui.Button("保存当前伙伴音色", () => { s.VoiceName = speech.Text?.Trim() ?? ""; s.LiveVoice = live.Text?.Trim() ?? "Aoede"; PersonaProfiles.SaveVoices(s); owner.Save(); }),
             Ui.AsyncButton("试听朗读", () => owner.Session.PreviewSpeechAsync(s, owner.Skin.Name), owner.Error), Ui.Button("停止朗读", owner.Session.StopSpeech), Ui.Text("只有点击聊天听写或 Live 开始时才申请麦克风权限。云语音与 Live 的服务和密钥在对应标签独立配置。"));
     }

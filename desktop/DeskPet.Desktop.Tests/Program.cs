@@ -35,11 +35,67 @@ Directory.CreateDirectory(directory);
 try
 {
     var skins = SpriteAssets.LoadSkins(directory);
-    Check(skins.Count == 4, "four bundled companions");
+    Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
+    using (var gugaAssets = new SpriteAssets())
+    {
+        var guga = skins.Single(s => s.Id == "gugugaga");
+        foreach (var action in SpriteAssets.PairedActions.Append("jumping"))
+        {
+            var first = gugaAssets.Resolve(guga, action, true);
+            var second = gugaAssets.Resolve(guga, action, false);
+            Check(first.File != second.File && first.Frames == 8 && second.Frames == 8, "Guga independent variants " + action);
+            Check(gugaAssets.Get(guga, first.File).PixelSize.Width == 3840 && gugaAssets.Get(guga, second.File).PixelSize.Width == 3840, "Guga own variant resources " + action);
+        }
+        Check(gugaAssets.Resolve(guga, "idle", false).Fps == 4, "Guga keeps manifest idle cadence");
+        Check(SpriteAssets.AvatarPath(new PetSkin { Id = "gugugaga", Name = "import", Prompt = "", Folder = directory }) == null, "imported same ID cannot borrow Guga avatar");
+        var packSource = Path.Combine(directory, "guga-complete-source"); Directory.CreateDirectory(packSource);
+        const string prefix = "bundled-skins/gugugaga/";
+        using (var input = SpriteAssets.OpenAsset(prefix + "pet.json")) using (var output = File.Create(Path.Combine(packSource, "pet.json"))) input.CopyTo(output);
+        foreach (var path in guga.Clips.Values.Concat(guga.ExtraClips.Values).Concat(guga.Alternates.Values).Select(c => c.File).Concat(new[] { guga.Gaze!.File, guga.Avatar!, guga.Preview! }).Distinct())
+        {
+            var target = Path.Combine(packSource, path[prefix.Length..]); Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            using var input = SpriteAssets.OpenAsset(path); using var output = File.Create(target); input.CopyTo(output);
+        }
+        var archive = Path.Combine(directory, "guga-complete.zip"); System.IO.Compression.ZipFile.CreateFromDirectory(packSource, archive);
+        var installed = SpriteAssets.Import(archive, directory);
+        Check(SpriteAssets.HasExtra(installed, "special2") && SpriteAssets.HasExtra(installed, "stumble"), "installed package enables second signature and stumble capabilities");
+        Check(installed.Id == guga.Id && installed.PackageId == "gugugaga" && installed.Folder != null && SpriteAssets.LoadSkins(directory).Count == skins.Count, "ZIP replaces bundled resource without duplicate companion");
+        Check(gugaAssets.GetAvatar(installed) is { PixelSize.Width: 512 }, "installed resource package supplies its own portrait");
+        foreach (var action in SpriteAssets.PairedActions.Append("jumping"))
+        {
+            var first = gugaAssets.Resolve(installed, action, true); var second = gugaAssets.Resolve(installed, action, false);
+            Check(first.File != second.File && gugaAssets.Get(installed, first.File).PixelSize.Width == 3840 && gugaAssets.Get(installed, second.File).PixelSize.Width == 3840, "external package keeps both action variants " + action);
+        }
+        var packSettings = new PetSettings(); PersonaProfiles.Activate(packSettings, installed.Id, installed.Prompt, installed.Voices);
+        Check(PersonaProfiles.VoiceFor(packSettings, installed.Id, "speech", new ConnectionSettings { BaseUrl = "https://api.openai.com/v1", Model = "tts-1", Protocol = "openai" }) == "shimmer", "external package supplies supported speech recommendation");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(packSource, "pet.json")))!;
+        json["pack_version"] = "update-test"; json["name"] = "咕嘎 · 更新"; File.WriteAllText(Path.Combine(packSource, "pet.json"), json.ToJsonString());
+        var updated = SpriteAssets.Import(Path.Combine(packSource, "pet.json"), directory);
+        Check(updated.Id == installed.Id && updated.Folder != installed.Folder && SpriteAssets.LoadSkins(directory).Count == skins.Count, "new same-ID version atomically replaces resource selection");
+        var legacySource = Path.Combine(directory, "guga-legacy-source"); Directory.CreateDirectory(legacySource);
+        foreach (var path in Directory.GetFiles(packSource, "*.png", SearchOption.AllDirectories)) { var target = Path.Combine(legacySource, Path.GetRelativePath(packSource, path)); Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(path, target); }
+        foreach (var key in new[] { "id", "pack_version", "avatar", "special_action2", "extra_animations", "alternate_animations", "voice_presets" }) json.AsObject().Remove(key);
+        json["name"] = guga.Name; File.WriteAllText(Path.Combine(legacySource, "pet.json"), json.ToJsonString());
+        var migrated = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory);
+        Check(migrated.Id.StartsWith("skin-") && migrated.PackageId == "gugugaga" && SpriteAssets.LoadSkins(directory).Count == skins.Count, "legacy original keeps personal identity with one installed companion");
+        Check(SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory).Id == migrated.Id, "repeated legacy import returns retained identity");
+        var previewBytes = File.ReadAllBytes(Path.Combine(legacySource, "preview.png"));
+        using (var previewStream = new MemoryStream(previewBytes))
+        using (var bitmap = new Bitmap(previewStream)) bitmap.Save(Path.Combine(legacySource, "changed-preview.png"), new PngBitmapEncoderOptions());
+        File.Copy(Path.Combine(legacySource, "changed-preview.png"), Path.Combine(legacySource, "preview.png"), true);
+        var custom = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), Path.Combine(directory, "modified-preview-data"));
+        Check(custom.PackageId == null, "custom legacy preview is preserved as a separate companion");
+        SpriteAssets.Remove(migrated, directory);
+        Check(SpriteAssets.LoadSkins(directory).Count == skins.Count - 1, "removing package persists across catalog reload");
+        Check(SpriteAssets.Import(archive, directory).Id == migrated.Id && SpriteAssets.LoadSkins(directory).Count == skins.Count, "reimport restores removed package with retained personal identity");
+        foreach (var candidate in SpriteAssets.LoadSkins(directory).Skip(1)) SpriteAssets.Remove(candidate, directory);
+        bool lastBlocked = false; try { SpriteAssets.Remove(SpriteAssets.LoadSkins(directory).Single(), directory); } catch (InvalidOperationException) { lastBlocked = true; }
+        Check(lastBlocked, "last companion cannot be removed"); CompanionPackStorage.RestoreHidden(directory);
+    }
     using (var avatars = new SpriteAssets()) foreach (var skin in skins)
     {
         var avatar = avatars.GetAvatar(skin);
-        Check(SpriteAssets.AvatarPath(skin) == "avatars/" + skin.Id + ".png" && avatar is { PixelSize.Width: > 100, PixelSize.Height: > 100 } && avatar.PixelSize.Width == avatar.PixelSize.Height, "bundled companion uses its dedicated square portrait " + skin.Id);
+        Check(SpriteAssets.AvatarPath(skin) == (skin.Avatar ?? "avatars/" + skin.Id + ".png") && avatar is { PixelSize.Width: > 100, PixelSize.Height: > 100 } && avatar.PixelSize.Width == avatar.PixelSize.Height, "bundled companion uses its dedicated square portrait " + skin.Id);
         Check(ReferenceEquals(avatar, avatars.GetAvatar(skin)), "portrait bitmap is cached per companion " + skin.Id);
     }
     foreach (var skin in skins)
@@ -95,11 +151,11 @@ try
     }
     File.WriteAllText(manifest, "{\"version\":1,\"name\":\"bad\",\"atlas\":\"../escape.png\"}");
     Reject(() => SpriteAssets.Import(manifest, directory), "path traversal");
-    Check(SpriteAssets.LoadSkins(directory).Count == 5, "rejected import preserves existing skins");
+    Check(SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "rejected import preserves existing skins");
     var abandoned = Path.Combine(directory, "skins", ".import-abandoned"); Directory.CreateDirectory(abandoned);
     File.Copy(Path.Combine(source, "spritesheet.png"), Path.Combine(abandoned, "spritesheet.png"));
     File.WriteAllText(Path.Combine(abandoned, "pet.json"), "{\"version\":1,\"name\":\"interrupted\",\"atlas\":\"spritesheet.png\"}");
-    Check(SpriteAssets.LoadSkins(directory).Count == 5, "interrupted staging import never appears as a companion");
+    Check(SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "interrupted staging import never appears as a companion");
     Check(AboutWindow.MatchesArchitecture("DeskPet-macOS-0.6.0-x86_64-preview.zip", "x64"), "Intel release packaging name matches current architecture");
     Check(!AboutWindow.MatchesArchitecture("DeskPet-macOS-0.6.0-arm64-preview.zip", "x64"), "Intel query excludes arm64 archive");
     Check(!AboutWindow.MatchesArchitecture("DeskPet-Windows-macos-notes-x64-template.zip", "x64"), "platform words inside an unrelated filename are not a Mac package");

@@ -26,7 +26,7 @@ namespace Dafeiyu
                 new CompanionAction("jumping","跳跃",p=>p.PlayAction("jumping",.7)),
                 new CompanionAction("waving","打招呼",p=>p.PlayAction("waving",1.2)),
                 new CompanionAction("special",skin.SpecialAction,p=>p.PlayInteraction("special"))};
-            if(AdditionalInteractions.Supports(skin))actions.Add(new CompanionAction("special2",AdditionalInteractions.SpecialName(skin),p=>p.PlayInteraction("special2")));
+            if(AdditionalInteractions.Has(skin,"special2"))actions.Add(new CompanionAction("special2",AdditionalInteractions.SpecialName(skin),p=>p.PlayInteraction("special2")));
             var holiday=holidays==null?null:holidays.GetAction(skin,localDate.Date);
             if(holiday!=null && !actions.Exists(a=>a.Id==holiday.Id))actions.Add(holiday);
             return actions.AsReadOnly();

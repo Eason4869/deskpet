@@ -10,6 +10,7 @@ import re
 from zipfile import ZipFile, ZIP_DEFLATED
 from PIL import Image
 from tools.release_assets import installer_asset_name
+from tools.package_gugugaga import package as package_gugugaga
 
 PROJECT=Path(__file__).resolve().parent
 arguments=argparse.ArgumentParser(description='Create clean versioned DeskPet release archives.')
@@ -40,7 +41,7 @@ def include_source(file):
 source_files=[p for p in sorted(PROJECT.rglob('*')) if include_source(p)]
 # User-facing templates and documentation remain in the runtime; developer
 # verification reports, tests and intermediate artwork stay out.
-user_docs=['configuration-guide.md','agent-workflows.md','skin-format.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
+user_docs=['configuration-guide.md','agent-workflows.md','skin-format.md','character-packs.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
 runtime_text={name:(PROJECT/name).read_text(encoding='utf-8-sig') for name in ['README.md','CHANGELOG.md']+[str(Path('docs')/name) for name in user_docs]}
 readme=runtime_text['README.md']
 for pet,still in [('ebao','e-bao'),('dafeiyu','dafeiyu'),('marfu','marfu'),('xiaobei','xiaobei')]:
@@ -154,6 +155,8 @@ for pet,release_name in [('e-bao','Ebao'),('dafeiyu','Dafeiyu'),('marfu','Marfu'
     with ZipFile(skin_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
         for name in sorted(files):bundle.write(folder/name,name)
         bundle.write(PROJECT/'docs/skin-format.md','外观格式说明.md')
+
+skin_artifacts.append(package_gugugaga(OUTPUT))
 
 with ZipFile(runtime_zip) as bundle:
     assert bundle.testzip() is None

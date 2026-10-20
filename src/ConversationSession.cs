@@ -426,7 +426,7 @@ namespace Dafeiyu
         public async Task PreviewSpeechAsync(PetSettings settings,string name)
         {
             Operation op=Begin(settings,ConversationStage.Speaking);
-            try { await speech.SpeakAsync("你好，我是"+name+"。很高兴和你一起工作。",op.Snapshot,op.Cancel.Token); LastNotice="朗读测试完成。"; }
+            try { var voices=settings.ActiveVoiceRecommendations;await speech.SpeakAsync(voices!=null && !String.IsNullOrWhiteSpace(voices.SampleText)?voices.SampleText:"你好，我是"+name+"。很高兴和你一起工作。",op.Snapshot,op.Cancel.Token); LastNotice="朗读测试完成。"; }
             finally { FinishOperation(op); }
         }
         public void SetVolume(int volume) { lock(gate)if(active!=null)active.Live.Volume=Math.Max(0,Math.Min(100,volume));speech.SetVolume(volume); }

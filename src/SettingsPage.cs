@@ -14,6 +14,7 @@ namespace Dafeiyu
         private readonly TextBlock name,notice,sizeLabel;
         private readonly Image avatar;
         private readonly ComboBox skins;
+        private readonly Button restoreCompanions;
         private readonly CheckBox follow,wander,top,pause,autoStart,greetings,aiGreetings,stumble,autoSleep;
         private readonly TextBox greetingMin,greetingMax;
         private readonly StartupRegistration startup=new StartupRegistration(Process.GetCurrentProcess().MainModule.FileName);
@@ -28,7 +29,7 @@ namespace Dafeiyu
         private readonly QuietPanel quiet;
         private readonly WorkSettingsPanel work;
         private bool refreshing;
-        private string displayedSkinId;
+        private SkinDefinition displayedSkin;
         private bool disposed;
         private ProjectDefinition workEditingProject;
         public Window HostWindow {get{return Window.GetWindow(this);}}
@@ -58,7 +59,7 @@ namespace Dafeiyu
             var appearance=new StackPanel(); appearance.Children.Add(Heading("选择伙伴"));
             var appearanceRow=new Grid { Margin=new Thickness(0,8,0,6) };
             appearanceRow.ColumnDefinitions.Add(new ColumnDefinition()); appearanceRow.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
-            skins=new ComboBox { Name="SkinPicker",ItemTemplate=SkinCatalog.AvatarTemplate(),ItemsSource=pet.Catalog.Skins,SelectedItem=pet.Skin,MinHeight=36,Padding=new Thickness(8,4,8,4),Margin=new Thickness(0,0,10,0) };
+            skins=new ComboBox { Name="SkinPicker",ItemTemplate=SkinCatalog.AvatarTemplate(RemoveCompanion,()=>pet.Catalog.Skins.Count>1),ItemsSource=pet.Catalog.Skins,SelectedItem=pet.Skin,MinHeight=36,Padding=new Thickness(8,4,8,4),Margin=new Thickness(0,0,10,0),HorizontalContentAlignment=HorizontalAlignment.Stretch };
             skins.SelectionChanged+=delegate
             {
                 if(refreshing || skins.SelectedItem==null) return;
@@ -68,11 +69,12 @@ namespace Dafeiyu
                 if(pet.SelectSkin(selected)) RefreshAvatar(); else { RefreshState(); ShowNotice(pet.Notice); }
             };
             appearanceRow.Children.Add(skins);
-            var import=Ui.Button("导入外观"); import.Name="ImportSkin"; import.Margin=new Thickness(0); import.Click+=ImportSkin;
+            var import=Ui.Button("导入 / 更新角色包"); import.Name="ImportSkin"; import.Margin=new Thickness(0); import.Click+=ImportSkin;
             Grid.SetColumn(import,1); appearanceRow.Children.Add(import); appearance.Children.Add(appearanceRow);
-            appearance.Children.Add(Ui.Text("支持原版 PNG / v1 外观，以及逐帧绘制的 v2 动作包。",11,Ui.Muted));
+            appearance.Children.Add(Ui.Text("支持 ZIP 角色包、PNG 与 pet.json。同 ID 更新素材，保留个人人格、音色与聊天。",11,Ui.Muted));
+            restoreCompanions=Ui.Button("恢复已删除伙伴");restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice("请先保存修改并结束当前对话，再恢复伙伴。");return;}pet.Catalog.RestoreRemoved();var current=pet.Catalog.Find(pet.Skin.Id);pet.SelectSkin(current);RefreshSkinChoices();ShowNotice("已恢复已删除伙伴，聊天和配置保持原样。");};appearance.Children.Add(restoreCompanions);
             var guide=new Expander{Name="ImportGuide",Header="如何制作和导入桌宠？",Margin=new Thickness(0,12,0,0)};var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
-            tutorial.Children.Add(Ui.Text("1. 打开模板文件夹，选择 v1 原版或 v2 逐帧动作模板。\n2. v1：8 列 × 11 行透明 PNG，可直接导入。\n3. v2：每个动作独立 PNG，8 列、单格 480 × 520；在 pet.json 填写帧数、FPS 和循环方式。视线为 4 列 × 4 行的 16 张原画，不做插值。\n4. 填写角色名称、人格与专属动作名称；保留整个文件夹结构。ZIP 请先解压，再选择 pet.json 导入。\n导入后会复制素材，原文件保持不变。",12,Ui.Muted));
+            tutorial.Children.Add(Ui.Text("1. 打开模板文件夹，选择 v1 原版或 v2 逐帧动作模板。\n2. v1：8 列 × 11 行透明 PNG，可直接导入。\n3. v2：每个动作独立 PNG，8 列、单格 480 × 520；在 pet.json 填写帧数、FPS 和循环方式。视线为 4 列 × 4 行的 16 张原画，不做插值。\n4. 填写角色名称、人格与专属动作名称；保留整个文件夹结构。可直接导入 ZIP（根目录放 pet.json），或选择 pet.json。\n固定 ID 的完整角色包还支持头像、双套动作和音色推荐；同 ID 更新会保留个人配置。导入后会复制素材，原文件保持不变。",12,Ui.Muted));
             var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=Ui.Button("打开模板文件夹");templates.Name="OpenTemplates";templates.Click+=delegate {OpenGuide("templates");};guideButtons.Children.Add(templates);var fullGuide=Ui.Button("查看完整教程");fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
 
             var behavior=new StackPanel{Name="GuideBehaviorSection"}; behavior.Children.Add(Heading("陪伴方式"));
@@ -152,26 +154,43 @@ namespace Dafeiyu
         private void ImportSkin(object sender,RoutedEventArgs args)
         {
             if(HasUnsavedEdits){ShowNotice("请先保存当前修改，再导入并切换伙伴。");return;}
-            var dialog=new OpenFileDialog { Title="导入桌宠外观",Filter="桌宠外观 (*.png;pet.json)|*.png;*.json|透明 PNG 精灵图|*.png|外观说明 (*.json)|*.json",CheckFileExists=true,Multiselect=false };
+            if(pet.DialogueBusy || pet.DictationActive){ShowNotice("请先停止对话、听写或结束 Live，再导入 / 更新角色包。");return;}
+            var dialog=new OpenFileDialog { Title="导入 / 更新角色包",Filter="角色包或外观 (*.zip;*.png;*.json)|*.zip;*.png;*.json|角色资源包 (*.zip)|*.zip|透明 PNG 精灵图|*.png|外观说明 (*.json)|*.json",CheckFileExists=true,Multiselect=false };
             if(dialog.ShowDialog(HostWindow)!=true) return;
             try
             {
                 var skin=pet.Catalog.Import(dialog.FileName);
                 refreshing=true; skins.ItemsSource=null; skins.ItemsSource=pet.Catalog.Skins; refreshing=false;
-                skins.SelectedItem=skin; ShowNotice("已导入「"+skin.Name+"」，外观保存在桌宠的 data 文件夹。");
+                skins.SelectedItem=skin; ShowNotice("已载入「"+skin.Name+"」。同 ID 角色只显示一项，个人设置与聊天记录保留。");
             }
             catch(Exception e)
             {
                 refreshing=false;
-                if(!(e is IOException || e is UnauthorizedAccessException || e is FileFormatException || e is InvalidOperationException || e is NotSupportedException || e is ArgumentException || e is System.Runtime.Serialization.SerializationException)) throw;
-                ShowNotice("导入失败：请使用有效的透明 PNG 精灵图（8 列 × 11 行，每个动作都应有画面），或同文件夹内的 pet.json。");
+                if(!(e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is FileFormatException || e is InvalidOperationException || e is NotSupportedException || e is ArgumentException || e is System.Runtime.Serialization.SerializationException)) throw;
+                ShowNotice("导入失败："+e.Message+" 请检查 ZIP 角色包或 pet.json 及其素材。");
             }
         }
-        private void RefreshAvatar() { displayedSkinId=pet.Skin.Id;name.Text=pet.Skin.Name; avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
+        internal void RemoveCompanion(SkinDefinition skin)
+        {
+            skins.IsDropDownOpen=false;
+            if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice("请先保存修改并结束当前对话，再删除伙伴。");return;}
+            if(pet.Catalog.Skins.Count<=1){ShowNotice("至少保留一位伙伴。");return;}
+            var dialog=new DeleteConversationDialog(skin.Name,null,true){Owner=HostWindow};
+            if(dialog.ShowDialog()!=true)return;
+            if(pet.Skin.Id==skin.Id) {
+                SkinDefinition next=null;foreach(var candidate in pet.Catalog.Skins)if(candidate.Id!=skin.Id){next=candidate;break;}
+                if(next==null || !pet.SelectSkin(next)){ShowNotice(pet.Notice);return;}
+            }
+            pet.Catalog.Remove(skin);RefreshSkinChoices();ShowNotice("已删除「"+skin.Name+"」。聊天与配置保留，可恢复或重新导入。");
+        }
+        void RefreshSkinChoices()
+        {refreshing=true;skins.ItemsSource=null;skins.ItemsSource=pet.Catalog.Skins;skins.SelectedItem=pet.Catalog.Find(pet.Skin.Id);refreshing=false;RefreshState();}
+        private void RefreshAvatar() { displayedSkin=pet.Skin;name.Text=pet.Skin.Name; avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
         public void RefreshTextProviders(){connections.RefreshTextProviders();}
         public void RefreshState()
         {
-            if(displayedSkinId!=pet.Skin.Id)RefreshAvatar();
+            if(!ReferenceEquals(displayedSkin,pet.Skin))RefreshAvatar();
+            if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
             top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;

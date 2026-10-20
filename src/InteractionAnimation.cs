@@ -21,6 +21,7 @@ namespace Dafeiyu
             if(skin==null)return;
             for(int i=0;i<Names.Length;i++) {
                 IllustratedAnimation spec;
+                if(AdditionalInteractions.Specification(skin,Names[i],original,out spec)){durations[i]=spec.Frames/spec.Fps;counts[i]=spec.Frames;loops[i]=spec.Loop;continue;}
                 if(AdditionalInteractions.Has(skin,Names[i])){durations[i]=1;counts[i]=8;}
                 else if(skin.Illustrated && skin.Manifest.Animations.TryGetValue(Names[i],out spec)){durations[i]=spec.Frames/spec.Fps;counts[i]=spec.Frames;loops[i]=spec.Loop;}
                 if(original && AdditionalInteractions.HasOriginal(skin,Names[i])){counts[i]=AdditionalInteractions.OriginalFrameCount(skin,Names[i]);durations[i]=counts[i]/8.0;}
