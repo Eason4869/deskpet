@@ -61,6 +61,7 @@ namespace Dafeiyu
                 job=new Job{Request=request,Record=new ImageGenerationTaskRecord{Id=id,RequestId=submission.RequestId,RetryOfTaskId=retryOf,Persistent=request.Persistent,Origin=origin,State=ImageGenerationTaskState.Queued,QueuedUtc=now,UpdatedUtc=now,ProviderId=request.Provider.Id,ProviderName=request.Provider.Name,Protocol=request.Provider.Protocol,Model=request.Provider.Connection.Model,Prompt=request.Prompt,Size=request.Size??request.Provider.Size,Quality=request.Quality??request.Provider.Quality,ReferenceImageIds=new List<string>(),DeliveryState=origin.Source==ImageGenerationSource.Conversation?ImageTaskDeliveryState.Pending:ImageTaskDeliveryState.NotRequired}};
                 jobs.Add(job);try{Save();}catch{jobs.Remove(job);throw new IOException("图片任务记录保存失败，未请求图片服务。");}Notify(job);
             }
+            var inputNotifications=new List<Action>();
             job.Owner=ownerToken.Register(delegate{CancelAsync(job.Record.Id);});
             try{
                 if(job.Cancel.IsCancellationRequested){job.AssetsReady.TrySetResult(false);Release(job);return job.Handle;}
@@ -71,11 +72,13 @@ namespace Dafeiyu
                 }
                 if(!String.IsNullOrEmpty(request.ReferenceImageId)){
                     job.Lease=usage.Acquire(request.ReferenceImageId,job.Record.Id);
+                    if(request.Persistent)assets.PromoteDeferred(request.ReferenceImageId,inputNotifications);
                     if(request.ReferenceImageBytes==null)request.ReferenceImageBytes=assets.Read(request.ReferenceImageId);
                     lock(gate){job.Record.ReferenceImageIds.Add(request.ReferenceImageId);Save();}
                 }
                 bool canceled;lock(gate){job.Prepared=true;canceled=job.Record.IsTerminal;}
                 job.AssetsReady.TrySetResult(true);
+                foreach(var notify in inputNotifications)notify();inputNotifications.Clear();
                 if(canceled){Release(job);return job.Handle;}
                 if(beforeStart!=null)await beforeStart(job.Record.Id).ConfigureAwait(false);
                 lock(gate){if(!job.Record.IsTerminal){job.Ready=true;Notify(job);}}
@@ -85,7 +88,7 @@ namespace Dafeiyu
                 job.AssetsReady.TrySetResult(false);
                 lock(gate){if(!job.Record.IsTerminal){Terminal(job,canceled?ImageGenerationTaskState.Canceled:ImageGenerationTaskState.Failed,canceled?"图片生成已取消。":"图片任务准备失败，请检查存储和会话状态。");TrySave();Notify(job);}}
                 Release(job);if(canceled)job.Completion.TrySetCanceled();else job.Completion.TrySetException(new IOException("图片任务准备失败，请检查存储和会话状态。"));throw;
-            }
+            }finally{foreach(var notify in inputNotifications)notify();}
         }
         void Save(){var records=jobs.Select(j=>j.Record).ToList();if(records.Any(r=>r.Persistent))log.Save(records);}
         void TrySave(){try{Save();}catch(Exception){Warning="图片任务记录保存失败；已提交的图片不会重新请求，请检查存储。";}}
