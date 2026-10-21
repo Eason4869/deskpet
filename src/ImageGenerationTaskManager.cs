@@ -67,7 +67,7 @@ namespace Dafeiyu
                 if(job.Cancel.IsCancellationRequested){job.AssetsReady.TrySetResult(false);Release(job);return job.Handle;}
                 // Asset calls and acceptance callbacks can notify views: never hold gate.
                 if(request.ReferenceImageBytes!=null){
-                    var reference=assets.SaveReference(request.ReferenceImageBytes,new GeneratedImage{Source=origin.Source},request.Persistent);
+                    var reference=assets.SaveReferenceDeferred(request.ReferenceImageBytes,new GeneratedImage{Source=origin.Source},request.Persistent,inputNotifications);
                     request.ReferenceImageId=reference.Id;
                 }
                 if(!String.IsNullOrEmpty(request.ReferenceImageId)){

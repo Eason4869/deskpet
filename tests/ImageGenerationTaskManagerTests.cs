@@ -33,7 +33,7 @@ namespace Dafeiyu.Tests
             public void Dispose(){var stop=Manager.StopAsync(CancellationToken.None);Until(delegate{for(int i=0;i<Executor.Count;i++)Executor.At(i).Result.TrySetCanceled();return stop.IsCompleted;});stop.GetAwaiter().GetResult();Assets.Dispose();Directory.Delete(Root,true);}
         }
         static ImageGenerationTaskSubmission Submission(string id,string provider,bool persistent){return new ImageGenerationTaskSubmission(id,new ImageGenerationRequest{Provider=new ImageGenerationProvider{Id=provider,TimeoutSeconds=1},Prompt="test",Persistent=persistent},new ImageTaskOrigin{Source=ImageGenerationSource.Workspace});}
-        public static int Main(){try{passed=0;foreach(var test in new Action[]{DefaultSerialAndPerProviderLimit,QueueFullNeverCallsHttp,SameCallIsIdempotent,QueuedCancelNeverSendsHttp,TimeoutExcludesQueueWait,SavedResultWinsLateCancel,RestartFindsCommittedAssetWithoutHttp,RestartNeverResendsInterruptedJob,HistoryOffCreatesNoDurableJobPayload,WriteFailureAndEvents,AcceptanceAndLeases,CorruptStartupAndQueuedWriteFailure,ReferencesRetryAndPhases,OwnerAndAcceptanceCancellation,CanceledAcceptanceAndPromotionReentrancy,ClientPhasesAndIdentity,RecoveryKeepsCompletionTime,DurableTaskPromotesExistingReference}){Console.WriteLine("RUN "+test.Method.Name);test();}Console.WriteLine("ImageGenerationTaskManagerTests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL ImageGenerationTaskManagerTests: "+e);return 1;}}
+        public static int Main(){try{passed=0;foreach(var test in new Action[]{DefaultSerialAndPerProviderLimit,QueueFullNeverCallsHttp,SameCallIsIdempotent,QueuedCancelNeverSendsHttp,TimeoutExcludesQueueWait,SavedResultWinsLateCancel,RestartFindsCommittedAssetWithoutHttp,RestartNeverResendsInterruptedJob,HistoryOffCreatesNoDurableJobPayload,WriteFailureAndEvents,AcceptanceAndLeases,CorruptStartupAndQueuedWriteFailure,ReferencesRetryAndPhases,OwnerAndAcceptanceCancellation,CanceledAcceptanceAndPromotionReentrancy,ClientPhasesAndIdentity,RecoveryKeepsCompletionTime,DurableTaskPromotesExistingReference,NewReferenceObserverCanPromote}){Console.WriteLine("RUN "+test.Method.Name);test();}Console.WriteLine("ImageGenerationTaskManagerTests: "+passed+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL ImageGenerationTaskManagerTests: "+e);return 1;}}
         static void DefaultSerialAndPerProviderLimit(){using(var f=new Fixture()){var a=f.Add("1");Until(()=>f.Executor.Count==1);var b=f.Add("2");var c=f.Add("3","b");Check(f.Executor.Count==1,"default serial");f.Manager.Concurrency=4;Until(()=>f.Executor.Count==2);Check(f.Executor.At(1).Request.Provider.Id=="b","skip blocked provider fairly");f.Executor.Finish(0);a.Completion.GetAwaiter().GetResult();Until(()=>f.Executor.Count==3);f.Executor.Finish(1);f.Executor.Finish(2);Task.WaitAll(b.Completion,c.Completion);Check(f.Manager.List().All(x=>x.State==ImageGenerationTaskState.Succeeded),"all completed");f.Manager.Concurrency=9;Check(f.Manager.Concurrency==4,"clamp concurrency");}}
         static void QueueFullNeverCallsHttp(){using(var f=new Fixture()){f.Add("run");Until(()=>f.Executor.Count==1);for(int i=0;i<50;i++)f.Add("q"+i);bool refused=false;try{f.Add("overflow");}catch(InvalidOperationException){refused=true;}Check(refused && f.Executor.Count==1,"queue cap rejects before executor");}}
         static void SameCallIsIdempotent(){using(var f=new Fixture()){var a=f.Add("same");var b=f.Add("same");Check(a.Id==b.Id && Object.ReferenceEquals(a.Completion,b.Completion),"same request handle");var origin=new ImageTaskOrigin{ConversationId="c",AgentTaskId="a",ToolCallId="t"};var s=Submission("x","a",true);var x=f.Manager.EnqueueAsync(new ImageGenerationTaskSubmission("x",s.Request,origin),CancellationToken.None).Result;var y=f.Manager.EnqueueAsync(new ImageGenerationTaskSubmission("y",s.Request,origin),CancellationToken.None).Result;Check(x.Id==y.Id,"tool call deduplication");Check(f.Add("new").Id!=a.Id,"explicit new submit distinct");}}
@@ -130,6 +130,27 @@ namespace Dafeiyu.Tests
                 var h=f.Manager.EnqueueAsync(new ImageGenerationTaskSubmission("existing-ref",request,null),CancellationToken.None).Result;Until(()=>f.Executor.Count==1);
                 Check(!f.Assets.Get(reference.Id).Temporary && f.Manager.Get(h.Id).ReferenceImageIds.Single()==reference.Id,"durable task promotes existing temporary reference before HTTP");
                 f.Executor.Finish(0);h.Completion.Wait();
+            }
+        }
+
+        static void NewReferenceObserverCanPromote()
+        {
+            using(var f=new Fixture()){
+                int entered=0;bool returned=false,registered=false,beforeHttp=false;Exception observerError=null;
+                f.Assets.Changed+=delegate{
+                    if(Interlocked.Exchange(ref entered,1)!=0)return;
+                    try{
+                        var record=f.Manager.List().Single();registered=record.ReferenceImageIds.Count==1;beforeHttp=f.Executor.Count==0;
+                        returned=f.Manager.PromoteAsync(record.Id,CancellationToken.None).Wait(1500);
+                    }catch(Exception e){observerError=e;}
+                };
+                var request=Submission("new-reference-observer","a",false).Request;request.ReferenceImageBytes=Png;
+                var accepting=f.Manager.EnqueueAsync(new ImageGenerationTaskSubmission("new-reference-observer",request,null),CancellationToken.None);
+                Check(accepting.Wait(5000) && returned && observerError==null,"new reference observer promotion returns before bounded wait expires");
+                var h=accepting.Result;var snapshot=f.Manager.Get(h.Id);var reference=snapshot.ReferenceImageIds.Single();
+                Check(registered && beforeHttp,"new reference notification follows task reference registration and precedes HTTP");
+                Check(snapshot.Persistent && !f.Assets.Get(reference).Temporary && f.Log.Load().Single().ReferenceImageIds.Single()==reference,"observer promotion persists ready task and reference");
+                Until(()=>f.Executor.Count==1);f.Executor.Finish(0);Check(h.Completion.Wait(5000) && f.Executor.Count==1 && f.Manager.Get(h.Id).State==ImageGenerationTaskState.Succeeded,"reentrant reference observer allows exactly one eventual generation");
             }
         }
     }

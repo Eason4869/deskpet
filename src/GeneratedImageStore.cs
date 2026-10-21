@@ -36,7 +36,9 @@ namespace Dafeiyu
         {return SaveCore(bytes,metadata,persistent,false);}
         public GeneratedImage SaveReference(byte[] bytes,GeneratedImage metadata,bool persistent)
         {return SaveCore(bytes,metadata,persistent,true);}
-        GeneratedImage SaveCore(byte[] bytes,GeneratedImage metadata,bool persistent,bool reference)
+        internal GeneratedImage SaveReferenceDeferred(byte[] bytes,GeneratedImage metadata,bool persistent,ICollection<Action> notifications)
+        {return SaveCore(bytes,metadata,persistent,true,notifications);}
+        GeneratedImage SaveCore(byte[] bytes,GeneratedImage metadata,bool persistent,bool reference,ICollection<Action> notifications=null)
         {
             if(bytes==null || bytes.Length==0 || bytes.Length>MaximumBytes)throw new InvalidDataException("图片为空或超过 50 MB。");
             bytes=(byte[])bytes.Clone();var format=GeneratedImageValidation.Validate(bytes);
@@ -52,7 +54,7 @@ namespace Dafeiyu
                 try{if(persistent)SaveIndex(images.Concat(new[]{item}));images.Add(item);}
                 catch(Exception e){if(!StorageError(e))throw;Warning="图片已落盘，但索引保存失败；请检查存储空间并在图库执行恢复。";throw new IOException(Warning);}
             }
-            Notify();return item.Copy();
+            if(notifications==null)Notify();else notifications.Add(Notify);return item.Copy();
         }
         public GeneratedImage FindByJobId(string id){if(String.IsNullOrEmpty(id))return null;lock(gate){EnsureOpen();var item=images.Find(i=>!i.IsReference && i.ImageJobId==id);return item==null?null:item.Copy();}}
         public GeneratedImage Get(string id){ValidateId(id);lock(gate){EnsureOpen();var item=images.Find(i=>i.Id==id);return item==null?null:item.Copy();}}
