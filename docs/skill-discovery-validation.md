@@ -6,8 +6,8 @@
 
 | 检查 | 结果 |
 | --- | --- |
-| SkillRepositoryTests | 42 项通过：来源、分支、缓存、根目录/嵌套发现、资源、SHA、BOM、ZIP、路径/链接限制、限流及取消 |
-| SkillDiscoveryUiTests | 35 项通过：真实 WPF 控件搜索、预览、仓库/ZIP 安装、状态、重开、取消及浅/深色、360/460 DIP 布局 |
+| SkillRepositoryTests | 43 项通过：来源、分支、缓存、根目录/嵌套发现、资源、SHA、BOM、ZIP、路径/链接限制、限流、取消及本机预览正文一致性 |
+| SkillDiscoveryUiTests | 44 项通过：真实 WPF 控件搜索、预览、仓库/ZIP/本机导入、内置遮罩浮窗、原主体保留、不新增独立窗口、圆角、关闭不等待导入锁、状态、重开、取消及浅/深色、360/460 DIP 布局 |
 | ManagedSkillLibraryTests | 41 项通过，包含原有登记失败回滚、链接拒绝、损坏登记保留及加载权限检查；junction 样本须在沙箱外执行 |
 | PluginsUiTests | 41 项通过：本机导入、启停、详情、移除、MCP 草稿保留与主题/窄屏 |
 | AgentInstructionTests | 10 项通过：真实技能加载及权限边界 |
@@ -18,19 +18,21 @@
 | .NET 10 DeskPet.Core build | 0 错误；存在既有平台与 API 警告。依赖还原的漏洞数据查询受本机 NuGet 网络限制，未声称完成漏洞审计 |
 | Windows App build | 程序与更新助手均构建成功，预览输出位于 outputs/skill-repository-preview，版本标识沿用 0.10.1-dev.2 并附构建 commit |
 
-上述九组检查共 289 项。GitHub Actions 已增加仓库核心与发现界面测试目标，本轮没有运行远端 CI。
+上述九组检查共 299 项。GitHub Actions 已增加仓库核心与发现界面测试目标，本轮没有运行远端 CI。
 
 ## 真实公开仓库流程
 
-使用 `SkillDiscoveryUiTests.exe --live`，通过真实发现页添加 anthropics/skills，搜索 brand-guidelines，查看 SKILL.md、来源与完整提交，点击安装，然后在新 AgentWorkspace 中通过真实 load_skill 读取。共 6 项检查通过。
+使用 `SkillDiscoveryUiTests.exe --live`，通过真实内置弹层添加 anthropics/skills，搜索 brand-guidelines，查看 SKILL.md、来源与完整提交，点击安装，然后在新 AgentWorkspace 中通过真实 load_skill 读取。共 10 项检查通过，包括原页面保留、不新增独立窗口及圆角样式。
 
-首次验证固定提交为 dbd4588f9e1033efb41dad4bef2f7947c8993d44；最终复验的精确提交、临时目录和状态保存在 work/discovery-live-verified.log。截图位于 work/skill-discovery-evidence。没有调用 AI 服务、MCP，也没有执行技能内脚本。
+首次验证固定提交为 dbd4588f9e1033efb41dad4bef2f7947c8993d44；最终复验的精确提交、临时目录和状态保存在 work/discovery-live-overlay-final.log。截图位于 work/skill-discovery-evidence。没有调用 AI 服务、MCP，也没有执行技能内脚本。
 
 公开仓库客户端与已有 GitHubClient 一致，使用直连；本机系统代理曾使默认代理连接 TLS 握手失败，已通过只读诊断区分直连和系统代理，未修改用户网络配置。网络验收在沙箱外进行。
 
 ## 独立审阅
 
 仓库实现发现两个 Important：分支大小写去重规则不一致会损坏可读配置；缓存中的 null 元素会导致页面异常。两项均已用失败测试复现并修复，核心测试重新通过。对话追加范围的独立只读审阅未发现可确认问题。
+
+浮窗追加审阅发现两项 Important，已修复：关闭导入弹层不再同步等待库锁，完成后再通知主列表刷新；本机预览哈希传入导入事务，并在临时目录晋升前校验，源正文变更时不登记。两项均有失败后通过的回归检查。
 
 ## 范围
 
