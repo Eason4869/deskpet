@@ -50,6 +50,15 @@ namespace Dafeiyu.Tests
                 var settings=Recorded(pair[0]);result=Prepare(settings,pair[1]);
                 Check(result.ShowGuide && result.Changed && settings.OnboardingStep==0,"numeric series advance triggers across "+pair[0]+" to "+pair[1]);
             }
+            var previewFresh=new PetSettings();result=Prepare(previewFresh,"0.10.0-dev.1");
+            Check(result.ShowGuide && Series(previewFresh)=="0.10" && previewFresh.OnboardingVersion==OnboardingUpgrade.WorkGuideVersion,"fresh preview installation records its numeric series and current lessons");
+            var preview=Recorded("0.9");result=Prepare(preview,"0.10.0-dev.1");
+            Check(result.ShowGuide && Series(preview)=="0.10" && preview.OnboardingStep==0,"stable to higher preview series triggers the upgrade guide");
+            preview.OnboardingState="deferred";preview.OnboardingStep=6;
+            Check(!Prepare(preview,"0.10.0-dev.2").ShowGuide && !Prepare(preview,"0.10.0").ShowGuide && preview.OnboardingStep==6,"preview revisions and same-series stable release preserve the claimed guide");
+            Check(!Prepare(preview,"0.9.9-dev.1").ShowGuide && Series(preview)=="0.10","lower preview retains the highest claimed series");
+            var invalidPreview=Recorded("0.9");result=Prepare(invalidPreview,"0.10.0-dev.01");
+            Check(!result.ShowGuide && !result.Changed && Series(invalidPreview)=="0.9","invalid preview cannot consume an onboarding series");
             var downgrade=Recorded("1.3");
             Check(!Prepare(downgrade,"0.8.3").ShowGuide && Series(downgrade)=="1.3","downgrading keeps the highest triggered series");
             Check(!Prepare(downgrade,"1.3.9").ShowGuide && Series(downgrade)=="1.3","returning to a previously triggered series stays silent");

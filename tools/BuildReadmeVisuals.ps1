@@ -110,17 +110,17 @@ function New-Workspace([switch]$Mobile) {
         $body += New-Label '陪你聊天和工作' 40 195 56 '#22294f' -Bold
         $body += New-Label 'Windows 真实界面 · 完整窗口' 42 283 28 '#697799'
         $body += "<rect x='24' y='354' width='732' height='492' rx='22' fill='#ffffff'/>"
-        $body += New-Image 'previews/workspace-0.9.0.png' 40 370 700 460
+        $body += New-Image "previews/workspace-$script:DevelopmentVersion.png" 40 370 700 460
         Save-Visual 'readme-workspace-mobile' 780 870 'Windows 完整主窗口截图：窄屏排版' $body
         return
     }
     $body = "<rect width='1728' height='1370' rx='36' fill='#eaf0ff'/><rect x='64' y='52' width='320' height='52' rx='26' fill='#4e67d9'/>"
     $body += New-Label '聊天 · 项目 · 工具' 88 59 28 '#ffffff'
     $body += New-Label '一个窗口，陪你聊天和工作' 64 136 65 '#22294f' -Bold
-    $body += New-Label 'Windows 0.9.0 真实界面 · 保留完整窗口' 68 226 28 '#697799'
+    $body += New-Label "Windows $script:DevelopmentVersion 真实界面 · 离线示例对话" 68 226 28 '#697799'
     $body += "<rect x='46' y='294' width='1636' height='1030' rx='28' fill='#d3dcf0'/><rect x='32' y='280' width='1664' height='1058' rx='28' fill='#ffffff'/>"
-    $body += New-Image 'previews/workspace-0.9.0.png' 56 304 1616 1010
-    Save-Visual 'readme-workspace' 1728 1370 'Windows 统一主窗口完整截图：会话侧栏、伙伴欢迎页与输入区' $body
+    $body += New-Image "previews/workspace-$script:DevelopmentVersion.png" 56 304 1616 1010
+    Save-Visual 'readme-workspace' 1728 1370 'Windows 统一主窗口完整截图：示例会话列表、聊天正文与输入区' $body
 }
 
 function New-Interaction([switch]$Mobile) {

@@ -78,6 +78,9 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
         assert bundle.testzip() is None and 'pet.json' in bundle.namelist()
         skin=json.loads(bundle.read('pet.json'))
         assert skin['version']==2 and len(skin['animations'])==17 and skin['gaze']['frames']==16
+        if pet=='gugugaga':
+            assert bundle.read('pet.json')==(checkout/'assets/bundled-skins/gugugaga/pet.json').read_bytes(), 'application version must not rewrite authored pack metadata'
+            assert ('配套 DeskPet 发行标识：'+version) in bundle.read('README.txt').decode('utf-8'), 'Guga archive must identify the full application release'
         assert skin['system_prompt'] and skin['special_action']
         expected_counts=[6,8,8,4,5,8,6,6,6]+[4]*8
         action_names=['idle','running-right','running-left','waving','jumping','failed','waiting','running','review','lifted','landing','petting','poked','feeding','happy','sleeping','special']
@@ -86,7 +89,8 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
             assert record['columns']==8 and 1<=record['frames']<=8 and record['file'] in bundle.namelist()
         assert skin['gaze']['file'] in bundle.namelist() and skin['preview'] in bundle.namelist()
         if pet=='gugugaga':
-            assert skin['id']=='gugugaga' and skin['pack_version']==version
+            authored=json.loads((checkout/'assets/bundled-skins/gugugaga/pet.json').read_bytes())
+            assert skin['id']=='gugugaga' and skin['pack_version']==authored['pack_version']
             assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech']
             for clips in (skin['extra_animations'],skin['alternate_animations']):
                 assert all(clip['file'] in bundle.namelist() for clip in clips.values())
