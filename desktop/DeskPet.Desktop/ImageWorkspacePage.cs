@@ -219,9 +219,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     }
     private static bool ParseDate(string? input, bool end, out DateTime? value)
     {
-        value = null; if (string.IsNullOrWhiteSpace(input)) return true;
-        if (!DateTime.TryParseExact(input, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsed)) return false;
-        value = (end ? parsed.AddDays(1).AddTicks(-1) : parsed).ToUniversalTime(); return true;
+        return ImageGalleryDateFilter.TryParseDate(input, end, out value);
     }
     private static void UpdateOptions(ComboBox box, string all, string[] choices)
     {
@@ -262,7 +260,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
             var progress = new Progress<ImageExportItem>(_ => galleryCount.Text = "正在导出原图…");
             var summary = await new ImageGalleryExport(owner.ImageStore, owner.ImageUsage).ExportAsync(ids, path, progress, source.Token);
             galleryCount.Text = (summary.Canceled ? "已取消；" : "") + "已导出 " + summary.Completed + " 张，失败 " + summary.Failed + " 张。";
-            galleryActionNotice.Text = string.Join("\n", summary.Items.Select(i => i.Id + "：" + (i.Path ?? i.Error)));
+            galleryActionNotice.Text = string.Join("\n", summary.Items.Select(i => i.Id + "：" + (i.Path ?? i.Error ?? (i.Canceled ? "已取消" : "未导出"))));
         }
         finally { exportCancellation = null; cancelExport.IsVisible = false; }
     }

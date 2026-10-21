@@ -12,6 +12,8 @@ namespace Dafeiyu
         public string Id { get; internal set; }
         public string Path { get; internal set; }
         public string Error { get; internal set; }
+        public bool Canceled { get; internal set; }
+        public string TemporaryPath { get; internal set; }
     }
     public sealed class ImageExportResult
     {
@@ -24,6 +26,8 @@ namespace Dafeiyu
     {
         readonly GeneratedImageStore store;
         readonly ImageAssetUsageRegistry usage;
+        internal Action<string> AfterTemporaryWrite;
+        internal Action<string> DeleteTemporary;
         public ImageGalleryExport(GeneratedImageStore store, ImageAssetUsageRegistry usage) { this.store = store; this.usage = usage; }
         public Task<ImageExportResult> ExportAsync(IEnumerable<string> ids, string destination, IProgress<ImageExportItem> progress, CancellationToken token)
         {
@@ -51,6 +55,7 @@ namespace Dafeiyu
                         string suffix = metadata.MediaType == "image/jpeg" ? ".jpg" : metadata.MediaType == "image/webp" ? ".webp" : metadata.MediaType == "image/gif" ? ".gif" : ".png";
                         temporary = Path.Combine(folder, ".deskpet-" + Guid.NewGuid().ToString("N") + ".tmp");
                         using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { output.Write(original, 0, original.Length); output.Flush(true); }
+                        if (AfterTemporaryWrite != null) AfterTemporaryWrite(temporary);
                         for (int number = 0; number < 10000; number++)
                         {
                             token.ThrowIfCancellationRequested();
@@ -61,12 +66,25 @@ namespace Dafeiyu
                         if (item.Path == null) throw new IOException("导出文件名已用尽。");
                     }
                 }
-                catch (OperationCanceledException) { summary.Canceled = true; break; }
+                catch (OperationCanceledException) { summary.Canceled = true; item.Canceled = true; }
                 catch (Exception error) { item.Error = error.Message; }
-                finally { if (temporary != null && File.Exists(temporary)) try { File.Delete(temporary); } catch (IOException error) { item.Error = "临时文件清理失败：" + error.Message; } catch (UnauthorizedAccessException error) { item.Error = "临时文件清理失败：" + error.Message; } }
+                finally { CleanupTemporary(temporary, item); }
                 rows.Add(item); if (progress != null) progress.Report(item);
+                if (summary.Canceled) break;
             }
             return summary;
+        }
+        void CleanupTemporary(string temporary, ImageExportItem item)
+        {
+            if (temporary == null || !File.Exists(temporary)) return;
+            try
+            {
+                if (DeleteTemporary == null) File.Delete(temporary);
+                else DeleteTemporary(temporary);
+                if (File.Exists(temporary)) throw new IOException("临时文件仍存在。");
+            }
+            catch (IOException error) { item.TemporaryPath = temporary; item.Error = "临时文件清理失败：" + temporary + "；" + error.Message; }
+            catch (UnauthorizedAccessException error) { item.TemporaryPath = temporary; item.Error = "临时文件清理失败：" + temporary + "；" + error.Message; }
         }
     }
 }

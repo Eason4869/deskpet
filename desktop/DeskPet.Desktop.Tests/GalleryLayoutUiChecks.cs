@@ -19,6 +19,11 @@ internal static class GalleryLayoutUiChecks
         void Check(bool value, string label) { if (!value) throw new Exception("FAIL: gallery layout " + label); checks++; }
         void Render() { Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick(); }
         var page = window.Images; window.ShowImages(); page.SelectedIndex = 1; page.Search.Text = "layout fixture";
+        var dateField = (TextBox)typeof(ImageWorkspacePage).GetField("toDate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
+        var dateStatus = (TextBlock)typeof(ImageWorkspacePage).GetField("galleryCount", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
+        dateField.Text = "9999-12-31"; page.RefreshGallery(); Check(dateStatus.Text == "日期格式应为 YYYY-MM-DD。", "maximum end date is rejected in native Avalonia event");
+        dateField.Text = "malformed"; page.RefreshGallery(); Check(dateStatus.Text == "日期格式应为 YYYY-MM-DD。", "malformed end date is rejected in native Avalonia event");
+        dateField.Text = "2026-10-22"; page.RefreshGallery(); dateField.Text = ""; page.RefreshGallery(); Check(dateField.Text == "", "normal and empty end dates pass native Avalonia event");
         void AwaitTiles(int count) { var clock = System.Diagnostics.Stopwatch.StartNew(); while (clock.ElapsedMilliseconds < 5000) { Render(); if (page.GalleryCount == count && page.GalleryPanel.Children.OfType<GeneratedImageCard>().All(t => t.GetLogicalDescendants().OfType<Image>().Any(i => i.Source != null))) return; Thread.Sleep(10); } throw new TimeoutException("gallery thumbnails did not settle"); }
         Check(page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GallerySelectLoaded") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryExportSelected") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryCleanupOrphans"), "selection, original export and explicit orphan cleanup controls are visible");
         var shapes = new[] { (320, 560), (600, 320), (400, 400), (400, 610), (640, 360), (420, 520), (460, 340) };

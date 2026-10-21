@@ -12,7 +12,7 @@
     <Compile Include="../../src/ImageGenerationMotion.cs" Link="Shared/ImageGenerationMotion.cs" />
     <Compile Include="../../src/ImageAssetUsageRegistry.cs;../../src/ImageGenerationTaskManager.cs;../../src/ImageGenerationTask.cs;../../src/ImageGenerationTaskStore.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageServicePresets.cs;../../src/ImageGenerationProtocols.cs" Link="Shared/%(Filename)%(Extension)" />
-    <Compile Include="../../src/ImageGalleryLayout.cs;../../src/ImageGalleryQuery.cs;../../src/ImageGalleryExport.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ImageGalleryLayout.cs;../../src/ImageGalleryQuery.cs;../../src/ImageGalleryExport.cs;../../src/ImageGalleryDateFilter.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ConversationImageGeneration.cs" Link="Shared/ConversationImageGeneration.cs" />
     <Compile Include="../../src/AgentQuestionController.cs;../../src/AgentProjectTools.cs;../../src/AgentImageInspection.cs;../../src/AgentGitTools.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebPValidation.cs" Link="Shared/WebPValidation.cs" />

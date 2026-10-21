@@ -33,6 +33,27 @@ namespace Dafeiyu.Tests
                     byte[] foreign={7,8,9};File.WriteAllBytes(first.Items[0].Path,foreign);var second=service.ExportAsync(new[]{a.Id},exports,null,CancellationToken.None).GetAwaiter().GetResult();Check(second.Completed==1 && second.Items[0].Path!=first.Items[0].Path && File.ReadAllBytes(first.Items[0].Path).SequenceEqual(foreign) && File.ReadAllBytes(second.Items[0].Path).SequenceEqual(Png),"CollisionNeverOverwrites");
                     using(var cancel=new CancellationTokenSource())
                     {var result=service.ExportAsync(new[]{a.Id,b.Id},exports,new SynchronousProgress<ImageExportItem>(item=>cancel.Cancel()),cancel.Token).GetAwaiter().GetResult();Check(result.Canceled && result.Completed==1 && File.Exists(result.Items[0].Path) && Directory.GetFiles(exports,".deskpet-*.tmp").Length==0,"CancelKeepsFinishedExports");}
+                    using(var cancel=new CancellationTokenSource())
+                    {
+                        var duringWrite=new ImageGalleryExport(store,usage);
+                        string temporary=null;var reported=new List<ImageExportItem>();
+                        duringWrite.AfterTemporaryWrite=path=>{temporary=path;cancel.Cancel();};
+                        var result=duringWrite.ExportAsync(new[]{b.Id},exports,new SynchronousProgress<ImageExportItem>(reported.Add),cancel.Token).GetAwaiter().GetResult();
+                        Check(result.Canceled&&result.Items.Count==1&&result.Items[0].Canceled&&result.Failed==0&&reported.Count==1&&!File.Exists(temporary),"CancelAfterTempReportsCleanOutcome");
+                    }
+                    using(var cancel=new CancellationTokenSource())
+                    {
+                        var locked=new ImageGalleryExport(store,usage);string temporary=null;var reported=new List<ImageExportItem>();
+                        locked.AfterTemporaryWrite=path=>{temporary=path;cancel.Cancel();};locked.DeleteTemporary=path=>{throw new IOException("injected delete refusal");};
+                        var result=locked.ExportAsync(new[]{b.Id},exports,new SynchronousProgress<ImageExportItem>(reported.Add),cancel.Token).GetAwaiter().GetResult();
+                        Check(result.Canceled&&result.Items.Count==1&&result.Items[0].Canceled&&result.Failed==1&&result.Items[0].TemporaryPath==temporary&&result.Items[0].Error.Contains(temporary)&&reported.Count==1&&File.Exists(temporary),"CancelCleanupFailureReportsRecoverablePath");
+                        File.Delete(temporary);
+                    }
+                    DateTime? bound;
+                    Check(ImageGalleryDateFilter.TryParseDate("",true,out bound)&&!bound.HasValue,"EmptyDateAccepted");
+                    Check(!ImageGalleryDateFilter.TryParseDate("bad",true,out bound),"MalformedDateRejected");
+                    Check(ImageGalleryDateFilter.TryParseDate("2026-10-22",true,out bound)&&bound.HasValue&&bound.Value>=new DateTime(2026,10,22,0,0,0,DateTimeKind.Utc),"OrdinaryEndDateAccepted");
+                    Check(!ImageGalleryDateFilter.TryParseDate("9999-12-31",true,out bound),"MaximumEndDateRejectedWithoutThrow");
                     Check(management.PurgeAsync(new[]{a.Id},CancellationToken.None).GetAwaiter().GetResult().Blocked.ContainsKey(a.Id),"VisiblePurgeRequiresTrash");
                     store.Save(Png,new GeneratedImage{Prompt="dependent",ReferenceImageId=c.Id},true);Check(management.PurgeAsync(new[]{c.Id},CancellationToken.None).GetAwaiter().GetResult().Blocked.ContainsKey(c.Id),"ProtectedPurgeKeepsReferencedTrash");
                     store.Restore(new[]{c.Id});Check(query.Query(new ImageGalleryQuery{Trash=true}).Total==0,"RestoreLeavesTrash");
