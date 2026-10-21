@@ -38,6 +38,9 @@ internal sealed class ChatMessageView : Border
     private readonly WrapPanel sentAttachments = new() { Name = "SentAttachments", Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly List<Bitmap> sentImages = new();
     private List<ChatAttachment> displayedAttachments = new();
+    private readonly StackPanel generatedImages = Ui.Column();
+    private readonly List<GeneratedImageCard> generatedCards = new();
+    private string generatedSignature = "";
     private ChatMessage current;
     private bool reading, showHistory;
     private bool? detailedSetting;
@@ -62,9 +65,8 @@ internal sealed class ChatMessageView : Border
         clock.Tick += (_, _) => RefreshElapsed(); AttachedToVisualTree += (_, _) => RefreshElapsed(); DetachedFromVisualTree += (_, _) => clock.Stop();
         panel.Children.Add(sentAttachments); RefreshSentAttachments(message.Attachments);
         if (IsUser) { userBubble = new Border { Name = "UserBubble", Background = DesktopTheme.Brush("#E8F2FF"), CornerRadius = new CornerRadius(18), Padding = new Thickness(15, 10), HorizontalAlignment = HorizontalAlignment.Right, Child = body }; panel.Children.Add(userBubble); }
-        else panel.Children.Add(body); if (!IsUser) panel.Children.Add(status);
+        else panel.Children.Add(body); if (!IsUser) { generatedImages.Name = "MessageGeneratedImages"; panel.Children.Add(generatedImages); panel.Children.Add(status); }
         Ui.ReadOnlyMenu(reasoning);
-        DetachedFromVisualTree += (_, _) => DisposeSentImages();
         var copy = IconButton("CopyReply", "复制回复", "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false)));
         readReply = IconButton("ReadReply", "朗读回复 / 停止朗读", "M 3,7 L 6,7 L 10,3 L 10,15 L 6,11 L 3,11 Z M 13,5 Q 18,9 13,13", ReadReply);
         var more = IconButton("MoreReply", "更多", "M 3,9 L 4,9 M 8,9 L 9,9 M 13,9 L 14,9", () => { });
@@ -99,6 +101,15 @@ internal sealed class ChatMessageView : Border
     }
     private bool CanStart() => !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
     private void DisposeSentImages() { foreach (var image in sentImages) image.Dispose(); sentImages.Clear(); }
+    internal void DisposeImages() { DisposeSentImages(); foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); }
+    private void RefreshGeneratedImages(ChatMessage message)
+    {
+        var images = message.GeneratedImages ?? new(); var signature = string.Join("|", images.Select(i => i.Id));
+        if (signature == generatedSignature) return; generatedSignature = signature;
+        foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); generatedImages.Children.Clear();
+        foreach (var image in images) { var card = new GeneratedImageCard(owner, window, image); generatedCards.Add(card); generatedImages.Children.Add(card); }
+        generatedImages.IsVisible = images.Count > 0;
+    }
     private void RefreshSentAttachments(IList<ChatAttachment>? files)
     {
         files ??= Array.Empty<ChatAttachment>();
@@ -162,6 +173,7 @@ internal sealed class ChatMessageView : Border
         body.Update(message.Content ?? ""); body.IsVisible = !string.IsNullOrEmpty(message.Content);
         if (userBubble != null) userBubble.IsVisible = body.IsVisible;
         RefreshSentAttachments(message.Attachments);
+        RefreshGeneratedImages(message);
         reasoning.Text = message.Reasoning ?? "";
         bool active = message.Status == "pending" && string.IsNullOrEmpty(message.Content);
         bool detailChanged = detailedSetting != detailedProcess;

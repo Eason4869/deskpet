@@ -105,6 +105,7 @@ namespace Dafeiyu
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
+        [DataMember(EmitDefaultValue=false)] public List<GeneratedImage> GeneratedImages { get; private set; }
         [DataMember] public List<AgentToolEvent> ToolEvents { get; private set; }
         [DataMember] public string Status { get; private set; }
         [DataMember] public string Source { get; private set; }
@@ -112,7 +113,8 @@ namespace Dafeiyu
         public ChatMessage(string role, string content) : this(role,content,Guid.NewGuid().ToString("N"),"complete","text") { }
         public ChatMessage(string role,string content,string turnId,string status,string source)
         { Id=Guid.NewGuid().ToString("N");TurnId=turnId;Role=role;Content=content??"";Status=status;Source=source;Timestamp=DateTime.UtcNow; }
-        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
+        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.SetGeneratedImages(GeneratedImages);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
+        internal void SetGeneratedImages(IEnumerable<GeneratedImage> images) { GeneratedImages=images==null?null:images.Where(i=>i!=null).Take(20).Select(i=>i.Copy()).ToList(); }
         internal void SetTools(IEnumerable<AgentToolEvent> tools) { ToolEvents=tools==null?null:tools.Select(t=>t.Copy()).ToList(); }
         internal void SetAttachments(IEnumerable<ChatAttachment> files) { Attachments=files==null?null:files.Select(f=>f.Copy()).ToList(); }
         internal void SetReasoning(string text,long milliseconds) { Reasoning=text??"";ReasoningMilliseconds=milliseconds; }
@@ -138,6 +140,7 @@ namespace Dafeiyu
     public sealed class ConversationLog
     {
         private readonly List<ChatMessage> messages = new List<ChatMessage>();
+        private readonly HashSet<string> retainedImageReplies=new HashSet<string>();
         private readonly object gate=new object();
         public IList<ChatMessage> Messages { get { lock(gate)return messages.Select(m=>m.Copy()).ToList().AsReadOnly(); } }
         public void Commit(string user, string assistant)
@@ -163,7 +166,13 @@ namespace Dafeiyu
             lock(gate){string turn="guide-"+id;var u=messages.Find(m=>m.TurnId==turn && m.Role=="user");if(u==null){u=new ChatMessage("user",text,turn,"complete","guide");messages.Add(u);}var reply=messages.Find(m=>m.TurnId==turn && m.Role=="assistant");if(reply==null){reply=new ChatMessage("assistant","",turn,"pending","guide");messages.Insert(messages.IndexOf(u)+1,reply);}else reply.Update("","pending");Trim();user=u.Copy();return reply.Copy();}
         }
         public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null,string skinId=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt,skinId);return message.Copy();} }
-        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
+        internal void RetainImageReply(string id,bool retain){lock(gate){if(retain)retainedImageReplies.Add(id);else retainedImageReplies.Remove(id);}}
+        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
+        internal void PersistGeneratedImages(GeneratedImageStore assets)
+        {
+            lock(gate)foreach(var message in messages.Where(m=>m.GeneratedImages!=null&&m.GeneratedImages.Any(i=>i.Temporary)))
+            {if(assets==null)throw new System.IO.IOException("图片资产存储不可用。");message.SetGeneratedImages(message.GeneratedImages.Select(i=>i.Temporary?assets.Promote(i.Id):i));}
+        }
         internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null){if(message.AgentTaskId!=taskId)message.ChangeSummary=null;message.AgentTaskId=taskId;}}}
         internal void UpdateAgentTaskSummary(AgentTaskState task)
         {
@@ -175,6 +184,11 @@ namespace Dafeiyu
             lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
         }
         public void Attach(string id,IEnumerable<ChatAttachment> files) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.SetAttachments(files);} }
+        public ChatMessage AttachGeneratedImage(string id,GeneratedImage image)
+        {
+            if(image==null)throw new ArgumentNullException("image");
+            lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException("一条回复最多保留 20 张生成图片。");message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
+        }
         public void Replace(IList<ChatMessage> restored)
         { lock(gate) { messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}Trim(); } }
         private void Trim()

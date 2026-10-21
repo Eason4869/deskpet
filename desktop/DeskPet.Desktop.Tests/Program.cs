@@ -34,6 +34,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
     using (var gugaAssets = new SpriteAssets())
@@ -214,6 +215,7 @@ try
     }
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
     using var controller = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), runtime);
+    assertions += ImageUiChecks.Run(Path.Combine(directory, "image-ui"));
     const string richMarkdown = "# 原生标题\n\n普通 **粗体**、*斜体*、~~删除~~、`inline()` 和 [文档](https://example.com)。\n\n> 引用文本\n\n3. 有序项目\n4. 第二项\n\n- 无序项目\n\n```csharp\nvar answer = 42;\n```\n\n| 名称 | 值 |\n| --- | --- |\n| Markdown | **已渲染** |";
     var richLog = new ConversationLog(); var richReply = richLog.BeginTurn(richMarkdown, "text", out var richUser);
     var richTools = new[] { new AgentToolEvent { Id = "tool-1", Name = "read_file", Summary = "查看 README.md", Status = "running" } };
@@ -563,7 +565,7 @@ try
     }
     uploadWindow.Close(); Dispatcher.UIThread.RunJobs();
     var settings = (SettingsWindow)windows[2];
-    foreach (var section in new[] { "partner", "behavior", "text", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().Single().SelectedItem != null, "settings section " + section); }
+    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem != null, "settings section " + section); }
     var settingsFile = Path.Combine(controller.DataDirectory, "settings.json"); var beforeWorkOpen = File.GetLastWriteTimeUtc(settingsFile);
     _ = new WorkSettingsView(controller, settings); Dispatcher.UIThread.RunJobs();
     Check(File.GetLastWriteTimeUtc(settingsFile) == beforeWorkOpen, "creating work settings does not save or dirty initial values");
@@ -629,7 +631,7 @@ try
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
-    Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().Single().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
+    Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(guideNext.Content as string == "完成引导" && workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "17 / 17 · 更新与开始使用"), "seventeenth lesson exposes reachable completion button");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();

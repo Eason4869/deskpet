@@ -14,6 +14,8 @@ internal sealed class SettingsWindow : Window
 {
     private readonly DesktopController owner;
     private readonly List<ProviderEditor> providers = new();
+    private readonly ImageProviderEditor imageProvider;
+    private readonly TabControl modelTabs = new();
     private readonly TabControl tabs = new();
     private readonly SpriteAssets avatarAssets = new();
     private Action? refreshVoice;
@@ -23,12 +25,14 @@ internal sealed class SettingsWindow : Window
         var pages = new List<TabItem>();
         void Add(string title, Control content) => pages.Add(new TabItem { Header = title, Content = new ScrollViewer { Content = new Border { Padding = new Thickness(20), Child = content } } });
         Add("伙伴", Partner()); Add("通用", Behavior());
-        foreach (var item in new[] { ("模型配置", "text"), ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
+        var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
+        modelTabs.ItemsSource = new[] { new TabItem { Header = "文字对话", Content = textProvider }, new TabItem { Header = "图片生成", Content = imageProvider } }; modelTabs.SelectedIndex = 0; Add("模型配置", modelTabs);
+        foreach (var item in new[] { ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); avatarAssets.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); };
     }
-    public void SelectSection(string section) => tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 };
+    public void SelectSection(string section) { tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;

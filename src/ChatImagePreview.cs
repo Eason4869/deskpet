@@ -29,6 +29,7 @@ namespace Dafeiyu
         readonly CancellationTokenSource cancel=new CancellationTokenSource();
         readonly Dictionary<UIElement,System.Windows.Media.Effects.Effect> backdropEffects=new Dictionary<UIElement,System.Windows.Media.Effects.Effect>();
         BitmapSource bitmap;double zoom=1;bool closed,limited;Point? drag;double dragX,dragY;
+        StackPanel imageActions;
 
         ChatImagePreview(Window window,string title)
         {
@@ -48,7 +49,7 @@ namespace Dafeiyu
             image.Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=22,ShadowDepth=4,Opacity=.14,Color=Colors.Black};image.SizeChanged+=delegate{image.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,image.ActualWidth),Math.Max(0,image.ActualHeight)),12,12);};
             scroll.Content=image;scroll.Margin=new Thickness(20,8,20,4);scroll.HorizontalContentAlignment=HorizontalAlignment.Center;scroll.VerticalContentAlignment=VerticalAlignment.Center;scroll.ToolTip="滚轮缩放，拖动查看图片";imageLayout.Children.Add(scroll);imageLayout.Children.Add(status);
             var imageArea=new Border{Name="ChatPreviewImageArea",Background=Brushes.Transparent,Child=imageLayout};Grid.SetRow(imageArea,1);layout.Children.Add(imageArea);
-            var tools=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center};
+            var tools=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center};imageActions=tools;
             var minus=Control("−","ChatPreviewZoomOut",()=>ZoomBy(1/1.25));minus.ToolTip="缩小";minus.FontSize=20;tools.Children.Add(minus);tools.Children.Add(percentage);var plus=Control("+","ChatPreviewZoomIn",()=>ZoomBy(1.25));plus.ToolTip="放大";plus.FontSize=20;tools.Children.Add(plus);tools.Children.Add(new Border{Width=1,Height=16,Background=Ui.Brush("#DCE0E5"),Margin=new Thickness(8,0,8,0),VerticalAlignment=VerticalAlignment.Center});tools.Children.Add(Control("适应窗口","ChatPreviewFit",Fit));
             var toolbar=new Border{Name="ChatPreviewToolbar",Child=tools,Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(21),Padding=new Thickness(4),HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(10,8,10,14),Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=14,ShadowDepth=2,Opacity=.07,Color=Colors.Black}};Grid.SetRow(toolbar,2);layout.Children.Add(toolbar);
             SizeChanged+=delegate{header.MaxWidth=Math.Max(80,Math.Min(520,ActualWidth-32));scroll.Margin=new Thickness(ActualWidth<640?12:24,8,ActualWidth<640?12:24,4);};
@@ -70,7 +71,7 @@ namespace Dafeiyu
             for(var current=source;current!=null&&!ReferenceEquals(current,this);)
             {
                 var element=current as FrameworkElement;
-                if(current is Image||current is System.Windows.Controls.Primitives.ButtonBase||current is System.Windows.Controls.Primitives.ScrollBar||element!=null&&(element.Name=="ChatPreviewToolbar"||element.Name=="ChatPreviewHeading"))return true;
+                if(current is Image||current is System.Windows.Controls.Primitives.ButtonBase||current is System.Windows.Controls.Primitives.ScrollBar||element!=null&&(element.Name=="ChatPreviewToolbar"||element.Name=="ChatPreviewHeading"||element.Name=="GeneratedImageDetails"))return true;
                 current=current is Visual||current is System.Windows.Media.Media3D.Visual3D?VisualTreeHelper.GetParent(current):LogicalTreeHelper.GetParent(current);
             }
             return false;
@@ -83,6 +84,24 @@ namespace Dafeiyu
         {
             var preview=new ChatImagePreview(host,file.Name);
             try{preview.SetImage(DecodeBase64(file.Data,ChatAttachment.MaximumBytes));}catch(Exception error){preview.ShowError(error);}return preview;
+        }
+        internal static ChatImagePreview OpenGenerated(Window host,GeneratedImageStore store,GeneratedImage asset,bool showDetails=false,Action<GeneratedImage> regenerate=null)
+        {
+            var preview=new ChatImagePreview(host,"生成图片");
+            try{preview.SetGeneratedImage(store.Read(asset.Id));}catch(Exception error){preview.ShowError(error);}
+            preview.imageActions.Children.Add(Control("另存为…","ChatPreviewSaveOriginal",delegate{try{GeneratedImageCard.SaveOriginal(host,store,asset);}catch(Exception error){preview.status.Text=error is IOException||error is UnauthorizedAccessException?"保存失败，请检查文件位置和权限。":"保存未完成，请重试。";}}));
+            preview.imageActions.Children.Add(Control("复制图片","ChatPreviewCopyImage",delegate{try{GeneratedImageCard.CopyOriginal(store,asset);}catch(Exception){preview.status.Text="复制失败，请稍后重试。";}}));
+            if(showDetails)preview.ShowGeneratedDetails(store,asset,regenerate);return preview;
+        }
+        void ShowGeneratedDetails(GeneratedImageStore store,GeneratedImage asset,Action<GeneratedImage> regenerate)
+        {
+            var layout=(Grid)Child;var area=(Border)layout.Children[1];var visual=area.Child as FrameworkElement;area.Child=null;
+            var split=new Grid();split.ColumnDefinitions.Add(new ColumnDefinition());split.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(280)});split.RowDefinitions.Add(new RowDefinition());split.RowDefinitions.Add(new RowDefinition{Height=new GridLength(0)});area.Child=split;split.Children.Add(visual);
+            var fields=new StackPanel();fields.Children.Add(Ui.Text("图片详情",18,Ui.Ink));fields.Children.Add(Ui.Text("提示词",11,Ui.Muted));var prompt=Ui.Field(asset.Prompt??"",true);prompt.Name="GeneratedImageDetailPrompt";prompt.IsReadOnly=true;prompt.MaxHeight=240;fields.Children.Add(prompt);fields.Children.Add(Ui.Text("模型  "+asset.Model+"\n尺寸  "+asset.Width+" × "+asset.Height+"\n生成时间  "+asset.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),12,Ui.Muted));
+            var actions=new WrapPanel{Margin=new Thickness(0,12,0,0)};var folder=Ui.Button("打开所在文件夹");folder.Click+=delegate{try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe","/select,\""+store.PathFor(asset.Id)+"\""){UseShellExecute=true});}catch(Exception){status.Text="无法打开图片目录，请检查原图是否存在。";}};actions.Children.Add(folder);
+            if(regenerate!=null){var again=Ui.Button("再生成一张");again.Name="ChatPreviewRegenerate";again.Click+=delegate{Close();regenerate(asset.Copy());};actions.Children.Add(again);}fields.Children.Add(actions);
+            var detail=Ui.Scroll(fields);detail.Name="GeneratedImageDetails";detail.Margin=new Thickness(12,8,20,8);split.Children.Add(detail);
+            Action adapt=delegate{bool narrow=ActualWidth<800;split.ColumnDefinitions[1].Width=new GridLength(narrow?0:280);split.RowDefinitions[1].Height=narrow?GridLength.Auto:new GridLength(0);Grid.SetColumn(visual,0);Grid.SetRow(visual,0);Grid.SetColumnSpan(visual,narrow?2:1);Grid.SetRowSpan(visual,narrow?1:2);Grid.SetColumn(detail,narrow?0:1);Grid.SetRow(detail,narrow?1:0);Grid.SetColumnSpan(detail,narrow?2:1);Grid.SetRowSpan(detail,narrow?1:2);detail.MaxHeight=narrow?210:Double.PositiveInfinity;};SizeChanged+=delegate{adapt();};adapt();
         }
         internal static ChatImagePreview OpenRemote(Window host,Uri uri,string title)
         {
@@ -146,9 +165,17 @@ namespace Dafeiyu
         {
             int width,height;bitmap=DecodeImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);status.Text=width+" × "+height+(limited?" · 已缩小预览":"");Fit();
         }
-        internal static BitmapSource DecodeImage(byte[] bytes,int maximumDimension,out int width,out int height,out bool limited)
+        void SetGeneratedImage(byte[] bytes)
         {
-            if(bytes==null||bytes.Length==0||bytes.Length>MaximumRemoteBytes)throw new InvalidDataException("图片为空或超过大小限制。");
+            int width,height;bitmap=DecodeGeneratedImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);status.Text=width+" × "+height+(limited?" · 已缩小预览":"");Fit();
+        }
+        internal static BitmapSource DecodeImage(byte[] bytes,int maximumDimension,out int width,out int height,out bool limited)
+        {return DecodeImageCore(bytes,maximumDimension,MaximumRemoteBytes,out width,out height,out limited);}
+        internal static BitmapSource DecodeGeneratedImage(byte[] bytes,int maximumDimension,out int width,out int height,out bool limited)
+        {return DecodeImageCore(bytes,maximumDimension,GeneratedImageStore.MaximumBytes,out width,out height,out limited);}
+        static BitmapSource DecodeImageCore(byte[] bytes,int maximumDimension,int maximumBytes,out int width,out int height,out bool limited)
+        {
+            if(bytes==null||bytes.Length==0||bytes.Length>maximumBytes)throw new InvalidDataException("图片为空或超过大小限制。");
             using(var metadata=new MemoryStream(bytes,false))
             {var decoder=BitmapDecoder.Create(metadata,BitmapCreateOptions.DelayCreation,BitmapCacheOption.None);if(decoder.Frames.Count==0)throw new InvalidDataException("图片没有可显示的画面。");width=decoder.Frames[0].PixelWidth;height=decoder.Frames[0].PixelHeight;}
             if(width<1||height<1)throw new InvalidDataException("图片尺寸无效。");

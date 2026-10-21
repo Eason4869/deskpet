@@ -259,6 +259,9 @@ namespace Dafeiyu
         [DataMember] public ConnectionSettings Text { get; set; }
         [DataMember] public List<TextProviderSettings> TextProviders { get; set; }
         [DataMember] public string ActiveTextProviderId { get; set; }
+        [DataMember] public List<ImageGenerationProvider> ImageProviders {get;set;}
+        [DataMember] public string ActiveImageProviderId {get;set;}
+        [DataMember] public string ImageGalleryLayout {get;set;}
         [DataMember] public Dictionary<string,ServiceProviderSettings> AudioProviders {get;set;}
         [DataMember] public ConnectionSettings Transcription { get; set; }
         [DataMember] public ConnectionSettings Speech { get; set; }
@@ -282,6 +285,8 @@ namespace Dafeiyu
             SkinId = "e-bao";
             ReadReplies = true; UseCloudVoice = false; VoiceUsesTextService = false; VoiceName = "";
             TextProviders=new List<TextProviderSettings>();ActiveTextProviderId="";AudioProviders=new Dictionary<string,ServiceProviderSettings>();
+            ImageProviders=new List<ImageGenerationProvider>();ActiveImageProviderId="";
+            ImageGalleryLayout="masonry";
             Text = new ConnectionSettings(); Transcription = new ConnectionSettings(); Speech = new ConnectionSettings();
             Live = new ConnectionSettings { BaseUrl="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent", Model="gemini-3.8-live", Protocol="gemini-live" };
             VoiceMode="pipeline"; LiveVoice="Puck"; PersonaOverrides=new Dictionary<string,string>();
@@ -295,6 +300,7 @@ namespace Dafeiyu
         public void Normalize()
         {
             ThemeMode=ThemeColors.Normalize(ThemeMode);
+            ImageGalleryLayout=ImageGalleryLayout=="grid"?"grid":"masonry";
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
             var mcpIds=new HashSet<string>();McpServers=(McpServers??new List<McpServerConfiguration>()).Where(c=>c!=null).Take(16).Select(c=>{var copy=c.Copy();if(String.IsNullOrWhiteSpace(copy.Id)||copy.Id.Length>80||!mcpIds.Add(copy.Id)){copy.Id=Guid.NewGuid().ToString("N");mcpIds.Add(copy.Id);}return copy;}).ToList();
             if(!Enum.IsDefined(typeof(AgentTerminalPolicy),AgentTerminalPolicy))AgentTerminalPolicy=AgentTerminalPolicy.Disabled;
@@ -323,7 +329,7 @@ namespace Dafeiyu
             if (X.HasValue && (Double.IsNaN(X.Value) || Double.IsInfinity(X.Value))) X = null;
             if (Y.HasValue && (Double.IsNaN(Y.Value) || Double.IsInfinity(Y.Value))) Y = null;
             Text = Text ?? new ConnectionSettings(); Transcription = Transcription ?? new ConnectionSettings(); Speech = Speech ?? new ConnectionSettings();
-            Text.Normalize(); Transcription.Normalize(); Speech.Normalize();EnsureTextProviders();
+            Text.Normalize(); Transcription.Normalize(); Speech.Normalize();EnsureTextProviders();EnsureImageProviders();
             if(PersonaProfileVersion==0 && Speech.Model.StartsWith("mimo-",StringComparison.OrdinalIgnoreCase) && Speech.BaseUrl.Length==0 && Speech.EncryptedKey.Length==0)SpeechUsesTextService=true;
             if(VoiceUsesTextService)MigrateAudioCredentials("asr",Transcription);
             if(SpeechUsesTextService)MigrateAudioCredentials("speech",Speech);
@@ -346,6 +352,18 @@ namespace Dafeiyu
                 pair.Value.Normalize();profiles[pair.Key]=pair.Value;
             }
             VoiceProfiles=profiles;VoiceProfileVersion=Math.Max(0,VoiceProfileVersion);
+        }
+        public void EnsureImageProviders()
+        {
+            var clean=new List<ImageGenerationProvider>();var ids=new HashSet<string>(StringComparer.Ordinal);
+            if(ImageProviders!=null)foreach(var provider in ImageProviders){if(provider==null || clean.Count>=32)continue;provider.Normalize();if(!ids.Add(provider.Id)){provider.Id=Guid.NewGuid().ToString("N");ids.Add(provider.Id);}clean.Add(provider);}
+            ImageProviders=clean;
+            if(!clean.Exists(p=>p.Id==ActiveImageProviderId))ActiveImageProviderId=clean.Count==0?"":clean[0].Id;
+        }
+        public ImageGenerationProvider SelectedImageProvider()
+        {
+            EnsureImageProviders();var selected=ImageProviders.Find(p=>p.Id==ActiveImageProviderId);
+            return selected==null?null:selected.Copy();
         }
         public void EnsureTextProviders()
         {
@@ -402,9 +420,10 @@ namespace Dafeiyu
             var voiceProfiles=new Dictionary<string,PersonaVoiceProfile>();
             if(VoiceProfiles!=null)foreach(var pair in VoiceProfiles)if(pair.Value!=null)voiceProfiles[pair.Key]=pair.Value.Copy();
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
+            var images=new List<ImageGenerationProvider>();if(ImageProviders!=null)foreach(var provider in ImageProviders)if(provider!=null)images.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
             return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
-                AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
+                ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
                 PersonaOverrides=new Dictionary<string,string>(PersonaOverrides),RepositoryUrl=RepositoryUrl,UpdateUseProxy=UpdateUseProxy,UpdateProxyAddress=UpdateProxyAddress,UpdateUseMirror=UpdateUseMirror,UpdateMirrorAddress=UpdateMirrorAddress,UpdateChannel=UpdateChannel,AutoUpdate=AutoUpdate,LastUpdateCheckUtcTicks=LastUpdateCheckUtcTicks,Text=Text.Copy(),Transcription=Transcription.Copy(),Speech=Speech.Copy() };
@@ -435,6 +454,7 @@ namespace Dafeiyu
                         (!String.IsNullOrEmpty(settings.Live.EncryptedKey) && settings.Live.ApiKey.Length == 0))
                         Warning = "已保存的密钥无法在当前系统账户下解密，请重新填写。";
                     foreach(var provider in settings.TextProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的密钥无法在当前系统账户下解密，请重新填写。";
+                    foreach(var provider in settings.ImageProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的图片服务密钥无法在当前系统账户下解密，请重新填写。";
                     return settings;
                 }
             }

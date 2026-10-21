@@ -7,6 +7,9 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/ImageProviderProtocolTests.cs" Link="Regression/ImageProviderProtocolTests.cs" />
+    <Compile Include="../../tests/ImageGalleryLayoutTests.cs" Link="Regression/ImageGalleryLayoutTests.cs" />
+    <Compile Include="../../tests/ImageGenerationBackendTests.cs" Link="Regression/ImageGenerationBackendTests.cs" />
     <Compile Include="../../tests/McpConnectionTests.cs" Link="Regression/McpConnectionTests.cs" />
     <Compile Include="../../tests/AgentContextPolicyTests.cs;../../tests/AgentRunRecoveryTests.cs;../../tests/AgentTaskMemoryTests.cs;../../tests/AgentIsolationTests.cs;../../tests/AgentApprovalTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" />

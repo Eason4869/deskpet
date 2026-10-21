@@ -19,6 +19,18 @@ namespace Dafeiyu.Tests
             if(args.Length>0 && args[0]=="--wait-command"){File.WriteAllText(args[1],"started");for(int i=0;i<1000;i++){if(File.Exists(args[2])){Console.WriteLine("finished naturally");return 0;}Thread.Sleep(10);}return 9;}
             if(args.Length>0 && args[0]=="--changing-error"){int count=File.Exists("count.txt")?Int32.Parse(File.ReadAllText("count.txt")):0;File.WriteAllText("count.txt",(++count).ToString());Console.Error.WriteLine("diagnostic-"+count);return 1;}
             if(args.Length>0 && args[0]=="--verify-fixture"){Console.WriteLine(File.ReadAllText("verified.txt"));return 0;}
+            Run("inspect_image transmits visual blocks on both protocols without logging bytes",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"vision","inspect_image",new{path="visual.png",question="Identify the color"})),Json(FinalReply(anthropic,"The supplied image is red."))}))using(var api=new ApiClient())using(var ws=new AgentWorkspace(folder.Path))
+                {
+                    string path=System.IO.Path.Combine(folder.Path,"visual.png");using(var image=new System.Drawing.Bitmap(2,2)){using(var g=System.Drawing.Graphics.FromImage(image))g.Clear(System.Drawing.Color.Red);image.Save(path,System.Drawing.Imaging.ImageFormat.Png);}
+                    string data=Convert.ToBase64String(File.ReadAllBytes(path));ws.ConfigureProvider(anthropic?"anthropic":"openai",anthropic?"claude":"gpt-4o");ws.BeginTask(new AgentTaskState{Workspace=folder.Path,Goal="Inspect"});
+                    var result=await api.ChatAgentAsync(Config(server,anthropic),Messages(),ws,null,null,null,false,CancellationToken.None);await Within(server.Done);
+                    Assert(result.Contains("red"),"vision follow-up failed");string body=server.Bodies[1];Assert(body.Contains(data),"image bytes never reached model follow-up");Assert(body.Contains(anthropic?"\"type\":\"image\"":"\"type\":\"image_url\""),"image was serialized as ordinary text");
+                    string saved=J(ws.TaskState);Assert(!saved.Contains(data)&&!saved.Contains("base64"),"image bytes entered saved task history");Assert(ws.TakeInspectionResult("vision")==null,"vision side channel retained consumed image");
+                }
+            });
             Run("guidance preserves the current tool and revises an unstarted tool batch",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())

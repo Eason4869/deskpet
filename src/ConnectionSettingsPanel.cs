@@ -8,6 +8,7 @@ namespace Dafeiyu
     public sealed class ConnectionSettingsPanel : Grid
     {
         readonly PetWindow pet;readonly TextProviderEditor text,recognition,synthesis,live;readonly ComboBox voice,liveVoice;
+        readonly ImageGenerationSettings images;
         readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
         readonly TextBlock speechAdvice,liveAdvice;
         string speechContext,liveContext;
@@ -18,7 +19,7 @@ namespace Dafeiyu
         readonly System.Collections.Generic.Dictionary<string,string> voiceSavedValues=new System.Collections.Generic.Dictionary<string,string>();
         public bool HasUnsavedChanges
         {
-            get{return !text.Matches(pet.Settings) || !recognition.Matches(pet.Settings) || !synthesis.Matches(pet.Settings) || !live.Matches(pet.Settings) ||
+            get{return images.HasUnsavedChanges || !text.Matches(pet.Settings) || !recognition.Matches(pet.Settings) || !synthesis.Matches(pet.Settings) || !live.Matches(pet.Settings) ||
                 (cloud.IsChecked==true)!=pet.Settings.UseCloudVoice ||
                 voice.Text.Trim()!=pet.Settings.VoiceName || liveVoice.Text.Trim()!=pet.Settings.LiveVoice || HasVoiceDraftChanges;}
         }
@@ -49,13 +50,14 @@ namespace Dafeiyu
             var testLive=Ui.Button("测试 Live 通话",true);testLive.Name="PreviewLive";testLive.HorizontalAlignment=HorizontalAlignment.Left;testLive.Margin=new Thickness(0,12,0,0);
             testLive.Click+=delegate{if(pet.DialogueBusy){notice.Text="请先结束当前对话，再测试 Live。";return;}if(!SaveGuideSection(3))return;var host=Window.GetWindow(this);if(host!=null)pet.ShowLiveCall(host);};live.Extras.Children.Add(testLive);
             live.Extras.Children.Add(Ui.Text("测试使用当前 Live 模型和音色；连接成功后收音，结束通话返回设置。",11,Ui.Muted));
-            sections=new UIElement[]{text,recognition,synthesis,live};ShowSection(0);
+            images=new ImageGenerationSettings(pet);sections=new UIElement[]{text,recognition,synthesis,live,images};ShowSection(0);
             RefreshVoices(true);text.Changed+=delegate {RefreshVoices(false);};synthesis.Changed+=delegate {RefreshVoices(false);};live.Changed+=delegate {RefreshVoices(false);};
             var footer=new StackPanel{Margin=new Thickness(0,14,0,0)};var row=new WrapPanel();var save=Ui.Button("保存配置",true);save.Name="SaveConnections";save.Click+=delegate {Save();};row.Children.Add(save);
             footer.Children.Add(row);
             notice=Ui.Text("连接设置需点击保存。密钥由当前 Windows 用户加密存储。",11,Ui.Muted);notice.Name="ConnectionNotice";notice.Margin=new Thickness(0,10,0,0);footer.Children.Add(notice);Grid.SetRow(footer,1);Children.Add(footer);
         }
         public void ShowSection(int index){var previous=page.Content as ScrollViewer;if(previous!=null)previous.Content=null;page.Content=Ui.Scroll(sections[index]);}
+        internal void DisposeImageGeneration(){images.Dispose();}
         static ComboBox VoiceField(string value,string name)
         {return new ComboBox{Name=name,IsEditable=true,IsTextSearchEnabled=true,MinHeight=38,Padding=new Thickness(8),Text=value ?? ""};}
         void RefreshVoices(bool initial)
@@ -112,6 +114,7 @@ namespace Dafeiyu
         {
             try
             {
+                if(images.HasUnsavedChanges&&!images.Save())return false;
                 var nextProviders=text.ReadProviders();var nextAsrProviders=recognition.ReadProviders();var nextSpeechProviders=synthesis.ReadProviders();var nextLiveProviders=live.ReadProviders();var nextText=text.Read();var nextAsr=recognition.Read();var nextSpeech=synthesis.Read();var nextLive=live.Read();
                 if(voice.Text.Trim().Length>512 || liveVoice.Text.Trim().Length>512)throw new InvalidOperationException("音色 ID 不能超过 512 个字符。");
                 foreach(var provider in nextProviders)ValidateAddress(provider.Connection,ApiClient.ChatPath(provider.Connection));ValidateAddress(nextAsr,ApiClient.AsrPath(nextAsr));ValidateAddress(nextSpeech,ApiClient.SpeechPath(nextSpeech));

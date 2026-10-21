@@ -212,6 +212,7 @@ namespace Dafeiyu
         }
         public void ShowNotice(string text) { if(notice!=null) notice.Text=text ?? ""; }
         public void SelectConnections() { SelectAiSection(0); }
+        internal void SelectImageConfiguration(){SelectAiSection(4);}
         // Preserve existing menu, guide and automation routes while the visible navigation is grouped.
         public void SelectPage(int index)
         {
@@ -251,7 +252,7 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
-            if(disposed)return;disposed=true;about.Dispose();
+            if(disposed)return;disposed=true;connections.DisposeImageGeneration();about.Dispose();
         }
         public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
         public bool ValidateGuideNetwork(out string error){return about.ValidateNetwork(out error);}

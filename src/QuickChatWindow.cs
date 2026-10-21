@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,6 +14,8 @@ namespace Dafeiyu
         readonly PetWindow pet;readonly ConversationSession session;readonly ConversationQueue queue;readonly MarkdownEditor input;MarkdownView reply;readonly StackPanel messages=new StackPanel();readonly System.Collections.Generic.Dictionary<string,ChatMessageView> rendered=new System.Collections.Generic.Dictionary<string,ChatMessageView>();readonly ScrollViewer scroll;readonly TextBlock status;readonly Button record;readonly ConversationComposer composer;readonly Polygon tail;readonly Image avatar;
         bool closed;string renderedPersona;readonly MessageUpdatePump messagePump;
         readonly Button close;readonly Button taskDetails;GuideFocusScope guideScope;
+        readonly AgentQuestionSurface questionSurface;
+        internal bool CanAnswerQuestion(AgentQuestionRequest request){return AgentQuestionSurface.Matches(session,request);}
         public QuickChatWindow(PetWindow companion,ConversationWorkspace workspace=null)
         {
             pet=companion;session=workspace==null?pet.Conversation:workspace.Session;queue=workspace==null?pet.InputQueue:workspace.Queue;Icon=Ui.ApplicationIcon();Width=400;Height=Math.Min(470,Math.Max(300,SystemParameters.WorkArea.Height-24));AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=12;Foreground=Ui.Ink;SlimScrollBars.Install(this);UseLayoutRounding=true;
@@ -28,14 +30,14 @@ namespace Dafeiyu
             var identity=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};identity.Children.Add(UiIcons.Speech(pet));
             var quickBadge=Ui.Text("快速对话",11,Ui.Muted);quickBadge.Name="QuickChatBadge";quickBadge.Margin=new Thickness(8,1,0,0);quickBadge.VerticalAlignment=VerticalAlignment.Center;identity.Children.Add(quickBadge);
             header.Children.Add(identity);panel.Children.Add(header);
-            scroll=Ui.Scroll(messages);scroll.Name="QuickHistoryScroll";scroll.Margin=new Thickness(0,12,0,8);Grid.SetRow(scroll,1);panel.Children.Add(scroll);
+            scroll=Ui.Scroll(messages);scroll.Name="QuickHistoryScroll";scroll.Margin=new Thickness(0,12,0,8);Grid.SetRow(scroll,1);panel.Children.Add(scroll);questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));var feed=new Grid();feed.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});feed.RowDefinitions.Add(new RowDefinition());panel.Children.Remove(scroll);feed.Children.Add(questionSurface);Grid.SetRow(scroll,1);feed.Children.Add(scroll);Grid.SetRow(feed,1);panel.Children.Add(feed);
             status=Ui.Text("",11,Ui.Muted);status.Name="QuickStatus";
             input=new MarkdownEditor();input.Name="QuickMessageInput";input.MaxLength=8000;input.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape){if(composer!=null && composer.DismissPrediction()){e.Handled=true;return;}e.Handled=true;Close();}};
             record=UiIcons.Button("mic","听写");record.Name="VoiceRecord";
             composer=new ConversationComposer(pet,this,input,record,status,true,true,session,queue);Grid.SetRow(composer,2);panel.Children.Add(composer);
             if(workspace!=null){composer.PrepareSubmission=delegate{return pet.PrepareConversationSubmission(workspace);};composer.Submitted=delegate{pet.FinishConversationSubmission(workspace);};}
             root.Children.Add(new Border{Child=panel,CornerRadius=new CornerRadius(20),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1,Points=new PointCollection(new[]{new Point(168,0),new Point(180,13),new Point(192,0)})};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
-            messagePump=new MessageUpdatePump(session,Message);session.MessageAdded+=Message;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;session.AgentTaskChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;pet.Live.PartialTranscript+=Partial;Loaded+=delegate {FollowPet();FocusInput();};IsVisibleChanged+=delegate {if(IsVisible)RefreshState();};Closed+=delegate {closed=true;composer.Detach();messagePump.Dispose();session.MessageAdded-=Message;session.HistoryChanged-=HistoryChanged;session.StateChanged-=RefreshState;session.AgentTaskChanged-=RefreshState;pet.Live.StateChanged-=RefreshState;pet.Live.PartialTranscript-=Partial;};RefreshPersona();RefreshState();
+            messagePump=new MessageUpdatePump(session,Message);session.MessageAdded+=Message;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;session.AgentTaskChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;pet.Live.PartialTranscript+=Partial;Loaded+=delegate {FollowPet();FocusInput();};IsVisibleChanged+=delegate {if(IsVisible)RefreshState();};Closed+=delegate {closed=true;questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);composer.Detach();messagePump.Dispose();session.MessageAdded-=Message;session.HistoryChanged-=HistoryChanged;session.StateChanged-=RefreshState;session.AgentTaskChanged-=RefreshState;pet.Live.StateChanged-=RefreshState;pet.Live.PartialTranscript-=Partial;};RefreshPersona();RefreshState();
         }
         public bool HasDraft { get { return !String.IsNullOrWhiteSpace(input.Text) || (composer!=null && composer.HasEdit); } }
         internal void SetGuidePreview(bool active)

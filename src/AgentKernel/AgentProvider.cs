@@ -5,7 +5,7 @@ namespace Dafeiyu
 {
     public sealed class AgentModelCapabilities
     {
-        public string Provider="",Model="";public long ContextWindow=32768;public bool SupportsTools=true,SupportsStreaming=true,SupportsReasoning,SupportsImages,SupportsAudio;public bool CanUseTool(string tool){return SupportsTools && !String.IsNullOrWhiteSpace(tool);}
+        public string Provider="",Model="";public long ContextWindow=32768;public bool SupportsTools=true,SupportsStreaming=true,SupportsReasoning,SupportsImages,SupportsAudio;public bool CanUseTool(string tool){return SupportsTools && !String.IsNullOrWhiteSpace(tool) && (tool!="inspect_image"||SupportsImages);}
     }
     public sealed class AgentProviderRegistry
     {

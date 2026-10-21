@@ -1,5 +1,13 @@
 # 更新日志
 
+## 未发布 — 图像与 Agent 项目工具
+
+- 新增独立图片生成配置，预设 OpenAI Images、Gemini、豆包、MiniMax、千问和 Grok，支持自定义网关、模型、默认参数及独立代理。
+- 左侧新增图像工作区，可文字生成、上传参考图、取消；图库支持瀑布流和等大缩略图网格，点击查看大图与详情、另存及复制。
+- Agent 新增 `generate_image`，对话直接显示图片卡片；原图单独保存，历史只保留资产引用，支持重启恢复及临时数据清理。
+- 新增 `ask_user`、`inspect_image`、`git_status`、`git_diff`、`git_log` 内置工具，接入现有会话、取消与权限流程。
+- 图片模型配置沿用对话模型的视觉风格，Windows 与 Avalonia 同步实现。详见 [使用说明](docs/image-generation.md) 与 [验收记录](docs/image-generation-validation.md)。
+
 ## [0.10.2-dev.1](https://github.com/Eason4869/deskpet/tree/v0.10.2-dev.1) — 2026-10-22
 
 开发快照，基于 0.10.1-dev.2，仅推送 dev 分支与源码标签，不发布 GitHub Release。

@@ -14,6 +14,7 @@ internal sealed class DesktopController : IDisposable
     private readonly DesktopRuntime runtime;
     private readonly TrayIcon? tray;
     private readonly List<IDisposable> hotkeys = new();
+    private readonly HashSet<ChatWindow> chatHosts = new();
     private ChatWindow? quickChat, fullChat;
     private SettingsWindow? settingsWindow;
     private LiveWindow? liveWindow;
@@ -30,12 +31,15 @@ internal sealed class DesktopController : IDisposable
     public DictationSession Dictation { get; }
     public GeminiLiveSession Live { get; }
     public ApiClient Api { get; }
+    public GeneratedImageStore ImageStore { get; }
+    public ImageGenerationClient ImageClient { get; }
+    public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
     public string DataDirectory { get; }
     public bool GuideLocked => guide != null;
     public bool HasOpenPanel => GuideLocked || quickChat?.IsVisible == true || fullChat?.IsVisible == true || settingsWindow?.IsVisible == true || liveWindow?.IsVisible == true;
     public event Action? Changed;
-    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null)
+    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null)
     {
         lifetime = desktop;
         runtime ??= new MacRuntime();
@@ -56,7 +60,11 @@ internal sealed class DesktopController : IDisposable
         Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.PackageId == Settings.SkinId) ?? Skins[0];
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Api = new ApiClient();
+        ImageStore = new GeneratedImageStore(DataDirectory);
+        ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
+        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient;
+        Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);
         Queue = new ConversationQueue(Session, () => Settings, () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
@@ -64,6 +72,7 @@ internal sealed class DesktopController : IDisposable
         Live.TurnCommitted += (user, reply, status) => Session.AddLiveTurn(Session.PersonaId, user, reply, status);
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
+        Questions.Changed += Notify;
         Pet = new PetWindow(this);
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
@@ -109,6 +118,14 @@ internal sealed class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
+    public void ShowImages(GeneratedImage? image = null) { ShowChat(false); fullChat!.ShowImages(image); }
+    internal void RegisterChatHost(ChatWindow host) => chatHosts.Add(host);
+    internal void ChatHostClosed(ChatWindow host)
+    {
+        chatHosts.Remove(host);
+        var session = host.QuestionSessionId;
+        if (!chatHosts.Any(other => other.IsVisible && other.QuestionSessionId == session)) Questions.CancelSession(session);
+    }
     public void ShowLive()
     {
         if (liveWindow == null) { liveWindow = new LiveWindow(this); liveWindow.Closed += (_, _) => liveWindow = null; }
@@ -156,6 +173,6 @@ internal sealed class DesktopController : IDisposable
     public void Dispose()
     {
         tray?.Dispose(); foreach (var binding in hotkeys) binding.Dispose();
-        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose();
+        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose(); Questions.Dispose(); ImageClient.Dispose(); ImageStore.Dispose();
     }
 }

@@ -21,6 +21,7 @@ internal sealed class ChatWindow : Window
     private readonly TextBlock status = Ui.Text("");
     private readonly StackPanel messages = Ui.Column();
     private readonly StackPanel queue = Ui.Column();
+    private readonly StackPanel questions = Ui.Column();
     private readonly ScrollViewer history;
     private readonly ComboBox models = new() { MinWidth = 180 };
     private readonly Dictionary<string, string> queuedEdits = new();
@@ -41,6 +42,12 @@ internal sealed class ChatWindow : Window
     private readonly CancellationTokenSource snapshotCancel = new();
     private readonly SpriteAssets avatarAssets = new();
     private readonly AvatarView partnerAvatar;
+    private readonly ContentControl pageHost = new();
+    private readonly ImageWorkspacePage imageWorkspace;
+    private readonly List<string> routes = new() { "chat" };
+    private int routeIndex;
+    private Control chatPage = null!;
+    private readonly Button routeBack, routeForward;
     private readonly TextBlock partnerName = Ui.Text("", 14);
     private bool nativePaste, closed;
     private int uploadEpoch;
@@ -69,7 +76,8 @@ internal sealed class ChatWindow : Window
         history = new ScrollViewer { Content = messages, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         var root = new DockPanel { Margin = new Thickness(16), LastChildFill = true };
         partnerAvatar = new AvatarView { Name = "ChatPartnerAvatar", Assets = avatarAssets, Skin = owner.Skin, Width = 28, Height = 28 }; partnerName.Text = owner.Skin.Name; partnerName.VerticalAlignment = VerticalAlignment.Center;
-        var header = Ui.Column(Ui.Row(partnerAvatar, partnerName, Ui.Button("设置", owner.ShowSettings), Ui.Button(quick ? "完整聊天" : "快聊", () => owner.ShowChat(!quick))), status);
+        questions.Name = "AgentQuestions";
+        var header = Ui.Column(Ui.Row(partnerAvatar, partnerName, Ui.Button("设置", owner.ShowSettings), Ui.Button(quick ? "完整聊天" : "快聊", () => owner.ShowChat(!quick))), status, questions);
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (owner.Session.IsBusy) owner.Run(owner.StopAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
@@ -100,17 +108,30 @@ internal sealed class ChatWindow : Window
             var sidebar = Ui.Column(Ui.Text("待发送队列", 17), Ui.Row(Ui.Button("继续", () => Try(owner.Queue.Resume)), Ui.Button("暂停", () => Try(owner.Queue.Hold))), new ScrollViewer { Content = queue, MaxHeight = 400 }, Ui.AsyncButton("导出聊天", ExportAsync, owner.Error), Ui.Button("清空记录", ConfirmClear));
             sidebar.Width = 245; sidebar.Margin = new Thickness(18, 8, 0, 8); DockPanel.SetDock(sidebar, Dock.Right); root.Children.Add(sidebar);
         }
-        root.Children.Add(history); Content = root;
+        root.Children.Add(history); chatPage = root; imageWorkspace = new ImageWorkspacePage(owner, this);
+        var shell = new DockPanel();
+        routeBack = Ui.Button("‹", () => NavigateHistory(-1)); routeBack.Name = "PageBack"; ToolTip.SetTip(routeBack, "返回");
+        routeForward = Ui.Button("›", () => NavigateHistory(1)); routeForward.Name = "PageForward"; ToolTip.SetTip(routeForward, "前进");
+        var imagesNav = Ui.Button("图像", () => Navigate("images")); imagesNav.Name = "ImagesNavigation";
+        var nav = Ui.Row(routeBack, routeForward, Ui.Button("对话", () => Navigate("chat")), imagesNav); nav.Margin = new Thickness(16, 8, 16, 0); DockPanel.SetDock(nav, Dock.Top); shell.Children.Add(nav); shell.Children.Add(pageHost); Content = shell; ApplyRoute();
         models.SelectionChanged += (_, _) =>
         {
             if (models.SelectedItem is not ModelChoice item || owner.Settings.ActiveTextProviderId == item.Provider && owner.Settings.Text.Model == item.Model) return;
             if (owner.Session.IsBusy || owner.Live.IsActive) { owner.Error(new InvalidOperationException("请先停止当前对话再切换模型。")); RefreshModels(); return; }
             owner.Settings.SelectTextModel(item.Provider, item.Model); owner.Save();
         };
-        owner.Changed += Refresh; Closed += (_, _) => { closed = true; uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); owner.Drafts[persona] = draft.Text ?? ""; owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
+        owner.RegisterChatHost(this);
+        owner.Changed += Refresh; Closed += (_, _) => { closed = true; owner.ChatHostClosed(this); imageWorkspace.Dispose(); foreach (var view in rendered.Values) view.DisposeImages(); uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); owner.Drafts[persona] = draft.Text ?? ""; owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
         Refresh();
         history.SizeChanged += (_, _) => ResizeBubbles();
     }
+    internal string CurrentPage => routes[routeIndex];
+    internal string QuestionSessionId => owner.Session.KernelSession?.SessionId ?? owner.Session.PersonaId;
+    internal ImageWorkspacePage Images => imageWorkspace;
+    internal void ShowImages(GeneratedImage? image = null) { Navigate("images"); if (image != null) imageWorkspace.Prepare(image); }
+    private void Navigate(string route) { if (CurrentPage == route) return; routes.RemoveRange(routeIndex + 1, routes.Count - routeIndex - 1); routes.Add(route); routeIndex++; ApplyRoute(); }
+    internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }
+    private void ApplyRoute() { pageHost.Content = null; pageHost.Content = CurrentPage == "images" ? imageWorkspace : chatPage; routeBack.IsEnabled = routeIndex > 0; routeForward.IsEnabled = routeIndex < routes.Count - 1; }
     private void Try(Action action) { try { action(); } catch (Exception e) { owner.Error(e); } }
     private void OpenAttachmentMenu() => addAttachment.ContextMenu!.Open(addAttachment);
     private void OpenModeMenu() => modeButton.ContextMenu!.Open(modeButton);
@@ -322,14 +343,15 @@ internal sealed class ChatWindow : Window
     }
     private void Refresh()
     {
+        RefreshQuestions();
         partnerAvatar.Skin = owner.Skin; partnerName.Text = owner.Skin.Name;
-        if (persona != owner.Skin.Id) { uploadEpoch++; owner.Drafts[persona] = draft.Text ?? ""; persona = owner.Skin.Id; draft.Text = owner.Drafts.GetValueOrDefault(persona, ""); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
+        if (persona != owner.Skin.Id) { uploadEpoch++; owner.Drafts[persona] = draft.Text ?? ""; persona = owner.Skin.Id; draft.Text = owner.Drafts.GetValueOrDefault(persona, ""); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         status.Text = owner.Session.Stage + (owner.Dictation.IsBusy ? " · 听写 " + owner.Dictation.Stage : "") + " · " + owner.Session.LastNotice + " " + owner.Dictation.LastNotice + " " + owner.Queue.Notice + " " + owner.Session.HistoryWarning;
         Title = "DeskPet · " + owner.Skin.Name + (quick ? " · 快聊" : " · 完整聊天");
         var followBottom = history.Offset.Y + history.Viewport.Height + 80 >= history.Extent.Height;
         RefreshModels(); RefreshAction();
         var visible = owner.Session.History.Messages.TakeLast(quick ? 20 : 400).ToList();
-        foreach (var stale in rendered.Keys.Where(id => !visible.Any(m => m.Id == id)).ToList()) { messages.Children.Remove(rendered[stale]); rendered.Remove(stale); }
+        foreach (var stale in rendered.Keys.Where(id => !visible.Any(m => m.Id == id)).ToList()) { rendered[stale].DisposeImages(); messages.Children.Remove(rendered[stale]); rendered.Remove(stale); }
         foreach (var message in visible)
         {
             if (rendered.TryGetValue(message.Id, out var view)) view.Update(message, owner.Settings.AgentDetailedProcess);
@@ -347,6 +369,24 @@ internal sealed class ChatWindow : Window
             queue.Children.Add(Ui.Column(edit,
                 Ui.Row(Ui.Button("保存", () => Try(() => { owner.Queue.Edit(item.Id, edit.Text ?? ""); queuedEdits.Remove(item.Id); })), Ui.Button("删除", () => Try(() => { owner.Queue.Remove(item.Id); queuedEdits.Remove(item.Id); })), Ui.Button("↑", () => { if (index > 0) Try(() => owner.Queue.MoveBefore(item.Id, items[index - 1].Id)); })),
                 Ui.Row(Ui.Button("↓", () => { if (index < items.Count - 1) Try(() => owner.Queue.MoveBefore(item.Id, index + 2 < items.Count ? items[index + 2].Id : null!)); }), Ui.AsyncButton("立即引导", () => owner.Queue.InterruptAsync(edit.Text ?? "", item.Id), owner.Error))));
+        }
+    }
+    private string questionSignature = "";
+    private void RefreshQuestions()
+    {
+        var currentSession = QuestionSessionId;
+        var pending = owner.Questions.Requests.Where(q => q.SessionId == currentSession).ToList();
+        var signature = string.Join("|", pending.Select(q => q.SessionId + "/" + q.TaskId + "/" + q.CallId));
+        if (signature == questionSignature) return; questionSignature = signature; questions.Children.Clear(); questions.IsVisible = pending.Count > 0;
+        foreach (var question in pending)
+        {
+            void Submit(AgentQuestionAnswer answer) { if (!owner.Questions.Submit(question.SessionId, question.TaskId, question.CallId, answer)) owner.Error(new InvalidOperationException("此问题已结束或答案无效。")); }
+            var panel = Ui.Column(Ui.Text("需要你的选择", 15), Ui.Text(question.Question)); var options = new WrapPanel();
+            for (int i = 0; i < question.Options.Length; i++) { int index = i; var button = Ui.Button(question.Options[i], () => Submit(new AgentQuestionAnswer { OptionIndex = index })); button.Margin = new Thickness(0, 0, 4, 4); options.Children.Add(button); }
+            panel.Children.Add(options);
+            if (question.AllowFreeInput) { var answer = Ui.Input("", "输入回复"); answer.MinWidth = 0; panel.Children.Add(answer); panel.Children.Add(Ui.Button("回复", () => { if (!string.IsNullOrWhiteSpace(answer.Text)) Submit(new AgentQuestionAnswer { Text = answer.Text.Trim() }); })); }
+            panel.Children.Add(Ui.Button("取消任务", () => { owner.Questions.CancelTask(question.TaskId); owner.Run(owner.Session.StopAsync); }));
+            questions.Children.Add(new Border { Name = "AgentQuestionCard", Padding = new Thickness(10), CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = DesktopTheme.Brush("#D8E5F9"), Child = panel });
         }
     }
     private async Task ExportAsync()

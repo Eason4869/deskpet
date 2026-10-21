@@ -15,6 +15,7 @@ namespace Dafeiyu
     {
         static readonly Style itemStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ListBoxItem'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='HorizontalContentAlignment' Value='Stretch'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ListBoxItem'><Border x:Name='surface' Background='Transparent' CornerRadius='7' Padding='{TemplateBinding Padding}' BorderThickness='1' BorderBrush='Transparent'><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property='IsSelected' Value='True'><Setter TargetName='surface' Property='Background' Value='#EAEAEA'/><Setter TargetName='surface' Property='BorderBrush' Value='Transparent'/></Trigger><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='surface' Property='Background' Value='#F1F1F1'/></Trigger><Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");
         readonly string kind,prefix;
+        internal static Style ProviderItemStyle {get{return itemStyle;}}
         readonly List<TextProviderSettings> drafts=new List<TextProviderSettings>();
         readonly ListBox providers,models;
         readonly ContentControl connectionHost=new ContentControl();
@@ -110,7 +111,7 @@ namespace Dafeiyu
             IsVisibleChanged+=delegate{if(IsVisible)ScheduleFetch();else CancelFetch();};
             selected=drafts.Find(p=>p.Id==settings.ActiveTextProviderId) ?? drafts[0];RefreshProviders();Show(selected);
         }
-        static Border Glass(UIElement child,int padding)
+        internal static Border Glass(UIElement child,int padding)
         {
             var background=new LinearGradientBrush{StartPoint=new Point(.5,0),EndPoint=new Point(.5,1)};
             background.GradientStops.Add(ThemedStop("#FAFFFFFF",0));background.GradientStops.Add(ThemedStop("#EDF4FAFF",1));

@@ -32,7 +32,8 @@ namespace Dafeiyu
         private readonly Button earlier,export;
         private readonly Dictionary<string,ChatMessageView> rendered=new Dictionary<string,ChatMessageView>();
         private readonly Dictionary<string,ChatMessage> displayed=new Dictionary<string,ChatMessage>();
-        private MessageUpdatePump messagePump;
+        private MessageUpdatePump messagePump;AgentQuestionSurface questionSurface;
+        internal bool CanAnswerQuestion(AgentQuestionRequest request){return AgentQuestionSurface.Matches(session,request);}
         private AgentTaskPanel taskPanel;readonly TextBlock contextLabel=Ui.Text("",12,AgentUi.Muted);readonly StackPanel contextNotice=new StackPanel{Name="ContextCompactionNotice",Orientation=Orientation.Horizontal,Margin=new Thickness(2,5,2,18)};
         readonly DockPanel conversationHeader,conversationIdentity,historyTools;readonly Grid workspaceShell,messageArea,conversationSurface;readonly ContentControl inspectorHost;readonly Border inspector;AgentWorkspaceNavigation navigation;
         bool workspaceLayout,inspectorLayout,compactTaskExpanded;readonly double normalMaxHeight;
@@ -66,7 +67,7 @@ namespace Dafeiyu
             var inspectorBody=new Grid();inspectorBody.MaxHeight=720;inspectorBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});inspectorBody.RowDefinitions.Add(new RowDefinition());var inspectorTitle=Ui.Text("工作空间",14,AgentUi.Ink);inspectorTitle.FontWeight=FontWeights.SemiBold;inspectorTitle.Margin=new Thickness(16,18,16,14);inspectorBody.Children.Add(inspectorTitle);Grid.SetRow(inspectorHost,1);inspectorBody.Children.Add(inspectorHost);
             summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=ThemeManager.Surface,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
             StateChanged+=delegate{RefreshWorkspaceLayout();};SizeChanged+=delegate{RefreshWorkspaceLayout();};workspaceShell.SizeChanged+=delegate{RefreshWorkspaceLayout();};
-            MountWorkspace();InitializeAppShell();
+            MountWorkspace();InitializeAppShell();questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));Grid.SetRow(questionSurface,0);messageArea.Children.Add(questionSurface);Closed+=delegate{questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);};
             Closed+=delegate {closed=true;CloseTransientSummary();CloseFilePreview();UnmountWorkspace(true);DetachEntryControls();};
             Loaded+=delegate {input.Focus();};
         }
@@ -117,7 +118,7 @@ namespace Dafeiyu
             if(navigation!=null){navigation.Dispose();workspaceShell.Children.Remove(navigation);navigation=null;}
         }
         public void RefreshAppearance()
-        {RefreshShellAppearance();if(showingWelcome)ReloadHistory(false);if(!(Content is LiveCallView))Title=pet.Skin.Name+" · 对话";avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.Name;atmosphere.SetSkin(pet.Skin);RefreshConversationTitle();if(composer!=null)composer.RefreshModels();RefreshProjectPicker();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
+        {if(questionSurface!=null)questionSurface.Refresh();RefreshShellAppearance();if(showingWelcome)ReloadHistory(false);if(!(Content is LiveCallView))Title=pet.Skin.Name+" · 对话";avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.Name;atmosphere.SetSkin(pet.Skin);RefreshConversationTitle();if(composer!=null)composer.RefreshModels();RefreshProjectPicker();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
         public void ReloadHistory(bool scrollToBottom=true)
         {
             reloading=true;if(welcomeSuggestions!=null){welcomeSuggestions.Dispose();welcomeSuggestions=null;}messages.Children.Clear();rendered.Clear();displayed.Clear();showingWelcome=false;

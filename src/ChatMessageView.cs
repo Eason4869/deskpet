@@ -64,7 +64,7 @@ namespace Dafeiyu
             if(user)panel.Children.Add(new Border{Name="SentUserBubble",HorizontalAlignment=HorizontalAlignment.Right,Background=Ui.Brush("#E8F2FF"),CornerRadius=new CornerRadius(18),Padding=new Thickness(15,10,15,10),Child=Body,Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible});
             else panel.Children.Add(Body);
             state=Ui.Text("",11,Ui.Muted);state.Margin=new Thickness(0,6,0,0);if(!user)panel.Children.Add(state);
-            if(!user){panel.Children.Add(changeSummaryHost);panel.Children.Add(outputFiles);}
+            if(!user){panel.Children.Add(generatedImagesHost);panel.Children.Add(changeSummaryHost);panel.Children.Add(outputFiles);}
             actions=new StackPanel{Name="ReplyActions",Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,7,0,0)};
             if(user)
             {
@@ -146,6 +146,7 @@ namespace Dafeiyu
         {
             bool firstSnapshot=current==null;current=message;
             UpdateOutputFiles(message);
+            if(!user)RefreshGeneratedImages(message);
             RefreshElapsed();
             bool detailChanged=detailedProcess!=pet.Settings.AgentDetailedProcess;
             if(detailChanged)detailedProcess=pet.Settings.AgentDetailedProcess;

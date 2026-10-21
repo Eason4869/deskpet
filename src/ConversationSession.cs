@@ -46,7 +46,8 @@ namespace Dafeiyu
         public Task WaitForIdleAsync(){Operation op;lock(gate)op=active;return op==null?Task.FromResult(true):op.Complete.Task;}
         public string PersonaId { get { lock(gate)return personaId; } }
         public string LastNotice { get; private set; }
-        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
+        string imageHistoryWarning="";
+        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
         public event Action<ChatMessage> MessageAdded;
         public event Action<ChatMessage> MessageUpdated;
@@ -77,7 +78,11 @@ namespace Dafeiyu
             lock(gate){if(histories.TryGetValue(id,out history))return history;histories[id]=loaded;return loaded;}
         }
         private void Save(string id,ConversationLog history)
-        { if(store!=null && saveEnabled())store.SaveAsync(id,history.Messages); }
+        {
+            if(store==null||!saveEnabled())return;
+            try{history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages);}
+            catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning="临时图片尚未转为永久保存，聊天记录暂未更新；请检查图片目录权限和空间。";OnWarningChanged();}
+        }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
         internal void ConfigureKernelSession(AgentSessionModel model,AgentSessionStore store){kernelSession=model;kernelStore=store;}
         internal void ReportKernelWarning(string warning){kernelWarning=warning??"";kernelReadFailed=true;}
@@ -251,10 +256,12 @@ namespace Dafeiyu
                 var agent=api as IAgentConversationApi;
                 if(op.Snapshot.AgentEnabled && Environment.OSVersion.Platform==PlatformID.Win32NT && agent!=null){
                     var approval=ApprovalProvider==null?null:new AgentApprovalTracking(ApprovalProvider,action=>{lock(gate)SetRuntimeAction(op,action);});
-                    op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);op.Workspace.AttachKernelSession(kernelSession);
+                    op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);
+                    if(kernelSession==null&&(QuestionProvider!=null||ImageClient!=null))kernelSession=new AgentSessionModel(Guid.NewGuid().ToString("N"),"","local-"+Guid.NewGuid().ToString("N"));
+                    op.Workspace.AttachKernelSession(kernelSession);
                     var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text};
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException("任务检查点不属于当前伙伴。");
-                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);if(op.AgentStarted!=null)op.AgentStarted();op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
+                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);ConfigureInteractiveTools(op);if(op.AgentStarted!=null)op.AgentStarted();op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
                 }
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
                 answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token) : await api.ChatAsync(op.Snapshot.Text,request,token);
