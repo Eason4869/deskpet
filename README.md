@@ -10,11 +10,11 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-**当前正式版本：[0.9.3](https://github.com/Eason4869/deskpet/releases/tag/v0.9.3)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
+**当前正式版本：[0.10.0](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
 
-0.9.3 新增咕嘎伙伴、完整 ZIP 角色包导入与同 ID 更新，以及伙伴列表删除／恢复。角色包可独立携带头像、人格、双套动作和音色预设，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
+0.10.0 新增正式／预览更新通道、防降级和立即更新重启，精简 Windows 安装包与便携 ZIP，并改善 Live 声纹动效。五位内置伙伴及完整 ZIP 角色包继续可用，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
 
-**dev 开发版本：`0.10.0-dev.1`，目前仅提供源码标签，尚未发布安装包。** 已支持在“关于”页选择正式／预览更新通道，且始终禁止降级；点击“立即更新并重启”可跳过 5 秒等待。运行包保留必要教程，制作新角色的模板改为独立下载，现有角色无需额外资源。具体发行规则见 [发布与升级说明](docs/release-naming.md)。
+在“关于”页选择更新通道，切换只保存偏好，不会降级。点击“立即更新并重启”可跳过剩余 5 秒等待，仍会保护运行任务和未保存内容。制作新角色的模板改为独立下载，现有角色无需额外资源，具体规则见 [发布与升级说明](docs/release-naming.md)。
 
 ## 先认识你的伙伴
 
@@ -45,10 +45,10 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 <picture>
   <source media="(max-width: 640px)" srcset="previews/readme-workspace-mobile.svg">
-  <img src="previews/readme-workspace.svg" width="1200" alt="Windows 0.9.1 统一主窗口完整截图：左侧功能入口、六条示例会话、聊天正文及完整输入区">
+  <img src="previews/readme-workspace.svg" width="1200" alt="Windows 0.10.0 统一主窗口完整截图：左侧功能入口、六条示例会话、聊天正文及完整输入区">
 </picture>
 
-<sub>界面示例来自 Windows 0.9.1，保留完整窗口；会话列表和聊天内容为隔离的本地示例，不含个人记录，未请求模型服务。可点击查看 [主窗口原图](previews/workspace-0.9.1.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
+<sub>主窗口示例来自 Windows 0.10.0，保留完整窗口；会话列表和聊天内容为隔离的本地示例，不含个人记录，未请求模型服务。可点击查看 [主窗口原图](previews/workspace-0.10.0.png)、[动作轮盘](previews/action-palette.png) 和 [快速对话](previews/quick-chat.png)。</sub>
 
 ### 从一句话，到一个项目
 
@@ -78,24 +78,24 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 ## 下载安装
 
-Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.9.3 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.9.3)。
+Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.10.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)。
 
 | 平台 | 下载 |
 | --- | --- |
-| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.9.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-Windows-Setup-0.9.3.exe) |
-| Windows 便携版 | [DeskPet-Windows-0.9.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-Windows-0.9.3.zip) |
-| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-macOS-0.9.3-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-macOS-0.9.3-arm64-preview.zip) |
-| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-macOS-0.9.3-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-macOS-0.9.3-x86_64-preview.zip) |
+| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.10.0.exe](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Windows-Setup-0.10.0.exe) |
+| Windows 便携版 | [DeskPet-Windows-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Windows-0.10.0.zip) |
+| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-arm64-preview.zip) |
+| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-x86_64-preview.zip) |
 
 <details>
 <summary>源码、外观包、创作模板与 SHA256</summary>
 
 | 附件 | 下载 |
 | --- | --- |
-| 完整源码 | [DeskPet-Source-0.9.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-Source-0.9.3.zip) |
-| 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/Ebao-HD-Skin-0.9.3.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/Dafeiyu-HD-Skin-0.9.3.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/Marfu-HD-Skin-0.9.3.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/Xiaobei-HD-Skin-0.9.3.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/gugugaga-HD-Skin-0.9.3.zip) |
-| 外观创作模板 | [DeskPet-Skin-Template-v2-0.9.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/DeskPet-Skin-Template-v2-0.9.3.zip) |
-| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.9.3/SHA256.txt) |
+| 完整源码 | [DeskPet-Source-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Source-0.10.0.zip) |
+| 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Ebao-HD-Skin-0.10.0.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Dafeiyu-HD-Skin-0.10.0.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Marfu-HD-Skin-0.10.0.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Xiaobei-HD-Skin-0.10.0.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/gugugaga-HD-Skin-0.10.0.zip) |
+| 外观创作模板 | [DeskPet-Skin-Template-v2-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Skin-Template-v2-0.10.0.zip) |
+| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/SHA256.txt) |
 
 </details>
 
@@ -144,7 +144,7 @@ Agent 终端默认关闭。启用工作区沙箱时，Windows 通过 **AppContai
 | **Windows** | 安装版与便携版，包含本页展示的统一主窗口、桌宠互动、文件 Agent、工具页与 AppContainer 终端隔离。 |
 | **macOS 预览** | Apple Silicon／Intel 双架构，共享部分核心，拥有独立界面。Windows 的统一窗口、配置引导与文件 Agent 能力不代表已在 Mac 实现，请以预览发布说明为准。 |
 
-Windows 可在 **关于与更新** 检查正式版本，在空闲时校验并安装。**0.5.4 及更早安装版**需先手动安装 0.5.6，或直接手动安装新版；便携 ZIP 不受安装包改名影响。开发中的改动见 [dev 分支](https://github.com/Eason4869/deskpet/tree/dev)，客户端更新以正式发布附件为准。
+Windows 可在 **关于与更新** 选择正式版或预览版通道，在安全空闲时校验并安装，始终禁止降级。旧客户端先升级到 0.10.0，才能接收之后公开发布的更高 dev 版本；仅有源码标签不会成为更新候选。**0.5.4 及更早安装版**需先手动安装 0.5.6，或直接手动安装新版；便携 ZIP 不受安装包改名影响。开发中的改动见 [dev 分支](https://github.com/Eason4869/deskpet/tree/dev)。
 
 Windows 安装包目前未做应用代码签名；Mac 预览为 ad-hoc 签名，未经 Apple Developer ID 公证。安装与备份说明见 [安装指南](docs/installation.md)，素材来源、协议及第三方许可见 [素材与平台说明](docs/sources.md) 和 [第三方声明](docs/third-party-notices.md)。
 
