@@ -24,7 +24,7 @@ namespace Dafeiyu
             var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,saveHistory=saveHistory??delegate{return true;}};
             workspace.DataDirectory=ResolveDataDirectory(dataRoot,conversation.Id);
             Directory.CreateDirectory(workspace.DataDirectory);
-            workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory);
+            workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id);
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
             try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else kernelStore.Clear();}

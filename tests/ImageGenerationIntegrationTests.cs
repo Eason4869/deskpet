@@ -47,6 +47,9 @@ namespace Dafeiyu.Tests
             await ServiceRejection(root);
             await QueueOwnershipAndDelivery(root);
             await PreflightFailure(root);
+            await RepairOwnership(root,true);
+            await RepairOwnership(root,false);
+            WorkspaceImageOwners(root);
         }
         sealed class HeldHandler:HttpMessageHandler
         {
@@ -56,9 +59,9 @@ namespace Dafeiyu.Tests
         }
         sealed class ImageApi:IConversationApi,IAgentConversationApi
         {
-            internal string Tool="generate_image",Arguments="{\"prompt\":\"a test image\"}",LastResult;internal bool ExpectError,NeedsReconciliation;
+            internal string Tool="generate_image",Arguments="{\"prompt\":\"a test image\"}",LastResult;internal bool ExpectError,NeedsReconciliation,SkipTool;
             public Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel){return Task.FromResult("plain");}
-            public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tools,bool stream,CancellationToken cancel){LastResult=await workspace.ExecuteAsync(Tool,Arguments,"integration-call",cancel);NeedsReconciliation=workspace.NeedsReconciliation;if(LastResult.StartsWith("错误：")&&!ExpectError)throw new ApiException(LastResult);return ExpectError?LastResult:"图片已生成。";}
+            public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tools,bool stream,CancellationToken cancel){if(SkipTool)return "continued without image";LastResult=await workspace.ExecuteAsync(Tool,Arguments,"integration-call",cancel);NeedsReconciliation=workspace.NeedsReconciliation;if(LastResult.StartsWith("错误：")&&!ExpectError)throw new ApiException(LastResult);return ExpectError?LastResult:"图片已生成。";}
             public Task<string> TranscribeAsync(ConnectionSettings settings,byte[] wave,CancellationToken cancel){throw new NotSupportedException();}public Task<byte[]> SpeechAsync(ConnectionSettings settings,string voice,string text,CancellationToken cancel){throw new NotSupportedException();}public void Dispose(){}
         }
         sealed class SilentSpeech:IReplySpeech{public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){return Task.FromResult(0);}public void SetVolume(int volume){}public void Stop(){}public void Dispose(){}}
@@ -115,6 +118,47 @@ namespace Dafeiyu.Tests
                     }
                     await session.ImageTasks.StopAsync(CancellationToken.None);
                 }
+            }
+        }
+        static void WorkspaceImageOwners(string root)
+        {
+            var project=new ProjectDefinition{Id="image-project",Name="image project",Workspace=root};var definition=new ConversationDefinition{Id="stable-image-workspace",Name="image workspace"};var other=new ConversationDefinition{Id="other-image-workspace",Name="other workspace"};var cfg=AgentSettings(Path.Combine(root,"identity-workspace"));
+            using(var first=ConversationWorkspace.Create(project,definition,root,"pet",()=>new ImageApi(),()=>new SilentSpeech(),()=>null,()=>cfg,()=>true))
+            using(var restored=ConversationWorkspace.Create(project,definition,root,"pet",()=>new ImageApi(),()=>new SilentSpeech(),()=>null,()=>cfg,()=>true))
+            using(var foreign=ConversationWorkspace.Create(project,other,root,"pet",()=>new ImageApi(),()=>new SilentSpeech(),()=>null,()=>cfg,()=>true))
+            {Check(first.Session.ImageConversationId==definition.Id&&first.Session.ImageConversationId==restored.Session.ImageConversationId&&first.Session.ImageConversationId!=foreign.Session.ImageConversationId,"workspace creation binds stable distinct logical image owners");}
+        }
+        static async Task RepairOwnership(string root,bool restart)
+        {
+            string path=Path.Combine(root,restart?"repair-restart":"repair-foreign"),historyPath=Path.Combine(path,"history");var cfg=AgentSettings(Path.Combine(path,"workspace"));var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;
+            string jobId,replyId,oldKernel;int initialCalls;
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null,new HistoryStore(historyPath),()=>true,restart?null:"foreign-workspace"))
+            {
+                session.ImageStore=assets;session.ImageClient=client;session.ImageTasks=await Manager(path,assets,client);session.SelectPersona("pet");
+                if(!restart)session.ConfigureKernelSession(new AgentSessionModel("workspace-kernel","project","foreign-workspace"),null);
+                var sending=session.SendTextAsync("draw",cfg,"pet");var reached=await Task.WhenAny(handler.Entered.Task,sending,Task.Delay(5000));if(reached!=handler.Entered.Task){await sending;throw new Exception("HTTP not entered");}
+                var job=session.ImageTasks.List().Single();jobId=job.Id;replyId=job.Origin.MessageId;oldKernel=session.KernelSession.ConversationId;
+                await session.FlushHistoryAsync();string historyFile=Directory.GetFiles(historyPath,"*.history").Single();byte[] originalHistory=File.ReadAllBytes(historyFile);File.Move(historyFile,historyFile+".backup");Directory.CreateDirectory(historyFile);handler.Release.TrySetResult(true);await sending;await session.FlushHistoryAsync();
+                Check(session.ImageTasks.Get(jobId).DeliveryState==ImageTaskDeliveryState.Failed,"repair ownership fixture has failed delivery");
+                Directory.Delete(historyFile);File.Move(historyFile+".backup",historyFile);initialCalls=handler.Calls;
+                if(!restart)
+                {
+                    string journal=Path.Combine(path,"generated-images","tasks.dat");byte[] before=File.ReadAllBytes(journal);string originalMessages=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(session.History.Messages);
+                    using(var foreign=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null))
+                    {
+                        foreign.ImageTasks=session.ImageTasks;foreign.ImageStore=assets;foreign.ImageClient=client;bool rejected=false;try{await foreign.RepairImageDeliveryAsync(jobId,CancellationToken.None);}catch(InvalidOperationException){rejected=true;}
+                        Check(rejected,"FreshUnboundForeignRepairRejected");Check(foreign.History.Messages.Count==0&&foreign.KernelSession==null,"foreign repair does not load or create history/kernel");
+                    }
+                    Check(before.SequenceEqual(File.ReadAllBytes(journal))&&session.ImageTasks.Get(jobId).DeliveryState==ImageTaskDeliveryState.Failed,"foreign repair preserves task journal and original delivery state");
+                    Check(originalHistory.SequenceEqual(File.ReadAllBytes(historyFile))&&originalMessages==new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(session.History.Messages),"foreign repair preserves original disk and memory history");return;
+                }
+            }
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var restored=new ConversationSession(new ImageApi{SkipTool=true},new SilentSpeech(),()=>null,new HistoryStore(historyPath),()=>true))
+            {
+                restored.ImageStore=assets;restored.ImageClient=client;restored.ImageTasks=await Manager(path,assets,client);restored.SelectPersona("pet");Check(restored.History.Messages.Any(m=>m.Id==replyId),"restart loads original persisted pending message");await restored.SendTextAsync("a new Agent turn",cfg,"pet");Check(restored.KernelSession!=null&&restored.KernelSession.ConversationId!=oldKernel,"restart creates new transient Agent kernel");
+                Check(restored.ImageTasks.Get(jobId).Origin.ConversationId==restored.ImageConversationId,"standalone logical owner survives kernel replacement");await restored.RepairImageDeliveryAsync(jobId,CancellationToken.None);var job=restored.ImageTasks.Get(jobId);var original=restored.History.Messages.Single(m=>m.Id==replyId);
+                Check(job.DeliveryState==ImageTaskDeliveryState.Delivered&&original.GeneratedImages.Count==1&&original.GeneratedImages[0].Id==job.ResultImageId,"StandaloneRestartAfterAgentTurnRepairsOriginalMessage");
+                Check(initialCalls==1&&handler.Calls==0,"restart repair issues no additional image HTTP");
             }
         }
         static async Task PreflightFailure(string root)

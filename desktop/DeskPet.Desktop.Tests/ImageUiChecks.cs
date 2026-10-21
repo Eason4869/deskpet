@@ -24,6 +24,7 @@ internal static class ImageUiChecks
         var handler = new ImageHandler();
         using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(directory), store => new ImageGenerationClient(store, handler, null));
         Check(ReferenceEquals(owner.Session.ImageTasks,owner.ImageTasks),"controller and session share application queue");
+        Check(owner.Session.ImageConversationId.StartsWith("history:")&&!owner.Session.ImageConversationId.Contains(owner.DataDirectory),"standalone Avalonia image owner binds private stable history identity");
         var window = new ChatWindow(owner, false); window.Show(); Dispatcher.UIThread.RunJobs();
         var workspace = window.Images;
         Check(window.CurrentPage == "chat", "starts on chat route"); window.ShowImages();
@@ -109,7 +110,7 @@ internal static class ImageUiChecks
         window.Close(); Dispatcher.UIThread.RunJobs();
         Check(!unanswered.IsCompleted && owner.Questions.Requests.Count == 1, "closing one chat preserves pending question while visible sibling can answer");
         sibling.Close(); Until(() => unanswered.IsCompleted); Check(unanswered.IsCanceled && owner.Questions.Requests.Count == 0, "closing last chat cancels pending question without leaving task waiting");
-        owner.Pet.Close(); Dispatcher.UIThread.RunJobs(); return checks;
+        owner.Pet.Close(); Dispatcher.UIThread.RunJobs(); owner.Dispose(); Complete(owner.ImageServicesShutdown); return checks;
     }
     private sealed class ImageHandler : HttpMessageHandler
     {

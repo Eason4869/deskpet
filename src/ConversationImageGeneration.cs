@@ -10,6 +10,15 @@ namespace Dafeiyu
         public GeneratedImageStore ImageStore {get;set;}
         public ImageGenerationClient ImageClient {get;set;}
         public ImageGenerationTaskManager ImageTasks {get;set;}
+        // Logical history ownership is independent of the transient Agent kernel.
+        public string ImageConversationId {get;private set;}
+        static string CreateImageConversationId(HistoryStore history)
+        {
+            if(history==null)return "ephemeral:"+Guid.NewGuid().ToString("N");
+            string path=System.IO.Path.GetFullPath(history.DirectoryPath).TrimEnd(System.IO.Path.DirectorySeparatorChar,System.IO.Path.AltDirectorySeparatorChar);
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT)path=path.ToUpperInvariant();
+            using(var hash=System.Security.Cryptography.SHA256.Create())return "history:"+BitConverter.ToString(hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(path))).Replace("-","").ToLowerInvariant();
+        }
         public IAgentQuestionProvider QuestionProvider {get;set;}
 
         void ConfigureInteractiveTools(Operation op)
@@ -26,7 +35,7 @@ namespace Dafeiyu
                     SessionId=kernelSession==null?op.PersonaId:kernelSession.SessionId,TaskId=op.Workspace.TaskState==null?"":op.Workspace.TaskState.Id,
                     MessageId=originReplyId,Persistent=saveEnabled()};
                 GeneratedImage image;string jobId=null;
-                var submission=new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),request,new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=kernelSession==null?op.PersonaId:kernelSession.ConversationId,KernelSessionId=request.SessionId,PersonaId=op.PersonaId,AgentTaskId=request.TaskId,ToolCallId=callId,MessageId=originReplyId,GroupId=originReplyId,Sequence=(op.History.Messages.First(m=>m.Id==originReplyId).ImageGenerationTaskIds??new System.Collections.Generic.List<string>()).Count});
+                var submission=new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),request,new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=ImageConversationId,KernelSessionId=request.SessionId,PersonaId=op.PersonaId,AgentTaskId=request.TaskId,ToolCallId=callId,MessageId=originReplyId,GroupId=originReplyId,Sequence=(op.History.Messages.First(m=>m.Id==originReplyId).ImageGenerationTaskIds??new System.Collections.Generic.List<string>()).Count});
                 submission.BeforeStart=async id=>{jobId=id;cancel.ThrowIfCancellationRequested();lock(gate){if(disposed||active!=op||op.Ended!=0)throw new OperationCanceledException(cancel);if(op.History.AttachImageTask(originReplyId,id)==null)throw new InvalidOperationException("原消息已删除。");}await PersistImageHistoryAsync(op.PersonaId,op.History,cancel).ConfigureAwait(false);};
                 try{var handle=await ImageTasks.EnqueueAsync(submission,cancel).ConfigureAwait(false);jobId=handle.Id;image=await handle.Completion.ConfigureAwait(false);}
                 catch(OperationCanceledException){if(cancel.IsCancellationRequested)throw;return "错误：这张图片的生成已取消，可以继续对话；不会自动重试。";}
@@ -82,7 +91,7 @@ namespace Dafeiyu
         {
             if(ImageTasks==null)throw new InvalidOperationException("图片任务服务不可用。");var job=ImageTasks.Get(taskId);
             if(job==null||job.State!=ImageGenerationTaskState.Succeeded||job.Origin==null||job.Source!=ImageGenerationSource.Conversation)throw new InvalidOperationException("没有可同步的图片结果。");
-            if(kernelSession!=null&&job.Origin.ConversationId!=kernelSession.ConversationId)throw new InvalidOperationException("请在原会话中重试同步。");
+            if(!String.Equals(job.Origin.ConversationId,ImageConversationId,StringComparison.Ordinal))throw new InvalidOperationException("请在原会话中重试同步。");
             try{await DeliverImageAsync(taskId,GetHistory(job.Origin.PersonaId??""),job.Origin.PersonaId??"",token).ConfigureAwait(false);}
             catch(OperationCanceledException){throw;}
             catch{MarkImageDeliveryAsync(taskId,ImageTaskDeliveryState.Failed).GetAwaiter().GetResult();throw;}

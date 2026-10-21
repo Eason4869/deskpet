@@ -65,8 +65,8 @@ namespace Dafeiyu
             public readonly List<AgentToolEvent> ToolEvents=new List<AgentToolEvent>();public bool Regenerating;
             public readonly HashSet<string> PresentedGuidance=new HashSet<string>();
         }
-        public ConversationSession(IConversationApi transport,IReplySpeech output,Func<IAudioRecorder> recorderFactory,HistoryStore historyStore=null,Func<bool> persistenceEnabled=null)
-        { api=transport;speech=output;microphone=recorderFactory;store=historyStore;taskStore=store==null?null:new AgentTaskStore(System.IO.Path.Combine(store.DirectoryPath,"agent-tasks"));if(taskStore!=null)taskStore.WarningChanged+=OnWarningChanged;saveEnabled=persistenceEnabled??delegate{return true;};History=new ConversationLog();histories[""]=History;LastNotice="";if(store!=null)store.WarningChanged+=OnWarningChanged; }
+        public ConversationSession(IConversationApi transport,IReplySpeech output,Func<IAudioRecorder> recorderFactory,HistoryStore historyStore=null,Func<bool> persistenceEnabled=null,string imageConversationId=null)
+        { ImageConversationId=String.IsNullOrWhiteSpace(imageConversationId)?CreateImageConversationId(historyStore):imageConversationId;api=transport;speech=output;microphone=recorderFactory;store=historyStore;taskStore=store==null?null:new AgentTaskStore(System.IO.Path.Combine(store.DirectoryPath,"agent-tasks"));if(taskStore!=null)taskStore.WarningChanged+=OnWarningChanged;saveEnabled=persistenceEnabled??delegate{return true;};History=new ConversationLog();histories[""]=History;LastNotice="";if(store!=null)store.WarningChanged+=OnWarningChanged; }
         private void OnWarningChanged() { if(!disposed && StateChanged!=null)StateChanged(); }
         private ConversationLog GetHistory(string id)
         {
