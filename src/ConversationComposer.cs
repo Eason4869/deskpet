@@ -111,7 +111,7 @@ namespace Dafeiyu
             meter.Tick+=async delegate{if(!dictation.Owns(this)){meter.Stop();return;}waveform.Push(dictation.InputLevel);if(dictation.Stage==DictationStage.Recording && recordingTime.Elapsed.TotalSeconds>=60)await FinishDictation(false);};
             host.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape && dictation.Owns(this)){e.Handled=true;try{await dictation.CancelAsync(this);}catch(Exception error){Error(error);}}};
             input.ToolTip="Enter 发送或排队（显示预测时先填入草稿）· Shift + Enter 换行 · Ctrl + Enter 引导当前任务";
-            input.TextChanged+=delegate{RefreshAction();RefreshTrigger();};
+            input.TextChanged+=InputChanged;session.InputDraftChanged+=RestoreDraft;RestoreDraft();
             triggerPopup=new Popup{Name="ComposerTriggerMenu",Placement=System.Windows.Controls.Primitives.PlacementMode.Top,PlacementTarget=input,StaysOpen=false,AllowsTransparency=true};
             triggerScroll.Content=new StackPanel{Children={triggerList,triggerEmpty}};triggerPopup.Child=new Border{Child=triggerScroll,Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Padding=new Thickness(5),Margin=new Thickness(2,2,2,7)};
             input.LostKeyboardFocus+=delegate{CloseTrigger();};input.SelectionChanged+=delegate{RefreshTrigger();};input.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e)
@@ -165,8 +165,10 @@ namespace Dafeiyu
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
-            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);BindApprovals();RefreshModels();Refresh();
+            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();session.InputDraftChanged-=RestoreDraft;if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;session.InputDraftChanged+=RestoreDraft;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RestoreDraft();BindApprovals();RefreshModels();Refresh();
         }
+        void InputChanged(object sender,TextChangedEventArgs args){if(closed)return;session.InputDraft=input.Text;RefreshAction();RefreshTrigger();}
+        void RestoreDraft(){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RestoreDraft));return;}input.Text=session.InputDraft;}
         public void RefreshModels()
         {
             aiNotice.Text=pet.Skin.Name+"是人工智能，有时会出错。请仔细核对回答。";
@@ -462,7 +464,7 @@ namespace Dafeiyu
         }
         internal void Detach()
         {
-            if(closed)return;closed=true;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
+            if(closed)return;closed=true;input.TextChanged-=InputChanged;session.InputDraftChanged-=RestoreDraft;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
             if(approvals!=null)approvals.Dispose();

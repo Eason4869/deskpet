@@ -11,6 +11,9 @@ namespace Dafeiyu
     public enum ConversationStage { Idle, Recording, Recognizing, Thinking, Speaking }
     public sealed partial class ConversationSession : IDisposable
     {
+        string inputDraft="";
+        internal string InputDraft {get{return inputDraft;}set{value=value??"";if(inputDraft==value)return;inputDraft=value;var changed=InputDraftChanged;if(changed!=null)changed();}}
+        internal event Action InputDraftChanged;
         private readonly IConversationApi api;
         private readonly IReplySpeech speech;
         private readonly Func<IAudioRecorder> microphone;

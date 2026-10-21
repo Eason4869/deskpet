@@ -14,6 +14,7 @@ namespace Dafeiyu
         readonly PetWindow pet;
         readonly ManagedSkillLibrary library;
         readonly McpSettingsPanel mcp;
+        readonly SkillDiscoveryPanel discovery;
         readonly Grid layout=new Grid(),header=new Grid(),content=new Grid();
         readonly WrapPanel actions=new WrapPanel();
         readonly StackPanel skills=new StackPanel();
@@ -29,7 +30,7 @@ namespace Dafeiyu
         string detailId,removeId;
         bool onMcp,disposed;
 
-        internal PluginsPage(PetWindow pet)
+        internal PluginsPage(PetWindow pet,SkillRepositoryClient repositoryClient=null)
         {
             if(pet==null)throw new ArgumentNullException("pet");
             this.pet=pet;library=new ManagedSkillLibrary(Path.Combine(pet.Store.DirectoryPath,"skills"));
@@ -61,6 +62,7 @@ namespace Dafeiyu
             warning.Name="ManagedSkillsWarning";warning.Margin=new Thickness(0,0,0,14);warning.Visibility=Visibility.Collapsed;skills.Children.Add(warning);skills.Children.Add(rows);
             skillScroll=Ui.Scroll(skills);skillScroll.Padding=new Thickness(0,0,3,0);content.Children.Add(skillScroll);
             mcp=new McpSettingsPanel(pet){Visibility=Visibility.Collapsed,Background=Brushes.Transparent};mcp.UseHeaderAddButton();mcp.Saved+=McpSaved;mcp.EditorVisibilityChanged+=McpEditorVisibilityChanged;content.Children.Add(mcp);Grid.SetRow(content,2);layout.Children.Add(content);
+            discovery=new SkillDiscoveryPanel(library,new SkillRepositoryCatalog(Path.Combine(pet.Store.DirectoryPath,"skill-discovery")),repositoryClient??new SkillRepositoryClient()){Visibility=Visibility.Collapsed};discovery.Back+=SelectSkills;content.Children.Add(discovery);
             var bottom=new StackPanel{Margin=new Thickness(0,15,0,0)};status.Name="PluginsStatus";status.Visibility=Visibility.Collapsed;status.Margin=new Thickness(0,0,0,7);bottom.Children.Add(status);footer.Name="PluginsScope";bottom.Children.Add(footer);Grid.SetRow(bottom,3);layout.Children.Add(bottom);
             library.Changed+=LibraryChanged;pet.McpConnections.Changed+=McpChanged;
             SizeChanged+=delegate{Adapt();};IsVisibleChanged+=delegate{if(IsVisible)Refresh();};
@@ -69,13 +71,22 @@ namespace Dafeiyu
 
         internal bool HasUnsavedEdits {get{return mcp.HasUnsavedChanges;}}
         internal void OpenMcpEditor(){SelectMcp();mcp.OpenEditor();}
-        internal void SelectMcp(){onMcp=true;add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;skillScroll.Visibility=Visibility.Collapsed;mcp.Visibility=Visibility.Visible;search.Visibility=Visibility.Collapsed;((FrameworkElement)search.Parent).Visibility=Visibility.Collapsed;add.Name="AddMcpServer";add.Content="添加服务器";System.Windows.Automation.AutomationProperties.SetName(add,"添加服务器");StyleTabs();footer.Text="MCP 配置保存后需手动连接。技能与 MCP 均在本机管理。";}
-        internal void SelectSkills(){onMcp=false;add.Visibility=Visibility.Visible;skillScroll.Visibility=Visibility.Visible;mcp.Visibility=Visibility.Collapsed;search.Visibility=Visibility.Visible;((FrameworkElement)search.Parent).Visibility=Visibility.Visible;add.Name="ImportManagedSkill";add.Content="添加技能";System.Windows.Automation.AutomationProperties.SetName(add,"添加技能");StyleTabs();footer.Text="支持导入含 SKILL.md 的本地技能，启用变更从下一次工作请求生效。应用与插件包暂未开放。";}
+        internal void SelectMcp(){discovery.Visibility=Visibility.Collapsed;onMcp=true;add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;skillScroll.Visibility=Visibility.Collapsed;mcp.Visibility=Visibility.Visible;search.Visibility=Visibility.Collapsed;((FrameworkElement)search.Parent).Visibility=Visibility.Collapsed;add.Name="AddMcpServer";add.Content="添加服务器";System.Windows.Automation.AutomationProperties.SetName(add,"添加服务器");StyleTabs();footer.Text="MCP 配置保存后需手动连接。技能与 MCP 均在本机管理。";}
+        internal void SelectSkills(){discovery.Visibility=Visibility.Collapsed;onMcp=false;add.Visibility=Visibility.Visible;skillScroll.Visibility=Visibility.Visible;mcp.Visibility=Visibility.Collapsed;search.Visibility=Visibility.Visible;((FrameworkElement)search.Parent).Visibility=Visibility.Visible;add.Name="ImportManagedSkill";add.Content="添加技能 ▾";System.Windows.Automation.AutomationProperties.SetName(add,"添加技能");StyleTabs();footer.Text="从仓库、ZIP 或本机目录添加技能，启用变更从下一次工作请求生效。";}
         void StyleTabs(){foreach(var button in new[]{skillsTab,mcpTab}){bool selected=button==(onMcp?mcpTab:skillsTab);button.Background=selected?ThemeManager.SelectedSurface:Brushes.Transparent;button.BorderBrush=selected?ThemeManager.SelectedBorder:Brushes.Transparent;button.Foreground=selected?Ui.Brush("#282A2F"):Ui.Muted;button.FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?"已选中":"");}}
         void Adapt(){layout.Margin=ActualWidth<480?new Thickness(16,20,16,20):new Thickness(30,40,30,24);double available=Math.Max(0,Math.Min(Ui.PageContentWidth,ActualWidth-layout.Margin.Left-layout.Margin.Right));bool narrow=available<680;Grid.SetRow(actions,narrow?1:0);Grid.SetColumn(actions,narrow?0:1);Grid.SetColumnSpan(actions,narrow?2:1);actions.HorizontalAlignment=narrow?HorizontalAlignment.Left:HorizontalAlignment.Right;actions.Width=narrow?available:Double.NaN;actions.Margin=narrow?new Thickness(0,14,0,0):new Thickness(0);searchSurface.Width=narrow?Math.Max(100,available-110):260;LayoutSkillRows();}
         void LayoutSkillRows(){double width=rows.ActualWidth;if(width<=0)return;bool paired=width>=700;int index=0;foreach(FrameworkElement child in rows.Children){bool tile=child.Name=="ManagedSkillRow";child.Width=tile&&paired?Math.Floor((width-16)/2):width;child.Margin=tile?new Thickness(0,0,paired&&index++%2==0?16:0,12):new Thickness(0);}}
         static Button ActionButton(string title,string name,Action action){var button=Ui.Button(title);button.Name=name;button.FontSize=12;button.Foreground=Ui.PageInk;button.Margin=new Thickness(0,0,8,5);button.Padding=new Thickness(12,5,12,5);button.Click+=delegate{action();};System.Windows.Automation.AutomationProperties.SetName(button,title);return button;}
-        void ChooseImport(){if(onMcp){mcp.BeginAdd();return;}using(var dialog=new System.Windows.Forms.FolderBrowserDialog{Description="选择包含 SKILL.md 的技能文件夹。将复制到本机技能库。",ShowNewFolderButton=false}){if(dialog.ShowDialog()==System.Windows.Forms.DialogResult.OK)ImportDirectory(dialog.SelectedPath);}}
+        void ChooseImport()
+        {
+            if(onMcp){mcp.BeginAdd();return;}
+            var menu=ChatUi.Menu();menu.Name="AddSkillMenu";
+            foreach(var option in new[]{new {Title="在发现里浏览",Action=(Action)OpenDiscovery},new {Title="从 ZIP 安装",Action=(Action)ChooseZip},new {Title="导入本机已有",Action=(Action)ChooseDirectory}}){var action=option.Action;var item=new MenuItem{Header=option.Title};item.Click+=delegate{action();};menu.Items.Add(item);}
+            add.ContextMenu=menu;menu.PlacementTarget=add;menu.IsOpen=true;
+        }
+        void ChooseDirectory(){using(var dialog=new System.Windows.Forms.FolderBrowserDialog{Description="选择包含 SKILL.md 的技能文件夹。将复制到本机技能库。",ShowNewFolderButton=false}){if(dialog.ShowDialog()==System.Windows.Forms.DialogResult.OK)ImportDirectory(dialog.SelectedPath);}}
+        void ChooseZip(){var dialog=new Microsoft.Win32.OpenFileDialog{Title="选择技能 ZIP",Filter="技能压缩包 (*.zip)|*.zip",CheckFileExists=true};if(dialog.ShowDialog()==true){OpenDiscovery();discovery.OpenZip(dialog.FileName);}}
+        internal void OpenDiscovery(){onMcp=false;add.Visibility=Visibility.Visible;add.Name="ImportManagedSkill";add.Content="添加技能 ▾";skillScroll.Visibility=Visibility.Collapsed;mcp.Visibility=Visibility.Collapsed;searchSurface.Visibility=Visibility.Collapsed;discovery.Visibility=Visibility.Visible;StyleTabs();footer.Text="搜索所选公开仓库，预览后安装到本机。";}
         internal bool ImportDirectory(string directory){try{var item=library.Import(directory);detailId=null;removeId=null;Refresh();Notify("已添加 "+item.Name+"，从下一次工作请求起可用。");return true;}catch(Exception e){if(!Expected(e))throw;Notify("未能添加技能。"+e.Message);return false;}}
         static bool Expected(Exception e){return e is IOException||e is UnauthorizedAccessException||e is ArgumentException||e is InvalidOperationException;}
         void Notify(string text){status.Text=text;status.Visibility=Visibility.Visible;}
@@ -93,6 +104,7 @@ namespace Dafeiyu
             if(detailId==item.Id)body.Children.Add(Details(item));var card=new Border{Name="ManagedSkillRow",Tag=item.Id,Child=body,Background=detailId==item.Id?Ui.Brush("#F8F9FB"):Brushes.Transparent,CornerRadius=new CornerRadius(10),Padding=new Thickness(8,7,8,7)};card.MouseEnter+=delegate{card.Background=Ui.Brush("#F4F5F7");};card.MouseLeave+=delegate{card.Background=detailId==item.Id?Ui.Brush("#F8F9FB"):Brushes.Transparent;};return card;
         }
         UIElement Details(ManagedSkillInfo item){var detail=new StackPanel{Margin=new Thickness(0,9,0,9)};detail.Children.Add(new Border{Height=1,Background=Ui.Brush("#ECEEF1"),Margin=new Thickness(0,0,0,15)});detail.Children.Add(Ui.Text("技能目录",11,Ui.Muted));var path=Ui.Text(item.Directory,11,Ui.Muted);path.Name="ManagedSkillDirectory";path.Margin=new Thickness(0,3,0,13);detail.Children.Add(path);
+            if(item.Origin!=null){var origin=Ui.Text((item.Origin.Kind=="github"?"GitHub · ":"ZIP · ")+item.Origin.Repository+"\n"+item.Origin.Path+"\n"+(item.Origin.Branch??"")+" · "+item.Origin.Commit,11,Ui.Muted);origin.Name="ManagedSkillOrigin";origin.Margin=new Thickness(0,0,0,12);detail.Children.Add(origin);}
             try{var source=library.Read(item.Id);var text=Ui.Field(source.Content,true);text.Name="ManagedSkillContent";text.IsReadOnly=true;text.MaxHeight=280;text.MinHeight=95;text.FontSize=12;text.HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;text.ContextMenu=ChatUi.EditorMenu(text,true);detail.Children.Add(text);}catch(Exception e){if(!Expected(e))throw;detail.Children.Add(Ui.Text("无法读取 SKILL.md。"+e.Message,12,Ui.Muted));}
             var remove=Ui.Button(removeId==item.Id?"确认移除技能":"移除技能");remove.Name="RemoveManagedSkill";remove.Tag=item.Id;remove.HorizontalAlignment=HorizontalAlignment.Left;remove.Margin=new Thickness(0,12,0,0);remove.Foreground=Ui.Brush("#A65050");remove.Click+=delegate{if(removeId!=item.Id){removeId=item.Id;RenderRows();return;}try{library.Remove(item.Id);detailId=null;removeId=null;Refresh();Notify("已移除 "+item.Name+"，原始文件夹保留。");}catch(Exception e){if(!Expected(e))throw;Notify("未能移除技能。"+e.Message);}};detail.Children.Add(remove);
             if(removeId==item.Id){var note=Ui.Text("仅移除本机管理的技能，原始文件夹会保留。",11,Ui.Muted);note.Name="ManagedSkillRemoveConfirmation";note.Margin=new Thickness(0,7,0,0);detail.Children.Add(note);var cancel=Ui.Button("取消");cancel.Name="CancelRemoveManagedSkill";cancel.HorizontalAlignment=HorizontalAlignment.Left;cancel.Margin=new Thickness(0,7,0,0);cancel.Click+=delegate{removeId=null;RenderRows();};detail.Children.Add(cancel);}return detail;
@@ -102,6 +114,6 @@ namespace Dafeiyu
         void McpEditorVisibilityChanged(){if(onMcp)add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;}
         void McpSaved(){McpCount();}
         void McpChanged(){if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(McpChanged));return;}McpCount();}
-        public void Dispose(){if(disposed)return;disposed=true;library.Changed-=LibraryChanged;pet.McpConnections.Changed-=McpChanged;mcp.Saved-=McpSaved;mcp.EditorVisibilityChanged-=McpEditorVisibilityChanged;mcp.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;library.Changed-=LibraryChanged;pet.McpConnections.Changed-=McpChanged;mcp.Saved-=McpSaved;mcp.EditorVisibilityChanged-=McpEditorVisibilityChanged;discovery.Back-=SelectSkills;discovery.Dispose();mcp.Dispose();}
     }
 }

@@ -11,12 +11,13 @@ namespace Dafeiyu
     {
         public string Id,Name,Description,Directory;
         public bool Enabled;
+        public SkillOrigin Origin;
     }
 
     // Only explicit imports enter this registry. Project trust is a separate decision.
     public sealed class ManagedSkillLibrary
     {
-        public sealed class RegistryEntry { public string Id {get;set;} public bool Enabled {get;set;} }
+        public sealed class RegistryEntry { public string Id {get;set;} public bool Enabled {get;set;} public SkillOrigin Origin {get;set;} }
         public sealed class Registry { public int Version {get;set;} public List<RegistryEntry> Skills {get;set;} }
         static readonly object Gate=new object();
         const int MaxFiles=2048,MaxEntries=4096,MaxDepth=64;
@@ -42,7 +43,7 @@ namespace Dafeiyu
                 return items.OrderBy(s=>s.Name,StringComparer.Ordinal).ToArray();}
         }
 
-        public ManagedSkillInfo Import(string sourceDirectory)
+        public ManagedSkillInfo Import(string sourceDirectory,SkillOrigin origin=null)
         {
             ManagedSkillInfo result;
             lock(Gate){var state=RequireRegistry();if(state.Skills.Count>=128)throw new InvalidOperationException("技能库超过 128 项。");
@@ -61,7 +62,7 @@ namespace Dafeiyu
                 foreach(string file in files){AgentInstructions.RequireWithin(source,file);string target=Path.Combine(staging,Relative(source,file));AgentInstructions.RequireWithin(staging,target);CopyBounded(file,target,ref copied);}
                 var copiedInfo=AgentSkills.ReadInfo(staging);if(copiedInfo.Name!=id)throw new InvalidOperationException("导入时技能名称发生变化，请重试。");
                 AgentInstructions.RequireWithin(directory,destination);System.IO.Directory.Move(staging,destination);
-                var entry=new RegistryEntry{Id=id,Enabled=true};state.Skills.Add(entry);
+                var entry=new RegistryEntry{Id=id,Enabled=true,Origin=origin};state.Skills.Add(entry);
                 try{WriteRegistry(state);}
                 catch(Exception registryError){
                     // Promotion is not a successful import until the registry commits. Keep the
@@ -109,7 +110,7 @@ namespace Dafeiyu
         {
             Warning="";
             try{AgentInstructions.RejectLinks(directory);string path=Path.Combine(directory,"registry.json");if(!File.Exists(path))return new Registry{Version=1,Skills=new List<RegistryEntry>()};
-                string content=AgentInstructions.Read(path).Content;var state=new JavaScriptSerializer().Deserialize<Registry>(content);
+                var state=SkillStorage.ReadJson<Registry>(path,1024*1024);
                 if(state==null||state.Version!=1||state.Skills==null||state.Skills.Count>128)throw new InvalidOperationException("技能库登记格式无效。");
                 var ids=new HashSet<string>(StringComparer.Ordinal);foreach(var entry in state.Skills){if(entry==null||!ids.Add(ValidateId(entry.Id)))throw new InvalidOperationException("技能库登记存在重复项。");}return state;
             }catch(Exception e){if(!Recoverable(e))throw;Warning="技能库登记无法读取，已暂停加载。原文件已保留："+e.Message;return null;}
@@ -120,7 +121,7 @@ namespace Dafeiyu
         ManagedSkillInfo ReadInfo(RegistryEntry entry)
         {
             string path=SkillDirectory(entry.Id);AgentInstructions.RequireWithin(directory,path);var info=AgentSkills.ReadInfo(path);
-            if(info.Name!=entry.Id)throw new InvalidOperationException("技能名称与登记不一致。");return new ManagedSkillInfo{Id=entry.Id,Name=info.Name,Description=info.Description,Directory=path,Enabled=entry.Enabled};
+            if(info.Name!=entry.Id)throw new InvalidOperationException("技能名称与登记不一致。");return new ManagedSkillInfo{Id=entry.Id,Name=info.Name,Description=info.Description,Directory=path,Enabled=entry.Enabled,Origin=entry.Origin};
         }
         string SkillDirectory(string id){ValidateId(id);string path=Path.Combine(directory,id);AgentInstructions.RequireWithin(directory,path);return path;}
         static string ValidateId(string id){if(id==null||!Regex.IsMatch(id,@"\A[a-z0-9][a-z0-9_-]{0,63}\z"))throw new ArgumentException("技能名称须为 1–64 位小写字母、数字、下划线或连字符。");return id;}
@@ -151,7 +152,8 @@ namespace Dafeiyu
         {
             System.IO.Directory.CreateDirectory(directory);AgentInstructions.RejectLinks(directory);string path=Path.Combine(directory,"registry.json");AgentInstructions.RequireWithin(directory,path);
             string temporary=Path.Combine(directory,".registry-"+Guid.NewGuid().ToString("N")+".tmp");AgentInstructions.RequireWithin(directory,temporary);
-            byte[] content=new UTF8Encoding(false).GetBytes(new JavaScriptSerializer().Serialize(state));
+            byte[] content=new UTF8Encoding(false).GetBytes(new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(state));
+            if(content.Length>1024*1024)throw new InvalidOperationException("技能库登记超过大小限制。");
             using(var file=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){file.Write(content,0,content.Length);file.Flush(true);}
             AgentInstructions.RejectLinks(path);
             if(File.Exists(path)){string backup=Path.Combine(directory,".registry-"+Guid.NewGuid().ToString("N")+".bak");AgentInstructions.RequireWithin(directory,backup);File.Replace(temporary,path,backup);}else File.Move(temporary,path);

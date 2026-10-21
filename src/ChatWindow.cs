@@ -26,7 +26,7 @@ namespace Dafeiyu
         private readonly TextBlock status;
         private readonly Image avatar;
         private readonly Button record;readonly Button chatSettings;
-        private ConversationComposer composer;private readonly Dictionary<string,string> drafts=new Dictionary<string,string>();
+        private ConversationComposer composer;
         private bool closed,showingWelcome,reloading;
         private int visibleTurns=50;
         private readonly Button earlier,export;
@@ -86,10 +86,9 @@ namespace Dafeiyu
             else{inspectorHost.Content=null;taskPanel.SetWorkspaceLayout(false);compactTaskHost.Content=taskPanel;taskPanel.IsExpanded=compactTaskExpanded;inspector.Visibility=Visibility.Collapsed;}
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{if(closed)return;if(follow){if(Math.Abs(scroll.VerticalOffset-offset)<1||scroll.ScrollableHeight-scroll.VerticalOffset<32)scroll.ScrollToEnd();}else scroll.ScrollToVerticalOffset(offset);}));
         }
-        string DraftKey(){return workspace==null?"":workspace.Id;}
         public void SwitchWorkspace(ConversationWorkspace replacement)
         {
-            if(closed)return;if(ReferenceEquals(workspace,replacement)){if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();return;}CloseTransientSummary();drafts[DraftKey()]=input.Text;RememberEntry();UnmountWorkspace(false);
+            if(closed)return;if(ReferenceEquals(workspace,replacement)){if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();return;}CloseTransientSummary();RememberEntry();UnmountWorkspace(false);
             workspace=replacement;session=replacement==null?pet.Conversation:replacement.Session;queue=replacement==null?pet.InputQueue:replacement.Queue;MountWorkspace();if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();if(shellReady){ShowHomePage(false);RecordPage("home");}
         }
         void MountWorkspace()
@@ -100,7 +99,7 @@ namespace Dafeiyu
             composer.PrepareSubmission=delegate{return pet.PrepareConversationSubmission(workspace);};composer.Submitted=delegate{pet.FinishConversationSubmission(workspace);RefreshProjectPicker();};RefreshProjectPicker();
             navigation=new AgentWorkspaceNavigation(pet,delegate{if(!inspectorLayout&&(transientSummary==null||!transientSummary.IsOpen))ToggleSummary();taskPanel.IsExpanded=true;if(inspectorLayout)taskPanel.Focus();else if(transientSummaryView!=null)transientSummaryView.Focus();},session,workspace==null?null:workspace.Id,SwitchEntry);navigation.Visibility=workspaceLayout?Visibility.Visible:Visibility.Collapsed;Grid.SetColumn(navigation,0);workspaceShell.Children.Add(navigation);
             messagePump=new MessageUpdatePump(session,UpdateMessage);session.AgentTaskChanged+=RefreshSummary;session.MessageAdded+=AddMessage;session.HistoryChanged+=HistoryChanged;session.StateChanged+=RefreshState;pet.Live.StateChanged+=RefreshState;
-            string draft;input.Text=drafts.TryGetValue(DraftKey(),out draft)?draft:"";ReloadHistory();RefreshAppearance();RefreshState();RefreshEntryControls();
+            ReloadHistory();RefreshAppearance();RefreshState();RefreshEntryControls();
         }
         // Task records live under the project workspace, not the global setting.
         PetSettings TaskSettings()
