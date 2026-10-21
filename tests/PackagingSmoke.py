@@ -33,6 +33,11 @@ result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'By
                         cwd=checkout, capture_output=True, timeout=180)
 assert result.returncode == 0, result.stdout.decode('utf-8', errors='replace') + result.stderr.decode('utf-8', errors='replace')
 print('PASS application compiles from the fresh public source tree')
+for executable in ['桌面伙伴.exe', 'DeskPet.Update.exe']:
+    assert (runtime / executable).is_file(), (
+        'Fresh build is missing ' + ascii(executable) + '; actual executables: ' +
+        ascii(sorted(path.name for path in runtime.glob('*.exe'))) +
+        '. Keep non-ASCII PowerShell scripts UTF-8 with BOM for Windows PowerShell 5.1.')
 # A reused portable folder must not leak previous executables or private loose files.
 (runtime / '大肥鱼桌宠.exe').write_bytes(b'legacy binary, do not ship')
 (runtime / 'private-key.txt').write_text('private sentinel', encoding='utf-8')

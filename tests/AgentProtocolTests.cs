@@ -14,6 +14,8 @@ namespace Dafeiyu.Tests
     public static class AgentProtocolTests
     {
         private static int passed,failed;
+        // These checks verify protocol observations, not PowerShell cold-start speed on hosted runners.
+        const int CommandVerificationTimeoutSeconds=30;
         public static int Main(string[] args)
         {
             if(args.Length>0 && args[0]=="--wait-command"){File.WriteAllText(args[1],"started");for(int i=0;i<1000;i++){if(File.Exists(args[2])){Console.WriteLine("finished naturally");return 0;}Thread.Sleep(10);}return 9;}
@@ -216,10 +218,10 @@ namespace Dafeiyu.Tests
             });
             Run("both protocols patch actual files then execute an authorized verification",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","exec_command",new{command="Get-Content verified.txt",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","exec_command",new{command="Get-Content verified.txt",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
                 {
                     var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);
-                    Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(0,workspace.CommandResults[0].ExitCode);Assert(workspace.CommandResults[0].Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
+                    Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);var command=workspace.CommandResults[0];Assert(command.ExitCode==0&&!command.TimedOut&&!command.Cancelled,"verification failed: exit="+command.ExitCode+", timedOut="+command.TimedOut+", cancelled="+command.Cancelled+", elapsedMs="+command.ElapsedMilliseconds+", output="+command.Output);Assert(command.Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
                 }
             });
             Run("successful edits reset the repeated-error streak",async delegate
@@ -229,7 +231,7 @@ namespace Dafeiyu.Tests
             });
             Run("different real command diagnostics reset the error streak",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"b","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"c","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(ToolReply(anthropic,"b","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(ToolReply(anthropic,"c","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
                 {var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);Equal("new diagnostics retained",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(workspace.CommandResults[2].Output.Contains("diagnostic-3"),"changing command errors lost");}
             });
             Run("repeated identical errors stop after three real protocol rounds",async delegate
