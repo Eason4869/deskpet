@@ -54,19 +54,29 @@ namespace Dafeiyu
             if (settings == null || String.IsNullOrWhiteSpace(settings.Model)) throw new ApiException("请先在设置中填写服务地址和模型名称。");
             Uri uri;
             if (!Uri.TryCreate((settings.BaseUrl ?? "").Trim(), UriKind.Absolute, out uri) ||
-                !(uri.Scheme == "https" || (uri.Scheme == "http" && uri.IsLoopback)) ||
+                !(uri.Scheme == "https" || (uri.Scheme == "http" && IsLocalService(uri))) ||
                 uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0)
-                throw new ApiException("服务地址需要是 HTTPS；本机服务可以使用 http://127.0.0.1。地址中不要带密钥或查询参数。");
+                throw new ApiException("远程服务请使用 HTTPS；本机或局域网 IP 可使用 HTTP，例如 http://192.168.1.50:3000/v1。地址中不要带账号、密钥、查询参数或片段。");
             string address = uri.AbsoluteUri.TrimEnd('/');
             foreach(string known in new[]{"chat/completions","audio/transcriptions","audio/speech","messages"})
                 if(address.EndsWith("/"+known,StringComparison.OrdinalIgnoreCase)) { address=address.Substring(0,address.Length-known.Length-1); break; }
             if (!address.EndsWith("/" + suffix, StringComparison.OrdinalIgnoreCase)) address += "/" + suffix;
             return new Uri(address);
         }
+        internal static bool IsLocalService(Uri uri)
+        {
+            if(uri.IsLoopback)return true;
+            IPAddress address;if(!IPAddress.TryParse(uri.DnsSafeHost,out address))return false;
+            if(address.IsIPv4MappedToIPv6)address=address.MapToIPv4();
+            byte[] bytes=address.GetAddressBytes();
+            if(address.AddressFamily==System.Net.Sockets.AddressFamily.InterNetwork)
+                return bytes[0]==10 || bytes[0]==172&&bytes[1]>=16&&bytes[1]<=31 || bytes[0]==192&&bytes[1]==168 || bytes[0]==169&&bytes[1]==254 || bytes[0]==100&&bytes[1]>=64&&bytes[1]<=127;
+            return address.AddressFamily==System.Net.Sockets.AddressFamily.InterNetworkV6&&((bytes[0]&0xfe)==0xfc||address.IsIPv6LinkLocal);
+        }
         public static void ValidateConnection(ConnectionSettings settings,string suffix)
         {
             Uri endpoint=Endpoint(settings,suffix); string key=settings.ApiKey;
-            if(key.Length==0 && !endpoint.IsLoopback) throw new ApiException("请在设置中填写此服务的 API 密钥。");
+            if(key.Length==0 && !IsLocalService(endpoint)) throw new ApiException("请在设置中填写此服务的 API 密钥。");
             if(key.IndexOfAny(new char[]{'\r','\n'})>=0) throw new ApiException("API 密钥中有换行，请重新粘贴完整密钥。");
         }
         private static HttpRequestMessage Request(ConnectionSettings settings, string suffix, HttpContent content)
@@ -74,7 +84,7 @@ namespace Dafeiyu
             ValidateConnection(settings,suffix);
             Uri endpoint = Endpoint(settings, suffix);
             string key = settings.ApiKey;
-            if (key.Length == 0 && !endpoint.IsLoopback) throw new ApiException("请在设置中填写此服务的 API 密钥。");
+            if (key.Length == 0 && !IsLocalService(endpoint)) throw new ApiException("请在设置中填写此服务的 API 密钥。");
             var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
             if(settings.Protocol=="anthropic")
             { if(key.Length>0) request.Headers.Add("x-api-key",key); request.Headers.Add("anthropic-version","2023-06-01"); }

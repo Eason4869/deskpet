@@ -226,12 +226,12 @@ namespace Dafeiyu.Tests
             private readonly TaskCompletionSource<bool> headersSent=new TaskCompletionSource<bool>();
             public Task HeadersSent { get {return headersSent.Task;} }
             public Task Done;
-            public Fixture(string json, int statusCode = 200) : this(Encoding.UTF8.GetBytes(json), "application/json", statusCode) { }
-            public Fixture(byte[] bytes, string mime, int statusCode = 200)
+            public Fixture(string json, int statusCode = 200, IPAddress bindAddress=null) : this(Encoding.UTF8.GetBytes(json), "application/json", statusCode,bindAddress) { }
+            public Fixture(byte[] bytes, string mime, int statusCode = 200, IPAddress bindAddress=null)
             {
                 reply = bytes; replyType = mime; status = statusCode;
-                listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
-                Url = "http://127.0.0.1:" + ((IPEndPoint)listener.LocalEndpoint).Port;
+                listener = new TcpListener(bindAddress??IPAddress.Loopback, 0); listener.Start();
+                Url = "http://"+(bindAddress??IPAddress.Loopback).ToString()+":" + ((IPEndPoint)listener.LocalEndpoint).Port;
                 Done = Task.Run((Func<Task>)Serve);
             }
             private async Task Serve()

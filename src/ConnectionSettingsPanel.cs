@@ -183,7 +183,7 @@ namespace Dafeiyu
                 proxy=Ui.Toggle("使用代理连接",settings.UseProxy,v=>{});proxy.Name=prefix+"Proxy";
                 proxyAddress=Ui.Field(ProxyConfiguration.Normalize(settings.ProxyAddress));proxyAddress.Name=prefix+"ProxyAddress";
                 var presets=new ComboBox{Name=prefix+"Preset",ItemsSource=ServicePresets.For(kind),SelectedIndex=0,MinHeight=38,Padding=new Thickness(8)};
-                hint=Ui.Text("可修改地址和模型。切换到其他服务域名时会清空密钥。",11,Ui.Muted);hint.Margin=new Thickness(0,7,0,3);
+                hint=Ui.Text(kind=="live"?"支持 WSS；本机测试可使用 ws://127.0.0.1。切换到其他服务时会清空密钥。":"支持 HTTPS，或本机／局域网 IP 的 HTTP 地址。切换到其他服务时会清空密钥。",11,Ui.Muted);hint.Margin=new Thickness(0,7,0,3);
                 string keyOrigin=address.Text;
                 key.PasswordChanged+=delegate {keyOrigin=address.Text;};
                 address.TextChanged+=delegate {if(key.Password.Length>0 && !ServicePresets.SameOrigin(keyOrigin,address.Text)){key.Clear();hint.Text="服务地址已改变，请填写该服务的 API 密钥。";}};
