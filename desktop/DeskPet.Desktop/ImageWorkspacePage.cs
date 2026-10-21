@@ -28,8 +28,8 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private int galleryLimit = 40;
     private readonly TextBox search = Ui.Input("", "按提示词或模型搜索图库");
     private readonly List<GeneratedImageCard> resultCards = new(), galleryCards = new();
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    private readonly System.Diagnostics.Stopwatch elapsed = new();
+
+
     private CancellationTokenSource? cancellation;
     private string? imageJobId;
     private byte[]? referenceBytes;
@@ -80,7 +80,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         ItemsSource = new[] { new TabItem { Header = "生成", Content = new ScrollViewer { Content = generation } }, new TabItem { Header = "图库", Content = new ScrollViewer { Content = galleryPage } } };
         SelectedIndex = 0;
         search.TextChanged += (_, _) => { galleryLimit = 40; RefreshGallery(); }; owner.ImageStore.Changed += StoreChanged; owner.Changed += RefreshProviders;
-        timer.Tick += (_, _) => status.Text = "正在生成图片… " + elapsed.Elapsed.TotalSeconds.ToString("0") + " 秒";
+
         RefreshProviders(); RefreshGallery();
     }
     private void StoreChanged()
@@ -154,15 +154,15 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var text = prompt.Text?.Trim(); if (string.IsNullOrEmpty(text)) throw new InvalidOperationException("请输入图片提示词。");
         if (missingReference) throw new InvalidOperationException("原参考图不可用，请重新上传或移除参考图后再生成。");
         if (referenceBytes != null && !provider.SupportsEdits) throw new InvalidOperationException("所选服务不支持参考图编辑。请更换服务或移除参考图。");
-        using var cancel = new CancellationTokenSource(); cancellation = cancel; elapsed.Restart(); timer.Start(); UpdateCapability();
+        using var cancel = new CancellationTokenSource(); cancellation = cancel; status.Text="任务已提交"; UpdateCapability();
         try
         {
-            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = text, Size = Parameter(size), Quality = Parameter(quality), ReferenceImageBytes = referenceBytes?.ToArray(), ReferenceMediaType = referenceMediaType, ReferenceImageId = referenceId, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart = id => { imageJobId=id; return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
-            if (disposed) return; foreach (var card in resultCards) card.Dispose(); resultCards.Clear(); result.Children.Clear(); var view = new GeneratedImageCard(owner, host, image, Prepare); resultCards.Add(view); result.Children.Add(view); status.Text = "生成完成 · " + elapsed.Elapsed.TotalSeconds.ToString("0.0") + " 秒";
+            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = text, Size = Parameter(size), Quality = Parameter(quality), ReferenceImageBytes = referenceBytes?.ToArray(), ReferenceMediaType = referenceMediaType, ReferenceImageId = referenceId, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart = id => { imageJobId=id; result.Children.Clear();result.Children.Add(new ImageGenerationPendingCard(owner,host,id,Prepare)); return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
+            if (disposed) return; foreach (var card in resultCards) card.Dispose(); resultCards.Clear();  status.Text = "生成完成";
         }
         catch (OperationCanceledException) { status.Text = "已取消生成。"; }
         catch (Exception e) { status.Text = "生成失败：" + e.Message; }
-        finally { timer.Stop(); elapsed.Stop(); cancellation = null; if (!disposed) UpdateCapability(); }
+        finally {  cancellation = null; if (!disposed) UpdateCapability(); }
     }
     internal void RefreshGallery()
     {
@@ -173,5 +173,5 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         foreach (var item in visible) { var card = new GeneratedImageCard(owner, host, item, Prepare, owner.Settings.ImageGalleryLayout); galleryCards.Add(card); gallery.Children.Add(card); }
         gallery.SetImages(visible); loadMore.IsVisible = found.Count > galleryLimit; RefreshGalleryLayout();
     }
-    public void Dispose() { disposed = true;  timer.Stop(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose(); }
+    public void Dispose() { disposed = true;   owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose(); }
 }

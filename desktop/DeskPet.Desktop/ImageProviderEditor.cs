@@ -108,9 +108,8 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         var provider = selected.Copy(); using var cancel = new CancellationTokenSource(); cancellation = cancel; notice.Text = "正在测试生成…";
         try
         {
-            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = "A small friendly blue fish on a simple white background", Size = provider.Size, Quality = provider.Quality, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.SettingsTest}) { BeforeStart = id => { imageJobId=id; return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
-            if(disposed)return; foreach (var card in cards) card.Dispose(); cards.Clear(); result.Children.Clear();
-            var view = new GeneratedImageCard(owner, host, image); cards.Add(view); result.Children.Add(view); notice.Text = "连接成功，测试图片已加入图库。";
+            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = "A small friendly blue fish on a simple white background", Size = provider.Size, Quality = provider.Quality, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.SettingsTest}) { BeforeStart = id => { imageJobId=id; result.Children.Clear();result.Children.Add(new ImageGenerationPendingCard(owner,host,id)); return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
+            if(disposed)return; foreach (var card in cards) card.Dispose(); cards.Clear(); notice.Text = "连接成功，测试图片已加入图库。";
         }
         catch (OperationCanceledException) { notice.Text = "测试已取消。"; }
         catch (Exception e) { notice.Text = "测试失败：" + e.Message; }

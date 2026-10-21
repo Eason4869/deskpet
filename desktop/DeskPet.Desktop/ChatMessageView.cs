@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -104,11 +104,12 @@ internal sealed class ChatMessageView : Border
     internal void DisposeImages() { DisposeSentImages(); foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); }
     private void RefreshGeneratedImages(ChatMessage message)
     {
-        var images = message.GeneratedImages ?? new(); var signature = string.Join("|", images.Select(i => i.Id));
+        var images = message.GeneratedImages ?? new(); var signature = string.Join("|", message.ImageGenerationTaskIds ?? new())+string.Join("|", images.Select(i => i.Id));
         if (signature == generatedSignature) return; generatedSignature = signature;
         foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); generatedImages.Children.Clear();
+        foreach(var taskId in message.ImageGenerationTaskIds ?? new()) { var task=owner.ImageTasks.Get(taskId);if(task!=null&&!images.Any(i=>i.ImageJobId==taskId||i.Id==task.ResultImageId))generatedImages.Children.Add(new ImageGenerationPendingCard(owner,window,taskId)); }
         foreach (var image in images) { var card = new GeneratedImageCard(owner, window, image); generatedCards.Add(card); generatedImages.Children.Add(card); }
-        generatedImages.IsVisible = images.Count > 0;
+        generatedImages.IsVisible = generatedImages.Children.Count > 0;
     }
     private void RefreshSentAttachments(IList<ChatAttachment>? files)
     {

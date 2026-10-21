@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Text.Json;
 using Avalonia;
@@ -44,11 +44,11 @@ internal static class ImageUiChecks
         try { Complete(workspace.GenerateAsync()); throw new Exception("FAIL: unsupported edit accepted"); } catch (InvalidOperationException) { checks++; }
         Check(handler.Requests == 0, "unsupported reference edit is rejected before any request");
         workspace.ProviderChoices.SelectedIndex = 1;
-        var generation = workspace.GenerateAsync(); Check(workspace.IsGenerating, "generation exposes running state");
+        handler.Gate=new TaskCompletionSource<bool>();var generation = workspace.GenerateAsync();Until(()=>workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.ClockRunning));var pendingCard=workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().First();checks+=ImageMotionUiChecks.Run(owner,window,pendingCard);handler.Gate.SetResult(true);handler.Gate=null; Check(workspace.IsGenerating, "generation exposes running state");
         window.NavigateHistory(-1); Check(window.CurrentPage == "chat" && workspace.IsGenerating, "leaving image page retains running request");
         Complete(generation); Complete(handler.LastResponse);
         Check(handler.Requests == 1 && handler.LastPath.EndsWith("/images/edits") && owner.ImageStore.List().Count == 1, "reference generation performs exactly one edit and commits gallery asset");
-        window.ShowImages(); workspace.SelectedIndex = 1; workspace.RefreshGallery();
+        window.ShowImages();Dispatcher.UIThread.RunJobs();Check(workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.GetLogicalDescendants().OfType<GeneratedImageCard>().Any()&&!c.ClockRunning),"SuccessReplacesPlaceholderInPlace and stops frame clock"); workspace.SelectedIndex = 1; workspace.RefreshGallery();
         Check(workspace.GalleryCount == 1, "workspace generation appears in gallery"); workspace.Search.Text = "not-present"; Dispatcher.UIThread.RunJobs(); Check(workspace.GalleryCount == 0, "gallery filtering excludes mismatched prompt/model"); workspace.Search.Text = "ui-image-model"; Dispatcher.UIThread.RunJobs(); Check(workspace.GalleryCount == 1, "gallery model search finds asset");
         var image = owner.ImageStore.List()[0]; workspace.Prepare(image); Check(workspace.SelectedIndex == 0 && prompt.Text == image.Prompt && !workspace.IsGenerating, "regenerate prepares explicit new request without automatic call");
         handler.Delay = true; prompt.Text = "cancel this generation"; var cancelled = workspace.GenerateAsync(); Check(workspace.IsGenerating, "second generation runs");
@@ -114,10 +114,10 @@ internal static class ImageUiChecks
     }
     private sealed class ImageHandler : HttpMessageHandler
     {
-        internal byte[] Png = Array.Empty<byte>(); internal int Requests; internal bool Delay; internal string LastPath = ""; internal Task LastResponse = Task.CompletedTask;
+        internal TaskCompletionSource<bool>? Gate;internal byte[] Png = Array.Empty<byte>(); internal int Requests; internal bool Delay; internal string LastPath = ""; internal Task LastResponse = Task.CompletedTask;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Interlocked.Increment(ref Requests); LastPath = request.RequestUri!.AbsolutePath;
+            if(Gate!=null)await Gate.Task.WaitAsync(cancellationToken);Interlocked.Increment(ref Requests); LastPath = request.RequestUri!.AbsolutePath;
             if (Delay) await Task.Delay(Timeout.Infinite, cancellationToken); else await Task.Delay(80, cancellationToken);
             var json = JsonSerializer.Serialize(new { data = new[] { new { b64_json = Convert.ToBase64String(Png) } } });
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
