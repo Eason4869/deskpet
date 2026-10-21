@@ -16,6 +16,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryManagementTests.Main();}
             if(args.Length==1 && args[0]=="--image-backend-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationBackendTests.Main();}
             if(args.Length==1 && args[0]=="--image-layout-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryLayoutTests.Main();}
+            if(args.Length==1 && args[0]=="--image-gallery-export-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryExportTests.Main();}
             if(args.Length==1 && args[0]=="--image-protocols-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageProviderProtocolTests.Main();}
             if(args.Length==1 && args[0]=="--image-task-store-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskStoreTests.Main();}
             if(args.Length==1 && args[0]=="--history-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryTests.Main();}

@@ -14,19 +14,21 @@ namespace DeskPet.Desktop;
 
 internal sealed class GeneratedImageCard : Border, IDisposable
 {
+    private static readonly SemaphoreSlim GalleryDecodeGate = new(3);
     private readonly DesktopController owner;
     private readonly Window host;
     private readonly GeneratedImage metadata;
     private readonly Action<GeneratedImage>? regenerate;
     private Bitmap? thumbnail;
     private Image? tileImage;
+    private bool disposed;
     internal bool IsGalleryTile { get; }
     internal void SetGalleryLayout(string layout) { if (tileImage != null) tileImage.Stretch = layout == "grid" ? Stretch.UniformToFill : Stretch.Uniform; }
-    public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null)
+    public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null, Action<string>? choose = null, Action<string>? favorite = null, bool selected = false, bool selecting = false)
     {
         owner = controller; host = window; metadata = image.Copy(); regenerate = repeat; Name = "GeneratedImageCard";
         IsGalleryTile = galleryLayout != null;
-        if (IsGalleryTile) { BuildTile(galleryLayout!); return; }
+        if (IsGalleryTile) { BuildTile(galleryLayout!, choose, favorite, selected, selecting); return; }
         Padding = new Thickness(12); Margin = new Thickness(0, 0, 8, 8); CornerRadius = new CornerRadius(12); BorderBrush = DesktopTheme.Brush("#E0E4E9"); BorderThickness = new Thickness(1); MaxWidth = 520;
         var body = Ui.Column(); Child = body;
         try
@@ -42,29 +44,37 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         foreach (var button in new[] { Ui.AsyncButton("另存为", SaveAsync, owner.Error), Ui.AsyncButton("复制图片", CopyAsync, owner.Error), Ui.Button("详情", Details), Ui.AsyncButton("打开目录", OpenDirectoryAsync, owner.Error), Ui.Button("再生成", Regenerate) }) { button.Margin = new Thickness(0, 0, 4, 4); actions.Children.Add(button); }
         body.Children.Add(actions);
     }
-    private void BuildTile(string layout)
+    private void BuildTile(string layout, Action<string>? choose, Action<string>? favorite, bool selected, bool selecting)
     {
         Name = "GeneratedImageTile"; CornerRadius = new CornerRadius(14); ClipToBounds = true; Background = DesktopTheme.Brush("#F2F4F7");
         var surface = new Grid(); Child = surface;
         var open = Ui.Button("", () => OpenPreview(true)); open.Name = "GalleryImagePreview"; open.Padding = new Thickness(0); open.BorderThickness = new Thickness(0); open.CornerRadius = CornerRadius; open.Background = Brushes.Transparent; open.HorizontalAlignment = HorizontalAlignment.Stretch; open.VerticalAlignment = VerticalAlignment.Stretch; open.HorizontalContentAlignment = HorizontalAlignment.Stretch; open.VerticalContentAlignment = VerticalAlignment.Stretch;
         AutomationProperties.SetName(open, "预览图片：" + metadata.Prompt);
-        try
-        {
-            using var stream = new MemoryStream(owner.ImageStore.Read(metadata.Id));
-            var thumbnailWidth = Math.Max(1, (int)(Math.Max(1, metadata.Width) * Math.Min(1, 480d / Math.Max(1, Math.Max(metadata.Width, metadata.Height)))));
-            thumbnail = Bitmap.DecodeToWidth(stream, thumbnailWidth);
-            tileImage = new Image { Name = "GalleryTileImage", Source = thumbnail }; SetGalleryLayout(layout); open.Content = tileImage;
-        }
-        catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { open.Content = new TextBlock { Text = "图片缺失或损坏", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(14), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }; }
+        tileImage = new Image { Name = "GalleryTileImage" }; SetGalleryLayout(layout); open.Content = tileImage; _ = LoadGalleryThumbnailAsync();
         ToolTip.SetTip(this, metadata.Prompt + "\n" + metadata.Model + " · " + metadata.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")); surface.Children.Add(open);
         var menu = new ContextMenu();
         MenuItem Action(string title, Action callback) { var item = new MenuItem { Header = title }; item.Click += (_, _) => callback(); return item; }
         menu.ItemsSource = new object[] { Action("查看图片详情", () => OpenPreview(true)), Action("另存为", () => owner.Run(SaveAsync)), Action("复制图片", () => owner.Run(CopyAsync)), Action("打开目录", () => owner.Run(OpenDirectoryAsync)), Action("详情", Details), Action("再生成", Regenerate) };
         ContextMenu = menu;
-        var more = Ui.Button("⋯", () => menu.Open(this)); more.Name = "GalleryTileActions"; more.Width = more.Height = 32; more.FontSize = 22; more.Padding = new Thickness(0); more.CornerRadius = new CornerRadius(16); more.Background = new SolidColorBrush(Color.Parse("#B0171B22")); more.Foreground = Brushes.White; more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Top; more.Margin = new Thickness(8); more.Opacity = 0;
+        var more = Ui.Button("⋯", () => menu.Open(this)); more.Name = "GalleryTileActions"; more.Width = more.Height = 32; more.FontSize = 22; more.Padding = new Thickness(0); more.CornerRadius = new CornerRadius(16); more.Background = new SolidColorBrush(Color.Parse("#B0171B22")); more.Foreground = Brushes.White; more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Bottom; more.Margin = new Thickness(8); more.Opacity = 0;
         AutomationProperties.SetName(more, "图片操作"); ToolTip.SetTip(more, "图片操作"); surface.Children.Add(more);
-        PropertyChanged += (_, e) => { if (e.Property == IsPointerOverProperty || e.Property == IsKeyboardFocusWithinProperty) more.Opacity = IsPointerOver || IsKeyboardFocusWithin ? 1 : 0; };
+        var pick = Ui.Button(selected ? "已" : "选", () => choose?.Invoke(metadata.Id)); pick.Name = "GalleryTileSelect"; pick.Width = pick.Height = 32; pick.Padding = new Thickness(0); pick.HorizontalAlignment = HorizontalAlignment.Left; pick.VerticalAlignment = VerticalAlignment.Top; pick.Margin = new Thickness(8); AutomationProperties.SetName(pick, "选择图片"); surface.Children.Add(pick);
+        var star = Ui.Button(metadata.IsFavorite ? "藏" : "收", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); AutomationProperties.SetName(star, "收藏图片"); surface.Children.Add(star);
+        pick.Opacity = star.Opacity = selecting || selected ? 1 : 0;
+        PropertyChanged += (_, e) => { if (e.Property == IsPointerOverProperty || e.Property == IsKeyboardFocusWithinProperty) { var visible = IsPointerOver || IsKeyboardFocusWithin; more.Opacity = visible ? 1 : 0; pick.Opacity = star.Opacity = visible || selecting || selected ? 1 : 0; } };
         SizeChanged += (_, _) => Clip = new RectangleGeometry(new Rect(Bounds.Size), 14, 14);
+    }
+    private async Task LoadGalleryThumbnailAsync()
+    {
+        bool entered = false;
+        try
+        {
+            await GalleryDecodeGate.WaitAsync(); entered = true; if (disposed) return;
+            var image = await Task.Run(() => { using (owner.ImageUsage.Acquire(metadata.Id, "gallery-thumbnail")) { using var data = new MemoryStream(owner.ImageStore.Read(metadata.Id)); var width = Math.Max(1, (int)(Math.Max(1, metadata.Width) * Math.Min(1, 480d / Math.Max(1, Math.Max(metadata.Width, metadata.Height))))); return Bitmap.DecodeToWidth(data, width); } });
+            await Dispatcher.UIThread.InvokeAsync(() => { if (disposed) image.Dispose(); else { thumbnail?.Dispose(); thumbnail = image; if (tileImage != null) tileImage.Source = image; } });
+        }
+        catch (Exception error) when (error is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { await Dispatcher.UIThread.InvokeAsync(() => { if (!disposed) ToolTip.SetTip(this, "图片缺失或损坏"); }); }
+        finally { if (entered) GalleryDecodeGate.Release(); }
     }
     private void Regenerate()
     {
@@ -124,7 +134,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         }
         catch (Exception e) { owner.Error(e); }
     }
-    public void Dispose() { thumbnail?.Dispose(); thumbnail = null; }
+    public void Dispose() { disposed = true; if (tileImage != null) tileImage.Source = null; thumbnail?.Dispose(); thumbnail = null; }
 
     // Clipboard data is requested lazily by some platforms. Its bitmap must survive
     // closing the card/preview; the clipboard owns and eventually disposes this object.

@@ -19,15 +19,18 @@ internal static class GalleryLayoutUiChecks
         void Check(bool value, string label) { if (!value) throw new Exception("FAIL: gallery layout " + label); checks++; }
         void Render() { Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick(); }
         var page = window.Images; window.ShowImages(); page.SelectedIndex = 1; page.Search.Text = "layout fixture";
+        void AwaitTiles(int count) { var clock = System.Diagnostics.Stopwatch.StartNew(); while (clock.ElapsedMilliseconds < 5000) { Render(); if (page.GalleryCount == count && page.GalleryPanel.Children.OfType<GeneratedImageCard>().All(t => t.GetLogicalDescendants().OfType<Image>().Any(i => i.Source != null))) return; Thread.Sleep(10); } throw new TimeoutException("gallery thumbnails did not settle"); }
+        Check(page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GallerySelectLoaded") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryExportSelected") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryCleanupOrphans"), "selection, original export and explicit orphan cleanup controls are visible");
         var shapes = new[] { (320, 560), (600, 320), (400, 400), (400, 610), (640, 360), (420, 520), (460, 340) };
         for (int i = 0; i < shapes.Length; i++) owner.ImageStore.Save(Png(shapes[i].Item1, shapes[i].Item2, i), new GeneratedImage { Prompt = "layout fixture " + i, Model = "layout-model" }, true);
-        Render(); page.RefreshGallery(); Render();
+        Render(); page.RefreshGallery(); AwaitTiles(shapes.Length);
         Button Toggle(string name) => page.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == name);
         Toggle("GalleryMasonryLayout").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.Width = 960; Render();
         Check(owner.Settings.ImageGalleryLayout == "masonry" && page.GalleryCount == shapes.Length, "masonry is selected and includes every filtered thumbnail");
         var tiles = page.GalleryPanel.Children.OfType<GeneratedImageCard>().ToArray();
+        Check(!page.GetLogicalDescendants().OfType<WrapPanel>().First(p => p.Children.OfType<Button>().Any(b => b.Name == "GallerySelectLoaded")).IsVisible, "bulk actions are hidden until multi-select starts");
         Check(tiles.All(t => t.IsGalleryTile && t.GetLogicalDescendants().OfType<Image>().Single().Stretch == Stretch.Uniform), "masonry uses full image aspect ratios");
-        Check(tiles.All(t => !t.GetLogicalDescendants().OfType<TextBlock>().Any(text => !string.IsNullOrEmpty(text.Text) && text.Text != "⋯") && !t.GetLogicalDescendants().OfType<WrapPanel>().Any() && t.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 2), "gallery contains image tiles and ellipsis only without metadata or full action rows");
+        Check(tiles.All(t => !t.GetLogicalDescendants().OfType<WrapPanel>().Any() && t.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 4), "gallery contains preview and compact action overlays without metadata rows");
         var expected = ImageGalleryLayout.Calculate(owner.ImageStore.List().Where(i => i.Prompt.StartsWith("layout fixture")).ToList(), page.GalleryPanel.Bounds.Width, "masonry");
         Check(expected.Columns > 1 && tiles.Zip(expected.Items).All(p => Math.Abs(p.First.Bounds.Height - p.Second.Height) < 2 && Math.Abs(p.First.Bounds.Width - p.Second.Width) < 2), "masonry arranges native tiles at shared aspect preserving placements");
         Toggle("GalleryGridLayout").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Render();
@@ -55,9 +58,17 @@ internal static class GalleryLayoutUiChecks
         Toggle("GalleryMasonryLayout").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Render();
         Check(new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json")).Load().ImageGalleryLayout == "masonry", "masonry preference roundtrips after switching back");
         for (int i = shapes.Length; i < 43; i++) owner.ImageStore.Save(Png(2, 3, i), new GeneratedImage { Prompt = "layout fixture " + i, Model = "layout-model" }, false);
-        Render(); Check(page.GalleryCount == 40, "gallery initially attaches forty filtered tiles");
-        Toggle("LoadMoreGalleryImages").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Render(); Check(page.GalleryCount == 43, "load more exposes remaining images");
-        page.Search.Text = "layout fixture 42"; Render(); Check(page.GalleryCount == 1, "filter resets pagination and finds older assets");
+        AwaitTiles(40); Check(page.GalleryCount == 40, "gallery initially attaches forty filtered tiles");
+        Toggle("LoadMoreGalleryImages").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(43); Check(page.GalleryCount == 43, "load more exposes remaining images");
+        page.Search.Text = "layout fixture 42"; AwaitTiles(1); Check(page.GalleryCount == 1, "filter resets pagination and finds older assets");
+        Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(1);
+        var selectable = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single(); var selectedId = owner.ImageStore.List().Single(i => i.Prompt == "layout fixture 42").Id;
+        var pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); var overlayClock = System.Diagnostics.Stopwatch.StartNew(); while (overlayClock.ElapsedMilliseconds < 5000 && pick.Opacity != 1) { Thread.Sleep(10); Render(); selectable = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single(); pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); } Check(pick.Focusable && pick.Opacity == 1, "multi-select exposes keyboard focusable selection overlay");
+        int windowsBefore = window.OwnedWindows.Count; pick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); var selectedClock = System.Diagnostics.Stopwatch.StartNew(); while (selectedClock.ElapsedMilliseconds < 5000 && page.GallerySelectedCount != 1) { Thread.Sleep(10); Render(); } Check(window.OwnedWindows.Count == windowsBefore && page.GallerySelectedCount == 1, "selection click changes stable ID without opening details");
+        Render(); using (var selectedShot = window.CaptureRenderedFrame()) selectedShot!.Save(Path.Combine(artifacts, "image-gallery-selected-dark.png"));
+        var star = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single().GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileFavorite"); star.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(1); Check(owner.ImageStore.Get(selectedId).IsFavorite && window.OwnedWindows.Count == windowsBefore, "favorite overlay updates asset without opening details");
+        owner.ImageStore.MoveToTrash(new[] { selectedId }); var trashView = page.GetLogicalDescendants().OfType<CheckBox>().First(c => c.Content as string == "回收站"); trashView.IsChecked = true; var trashClock = System.Diagnostics.Stopwatch.StartNew(); while (trashClock.ElapsedMilliseconds < 5000 && !Toggle("GalleryClearTrash").IsVisible) { Thread.Sleep(10); Render(); } Check(Toggle("GalleryClearTrash").IsVisible, "trash exposes reference-protected clear action"); using (var trashShot = window.CaptureRenderedFrame()) trashShot!.Save(Path.Combine(artifacts, "image-gallery-trash-dark.png")); owner.ImageStore.Restore(new[] { selectedId }); trashView.IsChecked = false;
+        page.Search.Text = "no image matches"; Render(); Check(page.GallerySelectedCount == 0, "filter clears loaded selection");
         page.Search.Text = ""; DesktopTheme.Apply(owner.Settings.ThemeMode); window.Width = 880; Render(); return checks;
     }
     private static byte[] Png(int width, int height, int seed)
