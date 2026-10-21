@@ -21,6 +21,28 @@ namespace Dafeiyu.Tests
             }
         }
         static ConnectionSettings Config(){return new ConnectionSettings{BaseUrl="https://api.github.com",ApiKey="secret",Protocol="github"};}
+        sealed class FailureHandler:HttpMessageHandler
+        {
+            internal string Mode;
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
+            {
+                if(Mode=="network")throw new HttpRequestException("PRIVATE transport details");
+                if(Mode=="body")return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StreamContent(new BrokenStream())});
+                if(Mode=="timeout")throw new OperationCanceledException();
+                if(Mode=="cancel"){token.ThrowIfCancellationRequested();throw new OperationCanceledException(token);}
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden){Content=new StringContent("PRIVATE response body")});
+            }
+        }
+        sealed class BrokenStream:System.IO.Stream
+        {
+            public override bool CanRead{get{return true;}}public override bool CanWrite{get{return false;}}public override bool CanSeek{get{return false;}}
+            public override long Length{get{throw new NotSupportedException();}}public override long Position{get{throw new NotSupportedException();}set{throw new NotSupportedException();}}
+            public override void Flush(){}public override void SetLength(long value){throw new NotSupportedException();}public override long Seek(long value,System.IO.SeekOrigin origin){throw new NotSupportedException();}
+            public override void Write(byte[] buffer,int offset,int count){throw new NotSupportedException();}
+            public override int Read(byte[] buffer,int offset,int count){throw new System.IO.IOException("PRIVATE body details");}
+            public override Task<int> ReadAsync(byte[] buffer,int offset,int count,CancellationToken token){throw new System.IO.IOException("PRIVATE body details");}
+            public override Task CopyToAsync(System.IO.Stream destination,int bufferSize,CancellationToken token){throw new System.IO.IOException("PRIVATE body details");}
+        }
         public static int Main()
         {
             try
@@ -32,6 +54,23 @@ namespace Dafeiyu.Tests
                 Check(issue.Contains("bug") && handler.Requests[1].StartsWith("POST"),"GitHubCreateIssue posts an authenticated issue");
                 var web=client.ExecuteAsync("fetch_url",new Dictionary<string,object>{{"url","https://example.test/page"}},CancellationToken.None).GetAwaiter().GetResult();
                 Check(web.Length>0 && handler.Requests.Count>=3,"FetchUrl returns bounded readable web text");
+                foreach(string tool in new[]{"fetch_url","github_read_issue"})foreach(string mode in new[]{"http","network","body","timeout"})
+                using(var failing=new GitHubClient(new Uri("https://api.github.com"),new FailureHandler{Mode=mode},"openai/codex","secret"))
+                {
+                    string result=failing.ExecuteAsync(tool,new Dictionary<string,object>{{"url","https://example.test/page"},{"number",1}},CancellationToken.None).GetAwaiter().GetResult();
+                    Check(result.StartsWith("错误：")&&!result.Contains("PRIVATE")&&!result.Contains("secret"),tool+" reports sanitized "+mode+" failure as a tool result");
+                }
+                using(var writing=new GitHubClient(new Uri("https://api.github.com"),new FailureHandler{Mode="network"},"openai/codex","secret"))
+                {
+                    bool uncertain=false;try{writing.ExecuteAsync("github_create_issue",new Dictionary<string,object>{{"title","issue"}},CancellationToken.None).GetAwaiter().GetResult();}catch(HttpRequestException){uncertain=true;}
+                    Check(uncertain,"write transport failures still require reconciliation rather than inviting duplicate writes");
+                }
+                using(var stopping=new GitHubClient(new Uri("https://api.github.com"),new FailureHandler{Mode="cancel"},"openai/codex","secret"))
+                using(var cancel=new CancellationTokenSource())
+                {
+                    cancel.Cancel();bool cancelled=false;try{stopping.ExecuteAsync("fetch_url",new Dictionary<string,object>{{"url","https://example.test/page"}},cancel.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                    Check(cancelled,"explicit cancellation remains cancellation");
+                }
                 Console.WriteLine("GitHub tools tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
         }

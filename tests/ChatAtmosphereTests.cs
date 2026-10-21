@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -23,6 +25,79 @@ namespace Dafeiyu.Tests
         static double Linear(byte component) { double c=component/255.0;return c<=.04045?c/12.92:Math.Pow((c+.055)/1.055,2.4); }
         static double Luminance(byte r,byte g,byte b) { return .2126*Linear(r)+.7152*Linear(g)+.0722*Linear(b); }
         static TextBlock Text(string text,double size) { return new TextBlock{Text=text,FontFamily=new FontFamily("Microsoft YaHei UI"),FontSize=size,Foreground=Ui.Ink,TextWrapping=TextWrapping.Wrap}; }
+        static Int32Rect VisibleBounds(BitmapSource image)
+        {
+            byte[] pixels=Pixels(image);int left=image.PixelWidth,top=image.PixelHeight,right=-1,bottom=-1;
+            for(int y=0;y<image.PixelHeight;y++)for(int x=0;x<image.PixelWidth;x++)
+                if(pixels[(y*image.PixelWidth+x)*4+3]>0){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);}
+            return right<0?Int32Rect.Empty:new Int32Rect(left,top,right-left+1,bottom-top+1);
+        }
+        static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject
+        {
+            if(root is T)yield return (T)root;
+            for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;
+        }
+        static Point ArtworkCorner(Image artwork,FrameworkElement surface)
+        {
+            var drawing=new DrawingVisual();using(var context=drawing.RenderOpen())context.DrawRectangle(new VisualBrush(artwork),null,new Rect(0,0,artwork.ActualWidth,artwork.ActualHeight));
+            var rendered=new RenderTargetBitmap((int)Math.Ceiling(artwork.ActualWidth),(int)Math.Ceiling(artwork.ActualHeight),96,96,PixelFormats.Pbgra32);rendered.Render(drawing);
+            var bounds=VisibleBounds(rendered);Check(!bounds.IsEmpty,"real artwork contains rendered nontransparent character pixels");return artwork.TranslatePoint(new Point(bounds.X+bounds.Width,bounds.Y+bounds.Height),surface);
+        }
+        static void RealConversationAnchoring(string output)
+        {
+            PetWindow pet=null;ChatWindow chat=null;
+            try
+            {
+                string folder=Path.Combine(output,"atmosphere-conversation-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+                var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,SaveChatHistory=false,ShowPredictedMessages=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);
+                var workspace=pet.Workspaces.CreateWorkspace(new ProjectDefinition{Id="artwork-fixture",Name="立绘位置",Workspace=folder},new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="审批出现后立绘应留在窗口底部",Mode="work"});
+                for(int i=0;i<8;i++)workspace.Session.History.Commit("本地问题 "+i,"本地测试回复。对话背景固定在窗口右下方，审批只改变前景布局。\n\n继续检查实际窗口中的位置。");
+                chat=new ChatWindow(pet,workspace){Width=1800,MinWidth=1800,Height=920,ShowActivated=false};chat.Show();Pump();chat.UpdateLayout();Pump();
+                var surface=(FrameworkElement)typeof(ChatWindow).GetField("conversationSurface",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat);
+                var artwork=All<Image>(chat).Single(i=>i.Name=="ChatAtmosphereArtwork");double bottom=ArtworkCorner(artwork,surface).Y;
+                var approval=((AgentApprovalController)workspace.Session.ApprovalProvider).ApproveAsync(new AgentApprovalRequest{SessionId=workspace.Session.KernelSession.SessionId,ProjectId=workspace.ProjectId,TaskId="artwork-approval",CallId="artwork-call",ToolName="exec_command",Action="shell",Resource=folder,Arguments="{\"command\":\"git --version\"}"});Pump();chat.UpdateLayout();Pump();
+                Check(All<Border>(chat).Any(b=>b.Name=="AgentApprovalCard"&&b.IsVisible),"real conversation fixture displays a genuine inline approval");
+                double pendingBottom=ArtworkCorner(artwork,surface).Y;
+                Check(Math.Abs(pendingBottom-bottom)<=1,"real inline approval does not push visible artwork upward (before "+bottom.ToString("F1")+", pending "+pendingBottom.ToString("F1")+")");
+                Check(surface.ActualHeight-pendingBottom>=14&&surface.ActualHeight-pendingBottom<=30,"real artwork anchors near the conversation surface bottom above the disclaimer");
+                foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);Pump();Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-"+theme+".png"));}
+                cfg.Text.BaseUrl="http://127.0.0.1:1/v1";cfg.Text.Model="fixture";
+                // Enqueue and pause in one dispatcher turn, before the queue's yielded
+                // continuation can run. This exercises real rows without sending.
+                Dispatcher.CurrentDispatcher.Invoke(new Action(delegate{workspace.Queue.Enqueue("等待中的本地测试消息一");workspace.Queue.Hold();workspace.Queue.Enqueue("等待中的本地测试消息二");}));Pump();chat.UpdateLayout();Pump();
+                Check(All<Grid>(chat).Count(g=>g.Name=="QueuedMessageRow"&&g.IsVisible)==2&&!workspace.Session.IsBusy,"real paused queue expands two rows without submitting a request");
+                Check(Math.Abs(ArtworkCorner(artwork,surface).Y-bottom)<=1,"queue expansion alongside approval preserves the artwork bottom anchor");Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-queue-dark.png"));
+                string preview=Path.Combine(folder,"preview.md");File.WriteAllText(preview,"# 本地工具预览");chat.OpenFilePreview(preview);Pump();chat.UpdateLayout();Pump();
+                Point split=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-split.X-20)<=2&&Math.Abs(surface.ActualHeight-split.Y-22)<=2,"split tool layout anchors actual character pixels to the conversation surface bottom-right");
+                chat.ToggleFullTabView();Pump();((PreviewWorkspace)typeof(ChatWindow).GetField("filePreview",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat)).SelectConversation();Pump();chat.UpdateLayout();Pump();
+                Point full=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-full.X-20)<=2&&Math.Abs(surface.ActualHeight-full.Y-22)<=2,"full conversation tab retains actual character pixels at its bottom-right");
+                All<Button>(chat).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();chat.UpdateLayout();Pump();Check(approval.IsCompleted&&Math.Abs(ArtworkCorner(artwork,surface).Y-full.Y)<=1,"dismissing approval retains the artwork's visible bottom anchor");
+            }
+            finally{if(chat!=null)chat.Close();if(pet!=null)pet.Close();ThemeManager.Apply("light");Pump();}
+        }
+        static void ArtworkAnchoring(string output)
+        {
+            // Real preview padding must not lift visible feet
+            // above the history's bottom edge when the surrounding workspace changes.
+            var shell=new Grid{Width=1280,Height=900};shell.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(0)});shell.ColumnDefinitions.Add(new ColumnDefinition());shell.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(0)});
+            var page=new Grid();page.RowDefinitions.Add(new RowDefinition());page.RowDefinitions.Add(new RowDefinition{Height=new GridLength(100)});Grid.SetColumn(page,1);shell.Children.Add(page);
+            var history=new ScrollViewer{Content=new Border{Height=2400},VerticalScrollBarVisibility=ScrollBarVisibility.Hidden};page.Children.Add(history);var layer=ChatAtmosphere.Attach(history);layer.ArtworkOpacity=1;history.Opacity=0;
+            string[] ids={"e-bao","dafeiyu","marfu"};string[] atlas={"Dafeiyu.EbaoAtlas","Dafeiyu.Atlas","Dafeiyu.MarfuAtlas"};string[] preview={"Dafeiyu.EbaoPreview","Dafeiyu.Preview","Dafeiyu.MarfuPreview"};
+            for(int skin=0;skin<ids.Length;skin++)
+            {
+                layer.SetSkin(new SkinDefinition(ids[skin],ids[skin],atlas[skin],preview[skin],true));
+                for(int layout=0;layout<4;layout++)
+                {
+                    shell.ColumnDefinitions[0].Width=new GridLength(layout==1?220:0);shell.ColumnDefinitions[2].Width=new GridLength(layout==2?360:0);page.RowDefinitions[1].Height=new GridLength(layout==3?500:100);
+                    shell.Measure(new Size(shell.Width,shell.Height));shell.Arrange(new Rect(0,0,shell.Width,shell.Height));shell.UpdateLayout();Pump();
+                    var rendered=Render(layer);Int32Rect bounds=VisibleBounds(rendered);Save(rendered,Path.Combine(output,"atmosphere-anchor-"+ids[skin]+"-"+layout+".png"));
+                    double bottomGap=rendered.PixelHeight-(bounds.Y+bounds.Height),rightGap=rendered.PixelWidth-(bounds.X+bounds.Width);
+                    Check(!bounds.IsEmpty&&Math.Abs(bottomGap-2)<=2&&Math.Abs(rightGap-20)<=2,"visible "+ids[skin]+" artwork anchors to history bottom-right in layout "+layout+" (bottom "+bottomGap+", right "+rightGap+")");
+                    history.ScrollToEnd();Pump();Check(VisibleBounds(Render(layer))==bounds,"visible artwork pixels stay fixed when history scrolls in layout "+layout);history.ScrollToTop();
+                }
+            }
+        }
         static void Reply(StackPanel messages,string heading,string body)
         {
             var section=new StackPanel{Margin=new Thickness(2,0,16,24)};var title=Text(heading,13);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(0,0,0,8);section.Children.Add(title);section.Children.Add(new MarkdownView{Text=body,FontSize=14});messages.Children.Add(section);
@@ -55,6 +130,8 @@ namespace Dafeiyu.Tests
             try
             {
                 string output=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"permissions");Directory.CreateDirectory(output);
+                ArtworkAnchoring(output);
+                RealConversationAnchoring(output);
                 var root=new Grid{Background=Brushes.White};root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
                 var heading=Text("E包 · 对话立绘透明度预览",21);heading.FontWeight=FontWeights.SemiBold;heading.Margin=new Thickness(0,0,0,8);var header=new StackPanel{Margin=new Thickness(0,0,0,22)};header.Children.Add(heading);var subtitle=Text("仅聊天记录区 · 右下角 · 文字下层 · 输入区保持独立",12);subtitle.Foreground=Ui.Muted;header.Children.Add(subtitle);root.Children.Add(header);
                 var messages=new StackPanel{Margin=new Thickness(2,8,8,12)};
@@ -66,7 +143,7 @@ namespace Dafeiyu.Tests
                 var scroll=Ui.Scroll(messages);scroll.Name="ChatHistoryScroll";Grid.SetRow(scroll,1);root.Children.Add(scroll);
                 var input=new TextBox{Text="这里是输入区，立绘不会铺到这里。",FontSize=14,MinHeight=78,TextWrapping=TextWrapping.Wrap,Padding=new Thickness(14),Background=Ui.Brush("#F6F8FC"),BorderBrush=Ui.Line,BorderThickness=new Thickness(1)};var composer=new StackPanel{Margin=new Thickness(0,18,0,0)};composer.Children.Add(input);var hint=Text("Enter 发送     Shift + Enter 换行",11);hint.Margin=new Thickness(2,9,0,0);hint.Foreground=Ui.Muted;composer.Children.Add(hint);Grid.SetRow(composer,2);root.Children.Add(composer);
                 var surface=new Border{Background=Brushes.White,Padding=new Thickness(24),Child=root};var atmosphere=ChatAtmosphere.Attach(scroll);Check(ReferenceEquals(ChatAtmosphere.Attach(scroll),atmosphere),"attaching twice retains one history wrapper");Check(Grid.GetRow(atmosphere)==1 && ReferenceEquals(scroll.Parent,atmosphere),"history wrapper retains its grid position and original scroll viewer");Check(atmosphere.ArtworkOpacity==0,"production default remains disabled pending opacity selection");
-                var skin=new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true);atmosphere.SetSkin(skin);var artwork=atmosphere.Children.OfType<Image>().Single();Check(artwork.Source!=null && ((BitmapSource)artwork.Source).PixelWidth==480,"artwork loads the actual standing preview");Check(!artwork.IsHitTestVisible && atmosphere.ClipToBounds && scroll.IsHitTestVisible,"artwork is clipped and never intercepts history interaction");
+                var skin=new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true);atmosphere.SetSkin(skin);var artwork=atmosphere.Children.OfType<Image>().Single();Check(artwork.Source is CroppedBitmap && ((CroppedBitmap)artwork.Source).Source.PixelWidth==480,"artwork loads the actual standing preview with transparent padding cropped");Check(!artwork.IsHitTestVisible && atmosphere.ClipToBounds && scroll.IsHitTestVisible,"artwork is clipped and never intercepts history interaction");
                 window=new Window{Title="DeskPet atmosphere isolated fixture",Content=surface,Width=920,Height=880,ShowActivated=false,ShowInTaskbar=false,WindowStartupLocation=WindowStartupLocation.CenterScreen};window.Show();Pump();scroll.ScrollToEnd();Pump();
                 Check(scroll.ScrollableHeight>0,"real history remains scrollable");var baseline=Render(surface);Save(baseline,Path.Combine(output,"atmosphere-disabled.png"));byte[] baselinePixels=Pixels(baseline);Point footer=composer.TranslatePoint(new Point(0,0),surface);
                 foreach(double opacity in new[]{.06,.10,.14,.20})

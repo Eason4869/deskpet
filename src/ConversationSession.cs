@@ -53,7 +53,7 @@ namespace Dafeiyu
             public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
             public readonly TaskCompletionSource<bool> Complete=new TaskCompletionSource<bool>();
             public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
-            public Action<string> RecordingFailure;
+            public Action<string> RecordingFailure;public Action AgentStarted;
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
             public readonly StringBuilder Reasoning=new StringBuilder();public readonly Stopwatch ThinkingTime=Stopwatch.StartNew();public readonly Stopwatch ProcessingTime=new Stopwatch();public List<ChatAttachment> Attachments;
@@ -145,14 +145,14 @@ namespace Dafeiyu
             if(op.Workspace!=null)op.History.LinkAgentTask(reply.Id,op.Workspace.TaskState.Id);
             op.History.Update(reply.Id,"","pending",tools:op.ToolEvents,processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);
         }
-        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null)
+        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null)
         {
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";
             if(settings!=null&&settings.Text!=null&&AgentCapabilityResolver.Resolve(settings,null).Images==CapabilitySupport.Unsupported&&files.Any(f=>f.IsImage))throw new ApiException("当前模型已设置为不支持图片，请移除图片或修改模型能力配置。");
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException("请输入 1～8000 个字符。");
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
             Operation op=Begin(settings,ConversationStage.Thinking);
-            op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
+            op.AgentStarted=onAgentStarted;op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
             op.Attachments=files;op.ResumeTask=resumeTask==null?null:resumeTask.Copy();
             try { if(kernelSession!=null){kernelSession.Enqueue(new AgentSessionInput{IdempotencyId=String.IsNullOrWhiteSpace(kernelInputId)?Guid.NewGuid().ToString("N"):kernelInputId,Kind=resumeTask==null?"prompt":"resume",Text=text,Resume=resumeTask!=null});kernelSession.DeliverNext();kernelSession.StartStep();}await RequestReply(op,text,petName);if(kernelSession!=null)kernelSession.CompleteStep(op.ReplyId); }
             catch(OperationCanceledException) { if(kernelSession!=null)kernelSession.FailStep("cancelled"); LastNotice="已停止本次对话。"; throw; }
@@ -251,7 +251,7 @@ namespace Dafeiyu
                     op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);op.Workspace.AttachKernelSession(kernelSession);
                     var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text};
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException("任务检查点不属于当前伙伴。");
-                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
+                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);if(op.AgentStarted!=null)op.AgentStarted();op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
                 }
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
                 answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token) : await api.ChatAsync(op.Snapshot.Text,request,token);

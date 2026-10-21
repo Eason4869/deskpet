@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,6 +26,31 @@ namespace Dafeiyu.Tests
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();Pump();
                 settings=new SettingsWindow(pet);settings.Show();Pump();
                 var nav=(ListBox)settings.FindControl("SettingsNavigation");
+                foreach(int pageIndex in new[]{0,1,2,3})
+                {
+                    settings.SelectNavigation(pageIndex);Pump();var page=(ContentControl)settings.FindControl("SettingsContentHost");string pageTitle=new[]{"伙伴","模型配置","工作设置","通用"}[pageIndex];var title=All<TextBlock>(page).Single(t=>t.Text==pageTitle);
+                    Check(title.FontSize==26&&title.FontWeight==FontWeights.Bold,"settings page uses the shared title typography: "+pageTitle);
+                    Check(All<FrameworkElement>(page).Any(e=>e.Name=="SettingsPageTabs"),"settings page uses the shared full-width tab rail: "+pageTitle);
+                }
+                settings.SelectNavigation(0);Pump();
+                foreach(string theme in new[]{"light","dark"})
+                {
+                    ThemeManager.Apply(theme);Point? titleOrigin=null,railOrigin=null;double railHeight=0;
+                    for(int pageIndex=0;pageIndex<4;pageIndex++)
+                    {
+                        settings.SelectNavigation(pageIndex);Pump();var page=(ContentControl)settings.FindControl("SettingsContentHost");var title=All<TextBlock>(page).Single(t=>t.Name=="SettingsPageTitle");var rail=All<Border>(page).Single(b=>b.Name=="SettingsPageTabs");var titlePoint=title.TranslatePoint(new Point(),page);var railPoint=rail.TranslatePoint(new Point(),page);
+                        if(titleOrigin==null){titleOrigin=titlePoint;railOrigin=railPoint;railHeight=rail.ActualHeight;}
+                        Check(Math.Abs(titlePoint.X-titleOrigin.Value.X)<1&&Math.Abs(titlePoint.Y-titleOrigin.Value.Y)<1&&Math.Abs(railPoint.Y-railOrigin.Value.Y)<1&&Math.Abs(rail.ActualHeight-railHeight)<1,"four settings headers align in "+theme+" mode, page "+pageIndex);
+                        var background=((SolidColorBrush)rail.Background).Color;Check(theme=="light"?background.R>200:background.R<100,"shared tab rail follows live "+theme+" theme");Capture(settings,Path.Combine(folder,"unified-"+theme+"-"+pageIndex+".png"));
+                    }
+                    settings.SelectGeneralSection(1);Pump();Capture(settings,Path.Combine(folder,"shortcuts-"+theme+".png"));
+                    settings.SelectGeneralSection(2);Pump();Capture(settings,Path.Combine(folder,"history-"+theme+".png"));
+                    settings.SelectGeneralSection(0);
+                }
+                settings.SelectGeneralSection(1);Pump();Check(settings.FindControl("Hotkeyquick")!=null&&settings.FindControl("Hotkeytab")!=null,"general shortcut tab exposes global and window shortcut editors");
+                var shortcut=(TextBox)settings.FindControl("Hotkeytab");string savedShortcut=shortcut.Text;shortcut.Text="Ctrl+Alt+Shift+F12";settings.SelectGeneralSection(0);settings.SelectGeneralSection(1);settings.RefreshState();Pump();Check(((TextBox)settings.FindControl("Hotkeytab")).Text=="Ctrl+Alt+Shift+F12","switching general tabs and refreshing retains a shortcut draft");shortcut.Text=savedShortcut;
+                settings.SelectGeneralSection(2);Pump();Check(settings.FindControl("SaveChatHistory")!=null&&settings.FindControl("Hotkeyquick")==null,"chat history is separate from shortcut editing");
+                settings.SelectGeneralSection(0);ThemeManager.Apply(cfg.ThemeMode);settings.SelectNavigation(0);Pump();
                 Check(nav.Items.Count==5,"five primary settings destinations with MCP moved to the shell");
                 Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","通用","关于"}),"navigation combines companion and persona");
                 var categorySearch=settings.FindControl("SettingsCategorySearch") as TextBox;Check(categorySearch!=null,"settings sidebar provides category search");categorySearch.Text="模型";Pump();Check(nav.Items.Cast<ListBoxItem>().Where(i=>i.Visibility==Visibility.Visible).Select(i=>(string)i.Content).SequenceEqual(new[]{"模型配置"}),"sidebar search filters categories without changing their route indices");categorySearch.Text="";Pump();Check(nav.Items.Cast<ListBoxItem>().All(i=>i.Visibility==Visibility.Visible),"clearing category search restores all settings destinations");
@@ -76,6 +101,7 @@ namespace Dafeiyu.Tests
             catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
             finally{if(settings!=null)settings.Close();if(pet!=null)pet.Close();Pump();app.Shutdown();}
         }
+        static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}
         static void Click(SettingsWindow window,string name){var button=window.FindControl(name) as Button;if(button==null)throw new Exception("Missing "+name);button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
         static bool Inside(FrameworkElement element,Window window){if(element==null || !element.IsVisible)return false;Rect rect=element.TransformToAncestor(window).TransformBounds(new Rect(element.RenderSize));return rect.Left>=0 && rect.Top>=0 && rect.Right<=window.ActualWidth && rect.Bottom<=window.ActualHeight;}
         static void Check(bool value,string name){if(!value)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}

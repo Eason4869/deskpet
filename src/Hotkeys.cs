@@ -15,7 +15,9 @@ namespace Dafeiyu
             foreach(string raw in value.Split('+')) {
                 string part=raw.Trim();uint flag=part.Equals("Ctrl",StringComparison.OrdinalIgnoreCase)?2u:part.Equals("Alt",StringComparison.OrdinalIgnoreCase)?1u:part.Equals("Shift",StringComparison.OrdinalIgnoreCase)?4u:part.Equals("Win",StringComparison.OrdinalIgnoreCase)?8u:0u;
                 if(flag!=0){if((modifiers&flag)!=0)return false;modifiers|=flag;continue;}
-                Keys parsed;if(hasKey || !Enum.TryParse<Keys>(part,true,out parsed))return false;
+                if(part==",")part="OemComma";else if(part=="/")part="OemQuestion";else if(part=="`")part="Oem3";else if(part=="←")part="Left";else if(part=="→")part="Right";
+                if(part.Length==1&&part[0]>='0'&&part[0]<='9')part="D"+part;
+                Keys parsed;if(hasKey || part.Length==0 || Char.IsDigit(part[0]) || !Enum.TryParse<Keys>(part,true,out parsed) || !Enum.IsDefined(typeof(Keys),parsed))return false;
                 key=(uint)parsed;if(key<8 || key>254 || parsed==Keys.ControlKey || parsed==Keys.Menu || parsed==Keys.ShiftKey || parsed==Keys.LWin || parsed==Keys.RWin)return false;hasKey=true;
             }
             if(!hasKey || modifiers==0)return false;combination=new HotkeyCombination{Modifiers=modifiers,Key=key};return true;

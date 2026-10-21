@@ -261,7 +261,42 @@ namespace Dafeiyu.Tests
                     }
                 }
             });
+            Run("failed link tools reach the model without returning the conversation to the queue",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"web","fetch_url",new{url="https://example.test/page"})),Json(FinalReply(anthropic,"无法读取网页，请提供正文。"))}))
+                using(var api=new LinkApi())
+                {
+                    var cfg=new PetSettings{AgentEnabled=true,AgentApprovalMode=AgentApprovalMode.Full,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;
+                    using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
+                    using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json")))
+                    {
+                        queue.Enqueue("请分析 https://example.test/page");await WaitCondition(()=>!queue.IsRunning&&!session.IsBusy);
+                        Assert(!queue.IsPaused&&queue.Items.Count==0,"failed link was forced back into the paused queue: "+queue.Notice);
+                        var reply=session.History.Messages.Last();Equal("complete",reply.Status);Equal("无法读取网页，请提供正文。",reply.Content);
+                        Assert(reply.ToolEvents.Any(e=>e.Id=="web"&&e.Status=="error"),"failed fetch remained a running tool");
+                        await Within(server.Done);Equal(2,server.Bodies.Count);
+                        Assert(server.Bodies[1].Contains("错误：")&&server.Bodies[1].Contains(anthropic?"tool_use_id":"tool_call_id"),"model did not receive a linked tool error");
+                    }
+                }
+            });
             Console.WriteLine("AgentProtocolTests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
+        }
+
+        sealed class LinkHandler:System.Net.Http.HttpMessageHandler
+        {
+            protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request,CancellationToken token)
+            {return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.Forbidden){Content=new System.Net.Http.StringContent("private error body")});}
+        }
+        sealed class LinkApi:IConversationApi,IAgentConversationApi
+        {
+            readonly ApiClient native=new ApiClient();
+            public Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> m,AgentWorkspace w,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken token)
+            {w.ConfigureGitHub(new GitHubClient(new Uri("https://api.github.com"),new LinkHandler(),"",""));return native.ChatAgentAsync(c,m,w,d,r,t,stream,token);}
+            public Task<string> ChatAsync(ConnectionSettings c,IList<ChatMessage>m,CancellationToken t){return native.ChatAsync(c,m,t);}
+            public Task<string> TranscribeAsync(ConnectionSettings c,byte[]b,CancellationToken t){throw new NotSupportedException();}
+            public Task<byte[]> SpeechAsync(ConnectionSettings c,string v,string s,CancellationToken t){throw new NotSupportedException();}
+            public void Dispose(){native.Dispose();}
         }
 
         sealed class TerminalApproval:IAgentApprovalProvider {public Task<bool> ApproveAsync(AgentApprovalRequest request){return Task.FromResult(true);}}

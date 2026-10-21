@@ -222,6 +222,7 @@ namespace Dafeiyu
         }
         public void SelectCompanionSection(int index){companionPage.SelectSection(index);navigation.SelectedIndex=0;}
         public void SelectAiSection(int index){aiConfiguration.SelectSection(index);navigation.SelectedIndex=1;}
+        public void SelectGeneralSection(int index){quiet.SelectSection(index);navigation.SelectedIndex=3;}
         internal void SelectMcpSettings(bool edit=false){pet.ShowMcpPage(edit);}
         public bool CanChangeWorkSettingsProject(ProjectDefinition project)
         {
@@ -273,6 +274,7 @@ namespace Dafeiyu
         }
         public FrameworkElement FocusGuideTarget(string controlName)
         {
+            if(navigation.SelectedIndex==3)quiet.ShowTarget(controlName);
             connections.ExpandConnectionFor(controlName);
             var target=FindControl(controlName);if(target==null)return null;
             target.BringIntoView();UpdateLayout();if(target.Focusable && target.IsEnabled)target.Focus();return target;

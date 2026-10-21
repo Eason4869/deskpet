@@ -10,6 +10,7 @@ namespace Dafeiyu
 {
     public sealed class QuickChatWindow : Window
     {
+        internal void OpenBrowserLink(Uri uri){pet.OpenChatBrowserLink(uri);}
         readonly PetWindow pet;readonly ConversationSession session;readonly ConversationQueue queue;readonly MarkdownEditor input;MarkdownView reply;readonly StackPanel messages=new StackPanel();readonly System.Collections.Generic.Dictionary<string,ChatMessageView> rendered=new System.Collections.Generic.Dictionary<string,ChatMessageView>();readonly ScrollViewer scroll;readonly TextBlock status;readonly Button record;readonly ConversationComposer composer;readonly Polygon tail;readonly Image avatar;
         bool closed;string renderedPersona;readonly MessageUpdatePump messagePump;
         readonly Button close;readonly Button taskDetails;GuideFocusScope guideScope;

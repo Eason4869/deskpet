@@ -43,6 +43,12 @@ namespace Dafeiyu
         }
         internal static bool IsDark {get;private set;}
         internal static Brush Surface {get{return Brush("#FFFFFF");}}
+        internal static SolidColorBrush CardSurface {get{return Brush("#FFFFFF","#2B3545");}}
+        internal static SolidColorBrush CardBorder {get{return Brush("#DCE5F4","#52637C");}}
+        internal static SolidColorBrush FieldSurface {get{return Brush("#FFFFFF","#161E2B");}}
+        internal static SolidColorBrush SelectedSurface {get{return Brush("#E8EBF0","#334E73");}}
+        internal static SolidColorBrush SelectedBorder {get{return Brush("#E8EBF0","#6385B1");}}
+        internal static SolidColorBrush ToggleOffSurface {get{return Brush("#CBD5E7","#63738B");}}
         internal static SolidColorBrush ActionSurface {get{return Brush("#202329","#42516B");}}
         internal static SolidColorBrush Caret {get{return Brush("#203754","#FFFFFF");}}
         internal static SolidColorBrush Brush(string light,string dark=null)

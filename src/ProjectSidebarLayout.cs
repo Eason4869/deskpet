@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -11,10 +11,9 @@ namespace Dafeiyu
     internal sealed partial class ProjectSidebar
     {
         const string ProjectDragFormat="DeskPet.Project";
-        bool archiveExpanded;
         string Signature()
         {
-            return workEntry+"|"+personaId+"|"+String.Join(",",catalog.QuickConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived+"="+c.Status))+"|"+String.Join(",",catalog.SidebarSectionExpansion.Select(x=>x.Key+"="+x.Value))+"|"+activeConversationId+"|"+archiveExpanded+"|"+catalog.RecentIncludeProjects+"|"+String.Join(",",catalog.UnassignedConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived))+"|"+String.Join("|",catalog.Sections.Select(s=>s.Id+"="+s.Name+"="+s.Mode))+"|"+String.Join("|",catalog.Projects.Select(p=>p.Id+"="+p.Name+"="+p.SectionId+"="+p.Pinned+"="+p.Archived+"="+String.Join(",",p.Conversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.Archived+"="+c.HasUnreadCompletion+"="+c.Pinned))))+"|"+String.Join(",",catalog.SidebarExpansion.OrderBy(x=>x.Key).Select(x=>x.Key+"="+x.Value))+ConversationOrderSignature();
+            return workEntry+"|"+personaId+"|"+String.Join(",",catalog.QuickConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived+"="+c.Status))+"|"+String.Join(",",catalog.SidebarSectionExpansion.Select(x=>x.Key+"="+x.Value))+"|"+activeConversationId+"|"+catalog.RecentIncludeProjects+"|"+String.Join(",",catalog.UnassignedConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived))+"|"+String.Join("|",catalog.Sections.Select(s=>s.Id+"="+s.Name+"="+s.Mode))+"|"+String.Join("|",catalog.Projects.Select(p=>p.Id+"="+p.Name+"="+p.SectionId+"="+p.Pinned+"="+p.Archived+"="+String.Join(",",p.Conversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.Archived+"="+c.HasUnreadCompletion+"="+c.Pinned))))+"|"+String.Join(",",catalog.SidebarExpansion.OrderBy(x=>x.Key).Select(x=>x.Key+"="+x.Value))+ConversationOrderSignature();
         }
         internal SidebarSection CreateSection(string name)
         {
@@ -45,7 +44,7 @@ namespace Dafeiyu
                 if(projects.Length==0){var hint=Ui.Text("将项目拖放到分区标题处",11,Ui.Brush("#ADB0B5"));hint.Margin=new Thickness(12,4,12,12);Children.Add(hint);}
                 if(section.Id=="projects")taskIndex=Children.Count;
             }
-            Children.Insert(taskIndex<0?Children.Count:taskIndex,currentTaskHost);if(workEntry==false)AddChatSections();if(workEntry!=true)AddQuick();AddRecent();AddArchive();RefreshCurrentTaskShortcut();renderedSignature=Signature();
+            Children.Insert(taskIndex<0?Children.Count:taskIndex,currentTaskHost);if(workEntry==false)AddChatSections();if(workEntry!=true)AddQuick();AddRecent();RefreshCurrentTaskShortcut();renderedSignature=Signature();
         }
         MenuItem NewSectionMenuItem(){var item=new MenuItem{Header="新建分区",Name="NewSidebarSection",Icon=UiIcons.Image("add",AgentUi.Muted)};item.Click+=delegate{var dialog=new ConversationRenameDialog("","新建分区","分区名称");if(dialog.ShowDialog()==true)try{CreateSection(dialog.ConversationName);}catch(Exception e){MessageBox.Show(e.Message,"分区未保存");}};return item;}
         static void HoverActions(FrameworkElement header,ContextMenu menu,params Button[] actions){HoverActions(header,menu,null,actions);}
@@ -106,13 +105,6 @@ namespace Dafeiyu
                 .Concat(catalog.Projects.Where(p=>!p.Archived).SelectMany(p=>p.Conversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=p,Conversation=c})));
             if(workEntry==false)records=records.Concat(catalog.QuickConversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=ProjectCatalogStore.QuickProject(catalog),Conversation=c}));
             foreach(var pair in OrderedRows(records,x=>x.Conversation,"recent").Take(30))AddConversation(pair.Project,pair.Conversation,true,false,"recent");
-        }
-        void AddArchive()
-        {
-            var projects=catalog.Projects.Where(p=>p.Archived&&workEntry!=false).ToArray();var conversations=catalog.Projects.Where(p=>!p.Archived).SelectMany(p=>p.Conversations.Where(c=>c.Archived&&Visible(c)).Select(c=>new{Project=p,Conversation=c})).Concat(catalog.UnassignedConversations.Where(c=>c.Archived&&Visible(c)).Select(c=>new{Project=ProjectCatalogStore.UnassignedProject(catalog),Conversation=c})).Concat(catalog.QuickConversations.Where(c=>c.Archived&&Visible(c)).Select(c=>new{Project=ProjectCatalogStore.QuickProject(catalog),Conversation=c})).ToArray();if(projects.Length==0&&conversations.Length==0)return;
-            var toggle=AgentUi.Nav((archiveExpanded?"⌄  ":"›  ")+"已归档","ToggleArchived");toggle.FontSize=12;toggle.Foreground=AgentUi.Muted;toggle.Margin=new Thickness(12,20,12,6);toggle.Click+=delegate{archiveExpanded=!archiveExpanded;Refresh();};Children.Add(toggle);if(!archiveExpanded)return;
-            foreach(var project in projects){var button=AgentUi.Nav(project.Name,"ArchivedProject_"+project.Id);button.Margin=new Thickness(20,1,12,1);button.ContextMenu=ProjectMenu(project);button.Click+=delegate{projectActivated(project);};Children.Add(button);}
-            foreach(var item in conversations){var pair=item;var button=AgentUi.Nav(pair.Conversation.Name,"ArchivedConversation_"+pair.Conversation.Id);button.Margin=new Thickness(28,1,12,1);button.ContextMenu=ConversationMenu(pair.Project,pair.Conversation);button.Click+=delegate{OpenConversation(pair.Project,pair.Conversation);};Children.Add(button);}
         }
     }
 }

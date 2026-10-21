@@ -261,7 +261,7 @@ namespace Dafeiyu
                 HwndSource.FromHwnd(handle).AddHook(WindowMessage);
                 DesktopInterop.MakeToolWindow(handle);DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);
                 hotkeys=new HotkeyRegistry(handle);
-                foreach(var pair in Settings.Hotkeys){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))HotkeyWarning=Notice=error+"（"+pair.Value+"）";}
+                foreach(var pair in Settings.Hotkeys.Where(p=>ShortcutCatalog.All.Any(d=>d.Global&&d.Id==p.Key))){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))HotkeyWarning=Notice=error+"（"+pair.Value+"）";}
             };
             Loaded+=delegate
             {
@@ -869,6 +869,8 @@ namespace Dafeiyu
         {
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return;var previous=Projects.Copy();ProjectDefinition project;try{project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);ProjectStore.Save(Projects);}catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return;}ActivateProject(project);
         }
+        internal void OpenChatBrowserLink(Uri uri){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenBrowserLink(uri);}
+        internal void OpenChatProjectFacts(AgentTaskState task){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenProjectFacts(task);}
         public void ShowChat()
         {if(closing || IsUpdating || ReturnToGuide())return;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:project.Conversations.FirstOrDefault(c=>c.Id==quickWorkspace.Id);quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
         bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
@@ -1008,7 +1010,13 @@ namespace Dafeiyu
         public void SetClickThrough(bool enabled)
         {RecordPetInteraction();Settings.ClickThrough=enabled;if(enabled){CancelInteraction();UpdateFrame();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,enabled || !petDisplayed);SaveSettings();if(clickThroughItem!=null)clickThroughItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public bool UpdateHotkey(string action,string value,out string error)
-        {error="";if(hotkeys!=null && !hotkeys.TryBind(action,value,out error))return false;Settings.Hotkeys[action]=(value ?? "").Trim();SaveSettings();return true;}
+        {
+            error="";if(!ShortcutCatalog.Validate(Settings,action,value,out error))return false;
+            var definition=ShortcutCatalog.All.First(d=>d.Id==action);string normalized=String.IsNullOrWhiteSpace(value)?"":ShortcutCatalog.Normalize(value);
+            if(definition.Global){if(hotkeys!=null&&!hotkeys.TryBind(action,normalized,out error))return false;Settings.Hotkeys[action]=normalized;}
+            else Settings.LocalShortcuts[action]=normalized;
+            SaveSettings();return true;
+        }
         public void ReturnHome()
         {
             RecordPetInteraction();

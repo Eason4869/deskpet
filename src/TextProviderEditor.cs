@@ -112,7 +112,15 @@ namespace Dafeiyu
         }
         static Border Glass(UIElement child,int padding)
         {
-            return new Border{Child=child,Padding=new Thickness(padding),CornerRadius=new CornerRadius(14),BorderBrush=Ui.Brush("#DCE7F8"),BorderThickness=new Thickness(1),Background=new LinearGradientBrush(Ui.Brush("#FAFFFFFF").Color,Ui.Brush("#EDF4FAFF").Color,90)};
+            var background=new LinearGradientBrush{StartPoint=new Point(.5,0),EndPoint=new Point(.5,1)};
+            background.GradientStops.Add(ThemedStop("#FAFFFFFF",0));background.GradientStops.Add(ThemedStop("#EDF4FAFF",1));
+            return new Border{Child=child,Padding=new Thickness(padding),CornerRadius=new CornerRadius(14),BorderBrush=Ui.Brush("#DCE7F8"),BorderThickness=new Thickness(1),Background=background};
+        }
+        static GradientStop ThemedStop(string color,double offset)
+        {
+            // Keep the original translucent gradient linked to the live theme brush.
+            var stop=new GradientStop{Offset=offset};
+            System.Windows.Data.BindingOperations.SetBinding(stop,GradientStop.ColorProperty,new System.Windows.Data.Binding("Color"){Source=Ui.Brush(color)});return stop;
         }
         void RaiseChanged(){if(Changed!=null)Changed();}
         void Capture(bool includeCurrentModel=true)

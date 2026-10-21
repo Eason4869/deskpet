@@ -12,6 +12,12 @@ namespace Dafeiyu
             if(closed)return;EnsurePreviewWorkspace();filePreview.OpenFile(path);PlaceFilePreview(ActualWidth>=1200);RefreshWorkspaceLayout();
         }
         void EnsurePreviewWorkspace(){previewVisible=true;tabsHidden=false;resumeConversation=false;if(filePreview==null)filePreview=new PreviewWorkspace(CloseFilePreview,OpenBlankTab,message=>session.ReportNotice(message));}
+        internal void OpenBrowserLink(Uri uri)
+        {
+            if(closed||uri==null||(uri.Scheme!="http"&&uri.Scheme!="https"))return;
+            EnsurePreviewWorkspace();filePreview.AddPage(uri.Host,"globe",new BrowserPane(uri.AbsoluteUri));PlaceFilePreview(ActualWidth>=1200);RefreshWorkspaceLayout();
+        }
+        internal void OpenProjectFacts(AgentTaskState task){OpenDetailTab("项目事实",new AgentFactsPane(task));}
         internal void OpenBlankTab()
         {
             if(closed)return;EnsurePreviewWorkspace();BlankPreviewPage page=null;page=new BlankPreviewPage(address=>filePreview.Replace(page,"网页浏览器","globe",new BrowserPane(address)),delegate{var picker=new Microsoft.Win32.OpenFileDialog{Title="打开文件预览",Filter="所有文件|*.*"};if(picker.ShowDialog(this)==true){OpenFilePreview(picker.FileName);filePreview.Close(page);}},()=>{OpenTerminal();if(filePreview!=null&&filePreview.Selected!=page)filePreview.Close(page);},()=>{OpenSideChat();if(filePreview!=null&&filePreview.Selected!=page)filePreview.Close(page);},()=>{OpenChangesTab();if(filePreview!=null&&filePreview.Selected!=page)filePreview.Close(page);});filePreview.AddPage("新标签页","globe",page);PlaceFilePreview(ActualWidth>=1200);RefreshWorkspaceLayout();

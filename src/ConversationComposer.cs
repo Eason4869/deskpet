@@ -12,7 +12,7 @@ namespace Dafeiyu
     internal sealed partial class ConversationComposer : StackPanel
     {
         static readonly ControlTemplate hintTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ToolTip'><Border Background='#202329' CornerRadius='8' Padding='9,6'><ContentPresenter/></Border></ControlTemplate>");
-        PredictionSuggestions predictionSuggestions;AgentChangeStatus changeStatus;
+        PredictionSuggestions predictionSuggestions;AgentChangeStatus changeStatus;AgentApprovalSurface approvals;
         readonly PetWindow pet;readonly Window host;readonly MarkdownEditor input;readonly TextBlock status,aiNotice;ConversationQueue queue;ConversationSession session;
         readonly Button primary,options;readonly Border queueBox;readonly StackPanel rows;readonly TextBlock queueLabel;readonly Button resume;
         readonly Button modelPicker;readonly TextBlock modelLabel;readonly ContextMenu modelMenu;
@@ -155,11 +155,17 @@ namespace Dafeiyu
             Loaded+=delegate{if(!subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;pet.Live.StateChanged+=Refresh;dictation.Changed+=Refresh;subscribed=true;}Refresh();};
             host.IsVisibleChanged+=async delegate{if(!host.IsVisible && dictation.Owns(this))try{await dictation.CancelAsync(this);}catch(Exception e){Error(e);}};
             host.Closed+=HostClosed;
-            RefreshModels();Refresh();
+            BindApprovals();RefreshModels();Refresh();
+        }
+        void BindApprovals()
+        {
+            if(approvals!=null){Children.Remove(approvals);approvals.Dispose();}
+            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r));
+            Children.Insert(Children.IndexOf(normalSurface),approvals);
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
-            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RefreshModels();Refresh();
+            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);BindApprovals();RefreshModels();Refresh();
         }
         public void RefreshModels()
         {
@@ -459,6 +465,7 @@ namespace Dafeiyu
             if(closed)return;closed=true;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
+            if(approvals!=null)approvals.Dispose();
             if(subscribed)
             {
                 queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;

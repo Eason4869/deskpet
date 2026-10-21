@@ -9,6 +9,11 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Documents;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 
 namespace Dafeiyu.Tests
 {
@@ -18,6 +23,8 @@ namespace Dafeiyu.Tests
         static PetWindow pet;
         static ChatWindow full;
         static int checks;
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool SetCursorPos(int x,int y);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
 
         sealed class RetainedTool:Border,IDisposable
         {
@@ -119,7 +126,39 @@ namespace Dafeiyu.Tests
             editor.Text="第二个会话的独立草稿";full.SwitchWorkspace(workspace);await Settle();CheckMain(surface,editor,session,draft);Check(ReferenceEquals(area.Selected,surface)&&All<TextBlock>(area).Single(t=>t.Name=="ConversationPreviewTitle").Text==definition.Name,"returning to the original workspace restores its pinned title and selects chat");Click("ToggleFullTabView");await Settle();Check(ReferenceEquals(area.Selected,markdown),"workspace round trip preserves the selected split tool");
             ToggleFull();await Settle();area.SelectConversation();area.Close(markdown);await Settle();Check(area.HasConversation&&area.ToolCount==0&&ReferenceEquals(area.Selected,surface),"closing the last tool in full mode retains the pinned main conversation");
             Click("ToggleFullTabView");await Settle();Check(Field("filePreview")==null&&!dock.IsVisible&&dock.Content==null&&ReferenceEquals(surface.Parent,shell)&&Grid.GetColumn(surface)==2,"returning to split after the last tool closes removes the empty tool workspace");CheckMain(surface,editor,session,draft);
-            full.MinWidth=normalMinWidth;full.Close();full=null;Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions/unified-workspace.png, split-workspace.png");
+            var approvals=(AgentApprovalController)session.ApprovalProvider;
+            var approval=approvals.ApproveAsync(new AgentApprovalRequest{SessionId=session.KernelSession.SessionId,ProjectId=workspace.ProjectId,TaskId="approval-ui-fixture",CallId="inline-command",ToolName="exec_command",Action="shell",Resource=root,Arguments="{\"command\":\"git --version\"}"});await Settle();
+            var approvalCard=All<Border>(full).Single(b=>b.Name=="AgentApprovalCard");
+            Check(approvalCard.IsVisible&&ReferenceEquals(Window.GetWindow(approvalCard),full)&&approvalCard.TranslatePoint(new Point(0,approvalCard.ActualHeight),full).Y<=editor.TranslatePoint(new Point(0,0),full).Y,"real conversation places approval inside the same window above its editor");
+            ThemeManager.Apply("light");Capture("approval-in-conversation-light.png");ThemeManager.Apply("dark");Capture("approval-in-conversation-dark.png");
+            full.SwitchWorkspace(secondWorkspace);await Settle();Check(!All<Border>(full).Any(b=>b.Name=="AgentApprovalCard")&&!approval.IsCompleted,"changing chats hides the original approval without resolving or moving it");
+            full.SwitchWorkspace(workspace);await Settle();Check(All<Border>(full).Single(b=>b.Name=="AgentApprovalCard").IsVisible&&editor.Text==draft,"returning to the original chat restores its approval and draft");
+            All<Button>(full).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(!await approval,"inline denial completes only the original request");await Settle();
+            await LinkTabs(session,editor,draft);
+            full.MinWidth=normalMinWidth;full.Close();full=null;Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions");
+        }
+        static async Task LinkTabs(ConversationSession session,MarkdownEditor editor,string draft)
+        {
+            var portPicker=new TcpListener(IPAddress.Loopback,0);portPicker.Start();int port=((IPEndPoint)portPicker.LocalEndpoint).Port;portPicker.Stop();
+            string origin="http://127.0.0.1:"+port;var server=new HttpListener();server.Prefixes.Add(origin+"/");server.Start();
+            var serving=Task.Run(async delegate{try{while(server.IsListening){var request=await server.GetContextAsync();byte[] html=Encoding.UTF8.GetBytes("<!doctype html><title>Link tab fixture</title><meta charset='utf-8'><h1>对话链接 · 侧边预览</h1><p>这是本机测试页面。</p>");request.Response.ContentType="text/html; charset=utf-8";request.Response.ContentLength64=html.Length;await request.Response.OutputStream.WriteAsync(html,0,html.Length);request.Response.Close();}}catch(HttpListenerException){}catch(ObjectDisposedException){}});
+            try
+            {
+                string url=origin+"/fixture-link?q=1#part";session.History.Commit(url,"[查看项目页面]("+url+")");full.ReloadHistory(false);await Settle();((ScrollViewer)Field("scroll")).ScrollToBottom();await Settle();
+                var body=All<MarkdownView>(full).Single(v=>v.Text.StartsWith("[查看项目页面]"));var link=body.Document.Blocks.OfType<Paragraph>().Single().Inlines.OfType<Hyperlink>().Single();var menu=link.ContextMenu;
+                // The layout fixture deliberately exceeds small CI displays; fit
+                // the window on the physical desktop before sending native input.
+                full.MinWidth=520;full.Width=Math.Min(1100,SystemParameters.WorkArea.Width-40);full.Height=Math.Min(720,SystemParameters.WorkArea.Height-40);full.Left=SystemParameters.WorkArea.Left+20;full.Top=SystemParameters.WorkArea.Top+20;full.Topmost=true;full.Activate();await Settle();((ScrollViewer)Field("scroll")).ScrollToBottom();await Settle();
+                int rightClicks=0;body.PreviewMouseRightButtonDown+=delegate{rightClicks++;};var hit=link.Inlines.OfType<Run>().First().ContentStart.GetCharacterRect(LogicalDirection.Forward);var local=new Point(hit.X+4,hit.Y+hit.Height/2);var screen=body.PointToScreen(local);SetCursorPos((int)screen.X,(int)screen.Y);mouse_event(0x0008,0,0,0,UIntPtr.Zero);mouse_event(0x0010,0,0,0,UIntPtr.Zero);await Settle();Console.WriteLine("LINK HIT: "+body.InputHitTest(local)+" right="+rightClicks+" linkMenu="+menu.IsOpen+" editorMenu="+body.ContextMenu.IsOpen+" screen="+screen);Capture("link-right-click-hit.png");Check(menu.IsOpen&&rightClicks==1,"native right-click on the actual message link opens its link menu rather than the text editor menu");menu.IsOpen=false;full.MinWidth=1780;full.Width=1780;full.Height=900;await Settle();
+                foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);menu.PlacementTarget=body;menu.IsOpen=true;await Settle();Check(menu.IsVisible&&menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").IsEnabled,"actual conversation exposes the "+theme+" link menu with side-tab navigation");var image=new RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth),(int)Math.Ceiling(menu.ActualHeight),96,96,PixelFormats.Pbgra32);image.Render(menu);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create("work/permissions/link-menu-"+theme+".png"))png.Save(file);menu.IsOpen=false;}
+                menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));await Settle();var tabs=(PreviewWorkspace)Field("filePreview");var browser=tabs.Selected as BrowserPane;
+                Check(browser!=null&&tabs.ToolCount==1&&ReferenceEquals(Field("session"),session)&&editor.Text==draft,"link action opens a browser tab and preserves the conversation and unsent draft");
+                var navigation=browser.Ready;if(await Task.WhenAny(navigation,Task.Delay(25000))!=navigation)throw new Exception("link tab navigation timed out");await navigation;await browser.Ready;
+                Check(await browser.EvaluateAsync("document.title")=="\"Link tab fixture\""&&All<TextBox>(browser).Single(t=>t.Name=="BrowserAddress").Text==url,"side-tab browser renders the exact clicked URL through real local HTTP");Capture("conversation-link-tab-dark.png");using(var page=File.Create("work/permissions/link-page-native.png"))await browser.CaptureAsync(page);
+                full.MinWidth=520;full.Width=850;await Settle();Check(tabs.HasConversation&&ReferenceEquals(tabs.Selected,browser)&&editor.Text==draft,"narrow layout keeps the clicked webpage and conversation in the existing tab workspace");Capture("conversation-link-tab-dark-narrow.png");
+                var userBody=All<MarkdownView>(full).Single(v=>v.Text==url);var userLink=userBody.Document.Blocks.OfType<Paragraph>().Single().Inlines.OfType<Hyperlink>().Single();userLink.ContextMenu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));await Settle();Check(tabs.ToolCount==2&&tabs.Selected is BrowserPane&&!ReferenceEquals(tabs.Selected,browser),"automatic links in user messages also open independent side tabs");
+            }
+            finally{server.Close();}await serving;
         }
         [STAThread]public static int Main()
         {

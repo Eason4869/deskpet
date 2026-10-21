@@ -42,7 +42,7 @@ namespace Dafeiyu
                 button.Click+=delegate{Value=selected;if(Changed!=null)Changed(selected);};choices.Add(mode,button);row.Children.Add(button);
             }
             Grid.SetColumn(row,1);layout.Children.Add(row);
-            Content=new Border{CornerRadius=new CornerRadius(16),Background=Ui.Brush("#FDFEFF"),BorderBrush=Ui.Line,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
+            Content=new Border{CornerRadius=new CornerRadius(16),Background=ThemeManager.Brush("#FDFEFF","#2B3545"),BorderBrush=ThemeManager.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(14,8,10,8),Child=layout};
             Value=initial;
         }
         static FrameworkElement Preview(string mode)

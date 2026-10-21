@@ -9,13 +9,14 @@ namespace Dafeiyu
 {
     internal sealed class ShellCommand
     {
-        internal string Group,Title,GestureLabel,Icon;internal Action Execute;internal Func<bool> CanExecute;internal KeyGesture Gesture;
+        internal string Group,Title,GestureLabel,Icon,ShortcutId;internal Action Execute;internal Func<bool> CanExecute;internal KeyGesture Gesture;
     }
     public sealed partial class ChatWindow
     {
         const string ProjectHome="https://github.com/Eason4869/deskpet";
         void AddShellCommand(string group,string title,string icon,Action action,string label=null,Key key=Key.None,ModifierKeys modifiers=ModifierKeys.None,Func<bool> enabled=null)
-        {shellCommands.Add(new ShellCommand{Group=group,Title=title,Icon=icon,Execute=action,GestureLabel=label,Gesture=key==Key.None?null:new KeyGesture(key,modifiers),CanExecute=enabled});}
+        {var definition=ShortcutCatalog.All.FirstOrDefault(d=>!d.Global&&d.Group==group&&d.Title==title);shellCommands.Add(new ShellCommand{Group=group,Title=title,Icon=icon,Execute=action,ShortcutId=definition==null?null:definition.Id,GestureLabel=label,Gesture=key==Key.None?null:new KeyGesture(key,modifiers),CanExecute=enabled});}
+        void RefreshShellShortcuts(){foreach(var command in shellCommands)if(command.ShortcutId!=null)command.GestureLabel=ShortcutCatalog.Label(pet.Settings.LocalShortcuts[command.ShortcutId]);}
         bool HomeAvailable(){return shellPage=="home";}
         void BuildShellCommands()
         {
@@ -40,7 +41,7 @@ namespace Dafeiyu
             AddShellCommand("导航","前进","forward",()=>TravelPage(1),"Alt+→",Key.Right,ModifierKeys.Alt,()=>historyIndex<appHistory.Count-1);
             AddShellCommand("导航","聚焦主聊天输入框","new",delegate{ShowHomePage();input.Focus();},"Alt+L",Key.L,ModifierKeys.Alt);
             AddShellCommand("帮助","文档","book",()=>OpenShellUrl(ProjectHome));
-            AddShellCommand("帮助","显示键盘快捷键","keys",()=>new ShortcutHelpDialog(this,shellCommands).ShowDialog(),"Ctrl+/",Key.OemQuestion,ModifierKeys.Control);
+            AddShellCommand("帮助","显示键盘快捷键","keys",delegate{RefreshShellShortcuts();new ShortcutHelpDialog(this,shellCommands).ShowDialog();},"Ctrl+/",Key.OemQuestion,ModifierKeys.Control);
             AddShellCommand("帮助","新功能","news",()=>OpenShellUrl(ProjectHome+"/blob/main/CHANGELOG.md"));
             AddShellCommand("帮助","反馈","feedback",()=>OpenShellUrl(ProjectHome+"/issues"));
             AddShellCommand("帮助","配置引导","help",pet.ShowOnboarding);
@@ -63,11 +64,11 @@ namespace Dafeiyu
         }
         MenuItem CommandMenuItem(ShellCommand command)
         {
-            var item=new MenuItem{Header=command.Title,InputGestureText=command.GestureLabel??"",Icon=command.Icon==null?null:ShellIcons.Image(command.Icon),IsEnabled=command.CanExecute==null||command.CanExecute()};item.Click+=delegate{if(command.CanExecute==null||command.CanExecute())try{command.Execute();}catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is System.ComponentModel.Win32Exception))throw;ShowStatus("操作未完成，请检查本地文件或设置。");}};return item;
+            RefreshShellShortcuts();var item=new MenuItem{Header=command.Title,InputGestureText=command.GestureLabel??"",Icon=command.Icon==null?null:ShellIcons.Image(command.Icon),IsEnabled=command.CanExecute==null||command.CanExecute()};item.Click+=delegate{if(command.CanExecute==null||command.CanExecute())try{command.Execute();}catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is System.ComponentModel.Win32Exception))throw;ShowStatus("操作未完成，请检查本地文件或设置。");}};return item;
         }
         void ShellKeyDown(object sender,KeyEventArgs e)
         {
-            if(e.Handled)return;var key=e.Key==Key.System?e.SystemKey:e.Key;if(Keyboard.Modifiers==ModifierKeys.Alt&&(key==Key.F||key==Key.E||key==Key.V||key==Key.H)){string name=key==Key.F?"AppMenuFile":key==Key.E?"AppMenuEdit":key==Key.V?"AppMenuView":"AppMenuHelp";var button=FindTitleMenu(this,name);if(button!=null){e.Handled=true;button.Focus();button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}return;}if(e.Key==Key.Escape&&sidebarTemporary){e.Handled=true;sidebarTemporary=false;RefreshWorkspaceLayout();return;}foreach(var command in shellCommands){if(command.Gesture!=null&&command.Gesture.Matches(this,e)){e.Handled=true;if(command.CanExecute==null||command.CanExecute())command.Execute();return;}}
+            if(e.Handled)return;RefreshShellShortcuts();foreach(var menu in new[]{new[]{"menufile","AppMenuFile"},new[]{"menuedit","AppMenuEdit"},new[]{"menuview","AppMenuView"},new[]{"menuhelp","AppMenuHelp"}})if(ShortcutCatalog.Matches(pet.Settings.LocalShortcuts[menu[0]],e)){var button=FindTitleMenu(this,menu[1]);if(button!=null){e.Handled=true;button.Focus();button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}return;}if(e.Key==Key.Escape&&sidebarTemporary){e.Handled=true;sidebarTemporary=false;RefreshWorkspaceLayout();return;}foreach(var command in shellCommands){if(command.ShortcutId!=null?ShortcutCatalog.Matches(pet.Settings.LocalShortcuts[command.ShortcutId],e):command.Gesture!=null&&command.Gesture.Matches(this,e)){e.Handled=true;if(command.CanExecute==null||command.CanExecute())command.Execute();return;}}
         }
         static Button FindTitleMenu(DependencyObject root,string name)
         {

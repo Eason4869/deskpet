@@ -15,6 +15,6 @@ namespace Dafeiyu
             return new Button{Name=name,Content=text,Foreground=Ink,Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Template=strongHover?strongNavigation:navigation,Padding=new Thickness(10,8,10,8),MinHeight=35,FontSize=13,Margin=new Thickness(0,2,0,2),FocusVisualStyle=null,HorizontalContentAlignment=HorizontalAlignment.Left};
         }
         internal static Border Card(UIElement child)
-        {return new Border{Child=child,Background=ThemeManager.Surface,BorderBrush=Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(13),Padding=new Thickness(18),Margin=new Thickness(0,0,0,14)};}
+        {return new Border{Child=child,Background=ThemeManager.CardSurface,BorderBrush=ThemeManager.Brush("#E9EAED","#52637C"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(13),Padding=new Thickness(18),Margin=new Thickness(0,0,0,14)};}
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,7 +43,7 @@ namespace Dafeiyu
             if(project.Archived){if(restoreProject!=null){var restore=new MenuItem{Header="恢复项目",Icon=UiIcons.Image("folder-open",AgentUi.Muted)};restore.Click+=delegate{restoreProject(project);};menu.Items.Add(restore);}}
             else{
                 var edit=new MenuItem{Header="编辑项目",Icon=UiIcons.Image("settings",AgentUi.Muted)};edit.Click+=delegate{editProject(project);};menu.Items.Add(edit);
-                if(renameProject!=null){var rename=new MenuItem{Header="重命名项目",Icon=UiIcons.Image("edit",AgentUi.Muted),InputGestureText="Alt+Ctrl+R"};rename.Click+=delegate{renameProject(project);};menu.Items.Add(rename);}
+                if(renameProject!=null){var rename=new MenuItem{Header="重命名项目",Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameProject(project);};menu.Items.Add(rename);}
                 var add=new MenuItem{Header="新建对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};add.Click+=delegate{newConversation(project);};menu.Items.Add(add);menu.Items.Add(new Separator());
             }
             var moveSection=new MenuItem{Header="分区",Name="MoveProjectSection",Icon=UiIcons.Image("list",AgentUi.Muted)};foreach(var section in catalog.Sections.Where(s=>s.Mode=="work")){var target=section;var item=new MenuItem{Header=section.Name,IsCheckable=true,IsChecked=project.SectionId==section.Id};item.Click+=delegate{try{MoveProjectToSection(project,target.Id);}catch(Exception e){MessageBox.Show(e.Message,"分区未保存");}};moveSection.Items.Add(item);}menu.Items.Add(moveSection);
@@ -53,7 +53,7 @@ namespace Dafeiyu
         }
         ContextMenu ConversationMenu(ProjectDefinition project,ConversationDefinition conversation)
         {
-            var menu=ChatUi.Menu();if(!conversation.Archived){var pin=new MenuItem{Header=conversation.Pinned?"取消置顶":"置顶",Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleConversationPin(conversation);}catch(Exception e){MessageBox.Show(e.Message,"置顶未保存");}};menu.Items.Add(pin);}if(conversation.Archived){if(restoreConversation!=null){var restore=new MenuItem{Header="恢复对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};restore.Click+=delegate{restoreConversation(project,conversation);};menu.Items.Add(restore);}}else{if(renameConversation!=null){var rename=new MenuItem{Header="重命名",Icon=UiIcons.Image("edit",AgentUi.Muted),InputGestureText="Alt+Ctrl+R"};rename.Click+=delegate{renameConversation(project,conversation);};menu.Items.Add(rename);}var open=new MenuItem{Header="打开对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};open.Click+=delegate{conversationActivated(project,conversation);};menu.Items.Add(open);if(archiveConversation!=null){var archive=new MenuItem{Header="归档",Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveConversation(project,conversation);};menu.Items.Add(archive);}}if(deleteConversation!=null){var delete=new MenuItem{Header="永久删除",Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteConversation(project,conversation);};menu.Items.Add(delete);}return menu;
+            var menu=ChatUi.Menu();if(!conversation.Archived){var pin=new MenuItem{Header=conversation.Pinned?"取消置顶":"置顶",Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleConversationPin(conversation);}catch(Exception e){MessageBox.Show(e.Message,"置顶未保存");}};menu.Items.Add(pin);}if(conversation.Archived){if(restoreConversation!=null){var restore=new MenuItem{Header="恢复对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};restore.Click+=delegate{restoreConversation(project,conversation);};menu.Items.Add(restore);}}else{if(renameConversation!=null){var rename=new MenuItem{Header="重命名",Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameConversation(project,conversation);};menu.Items.Add(rename);}var open=new MenuItem{Header="打开对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};open.Click+=delegate{conversationActivated(project,conversation);};menu.Items.Add(open);if(archiveConversation!=null){var archive=new MenuItem{Header="归档",Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveConversation(project,conversation);};menu.Items.Add(archive);}}if(deleteConversation!=null){var delete=new MenuItem{Header="永久删除",Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteConversation(project,conversation);};menu.Items.Add(delete);}return menu;
         }        internal const string DragFormat="DeskPet.Conversation";
         static string[] ParseDrag(IDataObject data)
         {
