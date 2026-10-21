@@ -174,7 +174,7 @@ namespace Dafeiyu
         {
             get
             {
-                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
+                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
                 return workspaces;
             }
         }
@@ -1044,9 +1044,9 @@ namespace Dafeiyu
                 try{if(dictation!=null)await dictation.CancelAsync();if(inputQueue!=null)await inputQueue.PauseAsync();if(workspaces!=null)await workspaces.SaveAllAsync();if(live!=null)await live.StopAsync();if(conversation!=null){await conversation.StopAsync();await conversation.FlushHistoryAsync();}}
                 catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
             }
-            SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(mcpConnections!=null)mcpConnections.Dispose();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Dispose();
+            var imageOwners=ConversationSessions.ToArray();SavePosition();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(mcpConnections!=null)mcpConnections.Dispose();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
-            DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
+            DisposeImageServices(imageOwners);tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
         }
     }
 }

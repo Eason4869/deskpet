@@ -18,6 +18,7 @@ namespace Dafeiyu
         public IAgentQuestionProvider QuestionProvider {get;set;}
         public GeneratedImageStore ImageStore {get;set;}
         public ImageGenerationClient ImageClient {get;set;}
+        public ImageGenerationTaskManager ImageTasks {get;set;}
         public McpConnectionManager McpConnections {get;set;}
         void NotifyState(){var changed=StateChanged;if(!disposed && changed!=null)changed();}
         public IList<ConversationWorkspace> OpenWorkspaces {get{lock(gate)return workspaces.ToArray();}}
@@ -25,7 +26,7 @@ namespace Dafeiyu
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
         {
             if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
-            var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);workspace.Session.ApprovalProvider=ApprovalProvider;workspace.Session.QuestionProvider=QuestionProvider;workspace.Session.ImageStore=ImageStore;workspace.Session.ImageClient=ImageClient;workspace.Session.McpConnections=McpConnections;workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;lock(gate)workspaces.Add(workspace);return workspace;
+            var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);workspace.Session.ApprovalProvider=ApprovalProvider;workspace.Session.QuestionProvider=QuestionProvider;workspace.Session.ImageStore=ImageStore;workspace.Session.ImageClient=ImageClient;workspace.Session.ImageTasks=ImageTasks;workspace.Session.McpConnections=McpConnections;workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;lock(gate)workspaces.Add(workspace);return workspace;
         }
         public async Task CloseWorkspaceAsync(string id)
         {

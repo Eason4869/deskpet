@@ -141,7 +141,7 @@ namespace Dafeiyu
                 }finally{j.Commit.Release();foreach(var notify in assetNotifications)notify();}
             }
             Release(j);
-            if(result!=null)j.Completion.TrySetResult(result.Copy());else if(j.Record.State==ImageGenerationTaskState.Canceled)j.Completion.TrySetCanceled();else j.Completion.TrySetException(new IOException(j.Record.Error));
+            if(result!=null)j.Completion.TrySetResult(result.Copy());else if(j.Record.State==ImageGenerationTaskState.Canceled)j.Completion.TrySetCanceled();else j.Completion.TrySetException(error is OperationCanceledException ? new TimeoutException(j.Record.Error) : error ?? new IOException(j.Record.Error));
             Schedule();
         }
         void Report(Job j,ImageGenerationPhase phase)

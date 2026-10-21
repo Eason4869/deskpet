@@ -18,10 +18,11 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-protocols-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageProviderProtocolTests.Main();}
             if(args.Length==1 && args[0]=="--image-task-store-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskStoreTests.Main();}
             if(args.Length==1 && args[0]=="--history-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryTests.Main();}
+            if(args.Length==1 && args[0]=="--image-integration-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationIntegrationTests.Main();}
             if(args.Length==1 && args[0]=="--image-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskManagerTests.Main();}
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -64,7 +65,7 @@ namespace Dafeiyu.Tests
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
                     foreach(var test in new Func<int>[] { McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
-                        ConversationTests.Main, HistoryTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationTaskManagerTests.Main, QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
+                        ConversationTests.Main, HistoryTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main, QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
                         AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
                     return result;

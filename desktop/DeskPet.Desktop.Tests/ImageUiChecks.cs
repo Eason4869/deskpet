@@ -23,6 +23,7 @@ internal static class ImageUiChecks
         void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
         var handler = new ImageHandler();
         using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(directory), store => new ImageGenerationClient(store, handler, null));
+        Check(ReferenceEquals(owner.Session.ImageTasks,owner.ImageTasks),"controller and session share application queue");
         var window = new ChatWindow(owner, false); window.Show(); Dispatcher.UIThread.RunJobs();
         var workspace = window.Images;
         Check(window.CurrentPage == "chat", "starts on chat route"); window.ShowImages();
@@ -86,6 +87,17 @@ internal static class ImageUiChecks
         checks += GalleryLayoutUiChecks.Run(owner, window);
         checks += ImagePresetUiChecks.Run(owner, window, () => handler.Requests);
         checks += ImageEditorConsistencyUiChecks.Run(owner);
+        // Disposed surfaces detach from a shared job; they are never its cancellation owner.
+        handler.Delay=false;var detachedHost=new Window();var detachedPage=new ImageWorkspacePage(owner,detachedHost);detachedHost.Content=detachedPage;detachedHost.Show();Dispatcher.UIThread.RunJobs();
+        detachedPage.GetLogicalDescendants().OfType<TextBox>().Distinct().Single(t=>t.Name=="ImagePrompt").Text="closed view fixture";
+        int beforeCloseRequests=handler.Requests;var detachedGeneration=detachedPage.GenerateAsync();Until(()=>handler.Requests>beforeCloseRequests);var detachedId=owner.ImageTasks.List().Last().Id;detachedPage.Dispose();detachedHost.Close();Complete(detachedGeneration);
+        Check(owner.ImageTasks.Get(detachedId).State==ImageGenerationTaskState.Succeeded,"ViewCloseKeepsTaskAccessible: disposed workspace completes in shared manager");
+        var deleteHost=new Window();using var deleteEditor=new ImageProviderEditor(owner,deleteHost);deleteHost.Content=deleteEditor;deleteHost.Show();Dispatcher.UIThread.RunJobs();handler.Delay=true;int beforeDeleteRequests=handler.Requests;
+        var deleteTest=deleteEditor.GetLogicalDescendants().OfType<Button>().Distinct().Single(b=>b.Content as string=="测试生成（会调用服务并计费）");deleteTest.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Until(()=>handler.Requests>beforeDeleteRequests);var deletingId=owner.ImageTasks.List().Last().Id;
+        deleteEditor.GetLogicalDescendants().OfType<Button>().Distinct().Single(b=>b.Name=="DeleteImageProvider").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();var deleteDialog=deleteHost.OwnedWindows.Single();
+        Check(deleteDialog.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text!=null&&t.Text.Contains("1 个未完成")),"provider deletion displays running shared job count");
+        deleteDialog.GetLogicalDescendants().OfType<Button>().Distinct().Single(b=>b.Content as string=="取消任务并删除").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Until(()=>owner.ImageTasks.Get(deletingId).IsTerminal);
+        Check(owner.ImageTasks.Get(deletingId).State==ImageGenerationTaskState.Canceled,"provider deletion explicitly cancels shared test job");deleteHost.Close();handler.Delay=false;
         using var pendingCancel = new CancellationTokenSource();
         var question = owner.Questions.AskAsync(new AgentQuestionRequest { SessionId = owner.Session.PersonaId, TaskId = "portable-question", CallId = "pick", Question = "选择输出格式", Options = new[] { "PNG", "JPEG" } }, pendingCancel.Token); Dispatcher.UIThread.RunJobs();
         var option = window.GetLogicalDescendants().OfType<Button>().FirstOrDefault(b => b.Content as string == "PNG");

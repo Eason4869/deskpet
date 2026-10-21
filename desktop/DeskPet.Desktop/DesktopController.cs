@@ -33,6 +33,9 @@ internal sealed class DesktopController : IDisposable
     public ApiClient Api { get; }
     public GeneratedImageStore ImageStore { get; }
     public ImageGenerationClient ImageClient { get; }
+    public ImageGenerationTaskManager ImageTasks { get; }
+    public ImageAssetUsageRegistry ImageUsage { get; }
+    public Task ImageServicesShutdown { get; private set; } = Task.CompletedTask;
     public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
     public string DataDirectory { get; }
@@ -63,7 +66,10 @@ internal sealed class DesktopController : IDisposable
         ImageStore = new GeneratedImageStore(DataDirectory);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
-        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient;
+        ImageUsage = new ImageAssetUsageRegistry();
+        ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage);
+        ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient; Session.ImageTasks = ImageTasks;
         Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);
@@ -173,6 +179,6 @@ internal sealed class DesktopController : IDisposable
     public void Dispose()
     {
         tray?.Dispose(); foreach (var binding in hotkeys) binding.Dispose();
-        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose(); Questions.Dispose(); ImageClient.Dispose(); ImageStore.Dispose();
+        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose(); Questions.Dispose(); ImageServicesShutdown = Task.Run(async () => { await ImageTasks.StopAsync(CancellationToken.None); await Session.WaitForIdleAsync(); ImageClient.Dispose(); ImageStore.Dispose(); });
     }
 }

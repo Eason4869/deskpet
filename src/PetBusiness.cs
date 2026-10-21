@@ -168,7 +168,7 @@ namespace Dafeiyu
         }
         public ChatMessage StartProcessing(string id,bool workMode,DateTime? startedAt=null,string skinId=null) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.StartProcessing(workMode,startedAt,skinId);return message.Copy();} }
         internal void RetainImageReply(string id,bool retain){lock(gate){if(retain)retainedImageReplies.Add(id);else retainedImageReplies.Remove(id);}}
-        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
+        internal void RemoveEmptyReply(string id){lock(gate)messages.RemoveAll(m=>m.Id==id&&!retainedImageReplies.Contains(id)&&m.Role=="assistant"&&String.IsNullOrEmpty(m.Content)&&String.IsNullOrEmpty(m.Reasoning)&&(m.ImageGenerationTaskIds==null||m.ImageGenerationTaskIds.Count==0)&&(m.GeneratedImages==null||m.GeneratedImages.Count==0)&&(m.ToolEvents==null||m.ToolEvents.Count==0));}
         internal void PersistGeneratedImages(GeneratedImageStore assets)
         {
             lock(gate)foreach(var message in messages.Where(m=>m.GeneratedImages!=null&&m.GeneratedImages.Any(i=>i.Temporary)))
@@ -185,6 +185,8 @@ namespace Dafeiyu
             lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
         }
         public void Attach(string id,IEnumerable<ChatAttachment> files) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.SetAttachments(files);} }
+        public ChatMessage AttachImageTask(string id,string taskId)
+        {lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;if(message.ImageGenerationTaskIds==null)message.ImageGenerationTaskIds=new List<string>();if(!message.ImageGenerationTaskIds.Contains(taskId))message.ImageGenerationTaskIds.Add(taskId);return message.Copy();}}
         public ChatMessage AttachGeneratedImage(string id,GeneratedImage image)
         {
             if(image==null)throw new ArgumentNullException("image");

@@ -31,6 +31,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly System.Diagnostics.Stopwatch elapsed = new();
     private CancellationTokenSource? cancellation;
+    private string? imageJobId;
     private byte[]? referenceBytes;
     private string? referenceMediaType;
     private string? referenceId;
@@ -61,7 +62,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         owner = controller; host = window; Name = "ImageWorkspace"; prompt.Name = "ImagePrompt"; prompt.AcceptsReturn = true; prompt.Height = 140; prompt.MinWidth = 0; prompt.TextWrapping = TextWrapping.Wrap;
         providers.SelectionChanged += (_, _) => { if (refreshing) return; if (providers.SelectedItem is ImageGenerationProvider p) { owner.Settings.ActiveImageProviderId = p.Id; owner.Save(); ConfigureParameters(size, quality, p.Protocol); SelectParameter(size, p.Size); SelectParameter(quality, p.Quality); } UpdateCapability(); };
         generate = Ui.Button("开始生成", () => owner.Run(GenerateAsync)); generate.Name = "StartImageGeneration";
-        cancel = Ui.Button("取消生成", () => cancellation?.Cancel()); cancel.Name = "CancelImageGeneration"; cancel.IsEnabled = false;
+        cancel = Ui.Button("取消生成", () => { if(imageJobId != null) _ = owner.ImageTasks.CancelAsync(imageJobId); }); cancel.Name = "CancelImageGeneration"; cancel.IsEnabled = false;
         referenceButton = Ui.AsyncButton("上传参考图", UploadAsync, owner.Error); referenceButton.Name = "UploadImageReference";
         var remove = Ui.Button("移除参考图", ClearReference); remove.Name = "RemoveImageReference";
         var parameters = new WrapPanel(); parameters.Children.Add(Ui.Field("尺寸", size)); parameters.Children.Add(Ui.Field("质量", quality));
@@ -156,7 +157,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         using var cancel = new CancellationTokenSource(); cancellation = cancel; elapsed.Restart(); timer.Start(); UpdateCapability();
         try
         {
-            var image = await owner.ImageClient.GenerateAsync(new ImageGenerationRequest { Provider = provider, Prompt = text, Size = Parameter(size), Quality = Parameter(quality), ReferenceImageBytes = referenceBytes?.ToArray(), ReferenceMediaType = referenceMediaType, ReferenceImageId = referenceId, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") }, cancel.Token);
+            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = text, Size = Parameter(size), Quality = Parameter(quality), ReferenceImageBytes = referenceBytes?.ToArray(), ReferenceMediaType = referenceMediaType, ReferenceImageId = referenceId, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart = id => { imageJobId=id; return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
             if (disposed) return; foreach (var card in resultCards) card.Dispose(); resultCards.Clear(); result.Children.Clear(); var view = new GeneratedImageCard(owner, host, image, Prepare); resultCards.Add(view); result.Children.Add(view); status.Text = "生成完成 · " + elapsed.Elapsed.TotalSeconds.ToString("0.0") + " 秒";
         }
         catch (OperationCanceledException) { status.Text = "已取消生成。"; }
@@ -172,5 +173,5 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         foreach (var item in visible) { var card = new GeneratedImageCard(owner, host, item, Prepare, owner.Settings.ImageGalleryLayout); galleryCards.Add(card); gallery.Children.Add(card); }
         gallery.SetImages(visible); loadMore.IsVisible = found.Count > galleryLimit; RefreshGalleryLayout();
     }
-    public void Dispose() { disposed = true; cancellation?.Cancel(); timer.Stop(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose(); }
+    public void Dispose() { disposed = true;  timer.Stop(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose(); }
 }

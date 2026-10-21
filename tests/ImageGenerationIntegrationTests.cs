@@ -21,11 +21,14 @@ namespace Dafeiyu.Tests
                 Check(typeof(ChatMessage).GetProperty("GeneratedImages")!=null,"assistant messages preserve generated image asset references");
                 Check(typeof(ConversationSession).GetProperty("ImageStore")!=null,"session owns an injected image asset store");
                 Check(typeof(ConversationSession).GetProperty("QuestionProvider")!=null,"session exposes its question provider");
+                Check(typeof(ConversationSession).GetProperty("ImageTasks")!=null,"AllEntriesShareOneQueue: session accepts application manager");
                 Lifecycle().GetAwaiter().GetResult();
                 Console.WriteLine("Image generation integration tests: "+checks+" passed");return 0;
             }
             catch(Exception error){Console.Error.WriteLine(error);return 1;}
         }
+        static async Task<ImageGenerationTaskManager> Manager(string root,GeneratedImageStore assets,ImageGenerationClient client)
+        {var manager=new ImageGenerationTaskManager(new ImageGenerationTaskStore(root),assets,client,new ImageAssetUsageRegistry());await manager.RestoreAsync(CancellationToken.None);return manager;}
         static readonly byte[] picture=Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=");
         static async Task Lifecycle()
         {
@@ -42,12 +45,14 @@ namespace Dafeiyu.Tests
             await AgentBinding(root);
             await QuestionBinding(root);
             await ServiceRejection(root);
+            await QueueOwnershipAndDelivery(root);
+            await PreflightFailure(root);
         }
         sealed class HeldHandler:HttpMessageHandler
         {
-            internal HttpStatusCode Status=HttpStatusCode.OK;
+            internal HttpStatusCode Status=HttpStatusCode.OK;internal int Calls;
             internal readonly TaskCompletionSource<bool> Entered=new TaskCompletionSource<bool>();internal readonly TaskCompletionSource<bool> Release=new TaskCompletionSource<bool>();
-            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancel){Entered.TrySetResult(true);using(cancel.Register(()=>Release.TrySetCanceled()))await Release.Task;cancel.ThrowIfCancellationRequested();return new HttpResponseMessage(Status){Content=new StringContent("{\"data\":[{\"b64_json\":\""+Convert.ToBase64String(picture)+"\"}]}")};}
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancel){Interlocked.Increment(ref Calls);Entered.TrySetResult(true);using(cancel.Register(()=>Release.TrySetCanceled()))await Release.Task;cancel.ThrowIfCancellationRequested();return new HttpResponseMessage(Status){Content=new StringContent("{\"data\":[{\"b64_json\":\""+Convert.ToBase64String(picture)+"\"}]}")};}
         }
         sealed class ImageApi:IConversationApi,IAgentConversationApi
         {
@@ -63,9 +68,63 @@ namespace Dafeiyu.Tests
             var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="test-image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;
             bool persist=false;using(var assets=new GeneratedImageStore(Path.Combine(root,"agent")))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var questions=new AgentQuestionController())using(var origin=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(root,"agent-history")),()=>persist))using(var other=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null))
             {
-                origin.SelectPersona("original");origin.ConfigureKernelSession(new AgentSessionModel("original-session","project","conversation"),null);origin.ImageStore=assets;origin.ImageClient=client;origin.QuestionProvider=questions;other.SelectPersona("other");var sending=origin.SendTextAsync("draw",cfg,"pet");var arrived=await Task.WhenAny(handler.Entered.Task,sending,Task.Delay(10000));if(arrived!=handler.Entered.Task){await sending;throw new Exception("Image request never started.");}
-                string originalReply=origin.History.Messages.Last().Id;origin.RegisterGuidance("original","guide-during-image","Use softer lighting",null);persist=true;cfg.ImageProviders[0].Connection.Model="changed-while-waiting";handler.Release.TrySetResult(true);await sending;Check(origin.History.Messages.Any(m=>m.Id==originalReply),"steering cannot remove original in-flight image reply");var reply=origin.History.Messages.Single(m=>m.Id==originalReply);Check(reply.GeneratedImages!=null&&reply.GeneratedImages.Count==1,"agent tool result attaches a real image reference");var image=reply.GeneratedImages[0];Check(image.MessageId==reply.Id&&image.SessionId=="original-session"&&image.Model=="test-image","in-flight request retains original message/session and provider snapshot");Check(!assets.Get(image.Id).Temporary,"enabling history promotes in-flight temporary result before persisting reference");Check(other.History.Messages.Count==0,"completion cannot be inserted into another active chat");Check(!reply.Content.Contains(".png")&&!reply.Content.Contains("generated-images"),"assistant result is an image instead of a filesystem filename");
-                persist=false;var temporary=assets.Save(picture,new GeneratedImage{Prompt="created before history is enabled"},false);ChatMessage priorUser;var priorReply=origin.History.BeginTurn("temporary draw","image",out priorUser);origin.History.AttachGeneratedImage(priorReply.Id,temporary);origin.History.Update(priorReply.Id,"temporary image","complete");persist=true;cfg.AgentEnabled=false;await origin.SendTextAsync("now save history",cfg,"pet");await origin.FlushHistoryAsync();Check(!assets.Get(temporary.Id).Temporary,"later ordinary history save promotes older temporary image references");
+                origin.SelectPersona("original");origin.ConfigureKernelSession(new AgentSessionModel("original-session","project","conversation"),null);origin.ImageStore=assets;origin.ImageClient=client;origin.ImageTasks=await Manager(root,assets,client);origin.QuestionProvider=questions;other.SelectPersona("other");var sending=origin.SendTextAsync("draw",cfg,"pet");var arrived=await Task.WhenAny(handler.Entered.Task,sending,Task.Delay(10000));if(arrived!=handler.Entered.Task){await sending;throw new Exception("Image request never started.");}
+                string originalReply=origin.History.Messages.Last().Id;Check(origin.History.Messages.Last().ImageGenerationTaskIds.Count==1,"SteeringKeepsOriginalPendingSlot: ID attached before HTTP");origin.RegisterGuidance("original","guide-during-image","Use softer lighting",null);persist=true;cfg.ImageProviders[0].Connection.Model="changed-while-waiting";handler.Release.TrySetResult(true);await sending;Check(origin.History.Messages.Any(m=>m.Id==originalReply),"steering cannot remove original in-flight image reply");var reply=origin.History.Messages.Single(m=>m.Id==originalReply);Check(reply.GeneratedImages!=null&&reply.GeneratedImages.Count==1,"agent tool result attaches a real image reference");var image=reply.GeneratedImages[0];Check(image.MessageId==reply.Id&&image.SessionId=="original-session"&&image.Model=="test-image","in-flight request retains original message/session and provider snapshot");Check(origin.ImageTasks.Get(image.ImageJobId).Persistent,"EnablingHistoryPromotesTaskAndReferenceBeforeHistoryWrite: task promoted");Check(!assets.Get(image.Id).Temporary,"enabling history promotes in-flight temporary result before persisting reference");Check(other.History.Messages.Count==0,"completion cannot be inserted into another active chat");Check(!reply.Content.Contains(".png")&&!reply.Content.Contains("generated-images"),"assistant result is an image instead of a filesystem filename");
+                persist=false;var temporary=assets.Save(picture,new GeneratedImage{Prompt="created before history is enabled"},false);ChatMessage priorUser;var priorReply=origin.History.BeginTurn("temporary draw","image",out priorUser);origin.History.AttachGeneratedImage(priorReply.Id,temporary);origin.History.Update(priorReply.Id,"temporary image","complete");provider.SupportsEdits=true;var reference=assets.SaveReference(picture,new GeneratedImage{Prompt="temporary reference"},false);var temporaryHandle=await origin.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=provider,Prompt="referenced",ReferenceImageId=reference.Id,Persistent=false},new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}),CancellationToken.None);await temporaryHandle.Completion;origin.History.AttachImageTask(priorReply.Id,temporaryHandle.Id);origin.History.AttachImageTask(priorReply.Id,"aged-out-task");persist=true;cfg.AgentEnabled=false;await origin.SendTextAsync("now save history",cfg,"pet");await origin.FlushHistoryAsync();Check(!assets.Get(temporary.Id).Temporary,"later ordinary history save promotes older temporary image references");Check(String.IsNullOrEmpty(origin.HistoryWarning),"retained history remains savable after terminal task journal ages out");Check(origin.ImageTasks.Get(temporaryHandle.Id).Persistent&&!assets.Get(reference.Id).Temporary,"EnablingHistoryPromotesTaskAndReferenceBeforeHistoryWrite: ordinary Save promotes task and reference");
+            }
+        }
+        static async Task QueueOwnershipAndDelivery(string root)
+        {
+            foreach(string mode in new[]{"single","stop","delivery","journal"})
+            {
+                var path=Path.Combine(root,mode);var cfg=AgentSettings(Path.Combine(path,"workspace"));var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;
+                var api=new ImageApi{ExpectError=mode=="single"};var history=new HistoryStore(Path.Combine(path,"history"));
+                using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,history,()=>mode=="delivery"||mode=="journal"))
+                {
+                    session.ImageStore=assets;session.ImageClient=client;session.ImageTasks=await Manager(path,assets,client);session.SelectPersona("pet");
+                    var sending=session.SendTextAsync("draw",cfg,"pet");var reached=await Task.WhenAny(handler.Entered.Task,sending,Task.Delay(5000));if(reached!=handler.Entered.Task){await sending;throw new Exception("HTTP not entered");}
+                    var job=session.ImageTasks.List().Single();
+                    if(mode=="journal")
+                    {
+                        string journal=Path.Combine(path,"generated-images","tasks.dat");File.Delete(journal);Directory.CreateDirectory(journal);handler.Release.TrySetResult(true);await sending;
+                        var saved=session.ImageTasks.Get(job.Id);Check(saved.State==ImageGenerationTaskState.Succeeded&&api.LastResult.Contains(saved.ResultImageId)&&handler.Calls==1,"delivery journal failure still returns saved receipt without regeneration");Directory.Delete(journal);
+                    }
+                    else if(mode=="delivery")
+                    {
+                        Check(history.Load("pet").Last().ImageGenerationTaskIds.Contains(job.Id),"pending original ID durably persisted before HTTP");
+                        string historyFile=Directory.GetFiles(history.DirectoryPath,"*.history").Single();File.Delete(historyFile);Directory.CreateDirectory(historyFile);handler.Release.TrySetResult(true);await sending;
+                        var failed=session.ImageTasks.Get(job.Id);Check(failed.State==ImageGenerationTaskState.Succeeded&&failed.DeliveryState==ImageTaskDeliveryState.Failed,"asset success separate from delivery failure");
+                        Check(api.LastResult.Contains(failed.ResultImageId)&&!api.NeedsReconciliation,"delivery failure returns known saved asset receipt");
+                        Directory.Delete(historyFile);await session.RepairImageDeliveryAsync(job.Id,CancellationToken.None);Check(handler.Calls==1&&session.ImageTasks.Get(job.Id).DeliveryState==ImageTaskDeliveryState.Delivered,"DeliveryFailureRetryNeverCallsImageService");
+                        session.Clear();await session.RepairImageDeliveryAsync(job.Id,CancellationToken.None);Check(session.ImageTasks.Get(job.Id).DeliveryState==ImageTaskDeliveryState.Detached&&session.History.Messages.Count==0,"repair missing original message detaches without new turn");
+                    }
+                    else if(mode=="single")
+                    {
+                        await session.ImageTasks.CancelAsync(job.Id);await sending;Check(api.LastResult.Contains("取消")&&!api.NeedsReconciliation,"CancelSingleImageReturnsReadableToolResult");
+                    }
+                    else
+                    {
+                        var standalone=await session.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=provider,Prompt="workspace",Persistent=false},new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}),CancellationToken.None);
+                        var settings=await session.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=provider,Prompt="settings",Persistent=false},new ImageTaskOrigin{Source=ImageGenerationSource.SettingsTest}),CancellationToken.None);
+                        Check(session.ImageTasks.List().Count==3&&handler.Calls==1,"AllEntriesShareOneQueue");
+                        await session.StopAsync();try{await sending;}catch(OperationCanceledException){}
+                        Check(session.ImageTasks.Get(standalone.Id).State!=ImageGenerationTaskState.Canceled&&session.ImageTasks.Get(settings.Id).State!=ImageGenerationTaskState.Canceled,"StopAgentCancelsItsJobsOnly");
+                        Check(session.ImageTasks.Get(settings.Id)!=null,"ViewCloseKeepsTaskAccessible: manager retains independent entry");
+                        await session.ImageTasks.CancelProviderAsync(provider.Id);try{await standalone.Completion;}catch{}try{await settings.Completion;}catch{}
+                        Check(session.ImageTasks.List().All(t=>t.IsTerminal),"provider deletion explicitly cancels unfinished jobs");
+                    }
+                    await session.ImageTasks.StopAsync(CancellationToken.None);
+                }
+            }
+        }
+        static async Task PreflightFailure(string root)
+        {
+            var path=Path.Combine(root,"preflight");var cfg=AgentSettings(Path.Combine(path,"workspace"));var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;
+            string blocked=Path.Combine(path,"blocked-history");File.WriteAllText(blocked,"not a directory");
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null,new HistoryStore(blocked),()=>true))
+            {
+                session.ImageStore=assets;session.ImageClient=client;session.ImageTasks=await Manager(path,assets,client);try{await session.SendTextAsync("draw",cfg,"pet");}catch(ApiException){}
+                Check(handler.Calls==0&&session.ImageTasks.List().Single().State==ImageGenerationTaskState.Failed,"pending history failure prevents every HTTP call");
             }
         }
         static PetSettings AgentSettings(string path)
@@ -85,11 +144,11 @@ namespace Dafeiyu.Tests
             var cfg=AgentSettings(Path.Combine(root,"rejection-workspace"));var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="test-image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;var api=new ImageApi{ExpectError=true};
             using(var assets=new GeneratedImageStore(Path.Combine(root,"rejections")))using(var handler=new HeldHandler{Status=HttpStatusCode.Forbidden})using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
             {
-                session.ImageClient=client;session.ImageStore=assets;handler.Release.TrySetResult(true);await session.SendTextAsync("draw",cfg,"pet");Check(api.LastResult.Contains("403")&&api.LastResult.Contains("鉴权")&&!api.NeedsReconciliation,"explicit service rejection remains readable and completes failed journal state");Check(assets.List().Count==0,"rejected generation creates no fake gallery asset");
+                session.ImageClient=client;session.ImageTasks=await Manager(Path.Combine(root,Guid.NewGuid().ToString("N")),assets,client);session.ImageStore=assets;handler.Release.TrySetResult(true);await session.SendTextAsync("draw",cfg,"pet");Check(api.LastResult.Contains("403")&&api.LastResult.Contains("鉴权")&&!api.NeedsReconciliation,"explicit service rejection remains readable and completes failed journal state");Check(assets.List().Count==0,"rejected generation creates no fake gallery asset");
             }
             provider.TimeoutSeconds=1;var timeoutApi=new ImageApi();using(var assets=new GeneratedImageStore(Path.Combine(root,"timeouts")))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(timeoutApi,new SilentSpeech(),()=>null))
             {
-                session.ImageClient=client;session.ImageStore=assets;bool readable=false;try{await session.SendTextAsync("draw",cfg,"pet");}catch(ApiException error){readable=error.Message.Contains("超时")&&error.Message.Contains("不会自动重试");}Check(readable,"ambiguous image timeout preserves readable reason and no automatic retry");
+                session.ImageClient=client;session.ImageTasks=await Manager(Path.Combine(root,Guid.NewGuid().ToString("N")),assets,client);session.ImageStore=assets;bool readable=false;try{await session.SendTextAsync("draw",cfg,"pet");}catch(ApiException error){readable=error.Message.Contains("超时")&&error.Message.Contains("不会自动重试");}Check(readable,"ambiguous image timeout preserves readable reason and no automatic retry");
             }
         }
     }

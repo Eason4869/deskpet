@@ -80,7 +80,7 @@ namespace Dafeiyu
         private void Save(string id,ConversationLog history)
         {
             if(store==null||!saveEnabled())return;
-            try{history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages);}
+            try{PromoteImageTasksAsync(history,CancellationToken.None).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages);}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning="临时图片尚未转为永久保存，聊天记录暂未更新；请检查图片目录权限和空间。";OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}

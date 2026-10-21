@@ -23,6 +23,8 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     private readonly StackPanel result = Ui.Column();
     private ImageGenerationProvider? selected;
     private CancellationTokenSource? cancellation;
+    private string? imageJobId;
+    private bool disposed;
     private bool loading;
     private readonly List<GeneratedImageCard> cards = new();
     public ImageProviderEditor(DesktopController controller, Window window)
@@ -44,7 +46,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         Children.Add(Ui.Field("模型 ID（可手填）", model));
         var parameters = new Expander { Name = "ImageProviderParameters", Header = Ui.Text("图片生成设置"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = Ui.Column(Ui.Field("超时（秒）", timeout), Ui.Field("默认尺寸", size), Ui.Field("默认质量", quality), Ui.Text("图片服务与文字对话独立配置。尺寸与质量可保持服务默认。", 13), presetNotes) };
         Children.Add(parameters);
-        Children.Add(Ui.Row(Ui.AsyncButton("测试生成（会调用服务并计费）", TestAsync, owner.Error), Ui.Button("取消测试", () => cancellation?.Cancel())));
+        Children.Add(Ui.Row(Ui.AsyncButton("测试生成（会调用服务并计费）", TestAsync, owner.Error), Ui.Button("取消测试", () => { if(imageJobId != null) _ = owner.ImageTasks.CancelAsync(imageJobId); })));
         Children.Add(notice); Children.Add(result);
         var save = Ui.Button("保存并启用此厂商 / 模型", Save); save.Name = "SaveImageProvider"; Children.Add(save); Reload(owner.Settings.ActiveImageProviderId);
     }
@@ -53,9 +55,13 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         try { Capture(); if (items.Count >= 32) throw new InvalidOperationException("最多添加 32 个厂商。"); var provider = new ImageGenerationProvider(); items.Add(provider); Reload(provider.Id); notice.Text = "已新增草稿；点击保存并启用后生效。"; }
         catch (Exception e) { owner.Error(e); }
     }
-    private void RemoveProvider()
+    private async void RemoveProvider()
     {
-        if (selected == null) return; items.Remove(selected); Reload(items.FirstOrDefault()?.Id); notice.Text = "已从草稿删除；点击保存并启用后生效。";
+        if (selected == null) return; var deleting=selected;var count=owner.ImageTasks.List().Count(t=>t.ProviderId==deleting.Id&&!t.IsTerminal);
+        var dialog=Ui.Window("删除生图服务",Ui.Text(""),450,240);dialog.WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        dialog.Content=new Border{Padding=new Avalonia.Thickness(22),Child=Ui.Column(Ui.Text("此服务有 "+count+" 个未完成图片任务。取消任务并删除服务？"),Ui.Row(Ui.Button("取消",()=>dialog.Close(false)),Ui.Button("取消任务并删除",()=>dialog.Close(true))))};
+        if(!await dialog.ShowDialog<bool>(host))return;await owner.ImageTasks.CancelProviderAsync(deleting.Id);
+        items.Remove(deleting); Reload(items.FirstOrDefault()?.Id); notice.Text = "已从草稿删除；点击保存并启用后生效。";
     }
     private void ApplyPreset()
     {
@@ -102,13 +108,13 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         var provider = selected.Copy(); using var cancel = new CancellationTokenSource(); cancellation = cancel; notice.Text = "正在测试生成…";
         try
         {
-            var image = await owner.ImageClient.GenerateAsync(new ImageGenerationRequest { Provider = provider, Prompt = "A small friendly blue fish on a simple white background", Size = provider.Size, Quality = provider.Quality, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") }, cancel.Token);
-            foreach (var card in cards) card.Dispose(); cards.Clear(); result.Children.Clear();
+            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = "A small friendly blue fish on a simple white background", Size = provider.Size, Quality = provider.Quality, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.SettingsTest}) { BeforeStart = id => { imageJobId=id; return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
+            if(disposed)return; foreach (var card in cards) card.Dispose(); cards.Clear(); result.Children.Clear();
             var view = new GeneratedImageCard(owner, host, image); cards.Add(view); result.Children.Add(view); notice.Text = "连接成功，测试图片已加入图库。";
         }
         catch (OperationCanceledException) { notice.Text = "测试已取消。"; }
         catch (Exception e) { notice.Text = "测试失败：" + e.Message; }
         finally { cancellation = null; }
     }
-    public void Dispose() { cancellation?.Cancel(); foreach (var card in cards) card.Dispose(); }
+    public void Dispose() { disposed=true;  foreach (var card in cards) card.Dispose(); }
 }
