@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/ImageGenerationTask.cs;../../src/ImageGenerationTaskStore.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageServicePresets.cs;../../src/ImageGenerationProtocols.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageGalleryLayout.cs" Link="Shared/ImageGalleryLayout.cs" />
     <Compile Include="../../src/ConversationImageGeneration.cs" Link="Shared/ConversationImageGeneration.cs" />

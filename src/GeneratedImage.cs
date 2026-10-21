@@ -23,6 +23,10 @@ namespace Dafeiyu
         [DataMember] public string ReferenceImageId {get;set;}
         [DataMember] public bool Temporary {get;set;}
         [DataMember] public bool IsReference {get;set;}
+        [DataMember(EmitDefaultValue=false)] public string ImageJobId {get;set;}
+        [DataMember(EmitDefaultValue=false)] public ImageGenerationSource Source {get;set;}
+        [DataMember(EmitDefaultValue=false)] public bool IsFavorite {get;set;}
+        [DataMember(EmitDefaultValue=false)] public DateTime? TrashedUtc {get;set;}
         public GeneratedImage Copy(){return (GeneratedImage)MemberwiseClone();}
     }
     public sealed class ImageGenerationRequest
@@ -39,5 +43,6 @@ namespace Dafeiyu
         public string MessageId {get;set;}
         public bool Persistent {get;set;}
         public ImageGenerationRequest(){Persistent=true;}
+        public ImageGenerationRequest Copy(){var copy=(ImageGenerationRequest)MemberwiseClone();copy.Provider=Provider==null?null:Provider.Copy();copy.ReferenceImageBytes=ReferenceImageBytes==null?null:(byte[])ReferenceImageBytes.Clone();return copy;}
     }
 }

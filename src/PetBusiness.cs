@@ -106,6 +106,7 @@ namespace Dafeiyu
         [DataMember] public long ProcessingMilliseconds { get; private set; }
         [DataMember] public List<ChatAttachment> Attachments { get; private set; }
         [DataMember(EmitDefaultValue=false)] public List<GeneratedImage> GeneratedImages { get; private set; }
+        [DataMember(EmitDefaultValue=false)] public List<string> ImageGenerationTaskIds { get; set; }
         [DataMember] public List<AgentToolEvent> ToolEvents { get; private set; }
         [DataMember] public string Status { get; private set; }
         [DataMember] public string Source { get; private set; }
@@ -113,7 +114,7 @@ namespace Dafeiyu
         public ChatMessage(string role, string content) : this(role,content,Guid.NewGuid().ToString("N"),"complete","text") { }
         public ChatMessage(string role,string content,string turnId,string status,string source)
         { Id=Guid.NewGuid().ToString("N");TurnId=turnId;Role=role;Content=content??"";Status=status;Source=source;Timestamp=DateTime.UtcNow; }
-        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.SetGeneratedImages(GeneratedImages);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
+        public ChatMessage Copy() { var copy=(ChatMessage)MemberwiseClone();copy.SetAttachments(Attachments);copy.SetTools(ToolEvents);copy.SetGeneratedImages(GeneratedImages);copy.ImageGenerationTaskIds=ImageGenerationTaskIds==null?null:new List<string>(ImageGenerationTaskIds);copy.ChangeSummary=ChangeSummary==null?null:ChangeSummary.Copy();return copy; }
         internal void SetGeneratedImages(IEnumerable<GeneratedImage> images) { GeneratedImages=images==null?null:images.Where(i=>i!=null).Take(20).Select(i=>i.Copy()).ToList(); }
         internal void SetTools(IEnumerable<AgentToolEvent> tools) { ToolEvents=tools==null?null:tools.Select(t=>t.Copy()).ToList(); }
         internal void SetAttachments(IEnumerable<ChatAttachment> files) { Attachments=files==null?null:files.Select(f=>f.Copy()).ToList(); }
