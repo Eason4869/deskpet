@@ -13,6 +13,7 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1 && args[0]=="--image-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryManagementTests.Main();}
             if(args.Length==1 && args[0]=="--image-backend-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationBackendTests.Main();}
             if(args.Length==1 && args[0]=="--image-layout-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryLayoutTests.Main();}
             if(args.Length==1 && args[0]=="--image-protocols-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageProviderProtocolTests.Main();}

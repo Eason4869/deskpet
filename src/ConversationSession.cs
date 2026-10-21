@@ -74,13 +74,13 @@ namespace Dafeiyu
             lock(gate)if(histories.TryGetValue(id,out history))return history;
             // Storage completion can publish warnings back into the session/queue.
             // Never wait for that worker while holding the session gate.
-            var loaded=new ConversationLog();if(store!=null)loaded.Replace(store.Load(id));
-            lock(gate){if(histories.TryGetValue(id,out history))return history;histories[id]=loaded;return loaded;}
+            var loaded=new ConversationLog();loaded.ConfigureImageUsage(imageUsage);if(store!=null)loaded.Replace(store.Load(id));
+            lock(gate){if(histories.TryGetValue(id,out history)){loaded.ReleaseImageUsage();return history;}histories[id]=loaded;return loaded;}
         }
         private void Save(string id,ConversationLog history)
         {
             if(store==null||!saveEnabled())return;
-            try{PromoteImageTasksAsync(history,CancellationToken.None).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages);}
+            try{PromoteImageTasksAsync(history,CancellationToken.None).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning="临时图片尚未转为永久保存，聊天记录暂未更新；请检查图片目录权限和空间。";OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
@@ -462,7 +462,7 @@ namespace Dafeiyu
             lock(gate) if(Object.ReferenceEquals(active,op)){active=null;RuntimeAction=op.Outcome=="complete"?"review":op.Outcome=="error"?"failed":"idle";TerminalRevision++;}
             if(op.Workspace!=null){op.Workspace.Dispose();op.Workspace=null;}op.Cancel.Dispose(); SetStage(ConversationStage.Idle); op.Complete.TrySetResult(true);
         }
-        public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null)store.ClearAsync(personaId);if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }
+        public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }
         public Task FlushHistoryAsync()
         {
             lock(gate){if(active!=null && active.ReplyId!=null)Save(active.PersonaId,active.History);return Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),taskStore==null?Task.FromResult(0):taskStore.FlushAsync());}
@@ -481,6 +481,7 @@ namespace Dafeiyu
             if(op!=null)
             { try {op.Cancel.Cancel();}catch(ObjectDisposedException){} if(op.Recorder!=null) op.Recorder.Dispose(); if(!op.Finishing && Stage==ConversationStage.Recording) End(op); }
             if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();
+            Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),op==null?Task.FromResult(true):op.Complete.Task).ContinueWith(t=>{lock(gate)foreach(var log in histories.Values)log.ReleaseImageUsage();});
         }
     }
 }

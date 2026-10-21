@@ -35,6 +35,7 @@ internal sealed class DesktopController : IDisposable
     public ImageGenerationClient ImageClient { get; }
     public ImageGenerationTaskManager ImageTasks { get; }
     public ImageAssetUsageRegistry ImageUsage { get; }
+    public ImageAssetManagementService ImageManagement { get; }
     public Task ImageServicesShutdown { get; private set; } = Task.CompletedTask;
     public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
@@ -63,13 +64,14 @@ internal sealed class DesktopController : IDisposable
         Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.PackageId == Settings.SkinId) ?? Skins[0];
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Api = new ApiClient();
-        ImageStore = new GeneratedImageStore(DataDirectory);
+        ImageUsage = new ImageAssetUsageRegistry();
+        ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
-        ImageUsage = new ImageAssetUsageRegistry();
         ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
-        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient; Session.ImageTasks = ImageTasks;
+        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient; Session.ImageTasks = ImageTasks; Session.ImageUsage = ImageUsage;
+        ImageManagement = new ImageAssetManagementService(ImageStore, ImageUsage, new ImageAssetReferenceResolver(DataDirectory, ImageStore, ImageTasks));
         Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);

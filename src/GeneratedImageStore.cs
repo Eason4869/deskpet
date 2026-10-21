@@ -11,7 +11,7 @@ using System.Text;
 namespace Dafeiyu
 {
     // Bytes live outside history/settings. Index entries never contain image data or paths.
-    public sealed class GeneratedImageStore : IDisposable
+    public sealed partial class GeneratedImageStore : IDisposable
     {
         public const int MaximumBytes=50*1024*1024;
         public const int MaximumItems=20000;
@@ -21,16 +21,19 @@ namespace Dafeiyu
         readonly List<GeneratedImage> images=new List<GeneratedImage>();
         readonly HashSet<string> temporaryCopies=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool disposed,recoveryRequired;
+        string lastPurgeId;
+        ImageAssetUsageRegistry assetUsage;
+        internal void BindUsage(ImageAssetUsageRegistry value){lock(gate){if(assetUsage!=null&&!Object.ReferenceEquals(assetUsage,value))throw new InvalidOperationException("图片引用协调器不一致。");assetUsage=value;if(value!=null)value.MarkDeleted(purgedIds.Concat(purgedJobKeys));}}
         public event Action Changed;
         public string Warning {get;private set;}
-        [DataContract] sealed class Index {[DataMember] public List<GeneratedImage> Images {get;set;}}
-        public GeneratedImageStore(string dataDirectory)
+        [DataContract] sealed class Index {[DataMember] public List<GeneratedImage> Images {get;set;}[DataMember(EmitDefaultValue=false)] public string LastPurgeId {get;set;}}
+        public GeneratedImageStore(string dataDirectory,ImageAssetUsageRegistry usage=null)
         {
             if(String.IsNullOrWhiteSpace(dataDirectory))throw new ArgumentException("请指定图片存储目录。","dataDirectory");
-            directory=Path.Combine(Path.GetFullPath(dataDirectory),"generated-images");indexPath=Path.Combine(directory,"index.dat");
+            assetUsage=usage;directory=Path.Combine(Path.GetFullPath(dataDirectory),"generated-images");indexPath=Path.Combine(directory,"index.dat");
             referenceDirectory=Path.Combine(directory,"references");
             temporaryDirectory=Path.Combine(directory,"temporary-"+Guid.NewGuid().ToString("N"));Warning="";
-            Directory.CreateDirectory(directory);CheckDirectory(directory);Load();
+            Directory.CreateDirectory(directory);CheckDirectory(directory);Load();RecoverPurgeTransactions();
         }
         public GeneratedImage Save(byte[] bytes,GeneratedImage metadata,bool persistent)
         {return SaveCore(bytes,metadata,persistent,false);}
@@ -45,6 +48,7 @@ namespace Dafeiyu
             var item=(metadata??new GeneratedImage()).Copy();item.Id=Guid.NewGuid().ToString("N");item.MediaType=format.MediaType;item.Width=format.Width;item.Height=format.Height;item.Bytes=bytes.Length;item.CreatedUtc=DateTime.UtcNow;item.Temporary=!persistent;
             item.IsReference=reference;
             item.Prompt=Limit(item.Prompt,16000);item.ProviderId=Limit(item.ProviderId,80);item.Model=Limit(item.Model,256);item.Size=Limit(item.Size,64);item.Quality=Limit(item.Quality,64);item.SessionId=Limit(item.SessionId,128);item.TaskId=Limit(item.TaskId,128);item.MessageId=Limit(item.MessageId,128);item.ReferenceImageId=ValidId(item.ReferenceImageId)?item.ReferenceImageId:"";
+            using(var referenceLease=assetUsage==null||String.IsNullOrEmpty(item.ReferenceImageId)?null:assetUsage.Acquire(item.ReferenceImageId,"asset-reference"))
             lock(gate){
                 EnsureOpen();if(images.Count>=MaximumItems)throw new InvalidDataException("图库已达到 20,000 张上限，请先备份并整理图库。");
                 CheckDirectory(directory);
@@ -58,7 +62,7 @@ namespace Dafeiyu
         }
         public GeneratedImage FindByJobId(string id){if(String.IsNullOrEmpty(id))return null;lock(gate){EnsureOpen();var item=images.Find(i=>!i.IsReference && i.ImageJobId==id);return item==null?null:item.Copy();}}
         public GeneratedImage Get(string id){ValidateId(id);lock(gate){EnsureOpen();var item=images.Find(i=>i.Id==id);return item==null?null:item.Copy();}}
-        public IList<GeneratedImage> List(){lock(gate){EnsureOpen();return images.Where(i=>!i.IsReference).OrderByDescending(i=>i.CreatedUtc).Select(i=>i.Copy()).ToList();}}
+        public IList<GeneratedImage> List(){lock(gate){EnsureOpen();return images.Where(i=>!i.IsReference && !i.TrashedUtc.HasValue).OrderByDescending(i=>i.CreatedUtc).Select(i=>i.Copy()).ToList();}}
         public string PathFor(string id)
         {
             ValidateId(id);lock(gate){EnsureOpen();var item=images.Find(i=>i.Id==id);if(item==null)throw new FileNotFoundException("图片资产不存在或需要恢复。");return ExistingPath(item);}
@@ -108,11 +112,11 @@ namespace Dafeiyu
         }
         public int Recover()
         {
-            int count=0,invalid=0;lock(gate){EnsureOpen();CheckDirectory(directory);var recovered=images.Select(i=>i.Copy()).ToList();var ids=new HashSet<string>(recovered.Select(i=>i.Id),StringComparer.Ordinal);
+            int count=0,invalid=0;lock(gate){EnsureOpen();CheckDirectory(directory);if(purgeRecoveryPending)RecoverPurgeTransactions();var recovered=images.Select(i=>i.Copy()).ToList();var ids=new HashSet<string>(recovered.Select(i=>i.Id),StringComparer.Ordinal);
                 var files=new List<string>(Directory.GetFiles(directory));if(Directory.Exists(referenceDirectory)){CheckDirectory(referenceDirectory);files.AddRange(Directory.GetFiles(referenceDirectory));}
                 foreach(string path in files){
                     string id=Path.GetFileNameWithoutExtension(path);string ext=Path.GetExtension(path).ToLowerInvariant();
-                    if(!ValidId(id) || (ext!=".png" && ext!=".jpg" && ext!=".gif" && ext!=".webp") || ids.Contains(id))continue;
+                    if(!ValidId(id) || (ext!=".png" && ext!=".jpg" && ext!=".gif" && ext!=".webp") || ids.Contains(id) || purgedIds.Contains(id))continue;
                     if(recovered.Count>=MaximumItems){invalid++;continue;}
                     try{if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException();var info=new FileInfo(path);if(info.Length<=0 || info.Length>MaximumBytes)throw new InvalidDataException();var format=GeneratedImageValidation.Validate(File.ReadAllBytes(path));if(Extension(format.MediaType)!=ext)throw new InvalidDataException();
                         recovered.Add(new GeneratedImage{Id=id,Prompt="恢复的图片（原元数据不可用）",MediaType=format.MediaType,Width=format.Width,Height=format.Height,Bytes=info.Length,CreatedUtc=info.CreationTimeUtc,Temporary=false,IsReference=Path.GetDirectoryName(path)==referenceDirectory});ids.Add(id);count++;}
@@ -130,19 +134,20 @@ namespace Dafeiyu
                 using(var stream=new MemoryStream(plain))index=(Index)new DataContractJsonSerializer(typeof(Index)).ReadObject(stream);
                 if(index==null || index.Images==null || index.Images.Count>MaximumItems)throw new SerializationException();
                 var ids=new HashSet<string>(StringComparer.Ordinal);foreach(var item in index.Images){if(item==null || !ValidId(item.Id) || !ids.Add(item.Id) || item.Temporary || Extension(item.MediaType)==null || item.Bytes<1 || item.Bytes>MaximumBytes || !GeneratedImageValidation.ValidDimensions(item.Width,item.Height) || (item.Prompt??"").Length>16000)throw new SerializationException();}
-                images.AddRange(index.Images.Select(i=>i.Copy()));
+                images.AddRange(index.Images.Select(i=>i.Copy()));lastPurgeId=index.LastPurgeId;
             }catch(Exception e){if(!StorageError(e))throw;images.Clear();recoveryRequired=true;Warning="图片索引无法读取，原图片已保留；请在图库执行恢复。";
                 try{File.Copy(indexPath,indexPath+".invalid-"+Guid.NewGuid().ToString("N"),false);}catch(IOException){}catch(UnauthorizedAccessException){}
             }
             var files=new List<string>(Directory.GetFiles(directory));if(Directory.Exists(referenceDirectory)){CheckDirectory(referenceDirectory);files.AddRange(Directory.GetFiles(referenceDirectory));}
-            if(files.Any(p=>ValidId(Path.GetFileNameWithoutExtension(p)) && ExtensionForFile(p)!=null && !images.Any(i=>i.Id==Path.GetFileNameWithoutExtension(p))))Warning="发现未编入索引的图片，原文件已保留；请在图库执行恢复。";
+            var indexedIds=new HashSet<string>(images.Select(i=>i.Id),StringComparer.Ordinal);
+            if(files.Any(p=>ValidId(Path.GetFileNameWithoutExtension(p)) && ExtensionForFile(p)!=null && !indexedIds.Contains(Path.GetFileNameWithoutExtension(p))))Warning="发现未编入索引的图片，原文件已保留；请在图库执行恢复。";
             // Earlier sessions' temporary directories are deliberately preserved: another process
             // may still own them. This instance cleans only its own temporary assets on disposal.
         }
-        void SaveIndex(IEnumerable<GeneratedImage> entries)
+        void SaveIndex(IEnumerable<GeneratedImage> entries,string transactionId=null)
         {
-            byte[] plain;using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(Index)).WriteObject(stream,new Index{Images=entries.Where(i=>!i.Temporary).Select(i=>i.Copy()).ToList()});if(stream.Length>MaximumIndexBytes)throw new InvalidDataException("图片索引过大。");plain=stream.ToArray();}
-            byte[] encrypted=SecretProtection.Protect(plain);if(encrypted.Length>MaximumIndexBytes)throw new InvalidDataException("图片索引过大。");WriteAtomic(indexPath,encrypted);
+            byte[] plain;using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(Index)).WriteObject(stream,new Index{LastPurgeId=transactionId??lastPurgeId,Images=entries.Where(i=>!i.Temporary).Select(i=>i.Copy()).ToList()});if(stream.Length>MaximumIndexBytes)throw new InvalidDataException("图片索引过大。");plain=stream.ToArray();}
+            byte[] encrypted=SecretProtection.Protect(plain);if(encrypted.Length>MaximumIndexBytes)throw new InvalidDataException("图片索引过大。");WriteAtomic(indexPath,encrypted);if(transactionId!=null)lastPurgeId=transactionId;
         }
         static void WriteAtomic(string path,byte[] bytes)
         {

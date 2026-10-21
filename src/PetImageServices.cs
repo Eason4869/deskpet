@@ -6,6 +6,8 @@ namespace Dafeiyu
 {
     public sealed partial class PetWindow
     {
+        ImageAssetManagementService imageManagement;
+        public ImageAssetManagementService ImageManagement {get{return imageManagement??(imageManagement=new ImageAssetManagementService(ImageStore,ImageUsage,new ImageAssetReferenceResolver(Store.DirectoryPath,ImageStore,ImageTasks)));}}
         ImageGenerationTaskManager imageTasks;
         Task imageServicesShutdown=Task.FromResult(0);
         public Task ImageServicesShutdown {get{return imageServicesShutdown;}}
@@ -13,11 +15,11 @@ namespace Dafeiyu
         public ImageAssetUsageRegistry ImageUsage {get{return imageUsage??(imageUsage=new ImageAssetUsageRegistry());}}
         public ImageGenerationTaskManager ImageTasks {get{if(imageTasks==null){imageTasks=new ImageGenerationTaskManager(new ImageGenerationTaskStore(Store.DirectoryPath),ImageStore,ImageClient,ImageUsage);imageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();}return imageTasks;}}
         GeneratedImageStore imageStore;ImageGenerationClient imageClient;AgentQuestionController questionController;
-        public GeneratedImageStore ImageStore {get{return imageStore??(imageStore=new GeneratedImageStore(Store.DirectoryPath));}}
+        public GeneratedImageStore ImageStore {get{return imageStore??(imageStore=new GeneratedImageStore(Store.DirectoryPath,ImageUsage));}}
         public ImageGenerationClient ImageClient {get{return imageClient??(imageClient=new ImageGenerationClient(ImageStore));}}
         public AgentQuestionController QuestionController {get{return questionController??(questionController=new AgentQuestionController());}}
         void ConfigureImageServices(ConversationSession session)
-        {session.ImageStore=ImageStore;session.ImageClient=ImageClient;session.ImageTasks=ImageTasks;session.QuestionProvider=QuestionController;}
+        {session.ImageStore=ImageStore;session.ImageClient=ImageClient;session.ImageTasks=ImageTasks;session.ImageUsage=ImageUsage;session.QuestionProvider=QuestionController;}
         internal void ShowImageConfiguration()
         {ShowSettings(true);if(preferences!=null)preferences.SelectImageConfiguration();}
         internal void OpenImageWorkspace(GeneratedImage previous){ShowChat();if(chat!=null)chat.ShowImagesPage(previous);}

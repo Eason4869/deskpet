@@ -143,6 +143,12 @@ namespace Dafeiyu
         private readonly List<ChatMessage> messages = new List<ChatMessage>();
         private readonly HashSet<string> retainedImageReplies=new HashSet<string>();
         private readonly object gate=new object();
+        ImageAssetUsageRegistry imageUsage;
+        readonly Dictionary<string,IDisposable> imageLeases=new Dictionary<string,IDisposable>(StringComparer.Ordinal);
+        public void ConfigureImageUsage(ImageAssetUsageRegistry usage){lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,usage))throw new InvalidOperationException("图片引用协调器不一致。");imageUsage=usage;LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(messages));}}
+        void LeaseImageKeys(IEnumerable<string> keys){if(imageUsage==null)return;foreach(string key in keys)if(!imageLeases.ContainsKey(key))imageLeases.Add(key,imageUsage.Acquire(key,"memory-history"));}
+        internal void ReconcileImageUsage(){lock(gate){var current=new HashSet<string>(ImageAssetUsageRegistry.ReferenceKeys(messages),StringComparer.Ordinal);foreach(string key in imageLeases.Keys.Where(k=>!current.Contains(k)).ToArray()){imageLeases[key].Dispose();imageLeases.Remove(key);}}}
+        public void ReleaseImageUsage(){lock(gate){foreach(var lease in imageLeases.Values)lease.Dispose();imageLeases.Clear();}}
         public IList<ChatMessage> Messages { get { lock(gate)return messages.Select(m=>m.Copy()).ToList().AsReadOnly(); } }
         public void Commit(string user, string assistant)
         {
@@ -186,14 +192,14 @@ namespace Dafeiyu
         }
         public void Attach(string id,IEnumerable<ChatAttachment> files) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.SetAttachments(files);} }
         public ChatMessage AttachImageTask(string id,string taskId)
-        {lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;if(message.ImageGenerationTaskIds==null)message.ImageGenerationTaskIds=new List<string>();if(!message.ImageGenerationTaskIds.Contains(taskId))message.ImageGenerationTaskIds.Add(taskId);return message.Copy();}}
+        {lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;LeaseImageKeys(new[]{"job:"+taskId});if(message.ImageGenerationTaskIds==null)message.ImageGenerationTaskIds=new List<string>();if(!message.ImageGenerationTaskIds.Contains(taskId))message.ImageGenerationTaskIds.Add(taskId);return message.Copy();}}
         public ChatMessage AttachGeneratedImage(string id,GeneratedImage image)
         {
             if(image==null)throw new ArgumentNullException("image");
-            lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException("一条回复最多保留 20 张生成图片。");message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
+            lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException("一条回复最多保留 20 张生成图片。");LeaseImageKeys(String.IsNullOrEmpty(image.ReferenceImageId)?new[]{image.Id}:new[]{image.Id,image.ReferenceImageId});message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
         }
         public void Replace(IList<ChatMessage> restored)
-        { lock(gate) { messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}Trim(); } }
+        { lock(gate) { if(restored!=null)LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(restored));messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}Trim(); } }
         private void Trim()
         {
             while(messages.Count>0 && (messages.Select(m=>m.TurnId).Distinct().Count()>200 || messages.Sum(m=>(long)Encoding.UTF8.GetByteCount(m.Content)+Encoding.UTF8.GetByteCount(m.Reasoning??"")+ChatAttachment.StoredSize(m.Attachments)+512)>8*1024*1024))

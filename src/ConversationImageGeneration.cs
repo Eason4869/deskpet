@@ -7,6 +7,8 @@ namespace Dafeiyu
 {
     public sealed partial class ConversationSession
     {
+        ImageAssetUsageRegistry imageUsage;
+        public ImageAssetUsageRegistry ImageUsage {get{return imageUsage;}set{lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,value))throw new InvalidOperationException("图片引用协调器不一致。");imageUsage=value;if(store!=null)store.ImageUsage=value;foreach(var log in histories.Values)log.ConfigureImageUsage(value);}}}
         public GeneratedImageStore ImageStore {get;set;}
         public ImageGenerationClient ImageClient {get;set;}
         public ImageGenerationTaskManager ImageTasks {get;set;}
@@ -64,7 +66,7 @@ namespace Dafeiyu
             token.ThrowIfCancellationRequested();if(store==null||!saveEnabled())return;
             await PromoteImageTasksAsync(history,token).ConfigureAwait(false);history.PersistGeneratedImages(ImageStore);
             await store.SaveAsync(persona,history.Messages).ConfigureAwait(false);
-            if(!String.IsNullOrEmpty(store.Warning))throw new System.IO.IOException("聊天记录保存失败。");
+            if(!String.IsNullOrEmpty(store.Warning))throw new System.IO.IOException("聊天记录保存失败。");history.ReconcileImageUsage();
         }
         async Task PromoteImageTasksAsync(ConversationLog history,CancellationToken token)
         {
