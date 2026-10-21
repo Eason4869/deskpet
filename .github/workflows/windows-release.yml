@@ -12,6 +12,8 @@ on:
         type: boolean
 permissions:
   contents: read
+env:
+  PYTHONUTF8: '1'
 concurrency:
   group: windows-release-${{ inputs.tag }}
   cancel-in-progress: false
