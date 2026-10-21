@@ -1,0 +1,58 @@
+name: Publish verified dev.2 artifacts
+on:
+  push:
+    branches: [codex/publish-dev-0.10.1-dev.2]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: windows-release-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'Eason4869/deskpet'
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: automation
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.10.1-dev.2
+          fetch-depth: 0
+          path: release-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Eason4869/deskpet
+          run-id: 39602006292
+          name: verified-windows-release
+          path: release-source/work/windows
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: Eason4869/deskpet
+          run-id: 39599763511
+          pattern: DeskPet-macOS-*-preview-594363af7c2cf313ea11ff5890c0fab8d42d8c26
+          path: release-source/work/macos
+      - name: Verify all provenance, create draft, verify digests, then publish prerelease
+        working-directory: release-source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python ../automation/.github/scripts/publish_dev.py
+      - name: Preserve publication evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publication-evidence-v0.10.1-dev.2
+          path: |
+            release-source/work/published-release.json
+            release-source/work/expected-metadata.json
+            release-source/work/promoted/mac-upload-manifest.json
+            release-source/work/SHA256.txt
+          if-no-files-found: warn
