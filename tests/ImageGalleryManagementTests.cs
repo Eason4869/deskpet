@@ -22,6 +22,7 @@ namespace Dafeiyu.Tests
             try
             {
                 Run(root);
+                OrphanReferenceCleanup(Path.Combine(root,"orphan-cleanup"));
                 Console.WriteLine("ImageGalleryManagementTests: "+passed+" passed");
                 return 0;
             }
@@ -35,6 +36,69 @@ namespace Dafeiyu.Tests
                 string full=Path.GetFullPath(root);
                 if(!full.StartsWith(Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory),StringComparison.OrdinalIgnoreCase)||!Path.GetFileName(full).StartsWith("gallery-fixture-"))throw new Exception("unsafe fixture");
                 Directory.Delete(full,true);
+            }
+        }
+        sealed class HeldImageExecutor : IImageGenerationExecutor
+        {
+            public readonly System.Threading.Tasks.TaskCompletionSource<GeneratedImage> Completion=new System.Threading.Tasks.TaskCompletionSource<GeneratedImage>();
+            public System.Threading.Tasks.Task<GeneratedImage> GenerateAsync(ImageGenerationRequest request,IProgress<ImageGenerationPhase> phase,CancellationToken token){return Completion.Task;}
+        }
+        static void OrphanReferenceCleanup(string root)
+        {
+            var usage=new ImageAssetUsageRegistry();
+            var terminalId=Guid.NewGuid().ToString("N");
+            using(var store=new GeneratedImageStore(root,usage))
+            {
+                var reference=store.SaveReference(Png,null,true);
+                var taskStore=new ImageGenerationTaskStore(root);
+                taskStore.Save(new[]{new ImageGenerationTaskRecord{Id=terminalId,RequestId=terminalId,Origin=new ImageTaskOrigin(),State=ImageGenerationTaskState.Failed,QueuedUtc=DateTime.UtcNow,CompletedUtc=DateTime.UtcNow,Persistent=true,ReferenceImageIds=new List<string>{reference.Id}}});
+                var executor=new HeldImageExecutor();
+                var tasks=new ImageGenerationTaskManager(taskStore,store,executor,usage);
+                tasks.RestoreAsync(CancellationToken.None).Wait();
+                var service=new ImageAssetManagementService(store,usage,new ImageAssetReferenceResolver(root,store,tasks));
+                var preview=service.InspectOrphanReferencesAsync(CancellationToken.None).Result;
+                Check(preview.Count==1&&preview.TotalBytes==reference.Bytes&&preview.Candidates.Single().Id==reference.Id,"retained terminal no-owner reference is discoverable with count and bytes");
+                var log=new ConversationLog();log.ConfigureImageUsage(usage);ChatMessage user;var reply=log.BeginTurn("pending","text",out user);log.AttachImageTask(reply.Id,terminalId);
+                Check(service.InspectOrphanReferencesAsync(CancellationToken.None).Result.Count==0,"memory pending terminal task protects private input");
+                log.ReleaseImageUsage();
+                var history=new HistoryStore(Path.Combine(root,"conversations","archived","history"));history.SaveAsync("persona",log.Messages).Wait();
+                Check(service.CleanupOrphanReferencesAsync(new[]{reference.Id},CancellationToken.None).Result.DeletedIds.Count==0,"saved pending terminal task protects private input");history.ClearAsync("persona").Wait();
+                var result=store.Save(Png,new GeneratedImage{ReferenceImageId=reference.Id},true);
+                Check(service.InspectOrphanReferencesAsync(CancellationToken.None).Result.Count==0,"result protects private input");
+                Check(service.CleanupOrphanReferencesAsync(new[]{result.Id},CancellationToken.None).Result.DeletedIds.Count==0&&store.Get(result.Id)!=null,"private cleanup cannot bypass result trash requirement");
+                var other=store.Save(Png,new GeneratedImage{ReferenceImageId=reference.Id},true);store.MoveToTrash(new[]{result.Id});service.PurgeAsync(new[]{result.Id},CancellationToken.None).Wait();
+                Check(service.InspectOrphanReferencesAsync(CancellationToken.None).Result.Count==0,"another result protects shared input after first removal");
+                Check(service.CleanupOrphanReferencesAsync(preview.Candidates.Select(i=>i.Id),CancellationToken.None).Result.DeletedIds.Count==0,"stale confirmed preview cannot delete newly referenced input");
+                store.MoveToTrash(new[]{other.Id});service.PurgeAsync(new[]{other.Id},CancellationToken.None).Wait();
+                preview=service.InspectOrphanReferencesAsync(CancellationToken.None).Result;
+                Check(preview.Count==1,"last result removal exposes private input without trash mutation");
+                service.AfterReservations=()=>{bool blocked=false;try{log.AttachImageTask(reply.Id,terminalId);}catch(InvalidOperationException){blocked=true;}Check(blocked,"new pending task cannot race private input cleanup");};
+                Check(service.CleanupOrphanReferencesAsync(preview.Candidates.Select(i=>i.Id),CancellationToken.None).Result.DeletedIds.Contains(reference.Id),"explicit cleanup deletes orphan private input despite retained terminal task");service.AfterReservations=null;
+                bool lateRejected=false;try{log.AttachImageTask(reply.Id,terminalId);}catch(InvalidOperationException){lateRejected=true;}Check(lateRejected,"late pending task cannot reference purged private input");
+                var activeReference=store.SaveReference(Png,null,true);
+                var handle=tasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=new ImageGenerationProvider{Id="offline-fixture"},Prompt="fixture",ReferenceImageId=activeReference.Id},new ImageTaskOrigin()),CancellationToken.None).Result;
+                Check(service.InspectOrphanReferencesAsync(CancellationToken.None).Result.Count==0,"active task protects private input");
+                Check(service.CleanupOrphanReferencesAsync(new[]{activeReference.Id},CancellationToken.None).Result.DeletedIds.Count==0,"explicit cleanup rescan preserves active input");
+                executor.Completion.TrySetException(new IOException("controlled offline failure"));try{handle.Completion.GetAwaiter().GetResult();}catch(IOException){}
+                Check(SpinWait.SpinUntil(()=>!usage.IsInUse(activeReference.Id),5000),"terminal task releases execution ownership");
+                Check(service.CleanupOrphanReferencesAsync(new[]{activeReference.Id},CancellationToken.None).Result.DeletedIds.Contains(activeReference.Id),"failed task without remaining owner permits cleanup");
+                tasks.StopAsync(CancellationToken.None).Wait();
+            }
+            string discoveryRoot=Path.Combine(root,"restart-discovery");
+            using(var saved=new GeneratedImageStore(discoveryRoot))saved.SaveReference(Png,null,true);
+            using(var reopened=new GeneratedImageStore(discoveryRoot))
+            {
+                var cleanup=new ImageAssetManagementService(reopened,new ImageAssetUsageRegistry(),new ImageAssetReferenceResolver(discoveryRoot,reopened,null));
+                var found=cleanup.InspectOrphanReferencesAsync(CancellationToken.None).Result;
+                Check(found.Count==1&&reopened.List().Count==0&&reopened.ListIncludingTrash().Count==0,"hidden private inputs are discoverable after restart without task logs");
+                Check(cleanup.CleanupOrphanReferencesAsync(found.Candidates.Select(i=>i.Id),CancellationToken.None).Result.DeletedIds.Count==1,"discovered restart candidate can be explicitly cleaned");
+            }
+            var restartedUsage=new ImageAssetUsageRegistry();
+            using(var restarted=new GeneratedImageStore(root,restartedUsage))
+            {
+                Check(restarted.Recover()==0,"private cleanup tombstones survive restart");
+                bool rejected=false;try{using(restartedUsage.Acquire("job:"+terminalId,"late")){}}catch(InvalidOperationException){rejected=true;}
+                Check(rejected,"private input dependent job tombstones survive restart");
             }
         }
         static void Run(string root)

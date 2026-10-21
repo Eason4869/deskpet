@@ -12,6 +12,14 @@ namespace Dafeiyu
         public readonly List<string> DeletedIds=new List<string>();
         public readonly Dictionary<string,string> Blocked=new Dictionary<string,string>(StringComparer.Ordinal);
     }
+    public sealed class ImageReferenceCleanupPreview
+    {
+        public IList<GeneratedImage> Candidates {get;private set;}
+        public int Count {get{return Candidates.Count;}}
+        public long TotalBytes {get;private set;}
+        internal ImageReferenceCleanupPreview(IEnumerable<GeneratedImage> candidates)
+        {var copies=candidates.Select(i=>i.Copy()).ToList();Candidates=copies.AsReadOnly();TotalBytes=copies.Sum(i=>i.Bytes);}
+    }
     public sealed class ImageAssetReferenceResolver
     {
         readonly string root;
@@ -23,14 +31,21 @@ namespace Dafeiyu
             this.store=store;
             this.tasks=tasks;
         }
-        internal HashSet<string> Scan(CancellationToken token)
+        internal Dictionary<string,List<string>> TaskReferenceKeys()
+        {
+            var keys=new Dictionary<string,List<string>>(StringComparer.Ordinal);
+            if(tasks!=null)foreach(var task in tasks.List())foreach(string id in task.ReferenceImageIds??new List<string>())
+            {List<string> owners;if(!keys.TryGetValue(id,out owners)){owners=new List<string>();keys[id]=owners;}owners.Add("job:"+task.Id);}
+            return keys;
+        }
+        internal HashSet<string> Scan(CancellationToken token,ImageAssetUsageRegistry usage)
         {
             var assets=store.AssetSnapshot();
             var jobs=assets.Where(i=>!String.IsNullOrEmpty(i.ImageJobId)).GroupBy(i=>i.ImageJobId).ToDictionary(g=>g.Key,g=>g.Select(i=>i.Id).ToArray(),StringComparer.Ordinal);
             var taskMap=tasks==null?new Dictionary<string,ImageGenerationTaskSnapshot>():tasks.List().ToDictionary(t=>t.Id,StringComparer.Ordinal);
             var result=new HashSet<string>(StringComparer.Ordinal);
             foreach(var asset in assets)if(!String.IsNullOrEmpty(asset.ReferenceImageId))result.Add(asset.ReferenceImageId);
-            foreach(var task in taskMap.Values)foreach(string id in task.ReferenceImageIds??new List<string>())result.Add(id);
+            foreach(var task in taskMap.Values)if(!task.IsTerminal||usage.IsInUse("job:"+task.Id))foreach(string id in task.ReferenceImageIds??new List<string>())result.Add(id);
             foreach(var directory in HistoryDirectories())
             {
                 token.ThrowIfCancellationRequested();
@@ -125,7 +140,7 @@ namespace Dafeiyu
         ImagePurgeResult Inspect(string[] ids,CancellationToken token)
         {
             var result=new ImagePurgeResult();
-            var refs=resolver.Scan(token);
+            var refs=resolver.Scan(token,usage);
             var assets=store.AssetSnapshot().ToDictionary(i=>i.Id,StringComparer.Ordinal);
             foreach(string id in ids)
             {
@@ -136,7 +151,20 @@ namespace Dafeiyu
             }
             return result;
         }
+        // Preview is advisory. Cleanup takes the confirmed IDs, never an unconfirmed
+        // fresh candidate set, and must reacquire reservations and rescan references.
+        public Task<ImageReferenceCleanupPreview> InspectOrphanReferencesAsync(CancellationToken token)
+        {
+            return Task.Run(()=>{
+                var refs=resolver.Scan(token,usage);
+                return new ImageReferenceCleanupPreview(store.AssetSnapshot().Where(i=>i.IsReference&&!refs.Contains(i.Id)&&!usage.IsInUse(i.Id)&&(String.IsNullOrEmpty(i.ImageJobId)||!usage.IsInUse("job:"+i.ImageJobId))));
+            },token);
+        }
+        public Task<ImagePurgeResult> CleanupOrphanReferencesAsync(IEnumerable<string> candidateIds,CancellationToken token)
+        {return PurgeCore(candidateIds,token,true);}
         public Task<ImagePurgeResult> PurgeAsync(IEnumerable<string> ids,CancellationToken token)
+        {return PurgeCore(ids,token,false);}
+        Task<ImagePurgeResult> PurgeCore(IEnumerable<string> ids,CancellationToken token,bool privateReferences)
         {
             var selected=ids.Distinct().ToArray();
             return Task.Run(()=>
@@ -147,14 +175,16 @@ namespace Dafeiyu
                 try
                 {
                     var assets=store.AssetSnapshot().ToDictionary(i=>i.Id,StringComparer.Ordinal);
+                    var taskKeys=resolver.TaskReferenceKeys();
+                    var reservedKeys=new HashSet<string>(StringComparer.Ordinal);
                     foreach(string id in selected)
                     {
                         token.ThrowIfCancellationRequested();
                         GeneratedImage item;
                         assets.TryGetValue(id,out item);
-                        if(item==null||!item.TrashedUtc.HasValue)
+                        if(item==null||(privateReferences?!item.IsReference:!item.TrashedUtc.HasValue))
                         {
-                            result.Blocked[id]="请先移入回收站。";
+                            result.Blocked[id]=privateReferences?"只能显式清理私有参考图。":"请先移入回收站。";
                             continue;
                         }
                         var lease=usage.TryAcquireDeletion(id);
@@ -164,28 +194,31 @@ namespace Dafeiyu
                             continue;
                         }
                         leases.Add(lease);
-                        if(!String.IsNullOrEmpty(item.ImageJobId))
+                        var keys=new List<string>();
+                        if(!String.IsNullOrEmpty(item.ImageJobId))keys.Add("job:"+item.ImageJobId);
+                        List<string> linked;
+                        if(taskKeys.TryGetValue(id,out linked))keys.AddRange(linked);
+                        bool reserved=true;
+                        foreach(string key in keys.Distinct())if(!reservedKeys.Contains(key))
                         {
-                            lease=usage.TryAcquireDeletion("job:"+item.ImageJobId);
-                            if(lease==null)
-                            {
-                                result.Blocked[id]="原消息仍在使用图片任务。";
-                                continue;
-                            }
-                            leases.Add(lease);
+                            lease=usage.TryAcquireDeletion(key);
+                            if(lease==null){reserved=false;break;}
+                            leases.Add(lease);reservedKeys.Add(key);
                         }
+                        if(!reserved){result.Blocked[id]="原消息仍在使用图片任务。";continue;}
                         candidates.Add(id);
                     }
                     // The final disk scan happens after reservations, never under a session/UI gate.
                     if(AfterReservations!=null)AfterReservations();
-                    var refs=resolver.Scan(token);
+                    var refs=resolver.Scan(token,usage);
                     foreach(string id in candidates.ToArray())if(refs.Contains(id))
                     {
                         candidates.Remove(id);
                         result.Blocked[id]="图片仍被历史或其他图片引用。";
                     }
                     token.ThrowIfCancellationRequested();
-                    store.PurgeChecked(candidates);
+                    var deletedJobKeys=candidates.Where(id=>taskKeys.ContainsKey(id)).SelectMany(id=>taskKeys[id]).Distinct().ToArray();
+                    store.PurgeChecked(candidates,privateReferences,deletedJobKeys);
                     result.DeletedIds.AddRange(candidates);
                 }
                 catch(OperationCanceledException)

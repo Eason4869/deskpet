@@ -18,6 +18,7 @@ namespace Dafeiyu
             [DataMember] public List<GeneratedImage> Images;
             [DataMember] public bool Committed;
             [DataMember] public string TemporaryFolder;
+            [DataMember(EmitDefaultValue=false)] public List<string> ReferenceJobKeys;
         }
         public void SetFavorite(IEnumerable<string> ids,bool value)
         {
@@ -75,6 +76,7 @@ namespace Dafeiyu
         }
         void WriteJournal(string path,PurgeJournal journal)
         {
+            if(journal.ReferenceJobKeys!=null&&journal.ReferenceJobKeys.Count>MaximumItems)throw new IOException("图片清理任务引用过多，请分批清理。");
             using(var stream=new MemoryStream())
             {
                 new DataContractJsonSerializer(typeof(PurgeJournal)).WriteObject(stream,journal);
@@ -82,7 +84,7 @@ namespace Dafeiyu
             }
         }
         // Only the checked management service enters this internal transaction. One batch, one index commit.
-        internal void PurgeChecked(ISet<string> ids)
+        internal void PurgeChecked(ISet<string> ids,bool privateReferences=false,IEnumerable<string> referenceJobKeys=null)
         {
             lock(gate)
             {
@@ -90,7 +92,7 @@ namespace Dafeiyu
                 if(recoveryRequired)throw new IOException("图片索引需要恢复。");
                 if(purgeRecoveryPending)RecoverPurgeTransactions();
                 var selected=images.Where(i=>ids.Contains(i.Id)).ToList();
-                if(selected.Any(i=>!i.TrashedUtc.HasValue))throw new InvalidOperationException("请先移入回收站。");
+                if(selected.Any(i=>privateReferences?!i.IsReference:!i.TrashedUtc.HasValue))throw new InvalidOperationException("请先移入回收站。");
                 if(selected.Count==0)return;
                 if(!File.Exists(indexPath))SaveIndex(images);
                 string quarantine=Path.Combine(directory,"purge-"+Guid.NewGuid().ToString("N"));
@@ -99,6 +101,7 @@ namespace Dafeiyu
                 string manifest=Path.Combine(quarantine,"journal.dat");
                 var journal=new PurgeJournal
                 {
+                    ReferenceJobKeys=referenceJobKeys==null?null:referenceJobKeys.Distinct().ToList(),
                     TemporaryFolder=Path.GetFileName(temporaryDirectory),Images=selected.Select(i=>new GeneratedImage
                     {
                         Id=i.Id,ImageJobId=i.ImageJobId,MediaType=i.MediaType,IsReference=i.IsReference,Temporary=i.Temporary,CreatedUtc=DateTime.SpecifyKind(DateTime.MinValue,DateTimeKind.Utc)
@@ -124,6 +127,7 @@ namespace Dafeiyu
                         purgedIds.Add(item.Id);
                         if(!String.IsNullOrEmpty(item.ImageJobId))purgedJobKeys.Add("job:"+item.ImageJobId);
                     }
+                    if(journal.ReferenceJobKeys!=null)foreach(string key in journal.ReferenceJobKeys)purgedJobKeys.Add(key);
                     if(assetUsage!=null)assetUsage.MarkDeleted(purgedIds.Concat(purgedJobKeys));
                     Fault("IndexCommitted");
                     WriteJournal(manifest,journal);
@@ -164,6 +168,7 @@ namespace Dafeiyu
         }
         void CleanQuarantine(string folder,PurgeJournal journal)
         {
+            if(journal.ReferenceJobKeys!=null)foreach(string key in journal.ReferenceJobKeys)purgedJobKeys.Add(key);
             foreach(var item in journal.Images)
             {
                 purgedIds.Add(item.Id);
@@ -199,6 +204,7 @@ namespace Dafeiyu
                 if(plain.Length>MaximumIndexBytes)throw new IOException("图片清理日志过大。");
                 using(var stream=new MemoryStream(plain))journal=(PurgeJournal)new DataContractJsonSerializer(typeof(PurgeJournal)).ReadObject(stream);
                 if(journal==null||journal.TemporaryFolder==null||!journal.TemporaryFolder.StartsWith("temporary-",StringComparison.Ordinal)||!ValidId(journal.TemporaryFolder.Substring(10))||journal.Images==null||journal.Images.Count>MaximumItems||journal.Images.Any(i=>i==null||!ValidId(i.Id)||Extension(i.MediaType)==null))throw new IOException("图片清理日志无效。");
+                if(journal.ReferenceJobKeys!=null&&(journal.ReferenceJobKeys.Count>MaximumItems||journal.ReferenceJobKeys.Any(key=>String.IsNullOrEmpty(key)||!key.StartsWith("job:",StringComparison.Ordinal)||key.Length>132)))throw new IOException("图片清理任务引用无效。");
                 if((recoveryRequired||!File.Exists(indexPath))&&!journal.Committed)throw new IOException("索引与图片清理日志需要人工恢复，文件已保留。");
                 bool committed=journal.Committed||lastPurgeId==Path.GetFileName(folder);
                 if(committed)
