@@ -128,6 +128,7 @@ internal sealed class ChatWindow : Window
     internal string CurrentPage => routes[routeIndex];
     internal string QuestionSessionId => owner.Session.KernelSession?.SessionId ?? owner.Session.PersonaId;
     internal ImageWorkspacePage Images => imageWorkspace;
+    internal void ShowImageTask(string id) { ShowImages(); imageWorkspace.ShowTasks(id); }
     internal void ShowImages(GeneratedImage? image = null) { Navigate("images"); if (image != null) imageWorkspace.Prepare(image); }
     private void Navigate(string route) { if (CurrentPage == route) return; routes.RemoveRange(routeIndex + 1, routes.Count - routeIndex - 1); routes.Add(route); routeIndex++; ApplyRoute(); }
     internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }

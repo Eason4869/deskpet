@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -12,6 +12,7 @@ namespace DeskPet.Desktop;
 internal sealed class ImageWorkspacePage : TabControl, IDisposable
 {
     protected override Type StyleKeyOverride => typeof(TabControl);
+    private readonly ImageTaskCenterPage taskCenter;
     private readonly DesktopController owner;
     private readonly Window host;
     private readonly ComboBox providers = new() { Name = "WorkspaceImageProvider", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -43,7 +44,8 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private readonly List<GeneratedImageCard> resultCards = new(), galleryCards = new();
 
 
-    private CancellationTokenSource? cancellation;
+    private bool submitting;
+    private readonly TabItem taskTab = new() { Header = "任务" };
     private string? imageJobId;
     private byte[]? referenceBytes;
     private string? referenceMediaType;
@@ -53,7 +55,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private bool refreshing, disposed;
     private int galleryRefreshPending;
     private string? providerSignature;
-    internal bool IsGenerating => cancellation != null;
+    internal bool IsGenerating => imageJobId != null && owner.ImageTasks.Get(imageJobId) is { IsTerminal: false };
     internal int GalleryCount => galleryCards.Count;
     internal int GallerySelectedCount => gallerySelection.Count;
     internal ImageGalleryPanel GalleryPanel => gallery;
@@ -109,11 +111,12 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var recoveryNotice = Ui.Text("");
         var recovery = new Expander { Header = "图库恢复", Content = Ui.Column(Ui.Button("恢复图库索引", () => { try { var count = owner.ImageStore.Recover(); RefreshGallery(); recoveryNotice.Text = "图库索引已恢复，找回 " + count + " 张图片。"; } catch (Exception e) { owner.Error(e); } }), recoveryNotice) };
         galleryPage.Children.Add(recovery);
-        ItemsSource = new[] { new TabItem { Header = "生成", Content = new ScrollViewer { Content = generation } }, new TabItem { Header = "图库", Content = new ScrollViewer { Content = galleryPage } } };
+        taskCenter = new ImageTaskCenterPage(owner, host); taskTab.Content = taskCenter;
+        ItemsSource = new[] { new TabItem { Header = "生成", Content = new ScrollViewer { Content = generation } }, new TabItem { Header = "图库", Content = new ScrollViewer { Content = galleryPage } }, taskTab };
         SelectedIndex = 0;
         search.TextChanged += (_, _) => FilterChanged(); favoritesOnly.IsCheckedChanged += (_, _) => FilterChanged(); trashOnly.IsCheckedChanged += (_, _) => FilterChanged(); providerFilter.SelectionChanged += (_, _) => FilterChanged(); modelFilter.SelectionChanged += (_, _) => FilterChanged(); sourceFilter.SelectionChanged += (_, _) => FilterChanged(); sortFilter.SelectionChanged += (_, _) => FilterChanged(); fromDate.TextChanged += (_, _) => FilterChanged(); toDate.TextChanged += (_, _) => FilterChanged(); owner.ImageStore.Changed += StoreChanged; owner.Changed += RefreshProviders;
 
-        RefreshProviders(); RefreshGallery();
+        RefreshProviders(); RefreshGallery();owner.ImageTasks.Changed+=TaskChanged;TaskChanged(null!);RebindTask();
     }
     private void StoreChanged()
     {
@@ -145,31 +148,31 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     }
     private void UpdateCapability()
     {
-        var selected = providers.SelectedItem as ImageGenerationProvider; var busy = IsGenerating;
+        var selected = providers.SelectedItem as ImageGenerationProvider; var busy = submitting;
         capability.Text = selected == null ? "尚未配置图片服务。请进入模型配置 → 图片生成。" : selected.SupportsEdits ? "支持生成和单张参考图编辑。" : "此服务未启用参考图编辑；可在图片生成配置中声明服务能力。";
         referenceButton.IsEnabled = !busy && selected?.SupportsEdits == true; generate.IsEnabled = !busy && selected != null; providers.IsEnabled = !busy;
-        prompt.IsReadOnly = busy; size.IsEnabled = quality.IsEnabled = !busy; cancel.IsEnabled = busy;
+        prompt.IsReadOnly = busy; size.IsEnabled = quality.IsEnabled = !busy; cancel.IsEnabled = IsGenerating;
     }
     private async Task UploadAsync()
     {
         if (providers.SelectedItem is not ImageGenerationProvider { SupportsEdits: true }) throw new InvalidOperationException("此服务未启用参考图编辑。");
         var files = await host.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "选择单张参考图", AllowMultiple = false, FileTypeFilter = new[] { new FilePickerFileType("图片") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp" } } } });
-        var file = files.FirstOrDefault(); if (file == null || disposed || IsGenerating) return;
+        var file = files.FirstOrDefault(); if (file == null || disposed || submitting) return;
         await using var input = await file.OpenReadAsync(); using var output = new MemoryStream(); var buffer = new byte[81920]; int count;
         while ((count = await input.ReadAsync(buffer)) != 0) { if (output.Length + count > 50L * 1024 * 1024) throw new InvalidOperationException("参考图不能超过 50 MB。"); await output.WriteAsync(buffer.AsMemory(0, count)); }
         SetReference(output.ToArray(), file.Name);
     }
     internal void SetReference(byte[] bytes, string filename)
     {
-        if (IsGenerating) return;
+        if (submitting || disposed) return;
         if (bytes.Length > 50L * 1024 * 1024) throw new InvalidOperationException("参考图不能超过 50 MB。");
         var media = bytes.Length >= 8 && bytes[0] == 137 && bytes[1] == 80 && bytes[2] == 78 && bytes[3] == 71 ? "image/png" : bytes.Length >= 3 && bytes[0] == 255 && bytes[1] == 216 && bytes[2] == 255 ? "image/jpeg" : bytes.Length >= 12 && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP" ? "image/webp" : throw new InvalidOperationException("参考图仅支持 PNG、JPEG 和 WebP。");
         using var stream = new MemoryStream(bytes); var bitmap = Bitmap.DecodeToWidth(stream, 240); ClearReference(); referenceBitmap = bitmap; referenceBytes = bytes.ToArray(); referenceMediaType = media; referencePreview.Source = bitmap; referencePreview.IsVisible = true; referenceLabel.Text = filename;
     }
-    private void ClearReference() { if (IsGenerating) return; referencePreview.Source = null; referenceBitmap?.Dispose(); referenceBitmap = null; referenceBytes = null; referenceMediaType = null; referenceId = null; missingReference = false; referencePreview.IsVisible = false; referenceLabel.Text = "未选择参考图"; }
+    private void ClearReference() { if (submitting || disposed) return; referencePreview.Source = null; referenceBitmap?.Dispose(); referenceBitmap = null; referenceBytes = null; referenceMediaType = null; referenceId = null; missingReference = false; referencePreview.IsVisible = false; referenceLabel.Text = "未选择参考图"; }
     internal void Prepare(GeneratedImage image)
     {
-        if (IsGenerating) { status.Text = "请先等待或取消当前生成。"; return; } SelectedIndex = 0; prompt.Text = image.Prompt;
+        if (submitting || disposed) return; SelectedIndex = 0; prompt.Text = image.Prompt;
         var selected = providers.ItemsSource?.Cast<ImageGenerationProvider>().FirstOrDefault(p => p.Id == image.ProviderId);
         if (selected != null) providers.SelectedItem = selected; SelectParameter(size, image.Size); SelectParameter(quality, image.Quality); ClearReference();
         status.Text = "已填入原提示词与参数；点击开始生成创建新图片。";
@@ -181,21 +184,29 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     }
     internal async Task GenerateAsync()
     {
-        if (IsGenerating) return;
+        if (submitting || disposed) return;
         var provider = (providers.SelectedItem as ImageGenerationProvider)?.Copy() ?? throw new InvalidOperationException("请先配置图片生成服务。");
         var text = prompt.Text?.Trim(); if (string.IsNullOrEmpty(text)) throw new InvalidOperationException("请输入图片提示词。");
         if (missingReference) throw new InvalidOperationException("原参考图不可用，请重新上传或移除参考图后再生成。");
         if (referenceBytes != null && !provider.SupportsEdits) throw new InvalidOperationException("所选服务不支持参考图编辑。请更换服务或移除参考图。");
-        using var cancel = new CancellationTokenSource(); cancellation = cancel; status.Text="任务已提交"; UpdateCapability();
+        ImageGenerationTaskHandle? handle=null;submitting=true;UpdateCapability();
         try
         {
-            var handle = await owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider = provider, Prompt = text, Size = Parameter(size), Quality = Parameter(quality), ReferenceImageBytes = referenceBytes?.ToArray(), ReferenceMediaType = referenceMediaType, ReferenceImageId = referenceId, Persistent = owner.Settings.SaveChatHistory, TaskId = Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart = id => { imageJobId=id; result.Children.Clear();result.Children.Add(new ImageGenerationPendingCard(owner,host,id,Prepare)); return Task.FromResult(0); } },CancellationToken.None);var image=await handle.Completion;
-            if (disposed) return; foreach (var card in resultCards) card.Dispose(); resultCards.Clear();  status.Text = "生成完成";
+            try { handle=await AcceptSubmission(provider,text);if(!disposed)status.Text="任务已提交，可继续提交下一项。"; }
+            finally { submitting=false;if(!disposed)UpdateCapability(); }
+            await handle.Completion;
+            if(!disposed && imageJobId==handle.Id)status.Text="生成完成";
         }
-        catch (OperationCanceledException) { status.Text = "已取消生成。"; }
-        catch (Exception e) { status.Text = "生成失败：" + e.Message; }
-        finally {  cancellation = null; if (!disposed) UpdateCapability(); }
+        catch(OperationCanceledException){if(!disposed && (handle==null||imageJobId==handle.Id))status.Text="已取消生成。";}
+        catch(Exception e){if(!disposed && (handle==null||imageJobId==handle.Id))status.Text="生成失败："+e.Message;}
+        finally { if(!disposed)UpdateCapability(); }
     }
+    private Task<ImageGenerationTaskHandle> AcceptSubmission(ImageGenerationProvider provider,string text)
+    {
+        return owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider=provider,Prompt=text,Size=Parameter(size),Quality=Parameter(quality),ReferenceImageBytes=referenceBytes,ReferenceMediaType=referenceMediaType,ReferenceImageId=referenceId,Persistent=owner.Settings.SaveChatHistory,TaskId=Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart=id=>{ if(!disposed){imageJobId=id;result.Children.Clear();result.Children.Add(new ImageGenerationPendingCard(owner,host,id,Prepare));}return Task.CompletedTask;} },CancellationToken.None);
+    }
+    private void TaskChanged(ImageGenerationTaskSnapshot task)=>Dispatcher.UIThread.Post(()=>{if(!disposed){taskTab.Header="任务 ("+owner.ImageTasks.List().Count(t=>!t.IsTerminal)+")";UpdateCapability();}});
+    private void RebindTask(){var task=owner.ImageTasks.List().LastOrDefault(t=>t.Source==ImageGenerationSource.Workspace);if(task==null)return;imageJobId=task.Id;result.Children.Add(new ImageGenerationPendingCard(owner,host,task.Id,Prepare));}
     private void FilterChanged() { if (updatingFilters) return; galleryLimit = 40; gallerySelection.Clear(); RefreshGallery(); }
     internal void RefreshGallery()
     {
@@ -287,5 +298,6 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         if (!await ConfirmAsync("清理未使用参考图", "候选 " + preview.Count + " 张，约 " + preview.TotalBytes / 1024 + " KB。确认后会再次检查引用。", "清理")) return;
         var result = await owner.ImageManagement.CleanupOrphanReferencesAsync(ids, CancellationToken.None); galleryActionNotice.Text = ManagementSummary(result);
     }
-    public void Dispose() { disposed = true; Interlocked.Increment(ref galleryRevision); exportCancellation?.Cancel(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose(); }
+    internal void ShowTasks(string id) { SelectedIndex = 2; taskCenter.SelectTask(id); }
+    public void Dispose() { taskCenter.Dispose(); disposed = true; Interlocked.Increment(ref galleryRevision); exportCancellation?.Cancel(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; owner.ImageTasks.Changed-=TaskChanged; referenceBytes=null;referenceId=null;referenceMediaType=null;referencePreview.Source=null;result.Children.Clear(); foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose();referenceBitmap=null; }
 }

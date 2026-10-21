@@ -116,6 +116,8 @@ internal sealed class SettingsWindow : Window
             Ui.Check("免打扰（关闭回复朗读）", s.QuietMode, v => { s.QuietMode = v; Apply(); }),
             Ui.Button("暂停 / 恢复动画", () => owner.Pet.Paused = !owner.Pet.Paused),
             Ui.Button("显示伙伴并移回屏幕", owner.ShowPet));
+        var imageMotion=Ui.Check("图片生成动效",s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";panel.Children.Add(imageMotion);
+        var imageConcurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};imageConcurrency.ValueChanged+=(_,_)=>{if(imageConcurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)imageConcurrency.Value.Value;owner.Save();}};panel.Children.Add(Ui.Field("图片生成并发（同一服务最多 1 项）",imageConcurrency));
         panel.Children.Add(Ui.Text("全局快捷键", 18));
         foreach (var entry in new[] { ("chat", "⌘ ⇧ Space · 快聊"), ("show", "⌘ ⇧ D · 显示伙伴"), ("hide", "⌘ ⇧ H · 隐藏伙伴") })
             panel.Children.Add(Ui.Check(entry.Item2, s.Hotkeys.GetValueOrDefault(entry.Item1) == "enabled", v => { s.Hotkeys[entry.Item1] = v ? "enabled" : "disabled"; owner.Save(); owner.RegisterHotkeys(); }));

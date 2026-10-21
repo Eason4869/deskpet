@@ -72,6 +72,7 @@ namespace Dafeiyu
         {
             if(!shellReady||closed)return;if(mcpPage==null){mcpPage=new PluginsPage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(mcpPage);}SetShellPage("mcp");RecordPage("mcp");
         }
+        internal void ShowImageTask(string id){ShowImagesPage();if(imagePage!=null)imagePage.ShowTasks(id);}
         internal void ShowImagesPage(GeneratedImage previous=null)
         {
             if(!shellReady||closed)return;if(imagePage==null){imagePage=new ImageWorkspacePage(pet){Visibility=Visibility.Collapsed};appPages.Children.Add(imagePage);}imagePage.RefreshProviders();SetShellPage("images");RecordPage("images");if(previous!=null)imagePage.Prepare(previous);

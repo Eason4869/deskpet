@@ -13,6 +13,7 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1 && args[0]=="--image-task-center-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageTaskCenterLifecycleTests.Main();}
             if(args.Length==1 && args[0]=="--image-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryManagementTests.Main();}
             if(args.Length==1 && args[0]=="--image-backend-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationBackendTests.Main();}
             if(args.Length==1 && args[0]=="--image-layout-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryLayoutTests.Main();}
@@ -69,7 +70,7 @@ namespace Dafeiyu.Tests
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
                     foreach(var test in new Func<int>[] { McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
-                        ConversationTests.Main, HistoryTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main, QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
+                        ConversationTests.Main, HistoryTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main, QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
                         AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
                     return result;
