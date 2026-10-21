@@ -34,7 +34,7 @@ namespace Dafeiyu
         public WorkSettingsPanel(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");pet=companion;Name="WorkSettingsPanel";
-            Background=System.Windows.Media.Brushes.White;
+            Background=ThemeManager.Surface;
             var shell=new DockPanel{LastChildFill=true};
             notice=Ui.Text("设置仅影响下一次请求，保存不会启动任务。",11,AgentUi.Muted);notice.Name="WorkSettingsNotice";notice.VerticalAlignment=VerticalAlignment.Center;notice.Margin=new Thickness(0,0,12,0);
             var save=Ui.Button("保存工作设置",true);save.Name="SaveWorkSettings";save.Margin=new Thickness(0);save.Click+=delegate{Save();};
@@ -81,7 +81,7 @@ namespace Dafeiyu
         }
         static void AddGroup(StackPanel parent,string title,StackPanel body)
         {
-            var heading=Ui.Text(title,15,AgentUi.Ink);heading.FontWeight=FontWeights.SemiBold;heading.Margin=new Thickness(0,14,0,12);parent.Children.Add(heading);parent.Children.Add(new Border{Child=body,Padding=new Thickness(20,18,20,4),CornerRadius=new CornerRadius(16),BorderThickness=new Thickness(1),BorderBrush=AgentUi.Line,Background=System.Windows.Media.Brushes.White});
+            var heading=Ui.Text(title,15,AgentUi.Ink);heading.FontWeight=FontWeights.SemiBold;heading.Margin=new Thickness(0,14,0,12);parent.Children.Add(heading);parent.Children.Add(new Border{Child=body,Padding=new Thickness(20,18,20,4),CornerRadius=new CornerRadius(16),BorderThickness=new Thickness(1),BorderBrush=AgentUi.Line,Background=ThemeManager.Surface});
         }
         void RefreshContextInfo()
         {

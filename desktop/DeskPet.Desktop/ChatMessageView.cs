@@ -14,15 +14,15 @@ namespace DeskPet.Desktop;
 internal sealed class ChatMessageView : Border
 {
     private readonly MarkdownView body = new();
-    private readonly SelectableTextBlock reasoning = new() { TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = Brushes.Black };
-    private readonly TextBlock preview = new() { Name = "ProcessPreview", TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 14, Foreground = Brushes.Black };
-    private readonly TextBlock thinkingLabel = new() { Name = "ProcessStatus", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#89929F")) };
+    private readonly SelectableTextBlock reasoning = new() { TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = DesktopTheme.Brush("#000000") };
+    private readonly TextBlock preview = new() { Name = "ProcessPreview", TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 14, Foreground = DesktopTheme.Brush("#000000") };
+    private readonly TextBlock thinkingLabel = new() { Name = "ProcessStatus", FontSize = 12, Foreground = DesktopTheme.Brush("#89929F") };
     private readonly Border previewRow;
     private readonly StackPanel processArea = new() { Name = "ThinkingProcess" };
     private string previousReasoning = "", previousTools = "";
     private bool latestIsTool;
     private readonly TextBlock status = new() { FontSize = 11 };
-    private readonly TextBlock elapsed = new() { Name = "ReplyElapsedTime", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#969BA3")) };
+    private readonly TextBlock elapsed = new() { Name = "ReplyElapsedTime", FontSize = 12, Foreground = DesktopTheme.Brush("#969BA3") };
     private readonly Avalonia.Threading.DispatcherTimer clock = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly Border elapsedRow;
     private readonly Expander thinking;
@@ -51,17 +51,17 @@ internal sealed class ChatMessageView : Border
         HorizontalAlignment = IsUser ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
         Padding = IsUser ? new Thickness(0) : new Thickness(2, 8);
         Margin = new Thickness(0, 0, 0, 20);
-        previewRow = new Border { BorderBrush = new SolidColorBrush(Color.Parse("#ECECEC")), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 8, 0, 0), Margin = new Thickness(0, 5, 0, 0), Child = preview };
+        previewRow = new Border { BorderBrush = DesktopTheme.Brush("#ECECEC"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 8, 0, 0), Margin = new Thickness(0, 5, 0, 0), Child = preview };
         thinking = new Expander { Name = "ReasoningDetails", Header = thinkingLabel, Content = Ui.Column(new ScrollViewer { Content = reasoning, MaxHeight = 240 }, tools), IsExpanded = false, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         ProcessExpander.Apply(thinking);
         thinking.PropertyChanged += (_, e) => { if (e.Property == Expander.IsExpandedProperty) previewRow.IsVisible = !thinking.IsExpanded && !string.IsNullOrEmpty(preview.Text); };
         processArea.Children.Add(thinking); processArea.Children.Add(previewRow);
         var panel = Ui.Column(); panel.Spacing = IsUser ? 3 : 10;
-        elapsedRow = new Border { Child = elapsed, BorderBrush = new SolidColorBrush(Color.Parse("#ECECEC")), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 0, 8) };
+        elapsedRow = new Border { Child = elapsed, BorderBrush = DesktopTheme.Brush("#ECECEC"), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 0, 8) };
         if (!IsUser) { panel.Children.Add(elapsedRow); panel.Children.Add(processArea); }
         clock.Tick += (_, _) => RefreshElapsed(); AttachedToVisualTree += (_, _) => RefreshElapsed(); DetachedFromVisualTree += (_, _) => clock.Stop();
         panel.Children.Add(sentAttachments); RefreshSentAttachments(message.Attachments);
-        if (IsUser) { userBubble = new Border { Name = "UserBubble", Background = new SolidColorBrush(Color.Parse("#E8F2FF")), CornerRadius = new CornerRadius(18), Padding = new Thickness(15, 10), HorizontalAlignment = HorizontalAlignment.Right, Child = body }; panel.Children.Add(userBubble); }
+        if (IsUser) { userBubble = new Border { Name = "UserBubble", Background = DesktopTheme.Brush("#E8F2FF"), CornerRadius = new CornerRadius(18), Padding = new Thickness(15, 10), HorizontalAlignment = HorizontalAlignment.Right, Child = body }; panel.Children.Add(userBubble); }
         else panel.Children.Add(body); if (!IsUser) panel.Children.Add(status);
         Ui.ReadOnlyMenu(reasoning);
         DetachedFromVisualTree += (_, _) => DisposeSentImages();
@@ -83,7 +83,7 @@ internal sealed class ChatMessageView : Border
         else
         {
             var userActions = new StackPanel { Name = "UserMessageActions", Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 5, Opacity = 0 };
-            var sent = new TextBlock { Name = "UserMessageTime", Text = message.Timestamp.ToLocalTime().ToString("HH:mm"), Foreground = new SolidColorBrush(Color.Parse("#969BA3")), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            var sent = new TextBlock { Name = "UserMessageTime", Text = message.Timestamp.ToLocalTime().ToString("HH:mm"), Foreground = DesktopTheme.Brush("#969BA3"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
             ToolTip.SetTip(sent, message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")); userActions.Children.Add(sent);
             userActions.Children.Add(IconButton("CopyUserMessage", "复制消息", "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false))));
             panel.Children.Add(userActions);
@@ -94,7 +94,7 @@ internal sealed class ChatMessageView : Border
     }
     private static Button IconButton(string name, string tip, string geometry, Action action)
     {
-        var button = new Button { Name = name, Width = 28, Height = 28, Padding = new Thickness(3), Background = Brushes.Transparent, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(5), Foreground = new SolidColorBrush(Color.Parse("#939BA7")), Content = new ShapePath { Data = Geometry.Parse(geometry), Stroke = new SolidColorBrush(Color.Parse("#939BA7")), StrokeThickness = 1.5, Stretch = Stretch.Uniform, Width = 18, Height = 18 } };
+        var button = new Button { Name = name, Width = 28, Height = 28, Padding = new Thickness(3), Background = Brushes.Transparent, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(5), Foreground = DesktopTheme.Brush("#939BA7"), Content = new ShapePath { Data = Geometry.Parse(geometry), Stroke = DesktopTheme.Brush("#939BA7"), StrokeThickness = 1.5, Stretch = Stretch.Uniform, Width = 18, Height = 18 } };
         AutomationProperties.SetName(button, tip); ToolTip.SetTip(button, tip); button.Click += (_, _) => action(); return button;
     }
     private bool CanStart() => !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
@@ -112,16 +112,16 @@ internal sealed class ChatMessageView : Border
                 try
                 {
                     using var stream = new MemoryStream(Convert.FromBase64String(file.Data)); var bitmap = Bitmap.DecodeToWidth(stream, 160); sentImages.Add(bitmap);
-                    child = new Border { Name = "SentImageCard", Width = 80, Height = 80, CornerRadius = new CornerRadius(10), BorderBrush = new SolidColorBrush(Color.Parse("#E0E4E9")), BorderThickness = new Thickness(1), Background = Brushes.White, Clip = new RectangleGeometry(new Rect(0, 0, 80, 80), 10, 10), Child = new Image { Name = "SentImageThumbnail", Source = bitmap, Stretch = Stretch.UniformToFill } };
+                    child = new Border { Name = "SentImageCard", Width = 80, Height = 80, CornerRadius = new CornerRadius(10), BorderBrush = DesktopTheme.Brush("#E0E4E9"), BorderThickness = new Thickness(1), Background = DesktopTheme.Surface, Clip = new RectangleGeometry(new Rect(0, 0, 80, 80), 10, 10), Child = new Image { Name = "SentImageThumbnail", Source = bitmap, Stretch = Stretch.UniformToFill } };
                 }
                 catch (Exception e) when (e is FormatException or ArgumentException or IOException) { }
             }
             if (child == null)
             {
-                var icon = new ShapePath { Width = 18, Height = 22, Stretch = Stretch.Uniform, Data = Geometry.Parse("M 3,1 L 11,1 L 16,6 L 16,20 L 3,20 Z M 11,1 L 11,6 L 16,6"), Stroke = new SolidColorBrush(Color.Parse("#858D99")), StrokeThickness = 1.2 };
+                var icon = new ShapePath { Width = 18, Height = 22, Stretch = Stretch.Uniform, Data = Geometry.Parse("M 3,1 L 11,1 L 16,6 L 16,20 L 3,20 Z M 11,1 L 11,6 L 16,6"), Stroke = DesktopTheme.Brush("#858D99"), StrokeThickness = 1.2 };
                 var name = new TextBlock { Name = "SentFileName", Text = file.Name, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 140, VerticalAlignment = VerticalAlignment.Center };
                 var fileRow = new Grid { ColumnDefinitions = new ColumnDefinitions("26,*") }; fileRow.Children.Add(icon); Grid.SetColumn(name, 1); fileRow.Children.Add(name);
-                child = new Border { Name = "SentFileCard", MaxWidth = 190, Height = 52, CornerRadius = new CornerRadius(10), BorderBrush = new SolidColorBrush(Color.Parse("#E0E4E9")), BorderThickness = new Thickness(1), Background = Brushes.White, Padding = new Thickness(10), Child = fileRow };
+                child = new Border { Name = "SentFileCard", MaxWidth = 190, Height = 52, CornerRadius = new CornerRadius(10), BorderBrush = DesktopTheme.Brush("#E0E4E9"), BorderThickness = new Thickness(1), Background = DesktopTheme.Surface, Padding = new Thickness(10), Child = fileRow };
             }
             child.Margin = new Thickness(6, 0, 0, 6); ToolTip.SetTip(child, file.Name); sentAttachments.Children.Add(child);
         }
@@ -177,14 +177,14 @@ internal sealed class ChatMessageView : Border
         {
             if (!toolRows.TryGetValue(item.Id, out var row))
             {
-                row = new Expander { Name = "AgentToolDetails", IsExpanded = active && detailedProcess, HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#89929F")) } };
+                row = new Expander { Name = "AgentToolDetails", IsExpanded = active && detailedProcess, HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = DesktopTheme.Brush("#89929F") } };
                 ProcessExpander.Apply(row);
                 toolRows[item.Id] = row; tools.Children.Add(row);
             }
             else if (active && detailChanged) row.IsExpanded = detailedProcess;
             var summary = (item.Summary ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
             if (summary.Length > 100) summary = summary[..100] + "…";
-            row.Header = new TextBlock { Text = (item.Status is "pending" or "running" ? "◌ " : item.Status == "error" ? "! " : "✓ ") + item.Name + (string.IsNullOrWhiteSpace(summary) ? "" : " · " + summary) + (item.ElapsedMilliseconds > 0 ? " · " + (item.ElapsedMilliseconds / 1000.0).ToString("0.0") + " 秒" : ""), FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#89929F")), TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = Math.Max(100, Bounds.Width > 1 ? Bounds.Width - 50 : 500) };
+            row.Header = new TextBlock { Text = (item.Status is "pending" or "running" ? "◌ " : item.Status == "error" ? "! " : "✓ ") + item.Name + (string.IsNullOrWhiteSpace(summary) ? "" : " · " + summary) + (item.ElapsedMilliseconds > 0 ? " · " + (item.ElapsedMilliseconds / 1000.0).ToString("0.0") + " 秒" : ""), FontSize = 11, Foreground = DesktopTheme.Brush("#89929F"), TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = Math.Max(100, Bounds.Width > 1 ? Bounds.Width - 50 : 500) };
             ((SelectableTextBlock)row.Content!).Text = item.Summary;
         }
         UpdateProcess(message, events, active);
@@ -206,7 +206,7 @@ internal sealed class ChatMessageView : Border
         var running = events.LastOrDefault(t => t.Status is "running" or "pending");
         var latest = running ?? (latestIsTool || string.IsNullOrWhiteSpace(text) ? events.LastOrDefault() : null);
         preview.Text = latest != null ? ((latest.Summary ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? latest.Name) : text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-        preview.Foreground = latest != null ? new SolidColorBrush(Color.Parse("#89929F")) : Brushes.Black;
+        preview.Foreground = latest != null ? DesktopTheme.Brush("#89929F") : DesktopTheme.Brush("#000000");
         string stage = running == null ? (latest != null || string.IsNullOrWhiteSpace(text) && message.WorkMode ? "处理中" : "思考中") :
             running.Name is "write_file" or "edit_file" or "apply_patch" or "create_directory" ? "编辑中" :
             running.Name is "run_command" or "exec_command" or "shell" or "open_directory" ? "运行中" : "处理中";

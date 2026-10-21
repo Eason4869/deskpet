@@ -11,8 +11,8 @@ namespace DeskPet.Desktop;
 // Native, selectable Markdown. Links use the platform launcher; HTML is never executed.
 internal sealed class MarkdownView : StackPanel
 {
-    private static readonly IBrush Muted = new SolidColorBrush(Color.Parse("#687282"));
-    private static readonly IBrush CodeBackground = new SolidColorBrush(Color.Parse("#F3F5F8"));
+    private static readonly IBrush Muted = DesktopTheme.Brush("#687282");
+    private static readonly IBrush CodeBackground = DesktopTheme.Brush("#F3F5F8");
     private static readonly FontFamily Mono = new("Menlo,Consolas,monospace");
     private string? markdown;
     public MarkdownView() { Name = "MarkdownBody"; Spacing = 9; }
@@ -38,7 +38,7 @@ internal sealed class MarkdownView : StackPanel
                 contents.Children.Add(new ScrollViewer { Content = code, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled });
                 return new Border { Background = CodeBackground, CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = contents };
             case "quote":
-                return new Border { Name = "MarkdownQuote", BorderBrush = new SolidColorBrush(Color.Parse("#C9D2DE")), BorderThickness = new Thickness(3, 0, 0, 0), Padding = new Thickness(12, 3, 0, 3), Child = Blocks(node.Children) };
+                return new Border { Name = "MarkdownQuote", BorderBrush = DesktopTheme.Brush("#C9D2DE"), BorderThickness = new Thickness(3, 0, 0, 0), Padding = new Thickness(12, 3, 0, 3), Child = Blocks(node.Children) };
             case "list": case "ordered":
                 var list = new StackPanel { Name = "MarkdownList", Spacing = 5 }; int index = node.Start;
                 foreach (var item in node.Children)
@@ -49,7 +49,7 @@ internal sealed class MarkdownView : StackPanel
                 }
                 return list;
             case "table": return Table(node);
-            case "rule": return new Border { Height = 1, Background = new SolidColorBrush(Color.Parse("#DDE3EA")), Margin = new Thickness(0, 6) };
+            case "rule": return new Border { Height = 1, Background = DesktopTheme.Brush("#DDE3EA"), Margin = new Thickness(0, 6) };
             case "group": case "item": case "cell": return Blocks(node.Children);
             default: return Text(node.Children);
         }
@@ -72,7 +72,7 @@ internal sealed class MarkdownView : StackPanel
             {
                 var content = Blocks(row.Children[c].Children); content.MinWidth = 64; content.MaxWidth = 280;
                 if (row.Header) foreach (var text in content.Children.OfType<SelectableTextBlock>()) text.FontWeight = FontWeight.Bold;
-                var cell = new Border { Padding = new Thickness(9, 6), BorderBrush = new SolidColorBrush(Color.Parse("#DDE3EA")), BorderThickness = new Thickness(c == 0 ? 1 : 0, r == 0 ? 1 : 0, 1, 1), Background = row.Header ? CodeBackground : Brushes.Transparent, Child = content };
+                var cell = new Border { Padding = new Thickness(9, 6), BorderBrush = DesktopTheme.Brush("#DDE3EA"), BorderThickness = new Thickness(c == 0 ? 1 : 0, r == 0 ? 1 : 0, 1, 1), Background = row.Header ? CodeBackground : Brushes.Transparent, Child = content };
                 Grid.SetColumn(cell, c); Grid.SetRow(cell, r); grid.Children.Add(cell);
             }
         }
@@ -96,7 +96,7 @@ internal sealed class MarkdownView : StackPanel
             if (node.Kind == "image") label = "图片：" + label;
             if (MarkdownContent.TryLink(node.Url, out var uri))
             {
-                var link = new Button { Name = "MarkdownLink", Content = label, Padding = new Thickness(0), Margin = new Thickness(0), MinHeight = 0, MinWidth = 0, Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = new SolidColorBrush(Color.Parse("#246ED8")), Cursor = new Cursor(StandardCursorType.Hand) };
+                var link = new Button { Name = "MarkdownLink", Content = label, Padding = new Thickness(0), Margin = new Thickness(0), MinHeight = 0, MinWidth = 0, Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = DesktopTheme.Brush("#246ED8"), Cursor = new Cursor(StandardCursorType.Hand) };
                 ToolTip.SetTip(link, node.Url);
                 link.Click += async (_, _) => { if (TopLevel.GetTopLevel(this) is { } top) await top.Launcher.LaunchUriAsync(uri); };
                 return new InlineUIContainer(link);

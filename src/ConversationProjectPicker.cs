@@ -32,7 +32,7 @@ namespace Dafeiyu
                 list.Children.Clear();var none=AgentUi.Nav("无项目","SelectNoProject");none.Click+=delegate{select(null);};list.Children.Add(none);
                 foreach(var project in pet.Projects.Projects.Where(p=>!p.Archived&&(String.IsNullOrWhiteSpace(search.Text)||p.Name.IndexOf(search.Text,StringComparison.OrdinalIgnoreCase)>=0))){var choice=project;var item=AgentUi.Nav(project.Name,"SelectConversationProject");item.Tag=project.Id;item.Click+=delegate{select(choice);};list.Children.Add(item);}
             };search.TextChanged+=delegate{render();};render();body.Children.Add(new Separator{Margin=new Thickness(2,5,2,4)});var create=AgentUi.Nav("+  新建项目","NewProjectFromPicker");create.Click+=delegate{popup.IsOpen=false;try{var project=pet.CreateProjectForConversation();if(project!=null)select(project);}catch(Exception error){ShowStatus(error.Message);}};body.Children.Add(create);
-            popup.Child=new Border{Child=body,Background=Brushes.White,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(3)};anchor.Unloaded+=delegate{popup.IsOpen=false;};popup.Opened+=delegate{search.Focus();};popup.IsOpen=true;
+            popup.Child=new Border{Child=body,Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(3)};anchor.Unloaded+=delegate{popup.IsOpen=false;};popup.Opened+=delegate{search.Focus();};popup.IsOpen=true;
         }
     }
 }

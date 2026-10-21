@@ -26,8 +26,8 @@ namespace Dafeiyu
             name=Ui.Text("",12,Ui.Blue);name.FontWeight=FontWeights.SemiBold;header.Children.Add(name);body.Children.Add(header);
             message=Ui.Text("",13);message.Name="GreetingMessage";message.VerticalAlignment=VerticalAlignment.Center;message.Margin=new Thickness(0,3,0,3);Grid.SetRow(message,1);body.Children.Add(message);
             var talk=Ui.Button("聊两句");talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();pet.ShowQuickChat();};Grid.SetRow(talk,2);body.Children.Add(talk);
-            root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=Brushes.White});
-            tail=new Polygon{Fill=Brushes.White,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
+            root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});
+            tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             lifetime=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};lifetime.Tick+=delegate {Hide();};
             SourceInitialized+=delegate {DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
             IsVisibleChanged+=delegate {if(!IsVisible)lifetime.Stop();};Closed+=delegate {lifetime.Stop();};

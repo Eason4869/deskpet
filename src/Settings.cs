@@ -210,6 +210,7 @@ namespace Dafeiyu
         [DataMember] public ConnectionSettings GitHub { get; set; }
         [DataMember] public bool AgentPlanMode { get; set; }
         [DataMember] public string AgentGoal { get; set; }
+        [DataMember] public string ThemeMode {get;set;}
         [DataMember] public bool QuietMode { get; set; }
         [DataMember] public bool HideOnFullscreen { get; set; }
         [DataMember] public bool ClickThrough { get; set; }
@@ -264,6 +265,7 @@ namespace Dafeiyu
         [OnDeserializing] private void BeforeDeserialize(StreamingContext context) { Defaults();UpdateChannel=UpdateChannel.Stable;AgentApprovalMode=AgentApprovalMode.Legacy;AgentSandboxEnabled=false;OnboardingVersion=0;OnboardingState="legacy";LastOnboardingSeries=OnboardingUpgrade.LegacySeries;LiveVoice="Kore"; }
         private void Defaults()
         {
+            ThemeMode="system";
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
             SaveChatHistory=true; QuietMode=false; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
             AgentFullAccess=true;AgentBackupFiles=true;AgentContextTokenLimit=32768;AgentDetailedProcess=false;ShowPredictedMessages=true;PlainTextEditor=false;ShowContextUsage=true;SendOnEnter=true;FollowUpBehavior="queue";
@@ -290,6 +292,7 @@ namespace Dafeiyu
         }
         public void Normalize()
         {
+            ThemeMode=ThemeColors.Normalize(ThemeMode);
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
             var mcpIds=new HashSet<string>();McpServers=(McpServers??new List<McpServerConfiguration>()).Where(c=>c!=null).Take(16).Select(c=>{var copy=c.Copy();if(String.IsNullOrWhiteSpace(copy.Id)||copy.Id.Length>80||!mcpIds.Add(copy.Id)){copy.Id=Guid.NewGuid().ToString("N");mcpIds.Add(copy.Id);}return copy;}).ToList();
             if(!Enum.IsDefined(typeof(AgentTerminalPolicy),AgentTerminalPolicy))AgentTerminalPolicy=AgentTerminalPolicy.Disabled;

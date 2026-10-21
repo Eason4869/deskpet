@@ -23,7 +23,7 @@ internal static class ProcessExpander
             toggle.Template = new FuncControlTemplate<ToggleButton>((button, _) =>
             {
                 var content = new ContentPresenter(); content.Bind(ContentPresenter.ContentProperty, new TemplateBinding(ContentControl.ContentProperty));
-                var chevron = new Avalonia.Controls.Shapes.Path { Name = "ProcessChevron", Data = Geometry.Parse("M 0,0 L 4,4 L 0,8"), Width = 6, Height = 10, Stroke = new SolidColorBrush(Color.Parse("#969BA3")), StrokeThickness = 1.2, Margin = new Thickness(6, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center, Opacity = 0, RenderTransformOrigin = RelativePoint.Center };
+                var chevron = new Avalonia.Controls.Shapes.Path { Name = "ProcessChevron", Data = Geometry.Parse("M 0,0 L 4,4 L 0,8"), Width = 6, Height = 10, Stroke = DesktopTheme.Brush("#969BA3"), StrokeThickness = 1.2, Margin = new Thickness(6, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center, Opacity = 0, RenderTransformOrigin = RelativePoint.Center };
                 void Refresh() { chevron.Opacity = button.IsPointerOver ? 1 : 0; chevron.RenderTransform = new RotateTransform(button.IsChecked == true ? 90 : 0); }
                 button.PropertyChanged += (_, e) => { if (e.Property == InputElement.IsPointerOverProperty || e.Property == InputElement.IsKeyboardFocusWithinProperty || e.Property == ToggleButton.IsCheckedProperty) Refresh(); }; Refresh();
                 return new Border { Background = Brushes.Transparent, Padding = button.Padding, Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { content, chevron } } };

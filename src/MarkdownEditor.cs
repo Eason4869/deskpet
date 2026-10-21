@@ -26,7 +26,7 @@ namespace Dafeiyu
         public Rect GetRectFromCharacterIndex(int index){return Position(index).GetCharacterRect(LogicalDirection.Forward);}
         public MarkdownEditor()
         {
-            BorderThickness=new Thickness(0);Background=Brushes.Transparent;Foreground=Ui.Ink;AcceptsTab=false;IsDocumentEnabled=true;
+            BorderThickness=new Thickness(0);Background=Brushes.Transparent;Foreground=Ui.Ink;CaretBrush=ThemeManager.Caret;AcceptsTab=false;IsDocumentEnabled=true;
             HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;ContextMenu=ChatUi.EditorMenu(this,false);
             TextCompositionManager.AddPreviewTextInputStartHandler(this,delegate{composing=true;});
             TextCompositionManager.AddPreviewTextInputHandler(this,delegate{composing=false;});

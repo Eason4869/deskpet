@@ -23,7 +23,7 @@ internal sealed class AvatarView : Control
         var target = new Rect((Bounds.Width - size) / 2, (Bounds.Height - size) / 2, size, size);
         var radius = size * .2;
         using var clip = context.PushGeometryClip(new RectangleGeometry(target, radius, radius));
-        context.DrawRectangle(new SolidColorBrush(Color.Parse("#F2F3F5")), null, target, radius, radius);
+        context.DrawRectangle(DesktopTheme.Brush("#F2F3F5"), null, target, radius, radius);
         if (Assets.GetAvatar(skin) is { } avatar)
         {
             var sourceSize = avatar.PixelSize;

@@ -34,7 +34,7 @@ namespace Dafeiyu
             body.Content=pages[index];
             for(int i=0;i<tabs.Length;i++)
             {
-                bool selected=i==index;tabs[i].Background=selected?Brushes.White:Brushes.Transparent;tabs[i].BorderBrush=selected?Ui.Line:Brushes.Transparent;tabs[i].Foreground=selected?Ui.Blue:Ui.Muted;tabs[i].FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;
+                bool selected=i==index;tabs[i].Background=selected?ThemeManager.Surface:Brushes.Transparent;tabs[i].BorderBrush=selected?Ui.Line:Brushes.Transparent;tabs[i].Foreground=selected?Ui.Blue:Ui.Muted;tabs[i].FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;
                 System.Windows.Automation.AutomationProperties.SetHelpText(tabs[i],selected?"当前配置页":"切换配置页");
             }
         }

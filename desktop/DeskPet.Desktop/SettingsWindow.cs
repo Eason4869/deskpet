@@ -22,7 +22,7 @@ internal sealed class SettingsWindow : Window
         owner = controller; Title = "DeskPet · 设置"; Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
         var pages = new List<TabItem>();
         void Add(string title, Control content) => pages.Add(new TabItem { Header = title, Content = new ScrollViewer { Content = new Border { Padding = new Thickness(20), Child = content } } });
-        Add("伙伴", Partner()); Add("桌面", Behavior());
+        Add("伙伴", Partner()); Add("通用", Behavior());
         foreach (var item in new[] { ("模型配置", "text"), ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
@@ -95,10 +95,12 @@ internal sealed class SettingsWindow : Window
     private Control Behavior()
     {
         var s = owner.Settings;
+        var theme = new ThemeModePicker(s.ThemeMode);
+        theme.Changed += mode => { s.ThemeMode = mode; DesktopTheme.Apply(mode); owner.Save(); };
         void Apply() { owner.Pet.ApplySettings(); owner.Save(); }
         var scale = new Slider { Minimum = .5, Maximum = 2.5, Value = s.Scale, TickFrequency = .1 };
         scale.ValueChanged += (_, _) => { s.Scale = scale.Value; Apply(); };
-        var panel = Ui.Column(Ui.Text("桌面行为", 20), Ui.Field("伙伴大小", scale),
+        var panel = Ui.Column(Ui.Text("桌面行为", 20), Ui.Column(Ui.Text("视觉风格", 16), theme), Ui.Field("伙伴大小", scale),
             Ui.Check("始终置顶", s.Topmost, v => { s.Topmost = v; Apply(); }),
             Ui.Check("锁定位置", s.LockPosition, v => { s.LockPosition = v; Apply(); }),
             Ui.Check("前台应用全屏时隐藏伙伴", s.HideOnFullscreen, v => { s.HideOnFullscreen = v; Apply(); }),

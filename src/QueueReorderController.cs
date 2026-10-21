@@ -123,7 +123,7 @@ namespace Dafeiyu
             protected override void OnRender(DrawingContext dc)
             {
                 dc.DrawRoundedRectangle(Ui.Brush("#EDF3FE"),new Pen(Ui.Brush("#BCCFEB"),1),new Rect(7,Slot,Math.Max(1,width+2),height),6,6);
-                dc.PushOpacity(.66);dc.DrawRoundedRectangle(Brushes.White,new Pen(Ui.Brush("#D4DEEB"),1),new Rect(X-2,Y-2,width+4,height+4),7,7);dc.DrawImage(bitmap,new Rect(X,Y,width,height));dc.Pop();
+                dc.PushOpacity(.66);dc.DrawRoundedRectangle(ThemeManager.Surface,new Pen(Ui.Brush("#D4DEEB"),1),new Rect(X-2,Y-2,width+4,height+4),7,7);dc.DrawImage(bitmap,new Rect(X,Y,width,height));dc.Pop();
             }
         }
     }

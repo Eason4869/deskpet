@@ -6,19 +6,24 @@ namespace Dafeiyu
 {
     internal static class GlassSurface
     {
+        static GradientStop Stop(string color,double offset)
+        {
+            var stop=new GradientStop{Offset=offset};
+            System.Windows.Data.BindingOperations.SetBinding(stop,GradientStop.ColorProperty,new System.Windows.Data.Binding("Color"){Source=Ui.Brush(color)});return stop;
+        }
         public static Brush Background()
         {
             var brush=new LinearGradientBrush();brush.StartPoint=new Point(0,0);brush.EndPoint=new Point(1,1);
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(226,236,249),0));
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(245,247,251),.48));
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(225,240,237),1));brush.Freeze();return brush;
+            brush.GradientStops.Add(Stop("#E2ECF9",0));
+            brush.GradientStops.Add(Stop("#F5F7FB",.48));
+            brush.GradientStops.Add(Stop("#E1F0ED",1));return brush;
         }
         public static Brush Panel()
         {
             var brush=new LinearGradientBrush();brush.StartPoint=new Point(.2,0);brush.EndPoint=new Point(.8,1);
-            brush.GradientStops.Add(new GradientStop(Color.FromArgb(242,255,255,255),0));
-            brush.GradientStops.Add(new GradientStop(Color.FromArgb(195,250,252,255),.52));
-            brush.GradientStops.Add(new GradientStop(Color.FromArgb(222,255,255,255),1));brush.Freeze();return brush;
+            brush.GradientStops.Add(Stop("#F2FFFFFF",0));
+            brush.GradientStops.Add(Stop("#C3FAFCFF",.52));
+            brush.GradientStops.Add(Stop("#DEFFFFFF",1));return brush;
         }
         public static Border Card(UIElement child)
         {

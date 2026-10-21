@@ -368,7 +368,32 @@ try
     foreach (var window in windows) { window.Show(); window.Measure(new Size(900, 800)); window.Arrange(new Rect(0, 0, 900, 800)); Dispatcher.UIThread.RunJobs(); Check(window.IsVisible && window.Bounds.Width > 0, window.GetType().Name + " opens with actual controls"); }
     var composerChat = (ChatWindow)windows[0];
     Check(composerChat.GetLogicalDescendants().OfType<AvatarView>().Single(a => a.Name == "ChatPartnerAvatar").Skin.Id == controller.Skin.Id && windows[4].GetLogicalDescendants().OfType<AvatarView>().Any(), "chat and Live use the current companion portrait");
-    var partnerSettings = (SettingsWindow)windows[2]; partnerSettings.SelectSection("partner"); Dispatcher.UIThread.RunJobs();
+    var partnerSettings = (SettingsWindow)windows[2];
+    var initialTheme = controller.Settings.ThemeMode;
+    partnerSettings.SelectSection("behavior"); Dispatcher.UIThread.RunJobs();
+    var themePicker = partnerSettings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
+    void ChooseTheme(string mode) => themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoice" + mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Check(themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 3, "desktop settings expose three theme preview cards");
+    ChooseTheme("dark"); Dispatcher.UIThread.RunJobs();
+    Check(Application.Current!.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark && controller.Settings.ThemeMode == "dark", "desktop theme selection applies dark immediately");
+    Check(new SettingsStore(Path.Combine(controller.DataDirectory, "settings.json")).Load().ThemeMode == "dark", "desktop theme selection persists dark");
+    var themedInk = DesktopTheme.Brush("#203754"); var themedSurface = DesktopTheme.Brush("#FFFFFF");
+    Check(themedInk.Color.R > 160 && themedSurface.Color.R < 60 && composerChat.Background == themedSurface, "existing desktop chat follows dark palette");
+    Check(DesktopTheme.Caret is SolidColorBrush darkCaret && darkCaret.Color == Colors.White, "desktop dark caret is white");
+    var selectedThemeCard = themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoicedark");
+    foreach (var cardState in new[] { ":pointerover", ":pressed", ":focus-visible" })
+    {
+        ((IPseudoClasses)selectedThemeCard.Classes).Set(cardState, true); Dispatcher.UIThread.RunJobs();
+        var cardPresenter = selectedThemeCard.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        Check(cardPresenter.BorderBrush is ISolidColorBrush outline && outline.Color == DesktopTheme.Brush("#456DE6").Color, "selected theme blue outline survives " + cardState);
+        ((IPseudoClasses)selectedThemeCard.Classes).Set(cardState, false);
+    }
+    ChooseTheme("light"); Dispatcher.UIThread.RunJobs();
+    Check(themedInk.Color.R < 100 && themedSurface.Color.R == 255, "existing desktop brushes return to light");
+    ChooseTheme("system"); Dispatcher.UIThread.RunJobs();
+    Check(Application.Current.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Default && controller.Settings.ThemeMode == "system", "desktop system choice inherits OS theme");
+    ChooseTheme(initialTheme);
+    partnerSettings.SelectSection("partner"); Dispatcher.UIThread.RunJobs();
     Check(partnerSettings.GetLogicalDescendants().OfType<ComboBox>().Distinct().Single(c => ReferenceEquals(c.ItemsSource, controller.Skins)).ItemTemplate != null && controller.Pet.ContextMenu!.Items.OfType<MenuItem>().Count(i => i.Icon is AvatarView) == controller.Skins.Count, "partner selector and every partner menu entry use avatar views");
     Check(!controller.Settings.AgentEnabled, "new Avalonia client defaults to pure conversation without file Agent");
     var modeButton = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatModeAction");
@@ -590,6 +615,8 @@ try
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
+    var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
+    Check(guideExit.FontSize >= 14 && guideExit.FontWeight == Avalonia.Media.FontWeight.SemiBold && guideExit.Foreground == DesktopTheme.Brush("#203754"), "desktop guide exit is larger semibold and theme aware");
     var later = guide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "稍后继续"); later.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Check(controller.Settings.OnboardingState == "deferred", "guide deferred state persists");
     var nextGuide = new GuideWindow(controller); nextGuide.Show();

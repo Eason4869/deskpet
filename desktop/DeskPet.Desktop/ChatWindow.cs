@@ -55,7 +55,7 @@ internal sealed class ChatWindow : Window
         draft.TextChanged += (_, _) => owner.Drafts[persona] = draft.Text ?? "";
         Title = quick ? "DeskPet · 快聊" : "DeskPet · 聊天与队列"; Width = quick ? 470 : 880; Height = quick ? 520 : 730;
         MinWidth = 390; MinHeight = 400;
-        Background = Avalonia.Media.Brushes.White; Foreground = Avalonia.Media.Brushes.Black; RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+        Background = DesktopTheme.Surface; Foreground = DesktopTheme.Brush("#000000");
         draft.Name = "ChatDraft"; draft.AcceptsReturn = true; draft.MinHeight = 48; draft.MaxHeight = 160; draft.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         draft.Background = Brushes.Transparent; draft.BorderThickness = new Thickness(0); draft.Padding = new Thickness(4, 6); draft.UseFloatingPlaceholder = false;
         foreach (var key in new[] { "TextControlBackground", "TextControlBackgroundPointerOver", "TextControlBackgroundFocused", "TextControlBorderBrush", "TextControlBorderBrushPointerOver", "TextControlBorderBrushFocused" }) draft.Resources[key] = Brushes.Transparent;
@@ -72,7 +72,7 @@ internal sealed class ChatWindow : Window
         var header = Ui.Column(Ui.Row(partnerAvatar, partnerName, Ui.Button("设置", owner.ShowSettings), Ui.Button(quick ? "完整聊天" : "快聊", () => owner.ShowChat(!quick))), status);
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (owner.Session.IsBusy) owner.Run(owner.StopAsync); else owner.ShowLive(); });
-        primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#357FF5")); primary.Foreground = Avalonia.Media.Brushes.White;
+        primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
         addAttachment = Ui.Button("+", OpenAttachmentMenu); addAttachment.Name = "AddAttachment"; addAttachment.Width = addAttachment.Height = 32; addAttachment.Padding = new Thickness(0); addAttachment.HorizontalContentAlignment = HorizontalAlignment.Center; addAttachment.VerticalContentAlignment = VerticalAlignment.Center; ToolTip.SetTip(addAttachment, "添加文件等内容");
         var filesMenu = new MenuItem { Name = "AttachmentFilesMenu", Header = "文件和文件夹", Icon = MenuIcon("M 7,5 L 7,12 Q 7,15 10,15 Q 13,15 13,12 L 13,4 Q 13,1 10,1 Q 7,1 7,4 L 7,11 Q 7,13 9,13 Q 11,13 11,11 L 11,5") }; filesMenu.Click += (_, _) => owner.Run(PickAttachmentsAsync);
         snapshotMenu = new MenuItem { Name = "AttachApplicationSnapshot", Header = "附加应用快照", IsEnabled = false }; snapshotMenu.Click += (_, _) => owner.Run(AttachApplicationSnapshotAsync); SetSnapshotTarget(null);
@@ -83,7 +83,7 @@ internal sealed class ChatWindow : Window
         addMenu.Opening += (_, _) => { planMode.IsChecked = owner.Settings.AgentPlanMode; goalMenu.Header = MenuLabel("目标", string.IsNullOrWhiteSpace(owner.Settings.AgentGoal) ? "设置要持续追求的目标" : owner.Settings.AgentGoal); SetSnapshotTarget(OperatingSystem.IsWindowsVersionAtLeast(6, 1) ? ApplicationSnapshots.Topmost() : null); };
         addAttachment.ContextMenu = addMenu;
         attachmentChips.Name = "AttachmentCards";
-        modeButton = Ui.Button("", OpenModeMenu); modeButton.Name = "ChatModeAction"; modeButton.Width = 104; modeButton.Height = 32; modeButton.Padding = new Thickness(4, 0); modeButton.Background = Brushes.Transparent; modeButton.BorderThickness = new Thickness(0); modeButton.Foreground = new SolidColorBrush(Color.Parse("#9299A3")); modeButton.HorizontalContentAlignment = HorizontalAlignment.Center; modeButton.VerticalContentAlignment = VerticalAlignment.Center;
+        modeButton = Ui.Button("", OpenModeMenu); modeButton.Name = "ChatModeAction"; modeButton.Width = 104; modeButton.Height = 32; modeButton.Padding = new Thickness(4, 0); modeButton.Background = Brushes.Transparent; modeButton.BorderThickness = new Thickness(0); modeButton.Foreground = DesktopTheme.Brush("#9299A3"); modeButton.HorizontalContentAlignment = HorizontalAlignment.Center; modeButton.VerticalContentAlignment = VerticalAlignment.Center;
         conversationMode = new MenuItem { Name = "ConversationMode", Icon = ModeIcon(false), Header = MenuLabel("对话模式", "纯聊天，不调用文件 Agent"), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode" }; conversationMode.Click += (_, _) => SelectMode(false);
         workMode = new MenuItem { Name = "WorkMode", Icon = ModeIcon(true), Header = MenuLabel("工作模式", "按工作设置权限使用文件/目录工具"), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode", IsEnabled = OperatingSystem.IsWindows() }; workMode.Click += (_, _) => SelectMode(true);
         ToolTip.SetTip(workMode, "文件 Agent 目前仅 Windows 版支持。");
@@ -92,7 +92,7 @@ internal sealed class ChatWindow : Window
         var toolbar = new Grid { Name = "ComposerToolbar", ColumnDefinitions = new ColumnDefinitions("36,104,*,Auto"), Margin = new Thickness(2, 8, 2, 0) };
         toolbar.Children.Add(addAttachment); Grid.SetColumn(modeButton, 1); toolbar.Children.Add(modeButton); models.Name = "ChatModels"; models.MinWidth = 0; models.MaxWidth = 260; models.Margin = new Thickness(0, 0, 4, 0); models.RenderTransform = new TranslateTransform(0, 4); models.HorizontalAlignment = HorizontalAlignment.Right; Grid.SetColumn(models, 2); toolbar.Children.Add(models);
         var actions = Ui.Row(dictate, primary); Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
-        var composer = new Border { Name = "ComposerSurface", Background = Brushes.White, CornerRadius = new CornerRadius(22), BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E3E7ED")), BorderThickness = new Thickness(1), Padding = new Thickness(8), Child = Ui.Column(attachmentChips, draft, toolbar) };
+        var composer = new Border { Name = "ComposerSurface", Background = DesktopTheme.Surface, CornerRadius = new CornerRadius(22), BorderBrush = DesktopTheme.Brush("#E3E7ED"), BorderThickness = new Thickness(1), Padding = new Thickness(8), Child = Ui.Column(attachmentChips, draft, toolbar) };
         draft.TextChanged += (_, _) => RefreshAction();
         DockPanel.SetDock(composer, Dock.Bottom); root.Children.Add(composer);
         if (!quick)
@@ -143,7 +143,7 @@ internal sealed class ChatWindow : Window
         }
         var cut = Item("DraftCut", "剪切", Key.X, draft.Cut); var copy = Item("DraftCopy", "复制", Key.C, draft.Copy);
         var paste = Item("DraftPaste", "粘贴", Key.V, draft.Paste); var all = Item("DraftSelectAll", "全选", Key.A, draft.SelectAll);
-        var menu = new ContextMenu { CornerRadius = new CornerRadius(10), Padding = new Thickness(4), Background = Brushes.White, ItemsSource = new object[] { cut, copy, paste, new Separator(), all } };
+        var menu = new ContextMenu { CornerRadius = new CornerRadius(10), Padding = new Thickness(4), Background = DesktopTheme.Surface, ItemsSource = new object[] { cut, copy, paste, new Separator(), all } };
         menu.Opening += (_, _) => { cut.IsEnabled = !draft.IsReadOnly && draft.SelectionStart != draft.SelectionEnd; copy.IsEnabled = draft.SelectionStart != draft.SelectionEnd; paste.IsEnabled = !draft.IsReadOnly && Clipboard != null; all.IsEnabled = !string.IsNullOrEmpty(draft.Text); }; draft.ContextMenu = menu;
     }
     private UploadContext UploadTarget() => new(persona, uploadEpoch);
@@ -205,7 +205,7 @@ internal sealed class ChatWindow : Window
     private void RefreshMode()
     {
         bool work = OperatingSystem.IsWindows() && owner.Settings.AgentEnabled;
-        var label = new TextBlock { Text = work ? "工作模式" : "对话模式", FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#9299A3")), VerticalAlignment = VerticalAlignment.Center, RenderTransform = new TranslateTransform(0, 4) };
+        var label = new TextBlock { Text = work ? "工作模式" : "对话模式", FontSize = 12, Foreground = DesktopTheme.Brush("#9299A3"), VerticalAlignment = VerticalAlignment.Center, RenderTransform = new TranslateTransform(0, 4) };
         var content = Ui.Row(ModeIcon(work), label); content.RenderTransform = new TranslateTransform(-4, 0); modeButton.Content = content;
         conversationMode.IsChecked = !work; workMode.IsChecked = work;
         ToolTip.SetTip(modeButton, OperatingSystem.IsWindows() ? (work ? "工作模式：按工作设置权限使用文件/目录工具。" : "对话模式：纯聊天。") + "Tab 切换；仅影响下一次请求。" : "对话模式：纯聊天。工作模式目前仅 Windows 版支持；Windows 版可用 Tab 切换。");
@@ -215,10 +215,10 @@ internal sealed class ChatWindow : Window
         var icon = MenuIcon(work ? "M 3,12 L 12,3 L 15,6 L 6,15 L 2,16 Z M 10,5 L 13,8 M 3,12 L 6,15" : "M 3,3 L 15,3 L 15,12 L 8,12 L 4,16 L 4,12 L 3,12 Z");
         icon.Name = work ? "WorkPencilGlyph" : "ConversationBubbleGlyph"; return icon;
     }
-    private static Control MenuIcon(string path) => new ShapePath { Width = 18, Height = 18, Data = Geometry.Parse(path), Stroke = new SolidColorBrush(Color.Parse("#777F89")), StrokeThickness = 1.3 };
+    private static Control MenuIcon(string path) => new ShapePath { Width = 18, Height = 18, Data = Geometry.Parse(path), Stroke = DesktopTheme.Brush("#777F89"), StrokeThickness = 1.3 };
     private static Control MenuLabel(string title, string description)
     {
-        var secondary = new TextBlock { Text = description, Foreground = new SolidColorBrush(Color.Parse("#9CA3AC")), FontSize = 12, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        var secondary = new TextBlock { Text = description, Foreground = DesktopTheme.Brush("#9CA3AC"), FontSize = 12, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         return Ui.Row(new TextBlock { Text = title }, secondary);
     }
     private void ShowGoalDialog()
@@ -283,7 +283,7 @@ internal sealed class ChatWindow : Window
         attachmentChips.Children.Clear(); DisposeAttachmentImages(); attachmentChips.IsVisible = Files.Count > 0;
         foreach (var file in Files)
         {
-            Control preview = new Border { Height = 72, Background = new SolidColorBrush(Color.Parse("#F7F8FA")), Child = new ShapePath { Data = Geometry.Parse("M 5,2 L 11,2 L 15,6 L 15,18 L 5,18 Z M 11,2 L 11,6 L 15,6"), Stroke = new SolidColorBrush(Color.Parse("#818894")), StrokeThickness = 1.2, Width = 20, Height = 20, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+            Control preview = new Border { Height = 72, Background = DesktopTheme.Brush("#F7F8FA"), Child = new ShapePath { Data = Geometry.Parse("M 5,2 L 11,2 L 15,6 L 15,18 L 5,18 Z M 11,2 L 11,6 L 15,6"), Stroke = DesktopTheme.Brush("#818894"), StrokeThickness = 1.2, Width = 20, Height = 20, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
             if (file.IsImage)
             {
                 try
@@ -295,8 +295,8 @@ internal sealed class ChatWindow : Window
             }
             var label = new TextBlock { Text = file.Name, FontSize = 11, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 5, 8, 4) };
             var grid = new Grid(); var content = new StackPanel { Spacing = 0 }; content.Children.Add(preview); content.Children.Add(label); grid.Children.Add(content);
-            var remove = Ui.Button("×", () => { Files.Remove(file); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = new SolidColorBrush(Color.Parse("#F2FFFFFF")); ToolTip.SetTip(remove, "移除 " + file.Name); grid.Children.Add(remove);
-            var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = new SolidColorBrush(Color.Parse("#E5E7EB")), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
+            var remove = Ui.Button("×", () => { Files.Remove(file); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); ToolTip.SetTip(remove, "移除 " + file.Name); grid.Children.Add(remove);
+            var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = DesktopTheme.Brush("#E5E7EB"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
         }
     }
     private void RefreshAction()

@@ -79,7 +79,7 @@ namespace Dafeiyu
             var count=Ui.Text(project.Conversations.Count+" 个会话 · "+project.Conversations.Count(c=>c.Status=="running")+" 个活跃会话",11,AgentUi.Muted);count.Name="ProjectHoverCount";body.Children.Add(count);
             var workspace=Ui.Text(project.Workspace,11,AgentUi.Muted);workspace.Name="ProjectHoverWorkspace";workspace.TextWrapping=TextWrapping.Wrap;body.Children.Add(workspace);
             var actions=new WrapPanel();var edit=AgentUi.Nav("编辑项目","EditProject");edit.Click+=delegate{editProject(project);};var open=AgentUi.Nav("打开工作目录","OpenProjectWorkspace");open.Click+=delegate{openWorkspace(project);};var add=AgentUi.Nav("新建会话","NewProjectConversation");add.Click+=delegate{newConversation(project);};actions.Children.Add(edit);actions.Children.Add(open);actions.Children.Add(add);body.Children.Add(actions);
-            body.Background=Brushes.White;var card=new Border{Child=body,Background=Brushes.White,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(2)};
+            body.Background=ThemeManager.Surface;var card=new Border{Child=body,Background=ThemeManager.Surface,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(2)};
             // Pointer over the card must count as still hovering the row, otherwise
             // moving toward the details closes and reopens them in a loop.
             var cardPopup=hover;card.MouseEnter+=delegate{if(!ReferenceEquals(hover,cardPopup))return;hoverPinned=true;hoverClose.Stop();};
@@ -114,7 +114,7 @@ namespace Dafeiyu
             Ui.Window(this,title,520,258);MinWidth=420;MinHeight=240;ResizeMode=ResizeMode.NoResize;var root=new Grid{Margin=new Thickness(26,22,26,22)};root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var heading=new StackPanel{Margin=new Thickness(0,0,36,14)};var caption=Ui.Text(title,21,Ui.Brush("#25282D"));caption.FontWeight=FontWeights.SemiBold;heading.Children.Add(caption);var hint=Ui.Text(title.Contains("分区")?"为分区设置一个易于识别的名称":"保持简短且易于识别",12,Ui.Brush("#96999E"));hint.Margin=new Thickness(0,5,0,0);heading.Children.Add(hint);root.Children.Add(heading);
             name.Name="ConversationTitle";name.MaxLength=80;name.Text=initial??"";name.MinHeight=44;name.VerticalAlignment=VerticalAlignment.Top;Grid.SetRow(name,1);root.Children.Add(name);
-            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,16,0,0)};var cancel=Ui.Button("取消");cancel.Name="CancelConversationTitle";cancel.IsCancel=true;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};var save=Ui.Button("保存");save.Name="SaveConversationTitle";save.IsDefault=true;save.Background=Ui.Brush("#202329");save.Foreground=Brushes.White;save.BorderBrush=save.Background;save.Click+=delegate{if(ConversationName.Length<1){name.Focus();return;}DialogResult=true;Close();};actions.Children.Add(cancel);actions.Children.Add(save);Grid.SetRow(actions,2);root.Children.Add(actions);DialogUi.Apply(this,root);Loaded+=delegate{name.Focus();name.SelectAll();};
+            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,16,0,0)};var cancel=Ui.Button("取消");cancel.Name="CancelConversationTitle";cancel.IsCancel=true;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};var save=Ui.Button("保存");save.Name="SaveConversationTitle";save.IsDefault=true;save.Background=ThemeManager.ActionSurface;save.Foreground=Brushes.White;save.BorderBrush=save.Background;save.Click+=delegate{if(ConversationName.Length<1){name.Focus();return;}DialogResult=true;Close();};actions.Children.Add(cancel);actions.Children.Add(save);Grid.SetRow(actions,2);root.Children.Add(actions);DialogUi.Apply(this,root);Loaded+=delegate{name.Focus();name.SelectAll();};
         }
     }
     internal sealed class NewProjectDialog : Window
@@ -137,7 +137,7 @@ namespace Dafeiyu
 
             // Name field: folder glyph sits inside the field, the prompt fades in
             // the same way the composer placeholder does.
-            var nameField=new Border{BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(9),Background=Brushes.White,Padding=new Thickness(11,0,11,0),Margin=new Thickness(0,6,0,0),Height=42};
+            var nameField=new Border{BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(9),Background=ThemeManager.Surface,Padding=new Thickness(11,0,11,0),Margin=new Thickness(0,6,0,0),Height=42};
             var nameGrid=new Grid();nameGrid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(24)});nameGrid.ColumnDefinitions.Add(new ColumnDefinition());
             var glyph=UiIcons.Image("folder",AgentUi.Muted);glyph.Width=glyph.Height=17;glyph.VerticalAlignment=VerticalAlignment.Center;nameGrid.Children.Add(glyph);
             var nameHost=new Grid();name.Name="NewProjectName";name.FontSize=13;name.VerticalContentAlignment=VerticalAlignment.Center;
@@ -149,7 +149,7 @@ namespace Dafeiyu
 
             var sourceLabel=Ui.Text("源文件夹",12,AgentUi.Muted);sourceLabel.Margin=new Thickness(0,16,0,0);Grid.SetRow(sourceLabel,2);root.Children.Add(sourceLabel);
 
-            var drop=new Border{Name="ProjectSourceFolder",BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Background=Brushes.White,Margin=new Thickness(0,7,0,0),Padding=new Thickness(12)};
+            var drop=new Border{Name="ProjectSourceFolder",BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Background=ThemeManager.Surface,Margin=new Thickness(0,7,0,0),Padding=new Thickness(12)};
             var dropBody=new StackPanel{VerticalAlignment=VerticalAlignment.Center,HorizontalAlignment=HorizontalAlignment.Center};
             var pick=Ui.Button("");pick.Name="BrowseProjectWorkspace";pick.Background=Brushes.Transparent;pick.BorderBrush=Brushes.Transparent;pick.Cursor=System.Windows.Input.Cursors.Hand;pick.Padding=new Thickness(8,2,8,2);pick.Margin=new Thickness(0);pick.MinHeight=28;
             var pickRow=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
@@ -175,7 +175,7 @@ namespace Dafeiyu
 
             var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,18,0,0)};
             var cancel=Ui.Button("取消");cancel.Name="CancelCreateProject";cancel.IsCancel=true;cancel.Background=Brushes.Transparent;cancel.BorderBrush=Brushes.Transparent;cancel.Foreground=AgentUi.Muted;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};
-            var create=Ui.Button(initial==null?"创建项目":"保存",true);create.Name="CreateProject";create.IsDefault=true;create.Background=Ui.Brush("#202329");create.BorderBrush=create.Background;create.Foreground=Brushes.White;create.FontWeight=FontWeights.SemiBold;
+            var create=Ui.Button(initial==null?"创建项目":"保存",true);create.Name="CreateProject";create.IsDefault=true;create.Background=ThemeManager.ActionSurface;create.BorderBrush=create.Background;create.Foreground=Brushes.White;create.FontWeight=FontWeights.SemiBold;
             create.Click+=delegate{
                 if(ProjectName.Length<1 || ProjectName.Length>80){notice.Text="请输入 1～80 个字符的项目名称。";return;}
                 if(!Path.IsPathRooted(Workspace) || !Directory.Exists(Workspace)){notice.Text="请选择已存在的绝对工作目录。";return;}

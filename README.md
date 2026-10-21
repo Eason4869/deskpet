@@ -12,6 +12,8 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 **当前正式版本：[0.10.0](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
 
+**当前开发版本：0.10.1-dev.1**。新增主题缩略卡与藏青暗色，增强引导退出入口，修复上下文预览关闭及暗色输入光标；本次仅提供 [源码标签](https://github.com/Eason4869/deskpet/tree/v0.10.1-dev.1)，不发布安装包或 Release。
+
 0.10.0 新增正式／预览更新通道、防降级和立即更新重启，精简 Windows 安装包与便携 ZIP，并改善 Live 声纹动效。五位内置伙伴及完整 ZIP 角色包继续可用，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
 
 在“关于”页选择更新通道，切换只保存偏好，不会降级。点击“立即更新并重启”可跳过剩余 5 秒等待，仍会保护运行任务和未保存内容。制作新角色的模板改为独立下载，现有角色无需额外资源，具体规则见 [发布与升级说明](docs/release-naming.md)。
@@ -22,6 +24,8 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
   <source media="(max-width: 640px)" srcset="previews/readme-interaction-mobile.svg">
   <img src="previews/readme-interaction.svg" width="1200" alt="两位伙伴的原画、完整动作轮盘和快速对话截图；互动无需AI，聊天需要配置模型">
 </picture>
+
+界面支持浅色、暗色与跟随系统，可在 **设置 → 通用 → 视觉风格** 点击缩略卡切换；选择自动保存，无需重启。
 
 五位内置伙伴可以直接切换，也支持导入自制外观。首次启动默认 **E包**；每位伙伴有各自的普通聊天记录、人格和音色偏好。
 

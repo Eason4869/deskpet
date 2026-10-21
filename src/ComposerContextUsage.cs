@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 namespace Dafeiyu
@@ -14,8 +15,27 @@ namespace Dafeiyu
             var panel=new Grid{HorizontalAlignment=HorizontalAlignment.Right,MinWidth=0};panel.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});panel.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star),MinWidth=0});
             var ring=new Grid{Width=14,Height=14};ring.Children.Add(new Ellipse{Stroke=Ui.Brush("#DADDE0"),StrokeThickness=2});contextArc=new Path{Stroke=Ui.Brush("#747B83"),StrokeThickness=2,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round};ring.Children.Add(contextArc);
             contextPreview=Ui.Button("");contextPreview.Name="ContextUsagePreview";contextPreview.Content=ring;contextPreview.Width=28;contextPreview.Height=32;contextPreview.MinWidth=0;contextPreview.MinHeight=0;contextPreview.Padding=new Thickness(0);contextPreview.Margin=new Thickness(0);contextPreview.Background=Brushes.Transparent;contextPreview.BorderBrush=Brushes.Transparent;contextPreview.VerticalAlignment=VerticalAlignment.Center;
-            contextTip=new ToolTip{Template=hintTemplate,Foreground=Brushes.White,Placement=System.Windows.Controls.Primitives.PlacementMode.Top,HorizontalContentAlignment=HorizontalAlignment.Center};contextPreview.RenderTransform=new TranslateTransform(0,4);contextPreview.ToolTip=contextTip;host.Closed+=delegate{contextTip.IsOpen=false;};ToolTipService.SetInitialShowDelay(contextPreview,200);contextPreview.ToolTipOpening+=delegate{RefreshContextUsage();};contextPreview.Click+=delegate{RefreshContextUsage();contextTip.PlacementTarget=contextPreview;contextTip.IsOpen=!contextTip.IsOpen;};
+            contextTip=new ToolTip{Template=hintTemplate,Foreground=Brushes.White,Placement=System.Windows.Controls.Primitives.PlacementMode.Top,HorizontalContentAlignment=HorizontalAlignment.Center};contextPreview.RenderTransform=new TranslateTransform(0,4);contextPreview.ToolTip=contextTip;ToolTipService.SetInitialShowDelay(contextPreview,200);contextPreview.ToolTipOpening+=delegate{RefreshContextUsage();};contextPreview.Click+=delegate{RefreshContextUsage();contextTip.PlacementTarget=contextPreview;contextTip.IsOpen=!contextTip.IsOpen;};
+            host.PreviewMouseDown+=ContextHostMouseDown;host.PreviewKeyDown+=ContextHostKeyDown;
+            host.Deactivated+=ContextHostDeactivated;host.IsVisibleChanged+=ContextHostVisibilityChanged;
+            Unloaded+=delegate{CloseContextPreview();};
             panel.Children.Add(contextPreview);Grid.SetColumn(modelPicker,1);panel.Children.Add(modelPicker);return panel;
+        }
+        void CloseContextPreview(){if(contextTip!=null)contextTip.IsOpen=false;}
+        void ContextHostMouseDown(object sender,MouseButtonEventArgs args)
+        {
+            if(contextTip==null||!contextTip.IsOpen)return;
+            for(DependencyObject source=args.OriginalSource as DependencyObject;source!=null;source=source is Visual?VisualTreeHelper.GetParent(source):LogicalTreeHelper.GetParent(source))
+                if(source==contextPreview||source==contextTip)return;
+            CloseContextPreview();
+        }
+        void ContextHostKeyDown(object sender,KeyEventArgs args){if(args.Key==Key.Escape&&contextTip!=null&&contextTip.IsOpen){CloseContextPreview();args.Handled=true;}}
+        void ContextHostDeactivated(object sender,EventArgs args){CloseContextPreview();}
+        void ContextHostVisibilityChanged(object sender,DependencyPropertyChangedEventArgs args){if(!host.IsVisible)CloseContextPreview();}
+        void DetachContextPreview()
+        {
+            CloseContextPreview();host.PreviewMouseDown-=ContextHostMouseDown;host.PreviewKeyDown-=ContextHostKeyDown;
+            host.Deactivated-=ContextHostDeactivated;host.IsVisibleChanged-=ContextHostVisibilityChanged;
         }
         static string CompactContextTokens(int tokens){return tokens>=1000000?(tokens/1000000d).ToString("0.#",System.Globalization.CultureInfo.InvariantCulture)+"m":tokens>=1000?(tokens/1000d).ToString("0.#",System.Globalization.CultureInfo.InvariantCulture)+"k":Math.Max(0,tokens).ToString();}
         void RefreshContextUsage()

@@ -24,7 +24,7 @@ namespace Dafeiyu
         readonly Button skillsTab,mcpTab,add;
         readonly ScrollViewer skillScroll;
         readonly TextBlock footer=Ui.Text("",11,Ui.Muted);
-        static readonly ControlTemplate pillTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='pill' Background='{TemplateBinding Background}' CornerRadius='18'><ContentPresenter Margin='{TemplateBinding Padding}' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='pill' Property='Opacity' Value='.75'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+        static readonly ControlTemplate pillTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='pill' Background='{TemplateBinding Background}' CornerRadius='18'><ContentPresenter Margin='{TemplateBinding Padding}' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='pill' Property='Opacity' Value='.75'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
         IList<ManagedSkillInfo> installed=new ManagedSkillInfo[0];
         string detailId,removeId;
         bool onMcp,disposed;
@@ -33,7 +33,7 @@ namespace Dafeiyu
         {
             if(pet==null)throw new ArgumentNullException("pet");
             this.pet=pet;library=new ManagedSkillLibrary(Path.Combine(pet.Store.DirectoryPath,"skills"));
-            Name="PluginsPage";Background=Brushes.White;Foreground=Ui.PageInk;
+            Name="PluginsPage";Background=ThemeManager.Surface;Foreground=Ui.PageInk;
             layout.MaxWidth=Ui.PageContentWidth;layout.HorizontalAlignment=HorizontalAlignment.Stretch;layout.Margin=new Thickness(30,40,30,24);
             for(int i=0;i<4;i++)layout.RowDefinitions.Add(new RowDefinition{Height=i==2?new GridLength(1,GridUnitType.Star):GridLength.Auto});
             Content=layout;
@@ -42,7 +42,7 @@ namespace Dafeiyu
             var titles=new StackPanel{Margin=new Thickness(0,0,18,0)};
             var heading=Ui.PageHeading("插件");titles.Children.Add(heading);
             titles.Children.Add(Ui.Text("为伙伴添加技能与外部工具。",12,Ui.Muted));header.Children.Add(titles);
-            add=ActionButton("添加技能","ImportManagedSkill",ChooseImport);add.Background=Ui.Brush("#282A2F");add.Foreground=Brushes.White;add.BorderBrush=add.Background;
+            add=ActionButton("添加技能","ImportManagedSkill",ChooseImport);add.Background=ThemeManager.ActionSurface;add.Foreground=Brushes.White;add.BorderBrush=add.Background;
             searchSurface.Width=260;searchSurface.Margin=new Thickness(0,0,12,5);searchSurface.VerticalAlignment=VerticalAlignment.Center;actions.Children.Add(searchSurface);actions.Children.Add(add);Grid.SetColumn(actions,1);actions.VerticalAlignment=VerticalAlignment.Center;header.Children.Add(actions);layout.Children.Add(header);
             var controls=new StackPanel{Margin=new Thickness(0,24,0,17)};
             var tabs=new WrapPanel{Margin=new Thickness(0,0,0,16)};
@@ -51,7 +51,7 @@ namespace Dafeiyu
             skillsTab.Template=pillTemplate;mcpTab.Template=pillTemplate;skillsTab.Padding=mcpTab.Padding=new Thickness(17,5,17,5);
             tabs.Children.Add(skillsTab);tabs.Children.Add(mcpTab);controls.Children.Add(tabs);
             search.Name="PluginsSearch";search.ToolTip="按技能名称或描述搜索";search.Height=search.MinHeight=36;search.FontSize=13;search.Padding=new Thickness(12,0,12,0);search.Foreground=Ui.PageInk;
-            search.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' BorderBrush='#E0E3E8' BorderThickness='1' CornerRadius='18'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
+            search.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' BorderBrush='#E0E3E8' BorderThickness='1' CornerRadius='18'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
             System.Windows.Automation.AutomationProperties.SetName(search,"搜索技能名称或描述");
             searchSurface.Children.Add(search);
             var placeholder=new TextBlock{Name="PluginsSearchPlaceholder",Text="搜索技能名称或描述",FontSize=13,Foreground=Ui.Brush("#9299A3"),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(26,0,13,0),IsHitTestVisible=false};searchSurface.Children.Add(placeholder);
@@ -97,7 +97,7 @@ namespace Dafeiyu
             var remove=Ui.Button(removeId==item.Id?"确认移除技能":"移除技能");remove.Name="RemoveManagedSkill";remove.Tag=item.Id;remove.HorizontalAlignment=HorizontalAlignment.Left;remove.Margin=new Thickness(0,12,0,0);remove.Foreground=Ui.Brush("#A65050");remove.Click+=delegate{if(removeId!=item.Id){removeId=item.Id;RenderRows();return;}try{library.Remove(item.Id);detailId=null;removeId=null;Refresh();Notify("已移除 "+item.Name+"，原始文件夹保留。");}catch(Exception e){if(!Expected(e))throw;Notify("未能移除技能。"+e.Message);}};detail.Children.Add(remove);
             if(removeId==item.Id){var note=Ui.Text("仅移除本机管理的技能，原始文件夹会保留。",11,Ui.Muted);note.Name="ManagedSkillRemoveConfirmation";note.Margin=new Thickness(0,7,0,0);detail.Children.Add(note);var cancel=Ui.Button("取消");cancel.Name="CancelRemoveManagedSkill";cancel.HorizontalAlignment=HorizontalAlignment.Left;cancel.Margin=new Thickness(0,7,0,0);cancel.Click+=delegate{removeId=null;RenderRows();};detail.Children.Add(cancel);}return detail;
         }
-        static Border Surface(UIElement child){return new Border{Background=Brushes.White,BorderBrush=Ui.Brush("#E6E9EE"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(13),Margin=new Thickness(0,0,0,10),Padding=new Thickness(16),Child=child};}
+        static Border Surface(UIElement child){return new Border{Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E9EE"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(13),Margin=new Thickness(0,0,0,10),Padding=new Thickness(16),Child=child};}
         void LibraryChanged(){if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(LibraryChanged));return;}Refresh();}
         void McpEditorVisibilityChanged(){if(onMcp)add.Visibility=mcp.EditorVisible?Visibility.Collapsed:Visibility.Visible;}
         void McpSaved(){McpCount();}

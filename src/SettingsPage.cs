@@ -42,7 +42,7 @@ namespace Dafeiyu
         public SettingsPage(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
-            pet=companion;Name="SettingsPage";Background=Brushes.White;
+            pet=companion;Name="SettingsPage";Background=ThemeManager.Surface;
             var root=new StackPanel();var behaviorPage=new StackPanel();var greetingPage=new StackPanel();
             var header=new Grid { Margin=new Thickness(0,0,0,12) };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(74) }); header.ColumnDefinitions.Add(new ColumnDefinition());
@@ -124,7 +124,7 @@ namespace Dafeiyu
             var sidebar=new Grid();sidebar.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});sidebar.RowDefinitions.Add(new RowDefinition());sidebar.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var sidebarHeader=new StackPanel{Margin=new Thickness(14,24,14,22)};var settingsHeading=Ui.InlineText("设置",17,Ui.PageInk);settingsHeading.FontWeight=FontWeights.Bold;settingsHeading.Margin=new Thickness(8,0,0,18);sidebarHeader.Children.Add(settingsHeading);
             var searchSurface=new Grid();var categorySearch=Ui.Field();categorySearch.Name="SettingsCategorySearch";categorySearch.FontSize=12;categorySearch.Height=categorySearch.MinHeight=34;categorySearch.Padding=new Thickness(30,0,12,0);categorySearch.Background=Ui.Brush("#ECEFF2");categorySearch.Foreground=Ui.PageInk;
-            categorySearch.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' CornerRadius='17'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
+            categorySearch.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' CornerRadius='17'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
             System.Windows.Automation.AutomationProperties.SetName(categorySearch,"搜索设置分类");searchSurface.Children.Add(categorySearch);var searchGlyph=UiIcons.Image("search",Ui.Muted);searchGlyph.Width=searchGlyph.Height=13;searchGlyph.HorizontalAlignment=HorizontalAlignment.Left;searchGlyph.VerticalAlignment=VerticalAlignment.Center;searchGlyph.Margin=new Thickness(11,0,0,0);searchSurface.Children.Add(searchGlyph);var searchHint=Ui.InlineText("搜索设置",12,Ui.Muted);searchHint.Margin=new Thickness(30,0,10,0);searchHint.IsHitTestVisible=false;searchSurface.Children.Add(searchHint);sidebarHeader.Children.Add(searchSurface);sidebar.Children.Add(sidebarHeader);
             var navScroll=Ui.Scroll(navigation);Grid.SetRow(navScroll,1);sidebar.Children.Add(navScroll);
             categorySearch.TextChanged+=delegate{string query=categorySearch.Text.Trim();searchHint.Visibility=categorySearch.Text.Length==0?Visibility.Visible:Visibility.Collapsed;foreach(ListBoxItem item in navigation.Items)item.Visibility=query.Length==0||((string)item.Content).IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0?Visibility.Visible:Visibility.Collapsed;};

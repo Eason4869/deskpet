@@ -39,9 +39,9 @@ namespace Dafeiyu
         public ChatWindow(PetWindow companion,ConversationWorkspace workspaceOverride=null)
         {
             pet=companion;workspace=workspaceOverride;session=workspaceOverride==null?pet.Conversation:workspaceOverride.Session;queue=workspaceOverride==null?pet.InputQueue:workspaceOverride.Queue;Ui.Window(this,"桌面伙伴 · 对话",1280,860);MinWidth=520;MinHeight=560;Width=Math.Min(1280,Math.Max(MinWidth,SystemParameters.WorkArea.Width-36));
-            Background=Brushes.White;
+            Background=ThemeManager.Surface;
             normalMaxHeight=MaxHeight;
-            var root=new Grid {Background=Brushes.White,Margin=new Thickness(22,18,22,6)};
+            var root=new Grid {Background=ThemeManager.Surface,Margin=new Thickness(22,18,22,6)};
             root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
             var header=new DockPanel {Margin=new Thickness(0,0,78,16)};conversationHeader=header;entryHeader.Content=new ConversationEntryTabs(SwitchEntry,true);DockPanel.SetDock(entryHeader,Dock.Left);header.Children.Add(entryHeader);
             var settings=UiIcons.Button("settings","模型配置");chatSettings=settings;settings.Name="ChatSettings";settings.Margin=new Thickness(10,0,0,0);settings.VerticalAlignment=VerticalAlignment.Center;
@@ -64,7 +64,7 @@ namespace Dafeiyu
 
             inspectorHost=new ContentControl{VerticalContentAlignment=VerticalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch};
             var inspectorBody=new Grid();inspectorBody.MaxHeight=720;inspectorBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});inspectorBody.RowDefinitions.Add(new RowDefinition());var inspectorTitle=Ui.Text("工作空间",14,AgentUi.Ink);inspectorTitle.FontWeight=FontWeights.SemiBold;inspectorTitle.Margin=new Thickness(16,18,16,14);inspectorBody.Children.Add(inspectorTitle);Grid.SetRow(inspectorHost,1);inspectorBody.Children.Add(inspectorHost);
-            summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=Brushes.White,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
+            summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=ThemeManager.Surface,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
             StateChanged+=delegate{RefreshWorkspaceLayout();};SizeChanged+=delegate{RefreshWorkspaceLayout();};workspaceShell.SizeChanged+=delegate{RefreshWorkspaceLayout();};
             MountWorkspace();InitializeAppShell();
             Closed+=delegate {closed=true;CloseTransientSummary();CloseFilePreview();UnmountWorkspace(true);DetachEntryControls();};

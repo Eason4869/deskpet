@@ -7,6 +7,7 @@ namespace Dafeiyu
     public sealed class QuietPanel : ScrollViewer
     {
         readonly PetWindow pet;
+        readonly ThemeModePicker theme;
         readonly CheckBox quiet,fullscreen,clickthrough,locked,history;
         readonly Dictionary<string,TextBox> fields=new Dictionary<string,TextBox>();
         readonly TextBlock notice;
@@ -17,6 +18,10 @@ namespace Dafeiyu
             pet=owner;VerticalScrollBarVisibility=ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;
             var root=new StackPanel{Margin=new Thickness(24,22,24,24)};root.Children.Add(Ui.Text("通用",25));
             root.Children.Add(Ui.Text("设置伙伴的显示、交互、全局快捷键与本地记录。",12,Ui.Muted));
+            var appearance=new StackPanel{Margin=new Thickness(0,18,0,12)};appearance.Children.Add(Ui.Text("视觉风格",16));
+            theme=new ThemeModePicker(pet.Settings.ThemeMode){Margin=new Thickness(0,12,0,0)};
+            theme.Changed+=delegate(string mode){if(refreshing)return;pet.Settings.ThemeMode=mode;ThemeManager.Apply(mode);pet.SaveSettings();};
+            appearance.Children.Add(theme);root.Children.Add(appearance);
             var behavior=new StackPanel{Margin=new Thickness(0,14,0,0)};
             quiet=Ui.Toggle("免打扰",pet.Settings.QuietMode,delegate(bool enabled){if(!refreshing)pet.SetQuietMode(enabled);});quiet.Name="QuietMode";behavior.Children.Add(quiet);
             behavior.Children.Add(Ui.Text("暂停主动问候、散步和回复自动朗读；保留朗读偏好与正在进行的 Live。",12,Ui.Muted));
@@ -41,7 +46,7 @@ namespace Dafeiyu
         }
         public void RefreshState()
         {
-            refreshing=true;quiet.IsChecked=pet.Settings.QuietMode;fullscreen.IsChecked=pet.Settings.HideOnFullscreen;clickthrough.IsChecked=pet.Settings.ClickThrough;locked.IsChecked=pet.Settings.LockPosition;history.IsChecked=pet.Settings.SaveChatHistory;refreshing=false;
+            refreshing=true;theme.Value=pet.Settings.ThemeMode;quiet.IsChecked=pet.Settings.QuietMode;fullscreen.IsChecked=pet.Settings.HideOnFullscreen;clickthrough.IsChecked=pet.Settings.ClickThrough;locked.IsChecked=pet.Settings.LockPosition;history.IsChecked=pet.Settings.SaveChatHistory;refreshing=false;
         }
     }
 }
