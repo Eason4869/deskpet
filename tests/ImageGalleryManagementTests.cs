@@ -23,6 +23,7 @@ namespace Dafeiyu.Tests
             {
                 Run(root);
                 OrphanReferenceCleanup(Path.Combine(root,"orphan-cleanup"));
+                TaskPublishedBeforeAssetReservation(Path.Combine(root,"reservation-window"));
                 Console.WriteLine("ImageGalleryManagementTests: "+passed+" passed");
                 return 0;
             }
@@ -42,6 +43,39 @@ namespace Dafeiyu.Tests
         {
             public readonly System.Threading.Tasks.TaskCompletionSource<GeneratedImage> Completion=new System.Threading.Tasks.TaskCompletionSource<GeneratedImage>();
             public System.Threading.Tasks.Task<GeneratedImage> GenerateAsync(ImageGenerationRequest request,IProgress<ImageGenerationPhase> phase,CancellationToken token){return Completion.Task;}
+        }
+        static void TaskPublishedBeforeAssetReservation(string root)
+        {
+            string taskId=null;
+            var usage=new ImageAssetUsageRegistry();
+            using(var store=new GeneratedImageStore(root,usage))
+            {
+                var reference=store.SaveReference(Png,null,true);
+                var executor=new HeldImageExecutor();
+                var tasks=new ImageGenerationTaskManager(new ImageGenerationTaskStore(root),store,executor,usage);
+                tasks.RestoreAsync(CancellationToken.None).Wait();
+                var service=new ImageAssetManagementService(store,usage,new ImageAssetReferenceResolver(root,store,tasks));
+                var preview=service.InspectOrphanReferencesAsync(CancellationToken.None).Result;
+                Check(preview.Count==1,"reservation window starts with an unowned confirmed candidate");
+                service.BeforeAssetReservations=()=>{
+                    var handle=tasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=new ImageGenerationProvider{Id="window-fixture"},Prompt="offline",ReferenceImageId=reference.Id},new ImageTaskOrigin()),CancellationToken.None).Result;
+                    taskId=handle.Id;
+                    executor.Completion.TrySetException(new IOException("controlled window failure"));
+                    try{handle.Completion.GetAwaiter().GetResult();}catch(IOException){}
+                    Check(SpinWait.SpinUntil(()=>!usage.IsInUse(reference.Id),5000),"new task publishes input then ends before asset reservation");
+                };
+                Check(service.CleanupOrphanReferencesAsync(preview.Candidates.Select(i=>i.Id),CancellationToken.None).Result.DeletedIds.Contains(reference.Id),"unowned input is cleaned after window task ends");
+                var log=new ConversationLog();log.ConfigureImageUsage(usage);ChatMessage user;var reply=log.BeginTurn("late","text",out user);
+                bool blocked=false;try{log.AttachImageTask(reply.Id,taskId);}catch(InvalidOperationException){blocked=true;}
+                Check(blocked,"task published in reservation window cannot attach after cleanup");
+                tasks.StopAsync(CancellationToken.None).Wait();log.ReleaseImageUsage();
+            }
+            var restartedUsage=new ImageAssetUsageRegistry();
+            using(var restarted=new GeneratedImageStore(root,restartedUsage))
+            {
+                bool blocked=false;try{using(restartedUsage.Acquire("job:"+taskId,"late-restart")){}}catch(InvalidOperationException){blocked=true;}
+                Check(blocked,"reservation-window dependent job tombstone survives restart");
+            }
         }
         static void OrphanReferenceCleanup(string root)
         {

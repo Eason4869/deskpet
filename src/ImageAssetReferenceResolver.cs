@@ -122,6 +122,7 @@ namespace Dafeiyu
     public sealed class ImageAssetManagementService
     {
         internal Action AfterReservations;
+        internal Action BeforeAssetReservations;
         readonly GeneratedImageStore store;
         readonly ImageAssetUsageRegistry usage;
         readonly ImageAssetReferenceResolver resolver;
@@ -175,8 +176,7 @@ namespace Dafeiyu
                 try
                 {
                     var assets=store.AssetSnapshot().ToDictionary(i=>i.Id,StringComparer.Ordinal);
-                    var taskKeys=resolver.TaskReferenceKeys();
-                    var reservedKeys=new HashSet<string>(StringComparer.Ordinal);
+                    if(BeforeAssetReservations!=null)BeforeAssetReservations();
                     foreach(string id in selected)
                     {
                         token.ThrowIfCancellationRequested();
@@ -194,6 +194,18 @@ namespace Dafeiyu
                             continue;
                         }
                         leases.Add(lease);
+                        candidates.Add(id);
+                    }
+                    // A task publishes its input edge while holding that input's lease.
+                    // Reserve all candidate assets first: the following snapshot then
+                    // includes any owner that completed before these reservations, and
+                    // new owners cannot enter while dependent job keys are collected.
+                    var taskKeys=resolver.TaskReferenceKeys();
+                    var reservedKeys=new HashSet<string>(StringComparer.Ordinal);
+                    foreach(string id in candidates.ToArray())
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var item=assets[id];
                         var keys=new List<string>();
                         if(!String.IsNullOrEmpty(item.ImageJobId))keys.Add("job:"+item.ImageJobId);
                         List<string> linked;
@@ -201,12 +213,11 @@ namespace Dafeiyu
                         bool reserved=true;
                         foreach(string key in keys.Distinct())if(!reservedKeys.Contains(key))
                         {
-                            lease=usage.TryAcquireDeletion(key);
+                            var lease=usage.TryAcquireDeletion(key);
                             if(lease==null){reserved=false;break;}
                             leases.Add(lease);reservedKeys.Add(key);
                         }
-                        if(!reserved){result.Blocked[id]="原消息仍在使用图片任务。";continue;}
-                        candidates.Add(id);
+                        if(!reserved){candidates.Remove(id);result.Blocked[id]="原消息仍在使用图片任务。";}
                     }
                     // The final disk scan happens after reservations, never under a session/UI gate.
                     if(AfterReservations!=null)AfterReservations();
