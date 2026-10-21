@@ -70,10 +70,13 @@ def main():
         records[name] = dict(sha256=sha, size=file.stat().st_size)
     require(set(records) == names, 'Windows manifest is incomplete')
     notes = Path(__file__).resolve().parents[1] / 'release-notes' / (TAG + '.md')
-    run('gh', 'release', 'create', TAG, '--repo', REPO, '--draft', '--prerelease', '--verify-tag',
-        '--title', 'DeskPet ' + VERSION, '--notes-file', str(notes))
-    release = api('releases/tags/' + TAG)
-    require(release['draft'] and release['prerelease'] and not release['assets'], 'Unexpected new draft state')
+    # Resume only the empty draft created by this publication's first hosted run.
+    # GitHub's tag lookup can omit drafts; always address this known draft by ID.
+    release = api('releases/419560067')
+    require(release['draft'] and release['prerelease'] and not release['assets']
+            and release['tag_name'] == TAG and release['name'] == 'DeskPet ' + VERSION
+            and release['body'].replace('\r\n', '\n').strip() == notes.read_text().replace('\r\n', '\n').strip(),
+            'Expected the exact empty draft owned by the first publication run')
     release_id = release['id']
     print('Created release draft ' + str(release_id), flush=True)
     run('gh', 'release', 'upload', TAG, '--repo', REPO, *(str(windows / name) for name in sorted(names)))
