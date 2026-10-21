@@ -1,8 +1,8 @@
 # 发布包命名与升级兼容
 
-所有可安装包、运行 ZIP、源码、外观和模板包含版本号；平台包显式区分 Windows 与 macOS，Mac 再区分 CPU。当前 0.10.0 提供 Windows 安装／便携版与 macOS 双架构预览。
+所有可安装包、运行 ZIP、源码、外观和模板包含版本号；平台包显式区分 Windows 与 macOS，Mac 再区分 CPU。当前正式版 0.10.0 与开发预览版 0.10.1-dev.2 均提供 Windows 安装／便携包与 macOS 双架构预览。
 
-运行包、源码、模板及五个伙伴包均使用应用发行版本 0.10.0 命名；包内 `pack_version` 保持实际素材版本，不因应用更新改写。下表列出本版附件命名。
+运行包、源码、模板及五个伙伴包均使用对应应用发行版本命名；包内 `pack_version` 保持实际素材版本，不因应用更新改写。下表以 0.10.0 为例列出附件命名。
 
 | 用途（推荐下载顺序） | 0.5.6（兼容旧名） | 0.10.0 |
 | --- | --- | --- |
@@ -14,6 +14,8 @@
 | 外观 | `{Ebao,Dafeiyu,Marfu,Xiaobei}-HD-Skin-0.5.6.zip` | 相同前缀，版本改为 `0.10.0`；新增 `gugugaga-HD-Skin-0.10.0.zip` |
 | 创作模板 | `DeskPet-Skin-Template-v2-0.5.6.zip` | `DeskPet-Skin-Template-v2-0.10.0.zip` |
 | 校验 | `SHA256.txt` | `SHA256.txt`，覆盖本次所有实际分发包 |
+
+开发版按相同规则保留完整后缀，例如 `DeskPet-Windows-Setup-0.10.1-dev.2.exe`、`DeskPet-Windows-0.10.1-dev.2.zip` 和 `DeskPet-macOS-0.10.1-dev.2-arm64-preview.dmg`。独立主程序使用 `DeskPet-Windows-App-0.10.1-dev.2.exe`，用于已有运行目录内替换；首次使用推荐安装包或便携 ZIP。开发版为 prerelease，不替换正式版 latest。
 
 0.5.6 的安装包沿用旧名，程序和更新助手则已接受规范的新旧 Windows 安装名，并绑定目标版本及本机安装模式。0.6.0 起安装器、Python 打包脚本、更新筛选与执行器使用同一规则；不靠附件上传顺序判断平台。
 
@@ -32,7 +34,7 @@ Release 说明按 Windows 推荐安装、便携、Mac 两架构、源码、外�
 | 渠道 | 分支与标签 | GitHub 标志 | Windows 附件示例 |
 | --- | --- | --- | --- |
 | 正式版 | main，`v0.10.0` | draft=false、prerelease=false、latest=true | `DeskPet-Windows-0.10.0.zip`、`DeskPet-Windows-Setup-0.10.0.exe` |
-| 预览版示例 | dev，`v0.10.1-dev.1` | draft=false、prerelease=true、latest=false | `DeskPet-Windows-0.10.1-dev.1.zip`、`DeskPet-Windows-Setup-0.10.1-dev.1.exe` |
+| 开发预览版 | dev，`v0.10.1-dev.2` | draft=false、prerelease=true、latest=false | `DeskPet-Windows-0.10.1-dev.2.zip`、`DeskPet-Windows-Setup-0.10.1-dev.2.exe` |
 
 示例版本供说明，正式发布前应重新核实远端版本，选择未使用的新标签。dev.N 的 N 必须为正整数，旧裸 dev 后缀仅兼容读取，不再新发。正式通道仅取非预发布版本，预览通道取两种渠道中的最高语义版本；不依赖 API 返回顺序或发布时间。同底版 `dev.2 < dev.10 < 正式版`，旧四段数字版本兼容比较。切换偏好不会触发下载，不提供降级。
 

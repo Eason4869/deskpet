@@ -1,8 +1,8 @@
 # 更新日志
 
-## [0.10.1-dev.2](https://github.com/Eason4869/deskpet/tree/dev) — 2026-10-21
+## [0.10.1-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.10.1-dev.2) — 2026-10-21
 
-开发快照，推送 dev 分支；不发布 GitHub Release。
+开发预发布版，从 dev 的固定标签构建。提供 Windows 安装／便携包、macOS Apple Silicon／Intel 预览、完整源码、五个角色包和创作模板；不替换正式版 latest。Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。
 
 - 修复深色用量矩阵底格和低活跃度颜色消失：使用独立灰蓝色阶、小圆角、等距格子和下置月份，区分未采集、未知与真实零用量，支持即时主题切换。
 - 补全模型配置卡片、服务商列表与密钥输入框的深色适配；改善通用、关于、工作设置和插件页面的卡片、输入区、标签选中态、关态开关及边框层次。

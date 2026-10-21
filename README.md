@@ -12,7 +12,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 **当前正式版本：[0.10.0](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
 
-**当前开发版本：[0.10.1-dev.2](https://github.com/Eason4869/deskpet/tree/dev)**。统一设置页与深色界面，支持对话链接右键及侧边打开，将操作确认嵌入对话，并修复 Agent 错误重复入队；归档管理、快捷键编辑和用量矩阵同步完善。本次推送 dev 分支，不发布安装包或 Release。
+**当前开发预览版：[0.10.1-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.10.1-dev.2)**。统一设置页与深色界面，支持对话链接右键及侧边打开，将操作确认嵌入对话，并修复 Agent 错误重复入队；归档管理、快捷键编辑和用量矩阵同步完善。提供 Windows 安装／便携包、macOS 双架构预览及完整源码；在“关于”页选择预览版通道后可检查更新，正式版仍为 0.10.0。
 
 0.10.0 新增正式／预览更新通道、防降级和立即更新重启，精简 Windows 安装包与便携 ZIP，并改善 Live 声纹动效。五位内置伙伴及完整 ZIP 角色包继续可用，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
 

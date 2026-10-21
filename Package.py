@@ -126,7 +126,9 @@ with ZipFile(runtime_zip) as bundle:
     exe_name='DafeiyuDeskPet/桌面伙伴.exe'
     assert hashlib.sha256(bundle.read(exe_name)).digest()==hashlib.sha256((APP/'桌面伙伴.exe').read_bytes()).digest()
 with ZipFile(source_zip) as bundle: assert bundle.testzip() is None
-artifacts=[APP/'桌面伙伴.exe',runtime_zip,source_zip,template_zip]+skin_artifacts
+app_asset=OUTPUT/('DeskPet-Windows-App-'+version+'.exe')
+shutil.copy2(APP/'桌面伙伴.exe',app_asset)
+artifacts=[app_asset,runtime_zip,source_zip,template_zip]+skin_artifacts
 setup=OUTPUT/installer_asset_name(version)
 if setup.exists(): artifacts.append(setup)
 (OUTPUT/'SHA256.txt').write_text('\n'.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(OUTPUT)) for p in artifacts)+'\n',encoding='utf-8')

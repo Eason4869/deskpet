@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Stable release version
+        description: Release version (X.Y.Z or X.Y.Z-dev.N)
         required: true
         default: '0.10.0'
       commit:

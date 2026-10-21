@@ -35,4 +35,4 @@ Windows 本机执行 21 个相关测试目标及应用编译。包括：
 
 截图保存在本地忽略目录 `work/permissions`、`work/approval-evidence` 与 `work/facts-evidence`。WebView2 页面另用原生捕获保存为 `work/permissions/link-page-native.png`，避免 WPF 位图捕获无法包含原生浏览器画面的问题。
 
-编译保留原有 `AgentTaskPanel.cs` 中的 CS4014 警告。本次按 `0.10.1-dev.2` 提交 dev 分支，不发布安装包或 GitHub Release，也不创建版本标签。
+编译保留原有 `AgentTaskPanel.cs` 中的 CS4014 警告。本次按 `0.10.1-dev.2` 提交 dev 分支；后续发布授权要求在最终 CI 通过的提交上创建固定标签，校验完整附件后发布 prerelease，不替换正式版 latest。
