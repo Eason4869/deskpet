@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -38,11 +38,10 @@ namespace Dafeiyu
                 if(buffers.Count==0)progress.Restart();
                 // Short headers let completion measure real playback progress even
                 // when the service sends a whole long reply in a single message.
-                double level=Dafeiyu.AudioLevel.Pcm16(bytes);
                 for(int offset=0;offset<bytes.Length;)
                 {
                     int length=Math.Min(sampleRate*2/5,bytes.Length-offset);
-                    var buffer=new Buffer(bytes,offset,length,level);
+                    var buffer=new Buffer(bytes,offset,length,Dafeiyu.AudioLevel.Pcm16(bytes,offset,length));
                     try {Check(waveOutPrepareHeader(device,buffer.Header,HeaderSize));buffer.Prepared=true;Check(waveOutWrite(device,buffer.Header,HeaderSize));buffers.Enqueue(buffer);queued+=length;}
                     catch {if(buffer.Prepared)waveOutUnprepareHeader(device,buffer.Header,HeaderSize);buffer.Dispose();throw;}
                     offset+=length;

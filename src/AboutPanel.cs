@@ -20,6 +20,7 @@ namespace Dafeiyu
         static readonly string[] mirrorPresets={PetSettings.DefaultUpdateMirror,"https://gh-proxy.com","https://edgeone.gh-proxy.com","https://hk.gh-proxy.com"};
         readonly TextBox proxyAddress,mirrorAddress;readonly StackPanel mirrorOptions,proxyOptions;
         readonly TextBlock status,progressLabel,routeLabel,networkNotice;
+        readonly ComboBox channel;readonly TextBlock channelNotice;
         readonly Button check,cancel,openFolder,testMirror,uninstall;readonly ProgressBar progress;
         CancellationTokenSource probe;bool disposed,initializing=true;
         readonly Dictionary<RadioButton,Tuple<TextBlock,TextBlock>> mirrorLabels=new Dictionary<RadioButton,Tuple<TextBlock,TextBlock>>();
@@ -39,8 +40,11 @@ namespace Dafeiyu
             brand.Children.Add(Ui.Text("DeskPet  "+ReleaseInfo.DisplayVersion+"  ·  "+ReleaseInfo.Author,12,Ui.Muted));hero.Children.Add(brand);panel.Children.Add(hero);
             var introduction=Ui.Text("陪你写代码、做设计，也聊聊今天的小想法。",13,Ui.Muted);introduction.Margin=new Thickness(0,0,0,20);panel.Children.Add(introduction);
             var update=new StackPanel();update.Children.Add(Heading("保持最新",17));
+            channel=new ComboBox{Name="UpdateChannel",ItemsSource=new[]{"正式版（main）","预览版（dev）"},SelectedIndex=pet.Settings.UpdateChannel==UpdateChannel.Preview?1:0,Margin=new Thickness(0,8,0,4)};update.Children.Add(channel);
+            channelNotice=Ui.Text("",11,Ui.Muted);update.Children.Add(channelNotice);
+            channel.SelectionChanged+=delegate{if(!initializing){updates.ChangeChannel(channel.SelectedIndex==1?UpdateChannel.Preview:UpdateChannel.Stable);Refresh();}};
             status=Ui.Text("",12);status.Name="UpdateStatus";status.Margin=new Thickness(0,6,0,8);update.Children.Add(status);
-            var actions=new WrapPanel();check=Ui.Button("检查并更新",true);check.Name="CheckUpdates";check.Click+=async delegate{if(SaveNetwork())await updates.CheckAndUpdateAsync(true);};actions.Children.Add(check);
+            var actions=new WrapPanel();check=Ui.Button("检查并更新",true);check.Name="CheckUpdates";check.Click+=async delegate{if(updates.IsReadyToInstall)await updates.InstallPendingNowAsync();else if(SaveNetwork())await updates.CheckAndUpdateAsync(true);};actions.Children.Add(check);
             cancel=Ui.Button("取消更新");cancel.Name="CancelUpdate";cancel.Click+=delegate{updates.Cancel();};actions.Children.Add(cancel);update.Children.Add(actions);
             progress=new ProgressBar{Name="UpdateProgress",Minimum=0,Maximum=100,Height=5,Margin=new Thickness(0,12,0,0),Visibility=Visibility.Collapsed};update.Children.Add(progress);
             progressLabel=Ui.Text("",11,Ui.Blue);update.Children.Add(progressLabel);routeLabel=Ui.Text("",11,Ui.Muted);routeLabel.Name="UpdateRoute";routeLabel.Margin=new Thickness(0,6,0,0);update.Children.Add(routeLabel);
@@ -134,10 +138,10 @@ namespace Dafeiyu
         }
         void Refresh()
         {
-            if(disposed)return;bool networkBusy=updates.IsBusy || probe!=null;check.Content=updates.IsReadyToInstall?"立即安装并重启":"检查并更新";check.IsEnabled=probe==null && (!updates.IsBusy || updates.IsReadyToInstall);cancel.IsEnabled=updates.CanCancel;
+            if(disposed)return;channel.IsEnabled=!updates.IsBusy&&probe==null;channelNotice.Text=pet.Settings.UpdateChannel==UpdateChannel.Preview?"预览通道可能包含未稳定功能，也接收更高正式版。":"仅接收正式版，切换通道不会降级。";bool networkBusy=updates.IsBusy || probe!=null;check.Content=updates.IsReadyToInstall?"立即更新并重启":"检查并更新";check.IsEnabled=probe==null && (!updates.IsBusy || updates.IsReadyToInstall);cancel.IsEnabled=updates.CanCancel;
             foreach(var option in new[]{direct,mirror,proxy})option.IsEnabled=!networkBusy;foreach(var option in builtinMirrors.Concat(new[]{customMirror})){string address=AddressOf(option);option.IsEnabled=!networkBusy && (testedMirrors.Contains(address) || (option.IsChecked==true && address==savedMirror));}testMirror.Content=probe==null?"测试连通性":"正在测试…";proxyAddress.IsEnabled=mirrorAddress.IsEnabled=testMirror.IsEnabled=!networkBusy;
             progress.Visibility=updates.IsBusy?Visibility.Visible:Visibility.Collapsed;progress.IsIndeterminate=updates.IsBusy && !updates.IsDownloading && updates.Progress<100;progress.Value=updates.Progress;
-            progressLabel.Text=updates.IsDownloading?"下载进度 "+Math.Round(updates.Progress)+"%":"";routeLabel.Text=updates.NetworkStatus??"仅获取 GitHub 正式版本，设置与聊天数据会保留。";status.Text=updates.Status;openFolder.IsEnabled=Directory.Exists(Path.Combine(pet.Store.DirectoryPath,"updates"));uninstall.IsEnabled=!networkBusy;
+            progressLabel.Text=updates.IsDownloading?"下载进度 "+Math.Round(updates.Progress)+"%":"";routeLabel.Text=updates.NetworkStatus??"从所选 GitHub 发行通道更新，设置与聊天数据会保留。";status.Text=updates.Status;openFolder.IsEnabled=Directory.Exists(Path.Combine(pet.Store.DirectoryPath,"updates"));uninstall.IsEnabled=!networkBusy;
         }
         void Uninstall()
         {

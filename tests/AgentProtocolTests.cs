@@ -204,9 +204,9 @@ namespace Dafeiyu.Tests
             });
             Run("both protocols patch actual files then execute an authorized verification",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","run_command",new{command_id="verify"})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","exec_command",new{command="Get-Content verified.txt",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
                 {
-                    var workspace=new AgentWorkspace(folder.Path);workspace.ConfigureCommands(true,J(new[]{new{Id="verify",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--verify-fixture"}}}));
+                    var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);
                     Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(0,workspace.CommandResults[0].ExitCode);Assert(workspace.CommandResults[0].Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
                 }
             });
@@ -217,8 +217,8 @@ namespace Dafeiyu.Tests
             });
             Run("different real command diagnostics reset the error streak",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","run_command",new{command_id="test"})),Json(ToolReply(anthropic,"b","run_command",new{command_id="test"})),Json(ToolReply(anthropic,"c","run_command",new{command_id="test"})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
-                {var workspace=new AgentWorkspace(folder.Path);workspace.ConfigureCommands(true,J(new[]{new{Id="test",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--changing-error"}}}));Equal("new diagnostics retained",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(workspace.CommandResults[2].Output.Contains("diagnostic-3"),"changing command errors lost");}
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"b","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"c","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
+                {var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);Equal("new diagnostics retained",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(workspace.CommandResults[2].Output.Contains("diagnostic-3"),"changing command errors lost");}
             });
             Run("repeated identical errors stop after three real protocol rounds",async delegate
             {
@@ -235,7 +235,7 @@ namespace Dafeiyu.Tests
             Run("safe guidance joins the same task at a real file-tool boundary without cancellation",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{new Reply(ToolReply(anthropic,"files","list_files",new{path="."}),"",true,"application/json"),Json(ToolReply(anthropic,"edit","write_file",new{path="guided.txt",content="guided"})),Json(FinalReply(anthropic,"done after guidance"))}))using(var api=new ApiClient()){
-                    string started=Path.Combine(folder.Path,"started"),release=Path.Combine(folder.Path,"release");var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,AgentCommandsEnabled=true,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;cfg.AgentCommandRecipes=J(new[]{new{Id="wait",Executable=System.Reflection.Assembly.GetExecutingAssembly().Location,Workspace=folder.Path,Arguments=new[]{"--wait-command",started,release}}});
+                    var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;
                     using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(folder.Path,"history"))))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json"))){
                         queue.Enqueue("original task");await WaitCondition(()=>server.Bodies.Count==1);string id=session.CurrentAgentTask.Id;queue.Hold();queue.Enqueue("later ordinary request");await queue.SteerAsync("only change guided.txt and retain original task");
                         Assert(session.IsBusy && session.CurrentAgentTask.Id==id,"guidance interrupted the active request");server.Release(0);await WaitCondition(()=>!session.IsBusy && !queue.IsRunning);await session.FlushHistoryAsync();await Within(server.Done);
@@ -264,6 +264,8 @@ namespace Dafeiyu.Tests
             Console.WriteLine("AgentProtocolTests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
 
+        sealed class TerminalApproval:IAgentApprovalProvider {public Task<bool> ApproveAsync(AgentApprovalRequest request){return Task.FromResult(true);}}
+        static void Terminal(AgentWorkspace workspace){workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),null,new TerminalApproval(),null,"protocol");workspace.ConfigureTerminal(AgentTerminalPolicy.ConfirmEach);workspace.ConfigureDesktopSession();}
         static async Task WaitCondition(Func<bool> done){for(int i=0;i<1500;i++){if(done())return;await Task.Delay(10);}throw new Exception("agent integration timed out");}
         sealed class SilentSpeech:IReplySpeech{public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){return Task.FromResult(0);}public void SetVolume(int n){}public void Stop(){}public void Dispose(){}}
         private static string DuplicateCalls()

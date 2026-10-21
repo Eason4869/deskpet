@@ -50,12 +50,21 @@ class MacPackagingTests(unittest.TestCase):
         self.assertEqual('0.5.5', info['CFBundleShortVersionString'])
         self.assertEqual('14.0', info['LSMinimumSystemVersion'])
         self.assertTrue(info['LSUIElement'])
+
         self.assertTrue(info['NSMicrophoneUsageDescription'])
         self.assertIn('预览', info['CFBundleDisplayName'])
         if os.name != 'nt':
             self.assertTrue((self.app / 'Contents/MacOS/DeskPet').stat().st_mode & 0o111)
         result = validate_bundle(self.app, 'arm64', '0.5.5', 'preview')
         self.assertEqual(4, len(result['native_binaries']))
+
+    def test_dev_display_identity_keeps_numeric_platform_version(self):
+        create_bundle(self.publish, self.app, 'arm64', '0.9.5-dev.2', 'preview', self.icon, commit='a'*40)
+        info=plistlib.loads((self.app/'Contents/Info.plist').read_bytes())
+        self.assertEqual(info['CFBundleShortVersionString'],'0.9.5')
+        self.assertEqual(info['CFBundleVersion'],'0.9.5')
+        identity=json.loads((self.app/'Contents/Resources/build-info.json').read_text())
+        self.assertEqual(identity['version'],'0.9.5-dev.2')
 
     def test_wrong_architecture_rejected_before_app_is_created(self):
         self.binary(self.publish / 'libDeskPetMac.dylib', 0x01000007)

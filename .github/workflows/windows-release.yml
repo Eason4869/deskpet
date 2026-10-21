@@ -1,0 +1,143 @@
+name: Build verified Windows release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable vX.Y.Z or vX.Y.Z-dev.N tag
+        required: true
+        type: string
+      publish:
+        description: Publish after verification (default is build only)
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: windows-release-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify tag and source identity
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          git fetch origin main dev --tags
+          if ($LASTEXITCODE) { throw 'Fetch failed' }
+          python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/release-metadata.json
+          if ($LASTEXITCODE) { throw 'Release identity validation failed' }
+      - name: Build and test
+        shell: pwsh
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Dependency installation failed' }
+          foreach ($target in @('ReleaseVersionTests','ReleaseIdentityTests','UpdateChannelTests','UpdateTests','UpdateApplyTests','UpdateScheduleTests','AutoUpdateSmoke')) {
+            & ./Build.ps1 -Target $target
+            if ($LASTEXITCODE) { throw "Failed: $target" }
+          }
+          python tests/RuntimePackageTests.py
+          if ($LASTEXITCODE) { throw 'Runtime staging checks failed' }
+          python tests/ReleaseAssetTests.py
+          if ($LASTEXITCODE) { throw 'Asset checks failed' }
+          python tests/WindowsReleaseTests.py
+          if ($LASTEXITCODE) { throw 'Publication guard checks failed' }
+      - name: Package verified artifacts
+        shell: pwsh
+        run: |
+          $artifacts = Join-Path $env:RUNNER_TEMP 'DeskPetArtifacts'
+          & ./Build.ps1 -Target App -OutputDirectory (Join-Path $artifacts 'DafeiyuDeskPet')
+          python Package.py --output-directory $artifacts
+          if ($LASTEXITCODE) { throw 'Packaging failed' }
+          & ./BuildInstaller.ps1 -OutputDirectory $artifacts
+          if ($LASTEXITCODE) { throw 'Installer build failed' }
+          Copy-Item work/release-metadata.json $artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-windows-release
+          path: |
+            ${{ runner.temp }}/DeskPetArtifacts/*.zip
+            ${{ runner.temp }}/DeskPetArtifacts/*.exe
+            ${{ runner.temp }}/DeskPetArtifacts/SHA256.txt
+            ${{ runner.temp }}/DeskPetArtifacts/release-metadata.json
+            ${{ runner.temp }}/DeskPetArtifacts/DafeiyuDeskPet/桌面伙伴.exe
+          if-no-files-found: error
+  publish:
+    if: ${{ inputs.publish }}
+    needs: build
+    concurrency:
+      group: windows-release-publication
+      cancel-in-progress: false
+    runs-on: windows-latest
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-windows-release
+          path: work/artifacts
+      - name: Verify, create draft, verify uploaded digests, then publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git fetch origin main dev --tags
+          if ($LASTEXITCODE) { throw 'Fetch failed' }
+          function LatestArguments {
+            $reply = gh api "repos/$env:GITHUB_REPOSITORY/releases/latest" 2>work/latest-error.txt
+            if ($LASTEXITCODE -eq 0) { return @('--latest', ($reply | ConvertFrom-Json).tag_name) }
+            try { $errorBody = $reply | ConvertFrom-Json } catch { throw 'Latest release query failed' }
+            if ($errorBody.status -ne '404') { throw 'Latest release query failed; publication stopped' }
+            $repository = gh api "repos/$env:GITHUB_REPOSITORY" --jq .full_name
+            if ($LASTEXITCODE -ne 0 -or $repository -ne $env:GITHUB_REPOSITORY) { throw 'Repository access failed' }
+            return @()
+          }
+          $latestArguments = @(LatestArguments)
+          python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/checked.json @latestArguments
+          if ($LASTEXITCODE) { throw 'Publication guard failed' }
+          $expected = Get-Content work/checked.json -Raw | ConvertFrom-Json
+          $built = Get-Content work/artifacts/release-metadata.json -Raw | ConvertFrom-Json
+          if ($expected.commit -ne $built.commit -or $expected.version -ne $built.version) { throw 'Artifact identity mismatch' }
+          $files = @()
+          $hashes = @{}
+          foreach ($line in Get-Content work/artifacts/SHA256.txt) {
+            $digest, $name = $line -split '  ', 2
+            $path = [IO.Path]::GetFullPath((Join-Path "$PWD/work/artifacts" $name))
+            if (!$path.StartsWith([IO.Path]::GetFullPath("$PWD/work/artifacts") + [IO.Path]::DirectorySeparatorChar)) { throw 'Artifact path escapes root' }
+            if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $digest) { throw "Bad digest: $name" }
+            $files += $path
+            $hashes[[IO.Path]::GetFileName($path)] = $digest
+          }
+          $flags = @('--draft','--verify-tag','--title',("DeskPet " + $expected.version),'--notes-file','CHANGELOG.md')
+          if ($expected.prerelease) { $flags += '--prerelease' }
+          gh release create $env:RELEASE_TAG @flags
+          if ($LASTEXITCODE) { throw 'Draft creation failed (existing releases are never overwritten)' }
+          gh release upload $env:RELEASE_TAG @files work/artifacts/SHA256.txt
+          if ($LASTEXITCODE) { throw 'Upload failed; draft retained' }
+          $remote = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          if ($LASTEXITCODE) { throw 'Uploaded release lookup failed' }
+          foreach ($name in $hashes.Keys) {
+            $asset = @($remote.assets | Where-Object name -eq $name)
+            if ($asset.Count -ne 1 -or $asset[0].digest -ne ('sha256:' + $hashes[$name])) { throw "Remote digest mismatch: $name; draft retained" }
+          }
+          $latestArguments = @(LatestArguments)
+          python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/checked-final.json @latestArguments
+          if ($LASTEXITCODE) { throw 'Latest changed; draft retained' }
+          gh release edit $env:RELEASE_TAG --draft=false "--latest=$($expected.make_latest)"
+          if ($LASTEXITCODE) { throw 'Publish failed; inspect draft state' }

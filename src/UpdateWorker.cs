@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -47,6 +47,7 @@ namespace Dafeiyu
                 // A rejected job cannot write to or start an arbitrary directory.
                 if(trusted)
                 {
+                    try{File.WriteAllText(Path.Combine(job.WorkDirectory,"error.log"),e.ToString());}catch(Exception){ }
                     Result(job,false,e is InvalidOperationException?e.Message:"更新未完成，原版和配置已保留。请重新检查更新。");
                     if(parentExited)try{Restart(job);}catch(Exception){ }
                 }
@@ -64,8 +65,8 @@ namespace Dafeiyu
         {if(File.Exists(Path.Combine(job.WorkDirectory,"abort")))throw new InvalidOperationException("更新交接已取消，当前版本继续运行。");}
         static void CheckVersion(UpdateJob job)
         {
-            Version expected;var actual=System.Reflection.AssemblyName.GetAssemblyName(Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName)).Version;
-            if(!Version.TryParse(job.InstalledVersion,out expected) || actual!=new Version(expected.Major,expected.Minor,Math.Max(0,expected.Build),Math.Max(0,expected.Revision)))throw new InvalidOperationException("原版已发生变化，本次更新任务已停止。请重新检查更新。");
+            UpdateInstall.CheckWorker(job,System.Reflection.Assembly.GetExecutingAssembly().Location);
+            UpdateInstall.CheckInstalled(job);
         }
         static void Restart(UpdateJob job)
         {

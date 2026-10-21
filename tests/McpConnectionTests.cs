@@ -58,7 +58,7 @@ namespace Dafeiyu.Tests
         internal static int PortableRegression(){try{SchemaRegression();ErrorRegression(true).GetAwaiter().GetResult();Console.WriteLine("MCP portable tests: "+count+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
         static Dictionary<string,object> SchemaFor(AgentToolDefinition[] definitions,bool anthropic)
         {
-            object[] openai,anthropicTools;AgentToolCatalog.Schemas(false,false,null,definitions,out openai,out anthropicTools);
+            object[] openai,anthropicTools;AgentToolCatalog.Schemas(false,null,definitions,out openai,out anthropicTools);
             var tools=(object[])new JavaScriptSerializer().DeserializeObject(new JavaScriptSerializer().Serialize(anthropic?anthropicTools:openai));
             var tool=tools.Cast<Dictionary<string,object>>().Single(item=>anthropic?McpHttpTransport.GetString(item,"name","")=="mcp_schema_probe":McpHttpTransport.GetString(McpHttpTransport.GetMap(item,"function"),"name","")=="mcp_schema_probe");
             return anthropic?McpHttpTransport.GetMap(tool,"input_schema"):McpHttpTransport.GetMap(McpHttpTransport.GetMap(tool,"function"),"parameters");

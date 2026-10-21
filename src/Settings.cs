@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -247,6 +247,7 @@ namespace Dafeiyu
         public const string DefaultUpdateMirror="https://gh-proxy.org";
         [DataMember] public bool UpdateUseMirror { get; set; }
         [DataMember] public string UpdateMirrorAddress { get; set; }
+        [DataMember] public UpdateChannel UpdateChannel { get; set; }
         [DataMember] public bool AutoUpdate { get; set; }
         [DataMember] public long LastUpdateCheckUtcTicks { get; set; }
         [DataMember] public string VoiceName { get; set; }
@@ -260,7 +261,7 @@ namespace Dafeiyu
         [DataMember] public ConnectionSettings Transcription { get; set; }
         [DataMember] public ConnectionSettings Speech { get; set; }
         public PetSettings() { Defaults(); }
-        [OnDeserializing] private void BeforeDeserialize(StreamingContext context) { Defaults();AgentApprovalMode=AgentApprovalMode.Legacy;AgentSandboxEnabled=false;OnboardingVersion=0;OnboardingState="legacy";LastOnboardingSeries=OnboardingUpgrade.LegacySeries;LiveVoice="Kore"; }
+        [OnDeserializing] private void BeforeDeserialize(StreamingContext context) { Defaults();UpdateChannel=UpdateChannel.Stable;AgentApprovalMode=AgentApprovalMode.Legacy;AgentSandboxEnabled=false;OnboardingVersion=0;OnboardingState="legacy";LastOnboardingSeries=OnboardingUpgrade.LegacySeries;LiveVoice="Kore"; }
         private void Defaults()
         {
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
@@ -284,7 +285,7 @@ namespace Dafeiyu
             RepositoryUrl=ReleaseInfo.RepositoryUrl;
             UpdateProxyAddress=ProxyConfiguration.DefaultAddress;
             UpdateMirrorAddress=DefaultUpdateMirror;
-            AutoUpdate=true;
+            AutoUpdate=true;UpdateChannel=ReleaseInfo.DisplayVersion.Contains("-dev")?UpdateChannel.Preview:UpdateChannel.Stable;
             SystemPrompt = "你是{pet_name}，一位温和、俏皮的桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
         }
         public void Normalize()
@@ -297,7 +298,7 @@ namespace Dafeiyu
             if(OnboardingState!="new" && OnboardingState!="deferred" && OnboardingState!="skipped" && OnboardingState!="completed")OnboardingState="completed";
             if(FollowUpBehavior!="steer")FollowUpBehavior="queue";
             if(String.IsNullOrWhiteSpace(AgentWorkspace))AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository=(GitHubRepository??"").Trim();GitHub=GitHub??new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};GitHub.Normalize();
-            AgentCommandRecipes=AgentCommandRecipes??"[]";if(AgentCommandRecipes.Length>65536){AgentCommandRecipes="[]";AgentCommandsEnabled=false;}AgentCommandTimeoutSeconds=Math.Max(1,Math.Min(600,AgentCommandTimeoutSeconds));
+            AgentCommandRecipes="[]";AgentCommandsEnabled=false;AgentCommandTimeoutSeconds=Math.Max(1,Math.Min(600,AgentCommandTimeoutSeconds));
             if(AgentContextTokenLimit==0)AgentContextTokenLimit=32768;AgentContextTokenLimit=Math.Max(8192,Math.Min(2000000,AgentContextTokenLimit));
             AgentGoal=(AgentGoal??"").Trim();if(AgentGoal.Length>4000)AgentGoal=AgentGoal.Substring(0,4000);
             // Version 1 inserts the double-click lesson before the old service steps.
@@ -327,7 +328,7 @@ namespace Dafeiyu
             RepositoryUrl=ReleaseInfo.RepositoryUrl;
             UpdateProxyAddress=ProxyConfiguration.Normalize(UpdateProxyAddress);
             UpdateMirrorAddress=String.IsNullOrWhiteSpace(UpdateMirrorAddress)?DefaultUpdateMirror:UpdateMirrorAddress.Trim().TrimEnd('/');
-            if(UpdateUseMirror)UpdateUseProxy=false;
+            if(UpdateUseMirror)UpdateUseProxy=false;if(!Enum.IsDefined(typeof(UpdateChannel),UpdateChannel))UpdateChannel=UpdateChannel.Stable;
             if(LastUpdateCheckUtcTicks<0 || LastUpdateCheckUtcTicks>DateTime.UtcNow.AddDays(1).Ticks)LastUpdateCheckUtcTicks=0;
             VoiceName = (VoiceName ?? "").Trim(); SystemPrompt = SystemPrompt ?? "";
             SkinId = String.IsNullOrWhiteSpace(SkinId) ? "e-bao" : SkinId;
@@ -395,11 +396,11 @@ namespace Dafeiyu
             if(VoiceProfiles!=null)foreach(var pair in VoiceProfiles)if(pair.Value!=null)voiceProfiles[pair.Key]=pair.Value.Copy();
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandsEnabled=AgentCommandsEnabled,AgentCommandRecipes=AgentCommandRecipes,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
+            return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,X=X,Y=Y,
                 AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
-                PersonaOverrides=new Dictionary<string,string>(PersonaOverrides),RepositoryUrl=RepositoryUrl,UpdateUseProxy=UpdateUseProxy,UpdateProxyAddress=UpdateProxyAddress,UpdateUseMirror=UpdateUseMirror,UpdateMirrorAddress=UpdateMirrorAddress,AutoUpdate=AutoUpdate,LastUpdateCheckUtcTicks=LastUpdateCheckUtcTicks,Text=Text.Copy(),Transcription=Transcription.Copy(),Speech=Speech.Copy() };
+                PersonaOverrides=new Dictionary<string,string>(PersonaOverrides),RepositoryUrl=RepositoryUrl,UpdateUseProxy=UpdateUseProxy,UpdateProxyAddress=UpdateProxyAddress,UpdateUseMirror=UpdateUseMirror,UpdateMirrorAddress=UpdateMirrorAddress,UpdateChannel=UpdateChannel,AutoUpdate=AutoUpdate,LastUpdateCheckUtcTicks=LastUpdateCheckUtcTicks,Text=Text.Copy(),Transcription=Transcription.Copy(),Speech=Speech.Copy() };
         }
     }
 

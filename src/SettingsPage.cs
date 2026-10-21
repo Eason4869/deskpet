@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -75,7 +75,7 @@ namespace Dafeiyu
             restoreCompanions=Ui.Button("恢复已删除伙伴");restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice("请先保存修改并结束当前对话，再恢复伙伴。");return;}pet.Catalog.RestoreRemoved();var current=pet.Catalog.Find(pet.Skin.Id);pet.SelectSkin(current);RefreshSkinChoices();ShowNotice("已恢复已删除伙伴，聊天和配置保持原样。");};appearance.Children.Add(restoreCompanions);
             var guide=new Expander{Name="ImportGuide",Header="如何制作和导入桌宠？",Margin=new Thickness(0,12,0,0)};var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
             tutorial.Children.Add(Ui.Text("1. 打开模板文件夹，选择 v1 原版或 v2 逐帧动作模板。\n2. v1：8 列 × 11 行透明 PNG，可直接导入。\n3. v2：每个动作独立 PNG，8 列、单格 480 × 520；在 pet.json 填写帧数、FPS 和循环方式。视线为 4 列 × 4 行的 16 张原画，不做插值。\n4. 填写角色名称、人格与专属动作名称；保留整个文件夹结构。可直接导入 ZIP（根目录放 pet.json），或选择 pet.json。\n固定 ID 的完整角色包还支持头像、双套动作和音色推荐；同 ID 更新会保留个人配置。导入后会复制素材，原文件保持不变。",12,Ui.Muted));
-            var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=Ui.Button("打开模板文件夹");templates.Name="OpenTemplates";templates.Click+=delegate {OpenGuide("templates");};guideButtons.Children.Add(templates);var fullGuide=Ui.Button("查看完整教程");fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
+            var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=Ui.Button("下载制作模板");templates.Name="OpenTemplates";templates.Click+=delegate {Process.Start(new ProcessStartInfo(ReleaseInfo.RepositoryUrl+"/releases/tag/v"+ReleaseInfo.DisplayVersion){UseShellExecute=true});};guideButtons.Children.Add(templates);var fullGuide=Ui.Button("查看完整教程");fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
 
             var behavior=new StackPanel{Name="GuideBehaviorSection"}; behavior.Children.Add(Heading("陪伴方式"));
             follow=Ui.Toggle("视线跟随鼠标",pet.Settings.FollowCursor,delegate(bool value) { if(!refreshing) { pet.Settings.FollowCursor=value; pet.ApplySettings(); } }); follow.Name="FollowCursor"; behavior.Children.Add(follow);
@@ -281,7 +281,7 @@ namespace Dafeiyu
         private void OpenGuide(string relative)
         {
             try{string path=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,relative);if(!File.Exists(path) && !Directory.Exists(path))path=Path.Combine(Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar)),relative);if(!File.Exists(path) && !Directory.Exists(path))throw new InvalidOperationException();Process.Start(new ProcessStartInfo(path){UseShellExecute=true});}
-            catch(Exception e){if(!(e is IOException || e is InvalidOperationException || e is System.ComponentModel.Win32Exception))throw;ShowNotice("找不到教程或模板。请完整解压桌宠 ZIP，保留 docs 和 templates 文件夹。");}
+            catch(Exception e){if(!(e is IOException || e is InvalidOperationException || e is System.ComponentModel.Win32Exception))throw;ShowNotice("找不到教程。请完整解压桌宠 ZIP，保留 docs 文件夹。");}
         }
     }
 }

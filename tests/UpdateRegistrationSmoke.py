@@ -22,7 +22,7 @@ framework = Path(os.environ['WINDIR']) / 'Microsoft.NET/Framework64/v4.0.30319'
 subprocess.run([str(framework / 'csc.exe'), '/nologo', '/codepage:65001',
     '/out:' + str(ROOT / 'Probe.exe'),
     *['/reference:' + str(framework / name) for name in ['System.Runtime.Serialization.dll', 'System.IO.Compression.dll']],
-    str(ROOT / 'Probe.cs'), str(ROOT / 'UpdateInstall.cs'), str(PROJECT / 'src/ReleaseInfo.cs')], check=True)
+    str(ROOT / 'Probe.cs'), str(ROOT / 'UpdateInstall.cs'), str(PROJECT / 'src/ReleaseInfo.cs'),str(PROJECT/'src/ReleaseVersion.cs'),str(PROJECT/'src/ReleaseIdentity.cs'),str(PROJECT/'src/RetiredRuntimeFiles.cs')], check=True)
 directory = ROOT / '中文 portable with spaces'
 directory.mkdir()
 (directory / '桌面伙伴.exe').write_bytes(b'owned app fixture')

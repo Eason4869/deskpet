@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -46,7 +46,7 @@ namespace Dafeiyu
                     {"DesktopDirectory",Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)},
                     {"MyDocuments",Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)},
                     {"UserProfile",Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}})+"。";
-                if(workspace.PlanMode)instruction+="当前是计划模式：可使用只读文件工具和 update_plan 读取、分析和记录计划，禁止 run_command 和所有项目修改工具，给出执行计划。不得调用 create_directory、open_directory、write_file、edit_file，不得创建、打开目录、写入或修改文件；不得声称计划已经执行，请等待用户关闭计划模式后再执行变更。";
+                if(workspace.PlanMode)instruction+="当前是计划模式：可使用只读文件工具和 update_plan 读取、分析和记录计划，禁止 exec_command 和所有项目修改工具，给出执行计划。不得调用 create_directory、open_directory、write_file、edit_file，不得创建、打开目录、写入或修改文件；不得声称计划已经执行，请等待用户关闭计划模式后再执行变更。";
                 if(!String.IsNullOrEmpty(workspace.ProjectInstructionText))instruction+="\n"+workspace.ProjectInstructionText;
                 instruction+=new AgentTaskMemory(workspace.Root).ForPrompt();
                 if(anthropic)system.AppendLine(instruction);
@@ -208,12 +208,12 @@ namespace Dafeiyu
         }
         private static string AgentToolSummary(AgentCall call,string status)
         {
-            string operation=call.Name=="read_file"?"读取":call.Name=="write_file"?"写入":call.Name=="edit_file"?"修改":call.Name=="search_files"?"搜索":call.Name=="list_files"?"列出":call.Name=="find_files"?"查找文件":call.Name=="read_files"?"批量读取":call.Name=="apply_patch"?"应用补丁":call.Name=="run_command"?"运行命令":call.Name=="update_plan"?"更新计划":call.Name=="restore_file"?"恢复文件":call.Name=="create_directory"?"创建目录":call.Name=="open_directory"?"打开目录":"执行工具";
+            string operation=call.Name=="read_file"?"读取":call.Name=="write_file"?"写入":call.Name=="edit_file"?"修改":call.Name=="search_files"?"搜索":call.Name=="list_files"?"列出":call.Name=="find_files"?"查找文件":call.Name=="read_files"?"批量读取":call.Name=="apply_patch"?"应用补丁":call.Name=="exec_command"?"运行命令":call.Name=="update_plan"?"更新计划":call.Name=="restore_file"?"恢复文件":call.Name=="create_directory"?"创建目录":call.Name=="open_directory"?"打开目录":"执行工具";
             string path="";
             try
             {
                 var args=new JavaScriptSerializer{MaxJsonLength=AgentMaximumArguments}.DeserializeObject(call.Arguments.ToString()) as Dictionary<string,object>;
-                string raw=args==null?null:AgentString(args,"path");if(String.IsNullOrEmpty(raw) && call.Name=="run_command" && args!=null)raw=AgentString(args,"command_id");
+                string raw=args==null?null:AgentString(args,"path");
                 if(String.IsNullOrEmpty(raw) && (call.Name=="list_files" || call.Name=="search_files"))raw=".";
                 // Only the path argument is displayed, including full-access absolute paths.
                 // File content, search text and other arguments never enter the tool log.

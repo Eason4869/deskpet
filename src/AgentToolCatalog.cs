@@ -27,8 +27,6 @@ namespace Dafeiyu
             D("list_changes","列出本任务实际文件变更、原文件备份与恢复状态。",true,Fields()),
             D("restore_file","从本任务原文件备份恢复；文件又被外部修改时拒绝。",false,Fields("path",P("string","需恢复的文件路径")),"path"),
             D("update_plan","更新任务步骤与进度，最多 20 步；步骤状态为 pending/in_progress/complete，同时最多一步进行中。",true,Fields("steps",new{type="array",items=new{type="object"},maxItems=20}),"steps"),
-            D("list_commands","列出用户为当前项目配置并授权的命令 ID。",true,Fields()),
-            D("run_command","执行已授权的项目命令 ID；不能提供自由命令或更改参数，返回实际退出码与输出。",false,Fields("command_id",P("string","来自 list_commands 的命令 ID")),"command_id"),
             D("read_output","分页读取本任务已执行命令的有界输出。",true,Fields("command_id",P("string","命令 ID"),"output_id",P("string","历史工具输出 ID；与 command_id 二选一"),"offset",P("integer","字符偏移，默认 0"),"limit",P("integer","1～12000 字符"))),
             D("fetch_url","读取公开网页并返回有界纯文本；仅支持 http/https，禁止本机地址。",true,Fields("url",P("string","网页 URL")),"url"),
             D("github_read_file","读取已连接 GitHub 仓库中的文件文字。",true,Fields("path",P("string","仓库内路径"),"ref",P("string","分支、标签或提交")),"path"),
@@ -44,11 +42,11 @@ namespace Dafeiyu
             D("interrupt_subagent","中断正在运行的子 Agent。",false,Fields("id",P("string","子 Agent ID")),"id")
         };
         internal static bool IsReadOnly(string name){var tool=Definitions.FirstOrDefault(d=>d.Name==name);return tool!=null && tool.ReadOnly;}
-        internal static void Schemas(bool plan,bool commands,out object[] openai,out object[] anthropic){Schemas(plan,commands,null,null,out openai,out anthropic);}
-        internal static void Schemas(bool plan,bool commands,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic,Func<string,bool> enabled=null)
+        internal static void Schemas(bool plan,out object[] openai,out object[] anthropic){Schemas(plan,null,null,out openai,out anthropic);}
+        internal static void Schemas(bool plan,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic,Func<string,bool> enabled=null)
         {
             var a=new List<object>();var b=new List<object>();var all=Definitions.Concat(extra??new AgentToolDefinition[0]);
-            foreach(var d in all.Where(d=>d!=null && d.Name!="complete_subagent" && (!plan || d.ReadOnly) && (commands || (d.Name!="run_command" && d.Name!="list_commands")) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
+            foreach(var d in all.Where(d=>d!=null && d.Name!="complete_subagent" && (!plan || d.ReadOnly) && (capabilities==null || capabilities.CanUseTool(d.Name)) && (enabled==null || enabled(d.Name)))){
                 object schema=d.InputSchema??(object)new{type="object",properties=d.Properties??new Dictionary<string,object>(),required=d.Required??new string[0],additionalProperties=false};
                 a.Add(new{type="function",function=new{name=d.Name,description=d.Description??"",parameters=schema}});
                 b.Add(new{name=d.Name,description=d.Description??"",input_schema=schema});

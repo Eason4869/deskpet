@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -90,6 +90,9 @@ namespace Dafeiyu
     public sealed class VoiceOrbit : FrameworkElement
     {
         static readonly Pen outline=new Pen(Ui.Line,1),blue=new Pen(Ui.Blue,2.5),mint=new Pen(Ui.Brush("#6AAFA4"),2.5);
+        readonly Func<double> animationClock;
+        public VoiceOrbit():this(()=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency){}
+        internal VoiceOrbit(Func<double> clock){animationClock=clock;}
         double level;
         public double Level {get{return level;}set{double target=Double.IsNaN(value) || Double.IsInfinity(value)?0:Math.Max(0,Math.Min(1,value));double weight=target>level?.82:.30;level+=(target-level)*weight;InvalidateVisual();}}
         protected override void OnRender(DrawingContext drawing)
@@ -98,8 +101,8 @@ namespace Dafeiyu
             drawing.DrawEllipse(Ui.Pale,null,center,radius,radius);drawing.DrawEllipse(null,outline,center,radius+gap*.45,radius+gap*.45);
             // Make ordinary speech visibly expressive without increasing audio gain.
             // Reserve space for the stroke even at full volume in the compact view.
-            double response=VoiceVisual.Response(level),maxLength=Math.Max(0,size/2-2.5-radius-gap);
-            for(int i=0;i<64;i++){double angle=i*Math.PI/32;double envelope=.32+.68*Math.Abs(Math.Sin(angle*3+response*7));double length=Math.Min(maxLength,size*.012+response*maxLength*1.35*envelope);
+            double phase=animationClock()*3.2;double response=VoiceVisual.Response(level),maxLength=Math.Max(0,size/2-2.5-radius-gap);
+            for(int i=0;i<64;i++){double angle=i*Math.PI/32;double envelope=.28+.45*Math.Abs(Math.Sin(angle*3+response*7+phase))+.27*Math.Abs(Math.Sin(angle*5-phase*1.37));double length=Math.Min(maxLength,size*.012+response*maxLength*1.35*envelope);
                 drawing.DrawLine(i<32?blue:mint,new Point(center.X+Math.Cos(angle)*(radius+gap),center.Y+Math.Sin(angle)*(radius+gap)),new Point(center.X+Math.Cos(angle)*(radius+gap+length),center.Y+Math.Sin(angle)*(radius+gap+length)));}
         }
     }

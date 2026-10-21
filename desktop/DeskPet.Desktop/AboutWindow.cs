@@ -54,7 +54,7 @@ internal sealed class AboutWindow : Window
         repository = Ui.Input(owner.Settings.RepositoryUrl);
         download = Ui.AsyncButton("下载本机 macOS 安装包", async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
         repository.TextChanged += (_, _) => { releaseDownload = null; download.IsEnabled = false; };
-        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text("DeskPet " + version?.ToString(3), 24), Ui.Text("macOS 客户端 · Avalonia / .NET\n桌面伙伴、文字聊天、语音与实时对话"), Ui.Field("更新仓库（HTTPS GitHub 仓库地址）", repository), Ui.AsyncButton("检查更新", CheckAsync, owner.Error), download, notice, Ui.Text("下载后使用新应用替换 Applications 中的旧版本。设置和历史保存在用户数据目录，替换应用不会清除。此界面不静默安装或绕过 Gatekeeper。"), Ui.Button("关闭", Close)) };
+        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text("DeskPet " + ReleaseInfo.DisplayVersion, 24), Ui.Text("macOS 客户端 · Avalonia / .NET\n桌面伙伴、文字聊天、语音与实时对话"), Ui.Field("更新仓库（HTTPS GitHub 仓库地址）", repository), Ui.AsyncButton("检查更新", CheckAsync, owner.Error), download, notice, Ui.Text("下载后使用新应用替换 Applications 中的旧版本。设置和历史保存在用户数据目录，替换应用不会清除。此界面不静默安装或绕过 Gatekeeper。"), Ui.Button("关闭", Close)) };
         Closed += (_, _) => { cancel.Cancel(); cancel.Dispose(); };
     }
     private async Task CheckAsync()

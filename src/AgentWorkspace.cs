@@ -99,7 +99,7 @@ namespace Dafeiyu
             IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection) && !connection.Connected)return false;
             if(name=="exec_command")return TerminalAvailable;
             if(name=="spawn_subagent" || name=="interrupt_subagent" || name=="get_subagent" || name=="wait_subagents")return childWorkers!=null;
-            if(name=="run_command" || name=="list_commands" || name=="complete_subagent")return false;
+            if(name=="complete_subagent")return false;
             return !name.StartsWith("github_",StringComparison.Ordinal) || (githubConnected && (AgentPermissionRuntime.ActionForTool(name)=="github_read" || kernelApproval!=null));
         }
         public Task<string> ExecuteAsync(string name,string argumentsJson,CancellationToken token){return ExecuteAsync(name,argumentsJson,Guid.NewGuid().ToString("N"),token);}
@@ -157,8 +157,6 @@ namespace Dafeiyu
                     if (name == "restore_file") return RestoreFile(path,token);
                     if (name == "list_changes") return ListChanges();
                     if (name == "update_plan") return UpdatePlan(args);
-                    if (name == "list_commands") return ListCommands();
-                    if (name == "run_command") return RunCommand(GetString(args,"command_id",null),token);
                     if (name == "read_output" && args.ContainsKey("output_id") && CommandResults.Any(c=>c.CommandId==GetString(args,"output_id",null))) return ReadOutput(GetString(args,"output_id",null),GetInt(args,"offset",0,0,256*1024),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_output" && args.ContainsKey("output_id")) return SavedOutput(GetString(args,"output_id",null),GetInt(args,"offset",0,0,24000),GetInt(args,"limit",6000,1,12000));
                     if (name == "read_output") return ReadOutput(GetString(args,"command_id",null),GetInt(args,"offset",0,0,256*1024),GetInt(args,"limit",6000,1,12000));
@@ -205,7 +203,7 @@ namespace Dafeiyu
                 catch (FileNotFoundException) { return "错误：文件不存在，请先用 list_files 查看目录。"; }
                 catch (DirectoryNotFoundException) { return "错误：目录不存在，请先用 list_files 查看目录。"; }
                 catch (IOException) { return "错误：文件操作失败，文件可能被占用或工作目录已变化。"; }
-                catch (System.ComponentModel.Win32Exception) { return name=="run_command"?"错误：无法执行配置的命令，请检查程序路径、进程控制权限和系统限制。":"错误：无法打开资源管理器，请确认目录和系统权限。"; }
+                catch (System.ComponentModel.Win32Exception) { return "错误：无法打开资源管理器，请确认目录和系统权限。"; }
                 catch (InvalidOperationException) { return "错误：JSON 参数无效或操作超出限制。"; }
                 finally { gate.Release(); }
             }, token);
@@ -601,10 +599,10 @@ namespace Dafeiyu
         private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);var state=transport as IMcpConnectionState;if(state!=null)mcpAvailability[definition.Name]=state;}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
         private void BuildSchemas()
         {
-            object[] a,b;AgentToolCatalog.Schemas(readOnly,CommandsEnabled,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
+            object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
         bool RuntimeToolAvailable(string name){if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
-        public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(CommandsEnabled||(d.Name!="run_command"&&d.Name!="list_commands"))&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
+        public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }
 }

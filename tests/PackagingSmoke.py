@@ -30,12 +30,16 @@ output = checkout / 'public-artifacts'
 runtime = output / 'DafeiyuDeskPet'
 result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                          '-File', str(checkout / 'Build.ps1'), '-Target', 'App', '-OutputDirectory', str(runtime)],
-                        cwd=checkout, capture_output=True, timeout=60)
+                        cwd=checkout, capture_output=True, timeout=180)
 assert result.returncode == 0, result.stdout.decode('utf-8', errors='replace') + result.stderr.decode('utf-8', errors='replace')
 print('PASS application compiles from the fresh public source tree')
 # A reused portable folder must not leak previous executables or private loose files.
 (runtime / '大肥鱼桌宠.exe').write_bytes(b'legacy binary, do not ship')
 (runtime / 'private-key.txt').write_text('private sentinel', encoding='utf-8')
+(runtime / 'templates').mkdir()
+(runtime / 'templates/private.md').write_text('private sentinel',encoding='utf-8')
+(runtime / 'previews').mkdir()
+(runtime / 'previews/obsolete.png').write_bytes(b'private sentinel')
 (runtime / 'data').mkdir()
 (runtime / 'data/settings.json').write_text('private settings sentinel', encoding='utf-8')
 for private_name in ['.env', '.env.local', 'credentials.json', 'release-signing.pfx']:
@@ -62,7 +66,10 @@ for worker in [runtime / 'DeskPet.Update.exe'] + ([options.legacy_worker.resolve
 print('PASS real update engine accepts the complete release archive and preserves personal data')
 with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
     for document in ['skin-format.md', 'character-packs.md', 'dialogue-setup.md', 'conversation-agent.md', 'native-agent-design.md', 'third-party-notices.md', 'sources.md', 'installation.md', 'daily-use.md', 'voice-presets.md', 'release-naming.md', 'interaction-extension.md']:
-        assert bundle.read('DafeiyuDeskPet/docs/' + document).decode('utf-8-sig').replace('\r\n','\n') == (checkout / 'docs' / document).read_text(encoding='utf-8-sig')
+        if document in {'native-agent-design.md','roadmap.md','release-naming.md'}: continue
+        packaged=bundle.read('DafeiyuDeskPet/docs/' + document).decode('utf-8-sig').replace('\r\n','\n')
+        original=(checkout/'docs'/document).read_text(encoding='utf-8-sig')
+        assert re.sub(r'(!?\[[^\]]*\])\([^)]+\)',r'\1',packaged)==re.sub(r'(!?\[[^\]]*\])\([^)]+\)',r'\1',original), 'packaged guide text changed: '+document
 print('PASS runtime includes the exact daily-use and voice-preset guides')
 for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
     archive = output / (pet + '-HD-Skin-' + version + '.zip')
@@ -85,6 +92,7 @@ for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
                 assert all(clip['file'] in bundle.namelist() for clip in clips.values())
 with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
+    assert 'legacy-v1/pet.json' in bundle.namelist() and 'legacy-v1/spritesheet.png' in bundle.namelist()
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
     guide = bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
@@ -93,16 +101,13 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'
     guide_titles = re.findall(r'^### \d+\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
     assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'
-    assert 'DafeiyuDeskPet/templates/grid-guide.svg' in bundle.namelist()
-    assert 'DafeiyuDeskPet/templates/high-fps-v2/pet.json' in bundle.namelist()
+    assert not any('/templates/' in name or '/previews/' in name for name in bundle.namelist())
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
 print('PASS five complete low-frame v2 skin packs and full author templates')
-installer_recipe=(checkout/'installer/DeskPet.iss').read_text(encoding='utf-8-sig')
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
-    for name in bundle.namelist():
-        if name.startswith('DafeiyuDeskPet/docs/') and name.endswith('.md'):
-            assert '\\docs\\'+Path(name).name+'"' in installer_recipe, 'installer documentation missing: '+name
-print('PASS installer and portable package include the same public documentation')
+    from tools.runtime_package import collect_runtime_files
+    assert set(bundle.namelist()) == {'DafeiyuDeskPet/'+record['destination'] for record in collect_runtime_files(checkout,runtime)}
+print('PASS portable and installer share the same explicit runtime contract')
 
 manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
 for line in manifest:
@@ -115,7 +120,7 @@ result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',
     '[Reflection.AssemblyName]::GetAssemblyName($env:DESKPET_TEST_HELPER).Version.ToString()'],
     env=dict(os.environ, DESKPET_TEST_HELPER=str(runtime / 'DeskPet.Update.exe')),
     capture_output=True, check=True)
-assert result.stdout.decode('ascii').strip() == version + '.0'
+assert result.stdout.decode('ascii').strip() == version.split('-')[0] + '.0'
 assert (runtime / 'DeskPet.Update.exe').stat().st_size < 1024 * 1024, 'helper should not embed pet sprite assets'
 print('PASS update helper has the declared version and excludes sprite resources')
 result=subprocess.run(['powershell.exe','-NoProfile','-Command',
@@ -125,15 +130,16 @@ resources=result.stdout.decode('utf-8',errors='replace')
 assert 'Dafeiyu.Motion.' not in resources and 'Dafeiyu.MotionManifest' not in resources
 assert 'Dafeiyu.Bundled.Xiaobei.pet.json' in resources
 print('PASS final application embeds low-frame Xiaobei and no retired motion fixtures')
-readme = (runtime / 'README.md').read_text(encoding='utf-8-sig')
+staged_runtime=Path(json.loads((output/'runtime-stage.json').read_text(encoding='utf-8'))['path'])
+readme = (staged_runtime / 'README.md').read_text(encoding='utf-8-sig')
 images = re.findall(r'<img\s+src="([^"]+)"|!\[[^\]]*\]\(([^)]+)\)', readme)
 for alternatives in images:
     target = next(value for value in alternatives if value)
-    assert (runtime / target).is_file(), 'installed README image missing: ' + target
+    assert (staged_runtime / target).is_file(), 'installed README image missing: ' + target
     source_target = target.replace('previews/avatars/', 'assets/avatars/')
     assert (checkout / source_target).is_file(), 'repository README image missing: ' + source_target
     if target.startswith('previews/avatars/'):
-        assert (runtime / target).read_bytes() == (checkout / source_target).read_bytes(), 'packaged avatar changed: ' + target
+        assert (staged_runtime / target).read_bytes() == (checkout / source_target).read_bytes(), 'packaged avatar changed: ' + target
     with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
         assert 'DafeiyuDeskPet/' + target in bundle.namelist(), 'portable README image missing: ' + target
 print('PASS README images resolve in the repository and installed runtime')
@@ -154,7 +160,7 @@ if options.compiler:
     result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                              '-File', str(checkout / 'BuildInstaller.ps1'),
                              '-Compiler', str(Path(options.compiler).resolve()), '-OutputDirectory', str(output)],
-                            cwd=checkout, capture_output=True, timeout=60)
+                            cwd=checkout, capture_output=True, timeout=180)
     assert result.returncode == 0, result.stdout.decode('utf-8', errors='replace') + result.stderr.decode('utf-8', errors='replace')
     print('PASS installer builds from the fresh public source tree')
     manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()

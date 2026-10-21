@@ -1,4 +1,6 @@
 import argparse
+import uuid
+from tools.runtime_package import collect_runtime_files, stage_runtime, validate_binaries
 import csv
 import io
 from pathlib import Path
@@ -39,64 +41,18 @@ def include_source(file):
     if file.suffix.lower() in {'.log','.tmp','.pyc','.pdb','.pfx','.p12','.key'}:return False
     return True
 source_files=[p for p in sorted(PROJECT.rglob('*')) if include_source(p)]
-# User-facing templates and documentation remain in the runtime; developer
-# verification reports, tests and intermediate artwork stay out.
-user_docs=['configuration-guide.md','agent-workflows.md','skin-format.md','character-packs.md','dialogue-setup.md','conversation-agent.md','native-agent-design.md','third-party-notices.md','installation.md','daily-use.md','voice-presets.md','sources.md','roadmap.md','release-naming.md','interaction-extension.md']
-runtime_text={name:(PROJECT/name).read_text(encoding='utf-8-sig') for name in ['README.md','CHANGELOG.md']+[str(Path('docs')/name) for name in user_docs]}
-readme=runtime_text['README.md']
-for pet,still in [('ebao','e-bao'),('dafeiyu','dafeiyu'),('marfu','marfu'),('xiaobei','xiaobei')]:
-    readme=readme.replace('previews/'+pet+'-running.gif','previews/'+still+'.png')
-readme=readme.replace('跑动预览来自真实 WPF 窗口。','本地文档显示静态预览；真实 WPF 跑动预览请查看 GitHub README。')
-readme=readme.replace('assets/avatars/','previews/avatars/')
-runtime_text['README.md']=readme
-runtime_plan=[]
-for name in ['桌面伙伴.exe','桌面伙伴.exe.config','DeskPet.Update.exe','DeskPet.Update.exe.config']:
-    runtime_plan.append({'source':str(OUTPUT/'DafeiyuDeskPet'/name),'destination':name,'type':Path(name).suffix.lower()})
-for name in runtime_text:
-    runtime_plan.append({'source':str(PROJECT/name),'destination':name,'type':Path(name).suffix.lower()})
-preview_files={file.name:file for file in sorted((PROJECT/'previews').iterdir()) if file.is_file() and file.suffix.lower() in {'.png','.jpg','.webp','.svg'}}
-for file in sorted((PROJECT/'assets/avatars').glob('*.svg')):
-    preview_files['avatars/'+file.name]=file
-for name,file in preview_files.items():
-    runtime_plan.append({'source':str(file),'destination':str(Path('previews')/name),'type':file.suffix.lower()})
-runtime_template_files={}
-for file in sorted((PROJECT/'templates').rglob('*')):
-    if file.is_file() and 'high-fps-v2' not in file.relative_to(PROJECT/'templates').parts:
-        assert file.suffix.lower() in {'.json','.svg','.png','.md'}, 'Unexpected runtime template: '+str(file)
-        runtime_template_files[file.relative_to(PROJECT/'templates')]=(file,None)
-note_names={file.name:file.with_suffix('.md').name for file in template_files if file.suffix.lower() in {'.csv','.txt'}}
-for file in template_files:
-    relative=Path('high-fps-v2')/file.relative_to(TEMPLATE);suffix=file.suffix.lower()
-    destination=relative.with_suffix('.md') if suffix in {'.csv','.txt'} else relative
-    assert destination not in runtime_template_files, 'Duplicate template destination.'
-    content=None
-    if suffix=='.csv':
-        rows=list(csv.reader(io.StringIO(file.read_text(encoding='utf-8-sig'))));assert rows, 'Empty authoring table.'
-        def table_row(row):return '| '+' | '.join(cell.replace('|','\\|').replace('\n','<br>') for cell in row)+' |'
-        content='# '+file.stem+'\n\n'+table_row(rows[0])+'\n'+table_row(['---']*len(rows[0]))+'\n'+'\n'.join(table_row(row) for row in rows[1:])+'\n'
-    elif suffix=='.txt':content='# '+file.stem+'\n\n'+file.read_text(encoding='utf-8-sig')
-    elif suffix=='.md':
-        content=file.read_text(encoding='utf-8-sig')
-        for original,replacement in note_names.items():content=content.replace(original,replacement)
-    runtime_template_files[destination]=(file,content)
-for relative,(file,content) in runtime_template_files.items():
-    runtime_plan.append({'source':str(file),'destination':str(Path('templates')/relative),'type':relative.suffix.lower(),'converted':file.suffix.lower() in {'.csv','.txt'}})
-assert len({entry['destination'].casefold() for entry in runtime_plan})==len(runtime_plan), 'Duplicate runtime destination.'
+runtime_plan=collect_runtime_files(PROJECT,OUTPUT/'DafeiyuDeskPet')
 if options.check_inputs:
-    print(json.dumps({'version_source':'src/ReleaseInfo.cs','output':str(OUTPUT),'template_files':len(template_files),'runtime_template_files':[str(relative) for relative in runtime_template_files],'runtime_template_types':sorted({relative.suffix.lower() for relative in runtime_template_files}),'source_files':len(source_files),'excluded_source_directories':['assets/drawn-source*','assets/motion-source','assets/motion'],'template_destination':'runtime templates, independent authoring ZIP and source ZIP','runtime_files':runtime_plan,'runtime_types':sorted({entry['type'] for entry in runtime_plan}),'archives_created':False},ensure_ascii=False,indent=2))
+    print(json.dumps({'runtime_files':runtime_plan,'source_files':len(source_files),'template_files':len(template_files),'archives_created':False},ensure_ascii=False,indent=2))
     raise SystemExit(0)
 OUTPUT.mkdir(parents=True,exist_ok=True)
 APP=OUTPUT/'DafeiyuDeskPet'
 release_source=(PROJECT/'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
 version=re.search(r'DisplayVersion="([^"]+)"',release_source).group(1)
-for name,content in runtime_text.items():
-    target=APP/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(content,encoding='utf-8')
-for name,file in preview_files.items():
-    target=APP/'previews'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(file,target)
-for relative,(file,content) in runtime_template_files.items():
-    target=APP/'templates'/relative;target.parent.mkdir(parents=True,exist_ok=True)
-    if content is None:shutil.copy2(file,target)
-    else:target.write_text(content,encoding='utf-8')
+validate_binaries(PROJECT,APP)
+RUNTIME=OUTPUT/('runtime-'+uuid.uuid4().hex)
+stage_runtime(runtime_plan,RUNTIME)
+(OUTPUT/'runtime-stage.json').write_text(json.dumps({'path':str(RUNTIME)}),encoding='utf-8')
 
 # Supplemental builtin artwork is embedded in the executable. Check every
 # authored interaction frame before distributing the runtime and source archives.
@@ -123,10 +79,10 @@ for prefix in ['', 'e-bao-', 'marfu-']:
                     assert bbox is None, (prefix,row,col,'unused cell')
     print('PASS HD source validation: '+(prefix or 'dafeiyu'))
 
-runtime_files=[APP/entry['destination'] for entry in runtime_plan]
+runtime_files=[RUNTIME/entry['destination'] for entry in runtime_plan]
 runtime_zip=OUTPUT/('DeskPet-Windows-'+version+'.zip')
 with ZipFile(runtime_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
-    for file in sorted(runtime_files): bundle.write(file,'DafeiyuDeskPet/'+file.relative_to(APP).as_posix())
+    for file in sorted(runtime_files): bundle.write(file,'DafeiyuDeskPet/'+file.relative_to(RUNTIME).as_posix())
 source_zip=OUTPUT/('DeskPet-Source-'+version+'.zip')
 with ZipFile(source_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
     for file in source_files:
@@ -137,6 +93,9 @@ with ZipFile(source_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
 template_zip=OUTPUT/('DeskPet-Skin-Template-v2-'+version+'.zip')
 with ZipFile(template_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
     for file in template_files:bundle.write(file,'high-fps-v2/'+file.relative_to(TEMPLATE).as_posix())
+    for file in sorted((PROJECT/'templates').glob('*')):
+        if file.is_file() and file.name!='runtime-readme.md' and file.suffix.lower() in {'.png','.json','.svg','.md','.txt','.csv'}:
+            bundle.write(file,'legacy-v1/'+file.name)
 
 skin_export=PROJECT/'work/release-skin-export'
 subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(PROJECT/'Build.ps1'),'-Target','SkinPackExport','-TestArguments',str(skin_export)],cwd=PROJECT,check=True,timeout=180)
@@ -162,9 +121,8 @@ with ZipFile(runtime_zip) as bundle:
     assert bundle.testzip() is None
     assert not any('/data/' in name for name in bundle.namelist())
     assert not any(name.endswith(('.cs','.py','.ps1','.log','.gif','/verification.md')) or '/tests/' in name or '/work/' in name for name in bundle.namelist())
-    assert all('DafeiyuDeskPet/templates/'+name in bundle.namelist() for name in ['pet.json','spritesheet.png','grid-guide.svg','high-fps-v2/pet.json','high-fps-v2/动作表.md','high-fps-v2/AI绘制提示词.md'])
+    assert not any('/templates/' in name or '/previews/' in name for name in bundle.namelist())
     assert set(bundle.namelist())=={'DafeiyuDeskPet/'+Path(entry['destination']).as_posix() for entry in runtime_plan}
-    assert all('DafeiyuDeskPet/previews/'+name in bundle.namelist() for name in preview_files)
     exe_name='DafeiyuDeskPet/桌面伙伴.exe'
     assert hashlib.sha256(bundle.read(exe_name)).digest()==hashlib.sha256((APP/'桌面伙伴.exe').read_bytes()).digest()
 with ZipFile(source_zip) as bundle: assert bundle.testzip() is None

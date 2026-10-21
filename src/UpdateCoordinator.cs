@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -18,7 +18,7 @@ namespace Dafeiyu
         CancellationTokenSource cancel;
         UpdateJob pending;
         bool checking,applying,disposed,pendingManual,checkingManual,automaticStarted,retryAutomatic;
-        DateTime? restartAt;
+        DateTime? restartAt;bool immediate;UpdateChannel pendingChannel;
         public string Status {get;private set;}
         public string NetworkStatus {get;private set;}
         public double Progress {get;private set;}
@@ -69,10 +69,10 @@ namespace Dafeiyu
             if(disposed)return;
             if(manual && IsReadyToInstall)
             {
-                pendingManual=true;restartAt=null;Status="新版已就绪，空闲后将自动退出、安装并重启。";readyTimer.Start();Notify();return;
+                await InstallPendingNowAsync();return;
             }
             if(IsBusy)return;checking=true;checkingManual=manual;cancel=new CancellationTokenSource();var token=cancel.Token;
-            bool succeeded=false;Progress=0;Status="正在检查 GitHub 正式版本…";Notify();
+            var channel=pet.Settings.UpdateChannel;bool succeeded=false;Progress=0;Status="正在检查 GitHub "+(channel==UpdateChannel.Stable?"正式":"预览")+"通道…";Notify();
             try
             {
                 bool useProxy=pet.Settings.UpdateUseProxy;string proxyAddress=pet.Settings.UpdateProxyAddress;
@@ -81,17 +81,22 @@ namespace Dafeiyu
                 Notify();
                 string directory=Path.GetDirectoryName(pet.Store.DirectoryPath);
                 bool portable=!UpdateInstall.IsInstalledDirectory(directory);
-                var release=await feed.CheckAsync(ReleaseInfo.RepositoryUrl,useProxy,proxyAddress,portable,token);
-                if(!release.IsNewerThan(new Version(installedVersion))){Status="当前已是最新版本 "+installedVersion+"。";SuccessfulCheck();succeeded=true;return;}
+                var release=await feed.CheckAsync(ReleaseInfo.RepositoryUrl,useProxy,proxyAddress,portable,channel,token);
+                if(!release.IsNewerThan(installedVersion)){Status=channel==UpdateChannel.Stable&&ReleaseVersion.Parse(installedVersion).IsPreview?"正式通道暂无更高版本，保留当前版本 "+installedVersion+"。":"当前已是最新版本 "+installedVersion+"。";SuccessfulCheck();succeeded=true;return;}
                 string version=release.VersionTag.TrimStart('v','V');
                 if(!ReleaseInfo.WindowsUpdateAsset(release.AssetName,version,portable) || String.IsNullOrEmpty(release.Digest) || !release.Digest.StartsWith("sha256:",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("发现 "+release.VersionTag+"，但没有可验证的自动更新包。请到 GitHub Release 查看。");
                 string work=Path.Combine(pet.Store.DirectoryPath,"updates",Guid.NewGuid().ToString("N"));
                 IsDownloading=true;Status="正在下载 "+release.VersionTag+"…";Notify();
                 var reporter=new Progress<double>(value=>{if(!disposed && !token.IsCancellationRequested){Progress=value;Notify();}});
                 string package=await feed.DownloadAsync(release,work,useProxy,proxyAddress,reporter,token);
-                token.ThrowIfCancellationRequested();if(disposed)return;
+                token.ThrowIfCancellationRequested();if(disposed)return;if(channel!=pet.Settings.UpdateChannel)throw new OperationCanceledException();
                 using(var process=Process.GetCurrentProcess())pending=new UpdateJob{InstallationDirectory=directory,WorkDirectory=work,PackagePath=package,Mode=portable?"portable":"installed",InstalledVersion=installedVersion,TargetVersion=version,Digest=release.Digest.Substring(7),Size=release.Size,AssetUrl=release.AssetUrl,ParentPid=process.Id,ParentStartedUtcTicks=process.StartTime.ToUniversalTime().Ticks};
-                UpdateInstall.Validate(pending);pendingManual=manual;Status="下载与校验完成，等待空闲后自动更新。";SuccessfulCheck();succeeded=true;readyTimer.Start();
+                if(release.CommitSha!=null){
+                    var identity=ReleaseIdentity.Read(Path.Combine(directory,UpdateInstall.ExecutableName));pending.ProtocolVersion=2;
+                    pending.InstalledAssemblyVersion=identity.AssemblyVersion.ToString();pending.InstalledBuildId=identity.CommitSha==null?null:identity.InformationalVersion;
+                    pending.TargetAssemblyVersion=release.TargetAssemblyVersion;pending.TargetBuildId=version+"+"+release.CommitSha;
+                }
+                pendingChannel=channel;immediate=false;UpdateInstall.Validate(pending);pendingManual=manual;Status="下载与校验完成，等待空闲后自动更新。";SuccessfulCheck();succeeded=true;readyTimer.Start();
             }
             catch(Exception e)
             {
@@ -99,12 +104,23 @@ namespace Dafeiyu
             }
             finally{checking=false;IsDownloading=false;cancel.Dispose();cancel=null;retryAutomatic=!succeeded;ScheduleAutomatic(succeeded?TimeSpan.FromHours(4):TimeSpan.FromMinutes(10));Notify();}
         }
-        async void ApplyWhenReady(object sender,EventArgs args)
+        public void ChangeChannel(UpdateChannel channel)
+        {
+            if(IsBusy||!Enum.IsDefined(typeof(UpdateChannel),channel))return;
+            pet.Settings.UpdateChannel=channel;pet.Settings.LastUpdateCheckUtcTicks=0;pet.SaveSettings();Status="已选择"+(channel==UpdateChannel.Stable?"正式":"预览")+"通道。点击检查并更新以获取新版。";Notify();
+        }
+        public Task InstallPendingNowAsync()
+        {
+            if(!IsReadyToInstall)return Task.FromResult(true);pendingManual=true;immediate=true;restartAt=null;return TryApplyPendingAsync();
+        }
+        async void ApplyWhenReady(object sender,EventArgs args){await TryApplyPendingAsync();}
+        async Task TryApplyPendingAsync()
         {
             if(disposed || pending==null || applying)return;
+            if(pendingChannel!=pet.Settings.UpdateChannel){Cancel();return;}
             if(!pet.CanApplyUpdate(pendingManual))
             {restartAt=null;Status=pet.HasHistorySaveWarning?pet.PendingSaveWarning:pendingManual?"新版已就绪。请保存设置草稿、发送或清空输入，并等待对话或语音结束；空闲后会自动退出、安装并重启。":"新版已就绪，等待对话、设置和桌面操作空闲后自动更新。";Notify();return;}
-            if(!restartAt.HasValue)restartAt=DateTime.UtcNow.AddSeconds(5);
+            if(!restartAt.HasValue)restartAt=DateTime.UtcNow.AddSeconds(immediate?0:5);
             int seconds=Math.Max(0,(int)Math.Ceiling((restartAt.Value-DateTime.UtcNow).TotalSeconds));
             Status="新版已就绪，"+seconds+" 秒后自动更新并重启。可点击“取消更新”。";Notify();if(seconds>0)return;
             applying=true;readyTimer.Stop();Status="正在退出并安装更新…";Notify();
@@ -129,6 +145,7 @@ namespace Dafeiyu
             {
             UpdateInstall.Validate(job);string source=Path.Combine(job.InstallationDirectory,UpdateInstall.WorkerName);
             if(!File.Exists(source))throw new InvalidOperationException("找不到更新助手，请完整解压运行包或重新安装伙伴。");
+            UpdateInstall.CheckWorker(job,source);
             string helper=Path.Combine(job.WorkDirectory,UpdateInstall.WorkerName);File.Copy(source,helper,false);
             if(File.Exists(source+".config"))File.Copy(source+".config",helper+".config",false);
             string path=Path.Combine(job.WorkDirectory,"job.json");UpdateInstall.Write(path,job);
@@ -146,11 +163,11 @@ namespace Dafeiyu
         }
         public void Cancel()
         {
-            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;restartAt=null;readyTimer.Stop();Status="更新已取消，当前版本继续运行。";Notify();
+            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;restartAt=null;immediate=false;readyTimer.Stop();Status="更新已取消，当前版本继续运行。";Notify();
         }
         public void ReportValidation(string text){Status=text;Notify();}
         static void Abort(UpdateJob job){try{File.WriteAllText(Path.Combine(job.WorkDirectory,"abort"),"aborted");}catch(IOException){}catch(UnauthorizedAccessException){}}
-        void Notify(){if(disposed)return;pet.UpdateStateChanged(this);if(Changed!=null)Changed();}
+        void Notify(){if(disposed)return;if(!pet.Dispatcher.CheckAccess()){pet.Dispatcher.BeginInvoke(new Action(Notify));return;}pet.UpdateStateChanged(this);if(Changed!=null)Changed();}
         public void Dispose(){if(disposed)return;disposed=true;startup.Stop();readyTimer.Stop();if(cancel!=null)cancel.Cancel();feed.Dispose();Changed=null;}
     }
 }

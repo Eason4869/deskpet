@@ -43,7 +43,7 @@ namespace Dafeiyu.Tests
                     Check(feed.Checks==before,"同日不重复后台检查");
                 }
                 foreach(var chat in app.Windows.OfType<ChatWindow>().ToArray())chat.Close();
-                pet.ShowSettings();Pump(.2);var settings=app.Windows.OfType<SettingsWindow>().Single();
+                pet.ShowSettings();Pump(.2);var settings=(SettingsPage)typeof(PetWindow).GetField("preferences",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);
                 settings.SelectPage(6);Pump(.1);if(!pet.CanApplyUpdate(true))Console.WriteLine("Update gate diagnostic: dirty="+settings.HasUnsavedEdits+" busy="+pet.DialogueBusy+" history="+pet.HasHistorySaveWarning+" foreground="+DesktopInterop.ForegroundIsFullScreen()+" drafts="+String.Join(",",app.Windows.OfType<ChatWindow>().Select(w=>w.HasDraft)));Check(pet.CanApplyUpdate(true),"未编辑的关于页允许手动安装");
                 settings.SelectPage(2);settings.FocusGuideTarget("TextProviderName");Pump(.1);var model=Find<TextBox>(settings,"TextProviderName");string original=model.Text;model.Text="unsaved-model";
                 settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"切换到关于页仍保留模型草稿，安装等待保存");
@@ -51,12 +51,12 @@ namespace Dafeiyu.Tests
                 settings.FocusGuideTarget("TextServiceKey");Pump(.1);Wait(()=>Find<PasswordBox>(settings,"TextServiceKey")!=null,2);var key=Find<PasswordBox>(settings,"TextServiceKey");key.Password="test-only-unsaved-key";settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"密钥草稿也会阻止更新重启");
                 settings.SelectPage(2);Pump(.1);key.Password="";settings.SelectPage(1);Pump(.1);var prompt=Find<TextBox>(settings,"PersonaPrompt");string persona=prompt.Text;prompt.Text="未保存人格";
                 settings.SelectPage(6);Pump(.1);Check(!pet.CanApplyUpdate(true),"人格草稿跨页面保留时阻止重启");
-                settings.SelectPage(1);prompt.Text=persona;settings.SelectPage(6);Pump(.1);Check(pet.CanApplyUpdate(true),"恢复全部草稿后允许手动更新");settings.Close();
+                settings.SelectPage(1);prompt.Text=persona;settings.SelectPage(6);Pump(.1);Check(pet.CanApplyUpdate(true),"恢复全部草稿后允许手动更新");settings.HostWindow.Hide();
                 pet.Updates.Dispose();
                 using(var feed=new Feed())
                 {
-                    var ready=new TaskCompletionSource<bool>();UpdateJob handoff=null;
-                    using(var controller=new UpdateCoordinator(pet,feed,job=>{handoff=job;return ready.Task;},ReleaseInfo.DisplayVersion))
+                    var ready=new TaskCompletionSource<bool>();UpdateJob handoff=null;int starts=0;
+                    using(var controller=new UpdateCoordinator(pet,feed,job=>{starts++;handoff=job;return ready.Task;},ReleaseInfo.DisplayVersion))
                     {
                         typeof(PetWindow).GetField("updates",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,controller);
                         Task task=controller.CheckAndUpdateAsync(false);Wait(()=>task.IsCompleted,4);Wait(()=>controller.Status.Contains("秒"),3);
@@ -65,6 +65,16 @@ namespace Dafeiyu.Tests
                         var image=new RenderTargetBitmap((int)notice.ActualWidth,(int)notice.ActualHeight,96,96,PixelFormats.Pbgra32);image.Render(notice);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"update-notice.png")))png.Save(file);
                         Find<Button>(notice,"CancelPendingUpdate").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump(.1);
                         Check(!controller.IsBusy && handoff==null && pet.IsVisible,"气泡取消阻止安装与退出");
+                        foreach(int elapsed in new[]{1,3,5}) {
+                            task=controller.CheckAndUpdateAsync(false);Wait(()=>task.IsCompleted,4);Wait(()=>controller.HasRestartCountdown,3);
+                            typeof(UpdateCoordinator).GetField("restartAt",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(controller,DateTime.UtcNow.AddSeconds(5-elapsed));
+                            int beforeStarts=starts;var immediateWatch=System.Diagnostics.Stopwatch.StartNew();
+                            var installNow=controller.InstallPendingNowAsync();var duplicate=controller.InstallPendingNowAsync();Wait(()=>handoff!=null,2);
+                            Check(duplicate.IsCompleted && starts==beforeStarts+1 && immediateWatch.Elapsed.TotalSeconds<2,"倒计时第 "+elapsed+" 秒立即交接且连续点击只启动一次");
+                            typeof(PetWindow).GetField("sessionLocked",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);ready.SetResult(true);Wait(()=>installNow.IsCompleted && !controller.IsBusy,3);
+                            Check(pet.IsVisible,"立即交接仍在退出前复核活动状态");
+                            typeof(PetWindow).GetField("sessionLocked",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,false);handoff=null;ready=new TaskCompletionSource<bool>();
+                        }
                         task=controller.CheckAndUpdateAsync(false);Wait(()=>task.IsCompleted,4);Wait(()=>handoff!=null,8);
                         pet.ShowChat();pet.ShowQuickChat();pet.ShowSettings();Pump(.1);
                         Check(!app.Windows.OfType<ChatWindow>().Any(w=>w.IsVisible) && !app.Windows.OfType<QuickChatWindow>().Any(w=>w.IsVisible) && !app.Windows.OfType<SettingsWindow>().Any(w=>w.IsVisible),"更新交接期间不能开始新的对话或设置编辑");
@@ -132,15 +142,17 @@ namespace Dafeiyu.Tests
                     using(var controller=new UpdateCoordinator(pet,feed,job=>{handoff=job;return Task.FromResult(true);},ReleaseInfo.DisplayVersion))
                     {
                         typeof(PetWindow).GetField("updates",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,controller);
+                        foreach(var ownedChat in app.Windows.OfType<ChatWindow>().ToArray())ownedChat.Close();
+                        var preferencesField=typeof(PetWindow).GetField("preferences",BindingFlags.Instance|BindingFlags.NonPublic);var previousPage=preferencesField.GetValue(pet) as SettingsPage;if(previousPage!=null)previousPage.Dispose();preferencesField.SetValue(pet,null);
                         foreach(var window in app.Windows.OfType<SettingsWindow>().ToArray())window.Close();
-                        pet.ShowSettings();Pump(.1);var updateSettings=app.Windows.OfType<SettingsWindow>().Single();updateSettings.SelectPage(6);Pump(.1);
+                        pet.ShowSettings();Pump(.1);var updateSettings=(SettingsPage)typeof(PetWindow).GetField("preferences",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);updateSettings.SelectPage(6);Pump(.1);
                         Task task=controller.CheckAndUpdateAsync(false);Wait(()=>task.IsCompleted,4);Pump(.3);
                         var install=Find<Button>(updateSettings,"CheckUpdates");
-                        Check(install.IsEnabled && install.Content.ToString()=="立即安装并重启","后台已下载时提供可用的立即安装按钮");
-                        install.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Check(install.IsEnabled && install.Content.ToString()=="立即更新并重启","后台已下载时提供可用的立即安装按钮");
+                        pet.Settings.ReadReplies=true;var immediately=System.Diagnostics.Stopwatch.StartNew();install.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                         Check(feed.Checks==1 && feed.Downloads==1,"立即安装复用已下载包，不重复检查和下载");
-                        // Change an in-memory preference after the check's initial save.
-                        pet.Settings.ReadReplies=true;Wait(()=>closed,10);
+                        // Explicit installation must not restart the five-second countdown.
+                        Wait(()=>closed,2);Check(immediately.Elapsed.TotalSeconds<2,"立即更新跳过剩余五秒，不重新开始倒计时");
                         Check(handoff!=null && closed && !pet.IsVisible,"手动检查下载后自动完成助手交接并正常退出，无需手动关闭窗口");
                         Check(!app.Windows.OfType<ChatWindow>().Any(w=>w.IsVisible) && !app.Windows.OfType<QuickChatWindow>().Any(w=>w.IsVisible) && !app.Windows.OfType<SettingsWindow>().Any(w=>w.IsVisible),"更新退出自动关闭空闲子窗口");
                         Check(pet.Store.Load().ReadReplies,"自动退出保存尚未落盘的用户设置");
@@ -156,7 +168,7 @@ namespace Dafeiyu.Tests
         {
             using(var feed=new Feed())using(var controller=new UpdateCoordinator(pet,feed,job=>{throw new Exception("package contract probe must not apply");},"0.5.6"))
             {
-                feed.Release.VersionTag="v0.6.0";
+                feed.Release.VersionTag="v0.6.0";feed.Release.CommitSha=null;
                 foreach(string invalid in new[]{"DeskPet-Windows-Setup-0.6.0.exe","DeskPet-Setup-0.6.0.exe","DeskPet-Windows-0.6.1.zip","DeskPet-macOS-0.6.0-arm64.zip"}) {
                     feed.Release.AssetName=invalid;feed.Release.AssetUrl=ReleaseInfo.RepositoryUrl+"/releases/download/v0.6.0/"+invalid;
                     Task check=controller.CheckAndUpdateAsync(false);Wait(()=>check.IsCompleted,4);check.GetAwaiter().GetResult();
@@ -178,11 +190,13 @@ namespace Dafeiyu.Tests
             public Feed()
             {
                 string digest;using(var sha=SHA256.Create())digest=BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","");
-                var current=new Version(ReleaseInfo.DisplayVersion);
+                var current=ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).AssemblyBase;
                 string next=new Version(current.Major,current.Minor,current.Build+1).ToString();
-                Release=new UpdateRelease{VersionTag="v"+next,AssetName="DeskPet-Windows-"+next+".zip",Size=4,Digest="sha256:"+digest,AssetUrl=ReleaseInfo.RepositoryUrl+"/releases/download/v"+next+"/DeskPet-Windows-"+next+".zip"};
+                var identity=ReleaseIdentity.Read(Assembly.GetExecutingAssembly().Location);
+                Release=new UpdateRelease{CommitSha=identity.CommitSha,TargetAssemblyVersion=ReleaseVersion.Parse(next).AssemblyBase.ToString(),VersionTag="v"+next,AssetName="DeskPet-Windows-"+next+".zip",Size=4,Digest="sha256:"+digest,AssetUrl=ReleaseInfo.RepositoryUrl+"/releases/download/v"+next+"/DeskPet-Windows-"+next+".zip"};
             }
             public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string address,bool portable,CancellationToken token){Checks++;Repository=repository;Portable=portable;return Task.FromResult(Release);}
+            public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string address,bool portable,UpdateChannel channel,CancellationToken token){return CheckAsync(repository,useProxy,address,portable,token);}
             public async Task<string> DownloadAsync(UpdateRelease release,string folder,bool proxy,string address,IProgress<double> progress,CancellationToken token)
             {Downloads++;if(DownloadDelay>0)await Task.Delay(DownloadDelay,token);token.ThrowIfCancellationRequested();Directory.CreateDirectory(folder);string path=Path.Combine(folder,release.AssetName);File.WriteAllBytes(path,bytes);progress.Report(100);return path;}
             public void Dispose(){}

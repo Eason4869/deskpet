@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -60,6 +60,7 @@ namespace Dafeiyu.Tests
         {
             public bool Fail,Block;public int Checks;
             public async Task<UpdateRelease> CheckAsync(string repo,bool proxy,string address,bool portable,CancellationToken token){Checks++;if(Block)await Task.Delay(Timeout.Infinite,token);if(Fail)throw new ApiException("模拟启动网络尚未就绪");return new UpdateRelease{VersionTag="v"+ReleaseInfo.DisplayVersion};}
+            public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string address,bool portable,UpdateChannel channel,CancellationToken token){return CheckAsync(repository,useProxy,address,portable,token);}
             public Task<string> DownloadAsync(UpdateRelease release,string folder,bool proxy,string address,IProgress<double> progress,CancellationToken token){throw new Exception("No download expected");}
             public void Dispose(){}
         }

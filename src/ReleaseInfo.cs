@@ -29,7 +29,7 @@ namespace Dafeiyu
         public static bool WindowsUpdateAsset(string name)
         {
             if(String.IsNullOrEmpty(name) || name.Length>150)return false;
-            var match=Regex.Match(name,@"\ADeskPet-(?:Windows|(?:Windows-)?Setup)(?:-(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?))?\.(?<extension>zip|exe|msi)\z",RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
+            var match=Regex.Match(name,@"\ADeskPet-(?:Windows|(?:Windows-)?Setup)(?:-(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-dev(?:\.[1-9][0-9]*)?)?))?\.(?<extension>zip|exe|msi)\z",RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
             if(!match.Success)return false;
             bool portable=name.StartsWith("DeskPet-Windows",StringComparison.OrdinalIgnoreCase) && !name.StartsWith("DeskPet-Windows-Setup",StringComparison.OrdinalIgnoreCase);
             if(portable != match.Groups["extension"].Value.Equals("zip",StringComparison.OrdinalIgnoreCase))return false;
@@ -47,8 +47,8 @@ namespace Dafeiyu
         }
         static bool TryAssetVersion(string version,out string text,out Version numeric)
         {
-            text=(version??"").TrimStart('v','V');numeric=null;
-            return text.Length<=64 && Regex.IsMatch(text,@"\A[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?\z") && Version.TryParse(text,out numeric);
+            text=(version??"").TrimStart('v','V');numeric=null;ReleaseVersion parsed;
+            if(!ReleaseVersion.TryParse(text,out parsed))return false;numeric=parsed.AssemblyBase;return true;
         }
     }
 }

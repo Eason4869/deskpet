@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -350,7 +350,7 @@ namespace Dafeiyu
                     if(directory.Exists && (directory.Attributes&System.IO.FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("Agent 工作目录不能穿过符号链接。");
                 System.IO.Directory.CreateDirectory(path);
             }
-            try{var workspace=new AgentWorkspace(path,settings.AgentApprovalMode==AgentApprovalMode.Legacy&&!settings.AgentFullAccess){ReadOnly=settings.AgentPlanMode,BackupEnabled=settings.AgentBackupFiles,ContextTokenLimit=ModelContextCapacity.Budget(settings.Text,settings.AgentContextTokenLimit),CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds};workspace.ConfigureCommands(false,"[]");workspace.ConfigureGitHub(settings.GitHubRepository,settings.GitHub);string kernelRoot=System.IO.Path.Combine(path,".deskpet-agent-kernel");workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),new AgentAuditLog(kernelRoot),approval,new ExecutionClaimStore(kernelRoot),null);workspace.ConfigureAgentProfile(new AgentProfileRegistry().Get(settings.AgentPlanMode?"plan":"build"));workspace.ConfigureCapabilities(AgentCapabilityResolver.Resolve(settings,null));workspace.ConfigureInstructions(settings.AgentTrustProjectInstructions,settings.AgentGlobalInstructions,settings.AgentSkillsDirectory);workspace.ConfigureAccessPolicy(settings,approvalIntent);workspace.ConfigureWorkers(()=>new ApiClient(),settings.Text);workspace.ConfigureTerminal(settings.AgentTerminalPolicy);if(mcp!=null)foreach(var transport in mcp.ConnectedTransports())workspace.ConfigureMcp(transport);workspace.ConfigureDesktopSession();return workspace;}
+            try{var workspace=new AgentWorkspace(path,settings.AgentApprovalMode==AgentApprovalMode.Legacy&&!settings.AgentFullAccess){ReadOnly=settings.AgentPlanMode,BackupEnabled=settings.AgentBackupFiles,ContextTokenLimit=ModelContextCapacity.Budget(settings.Text,settings.AgentContextTokenLimit),CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds};workspace.ConfigureGitHub(settings.GitHubRepository,settings.GitHub);string kernelRoot=System.IO.Path.Combine(path,".deskpet-agent-kernel");workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),new AgentAuditLog(kernelRoot),approval,new ExecutionClaimStore(kernelRoot),null);workspace.ConfigureAgentProfile(new AgentProfileRegistry().Get(settings.AgentPlanMode?"plan":"build"));workspace.ConfigureCapabilities(AgentCapabilityResolver.Resolve(settings,null));workspace.ConfigureInstructions(settings.AgentTrustProjectInstructions,settings.AgentGlobalInstructions,settings.AgentSkillsDirectory);workspace.ConfigureAccessPolicy(settings,approvalIntent);workspace.ConfigureWorkers(()=>new ApiClient(),settings.Text);workspace.ConfigureTerminal(settings.AgentTerminalPolicy);if(mcp!=null)foreach(var transport in mcp.ConnectedTransports())workspace.ConfigureMcp(transport);workspace.ConfigureDesktopSession();return workspace;}
             catch(Exception e){if(!(e is ArgumentException || e is UnauthorizedAccessException || e is System.IO.IOException || e is PlatformNotSupportedException))throw;throw new InvalidOperationException("Agent 工作目录不可用，请在工作设置中更改默认目录或权限，或切回对话模式。");}
         }
         void RecordAgentTask(Operation op,AgentTaskState task)
@@ -373,7 +373,7 @@ namespace Dafeiyu
         }
         public Task<AgentChangePreview> PreviewAgentChangeAsync(string path,PetSettings settings)
         {
-            var state=CurrentAgentTask;if(state==null)throw new InvalidOperationException("没有文件变更记录。");ValidateTaskProject(state,settings);var snapshot=settings.Copy();snapshot.AgentCommandsEnabled=false;
+            var state=CurrentAgentTask;if(state==null)throw new InvalidOperationException("没有文件变更记录。");ValidateTaskProject(state,settings);var snapshot=settings.Copy();
             return Task.Run(delegate{using(var workspace=OpenAgentWorkspace(snapshot)){workspace.BeginTask(state);return workspace.PreviewChange(path,CancellationToken.None);}});
         }
         static void ValidateTaskProject(AgentTaskState task,PetSettings settings)

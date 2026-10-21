@@ -384,7 +384,7 @@ namespace Dafeiyu
         {
             return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
                 (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
-                !WindowInUse(quick) && !WindowInUse(chat) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
+                !WindowInUse(quick) && (!WindowInUse(chat) || (preview && preferences!=null && Object.ReferenceEquals(preferences.HostWindow,chat))) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
         }
         private static bool WindowInUse(Window window){return window!=null && window.IsVisible && window.WindowState!=WindowState.Minimized;}
         private void RenderFrame(object sender,EventArgs args)

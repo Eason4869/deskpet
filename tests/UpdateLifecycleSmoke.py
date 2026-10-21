@@ -32,6 +32,9 @@ FRAMEWORK = CSC.parent
 INNO = Path(os.environ.get('DESKPET_TEST_INNO', str(PROJECT / 'work/tools/inno/ISCC.exe')))
 APP_ID = '3B63C162-076E-4B2F-BDCC-2572664875A9'
 passed = 0
+LEGACY_WORKER=next((Path(value.split('=',1)[1]).resolve() for value in sys.argv[1:] if value.startswith('--legacy-worker=')),None)
+CLEAN_RUNTIME=next((Path(value.split('=',1)[1]).resolve() for value in sys.argv[1:] if value.startswith('--clean-runtime=')),None)
+OLD_VERSION='0.9.3' if LEGACY_WORKER else '0.3.1'
 
 def check(value, text):
     global passed
@@ -78,7 +81,7 @@ def compile_worker(destination, fixture_id=None):
     refs = ['System.dll', 'System.Core.dll', 'System.Runtime.Serialization.dll', 'System.IO.Compression.dll']
     run([CSC, '/nologo', '/codepage:65001', '/utf8output', '/target:winexe', '/define:UPDATE_WORKER',
         '/main:Dafeiyu.UpdateWorkerProgram', '/out:' + str(destination),
-        *['/reference:' + str(FRAMEWORK / x) for x in refs], local, PROJECT / 'src/UpdateWorker.cs', PROJECT / 'src/ReleaseInfo.cs'])
+        *['/reference:' + str(FRAMEWORK / x) for x in refs], local, PROJECT / 'src/UpdateWorker.cs', PROJECT / 'src/ReleaseInfo.cs', PROJECT / 'src/ReleaseVersion.cs', PROJECT / 'src/ReleaseIdentity.cs', PROJECT / 'src/RetiredRuntimeFiles.cs'])
     shutil.copy2(PROJECT / 'app.config', Path(str(destination) + '.config'))
 
 def compile_parent(destination, mutex, old):
@@ -89,7 +92,7 @@ def compile_parent(destination, mutex, old):
         if(args.Length>0 && args[0]=="--update-result"){File.WriteAllText(Path.Combine(data,"restarted"),"%s");return;}
         using(var mutex=new Mutex(false,@"%s")){File.WriteAllText(Path.Combine(data,"parent-started"),"ready");
         while(!File.Exists(Path.Combine(data,"exit-parent")))Thread.Sleep(40);}}}''' % (
-            '0.3.1.0' if old else VERSION + '.0', 'old' if old else VERSION, mutex)
+            OLD_VERSION+'.0' if old else VERSION + '.0', 'old' if old else VERSION, mutex)
     script = destination.parent / ('ParentOld.cs' if old else 'ParentNew.cs')
     script.write_text(source, encoding='utf-8')
     run([CSC, '/nologo', '/codepage:65001', '/utf8output', '/target:winexe', '/out:' + str(destination), script])
@@ -106,7 +109,11 @@ def setup(runtime, stage, version, fixture_id, mutex, group):
     script = installer / 'DeskPet.iss'
     script.write_text(text, encoding='utf-8-sig')
     shutil.copy2(PROJECT / 'installer/ChineseSimplified.isl', installer / 'ChineseSimplified.isl')
-    run([INNO, '/Qp', '/DRuntimeDir=' + str(runtime), '/DOutputDir=' + str(stage), '/DProductVersion=' + version,
+    for name in ['VersionGuard.iss','RetireRuntime.iss','RetiredFiles.iss']: shutil.copy2(PROJECT/'installer'/name,installer/name)
+    from tools.runtime_package import BINARIES,write_inno_files
+    files=[dict(destination=p.relative_to(runtime).as_posix()) for p in runtime.rglob('*') if p.is_file()]
+    write_inno_files(files,runtime,installer/'files.iss')
+    run([INNO, '/Qp', '/DRuntimeDir=' + str(runtime), '/DRuntimeFiles=' + str(installer/'files.iss'), '/DOutputDir=' + str(stage), '/DProductVersion=' + version,
         '/DAssemblyVersion=' + version + '.0', '/DRepositoryUrl=https://github.com/Eason4869/deskpet',
         '/DInstallerBaseName=' + installer_asset_name(version)[:-4], script])
     return stage / installer_asset_name(version)
@@ -123,7 +130,10 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
     exe = runtime / '桌面伙伴.exe'
     compile_parent(exe, mutex, True)
     worker = runtime / 'DeskPet.Update.exe'
-    compile_worker(worker, fixture_id if mode == 'installed' else None)
+    if LEGACY_WORKER and mode=='portable':
+        shutil.copy2(LEGACY_WORKER,worker)
+        shutil.copy2(Path(str(LEGACY_WORKER)+'.config'),Path(str(worker)+'.config'))
+    else:compile_worker(worker, fixture_id if mode == 'installed' else None)
     for name in ['README.md', 'CHANGELOG.md']:
         shutil.copy2(PROJECT / name, runtime / name)
     for name in ['docs', 'templates', 'previews']:
@@ -153,23 +163,29 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
             (data / 'update-result.json').mkdir()
             (work / 'result.json').mkdir()
         compile_parent(exe, mutex, False)
+        if LEGACY_WORKER:compile_worker(worker)
         (runtime / 'README.md').write_text('updated readme', encoding='utf-8')
+        if mode=='installed' and invalid_package:
+            compile_parent(exe, mutex, True)
+        from tools.runtime_package import collect_runtime_files,stage_runtime
+        target_runtime=stage/'target-runtime'
+        stage_runtime(collect_runtime_files(PROJECT,runtime),target_runtime)
         if mode == 'installed':
-            built = setup(runtime, stage, VERSION, fixture_id, mutex, group)
+            built = setup(target_runtime, stage, VERSION, fixture_id, mutex, group)
             package = work / (('DeskPet-Setup-' + VERSION + '.exe') if '--legacy-installer-name' in sys.argv else built.name)
             shutil.copy2(built, package)
         else:
             package = work / ('DeskPet-Windows-' + VERSION + '.zip')
             with ZipFile(package, 'w', ZIP_DEFLATED) as bundle:
-                for file in runtime.rglob('*'):
+                for file in target_runtime.rglob('*'):
                     if file.is_file() and file.suffix != '.cs':
-                        name = 'DafeiyuDeskPet/' + file.relative_to(runtime).as_posix()
+                        name = 'DafeiyuDeskPet/' + file.relative_to(target_runtime).as_posix()
                         if invalid_package and file.name == '桌面伙伴.exe':
                             bundle.writestr(name, b'invalid executable fixture')
                         else:
                             bundle.write(file, name)
         job = {'InstallationDirectory': str(directory), 'WorkDirectory': str(work), 'PackagePath': str(package),
-            'Mode': mode, 'InstalledVersion': '0.3.1', 'TargetVersion': VERSION,
+            'Mode': mode, 'InstalledVersion': OLD_VERSION, 'TargetVersion': VERSION,
             'Size': package.stat().st_size, 'Digest': hashlib.sha256(package.read_bytes()).hexdigest(),
             'AssetUrl': 'https://github.com/Eason4869/deskpet/releases/download/v' + VERSION + '/' + package.name,
             'ParentPid': parent.pid, 'ParentStartedUtcTicks': ticks(parent.pid)}
@@ -204,7 +220,12 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
             check((data / 'update-result.json').is_dir() and (work / 'result.json').is_dir(), 'failed receipt writes cannot prevent restart')
         else:
             result = json.loads((data / 'update-result.json').read_text(encoding='utf-8'))
-            check(result['Success'] and result['Version'] == VERSION, mode + ': restart receives the successful update receipt')
+            check(result['Success'] == (not invalid_package) and result['Version'] == VERSION, mode + ': restart receives the matching update receipt')
+        if invalid_package:
+            check(hashlib.sha256((directory/'桌面伙伴.exe').read_bytes()).hexdigest()==old_hash, mode+': rejected update restores the original executable')
+            if mode=='installed':
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{'+fixture_id+'}_is1') as key:
+                    check(winreg.QueryValueEx(key,'DisplayVersion')[0]=='0.3.1','failed installer restores the original uninstall metadata')
     finally:
         if parent is not None and parent.poll() is None:
             (directory / 'data/exit-parent').write_text('exit', encoding='ascii')
@@ -215,10 +236,30 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
             run([directory / 'unins000.exe', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'])
             check((directory / 'data/settings.json').exists(), 'isolated uninstall preserves user-data fixture')
 
-if '--installed-only' in sys.argv:
+def clean_install(runtime):
+    stage=ROOT/'clean';stage.mkdir();directory=stage/'中文 clean install'
+    fixture_id=str(uuid.uuid4()).upper()
+    installer=setup(runtime,stage,VERSION,fixture_id,'Local\\DeskPet.CleanFixture.'+uuid.uuid4().hex,'DeskPet Clean Fixture '+uuid.uuid4().hex)
+    try:
+        run([installer,'/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART','/DIR='+str(directory),'/TASKS='])
+        from tools.runtime_package import collect_runtime_files
+        expected={item['destination'] for item in collect_runtime_files(PROJECT,runtime)}
+        actual={p.relative_to(directory).as_posix() for p in directory.rglob('*') if p.is_file() and not re.fullmatch(r'unins[0-9]+\.(exe|dat)',p.name)}
+        check(actual==expected,'clean installation matches the portable runtime file set exactly ('+str(len(actual))+' files)')
+        check(all((directory/name).read_bytes()==(runtime/name).read_bytes() for name in expected),'clean installation preserves all staged bytes')
+    finally:
+        uninstaller=directory/'unins000.exe'
+        if uninstaller.is_file():run([uninstaller,'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
+
+if CLEAN_RUNTIME:
+    clean_install(CLEAN_RUNTIME)
+elif LEGACY_WORKER:
+    scenario('portable')
+elif '--installed-only' in sys.argv:
     if not INNO.is_file():
         raise AssertionError('real Inno compiler is required for the installed lifecycle fixture')
     scenario('installed')
+    scenario('installed', invalid_package=True)
 elif '--receipts-only' in sys.argv:
     scenario('portable', blocked_receipts=True)
     scenario('portable', blocked_receipts=True, invalid_package=True)
@@ -230,5 +271,6 @@ else:
     if not INNO.is_file():
         raise AssertionError('real Inno compiler is required for the installed lifecycle fixture')
     scenario('installed')
+    scenario('installed', invalid_package=True)
 (ROOT / 'result.json').write_text(json.dumps({'passed': passed, 'version': VERSION}), encoding='utf-8')
 print('Update lifecycle smoke: %d passed' % passed, flush=True)

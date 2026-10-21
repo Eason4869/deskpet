@@ -53,35 +53,7 @@ Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："; Flags: unchecked
 
 [Files]
-Source: "{#RuntimeDir}\桌面伙伴.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\桌面伙伴.exe.config"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\DeskPet.Update.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\DeskPet.Update.exe.config"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\configuration-guide.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\agent-workflows.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\third-party-notices.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\native-agent-design.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\conversation-agent.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\skin-format.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\character-packs.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\dialogue-setup.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\installation.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\daily-use.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\voice-presets.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\sources.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\roadmap.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\release-naming.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\docs\interaction-extension.md"; DestDir: "{app}\docs"; Flags: ignoreversion
-Source: "{#RuntimeDir}\templates\*.png"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\templates\*.json"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\templates\*.md"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\templates\*.svg"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\previews\*.png"; DestDir: "{app}\previews"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\previews\*.jpg"; DestDir: "{app}\previews"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\previews\*.webp"; DestDir: "{app}\previews"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "{#RuntimeDir}\previews\*.svg"; DestDir: "{app}\previews"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+#include RuntimeFiles
 
 [InstallDelete]
 Type: files; Name: "{app}\大肥鱼桌宠.exe"
@@ -98,6 +70,11 @@ Filename: "{app}\桌面伙伴.exe"; Description: "启动桌面伙伴"; Flags: no
 [Code]
 var
   PreviousIconGroup: String;
+  RetiredPaths: TStringList;
+  RetiredSuccess: Boolean;
+
+#include "VersionGuard.iss"
+#include "RetireRuntime.iss"
 
 procedure RemoveLegacyShortcut(Path, Target: String);
 var
@@ -117,8 +94,10 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   RegisteredCommand, LegacyCommand, NewCommand: String;
 begin
-  if CurStep = ssInstall then
+  if CurStep = ssInstall then begin
+    RetireKnownFiles;
     RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1', 'Inno Setup: Icon Group', PreviousIconGroup);
+  end;
   if CurStep = ssPostInstall then
   begin
     LegacyCommand := '"' + ExpandConstant('{app}\大肥鱼桌宠.exe') + '" --startup';
@@ -134,11 +113,13 @@ begin
       RemoveLegacyShortcut(AddBackslash(ExpandConstant('{userprograms}')) + AddBackslash(PreviousIconGroup) + '大肥鱼桌面伙伴.lnk', ExpandConstant('{app}\大肥鱼桌宠.exe'));
       RemoveLegacyShortcut(AddBackslash(ExpandConstant('{userprograms}')) + AddBackslash(PreviousIconGroup) + '卸载大肥鱼桌面伙伴.lnk', ExpandConstant('{app}\unins000.exe'));
     end;
+    RetiredSuccess := True;
   end;
 end;
 
 function InitializeSetup(): Boolean;
 begin
+  RetiredPaths := TStringList.Create;
   Result := IsDotNetInstalled(net48, 0);
   if not Result then
     SuppressibleMsgBox('请先安装 Microsoft .NET Framework 4.8 或更新版本，再运行此安装包。', mbError, MB_OK, IDOK);

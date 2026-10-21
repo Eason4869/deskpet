@@ -1,6 +1,7 @@
 """Prepare, validate, sign and package DeskPet on macOS. Never publishes a Release."""
 from __future__ import annotations
 
+from release_assets import version_key
 import argparse
 import hashlib
 import json
@@ -27,7 +28,7 @@ class PackagingError(RuntimeError):
 
 def version_number() -> str:
     text = (ROOT / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
-    return re.search(r'DisplayVersion="(\d+\.\d+\.\d+)"', text).group(1)
+    return re.search(r'DisplayVersion="([^"]+)"', text).group(1)
 
 
 def macho_architectures(path: Path) -> set[str]:
@@ -101,8 +102,10 @@ def create_bundle(publish: Path, app: Path, arch: str, version: str, mode: str, 
         raise PackagingError('Bundle destination cannot be inside publish input')
     if app.exists():
         raise PackagingError(f'Bundle output already exists: {app}')
-    if mode not in {'preview', 'release'} or not re.fullmatch(r'\d+\.\d+\.\d+', version):
+    if mode not in {'preview', 'release'}:
         raise PackagingError('Invalid mode or version')
+    version_key(version)
+    numeric_version = '.'.join(str(n) for n in version_key(version)[:3])
     native = validate_publish(publish, arch)
     icon_bytes = Path(icon).read_bytes()
     if len(icon_bytes) < 8 or icon_bytes[:4] != b'icns':
@@ -119,7 +122,7 @@ def create_bundle(publish: Path, app: Path, arch: str, version: str, mode: str, 
         'CFBundleDisplayName': '桌面伙伴（预览）' if mode == 'preview' else '桌面伙伴',
         'CFBundleExecutable': 'DeskPet', 'CFBundleIconFile': 'DeskPet.icns',
         'CFBundleInfoDictionaryVersion': '6.0', 'CFBundlePackageType': 'APPL',
-        'CFBundleVersion': version, 'CFBundleShortVersionString': version,
+        'CFBundleVersion': numeric_version, 'CFBundleShortVersionString': numeric_version,
         'LSMinimumSystemVersion': '14.0', 'LSApplicationCategoryType': 'public.app-category.utilities',
         'LSUIElement': True, 'NSHighResolutionCapable': True,
         'NSMicrophoneUsageDescription': '仅在你主动开始听写或实时语音时使用麦克风；音频会发送给你配置的语音服务。',
@@ -134,7 +137,8 @@ def validate_bundle(app: Path, arch: str, version: str, mode: str):
     contents = Path(app) / 'Contents'
     list(checked_files(contents))
     info = plistlib.loads((contents / 'Info.plist').read_bytes())
-    if info.get('CFBundleVersion') != version or info.get('CFBundleShortVersionString') != version:
+    numeric_version='.'.join(str(n) for n in version_key(version)[:3])
+    if info.get('CFBundleVersion') != numeric_version or info.get('CFBundleShortVersionString') != numeric_version:
         raise PackagingError('Bundle version does not match requested version')
     required = {'CFBundleIdentifier': BUNDLE_ID, 'CFBundleExecutable': 'DeskPet', 'LSMinimumSystemVersion': '14.0', 'CFBundlePackageType': 'APPL'}
     if any(info.get(k) != v for k, v in required.items()) or not info.get('NSMicrophoneUsageDescription') or not info.get('NSHighResolutionCapable'):

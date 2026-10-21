@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
@@ -214,9 +214,10 @@ namespace Dafeiyu
             RefreshStageFeed(events,active,workMode);
             RefreshProcessMotion(SystemParameters.ClientAreaAnimation);
         }
+        // Legacy names remain renderable in saved chat history.
         static string ActivityIcon(string name)
         {
-            switch(name){case "write_file":case "edit_file":case "apply_patch":return "edit";case "run_command":return "terminal";case "open_directory":return "folder-open";case "create_directory":return "folder";case "find_files":case "search_files":case "github_search_code":return "search";case "update_plan":case "list_commands":return "list";case "fetch_url":return "globe";case "restore_file":return "back";default:return "file";}
+            switch(name){case "write_file":case "edit_file":case "apply_patch":return "edit";case "run_command":case "exec_command":return "terminal";case "open_directory":return "folder-open";case "create_directory":return "folder";case "find_files":case "search_files":case "github_search_code":return "search";case "update_plan":case "list_commands":return "list";case "fetch_url":return "globe";case "restore_file":return "back";default:return "file";}
         }
         // Black, temporary milestone lines for a work run; they disappear with the
         // process area as soon as the reply is complete.
@@ -239,7 +240,7 @@ namespace Dafeiyu
             switch(name)
             {
                 case "write_file":case "edit_file":case "apply_patch":case "create_directory":return "正在编辑";
-                case "run_command":case "open_directory":return "正在运行";
+                case "run_command":case "exec_command":case "open_directory":return "正在运行";
                 case "read_file":case "read_files":case "list_files":case "find_files":case "search_files":case "list_changes":case "read_output":case "fetch_url":
                 case "github_read_file":case "github_list_files":case "github_search_code":case "github_read_issue":case "github_list_pull_requests":return "正在查看";
                 case "restore_file":return "正在恢复";

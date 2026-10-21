@@ -13,20 +13,22 @@ namespace Dafeiyu
 {
     public sealed class UpdateRelease
     {
-        public string VersionTag,PageUrl,AssetName,AssetUrl,Digest;public long Size;
+        public string VersionTag,PageUrl,AssetName,AssetUrl,Digest,CommitSha,TargetAssemblyVersion;public long Size;
         public bool IsNewerThan(Version installed){Version next;string tag=(VersionTag??"").TrimStart('v','V');return Version.TryParse(tag,out next) && NormalizeVersion(next)>NormalizeVersion(installed);}
+        public bool IsNewerThan(string installed){ReleaseVersion next,current;return ReleaseVersion.TryParse(VersionTag,out next)&&ReleaseVersion.TryParse(installed,out current)&&next.CompareTo(current)>0;}
         static Version NormalizeVersion(Version value){return new Version(value.Major,value.Minor,Math.Max(0,value.Build),Math.Max(0,value.Revision));}
     }
     public interface IUpdateFeed : IDisposable
     {
         Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string proxyAddress,bool preferPortable,CancellationToken cancel);
+        Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string proxyAddress,bool preferPortable,UpdateChannel channel,CancellationToken cancel);
         Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel);
     }
     public interface IUpdateDownloadRouting
     {
         void ConfigureMirror(bool enabled,string address,IProgress<string> route);
     }
-    public sealed class GitHubUpdates : IUpdateFeed,IUpdateDownloadRouting
+    public sealed partial class GitHubUpdates : IUpdateFeed,IUpdateDownloadRouting
     {
         readonly Uri apiRoot;readonly HttpClient direct;
         bool useMirror;string mirrorAddress;IProgress<string> route;
