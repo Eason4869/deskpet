@@ -39,8 +39,7 @@ internal sealed class ChatMessageView : Border
     private readonly List<Bitmap> sentImages = new();
     private List<ChatAttachment> displayedAttachments = new();
     private readonly StackPanel generatedImages = Ui.Column();
-    private readonly List<GeneratedImageCard> generatedCards = new();
-    private string generatedSignature = "";
+    private GeneratedImageGroupCard? imageGroup;
     private ChatMessage current;
     private bool reading, showHistory;
     private bool? detailedSetting;
@@ -101,15 +100,10 @@ internal sealed class ChatMessageView : Border
     }
     private bool CanStart() => !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
     private void DisposeSentImages() { foreach (var image in sentImages) image.Dispose(); sentImages.Clear(); }
-    internal void DisposeImages() { DisposeSentImages(); foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); }
+    internal void DisposeImages() { imageGroup?.Dispose(); DisposeSentImages(); }
     private void RefreshGeneratedImages(ChatMessage message)
     {
-        var images = message.GeneratedImages ?? new(); var signature = string.Join("|", message.ImageGenerationTaskIds ?? new())+string.Join("|", images.Select(i => i.Id));
-        if (signature == generatedSignature) return; generatedSignature = signature;
-        foreach (var card in generatedCards) card.Dispose(); generatedCards.Clear(); generatedImages.Children.Clear();
-        foreach(var taskId in message.ImageGenerationTaskIds ?? new()) { var task=owner.ImageTasks.Get(taskId);if(task!=null&&!images.Any(i=>i.ImageJobId==taskId||i.Id==task.ResultImageId))generatedImages.Children.Add(new ImageGenerationPendingCard(owner,window,taskId)); }
-        foreach (var image in images) { var card = new GeneratedImageCard(owner, window, image); generatedCards.Add(card); generatedImages.Children.Add(card); }
-        generatedImages.IsVisible = generatedImages.Children.Count > 0;
+        if(imageGroup==null){imageGroup=new GeneratedImageGroupCard(owner,window);generatedImages.Children.Add(imageGroup);}imageGroup.Update(message);
     }
     private void RefreshSentAttachments(IList<ChatAttachment>? files)
     {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -31,7 +31,7 @@ namespace Dafeiyu
         {
             label.Text=ImageGenerationMotion.Label(snapshot);if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Queued){int position=1;foreach(var task in manager.List())if(task.State==ImageGenerationTaskState.Queued&&task.QueuedUtc<snapshot.QueuedUtc)position++;label.Text+=" · 第 "+position+" 项";}stop.Visibility=snapshot!=null&&!snapshot.IsTerminal?Visibility.Visible:Visibility.Collapsed;
             if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Succeeded&&!replaced&&!String.IsNullOrEmpty(snapshot.ResultImageId))try{
-                var view=completed(snapshot.ResultImageId);Children.Clear();Children.Add(view);replaced=true;frames.Stop();seconds.Stop();if(enabled()&&SystemParameters.ClientAreaAnimation)view.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(180)));return;
+                var view=completed(snapshot.ResultImageId);Children.Clear();Children.Add(view);replaced=true;frames.Stop();seconds.Stop();if(MotionEnabled&&enabled()&&SystemParameters.ClientAreaAnimation)view.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(180)));return;
             }catch(System.IO.IOException){label.Text="图片文件缺失";}catch(ArgumentException){label.Text="图片文件无法读取";}
             UpdateClock();Draw();
         }

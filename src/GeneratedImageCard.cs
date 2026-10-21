@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Diagnostics;
 using System.Windows;
@@ -40,12 +40,10 @@ namespace Dafeiyu
     }
     internal sealed partial class ChatMessageView
     {
-        readonly StackPanel generatedImagesHost=new StackPanel{Name="GeneratedImages"};string displayedImageIds;
+        readonly StackPanel generatedImagesHost=new StackPanel{Name="GeneratedImages"};GeneratedImageGroupCard imageGroup;
         void RefreshGeneratedImages(ChatMessage message)
         {
-            string ids=String.Join("|",message.ImageGenerationTaskIds??new System.Collections.Generic.List<string>())+String.Join("|",(message.GeneratedImages??new System.Collections.Generic.List<GeneratedImage>()).ConvertAll(i=>i.Id));if(ids==displayedImageIds)return;displayedImageIds=ids;generatedImagesHost.Children.Clear();
-            foreach(var taskId in message.ImageGenerationTaskIds??new System.Collections.Generic.List<string>()) { var task=pet.ImageTasks.Get(taskId);if(task!=null&&!(message.GeneratedImages??new System.Collections.Generic.List<GeneratedImage>()).Exists(i=>i.ImageJobId==taskId||i.Id==task.ResultImageId))generatedImagesHost.Children.Add(ImageGenerationPendingCard.Create(pet,host,taskId,selected=>{var chat=host as ChatWindow;if(chat!=null)chat.ShowImagesPage(selected);else pet.OpenImageWorkspace(selected);})); }
-            foreach(var image in message.GeneratedImages??new System.Collections.Generic.List<GeneratedImage>())generatedImagesHost.Children.Add(new GeneratedImageCard(pet,host,image,selected=>{var chat=host as ChatWindow;if(chat!=null)chat.ShowImagesPage(selected);else pet.OpenImageWorkspace(selected);}));
+            if(imageGroup==null){imageGroup=new GeneratedImageGroupCard(pet,host);generatedImagesHost.Children.Add(imageGroup);}imageGroup.Update(message);
         }
     }
 }

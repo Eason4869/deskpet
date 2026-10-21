@@ -1,0 +1,20 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Dafeiyu;
+namespace DeskPet.Desktop;
+internal sealed class GeneratedImageGroupCard:Grid,IDisposable {
+readonly DesktopController owner;readonly Window host;readonly GeneratedImageGroupState state=new();readonly ContentControl main=new();readonly StackPanel rail=new();readonly ScrollViewer scroll;readonly List<Bitmap> bitmaps=new();ChatMessage? message;string? signature;bool attached;GeneratedImageCard? selected;
+internal string? SelectedId=>state.SelectedId;
+internal GeneratedImageGroupCard(DesktopController controller,Window window){owner=controller;host=window;Name="GeneratedImageGroupCard";ColumnDefinitions=new("*,Auto");RowDefinitions=new("*,Auto");scroll=new(){Content=rail,MaxHeight=360};Children.Add(main);Children.Add(scroll);SizeChanged+=(_,_)=>Layout();AttachedToVisualTree+=(_,_)=>{attached=true;owner.ImageTasks.Changed+=Changed;signature=null;Refresh();};DetachedFromVisualTree+=(_,_)=>Dispose();}
+void Changed(ImageGenerationTaskSnapshot task){if(message?.ImageGenerationTaskIds?.Contains(task.Id)==true)Dispatcher.UIThread.Post(()=>{if(attached)Refresh();});}
+internal void Update(ChatMessage value){message=value;Refresh();}
+void Refresh(){if(message==null)return;state.Update(message.ImageGenerationTaskIds,message.GeneratedImages??new(),id=>{var saved=owner.ImageStore.FindByJobId(id);var task=owner.ImageTasks.Get(id);return saved??(string.IsNullOrEmpty(task?.ResultImageId)?null:owner.ImageStore.Get(task.ResultImageId));});var next=string.Join("|",state.Keys.Select(id=>id+":"+state.ImageFor(id)?.Id+":"+owner.ImageTasks.Get(id)?.State));if(next==signature)return;signature=next;Rebuild();}
+void Rebuild(){rail.Children.Clear();foreach(var bitmap in bitmaps)bitmap.Dispose();bitmaps.Clear();foreach(var key in state.Keys){var id=key;var asset=state.ImageFor(id);Control content=Ui.Text((rail.Children.Count+1).ToString(),12);if(asset!=null)try{using var stream=new MemoryStream(owner.ImageStore.Read(asset.Id));var bitmap=Bitmap.DecodeToWidth(stream,80);bitmaps.Add(bitmap);content=new Image{Source=bitmap,Stretch=Stretch.UniformToFill};}catch(Exception e)when(e is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException){}var button=new Button{Name="GeneratedImageGroupSlot",Tag=id,Width=64,Height=64,Margin=new(4),Padding=new(2),Background=DesktopTheme.Surface,Content=content,BorderThickness=new(id==state.SelectedId?2:1),BorderBrush=DesktopTheme.Brush(id==state.SelectedId?"#456DE6":"#DCE5F4")};ToolTip.SetTip(button,asset!=null?"图片 "+(rail.Children.Count+1):ImageGenerationMotion.Label(owner.ImageTasks.Get(id)));button.Click+=(_,_)=>{state.Select(id);ShowSelected();foreach(var item in rail.Children.OfType<Button>()){item.BorderThickness=new((string?)item.Tag==id?2:1);item.BorderBrush=DesktopTheme.Brush((string?)item.Tag==id?"#456DE6":"#DCE5F4");}};rail.Children.Add(button);}ShowSelected();IsVisible=state.Keys.Count>0;Layout();}
+void ShowSelected(){main.Content=null;selected?.Dispose();selected=null;var asset=state.SelectedImage;if(asset!=null){selected=new(owner,host,asset);main.Content=selected;}else if(state.SelectedId!=null)main.Content=owner.ImageTasks.Get(state.SelectedId)!=null?(Control)new ImageGenerationPendingCard(owner,host,state.SelectedId):Ui.Text("图片记录不可用",12);}
+void Layout(){bool wide=Bounds.Width>=480;SetColumn(scroll,wide?1:0);SetRow(scroll,wide?0:1);rail.Orientation=wide?Orientation.Vertical:Orientation.Horizontal;scroll.IsVisible=state.Keys.Count>1;scroll.HorizontalScrollBarVisibility=wide?Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled:Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;scroll.VerticalScrollBarVisibility=wide?Avalonia.Controls.Primitives.ScrollBarVisibility.Auto:Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;}
+public void Dispose(){if(attached)owner.ImageTasks.Changed-=Changed;attached=false;main.Content=null;selected?.Dispose();selected=null;rail.Children.Clear();foreach(var bitmap in bitmaps)bitmap.Dispose();bitmaps.Clear();signature=null;}
+}
