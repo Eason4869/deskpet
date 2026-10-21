@@ -80,6 +80,7 @@ namespace Dafeiyu
     // returns a copy so the submitted connection and bytes cannot change later.
     public sealed class ImageGenerationTaskSubmission
     {
+        public Func<string,Task> BeforeStart {get;set;}
         readonly ImageGenerationRequest request;
         readonly ImageTaskOrigin origin;
         public string RequestId {get;private set;}

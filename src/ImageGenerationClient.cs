@@ -10,7 +10,7 @@ using System.Web.Script.Serialization;
 
 namespace Dafeiyu
 {
-    public sealed class ImageGenerationClient : IDisposable
+    public sealed class ImageGenerationClient : IDisposable, IImageGenerationExecutor
     {
         const int MaximumResponseBytes=72*1024*1024;
         readonly GeneratedImageStore store;
@@ -20,7 +20,8 @@ namespace Dafeiyu
         public ImageGenerationClient(GeneratedImageStore store):this(store,null,null){}
         public ImageGenerationClient(GeneratedImageStore store,HttpMessageHandler serviceHandler,HttpMessageHandler downloadHandler)
         {if(store==null)throw new ArgumentNullException("store");this.store=store;this.serviceHandler=serviceHandler;this.downloadHandler=downloadHandler;}
-        public async Task<GeneratedImage> GenerateAsync(ImageGenerationRequest request,CancellationToken token)
+        public Task<GeneratedImage> GenerateAsync(ImageGenerationRequest request,CancellationToken token){return GenerateAsync(request,null,token);}
+        public async Task<GeneratedImage> GenerateAsync(ImageGenerationRequest request,IProgress<ImageGenerationPhase> phase,CancellationToken token)
         {
             if(disposed)throw new ObjectDisposedException("ImageGenerationClient");
             if(request==null || request.Provider==null)throw new InvalidOperationException("请先配置并选择图片生成服务。");
@@ -32,11 +33,12 @@ namespace Dafeiyu
             byte[] reference=request.ReferenceImageBytes==null?null:(byte[])request.ReferenceImageBytes.Clone();GeneratedImageFormat referenceFormat=null;
             if(reference!=null){if(!provider.SupportsEdits)throw new InvalidOperationException("当前图片服务未启用参考图编辑，请在模型配置中确认编辑能力。");referenceFormat=GeneratedImageValidation.Validate(reference);if(!String.IsNullOrEmpty(request.ReferenceMediaType) && request.ReferenceMediaType!=referenceFormat.MediaType)throw new InvalidDataException("参考图类型与实际图片格式不符。");}
             // Snapshot all mutable input before the first await; completion belongs to its origin.
-            var metadata=new GeneratedImage{Prompt=prompt,ProviderId=provider.Id,Model=provider.Connection.Model,Size=size,Quality=quality,SessionId=request.SessionId,TaskId=request.TaskId,MessageId=request.MessageId,ReferenceImageId=request.ReferenceImageId};bool persistent=request.Persistent;
+            var metadata=new GeneratedImage{ImageJobId=request.ImageJobId,Source=request.Source,Prompt=prompt,ProviderId=provider.Id,Model=provider.Connection.Model,Size=size,Quality=quality,SessionId=request.SessionId,TaskId=request.TaskId,MessageId=request.MessageId,ReferenceImageId=request.ReferenceImageId};bool persistent=request.Persistent;
             using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(token,lifetime.Token)){
                 cancel.CancelAfter(TimeSpan.FromSeconds(provider.TimeoutSeconds));
                 try{
                     byte[] bytes;
+                    Report(phase,ImageGenerationPhase.Generating);
                     using(var message=ImageGenerationProtocols.CreateRequest(provider,endpoint,prompt,size,quality,reference,referenceFormat==null?null:referenceFormat.MediaType))using(var http=ServiceHttp(provider)){
                         using(var response=await http.SendAsync(message,HttpCompletionOption.ResponseHeadersRead,cancel.Token).ConfigureAwait(false)){
                             CheckStatus(response,false);byte[] payload=await ReadLimited(response.Content,MaximumResponseBytes,cancel.Token).ConfigureAwait(false);Dictionary<string,object> parsed;
@@ -46,6 +48,7 @@ namespace Dafeiyu
                                 if(base64.Length>(GeneratedImageStore.MaximumBytes+2L)/3*4)throw new InvalidDataException("生成图片超过 50 MB。");
                                 try{bytes=Convert.FromBase64String(base64);}catch(FormatException){throw new InvalidDataException("图片服务返回的图片编码无效。");}
                             }else{
+                                Report(phase,ImageGenerationPhase.Downloading);
                                 Uri address=await ImageDownloadSecurity.ValidateAddressAsync(result.Url,endpoint,cancel.Token).ConfigureAwait(false);
                                 using(var download=DownloadHttp(provider))using(var get=new HttpRequestMessage(HttpMethod.Get,address))using(var output=await download.SendAsync(get,HttpCompletionOption.ResponseHeadersRead,cancel.Token).ConfigureAwait(false)){
                                     CheckStatus(output,true);string type=output.Content.Headers.ContentType==null?"":output.Content.Headers.ContentType.MediaType;
@@ -58,6 +61,7 @@ namespace Dafeiyu
                     }
                     cancel.Token.ThrowIfCancellationRequested();
                     GeneratedImageValidation.Validate(bytes);
+                    Report(phase,ImageGenerationPhase.Saving);
                     if(reference!=null){
                         bool existing=ReferenceMatches(metadata.ReferenceImageId,reference,persistent);
                         if(!existing)metadata.ReferenceImageId=store.SaveReference(reference,new GeneratedImage{Prompt=prompt,ProviderId=provider.Id,Model=provider.Connection.Model,SessionId=metadata.SessionId,TaskId=metadata.TaskId,MessageId=metadata.MessageId},persistent).Id;
@@ -67,6 +71,7 @@ namespace Dafeiyu
                 catch(HttpRequestException){cancel.Token.ThrowIfCancellationRequested();throw new IOException("无法连接图片服务或下载图片，请检查服务地址、网络及独立代理设置。");}
             }
         }
+        static void Report(IProgress<ImageGenerationPhase> progress,ImageGenerationPhase phase){if(progress!=null)try{progress.Report(phase);}catch(Exception){/* Observers cannot invalidate a paid request. */}}
         bool ReferenceMatches(string id,byte[] reference,bool persistent)
         {
             if(String.IsNullOrEmpty(id))return false;

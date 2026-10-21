@@ -54,6 +54,7 @@ namespace Dafeiyu
             }
             Notify();return item.Copy();
         }
+        public GeneratedImage FindByJobId(string id){if(String.IsNullOrEmpty(id))return null;lock(gate){EnsureOpen();var item=images.Find(i=>!i.IsReference && i.ImageJobId==id);return item==null?null:item.Copy();}}
         public GeneratedImage Get(string id){ValidateId(id);lock(gate){EnsureOpen();var item=images.Find(i=>i.Id==id);return item==null?null:item.Copy();}}
         public IList<GeneratedImage> List(){lock(gate){EnsureOpen();return images.Where(i=>!i.IsReference).OrderByDescending(i=>i.CreatedUtc).Select(i=>i.Copy()).ToList();}}
         public string PathFor(string id)
@@ -66,7 +67,10 @@ namespace Dafeiyu
                 string path=ExistingPath(item);var info=new FileInfo(path);if(info.Length<=0 || info.Length>MaximumBytes || info.Length!=item.Bytes)throw new InvalidDataException("图片文件损坏或大小不符，原文件已保留。");
                 byte[] bytes=File.ReadAllBytes(path);var format=GeneratedImageValidation.Validate(bytes);if(format.MediaType!=item.MediaType || format.Width!=item.Width || format.Height!=item.Height)throw new InvalidDataException("图片文件与索引不符，原文件已保留。");return bytes;}
         }
-        public GeneratedImage Promote(string id)
+        public GeneratedImage Promote(string id){return PromoteCore(id,null);}
+        // A coordinator can defer view notification until its own mutation completes.
+        internal GeneratedImage PromoteDeferred(string id,ICollection<Action> notifications){return PromoteCore(id,notifications);}
+        GeneratedImage PromoteCore(string id,ICollection<Action> notifications)
         {
             ValidateId(id);GeneratedImage result;bool changed=false;
             lock(gate){
@@ -98,7 +102,7 @@ namespace Dafeiyu
                 }catch(Exception e){if(!StorageError(e))throw;Warning="图片长期保存失败，原临时图片和已复制文件均已保留；请检查存储空间并重试或恢复图库。";throw new IOException(Warning);}
                 foreach(string path in sources.Values){temporaryCopies.Add(path);try{File.Delete(path);temporaryCopies.Remove(path);}catch(IOException){Warning="图片已长期保存，部分临时副本将在退出时清理。";}catch(UnauthorizedAccessException){Warning="图片已长期保存，部分临时副本未能清理。";}}
             }
-            if(changed)Notify();return result;
+            if(changed){if(notifications==null)Notify();else notifications.Add(Notify);}return result;
         }
         public int Recover()
         {

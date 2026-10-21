@@ -31,6 +31,8 @@ namespace Dafeiyu
     }
     public sealed class ImageGenerationRequest
     {
+        public string ImageJobId {get;set;}
+        public ImageGenerationSource Source {get;set;}
         public ImageGenerationProvider Provider {get;set;}
         public string Prompt {get;set;}
         public string Size {get;set;}
