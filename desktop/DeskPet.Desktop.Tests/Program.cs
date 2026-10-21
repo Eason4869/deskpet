@@ -191,7 +191,7 @@ try
     using (var signed = Release(Asset(intelDmg), Asset("DeskPet-macOS-0.6.0-x86_64.dmg"))) Check(AboutWindow.SelectMacAsset(signed.RootElement, "Eason4869/deskpet", "x64") is { Preview: false }, "prefer signed release over preview of the same format");
     using (var zipFallback = Release(Asset(intelZip))) Check(AboutWindow.SelectMacAsset(zipFallback.RootElement, "Eason4869/deskpet", "x86_64")?.Name == intelZip, "ZIP remains valid when no compatible DMG exists");
 
-    var runningVersion = new Version(ReleaseInfo.DisplayVersion);
+    var runningVersion = ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).AssemblyBase;
     var runningSeries = runningVersion.Major + "." + runningVersion.Minor;
     var followingSeries = runningVersion.Major + "." + (runningVersion.Minor + 1);
     var migrationDirectory = Path.Combine(directory, "upgrade-from-0.5.6");

@@ -21,6 +21,8 @@ namespace Dafeiyu
         public static OnboardingUpgradeResult Prepare(PetSettings settings,string version)
         {
             if(settings==null)throw new ArgumentNullException("settings");
+            ReleaseVersion releaseVersion;
+            if(ReleaseVersion.TryParse(version,out releaseVersion))version=releaseVersion.AssemblyBase.ToString();
             Version current;
             if(!TrySeries(version,out current))return new OnboardingUpgradeResult(false,false);
             bool first=String.IsNullOrEmpty(settings.LastOnboardingSeries) && settings.OnboardingState=="new";

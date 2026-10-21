@@ -115,7 +115,7 @@ for pet,release_name in [('e-bao','Ebao'),('dafeiyu','Dafeiyu'),('marfu','Marfu'
         for name in sorted(files):bundle.write(folder/name,name)
         bundle.write(PROJECT/'docs/skin-format.md','外观格式说明.md')
 
-skin_artifacts.append(package_gugugaga(OUTPUT))
+skin_artifacts.append(package_gugugaga(OUTPUT, release_version=version))
 
 with ZipFile(runtime_zip) as bundle:
     assert bundle.testzip() is None

@@ -9,13 +9,13 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def package(output_directory=None):
+def package(output_directory=None, release_version=None):
     bundle = ROOT / 'assets/bundled-skins/gugugaga'
     extras = bundle / 'variants'
     manifest = json.loads((bundle / 'pet.json').read_text(encoding='utf-8'))
-    version = manifest['pack_version']
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
-        raise ValueError('Skin pack needs a numeric release version')
+    version = release_version or manifest['pack_version']
+    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-dev\.[1-9][0-9]*)?', version):
+        raise ValueError('Skin pack needs X.Y.Z or X.Y.Z-dev.N')
     files = {Path('pet.json'): bundle / 'pet.json', Path('provenance.json'): bundle / 'provenance.json',
              Path('avatar.png'): bundle / 'avatar.png'}
     for spec in list(manifest['animations'].values()) + [manifest['gaze']]:
@@ -27,7 +27,8 @@ def package(output_directory=None):
         pairs[action] = {'first': manifest['animations'][action]['file'] if action in manifest['animations'] else f'variants/{action}-original.png',
             'second': f'variants/{action}.png', 'frames': 8, 'fps': 8, 'loop': action in ('lifted', 'sleeping')}
     metadata = json.dumps({'version': 1, 'purpose': 'Human-readable pair index; runtime declarations are in pet.json', 'pairs': pairs}, ensure_ascii=False, indent=2)
-    readme = f'''咕嘎 · gugugaga HD Skin {version}
+    readme = f'''咕嘎 · gugugaga HD Skin {manifest['pack_version']}
+配套 DeskPet 发行标识：{version}
 
 1. 新版 DeskPet：在设置的“导入 / 更新角色包”中直接选择此 ZIP。同包 ID gugugaga 自动更新，只显示一个伙伴。
    旧版应用：先解压，再从外观导入选择根目录 pet.json；仅支持标准外观，需要一次升级引擎才能启用全部字段。
