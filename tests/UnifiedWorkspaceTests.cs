@@ -23,7 +23,16 @@ namespace Dafeiyu.Tests
         static PetWindow pet;
         static ChatWindow full;
         static int checks;
-        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool SetCursorPos(int x,int y);
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]struct NativePoint{public int X,Y;}
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]struct MouseInput{public int X,Y;public uint Data,Flags,Time;public UIntPtr Extra;}
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]struct NativeInput{public uint Type;public MouseInput Mouse;}
+        [System.Runtime.InteropServices.DllImport("user32.dll",SetLastError=true)]static extern bool SetCursorPos(int x,int y);
+        [System.Runtime.InteropServices.DllImport("user32.dll",SetLastError=true)]static extern bool GetCursorPos(out NativePoint point);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr GetForegroundWindow();
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr window);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr WindowFromPoint(NativePoint point);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern IntPtr GetAncestor(IntPtr window,uint flags);
+        [System.Runtime.InteropServices.DllImport("user32.dll",SetLastError=true)]static extern uint SendInput(uint count,NativeInput[] inputs,int size);
         [System.Runtime.InteropServices.DllImport("user32.dll")]static extern void mouse_event(uint flags,uint x,uint y,uint data,UIntPtr extra);
 
         sealed class RetainedTool:Border,IDisposable
@@ -42,6 +51,46 @@ namespace Dafeiyu.Tests
         static void ToggleFull(){typeof(ChatWindow).GetMethod("ToggleFullTabView",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(full,null);}
         static void Click(string name){All<Button>(full).Single(b=>b.Name==name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
         static async Task Settle(){await Task.Delay(130);full.UpdateLayout();}
+        static async Task NativeRightClick(MarkdownView body,Hyperlink link,Point screen)
+        {
+            var window=new System.Windows.Interop.WindowInteropHelper(full).Handle;
+            var target=new NativePoint{X=(int)Math.Round(screen.X),Y=(int)Math.Round(screen.Y)};
+            SetForegroundWindow(window);
+            if(!SetCursorPos(target.X,target.Y))throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error(),"Link fixture could not position the native pointer");
+            // The logical Run hit alone does not prove that Windows or WPF has received
+            // the pointer move. Wait for observable input readiness, then click once.
+            var timeout=System.Diagnostics.Stopwatch.StartNew();string evidence="";bool ready=false;
+            while(timeout.Elapsed.TotalSeconds<3)
+            {
+                await Task.Delay(20);
+                NativePoint cursor;bool located=GetCursorPos(out cursor);var foreground=GetForegroundWindow();var hitWindow=GetAncestor(WindowFromPoint(target),2);
+                var local=body.PointFromScreen(new Point(target.X,target.Y));var run=body.InputHitTest(local) as Run;var mouse=System.Windows.Input.Mouse.GetPosition(body);
+                ready=located&&cursor.X==target.X&&cursor.Y==target.Y&&foreground==window&&hitWindow==window&&body.IsMouseOver&&run!=null&&ReferenceEquals(run.Parent,link)&&Math.Abs(mouse.X-local.X)<2&&Math.Abs(mouse.Y-local.Y)<2&&System.Windows.Input.Mouse.Captured==null;
+                evidence="expected="+window+" foreground="+foreground+" hitWindow="+hitWindow+" target="+target.X+","+target.Y+" cursor="+cursor.X+","+cursor.Y+" located="+located+" mouseOver="+body.IsMouseOver+" logicalLink="+(run!=null&&ReferenceEquals(run.Parent,link))+" wpfMouse="+mouse+" local="+local+" captured="+System.Windows.Input.Mouse.Captured;
+                if(ready)break;
+            }
+            Console.WriteLine("LINK INPUT: "+evidence);
+            if(!ready){try{Capture("link-native-input-not-ready.png");}catch(Exception captureError){Console.WriteLine("LINK INPUT CAPTURE: "+captureError.Message);}throw new Exception("Native link click aborted before mouse down: "+evidence);}
+            bool rightUp=false;int opened=0,closed=0;var menu=link.ContextMenu;
+            System.Windows.Input.MouseButtonEventHandler onUp=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){if(e.ChangedButton==System.Windows.Input.MouseButton.Right)rightUp=true;};
+            RoutedEventHandler onOpened=delegate{opened++;},onClosed=delegate{closed++;};
+            body.AddHandler(System.Windows.Input.Mouse.PreviewMouseUpEvent,onUp,true);menu.Opened+=onOpened;menu.Closed+=onClosed;
+            try
+            {
+                var inputs=new[]{new NativeInput{Mouse=new MouseInput{Flags=0x0008}},new NativeInput{Mouse=new MouseInput{Flags=0x0010}}};
+                uint sent=SendInput((uint)inputs.Length,inputs,System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeInput)));
+                if(sent!=inputs.Length){int error=System.Runtime.InteropServices.Marshal.GetLastWin32Error();if(sent>0)mouse_event(0x0010,0,0,0,UIntPtr.Zero);throw new System.ComponentModel.Win32Exception(error,"Native link click inserted "+sent+" of "+inputs.Length+" input events");}
+                // A fixed delay can resume before queued mouse-up input after a
+                // busy dispatcher. Observe this same click completing; never
+                // retry the click or open the menu on behalf of the application.
+                timeout.Restart();
+                while(!(rightUp&&opened>0&&menu.IsOpen)&&timeout.Elapsed.TotalSeconds<3)await Task.Delay(20);
+                evidence="rightUp="+rightUp+" opened="+opened+" closed="+closed+" linkMenu="+menu.IsOpen+" editorMenu="+body.ContextMenu.IsOpen+" rightState="+System.Windows.Input.Mouse.RightButton+" foreground="+GetForegroundWindow()+" captured="+System.Windows.Input.Mouse.Captured;
+                Console.WriteLine("LINK COMPLETION: "+evidence);
+                if(!(rightUp&&opened>0&&menu.IsOpen)){Capture("link-right-click-hit.png");throw new Exception("Native link click did not complete: "+evidence);}
+            }
+            finally{body.RemoveHandler(System.Windows.Input.Mouse.PreviewMouseUpEvent,onUp);menu.Opened-=onOpened;menu.Closed-=onClosed;}
+        }
         static void Capture(string name)
         {
             full.UpdateLayout();var target=(FrameworkElement)full.Content;var bounds=new Rect(0,0,target.ActualWidth,target.ActualHeight);var visual=new DrawingVisual();using(var drawing=visual.RenderOpen()){drawing.DrawRectangle(Brushes.White,null,bounds);drawing.DrawRectangle(new VisualBrush(target),null,bounds);}var image=new RenderTargetBitmap((int)Math.Ceiling(bounds.Width),(int)Math.Ceiling(bounds.Height),96,96,PixelFormats.Pbgra32);image.Render(visual);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create(Path.Combine("work","permissions",name)))encoder.Save(file);
@@ -149,7 +198,7 @@ namespace Dafeiyu.Tests
                 // The layout fixture deliberately exceeds small CI displays; fit
                 // the window on the physical desktop before sending native input.
                 full.MinWidth=520;full.Width=Math.Min(1100,SystemParameters.WorkArea.Width-40);full.Height=Math.Min(720,SystemParameters.WorkArea.Height-40);full.Left=SystemParameters.WorkArea.Left+20;full.Top=SystemParameters.WorkArea.Top+20;full.Topmost=true;full.Activate();await Settle();((ScrollViewer)Field("scroll")).ScrollToBottom();await Settle();
-                int rightClicks=0;body.PreviewMouseRightButtonDown+=delegate{rightClicks++;};var hit=link.Inlines.OfType<Run>().First().ContentStart.GetCharacterRect(LogicalDirection.Forward);var local=new Point(hit.X+4,hit.Y+hit.Height/2);var screen=body.PointToScreen(local);SetCursorPos((int)screen.X,(int)screen.Y);mouse_event(0x0008,0,0,0,UIntPtr.Zero);mouse_event(0x0010,0,0,0,UIntPtr.Zero);await Settle();Console.WriteLine("LINK HIT: "+body.InputHitTest(local)+" right="+rightClicks+" linkMenu="+menu.IsOpen+" editorMenu="+body.ContextMenu.IsOpen+" screen="+screen);Capture("link-right-click-hit.png");Check(menu.IsOpen&&rightClicks==1,"native right-click on the actual message link opens its link menu rather than the text editor menu");menu.IsOpen=false;full.MinWidth=1780;full.Width=1780;full.Height=900;await Settle();
+                int rightClicks=0;body.PreviewMouseRightButtonDown+=delegate{rightClicks++;};var hit=link.Inlines.OfType<Run>().First().ContentStart.GetCharacterRect(LogicalDirection.Forward);var local=new Point(hit.X+4,hit.Y+hit.Height/2);var screen=body.PointToScreen(local);await NativeRightClick(body,link,screen);await Settle();Console.WriteLine("LINK HIT: "+body.InputHitTest(local)+" right="+rightClicks+" linkMenu="+menu.IsOpen+" editorMenu="+body.ContextMenu.IsOpen+" screen="+screen);Capture("link-right-click-hit.png");Check(menu.IsOpen&&rightClicks==1,"native right-click on the actual message link opens its link menu rather than the text editor menu");menu.IsOpen=false;full.MinWidth=1780;full.Width=1780;full.Height=900;await Settle();
                 foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);menu.PlacementTarget=body;menu.IsOpen=true;await Settle();Check(menu.IsVisible&&menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").IsEnabled,"actual conversation exposes the "+theme+" link menu with side-tab navigation");var image=new RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth),(int)Math.Ceiling(menu.ActualHeight),96,96,PixelFormats.Pbgra32);image.Render(menu);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create("work/permissions/link-menu-"+theme+".png"))png.Save(file);menu.IsOpen=false;}
                 menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));await Settle();var tabs=(PreviewWorkspace)Field("filePreview");var browser=tabs.Selected as BrowserPane;
                 Check(browser!=null&&tabs.ToolCount==1&&ReferenceEquals(Field("session"),session)&&editor.Text==draft,"link action opens a browser tab and preserves the conversation and unsent draft");

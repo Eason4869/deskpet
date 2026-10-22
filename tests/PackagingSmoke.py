@@ -19,8 +19,10 @@ arguments = argparse.ArgumentParser()
 arguments.add_argument('--compiler', help='Optional Inno ISCC.exe for full fresh installer verification')
 arguments.add_argument('--legacy-worker', type=Path, help='Existing older DeskPet.Update.exe to verify backward compatible packages')
 options = arguments.parse_args()
-root = PROJECT / 'work' / ('source-smoke-' + uuid.uuid4().hex)
-checkout = root / 'DafeiyuDeskPet'
+# Keep this fresh-checkout fixture short enough for Framework's real MAX_PATH
+# limit. Explicit overlong final-root rollback remains in OfficialCompanionTests.
+root = PROJECT / 'work' / 'ps' / uuid.uuid4().hex[:12]
+checkout = root / 'src'
 shutil.copytree(PROJECT, checkout, ignore=shutil.ignore_patterns(
     '.git', 'work', 'bin', 'obj', 'data', '__pycache__', '.superpowers', 'superpowers', 'research',
     'motion', 'motion-source', 'drawn-source*', 'PackDrawnMotion.py', 'PackXiaobei.py', 'MotionSourceExport.cs', 'SmoothMotionTests.cs'))
@@ -53,7 +55,7 @@ for private_name in ['.env', '.env.local', 'credentials.json', 'release-signing.
 (checkout / '.codex/auth.json').write_text('private auth sentinel', encoding='utf-8')
 result = subprocess.run([sys.executable, str(checkout / 'Package.py'), '--output-directory', str(output)], cwd=checkout,
                         env=dict(os.environ,PYTHONIOENCODING='utf-8'),
-                        capture_output=True, text=True, encoding='utf-8', timeout=180)
+                        capture_output=True, text=True, encoding='utf-8', timeout=1200)
 if result.returncode:
     print(result.stdout + result.stderr)
     raise AssertionError('fresh source packaging needs no local test artifacts')
@@ -80,29 +82,43 @@ with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
         original=(checkout/'docs'/document).read_text(encoding='utf-8-sig')
         assert re.sub(r'(!?\[[^\]]*\])\([^)]+\)',r'\1',packaged)==re.sub(r'(!?\[[^\]]*\])\([^)]+\)',r'\1',original), 'packaged guide text changed: '+document
 print('PASS runtime includes the exact daily-use and voice-preset guides')
-for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei', 'gugugaga']:
-    archive = output / (pet + '-HD-Skin-' + version + '.zip')
-    assert archive.is_file(), 'versioned ASCII skin archive missing: ' + archive.name
+index_path=output/('DeskPet-Companions-'+version+'.json')
+companion_index=json.loads(index_path.read_text(encoding='utf-8'))
+assert companion_index['schema_version']==1
+assert [entry['id'] for entry in companion_index['companions']]==['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
+for entry in companion_index['companions']:
+    pet=entry['id']
+    archive=output/('DeskPet-Companion-'+pet+'-'+version+'.zip')
+    assert archive.is_file() and entry['asset_name']==archive.name
+    assert entry['version']==version and entry['min_app_version']==version
+    assert entry['size']==archive.stat().st_size and entry['sha256']==hashlib.sha256(archive.read_bytes()).hexdigest()
     with ZipFile(archive) as bundle:
-        assert bundle.testzip() is None and 'pet.json' in bundle.namelist()
+        assert bundle.testzip() is None and len(bundle.infolist())<=512
+        assert sum(item.file_size for item in bundle.infolist())<=256*1024*1024
         skin=json.loads(bundle.read('pet.json'))
+        identity=json.loads(bundle.read('companions.json'))
+        assert identity['id']==pet and identity['version']==version and identity['name']==skin['name']
+        assert skin['id']==pet and skin['pack_version']==version
         assert skin['version']==2 and len(skin['animations'])==17 and skin['gaze']['frames']==16
-        if pet=='gugugaga':
-            assert bundle.read('pet.json')==(checkout/'assets/bundled-skins/gugugaga/pet.json').read_bytes(), 'application version must not rewrite authored pack metadata'
-            assert ('配套 DeskPet 发行标识：'+version) in bundle.read('README.txt').decode('utf-8'), 'Guga archive must identify the full application release'
-        assert skin['system_prompt'] and skin['special_action']
+        assert skin['system_prompt'] and skin['special_action'] and skin['special_action2']
+        assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech'] and skin['voice_presets']['live']
         expected_counts=[6,8,8,4,5,8,6,6,6]+[4]*8
         action_names=['idle','running-right','running-left','waving','jumping','failed','waiting','running','review','lifted','landing','petting','poked','feeding','happy','sleeping','special']
-        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet in ('Xiaobei','gugugaga') else expected_counts)
-        for record in skin['animations'].values():
-            assert record['columns']==8 and 1<=record['frames']<=8 and record['file'] in bundle.namelist()
+        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet in ('xiaobei','gugugaga') else expected_counts)
+        assert set(skin['extra_animations'])=={'stumble','special2'}
+        assert len(skin['alternate_animations'])==(9 if pet in ('e-bao','gugugaga') else 8)
+        for group in ('animations','extra_animations','alternate_animations'):
+            for record in skin[group].values():
+                assert record['columns']==8 and 1<=record['frames']<=8 and record['file'] in bundle.namelist()
         assert skin['gaze']['file'] in bundle.namelist() and skin['preview'] in bundle.namelist()
-        if pet=='gugugaga':
-            authored=json.loads((checkout/'assets/bundled-skins/gugugaga/pet.json').read_bytes())
-            assert skin['id']=='gugugaga' and skin['pack_version']==authored['pack_version']
-            assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech']
-            for clips in (skin['extra_animations'],skin['alternate_animations']):
-                assert all(clip['file'] in bundle.namelist() for clip in clips.values())
+        catalog=json.loads(bundle.read('holidays/catalog.json'))
+        authored=[item for item in json.loads((checkout/'assets/holidays/catalog.json').read_text(encoding='utf-8'))['outfits'] if item['character_id']==pet]
+        assert catalog['outfits']==authored and all(item['ready'] for item in authored)
+        assert entry['outfits']==[{'outfit_id':item['outfit_id'],'version':item['version']} for item in authored]
+        for outfit in authored:
+            definition=json.loads(bundle.read('holidays/'+outfit['definition']))
+            for relative in [definition['preview']]+[clip['path'] for clip in definition['clips']+[definition['gaze'],definition['easter_egg']]]:
+                assert bundle.read('holidays/'+relative)==(checkout/'assets/holidays'/relative).read_bytes(), 'HD outfit bytes changed'
 with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
     assert 'high-fps-v2/pet.json' in bundle.namelist() and 'high-fps-v2/动作表.csv' in bundle.namelist()
     assert 'legacy-v1/pet.json' in bundle.namelist() and 'legacy-v1/spritesheet.png' in bundle.namelist()
@@ -116,7 +132,7 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'
     assert not any('/templates/' in name or '/previews/' in name for name in bundle.namelist())
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
-print('PASS five complete low-frame v2 skin packs and full author templates')
+print('PASS five complete full-HD default/holiday companion packages, verified index and author templates')
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     from tools.runtime_package import collect_runtime_files
     assert set(bundle.namelist()) == {'DafeiyuDeskPet/'+record['destination'] for record in collect_runtime_files(checkout,runtime)}
@@ -127,12 +143,13 @@ manifest_names = [line.split('  ', 1)[1] for line in manifest]
 assert manifest_names.count(app_asset.name) == 1, 'standalone application must appear exactly once in the release manifest'
 assert all('/' not in name and '\\' not in name for name in manifest_names), 'release manifest must contain flat uploadable asset names'
 assert all(version in name for name in manifest_names), 'each release asset must retain the complete release version'
-assert set(manifest_names) == {path.name for path in output.iterdir() if path.is_file() and path.suffix in {'.exe', '.zip'}}, 'manifest must cover every release asset'
+assert set(manifest_names) == {path.name for path in output.iterdir() if path.is_file() and (path.suffix in {'.exe', '.zip'} or path.name=='DeskPet-Companions-'+version+'.json')}, 'manifest must cover every release asset'
 for line in manifest:
     digest, name = line.split('  ', 1)
     assert digest == hashlib.sha256((output / name).read_bytes()).hexdigest(), 'stale digest: ' + name
-for pet in ['Ebao', 'Dafeiyu', 'Marfu', 'Xiaobei']:
-    assert any(line.endswith('  ' + pet + '-HD-Skin-' + version + '.zip') for line in manifest)
+for pet in ['e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga']:
+    assert any(line.endswith('  DeskPet-Companion-' + pet + '-' + version + '.zip') for line in manifest)
+assert any(line.endswith('  DeskPet-Companions-' + version + '.json') for line in manifest)
 print('PASS versioned ASCII skin names and manifest hashes match release artifacts')
 result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',
     '[Reflection.AssemblyName]::GetAssemblyName($env:DESKPET_TEST_HELPER).Version.ToString()'],
@@ -146,8 +163,14 @@ result=subprocess.run(['powershell.exe','-NoProfile','-Command',
     env=dict(os.environ,DESKPET_TEST_APP=str(runtime/'桌面伙伴.exe')),capture_output=True,check=True)
 resources=result.stdout.decode('utf-8',errors='replace')
 assert 'Dafeiyu.Motion.' not in resources and 'Dafeiyu.MotionManifest' not in resources
-assert 'Dafeiyu.Bundled.Xiaobei.pet.json' in resources
-print('PASS final application embeds low-frame Xiaobei and no retired motion fixtures')
+assert 'Dafeiyu.EbaoAtlas' in resources and 'Dafeiyu.Holidays.halloween.e-bao.outfit.json' in resources
+assert 'Dafeiyu.Atlas' not in resources and 'Dafeiyu.MarfuAtlas' not in resources
+assert 'Dafeiyu.Bundled.Xiaobei.' not in resources and 'Dafeiyu.Bundled.Gugugaga.' not in resources
+for role in ('dafeiyu','marfu','xiaobei','gugugaga'):
+    assert 'Dafeiyu.Avatar.'+role in resources
+    assert 'Dafeiyu.Companion.'+role+'.' not in resources and 'Dafeiyu.Additional.'+role not in resources
+    assert 'Dafeiyu.Holidays.halloween.'+role+'.' not in resources
+print('PASS final application embeds one complete Ebao, five avatars and no other full-role artwork')
 staged_runtime=Path(json.loads((output/'runtime-stage.json').read_text(encoding='utf-8'))['path'])
 readme = (staged_runtime / 'README.md').read_text(encoding='utf-8-sig')
 images = re.findall(r'<img\s+src="([^"]+)"|!\[[^\]]*\]\(([^)]+)\)', readme)
@@ -172,7 +195,8 @@ with ZipFile(output/('DeskPet-Source-'+version+'.zip')) as bundle:
 print('PASS source archive excludes retired generations, private and local test files')
 with ZipFile(output / ('DeskPet-Source-' + version + '.zip')) as bundle:
     for name in bundle.namelist():
-        assert bundle.read(name) == (root / name).read_bytes(), 'source archive differs: ' + name
+        relative = Path(name).relative_to('DafeiyuDeskPet')
+        assert bundle.read(name) == (checkout / relative).read_bytes(), 'source archive differs: ' + name
 print('PASS source archive contains the exact public source files')
 if options.compiler:
     result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',

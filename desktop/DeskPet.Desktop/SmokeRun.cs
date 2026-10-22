@@ -65,13 +65,21 @@ internal static class SmokeRun
                     finally { pasteWindow.Close(); }
                 }
                 using var assets = new SpriteAssets(); var clips = 0;
-                foreach (var skin in controller.Skins.Where(s => s.BuiltIn)) foreach (var action in SpriteAssets.PairedActions) foreach (var original in new[] { false, true })
+                foreach (var skin in controller.Skins.Where(s => !s.IsPlaceholder)) foreach (var action in SpriteAssets.PairedActions) foreach (var original in new[] { false, true })
                 {
-                    var clip = assets.Resolve(skin, action, original); var bitmap = assets.Get(skin, clip.File);
+                    var clip = assets.Resolve(skin, action, original); var bitmap = assets.Get(skin, clip);
                     if (SpriteAssets.Rect(clip, clip.Frames - 1).Bottom > bitmap.PixelSize.Height) throw new InvalidDataException("Invalid animation asset");
                     clips++;
                 }
-                Report(new { success = true, version = typeof(App).Assembly.GetName().Version?.ToString(3), os = System.Runtime.InteropServices.RuntimeInformation.OSDescription, architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(), windows = windows.Select(w => w.GetType().Name).Prepend(nameof(PetWindow)).ToArray(), validatedClips = clips, nativeCommandPaste, microphoneRequested = false, keychainAccessed = false, dataDirectory = controller.DataDirectory });
+                foreach (var skin in controller.Skins.Where(s => s.OfficialCharacterId != null)) if (assets.GetAvatar(skin) == null) throw new InvalidDataException("Missing official companion avatar");
+                var embedded = new HolidayCatalog();
+                if (embedded.Outfits.Count != 1 || embedded.Outfits.Single().CharacterId != "e-bao" || !embedded.Outfits.Single().Ready) throw new InvalidDataException("Production holiday catalog must contain complete Ebao only");
+                foreach (var definition in embedded.Outfits.Single().Clips.Concat(new[] { embedded.Outfits.Single().Gaze, embedded.Outfits.Single().EasterEgg }))
+                {
+                    var clip = SpriteAssets.OutfitClip(embedded.Outfits.Single(), definition);
+                    assets.PrepareFrame(controller.Skins.Single(s => s.OfficialCharacterId == "e-bao"), clip, 0); clips++;
+                }
+                Report(new { success = true, version = typeof(App).Assembly.GetName().Version?.ToString(3), os = System.Runtime.InteropServices.RuntimeInformation.OSDescription, architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(), windows = windows.Select(w => w.GetType().Name).Prepend(nameof(PetWindow)).ToArray(), validatedClips = clips, officialPlaceholders = controller.Skins.Count(s => s.IsPlaceholder), nativeCommandPaste, microphoneRequested = false, keychainAccessed = false, dataDirectory = controller.DataDirectory });
                 controller.Run(controller.ExitAsync);
             }
             catch (Exception error) { timer.Stop(); Failure(error); (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.Shutdown(1); }

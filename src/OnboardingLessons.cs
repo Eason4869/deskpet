@@ -17,7 +17,7 @@ namespace Dafeiyu
             var items = new List<OnboardingLesson>();
             Action<int, string, string, string, string, string, string> add = (chapter, id, title, text, target, action, branch) => items.Add(new OnboardingLesson { Chapter = chapter, Id = id, Title = title, Text = text, Target = target, Action = action, Branch = branch });
             add(0, "welcome", "开始之前", "这份引导会带您逐步认识桌面伙伴，不必一次完成所有设置。\n\n“跳过本步”：略过当前操作。\n“跳过本章”：略过这一整章，继续后面的内容。\n“稍后继续”：保存进度，下次从这里接着看。\n“结束引导”：退出本次引导，以后可从设置重新打开。\n\n您可以随时使用这些按钮。只有主动点击测试，才会发送请求、播放声音或开启麦克风。", "", "intro", "");
-            add(0, "pet.select", "选择伙伴", "点击角色列表选择桌宠，或保留当前选择。人格与声音偏好按伙伴保存。普通聊天与工作模式的用途不同，后面的完整对话章节会分别练习。", "SkinPicker", "read", "");
+            add(0, "pet.select", "选择伙伴", "应用已内置 E 包完整角色。其他伙伴需要下载完整角色包；引导期间点击列表只会说明下载要求，暂不切换或下载。完成引导后即可选择伙伴，或在设置中全量下载。人格与声音偏好按伙伴分别保存。", "SkinPicker", "read", "");
             add(0, "pet.reopen", "记住设置入口", "以后可以从桌宠右键菜单打开设置，也可从完整对话窗口的齿轮进入。设置左下角“配置引导”可再次打开本教程。", "SkinPicker", "read", "");
             add(1, "persona.read", "阅读当前人格", "人格决定普通聊天的身份、语气与习惯。先阅读高亮输入框；{pet_name} 会替换为当前伙伴名字。工作模式使用独立的工作提示词。", "PersonaPrompt", "read", "");
             add(1, "persona.edit", "修改或恢复人格", "可以只改称呼与回答风格，或保留预设。正文不能为空。恢复预设会替换输入框中的草稿，修改后仍需保存。", "PersonaPrompt", "nonempty", "");

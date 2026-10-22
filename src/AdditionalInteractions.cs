@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -15,7 +15,8 @@ namespace Dafeiyu
         static readonly HashSet<string> resources = new HashSet<string>(Assembly.GetExecutingAssembly().GetManifestResourceNames(), StringComparer.Ordinal);
         SkinDefinition currentSkin;
         public static readonly string[] Actions = { "lifted", "landing", "feeding", "happy", "sleeping", "special", "special2", "stumble" };
-        static string Resource(SkinDefinition skin, string action) { return "Dafeiyu.Companion." + skin.Id + "." + action; }
+        static string SourceId(SkinDefinition skin){return skin.Embedded||skin.Bundled?skin.BuiltinCharacterId??skin.Id:skin.Id;}
+        static string Resource(SkinDefinition skin, string action) { return "Dafeiyu.Companion." + SourceId(skin) + "." + action; }
         public static bool Specification(SkinDefinition skin,string action,bool original,out IllustratedAnimation clip)
         {
             clip=null;if(skin==null || !skin.Illustrated)return false;
@@ -32,21 +33,21 @@ namespace Dafeiyu
             return skin != null && (skin.Embedded || skin.Bundled) &&
                 resources.Contains(Resource(skin, "stumble"));
         }
-        public static bool Has(SkinDefinition skin, string action) { IllustratedAnimation clip;return Specification(skin,action,false,out clip) || Supports(skin) && resources.Contains(Resource(skin, action)); }
+        public static bool Has(SkinDefinition skin, string action) { IllustratedAnimation clip;return Specification(skin,action,false,out clip) || skin!=null && (skin.Embedded || skin.Bundled) && Supports(skin) && resources.Contains(Resource(skin, action)); }
         public static bool HasOriginal(SkinDefinition skin, string action)
         {
             IllustratedAnimation clip;if(Specification(skin,action,true,out clip))return true;
             if(!Supports(skin) || skin==null || !skin.Embedded && !skin.Bundled)return false;
             return Array.IndexOf(Actions, action)>=0 &&
-                (action=="stumble" || action=="special2" ? resources.Contains("Dafeiyu.Additional."+skin.Id) :
-                skin.Id=="xiaobei" ? skin.Bundled && resources.Contains("Dafeiyu.Bundled.Xiaobei."+skin.Manifest.Animations[action].File.Replace('/','.')) :
-                skin.Id=="e-bao" || skin.Id=="dafeiyu" || skin.Id=="marfu");
+                (action=="stumble" || action=="special2" ? resources.Contains("Dafeiyu.Additional."+SourceId(skin)) :
+                SourceId(skin)=="xiaobei" ? skin.Bundled && resources.Contains("Dafeiyu.Bundled.Xiaobei."+skin.Manifest.Animations[action].File.Replace('/','.')) :
+                SourceId(skin)=="e-bao" || SourceId(skin)=="dafeiyu" || SourceId(skin)=="marfu");
         }
-        public static int OriginalFrameCount(SkinDefinition skin, string action) { IllustratedAnimation clip;if(Specification(skin,action,true,out clip))return clip.Frames;return skin.Id == "xiaobei" || action == "stumble" || action == "special2" ? 8 : 4; }
+        public static int OriginalFrameCount(SkinDefinition skin, string action) { IllustratedAnimation clip;if(Specification(skin,action,true,out clip))return clip.Frames;return SourceId(skin) == "xiaobei" || action == "stumble" || action == "special2" ? 8 : 4; }
         public static string SpecialName(SkinDefinition skin)
         {
             if(skin.Illustrated && !String.IsNullOrWhiteSpace(skin.Manifest.SpecialAction2))return skin.Manifest.SpecialAction2;
-            switch (skin.Id) { case "e-bao": return "比心鼓励"; case "dafeiyu": return "泡泡环游"; case "marfu": return "荧光咒语"; case "xiaobei": return "全息键盘"; default: return "第二招牌"; }
+            switch (skin.BuiltinCharacterId??skin.Id) { case "e-bao": return "比心鼓励"; case "dafeiyu": return "泡泡环游"; case "marfu": return "荧光咒语"; case "xiaobei": return "全息键盘"; default: return "第二招牌"; }
         }
         public MotionClip Get(SkinDefinition skin, string action)
         {
@@ -81,12 +82,12 @@ namespace Dafeiyu
         {
             string resource; int count = OriginalFrameCount(skin, action), columns = count; int top = 0, height = 520;
             if (action == "stumble" || action == "special2")
-            { resource = "Dafeiyu.Additional." + skin.Id; columns = 4; top = action == "stumble" ? 0 : 1040; height = 1040; }
+            { resource = "Dafeiyu.Additional." + SourceId(skin); columns = 4; top = action == "stumble" ? 0 : 1040; height = 1040; }
             else if (skin.Bundled)
             { resource = "Dafeiyu.Bundled.Xiaobei." + skin.Manifest.Animations[action].File.Replace('/', '.').Replace('\\', '.'); }
             else
             {
-                resource = skin.Id == "e-bao" ? "Dafeiyu.EbaoInteractions" : skin.Id == "marfu" ? "Dafeiyu.MarfuInteractions" : "Dafeiyu.DafeiyuInteractions";
+                resource = SourceId(skin) == "e-bao" ? "Dafeiyu.EbaoInteractions" : SourceId(skin) == "marfu" ? "Dafeiyu.MarfuInteractions" : "Dafeiyu.DafeiyuInteractions";
                 top = Array.IndexOf(new[] { "lifted", "landing", "petting", "poked", "feeding", "happy", "sleeping", "special" }, action) * 520;
             }
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))

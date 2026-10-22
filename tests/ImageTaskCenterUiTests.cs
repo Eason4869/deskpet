@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,6 +20,8 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> All<T>(DependencyObject p)where T:DependencyObject{if(p is T)yield return(T)p;for(int i=0;i<VisualTreeHelper.GetChildrenCount(p);i++)foreach(var t in All<T>(VisualTreeHelper.GetChild(p,i)))yield return t;}
         static Button Find(DependencyObject p,string name){return All<Button>(p).Single(b=>b.Name==name);}
         static void Click(Button b){b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
+        static IEnumerable<MenuItem> MenuItems(ItemsControl menu){foreach(MenuItem item in menu.Items.OfType<MenuItem>()){yield return item;foreach(var child in MenuItems(item))yield return child;}}
+        static async Task ChooseGalleryMenu(ImageWorkspacePage page,string name,string value=null){page.UpdateLayout();var button=Find(page,"ImageGalleryFilter");Click(button);await Task.Delay(20);var choices=MenuItems(button.ContextMenu).Where(m=>m.Name==name&&(value==null||(m.Tag is ImageGalleryProviderChoice?((ImageGalleryProviderChoice)m.Tag).Id:m.Tag as string)==value)).ToArray();if(choices.Length!=1)throw new Exception("Missing gallery menu "+name+" / "+value+"; available: "+String.Join(", ",MenuItems(button.ContextMenu).Select(m=>m.Name+"="+(m.Tag is ImageGalleryProviderChoice?((ImageGalleryProviderChoice)m.Tag).Id:m.Tag as string))));var item=choices.Single();var chain=new List<MenuItem>();for(var parent=ItemsControl.ItemsControlFromItemContainer(item) as MenuItem;parent!=null;parent=ItemsControl.ItemsControlFromItemContainer(parent) as MenuItem)chain.Insert(0,parent);foreach(var parent in chain){parent.IsSubmenuOpen=true;await Task.Delay(20);}typeof(MenuItem).GetMethod("OnClick",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(item,null);button.ContextMenu.IsOpen=false;await Task.Delay(30);}
         static async Task Until(Func<bool> ready){for(int i=0;i<400&&!ready();i++)await Task.Delay(10);Check(ready(),"native task transition completed");}
         sealed class Handler:HttpMessageHandler
         {
@@ -214,9 +216,9 @@ namespace Dafeiyu.Tests
             {
                 Click(Find(page,"ImageGalleryTab"));
                 var first=assets.Save(bytes,new GeneratedImage{ProviderId="service-a",Model="model-a",Prompt="first filter"},true);var other=assets.Save(bytes,new GeneratedImage{ProviderId="service-b",Model="model-b",Prompt="remaining filter"},true);assets.MoveToTrash(new[]{first.Id,other.Id});
-                var trash=(CheckBox)Field(page,"trashOnly");trash.IsChecked=true;
+                await ChooseGalleryMenu(page,"GalleryTrashFilter");
                 var filter=(ComboBox)Field(page,scenario=="service"?"galleryProvider":"galleryModel");
-                await (Until(()=>filter.Items.Count>2));filter.SelectedItem=scenario=="service"?filter.Items.OfType<ImageGalleryProviderChoice>().Single(p=>p.Id=="service-a"):(object)"model-a";
+                await (Until(()=>filter.Items.Count>2));await ChooseGalleryMenu(page,scenario=="service"?"GalleryProviderChoice":"GalleryModelChoice",scenario=="service"?"service-a":"model-a");
                 await (Until(()=>((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==1&&((IList<GeneratedImage>)Field(page,"loadedGallery"))[0].Id==first.Id));
                 ((ImageGallerySelection)Field(page,"selection")).Toggle(first.Id);
                 var purged=await (management.PurgeAsync(new[]{first.Id},CancellationToken.None));Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");

@@ -8,6 +8,8 @@ on:
       - 'assets/**'
       - 'installer/macos/**'
       - 'tools/mac_package.py'
+      - 'tools/build_official_companions.py'
+      - 'Build.ps1'
       - 'tests/**'
       - '.github/workflows/macos.yml'
   pull_request:
@@ -27,8 +29,44 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tests/MacPackagingTests.py
-  preview:
+      - name: Validate complete holiday artwork
+        run: |
+          python -m pip install Pillow
+          python tests/HolidayAssetValidationTests.py
+          python tools/validate_holiday_assets.py --report-json work/holiday-assets.json
+  complete-companions:
     needs: packaging-contract
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Author all five complete packages from this source
+        shell: pwsh
+        env:
+          PYTHONUTF8: '1'
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+          $source = Get-Content src/ReleaseInfo.cs -Raw
+          if ($source -notmatch 'DisplayVersion\s*=\s*"([^"]+)"') { throw 'Display version was not found' }
+          $version = $Matches[1]
+          python tools/build_official_companions.py --output work/macos-complete-companions --version $version
+          if ($LASTEXITCODE) { throw 'Complete companion authoring failed' }
+          if (@(Get-ChildItem work/macos-complete-companions/artifacts -File).Count -ne 6) { throw 'Expected five ZIPs and one index' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-complete-companions-${{ github.sha }}
+          path: |
+            work/macos-complete-companions/artifacts/*.zip
+            work/macos-complete-companions/artifacts/DeskPet-Companions-*.json
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+  preview:
+    needs: [packaging-contract, complete-companions]
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +119,24 @@ jobs:
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-writer-exit-ui-only | tee "$REPORT_ROOT/image-writer-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-held-exit-ui-only | tee "$REPORT_ROOT/image-held-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-exit-ui-only | tee "$REPORT_ROOT/image-exit.log"
+      - name: Verify actual thin companion resources and restoration
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
+          dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only | tee "$REPORT_ROOT/thin-companions.log"
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-complete-companions-${{ github.sha }}
+          path: work/macos-complete-companions/artifacts
+      - name: Decode all five complete packages with the actual native backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          indexes=(work/macos-complete-companions/artifacts/DeskPet-Companions-*.json)
+          [[ "${#indexes[@]}" == 1 && -f "${indexes[0]}" ]]
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-native-index "${indexes[0]}" --report "$REPORT_ROOT/complete-companions-native.json" | tee "$REPORT_ROOT/complete-companions-native.log"
       - name: Build preview app and verify DMG and ZIP
         shell: bash
         run: |
@@ -100,6 +156,8 @@ jobs:
           result=json.loads(report.read_text())
           if result.get('success') is not True:
               raise SystemExit('Native Avalonia smoke did not report success')
+          if result.get('officialPlaceholders') != 4:
+              raise SystemExit('Packaged app must contain one complete default and four official placeholders')
           print(json.dumps(result,ensure_ascii=False,indent=2))
           PY
       - name: Preserve reports and preview disk image

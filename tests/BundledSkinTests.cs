@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -21,24 +21,27 @@ namespace Dafeiyu.Tests
                 string package=Path.Combine(root,"guga.zip");
                 System.IO.Compression.ZipFile.CreateFromDirectory(guga.Source,package);
                 var installed=catalog.Import(package);
-                Check(installed.Id=="gugugaga" && catalog.Skins.Count(s=>s.Id=="gugugaga")==1,"complete ZIP updates stable identity without duplicate partner");
+                Check(installed.Id!=guga.Id && installed.BuiltinCharacterId==null && installed.PickerKey=="custom-pack:gugugaga" && catalog.FindOfficial("gugugaga")==guga,"custom ZIP keeps separate persona and cannot replace official provenance");
                 Check(installed.Source!=guga.Source && installed.Source.Contains("companion-packs"),"ZIP is installed outside immutable bundled cache");
                 Check(AdditionalInteractions.Has(installed,"stumble") && AdditionalInteractions.HasOriginal(installed,"jumping"),"installed pack retains both extra and alternate motions");
                 Check(SkinCatalog.GetAvatar(installed).PixelWidth>100,"installed ZIP supplies its own avatar");
                 var packSettings=new PetSettings();PersonaProfiles.Activate(packSettings,installed);
                 var speechService=new ConnectionSettings{BaseUrl="https://api.openai.com/v1",Model="tts-1",Protocol="openai"};
                 Check(PersonaProfiles.VoiceFor(packSettings,installed.Id,"speech",speechService)=="shimmer","pack data selects its own supported speech recommendation");
-                Check(new SkinCatalog(data).Find("gugugaga").Source==installed.Source,"installed package survives reload and overrides bundled version");
+                Check(new SkinCatalog(data).Find(installed.Id).Source==installed.Source && new SkinCatalog(data).FindOfficial("gugugaga").Id==guga.Id,"custom package and official identity survive reload independently");
                 LegacyMigration(root,guga,package);
                 RejectArchive(catalog,root,"../escape.txt",false,false);
                 RejectArchive(catalog,root,"payload.exe",false,false);
                 RejectArchive(catalog,root,"a.txt",true,false);
                 RejectArchive(catalog,root,"link.txt",false,true);
-                Check(new SkinCatalog(data).Find("gugugaga").Source==installed.Source,"rejected archives leave active package untouched");
-                var removedData=Path.Combine(root,"remove-data");var removal=new SkinCatalog(removedData);var removed=removal.Find("gugugaga");
-                removal.Remove(removed);Check(removal.Skins.Count==4 && new SkinCatalog(removedData).Skins.All(s=>s.Name!="咕嘎") && Directory.Exists(removed.Source),"removing a companion persists while retaining its data");
-                removal.Import(package);Check(removal.Skins.Count==5 && new SkinCatalog(removedData).Skins.Count==5,"reimport restores removed package without duplicate");
-                removal.Remove(removal.Find("gugugaga"));removal.RestoreRemoved();Check(removal.Skins.Count==5 && !removal.HasRemoved,"restore returns removed companions");
+                Check(new SkinCatalog(data).Find(installed.Id).Source==installed.Source,"rejected archives leave custom package untouched");
+                var removedData=Path.Combine(root,"remove-data");var removal=new SkinCatalog(removedData);var removed=removal.Import(package);
+                var removalSettings=new PetSettings();PersonaProfiles.Save(removalSettings,removed,"保留自定义人格");removalSettings.VoiceName="custom-private-voice";PersonaProfiles.SaveVoices(removalSettings);
+                removal.Remove(removed);Check(removal.Skins.Count==5 && new SkinCatalog(removedData).FindPicker(removed.PickerKey)==null && new SkinCatalog(removedData).FindOfficial("gugugaga")!=null && Directory.Exists(removed.Source),"removing custom companion preserves its data and discoverable official entry");
+                var reimported=removal.Import(package);PersonaProfiles.Activate(removalSettings,reimported);
+                Check(reimported.Id==removed.Id && removal.Skins.Count==6 && new SkinCatalog(removedData).Skins.Count==6,"custom reimport restores its stable identity alongside official partner");
+                Check(removalSettings.SystemPrompt=="保留自定义人格" && removalSettings.VoiceName=="custom-private-voice","custom same-ID update retains persona and voice preferences");
+                removal.Remove(reimported);removal.RestoreRemoved();Check(removal.Skins.Count==6 && !removal.HasRemoved,"restore returns separate official and custom companions");
                 while(removal.Skins.Count>1)removal.Remove(removal.Skins.Last());
                 bool lastBlocked=false;try{removal.Remove(removal.Skins[0]);}catch(InvalidOperationException){lastBlocked=true;}Check(lastBlocked && removal.Skins.Count==1,"last companion cannot be removed");
                 Check(guga.Id=="gugugaga" && guga.Illustrated && guga.Name=="咕嘎","fresh install offers fifth companion Guga");
@@ -75,7 +78,11 @@ namespace Dafeiyu.Tests
                 string json=Path.Combine(skin.Source,"pet.json");DateTime written=File.GetLastWriteTimeUtc(json);
                 var again=new SkinCatalog(data).Find("xiaobei");
                 Check(again.Source==skin.Source && File.GetLastWriteTimeUtc(json)==written,"reopening reuses verified immutable cache");
-                var imported=catalog.Import(json);string importJson=Path.Combine(imported.Source,"pet.json");byte[] original=Hash(importJson);
+                string customSource=Path.Combine(root,"same-name-custom");Directory.CreateDirectory(customSource);
+                foreach(string relative in IllustratedPack.Files(skin.Manifest)){string target=Path.Combine(customSource,relative);Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(Path.Combine(skin.Source,relative),target);}
+                SkinManifest customManifest;using(var input=File.OpenRead(json))customManifest=SkinCatalog.ReadManifest(input);customManifest.SystemPrompt+="\n这是用户自定义的同名伙伴。";
+                string customJson=Path.Combine(customSource,"pet.json");using(var output=File.Create(customJson))SkinCatalog.Serializer().WriteObject(output,customManifest);
+                var imported=catalog.Import(customJson);string importJson=Path.Combine(imported.Source,"pet.json");byte[] original=Hash(importJson);
                 Check(imported.Id.StartsWith("skin-") && imported.Id!="xiaobei","user import with same name has independent identity");
                 var reopened=new SkinCatalog(data);
                 Check(reopened.Find(imported.Id).Id==imported.Id && reopened.Find("xiaobei").Id=="xiaobei","preset and same-named user import both survive reload");
@@ -103,14 +110,17 @@ namespace Dafeiyu.Tests
             SkinManifest manifest;using(var stream=File.OpenRead(Path.Combine(original.Source,"pet.json")))manifest=SkinCatalog.ReadManifest(stream);
             manifest.PackageId=null;manifest.Avatar=null;manifest.PackVersion=null;manifest.ExtraAnimations=null;manifest.AlternateAnimations=null;manifest.VoicePresets=null;manifest.SpecialAction2=null;
             using(var stream=File.Create(Path.Combine(source,"pet.json")))SkinCatalog.Serializer().WriteObject(stream,manifest);
-            var catalog=new SkinCatalog(data);var legacy=catalog.Import(Path.Combine(source,"pet.json"));
-            Check(legacy.Id.StartsWith("skin-") && legacy.Manifest.PackageId=="gugugaga" && catalog.Skins.Count(s=>s.Name=="咕嘎")==1,"matching legacy import merges with bundled pack while retaining personal identity");
+            // Model an actual old installation before official aliases existed.
+            string legacyId="skin-"+Guid.NewGuid().ToString("N"),legacyFolder=Path.Combine(data,"skins",legacyId);Directory.CreateDirectory(legacyFolder);
+            foreach(string relative in IllustratedPack.Files(manifest).Concat(new[]{"pet.json"})){string target=Path.Combine(legacyFolder,relative);Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(Path.Combine(source,relative),target);}
+            var catalog=new SkinCatalog(data);var legacy=catalog.Find(legacyId);
+            Check(legacy.Id==legacyId && legacy.BuiltinCharacterId=="gugugaga" && catalog.Skins.Count(s=>s.PickerKey=="official:gugugaga")==1,"canonical prior legacy import retains personal identity and verified official provenance");
             var settings=new PetSettings();PersonaProfiles.Activate(settings,legacy);PersonaProfiles.Save(settings,legacy,"保留旧版咕嘎人格");settings.VoiceName="private-legacy-voice";PersonaProfiles.SaveVoices(settings);
-            var updated=catalog.Import(package);PersonaProfiles.Activate(settings,updated);
-            Check(updated.Id==legacy.Id && settings.SystemPrompt=="保留旧版咕嘎人格" && settings.VoiceName=="private-legacy-voice","ZIP update preserves legacy personal ID, prompt and voice");
-            Check(new SkinCatalog(data).Find(legacy.Id).Id==legacy.Id && new SkinCatalog(data).Skins.Count(s=>s.Manifest!=null && s.Manifest.PackageId=="gugugaga")==1,"legacy identity mapping survives application restart without duplicate companion");
+            var updated=catalog.Import(package);PersonaProfiles.Activate(settings,updated);PersonaProfiles.Activate(settings,legacy);
+            Check(updated.Id!=legacy.Id && updated.BuiltinCharacterId==null && settings.SystemPrompt=="保留旧版咕嘎人格" && settings.VoiceName=="private-legacy-voice","manual custom ZIP cannot take over canonical legacy identity or its persona and voice");
+            Check(new SkinCatalog(data).Find(legacy.Id).Id==legacy.Id && new SkinCatalog(data).FindPicker(updated.PickerKey).Id==updated.Id,"legacy alias and separate custom package both survive restart");
             var repeated=catalog.Import(Path.Combine(source,"pet.json"));
-            Check(repeated.Id==legacy.Id && repeated.Manifest.PackageId=="gugugaga","repeated legacy import returns retained companion instead of fallback");
+            Check(repeated.Id==legacy.Id && repeated.BuiltinCharacterId=="gugugaga","repeated exact-art legacy import resolves retained trusted companion");
             SkinManifest slow;using(var input=File.OpenRead(Path.Combine(original.Source,"pet.json")))slow=SkinCatalog.ReadManifest(input);
             slow.Animations["jumping"].Fps=4;slow.AlternateAnimations["jumping"].Fps=4;
             using(var file=File.Create(Path.Combine(source,"pet.json")))SkinCatalog.Serializer().WriteObject(file,slow);

@@ -25,6 +25,7 @@ class RuntimePackageTests(unittest.TestCase):
             destinations={item['destination'] for item in plan}
             self.assertFalse(any(p.startswith(('templates/','previews/','data/')) for p in destinations))
             self.assertIn('docs/third-party-notices.md',destinations)
+            self.assertIn('docs/holiday-outfits.md',destinations)
             stage=root/'fresh'
             stage_runtime(plan,stage)
             write_inno_files(plan,stage,root/'files.iss')
