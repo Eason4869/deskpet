@@ -40,8 +40,11 @@ namespace Dafeiyu
         }
         void RememberEntry()
         {
-            if(workspace==null)return;bool work=workspace.EffectiveSettings().AgentEnabled;entryWorkspaces[work?"work":"chat:"+workspace.Definition.PetId]=workspace;
-            if(entrySessions.Add(workspace.Session))workspace.Session.StateChanged+=RefreshEntryControls;
+            // Archive/delete can close the outgoing workspace before the view switches.
+            // Keep only a live session, and capture it before background close clears the property.
+            if(workspace==null||workspace.IsDisposed)return;var rememberedSession=workspace.Session;if(rememberedSession==null)return;
+            bool work=workspace.EffectiveSettings().AgentEnabled;entryWorkspaces[work?"work":"chat:"+workspace.Definition.PetId]=workspace;
+            if(entrySessions.Add(rememberedSession))rememberedSession.StateChanged+=RefreshEntryControls;
         }
         void RefreshEntryControls()
         {
