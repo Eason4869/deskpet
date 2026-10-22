@@ -778,15 +778,33 @@ namespace Dafeiyu
         }
         void WatchConversationTitle(ProjectDefinition project,ConversationDefinition conversation,ConversationWorkspace workspace)
         {
-            if(workspace.UiObserved)return;workspace.UiObserved=true;string lastComplete=workspace.Session.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete")==null?"":workspace.Session.History.Messages.Last(m=>m.Role=="assistant"&&m.Status=="complete").Id;bool wasBusy=false;Action refresh=delegate{if(workspace.Session==null || workspace.Queue==null || closing)return;Action update=delegate{if(workspace.Session==null || workspace.Queue==null || closing)return;var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==workspace.Id);if(current==null&&!workspace.IsDraft)return;conversation=current??conversation;QueueConversationTitle(project,conversation,workspace);bool busy=workspace.Session.IsBusy||workspace.Queue.IsRunning;string status=busy?"running":"idle";var reply=workspace.Session.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete");bool changed=conversation.Status!=status;conversation.Status=status;if(wasBusy&&!busy&&reply!=null&&reply.Id!=lastComplete){lastComplete=reply.Id;conversation.HasUnreadCompletion=!IsConversationVisible(conversation.Id);changed=true;}wasBusy=busy;if(changed){try{ProjectStore.Save(Projects);}catch(Exception){Notice="项目状态尚未保存，请检查本地存储。";}NotifyProjectsChanged();}};if(Dispatcher.CheckAccess())update();else Dispatcher.BeginInvoke(update);};workspace.Session.HistoryChanged+=refresh;workspace.Session.StateChanged+=refresh;workspace.Queue.Changed+=refresh;
+            if(workspace.UiObserved)return;workspace.UiObserved=true;
+            // Background close clears the workspace properties; queued UI refreshes keep their original owners.
+            var observedSession=workspace.Session;var observedQueue=workspace.Queue;
+            var previous=observedSession.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete");string lastComplete=previous==null?"":previous.Id;bool wasBusy=false;
+            Action refresh=delegate
+            {
+                if(workspace.IsDisposed || closing)return;
+                Action update=delegate
+                {
+                    if(workspace.IsDisposed || closing)return;
+                    var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==workspace.Id);if(current==null&&!workspace.IsDraft)return;
+                    conversation=current??conversation;QueueConversationTitle(project,conversation,observedSession);
+                    bool busy=observedSession.IsBusy||observedQueue.IsRunning;string status=busy?"running":"idle";var reply=observedSession.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete");bool changed=conversation.Status!=status;conversation.Status=status;
+                    if(wasBusy&&!busy&&reply!=null&&reply.Id!=lastComplete){lastComplete=reply.Id;conversation.HasUnreadCompletion=!IsConversationVisible(conversation.Id);changed=true;}wasBusy=busy;
+                    if(changed){try{ProjectStore.Save(Projects);}catch(Exception){Notice="项目状态尚未保存，请检查本地存储。";}NotifyProjectsChanged();}
+                };
+                if(Dispatcher.CheckAccess())update();else Dispatcher.BeginInvoke(update);
+            };
+            observedSession.HistoryChanged+=refresh;observedSession.StateChanged+=refresh;observedQueue.Changed+=refresh;
         }
-        async void QueueConversationTitle(ProjectDefinition project,ConversationDefinition conversation,ConversationWorkspace workspace)
+        async void QueueConversationTitle(ProjectDefinition project,ConversationDefinition conversation,ConversationSession observedSession)
         {
-            if(workspace.Session==null || conversation==null || conversation.NameEdited || conversation.Name!="新对话" || titleGenerationStarted.Contains(conversation.Id) || workspace.Session.IsBusy)return;
-            if(!workspace.Session.History.Messages.Any(m=>m.Role=="assistant" && m.Status=="complete" && !String.IsNullOrWhiteSpace(m.Content)))return;
+            if(observedSession==null || conversation==null || conversation.NameEdited || conversation.Name!="新对话" || titleGenerationStarted.Contains(conversation.Id) || observedSession.IsBusy)return;
+            if(!observedSession.History.Messages.Any(m=>m.Role=="assistant" && m.Status=="complete" && !String.IsNullOrWhiteSpace(m.Content)))return;
             titleGenerationStarted.Add(conversation.Id);var snapshot=Settings.Copy();try
             {
-                string title=await workspace.Session.GenerateTitleAsync(snapshot,CancellationToken.None).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(title))return;
+                string title=await observedSession.GenerateTitleAsync(snapshot,CancellationToken.None).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(title))return;
                 Dispatcher.Invoke(new Action(delegate{var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==conversation.Id);if(current==null || current.NameEdited)return;current.Name=title;current.NameEdited=false;try{ProjectStore.Save(Projects);}catch(Exception){Notice="对话标题尚未保存，请检查本地存储。";}if(chat!=null)chat.RefreshAppearance();}));
             }
             catch(Exception){titleGenerationStarted.Remove(conversation.Id);}
