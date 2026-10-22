@@ -24,7 +24,24 @@ internal static class GalleryLayoutUiChecks
         dateField.Text = "9999-12-31"; page.RefreshGallery(); Check(dateStatus.Text == "日期格式应为 YYYY-MM-DD。", "maximum end date is rejected in native Avalonia event");
         dateField.Text = "malformed"; page.RefreshGallery(); Check(dateStatus.Text == "日期格式应为 YYYY-MM-DD。", "malformed end date is rejected in native Avalonia event");
         dateField.Text = "2026-10-22"; page.RefreshGallery(); dateField.Text = ""; page.RefreshGallery(); Check(dateField.Text == "", "normal and empty end dates pass native Avalonia event");
-        void AwaitTiles(int count, int timeoutMilliseconds = 5000) { var clock = System.Diagnostics.Stopwatch.StartNew(); while (clock.ElapsedMilliseconds < timeoutMilliseconds) { Render(); if (page.GalleryCount == count && page.GalleryPanel.Children.OfType<GeneratedImageCard>().All(t => t.GetLogicalDescendants().OfType<Image>().Any(i => i.Source != null))) return; Thread.Sleep(10); } throw new TimeoutException("gallery thumbnails did not settle"); }
+        bool TilesReady(int count, ISet<string>? expectedIds = null)
+        {
+            var cards = page.GalleryPanel.Children.OfType<GeneratedImageCard>().ToArray();
+            return page.GalleryCount == count && cards.Length == count
+                && (expectedIds == null || expectedIds.SetEquals(cards.Select(t => t.GalleryAssetId)))
+                && cards.All(t => t.GetLogicalDescendants().OfType<Image>().Any(i => i.Source != null));
+        }
+        void AwaitTiles(int count, int timeoutMilliseconds = 5000, ISet<string>? expectedIds = null)
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            while (clock.ElapsedMilliseconds < timeoutMilliseconds) { Render(); if (TilesReady(count, expectedIds)) return; Thread.Sleep(10); }
+            var cards = page.GalleryPanel.Children.OfType<GeneratedImageCard>().ToArray();
+            throw new TimeoutException("gallery thumbnails did not settle: search=" + page.Search.Text
+                + " expected=" + count + " cards=" + cards.Length
+                + " decoded=" + cards.Count(t => t.GetLogicalDescendants().OfType<Image>().Any(i => i.Source != null))
+                + " expectedIds=" + string.Join(",", expectedIds ?? new HashSet<string>())
+                + " actualIds=" + string.Join(",", cards.Select(t => t.GalleryAssetId)));
+        }
         Check(page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GallerySelectLoaded") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryExportSelected") && page.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryCleanupOrphans"), "selection, original export and explicit orphan cleanup controls are visible");
         var shapes = new[] { (320, 560), (600, 320), (400, 400), (400, 610), (640, 360), (420, 520), (460, 340) };
         for (int i = 0; i < shapes.Length; i++) owner.ImageStore.Save(Png(shapes[i].Item1, shapes[i].Item2, i), new GeneratedImage { Prompt = "layout fixture " + i, Model = "layout-model" }, true);
@@ -64,13 +81,26 @@ internal static class GalleryLayoutUiChecks
         Check(new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json")).Load().ImageGalleryLayout == "masonry", "masonry preference roundtrips after switching back");
         for (int i = shapes.Length; i < 43; i++) owner.ImageStore.Save(Png(2, 3, i), new GeneratedImage { Prompt = "layout fixture " + i, Model = "layout-model" }, false);
         AwaitTiles(40); Check(page.GalleryCount == 40, "gallery initially attaches forty filtered tiles");
-        var large=Png(2048,2048,2);for(int i=0;i<40;i++)owner.ImageStore.Save(large,new GeneratedImage{Prompt="large acceptance "+i,Model="large-image"},false);
+        var layoutIds = new ImageGalleryQueryService(owner.ImageStore).Query(new ImageGalleryQuery { Keyword = "layout fixture", Limit = 40 }).Items.Select(i => i.Id).ToHashSet();
+        AwaitTiles(40, expectedIds: layoutIds);
+        var large = Png(2048, 2048, 2); var largeIds = new HashSet<string>();
+        for (int i = 0; i < 40; i++) largeIds.Add(owner.ImageStore.Save(large, new GeneratedImage { Prompt = "large acceptance " + i, Model = "large-image" }, false).Id);
+        // Keep the old, equally sized result visible while the new query is blocked.
+        var queryGate = typeof(GeneratedImageStore).GetField("gate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.ImageStore)!;
+        Monitor.Enter(queryGate);
+        try
+        {
+            page.Search.Text = "large acceptance"; Render();
+            Check(TilesReady(40, layoutIds), "pending query keeps the previous forty decoded tiles visible");
+            Check(!TilesReady(40, largeIds), "matching tile count cannot satisfy a pending search for different asset IDs");
+        }
+        finally { Monitor.Exit(queryGate); }
         // Forty 2048px originals take about seven seconds on this host; retain full readiness assertions.
-        page.Search.Text="large acceptance";AwaitTiles(40,15000);Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));AwaitTiles(40,15000);
+        AwaitTiles(40,15000,largeIds);Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));AwaitTiles(40,15000,largeIds);
         var stableTiles=page.GalleryPanel.Children.OfType<GeneratedImageCard>().ToArray();var stableSources=stableTiles.Select(t=>t.GetLogicalDescendants().OfType<Image>().Single().Source).ToArray();var stablePick=stableTiles[0].GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="GalleryTileSelect");window.Activate();Check(stablePick.Focus(),"forty large-image overlay accepts focus");stablePick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var selectionClock=System.Diagnostics.Stopwatch.StartNew();while(selectionClock.ElapsedMilliseconds<200){Render();Thread.Sleep(5);}
         Check(stableTiles.All(t=>page.GalleryPanel.Children.Contains(t))&&stableTiles.Select((t,i)=>ReferenceEquals(t.GetLogicalDescendants().OfType<Image>().Single().Source,stableSources[i])).All(v=>v),"selection reuses forty large-image tiles and thumbnails");Check(stablePick.IsFocused,"selection preserves overlay focus");
-        Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));page.Search.Text="layout fixture";AwaitTiles(40);
+        Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));page.Search.Text="layout fixture";AwaitTiles(40,expectedIds:layoutIds);
         Toggle("LoadMoreGalleryImages").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(43); Check(page.GalleryCount == 43, "load more exposes remaining images");
         page.Search.Text = "layout fixture 42"; AwaitTiles(1); Check(page.GalleryCount == 1, "filter resets pagination and finds older assets");
         Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(1);
