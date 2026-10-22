@@ -18,7 +18,7 @@ class AuthoringTests(unittest.TestCase):
             for name in ('../outside.png', '/outside.png', 'a\\b.png', 'C:/a.png', 'a//b.png', './a.png', 'a/../b.png', 'a./b.png', 'a /b.png', 'con.png', 'a/*.png', 'a\x00.png'):
                 with self.subTest(name=name), self.assertRaises(ValueError):
                     authoring.safe_path(root, name)
-            self.assertEqual(root / 'animations/idle.png', authoring.safe_path(root, 'animations/idle.png'))
+            self.assertEqual(root.resolve() / 'animations/idle.png', authoring.safe_path(root, 'animations/idle.png'))
 
     def test_archive_exact_bytes_and_determinism(self):
         with tempfile.TemporaryDirectory() as directory:
