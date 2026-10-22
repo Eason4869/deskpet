@@ -63,7 +63,16 @@ namespace Dafeiyu
         static void Drain(SafeFileHandle handle,BoundedOutput output,string label)
         {
             using(handle)using(var stream=new FileStream(handle,FileAccess.Read))using(var reader=new StreamReader(stream,new UTF8Encoding(false,false),true)){
-                char[] block=new char[4096];int n;while((n=reader.Read(block,0,block.Length))>0){if(label.Length>0)output.Add(label.ToCharArray(),label.Length);output.Add(block,n);}
+                char[] block=new char[4096],line=label.Length==0?null:new char[BoundedOutput.MaximumCharacters];int used=0,n;
+                while((n=reader.Read(block,0,block.Length))>0){
+                    if(line==null){output.Add(block,n);continue;}
+                    // Pipe reads can split words. Label complete lines atomically, with the capture cap bounding partial lines.
+                    for(int i=0;i<n;i++){
+                        line[used++]=block[i];
+                        if(block[i]=='\n'||used==line.Length){output.Add(line,used,label);used=0;}
+                    }
+                }
+                if(used>0)output.Add(line,used,label);
             }
         }
         static IntPtr BuildEnvironment(WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> overrides=null)
@@ -106,8 +115,9 @@ namespace Dafeiyu
         [DllImport("kernel32.dll")]static extern IntPtr LocalFree(IntPtr memory);
         sealed class BoundedOutput
         {
+            public const int MaximumCharacters=256*1024;
             readonly object gate=new object();readonly StringBuilder text=new StringBuilder();public bool Truncated;
-            public void Add(char[] value,int length){lock(gate){text.Append(value,0,length);if(text.Length>256*1024){text.Remove(0,text.Length-256*1024);Truncated=true;}}}
+            public void Add(char[] value,int length,string label=""){lock(gate){text.Append(label);text.Append(value,0,length);if(text.Length>MaximumCharacters){text.Remove(0,text.Length-MaximumCharacters);Truncated=true;}}}
             public string Text{get{lock(gate)return text.ToString();}}
         }
         internal static string Quote(string value)
