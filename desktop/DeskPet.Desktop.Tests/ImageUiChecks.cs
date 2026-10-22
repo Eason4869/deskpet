@@ -27,15 +27,21 @@ internal static class ImageUiChecks
         Check(owner.Session.ImageConversationId.StartsWith("history:")&&!owner.Session.ImageConversationId.Contains(owner.DataDirectory),"standalone Avalonia image owner binds private stable history identity");
         var window = new ChatWindow(owner, false); window.Show(); Dispatcher.UIThread.RunJobs();
         var workspace = window.Images;
-        Check(window.CurrentPage == "chat", "starts on chat route"); window.ShowImages();
+        Check(window.CurrentPage == "chat", "starts on chat route"); window.ShowImages(); Dispatcher.UIThread.RunJobs(); checks += ImageWorkspaceLayoutUiChecks.CheckStructure(workspace);
         Check(window.CurrentPage == "images" && workspace.ProviderChoices.Items.Count == 0 && !workspace.ReferenceButton.IsEnabled, "empty configuration routes to image page and disables editing");
+        checks += ImageWorkspaceLayoutUiChecks.Capture(owner, window, workspace, "empty");
         window.NavigateHistory(-1); Check(window.CurrentPage == "chat", "back restores chat"); window.NavigateHistory(1); Check(window.CurrentPage == "images", "forward restores image workspace instance");
         var provider = new ImageGenerationProvider { Name = "Fixture image service", Connection = new ConnectionSettings { BaseUrl = "https://images.example/v1", Model = "ui-image-model", ApiKey = "fixture-secret", UseProxy = false }, SupportsEdits = false };
         var editProvider = provider.Copy(); editProvider.Id = Guid.NewGuid().ToString("N"); editProvider.Name = "Fixture editor"; editProvider.SupportsEdits = true;
         owner.Settings.ImageProviders = new() { provider, editProvider }; owner.Settings.ActiveImageProviderId = provider.Id; owner.Save(); Dispatcher.UIThread.RunJobs();
         Check(workspace.ProviderChoices.Items.Count == 2 && !workspace.ReferenceButton.IsEnabled, "configured providers refresh without opening a new page");
         workspace.ProviderChoices.SelectedIndex = 1; Check(workspace.ReferenceButton.IsEnabled && owner.Settings.ActiveImageProviderId == editProvider.Id, "provider selection persists and enables supported reference upload");
-        using var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(2, 2), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+        using var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(640, 400), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+        using (var pixels = bitmap.Lock())
+        {
+            var row = new byte[pixels.RowBytes];
+            for (int y = 0; y < 400; y++) { for (int x = 0; x < 640; x++) { bool sun = Math.Pow(x - 430, 2) + Math.Pow(y - 130, 2) < 65 * 65; row[x * 4] = (byte)(sun ? 196 : 178 + y / 8); row[x * 4 + 1] = (byte)(sun ? 231 : 116 + y / 8); row[x * 4 + 2] = (byte)(sun ? 251 : 73 + x / 8); row[x * 4 + 3] = 255; } System.Runtime.InteropServices.Marshal.Copy(row, 0, pixels.Address + y * pixels.RowBytes, row.Length); }
+        }
         byte[] png; using (var output = new MemoryStream()) { bitmap.Save(output); png = output.ToArray(); } handler.Png = png;
         workspace.SetReference(png, "fixture.png");
         workspace.ProviderChoices.SelectedIndex = 0;
@@ -49,6 +55,7 @@ internal static class ImageUiChecks
         Until(()=>owner.ImageTasks.List().Any(t=>t.State==ImageGenerationTaskState.Generating)&&workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>ImageMotionUiChecks.GeneratingCardReady(window,c)),PendingDiagnostic);
         var pendingCard=workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().First(c=>ImageMotionUiChecks.GeneratingCardReady(window,c));
         Console.WriteLine("Avalonia pending motion fixture: "+PendingDiagnostic());
+        checks += ImageWorkspaceLayoutUiChecks.Capture(owner, window, workspace, "pending");
         checks+=ImageMotionUiChecks.Run(owner,window,pendingCard);handler.Gate.SetResult(true);handler.Gate=null; Check(workspace.IsGenerating, "generation exposes running state");
         window.NavigateHistory(-1); Check(window.CurrentPage == "chat" && workspace.IsGenerating, "leaving image page retains running request");
         Complete(generation); Complete(handler.LastResponse);
@@ -60,7 +67,7 @@ internal static class ImageUiChecks
         IList<GeneratedImage> GalleryItems() => (IList<GeneratedImage>)loadedField.GetValue(workspace)!;
         string GalleryDiagnostic() => "search="+workspace.Search.Text+" cards="+workspace.GalleryCount+" revision="+revisionField.GetValue(workspace)+" status="+((TextBlock)statusField.GetValue(workspace)!).Text+" loaded="+String.Join(",",GalleryItems().Select(i=>i.Id+":"+i.Model))+" expected="+image.Id+":"+image.Model;
         void AwaitGallery(int count) => Until(()=>workspace.GalleryCount==count&&GalleryItems().Count==count&&(count==0||GalleryItems()[0].Id==image.Id),GalleryDiagnostic);
-        window.ShowImages();Dispatcher.UIThread.RunJobs();Check(workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.GetLogicalDescendants().OfType<GeneratedImageCard>().Any()&&!c.ClockRunning),"SuccessReplacesPlaceholderInPlace and stops frame clock"); workspace.SelectedIndex = 1; workspace.RefreshGallery();
+        window.ShowImages();Dispatcher.UIThread.RunJobs();Check(workspace.GetLogicalDescendants().OfType<GeneratedImageCard>().Any(c=>c.Name=="WorkspaceGeneratedImage")&&!workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.ClockRunning),"SuccessReplacesPlaceholderInPlace and stops frame clock"); checks += ImageWorkspaceLayoutUiChecks.Capture(owner, window, workspace, "success"); workspace.SelectedIndex = 1; workspace.RefreshGallery();
         AwaitGallery(1); Check(workspace.GalleryCount == 1, "workspace generation appears in gallery"); workspace.Search.Text = "not-present"; AwaitGallery(0); Check(workspace.GalleryCount == 0, "gallery filtering excludes mismatched prompt/model");
         var queryGate=typeof(GeneratedImageStore).GetField("gate",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.ImageStore)!;
         Monitor.Enter(queryGate);
@@ -68,6 +75,11 @@ internal static class ImageUiChecks
         finally{Monitor.Exit(queryGate);}
         AwaitGallery(1);Check(workspace.GalleryCount==1,"gallery model search finds asset");Console.WriteLine("Completed gallery query: "+GalleryDiagnostic());
         workspace.Prepare(image); Check(workspace.SelectedIndex == 0 && prompt.Text == image.Prompt && !workspace.IsGenerating, "regenerate prepares explicit new request without automatic call");
+        var unavailableReference = image.Copy(); unavailableReference.ReferenceImageId = Guid.NewGuid().ToString("N"); workspace.Prepare(unavailableReference); Dispatcher.UIThread.RunJobs();
+        var removeUnavailable = workspace.GetLogicalDescendants().OfType<Button>().Distinct().Single(b=>b.Name=="RemoveImageReference");
+        Check(removeUnavailable.IsEffectivelyVisible, "missing original reference keeps its explicit remove action reachable");
+        int callsBeforeRemove = handler.Requests; removeUnavailable.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Check(handler.Requests == callsBeforeRemove && !(bool)typeof(ImageWorkspacePage).GetField("missingReference",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(workspace)!, "explicitly removing missing reference clears block without implicit generation");
         handler.Delay = true; prompt.Text = "cancel this generation"; var cancelled = workspace.GenerateAsync(); Check(workspace.IsGenerating, "second generation runs");
         workspace.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "CancelImageGeneration").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Complete(cancelled);
         Check(owner.ImageStore.List().Count == 1 && !workspace.IsGenerating, "cancel creates no fake gallery asset");
