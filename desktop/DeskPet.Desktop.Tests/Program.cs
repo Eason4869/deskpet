@@ -220,6 +220,7 @@ try
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
     using var controller = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), runtime);
     assertions += ImageUiChecks.Run(Path.Combine(directory, "image-ui"));
+    assertions += ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui"));
     const string richMarkdown = "# 原生标题\n\n普通 **粗体**、*斜体*、~~删除~~、`inline()` 和 [文档](https://example.com)。\n\n> 引用文本\n\n3. 有序项目\n4. 第二项\n\n- 无序项目\n\n```csharp\nvar answer = 42;\n```\n\n| 名称 | 值 |\n| --- | --- |\n| Markdown | **已渲染** |";
     var richLog = new ConversationLog(); var richReply = richLog.BeginTurn(richMarkdown, "text", out var richUser);
     var richTools = new[] { new AgentToolEvent { Id = "tool-1", Name = "read_file", Summary = "查看 README.md", Status = "running" } };

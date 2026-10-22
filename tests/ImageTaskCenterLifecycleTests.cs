@@ -10,7 +10,7 @@ namespace Dafeiyu.Tests
     public static class ImageTaskCenterLifecycleTests
     {
         static int checks;static void Check(bool value,string name){if(!value)throw new Exception("FAIL "+name);checks++;Console.WriteLine("PASS "+name);}
-        public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("Task center lifecycle: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
+        public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("ImageTaskCenterLifecycleTests: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine(e);return 1;}}
         static async Task Run()
         {
             await ConcurrentRepairsAndOpening();

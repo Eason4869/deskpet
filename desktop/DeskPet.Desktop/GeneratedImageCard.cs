@@ -22,6 +22,10 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     private Bitmap? thumbnail;
     private Image? tileImage;
     private bool disposed;
+    private Button? selectionOverlay, favoriteOverlay;
+    private bool selectionActive, selectedAsset;
+    internal string GalleryAssetId => metadata.Id;
+    internal void UpdateSelection(bool selected, bool selecting) { selectedAsset=selected; selectionActive=selecting; if(selectionOverlay==null||favoriteOverlay==null)return;selectionOverlay.Content=selected?"已":"选";selectionOverlay.Opacity=favoriteOverlay.Opacity=IsPointerOver||IsKeyboardFocusWithin||selected||selecting?1:0; }
     internal bool IsGalleryTile { get; }
     internal void SetGalleryLayout(string layout) { if (tileImage != null) tileImage.Stretch = layout == "grid" ? Stretch.UniformToFill : Stretch.Uniform; }
     public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null, Action<string>? choose = null, Action<string>? favorite = null, bool selected = false, bool selecting = false)
@@ -60,8 +64,9 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         AutomationProperties.SetName(more, "图片操作"); ToolTip.SetTip(more, "图片操作"); surface.Children.Add(more);
         var pick = Ui.Button(selected ? "已" : "选", () => choose?.Invoke(metadata.Id)); pick.Name = "GalleryTileSelect"; pick.Width = pick.Height = 32; pick.Padding = new Thickness(0); pick.HorizontalAlignment = HorizontalAlignment.Left; pick.VerticalAlignment = VerticalAlignment.Top; pick.Margin = new Thickness(8); AutomationProperties.SetName(pick, "选择图片"); surface.Children.Add(pick);
         var star = Ui.Button(metadata.IsFavorite ? "藏" : "收", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); AutomationProperties.SetName(star, "收藏图片"); surface.Children.Add(star);
+        selectionOverlay=pick;favoriteOverlay=star;selectionActive=selecting;selectedAsset=selected;
         pick.Opacity = star.Opacity = selecting || selected ? 1 : 0;
-        PropertyChanged += (_, e) => { if (e.Property == IsPointerOverProperty || e.Property == IsKeyboardFocusWithinProperty) { var visible = IsPointerOver || IsKeyboardFocusWithin; more.Opacity = visible ? 1 : 0; pick.Opacity = star.Opacity = visible || selecting || selected ? 1 : 0; } };
+        PropertyChanged += (_, e) => { if (e.Property == IsPointerOverProperty || e.Property == IsKeyboardFocusWithinProperty) { var visible = IsPointerOver || IsKeyboardFocusWithin; more.Opacity = visible ? 1 : 0; pick.Opacity = star.Opacity = visible || selectionActive || selectedAsset ? 1 : 0; } };
         SizeChanged += (_, _) => Clip = new RectangleGeometry(new Rect(Bounds.Size), 14, 14);
     }
     private async Task LoadGalleryThumbnailAsync()

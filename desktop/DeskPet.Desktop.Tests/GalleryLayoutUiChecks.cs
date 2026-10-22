@@ -64,6 +64,12 @@ internal static class GalleryLayoutUiChecks
         Check(new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json")).Load().ImageGalleryLayout == "masonry", "masonry preference roundtrips after switching back");
         for (int i = shapes.Length; i < 43; i++) owner.ImageStore.Save(Png(2, 3, i), new GeneratedImage { Prompt = "layout fixture " + i, Model = "layout-model" }, false);
         AwaitTiles(40); Check(page.GalleryCount == 40, "gallery initially attaches forty filtered tiles");
+        var large=Png(2048,2048,2);for(int i=0;i<40;i++)owner.ImageStore.Save(large,new GeneratedImage{Prompt="large acceptance "+i,Model="large-image"},false);
+        page.Search.Text="large acceptance";AwaitTiles(40);Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));AwaitTiles(40);
+        var stableTiles=page.GalleryPanel.Children.OfType<GeneratedImageCard>().ToArray();var stableSources=stableTiles.Select(t=>t.GetLogicalDescendants().OfType<Image>().Single().Source).ToArray();var stablePick=stableTiles[0].GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="GalleryTileSelect");window.Activate();Check(stablePick.Focus(),"forty large-image overlay accepts focus");stablePick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var selectionClock=System.Diagnostics.Stopwatch.StartNew();while(selectionClock.ElapsedMilliseconds<200){Render();Thread.Sleep(5);}
+        Check(stableTiles.All(t=>page.GalleryPanel.Children.Contains(t))&&stableTiles.Select((t,i)=>ReferenceEquals(t.GetLogicalDescendants().OfType<Image>().Single().Source,stableSources[i])).All(v=>v),"selection reuses forty large-image tiles and thumbnails");Check(stablePick.IsFocused,"selection preserves overlay focus");
+        Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));page.Search.Text="layout fixture";AwaitTiles(40);
         Toggle("LoadMoreGalleryImages").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(43); Check(page.GalleryCount == 43, "load more exposes remaining images");
         page.Search.Text = "layout fixture 42"; AwaitTiles(1); Check(page.GalleryCount == 1, "filter resets pagination and finds older assets");
         Toggle("GalleryMultiSelect").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(1);

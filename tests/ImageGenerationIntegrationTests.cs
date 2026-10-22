@@ -23,7 +23,7 @@ namespace Dafeiyu.Tests
                 Check(typeof(ConversationSession).GetProperty("QuestionProvider")!=null,"session exposes its question provider");
                 Check(typeof(ConversationSession).GetProperty("ImageTasks")!=null,"AllEntriesShareOneQueue: session accepts application manager");
                 Lifecycle().GetAwaiter().GetResult();
-                Console.WriteLine("Image generation integration tests: "+checks+" passed");return 0;
+                Console.WriteLine("ImageGenerationIntegrationTests: "+checks+" passed");return 0;
             }
             catch(Exception error){Console.Error.WriteLine(error);return 1;}
         }

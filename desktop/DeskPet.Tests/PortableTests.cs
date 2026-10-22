@@ -27,7 +27,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskManagerTests.Main();}
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -40,7 +40,7 @@ namespace Dafeiyu.Tests
                 }
                 if(report!=null) {
                     var lines=captured.ToString().Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries);
-                    var summaries=lines.Select(line=>System.Text.RegularExpressions.Regex.Match(line,"^(?:.* tests|ProviderTests|ImageGenerationTaskManagerTests|ImageGenerationTaskStoreTests|ImageGenerationBackendTests|ImageGalleryLayoutTests|ImageProviderProtocolTests|AI greetings): ([0-9]+) passed",System.Text.RegularExpressions.RegexOptions.IgnoreCase)).Where(match=>match.Success).ToArray();
+                    var summaries=lines.Select(line=>System.Text.RegularExpressions.Regex.Match(line,"^(?:.* tests|[A-Za-z][A-Za-z0-9]*Tests|AI greetings): ([0-9]+) passed",System.Text.RegularExpressions.RegexOptions.IgnoreCase)).Where(match=>match.Success).ToArray();
                     Directory.CreateDirectory(Path.GetDirectoryName(report));
                     File.WriteAllText(report,System.Text.Json.JsonSerializer.Serialize(new{
                         schemaVersion=1,success=result==0,exitCode=result,
@@ -70,7 +70,9 @@ namespace Dafeiyu.Tests
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
                     foreach(var test in new Func<int>[] { McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
-                        ConversationTests.Main, HistoryTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main, QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
+                        ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
+                        ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
+                        QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
                         AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
                     return result;

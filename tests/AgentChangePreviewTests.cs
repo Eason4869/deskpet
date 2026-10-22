@@ -15,7 +15,9 @@ namespace Dafeiyu.Tests
             try
             {
                 string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"preview-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);var w=new AgentWorkspace(root);
-                Call(w,"write_file",new{path="edit.txt",content="a\nb\nc"});Call(w,"write_file",new{path="edit.txt",content="a\nx\nc"});
+                // Preview reports the original pre-task baseline, including an absent file.
+                File.WriteAllText(Path.Combine(root,"edit.txt"),"a\nb\nc",new UTF8Encoding(false));
+                Call(w,"write_file",new{path="edit.txt",content="a\nx\nc"});
                 var preview=w.PreviewChange("edit.txt",CancellationToken.None);
                 Check(preview.AddedLines==1 && preview.RemovedLines==1 && !preview.Unknown,"AgentChangePreview exposes exact diff counts");
                 Check(preview.Diff.Any(l=>l.Kind=="removed" && l.Text=="b") && preview.Diff.Any(l=>l.Kind=="added" && l.Text=="x"),"AgentChangePreview exposes line-level added and removed rows");

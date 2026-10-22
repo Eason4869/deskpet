@@ -66,7 +66,17 @@ namespace Dafeiyu
         internal async Task<ConversationSession> GetExistingImageOwnerAsync(ProjectCatalog catalog,ImageTaskOrigin origin)
         {return (await GetCatalogWorkspaceAsync(catalog,origin.ConversationId,origin.PersonaId??"").ConfigureAwait(false)).Session;}
         internal Task<ConversationWorkspace> OpenCatalogWorkspaceAsync(ProjectCatalog catalog,string id)
-        {return GetCatalogWorkspaceAsync(catalog,id,null);}
+        {
+            lock(gate)
+            {
+                if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
+                var draft=workspaces.SingleOrDefault(w=>w.Id==id&&w.IsDraft);
+                // UI expansion may share an unsent owner that deliberately has no catalog row.
+                // Image repair continues through the strict original-catalog path below.
+                if(draft!=null&&!closing.ContainsKey(id))return Task.FromResult(draft);
+            }
+            return GetCatalogWorkspaceAsync(catalog,id,null);
+        }
         async Task<ConversationWorkspace> GetCatalogWorkspaceAsync(ProjectCatalog catalog,string id,string requiredPersona)
         {
             while(true)

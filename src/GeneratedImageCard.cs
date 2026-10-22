@@ -22,7 +22,7 @@ namespace Dafeiyu
             var copy=Ui.Button("复制图片");copy.Name="CopyGeneratedImage";copy.Click+=delegate{Run(()=>CopyOriginal(pet.ImageStore,asset));};actions.Children.Add(copy);
             var folder=Ui.Button("打开所在文件夹");folder.Click+=delegate{Run(()=>Process.Start(new ProcessStartInfo("explorer.exe","/select,\""+pet.ImageStore.PathFor(asset.Id)+"\""){UseShellExecute=true}));};actions.Children.Add(folder);
             if(regenerate!=null){var again=Ui.Button("再生成一张");again.Name="RegenerateImage";again.Click+=delegate{regenerate(asset.Copy());};actions.Children.Add(again);}body.Children.Add(actions);
-            var detail=Ui.Text(asset.Prompt+"\n模型："+asset.Model+"\n尺寸："+asset.Width+" × "+asset.Height+"\n生成时间："+asset.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),12,Ui.Muted);body.Children.Add(new Expander{Header="图片详情",Content=detail,Margin=new Thickness(0,6,0,0)});
+            var detail=Ui.Text(asset.Prompt+"\n模型："+asset.Model+"\n尺寸："+asset.Width+" × "+asset.Height+"\n生成时间："+asset.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),12,Ui.Muted);body.Children.Add(new Expander{Header="图片详情",Foreground=Ui.Ink,Content=detail,Margin=new Thickness(0,6,0,0)});
             notice=Ui.Text("",11,Ui.Muted);body.Children.Add(notice);
         }
         void Run(Action action){try{action();notice.Text="";}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is ArgumentException||error is NotSupportedException||error is FormatException||error is System.Runtime.InteropServices.COMException||error is System.ComponentModel.Win32Exception))throw;notice.Text="操作未完成，请检查原图、保存位置或剪贴板后重试。";}}

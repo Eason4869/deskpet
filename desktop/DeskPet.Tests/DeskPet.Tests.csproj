@@ -7,6 +7,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/ConversationWorkspaceManagerTests.cs" Link="Regression/ConversationWorkspaceManagerTests.cs" />
     <Compile Include="../../tests/ImageTaskCenterLifecycleTests.cs" Link="Regression/ImageTaskCenterLifecycleTests.cs" />
     <Compile Include="../../tests/ImageGalleryExportTests.cs" Link="Regression/ImageGalleryExportTests.cs" />
     <Compile Include="../../tests/ImageGalleryManagementTests.cs" Link="Regression/ImageGalleryManagementTests.cs" />

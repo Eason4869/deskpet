@@ -35,6 +35,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private readonly CheckBox favoritesOnly = new() { Content = "只看收藏" }, trashOnly = new() { Content = "回收站" };
     private readonly ComboBox providerFilter = new() { MinWidth = 110 }, modelFilter = new() { MinWidth = 110 }, sourceFilter = new() { MinWidth = 110 }, sortFilter = new() { MinWidth = 110 };
     private readonly TextBox fromDate = Ui.Input("", "起始 YYYY-MM-DD"), toDate = Ui.Input("", "截止 YYYY-MM-DD");
+    private int galleryTotal;
     private IList<GeneratedImage> loadedGallery = new List<GeneratedImage>();
     private int galleryRevision;
     private bool updatingFilters;
@@ -92,10 +93,10 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         providerFilter.ItemsSource = new[] { "全部服务" }; providerFilter.SelectedIndex = 0; modelFilter.ItemsSource = new[] { "全部模型" }; modelFilter.SelectedIndex = 0;
         sourceFilter.ItemsSource = new[] { "全部来源", "图像页", "对话", "设置测试", "未知" }; sourceFilter.SelectedIndex = 0; sortFilter.ItemsSource = new[] { "最新优先", "最早优先" }; sortFilter.SelectedIndex = 0;
         var filters = new WrapPanel { Orientation = Orientation.Horizontal }; foreach (var control in new Control[] { favoritesOnly, trashOnly, providerFilter, modelFilter, sourceFilter, sortFilter, fromDate, toDate }) { control.Margin = new Thickness(0, 0, 8, 6); filters.Children.Add(control); }
-        multiSelect = Ui.Button("多选", () => { selecting = !selecting; if (!selecting) gallerySelection.Clear(); RefreshGallery(); }); multiSelect.Name = "GalleryMultiSelect";
+        multiSelect = Ui.Button("多选", () => { selecting = !selecting; if (!selecting) gallerySelection.Clear(); RefreshSelection(); }); multiSelect.Name = "GalleryMultiSelect";
         var bulk = galleryActions;
-        var selectLoaded = Ui.Button("全选已加载", () => { gallerySelection.SelectLoaded(loadedGallery); RefreshGallery(); }); selectLoaded.Name = "GallerySelectLoaded"; bulk.Children.Add(selectLoaded);
-        bulk.Children.Add(Ui.Button("清除选择", () => { gallerySelection.Clear(); RefreshGallery(); }));
+        var selectLoaded = Ui.Button("全选已加载", () => { gallerySelection.SelectLoaded(loadedGallery); RefreshSelection(); }); selectLoaded.Name = "GallerySelectLoaded"; bulk.Children.Add(selectLoaded);
+        bulk.Children.Add(Ui.Button("清除选择", () => { gallerySelection.Clear(); RefreshSelection(); }));
         var favoriteAll = Ui.Button("收藏所选", () => SetSelectedFavorite(true)); favoriteAll.Name = "GalleryFavoriteSelected"; bulk.Children.Add(favoriteAll);
         var unfavoriteAll = Ui.Button("取消收藏", () => SetSelectedFavorite(false)); unfavoriteAll.Name = "GalleryUnfavoriteSelected"; bulk.Children.Add(unfavoriteAll);
         var export = Ui.AsyncButton("导出原图", ExportSelectedAsync, owner.Error); export.Name = "GalleryExportSelected"; bulk.Children.Add(export);
@@ -221,7 +222,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
             if (task.IsFaulted) { warning.Text = "图库读取失败，请检查存储。"; return; }
             updatingFilters = true; UpdateProviderOptions(providerFilter, task.Result.Providers, owner.Settings.ImageProviders); UpdateOptions(modelFilter, "全部模型", task.Result.Models); updatingFilters = false;
             foreach (var card in galleryCards) card.Dispose(); galleryCards.Clear(); gallery.Children.Clear(); warning.Text = owner.ImageStore.Warning;
-            var result = task.Result.Page; loadedGallery = result.Items; galleryCount.Text = "共 " + result.Total + " 张 · 已加载 " + result.Items.Count + " 张 · 已选 " + gallerySelection.Count + " 张";
+            var result = task.Result.Page; loadedGallery = result.Items; galleryTotal=result.Total; galleryCount.Text = "共 " + result.Total + " 张 · 已加载 " + result.Items.Count + " 张 · 已选 " + gallerySelection.Count + " 张";
             multiSelect.Content = selecting ? "完成多选" : "多选"; galleryActions.IsVisible = selecting; clearTrash.IsVisible = trashOnly.IsChecked == true; trashAction.IsVisible = trashOnly.IsChecked != true; restoreAction.IsVisible = trashOnly.IsChecked == true; purgeAction.IsVisible = trashOnly.IsChecked == true;
             galleryEmpty.Text = string.IsNullOrWhiteSpace(search.Text) ? "还没有生成图片。" : "没有匹配的图片。"; galleryEmpty.IsVisible = result.Total == 0;
             foreach (var item in result.Items) { var card = new GeneratedImageCard(owner, host, item, Prepare, owner.Settings.ImageGalleryLayout, ToggleSelected, ToggleFavorite, gallerySelection.Contains(item.Id), selecting); galleryCards.Add(card); gallery.Children.Add(card); }
@@ -243,7 +244,8 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         foreach (var id in ids) { var provider = configured.FirstOrDefault(p => p.Id == id); values.Add(new ImageGalleryProviderChoice { Id = id, Label = provider == null ? "已移除的服务 · " + id.Substring(0, Math.Min(6, id.Length)) : provider.Name }); }
         box.ItemsSource = values; box.SelectedItem = values.FirstOrDefault(i => i.Id == selected) ?? values[0];
     }
-    private void ToggleSelected(string id) { gallerySelection.Toggle(id); RefreshGallery(); }
+    private void ToggleSelected(string id) { gallerySelection.Toggle(id); RefreshSelection(); }
+    private void RefreshSelection() { multiSelect.Content=selecting?"完成多选":"多选";galleryActions.IsVisible=selecting;galleryCount.Text="共 "+galleryTotal+" 张 · 已加载 "+loadedGallery.Count+" 张 · 已选 "+gallerySelection.Count+" 张";foreach(var card in galleryCards)card.UpdateSelection(gallerySelection.Contains(card.GalleryAssetId),selecting); }
     private void ToggleFavorite(string id) { try { var image = owner.ImageStore.Get(id); owner.ImageStore.SetFavorite(new[] { id }, !image.IsFavorite); } catch (Exception e) { owner.Error(e); } }
     private void SetSelectedFavorite(bool value) { if (gallerySelection.Count == 0) return; try { owner.ImageStore.SetFavorite(gallerySelection.Ids, value); galleryActionNotice.Text = value ? "已收藏所选图片。" : "已取消所选图片的收藏。"; } catch (Exception e) { owner.Error(e); } }
     private static string ManagementSummary(ImagePurgeResult result) => "已删除 " + result.DeletedIds.Count + " 张；保留 " + result.Blocked.Count + " 张。" + string.Join("；", result.Blocked.Select(i => i.Key + "：" + i.Value)) + (result.CleanupPendingIds.Count > 0 ? "；" + result.CleanupPendingIds.Count + " 张文件待下次清理。" : "");
