@@ -79,3 +79,5 @@ jobs:
           path: |
             work/permissions/link-right-click-hit.png
             work/permissions/link-native-input-not-ready.png
+            work/image-ui-evidence/generation-layout-failure.png
+            work/image-ui-evidence/generation-layout-failure.txt
