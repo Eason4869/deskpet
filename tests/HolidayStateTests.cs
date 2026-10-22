@@ -45,11 +45,23 @@ namespace Dafeiyu.Tests
                 var changedStore=new HolidayStateStore(futureShape);changedStore.Load();failed=false;try{changedStore.Save(new HolidayState());}catch(InvalidOperationException){failed=true;}
                 Check(failed && File.Exists(futureShape) && File.ReadAllText(futureShape)==changedJson,"future field shapes are checked only after schema version");
                 string locked=Path.Combine(root,"locked.json");var lockedStore=new HolidayStateStore(locked);lockedStore.Save(state);
-                using(var held=new FileStream(locked,FileMode.Open,FileAccess.ReadWrite,FileShare.Delete)) {
-                    lockedStore.Load();Check(File.Exists(locked) && Directory.GetFiles(root,"locked.json.invalid-*").Length==0,"sharing violation is not treated as corrupt data");
+                string originalLocked=File.ReadAllText(locked);
+                // Unix FileStream uses an exclusive advisory lock only for None; Delete uses a shared lock.
+                // Both streams cooperate with that lock, producing an actual read IOException on either platform.
+                using(var held=new FileStream(locked,FileMode.Open,FileAccess.ReadWrite,FileShare.None)) {
+                    bool readDenied=false;
+                    try{using(var attempt=new FileStream(locked,FileMode.Open,FileAccess.Read,FileShare.Read)){} }catch(IOException){readDenied=true;}
+                    Check(readDenied,"exclusive fixture genuinely prevents the production read mode");
+                    var unreadable=lockedStore.Load();
+                    Check(!unreadable.WardrobeDiscovered && !String.IsNullOrEmpty(lockedStore.Warning),"transient read failure reports safe defaults and a warning");
+                    Check(File.Exists(locked) && Directory.GetFiles(root,"locked.json.invalid-*").Length==0,"sharing violation is not treated as corrupt data");
                 }
                 failed=false;try{lockedStore.Save(new HolidayState());}catch(InvalidOperationException){failed=true;}
-                Check(failed && new HolidayStateStore(locked).Load().WardrobeDiscovered,"transient read failure blocks overwrite until a successful reload");
+                Check(failed && File.ReadAllText(locked)==originalLocked,"transient read failure blocks overwrite after lock release until a successful reload");
+                var reloaded=lockedStore.Load();
+                Check(reloaded.WardrobeDiscovered && String.IsNullOrEmpty(lockedStore.Warning),"successful reload on the same store restores ownership and clears warning");
+                lockedStore.Save(reloaded);
+                Check(new HolidayStateStore(locked).Load().WardrobeDiscovered,"successful reload on the same store permits saving again");
                 string invalid=Path.Combine(root,"invalid.json");File.WriteAllText(invalid,"{broken");var invalidStore=new HolidayStateStore(invalid);
                 Check(!invalidStore.Load().WardrobeDiscovered && !String.IsNullOrEmpty(invalidStore.Warning),"no backup gives safe defaults and warning");
                 string oversize=Path.Combine(root,"oversize.json");File.WriteAllText(oversize,new string(' ',1024*1024+1));var oversizeStore=new HolidayStateStore(oversize);
