@@ -71,9 +71,25 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("LINK INPUT: "+evidence);
             if(!ready){try{Capture("link-native-input-not-ready.png");}catch(Exception captureError){Console.WriteLine("LINK INPUT CAPTURE: "+captureError.Message);}throw new Exception("Native link click aborted before mouse down: "+evidence);}
-            var inputs=new[]{new NativeInput{Mouse=new MouseInput{Flags=0x0008}},new NativeInput{Mouse=new MouseInput{Flags=0x0010}}};
-            uint sent=SendInput((uint)inputs.Length,inputs,System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeInput)));
-            if(sent!=inputs.Length){int error=System.Runtime.InteropServices.Marshal.GetLastWin32Error();if(sent>0)mouse_event(0x0010,0,0,0,UIntPtr.Zero);throw new System.ComponentModel.Win32Exception(error,"Native link click inserted "+sent+" of "+inputs.Length+" input events");}
+            bool rightUp=false;int opened=0,closed=0;var menu=link.ContextMenu;
+            System.Windows.Input.MouseButtonEventHandler onUp=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){if(e.ChangedButton==System.Windows.Input.MouseButton.Right)rightUp=true;};
+            RoutedEventHandler onOpened=delegate{opened++;},onClosed=delegate{closed++;};
+            body.AddHandler(System.Windows.Input.Mouse.PreviewMouseUpEvent,onUp,true);menu.Opened+=onOpened;menu.Closed+=onClosed;
+            try
+            {
+                var inputs=new[]{new NativeInput{Mouse=new MouseInput{Flags=0x0008}},new NativeInput{Mouse=new MouseInput{Flags=0x0010}}};
+                uint sent=SendInput((uint)inputs.Length,inputs,System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeInput)));
+                if(sent!=inputs.Length){int error=System.Runtime.InteropServices.Marshal.GetLastWin32Error();if(sent>0)mouse_event(0x0010,0,0,0,UIntPtr.Zero);throw new System.ComponentModel.Win32Exception(error,"Native link click inserted "+sent+" of "+inputs.Length+" input events");}
+                // A fixed delay can resume before queued mouse-up input after a
+                // busy dispatcher. Observe this same click completing; never
+                // retry the click or open the menu on behalf of the application.
+                timeout.Restart();
+                while(!(rightUp&&opened>0&&menu.IsOpen)&&timeout.Elapsed.TotalSeconds<3)await Task.Delay(20);
+                evidence="rightUp="+rightUp+" opened="+opened+" closed="+closed+" linkMenu="+menu.IsOpen+" editorMenu="+body.ContextMenu.IsOpen+" rightState="+System.Windows.Input.Mouse.RightButton+" foreground="+GetForegroundWindow()+" captured="+System.Windows.Input.Mouse.Captured;
+                Console.WriteLine("LINK COMPLETION: "+evidence);
+                if(!(rightUp&&opened>0&&menu.IsOpen)){Capture("link-right-click-hit.png");throw new Exception("Native link click did not complete: "+evidence);}
+            }
+            finally{body.RemoveHandler(System.Windows.Input.Mouse.PreviewMouseUpEvent,onUp);menu.Opened-=onOpened;menu.Closed-=onClosed;}
         }
         static void Capture(string name)
         {
