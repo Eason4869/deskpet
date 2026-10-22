@@ -7,6 +7,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/OfficialCompanionLegacyTests.cs;../../tests/OfficialCompanionIdentityTests.cs;../../tests/HolidaySourceBindingTests.cs" Link="Tests/%(Filename)%(Extension)" />
     <Compile Include="../../tests/HolidayStateTests.cs;../../tests/HolidayCalendarTests.cs;../../tests/HolidayRuntimeTests.cs;../../tests/HolidayHoverTests.cs;../../tests/HolidayGreetingTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/holidays/calendar-golden.json" LogicalName="Dafeiyu.Tests.HolidayGolden" />
     <Compile Include="../../tests/OfficialCompanionTests.cs;../../tests/OfficialCompanionFixtures.cs" Link="Regression/%(Filename)%(Extension)" />

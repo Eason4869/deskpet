@@ -13,6 +13,9 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1 && args[0]=="--official-legacy-only")return OfficialCompanionLegacyTests.Main();
+            if(args.Length==1 && args[0]=="--official-identity-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionIdentityTests.Main();}
+            if(args.Length==1 && args[0]=="--holiday-source-only")return HolidaySourceBindingTests.Main();
             if(args.Length==1 && args[0]=="--official-companion-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionTests.Main();}
             if(args.Length==1 && args[0]=="--image-task-center-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageTaskCenterLifecycleTests.Main();}
             if(args.Length==1 && args[0]=="--image-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryManagementTests.Main();}
@@ -70,7 +73,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,

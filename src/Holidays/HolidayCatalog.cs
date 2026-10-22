@@ -11,23 +11,35 @@ namespace Dafeiyu
 {
     public sealed class OutfitClipDefinition
     {
+        readonly Func<string,Stream> openSource;
         public string Path {get;private set;} public string ResourceName {get{return "Dafeiyu.Holidays."+Path.Replace('/','.');}}
+        public string SourceKey {get;private set;}
         public int FrameCount {get;private set;} public int Columns {get;private set;} public double Fps {get;private set;}
         public double FPS {get{return Fps;}} public bool Loop {get;private set;}
         public int FrameWidth {get;private set;} public int FrameHeight {get;private set;}
         public double OffsetX {get;private set;} public double OffsetY {get;private set;}
         public string Action {get;private set;} public string Variant {get;private set;}
         internal OutfitClipDefinition(string path,int count,int columns,double fps,bool loop,int width,int height,double x,double y,string action,string variant)
-        {Path=path;FrameCount=count;Columns=columns;Fps=fps;Loop=loop;FrameWidth=width;FrameHeight=height;OffsetX=x;OffsetY=y;Action=action;Variant=variant;}
+            :this(path,count,columns,fps,loop,width,height,x,y,action,variant,"embedded",null){}
+        internal OutfitClipDefinition(string path,int count,int columns,double fps,bool loop,int width,int height,double x,double y,string action,string variant,string sourceKey,Func<string,Stream> openSource)
+        {Path=path;FrameCount=count;Columns=columns;Fps=fps;Loop=loop;FrameWidth=width;FrameHeight=height;OffsetX=x;OffsetY=y;Action=action;Variant=variant;SourceKey=sourceKey;this.openSource=openSource;}
+        public Stream OpenResource()
+        {return openSource==null?typeof(HolidayCatalog).Assembly.GetManifestResourceStream(ResourceName):openSource(Path);}
     }
     public sealed class OutfitDefinition
     {
+        readonly Func<string,Stream> openSource;
         public string CharacterId {get;private set;} public string OutfitId {get;private set;} public string HolidayId {get;private set;}
         public string Name {get;private set;} public string Version {get;private set;} public bool Ready {get;private set;} public bool GreetingsReady {get;private set;}
         public IList<OutfitClipDefinition> Clips {get;private set;} public OutfitClipDefinition Gaze {get;private set;} public OutfitClipDefinition EasterEgg {get;private set;}
         public string Preview {get;private set;} public string ActionName {get;private set;}
+        public string SourceKey {get;private set;}
         internal OutfitDefinition(string character,string outfit,string holiday,string name,string version,bool ready,bool greetings,IEnumerable<OutfitClipDefinition> clips,OutfitClipDefinition gaze,OutfitClipDefinition egg,string preview,string actionName)
-        {CharacterId=character;OutfitId=outfit;HolidayId=holiday;Name=name;Version=version;Ready=ready;GreetingsReady=greetings;Clips=new ReadOnlyCollection<OutfitClipDefinition>(clips.ToList());Gaze=gaze;EasterEgg=egg;Preview=preview;ActionName=actionName;}
+            :this(character,outfit,holiday,name,version,ready,greetings,clips,gaze,egg,preview,actionName,"embedded",null){}
+        internal OutfitDefinition(string character,string outfit,string holiday,string name,string version,bool ready,bool greetings,IEnumerable<OutfitClipDefinition> clips,OutfitClipDefinition gaze,OutfitClipDefinition egg,string preview,string actionName,string sourceKey,Func<string,Stream> openSource)
+        {CharacterId=character;OutfitId=outfit;HolidayId=holiday;Name=name;Version=version;Ready=ready;GreetingsReady=greetings;Clips=new ReadOnlyCollection<OutfitClipDefinition>(clips.ToList());Gaze=gaze;EasterEgg=egg;Preview=preview;ActionName=actionName;SourceKey=sourceKey;this.openSource=openSource;}
+        public Stream OpenPreview()
+        {if(String.IsNullOrEmpty(Preview))return null;return openSource==null?typeof(HolidayCatalog).Assembly.GetManifestResourceStream("Dafeiyu.Holidays."+Preview.Replace('/','.')):openSource(Preview);}
         public OutfitClipDefinition FindClip(string action,string variant)
         {return Clips.FirstOrDefault(x=>x.Action==action && x.Variant==(String.IsNullOrEmpty(variant)?"default":variant));}
         internal void MarkUnavailable(){Ready=false;}
@@ -38,6 +50,9 @@ namespace Dafeiyu
         static readonly string[] DefaultActions={"idle","running-right","running-left","waving","jumping","failed","waiting","running","review","lifted","landing","petting","poked","feeding","happy","sleeping","special","stumble","special2"};
         static readonly string[] AlternateActions={"lifted","landing","feeding","happy","sleeping","special","special2","stumble"};
         readonly Func<string,Stream> open;
+        // A fresh load is a fresh render generation, including same-root repairs.
+        // Definitions capture this opener and never consult a mutable installation pointer.
+        readonly string sourceKey=Guid.NewGuid().ToString("N");
         readonly Dictionary<string,string> validatedPngs=new Dictionary<string,string>(StringComparer.Ordinal);
         static readonly uint[] CrcTable=CreateCrcTable();
         public IList<OutfitDefinition> Outfits {get;private set;} public string Warning {get;private set;}
@@ -78,13 +93,37 @@ namespace Dafeiyu
                     HolidayState.RequireId(entry.Outfit,false);HolidayState.RequireId(entry.Holiday,false);
                     if(String.IsNullOrWhiteSpace(entry.Name) || entry.Name.Length>80 || String.IsNullOrEmpty(entry.Version) || entry.Version.Length>64 || !keys.Add(entry.Character+":"+entry.Outfit))throw new InvalidDataException("Invalid or duplicate holiday outfit.");
                     OutfitDefinition outfit;
-                    try{outfit=LoadDefinition(entry);}catch(Exception e){if(!Expected(e))throw;Warning=e.Message;outfit=new OutfitDefinition(entry.Character,entry.Outfit,entry.Holiday,entry.Name,entry.Version,false,entry.Greetings,new OutfitClipDefinition[0],null,null,null,null);}
+                    try{outfit=LoadDefinition(entry);}catch(Exception e){if(!Expected(e))throw;Warning=e.Message;outfit=new OutfitDefinition(entry.Character,entry.Outfit,entry.Holiday,entry.Name,entry.Version,false,entry.Greetings,new OutfitClipDefinition[0],null,null,null,null,sourceKey,open);}
                     outfits.Add(outfit);
                 }
             }catch(Exception e){if(!Expected(e))throw;Warning=e.Message;outfits.Clear();}
             Outfits=new ReadOnlyCollection<OutfitDefinition>(outfits);
         }
         internal HolidayCatalog(IEnumerable<OutfitDefinition> outfits){Outfits=new ReadOnlyCollection<OutfitDefinition>(outfits.ToList());}
+        public HolidayCatalog WithCharacter(string characterId,HolidayCatalog replacement)
+        {
+            if(!Characters.Contains(characterId))throw new ArgumentException("Untrusted holiday character.","characterId");
+            if(replacement==null)throw new ArgumentNullException("replacement");
+            if(!String.IsNullOrEmpty(replacement.Warning) || replacement.Outfits.Count==0)throw new InvalidDataException("Incomplete replacement holiday catalog.");
+            var keys=new HashSet<string>(StringComparer.Ordinal);
+            foreach(var outfit in replacement.Outfits) {
+                if(outfit==null || outfit.CharacterId!=characterId || !keys.Add(outfit.OutfitId) || !Complete(outfit))throw new InvalidDataException("Invalid replacement holiday outfit.");
+            }
+            var merged=new List<OutfitDefinition>();bool inserted=false;
+            foreach(var outfit in Outfits) {
+                if(outfit.CharacterId==characterId){if(!inserted){merged.AddRange(replacement.Outfits);inserted=true;}}
+                else merged.Add(outfit);
+            }
+            if(!inserted)merged.AddRange(replacement.Outfits);
+            if(merged.Count>128)throw new InvalidDataException("Too many holiday outfits.");
+            return new HolidayCatalog(merged){Warning=Warning};
+        }
+        static bool Complete(OutfitDefinition outfit)
+        {
+            if(!outfit.Ready || outfit.Gaze==null || outfit.EasterEgg==null || String.IsNullOrEmpty(outfit.Preview) || String.IsNullOrWhiteSpace(outfit.ActionName))return false;
+            if(DefaultActions.Any(action=>outfit.FindClip(action,"default")==null) || AlternateActions.Any(action=>outfit.FindClip(action,"alternate")==null))return false;
+            return !(outfit.CharacterId=="e-bao" || outfit.CharacterId=="gugugaga") || outfit.FindClip("jumping","alternate")!=null;
+        }
         static bool Expected(Exception e){return e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException || e is OverflowException;}
         T ReadJson<T>(string path)
         {ValidatePath(path);using(var stream=open(path)){if(stream==null)throw new InvalidDataException("Missing holiday resource: "+path);using(var bounded=new MemoryStream()){CopyBounded(stream,bounded,1024*1024);bounded.Position=0;return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(bounded);}}}
@@ -105,13 +144,13 @@ namespace Dafeiyu
             if(gaze.FrameCount!=16 || gaze.Columns!=4 || egg.FrameCount!=8 || egg.Columns!=8 || egg.Loop || Math.Abs(egg.Fps-4)>0.0001)throw new InvalidDataException("Invalid gaze or Easter egg clip.");
             ValidatePng(d.Preview,480,520);
             if(String.IsNullOrWhiteSpace(d.ActionName) || d.ActionName.Length>80)throw new InvalidDataException("Missing holiday action name.");
-            return new OutfitDefinition(entry.Character,entry.Outfit,entry.Holiday,entry.Name,entry.Version,entry.Ready,entry.Greetings,clips,gaze,egg,d.Preview,d.ActionName);
+            return new OutfitDefinition(entry.Character,entry.Outfit,entry.Holiday,entry.Name,entry.Version,entry.Ready,entry.Greetings,clips,gaze,egg,d.Preview,d.ActionName,sourceKey,open);
         }
         OutfitClipDefinition ConvertClip(Clip clip)
         {
             if(clip==null || clip.Count<1 || clip.Count>64 || clip.Columns<1 || clip.Columns>16 || clip.Width!=480 || clip.Height!=520 || Double.IsNaN(clip.Fps) || Double.IsInfinity(clip.Fps) || clip.Fps<=0 || clip.Fps>60 || Double.IsNaN(clip.X) || Double.IsNaN(clip.Y) || Math.Abs(clip.X)>480 || Math.Abs(clip.Y)>520)throw new InvalidDataException("Invalid holiday clip metadata.");
             ValidatePng(clip.Path,clip.Columns*clip.Width,((clip.Count+clip.Columns-1)/clip.Columns)*clip.Height);
-            return new OutfitClipDefinition(clip.Path,clip.Count,clip.Columns,clip.Fps,clip.Loop,clip.Width,clip.Height,clip.X,clip.Y,clip.Action,String.IsNullOrEmpty(clip.Variant)?"default":clip.Variant);
+            return new OutfitClipDefinition(clip.Path,clip.Count,clip.Columns,clip.Fps,clip.Loop,clip.Width,clip.Height,clip.X,clip.Y,clip.Action,String.IsNullOrEmpty(clip.Variant)?"default":clip.Variant,sourceKey,open);
         }
         void ValidatePng(string path,int width,int height)
         {

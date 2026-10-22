@@ -34,11 +34,13 @@ namespace Dafeiyu
     }
     public sealed class HolidayController
     {
-        readonly HolidayCalendar calendar;readonly HolidayCatalog catalog;readonly HolidayState state;readonly Action<HolidayState> save;
+        readonly HolidayCalendar calendar;HolidayCatalog catalog;readonly HolidayState state;readonly Action<HolidayState> save;
         readonly Dictionary<string,double> cooldowns=new Dictionary<string,double>(StringComparer.Ordinal);
         HolidayContext context;IList<HolidayOccurrence> events=new List<HolidayOccurrence>();HolidayPlaybackTicket ticket;
         bool hoverConsumed;bool runtimeOriginalFallback;string fingerprint;string pendingUnlockNotice;
+        OutfitDefinition rejectedOutfit;
         public event EventHandler Changed;
+        public HolidayCatalog Catalog {get{return catalog;}}
         public OutfitDefinition EffectiveOutfit {get;private set;} public HolidayOccurrence ActiveOccurrence {get;private set;}
         public long Revision {get;private set;} public bool TransitionRequested {get;private set;}
         public bool PersistencePending {get;private set;} public string PersistenceWarning {get;private set;} public string UnlockNotice {get;private set;}
@@ -57,6 +59,17 @@ namespace Dafeiyu
         static HolidayState Load(HolidayStateStore store){if(store==null)throw new ArgumentNullException("store");return store.Load();}
         public HolidayController(HolidayCalendar calendar,HolidayCatalog catalog,HolidayState state,Action<HolidayState> save)
         {if(calendar==null || catalog==null || state==null || save==null)throw new ArgumentNullException("Holiday dependencies");this.calendar=calendar;this.catalog=catalog;this.state=state;this.save=save;}
+        public void ReplaceCatalog(HolidayCatalog replacement)
+        {
+            if(replacement==null)throw new ArgumentNullException("replacement");
+            if(Object.ReferenceEquals(catalog,replacement))return;
+            catalog=replacement;
+            if(runtimeOriginalFallback && rejectedOutfit!=null) {
+                var repaired=catalog.Find(rejectedOutfit.CharacterId,rejectedOutfit.OutfitId);
+                if(repaired!=null && repaired.Ready && !Object.ReferenceEquals(repaired,rejectedOutfit)){runtimeOriginalFallback=false;rejectedOutfit=null;}
+            }
+            if(context==null)Notify();else Recompute(true);
+        }
         bool ValidCharacter(string id){return id=="e-bao" || id=="dafeiyu" || id=="marfu" || id=="xiaobei" || id=="gugugaga";}
         HolidayCharacterState Role(){return state.ForCharacter(context.CharacterId);}
         HolidayActivityState Activity(HolidayOccurrence occurrence)
@@ -68,12 +81,12 @@ namespace Dafeiyu
         {
             if(value==null)throw new ArgumentNullException("value");
             if(Double.IsNaN(value.MonotonicSeconds) || Double.IsInfinity(value.MonotonicSeconds))throw new ArgumentException("Invalid monotonic clock.");
-            if(context!=null && (context.PersonaId!=value.PersonaId || context.CharacterId!=value.CharacterId || context.LocalTime.Date!=value.LocalTime.Date || context.ResourceVersion!=value.ResourceVersion))runtimeOriginalFallback=false;
+            if(context!=null && (context.PersonaId!=value.PersonaId || context.CharacterId!=value.CharacterId || context.LocalTime.Date!=value.LocalTime.Date || context.ResourceVersion!=value.ResourceVersion)){runtimeOriginalFallback=false;rejectedOutfit=null;}
             context=value.Copy();events=calendar.Resolve(context.LocalTime.Date);
             Recompute();
             if(ticket!=null && (!Current(ticket) || !context.CanPlayEasterEgg))CancelHover();
         }
-        void Recompute()
+        void Recompute(bool notifyEvenIfUnchanged=false)
         {
             bool saved=false;var previous=EffectiveOutfit;HolidayOccurrence active=null;OutfitDefinition desired=null;
             if(ValidCharacter(context.CharacterId)) {
@@ -93,31 +106,31 @@ namespace Dafeiyu
             EffectiveOutfit=desired;ActiveOccurrence=active;
             // Busy/hidden/paused frames must never leave a delayed celebration queued.
             if(!context.CanAnimateTransition)TransitionRequested=false;
-            string next=context.PersonaId+"|"+context.CharacterId+"|"+context.LocalTime.Date.Ticks+"|"+String.Join(",",events.Select(x=>x.InstanceKey+":"+x.Stage))+"|"+Enabled+"|"+(desired==null?"":desired.OutfitId+":"+desired.Version+":"+IsOwned(desired.OutfitId))+"|"+context.ResourceVersion;
+            string next=context.PersonaId+"|"+context.CharacterId+"|"+context.LocalTime.Date.Ticks+"|"+String.Join(",",events.Select(x=>x.InstanceKey+":"+x.Stage))+"|"+Enabled+"|"+(desired==null?"":desired.OutfitId+":"+desired.Version+":"+desired.SourceKey+":"+IsOwned(desired.OutfitId))+"|"+context.ResourceVersion;
             bool changed=next!=fingerprint;
             if(changed){fingerprint=next;Revision++;if(ticket!=null && !Current(ticket))CancelHover();}
             if(saved)Persist();
-            if(changed || saved)Notify();
+            if(changed || saved || notifyEvenIfUnchanged)Notify();
         }
         public void AcknowledgeTransition(){TransitionRequested=false;}
         public bool ReportUnavailable(OutfitDefinition outfit)
         {
             if(!catalog.ReportUnavailable(outfit))return false;
             if(Object.ReferenceEquals(EffectiveOutfit,outfit)) {
-                runtimeOriginalFallback=true;TransitionRequested=false;CancelHover();Recompute();
+                runtimeOriginalFallback=true;rejectedOutfit=outfit;TransitionRequested=false;CancelHover();Recompute();
             }else Notify();
             return true;
         }
         public void SetEnabled(bool enabled)
         {
             if(context==null || !ValidCharacter(context.CharacterId) || Role().Enabled==enabled)return;
-            Role().Enabled=enabled;runtimeOriginalFallback=false;CancelHover();if(!enabled)TransitionRequested=false;Recompute();Persist();Notify();
+            Role().Enabled=enabled;runtimeOriginalFallback=false;rejectedOutfit=null;CancelHover();if(!enabled)TransitionRequested=false;Recompute();Persist();Notify();
         }
         public bool SelectOwnedOutfit(string outfitId)
         {
             if(context==null || !ValidCharacter(context.CharacterId))return false;
             var role=Role();if(!String.IsNullOrEmpty(outfitId)) {var selected=catalog.Find(context.CharacterId,outfitId);if(!role.UnlockedOutfits.Contains(outfitId) || selected==null || !selected.Ready || !role.Enabled)return false;}
-            runtimeOriginalFallback=false;
+            runtimeOriginalFallback=false;rejectedOutfit=null;
             role.PreferredOutfitId=String.IsNullOrEmpty(outfitId)?null:outfitId;
             if(ActiveOccurrence!=null)Activity(ActiveOccurrence).ManualOverride=true;
             CancelHover();Recompute();TransitionRequested=context.CanAnimateTransition && role.Enabled;Persist();Notify();return true;
