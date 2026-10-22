@@ -88,12 +88,15 @@ internal sealed partial class PetWindow : Window
         drop.Cancel(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
         RefreshHoliday(true);
     }
+    // Headless windows can expose an IPlatformHandle with a zero Handle even on
+    // macOS. Only an attached native window can use desktop input and policies.
+    private IntPtr NativeWindowHandle => OperatingSystem.IsMacOS() ? TryGetPlatformHandle()?.Handle ?? IntPtr.Zero : IntPtr.Zero;
     private void ConfigureNative(bool ignored)
     {
-        if (!OperatingSystem.IsMacOS() || !IsVisible) return;
-        var handle = TryGetPlatformHandle();
-        if (handle == null) return;
-        MacServices.ConfigureWindow(handle.Handle, owner.Settings.Topmost, ignored, true); nativeIgnored = ignored;
+        if (!IsVisible) return;
+        var handle = NativeWindowHandle;
+        if (handle == IntPtr.Zero) return;
+        MacServices.ConfigureWindow(handle, owner.Settings.Topmost, ignored, true); nativeIgnored = ignored;
     }
     private ContextMenu BuildMenu()
     {
@@ -193,9 +196,11 @@ internal sealed partial class PetWindow : Window
     private void Tick()
     {
         var now = clock.Elapsed.TotalSeconds; var gap = now - lastTime; var dt = Math.Clamp(gap, 0, .125); lastTime = now;
+        var nativeWindow = NativeWindowHandle;
+        var hasNativeWindow = nativeWindow != IntPtr.Zero;
         var wasInteractive = sessionInteractive;
         bool lifecycleChanged = false;
-        if (OperatingSystem.IsMacOS())
+        if (hasNativeWindow)
         {
             sessionInteractive = MacServices.IsSessionInteractive;
             var latestLifecycle = MacServices.SessionLifecycleRevision;
@@ -203,7 +208,7 @@ internal sealed partial class PetWindow : Window
         }
         if (gap > 1 || !sessionInteractive || lifecycleChanged) { CancelHoliday(); DismissGreeting(); }
         RefreshHoliday(gap > 1 || lifecycleChanged || wasInteractive != sessionInteractive);
-        if (OperatingSystem.IsMacOS() && IsVisible && now >= policyAt)
+        if (hasNativeWindow && IsVisible && now >= policyAt)
         {
             policyAt = now + 1;
             fullscreenHidden = owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen();
@@ -215,21 +220,21 @@ internal sealed partial class PetWindow : Window
         if (!IsVisible) return;
         if (Paused)
         {
-            if (OperatingSystem.IsMacOS()) { var ignored = owner.Settings.ClickThrough || !sprite.Hits(LocalPointer()); if (ignored != nativeIgnored) ConfigureNative(ignored); }
+            if (hasNativeWindow) { var ignored = owner.Settings.ClickThrough || !sprite.Hits(LocalPointer(nativeWindow)); if (ignored != nativeIgnored) ConfigureNative(ignored); }
             return;
         }
         ApplyHolidayBusinessAction();
         if (drop.Active) { drop.Advance(dt); Position = new PixelPoint(Position.X, (int)Math.Round(drop.Position)); if (!drop.Active) SavePosition(); }
         if (!dragging)
         {
-            var idle = OperatingSystem.IsMacOS() ? MacServices.GetIdleTime().TotalSeconds : 0;
+            var idle = hasNativeWindow ? MacServices.GetIdleTime().TotalSeconds : 0;
             if (sleep.TrySleep(now, idle, !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy && action == "idle" && !owner.HasOpenPanel, owner.Settings.AutoSleepEnabled)) Interact("sleeping");
         }
         if (!dragging && !drop.Active && action is "idle" or "running-right" or "running-left" && !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy && !owner.HasOpenPanel && !owner.Settings.LockPosition && !owner.Settings.QuietMode)
         {
-            if (owner.Settings.FollowCursor && OperatingSystem.IsMacOS())
+            if (owner.Settings.FollowCursor && hasNativeWindow)
             {
-                var pointer = LocalPointer(); var dx = pointer.X - Width / 2;
+                var pointer = LocalPointer(nativeWindow); var dx = pointer.X - Width / 2;
                 if (Math.Abs(dx) > Width) { direction = Math.Sign(dx); runUntil = now + .2; walkTarget = null; }
             }
             if (owner.Settings.Wander && now >= wanderAt && now >= runUntil)
@@ -257,9 +262,9 @@ internal sealed partial class PetWindow : Window
         var visibleFrame = committedOutfit == null && owner.Skin.BuiltIn && owner.Skin.Id == "marfu" && action is "running-right" or "running-left" ? new[] { 0, 2, 3, 2, 4, 2, 6, 2 }[playback.Frame % 8] : playback.Frame;
         PublishHolidayFrame(playback.Clip, visibleFrame, OriginalMirror());
         AdvanceHoliday(dt);
-        if (OperatingSystem.IsMacOS())
+        if (hasNativeWindow)
         {
-            var local = LocalPointer();
+            var local = LocalPointer(nativeWindow);
             if (!holidayPlayback.Active && action == "idle" && !owner.Settings.Wander && !owner.Settings.FollowCursor)
             {
                 gaze.Advance(local.X - Width / 2, local.Y - Height / 2, dt);
@@ -271,10 +276,9 @@ internal sealed partial class PetWindow : Window
         }
         sprite.InvalidateVisual();
     }
-    private Point LocalPointer()
+    private static Point LocalPointer(IntPtr handle)
     {
-        var handle = TryGetPlatformHandle() ?? throw new InvalidOperationException("窗口尚未连接到桌面。");
-        var point = MacServices.GetPointerRelativeToWindow(handle.Handle);
+        var point = MacServices.GetPointerRelativeToWindow(handle);
         return new Point(point.X, point.Y);
     }
     private double greetingProbeAt;
