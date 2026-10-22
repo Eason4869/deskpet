@@ -45,7 +45,7 @@ namespace Dafeiyu
 
         public static InteractionAtlas LoadForSkin(SkinDefinition skin)
         {
-            return skin == null || !skin.Embedded ? null : LoadForSkin(skin.Id);
+            return skin == null || !skin.Embedded ? null : LoadForSkin(skin.BuiltinCharacterId??skin.Id);
         }
 
         public static InteractionAtlas LoadForSkin(string skinId)

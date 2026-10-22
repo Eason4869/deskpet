@@ -261,6 +261,41 @@ void dp_wave_stop(void *handle) {
 }
 
 double dp_idle_seconds(void) { return CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateCombinedSessionState, kCGAnyInputEventType); }
+
+static uint64_t DPWorkspaceLifecycleRevision;
+int dp_session_interactive(void) {
+    __block int result = 0;
+    MainSync(^{
+        static BOOL sessionActive = YES, screensAwake = YES, systemAwake = YES;
+        static NSMutableArray *observers;
+        static dispatch_once_t once;
+        dispatch_once(&once, ^{
+            CFDictionaryRef session = CGSessionCopyCurrentDictionary();
+            if (session) {
+                CFTypeRef console = CFDictionaryGetValue(session, kCGSessionOnConsoleKey);
+                CFTypeRef login = CFDictionaryGetValue(session, kCGSessionLoginDoneKey);
+                sessionActive = console == kCFBooleanTrue && login == kCFBooleanTrue;
+                CFRelease(session);
+            } else sessionActive = NO;
+            observers = [NSMutableArray array];
+            NSNotificationCenter *center = NSWorkspace.sharedWorkspace.notificationCenter;
+            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { sessionActive = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { sessionActive = YES; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { screensAwake = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { screensAwake = YES; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceWillSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { systemAwake = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { systemAwake = YES; }]];
+        });
+        result = sessionActive && screensAwake && systemAwake ? 1 : 0;
+    });
+    return result;
+}
+uint64_t dp_session_lifecycle_revision(void) {
+    dp_session_interactive();
+    __block uint64_t result;
+    MainSync(^{ result = DPWorkspaceLifecycleRevision; });
+    return result;
+}
 void dp_pointer(double *x, double *y) { CGEventRef event = CGEventCreate(NULL); CGPoint point = event ? CGEventGetLocation(event) : CGPointZero; if (event) CFRelease(event); *x = point.x; *y = point.y; }
 int dp_pointer_relative(void *handle, double *x, double *y) {
     if (!handle || !x || !y) return 0;

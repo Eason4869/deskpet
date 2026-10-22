@@ -17,10 +17,12 @@ internal sealed class SettingsWindow : Window
     private readonly ImageProviderEditor imageProvider;
     private readonly TabControl modelTabs = new();
     private readonly TabControl tabs = new();
-    private readonly SpriteAssets avatarAssets = new();
+    private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
-    public SettingsWindow(DesktopController controller)
+    private HolidayOutfitPanel? holidayOutfits;
+    public SettingsWindow(DesktopController controller, SpriteAssets? avatarSource = null)
     {
+        avatarAssets = avatarSource ?? new SpriteAssets();
         owner = controller; Title = "DeskPet · 设置"; Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
         var pages = new List<TabItem>();
         void Add(string title, Control content) => pages.Add(new TabItem { Header = title, Content = new ScrollViewer { Content = new Border { Padding = new Thickness(20), Child = content } } });
@@ -30,7 +32,7 @@ internal sealed class SettingsWindow : Window
         foreach (var item in new[] { ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
     }
     public void SelectSection(string section) { tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
@@ -38,10 +40,10 @@ internal sealed class SettingsWindow : Window
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         var description = Ui.Text(owner.Skin.Description);
         bool refreshingPartners = false;
-        var choices = new ComboBox { ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var choices = new ComboBox { Name = "PartnerPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
         choices.ItemTemplate = new FuncDataTemplate<PetSkin>((skin, _) => PartnerRow(skin, choices, RemoveAsync));
-        choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { if (!ReferenceEquals(owner.Skin,skin)) await owner.SelectSkinAsync(skin); prompt.Text = owner.Settings.SystemPrompt; description.Text = skin.Description; refreshVoice?.Invoke(); }); };
+        choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { await owner.SelectSkinAsync(skin); refreshingPartners = true; choices.SelectedItem = owner.Skin; refreshingPartners = false; description.Text = owner.Skin.Description; refreshVoice?.Invoke(); }); };
         void RefreshChoices()
         {
             refreshingPartners = true; choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = owner.Skin; refreshingPartners = false;
@@ -49,36 +51,70 @@ internal sealed class SettingsWindow : Window
         }
         async Task RemoveAsync(PetSkin target)
         {
+            if (owner.ExplainGuideCompanions()) return;
             if (owner.Skins.Count <= 1) return;
             if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再删除伙伴。");
             if (!await ConfirmRemoveCompanionAsync(target)) return;
-            if (owner.Skin.Id == target.Id) await owner.SelectSkinAsync(owner.Skins.First(s => s.Id != target.Id));
-            SpriteAssets.Remove(target, owner.DataDirectory); owner.Skins.RemoveAll(s => s.Id == target.Id); RefreshChoices();
+            if (owner.ExplainGuideCompanions()) return;
+            if (owner.Skin.PickerKey == target.PickerKey) await owner.SelectSkinAsync(owner.Skins.First(s => s.PickerKey != target.PickerKey && !s.IsPlaceholder));
+            if (owner.ExplainGuideCompanions()) return;
+            if (owner.Skin.PickerKey == target.PickerKey) return;
+            SpriteAssets.Remove(target, owner.DataDirectory); owner.CompanionHidden(target); owner.Skins.RemoveAll(s => s.PickerKey == target.PickerKey); RefreshChoices();
         }
-        return Ui.Column(Ui.Text("当前伙伴", 20), choices, description, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
-            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
-            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
-            Ui.AsyncButton("导入 / 更新角色包（ZIP / pet.json）", async () =>
+        var import = Ui.AsyncButton("导入 / 更新角色包", async () =>
             {
+                if (owner.ExplainGuideCompanions()) return;
                 var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "导入 / 更新角色包", AllowMultiple = false, FileTypeFilter = new[] { new FilePickerFileType("角色包 / 外观说明") { Patterns = new[] { "*.zip", "*.json" } } } });
+                if (owner.ExplainGuideCompanions()) return;
                 var file = files.FirstOrDefault(); if (file == null) return;
                 var local = file.TryGetLocalPath() ?? throw new InvalidOperationException("请选择本地外观文件。");
                 var skin = await Task.Run(() => SpriteAssets.Import(local, owner.DataDirectory));
-                var existing = owner.Skins.FindIndex(s => s.Id == skin.Id || skin.PackageId != null && s.PackageId == skin.PackageId);
+                if (owner.ExplainGuideCompanions()) return;
+                var existing = owner.Skins.FindIndex(s => s.PickerKey == skin.PickerKey);
                 if (existing >= 0) owner.Skins[existing] = skin; else owner.Skins.Add(skin);
                 await owner.SelectSkinAsync(skin); RefreshChoices();
-            }, owner.Error), Ui.AsyncButton("恢复已删除伙伴", async () => {
+            }, owner.Error);
+        import.Name = "ImportCompanion"; import.MinHeight = 44;
+        var bulk = Ui.AsyncButton("全量下载／更新", owner.DownloadAllOfficialAsync, owner.Error); bulk.Name = "DownloadAllOfficialCompanions"; bulk.MinHeight = 44;
+        holidayOutfits = new HolidayOutfitPanel(owner.Holidays, () => owner.Skin, avatarAssets);
+        var selectors = new Grid { Name = "PartnerWardrobeSelectors" };
+        var companion = new StackPanel { Spacing = 6 }; companion.Children.Add(Ui.Text("选择伙伴")); companion.Children.Add(choices);
+        selectors.Children.Add(companion); Grid.SetColumn(holidayOutfits, 2); selectors.Children.Add(holidayOutfits);
+        void LayoutSelectors() => selectors.ColumnDefinitions = new ColumnDefinitions(holidayOutfits.IsVisible ? "*,12,*" : "*,0,0");
+        holidayOutfits.PropertyChanged += (_, e) => { if (e.Property == IsVisibleProperty) LayoutSelectors(); };
+        LayoutSelectors();
+        var shownPersona = owner.Skin.Id;
+        string CatalogKey() => string.Join("|", owner.Skins.Select(s => s.PickerKey + ":" + s.SourceKey));
+        var shownCatalog = CatalogKey();
+        void CatalogChanged()
+        {
+            var next = CatalogKey();
+            if (shownCatalog == next && shownPersona == owner.Skin.Id && ReferenceEquals(choices.SelectedItem, owner.Skin)) return;
+            shownCatalog = next;
+            refreshingPartners = true; choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = owner.Skin; refreshingPartners = false;
+            if (shownPersona != owner.Skin.Id) { shownPersona = owner.Skin.Id; prompt.Text = owner.Settings.SystemPrompt; refreshVoice?.Invoke(); }
+            description.Text = owner.Skin.Description;
+        }
+        owner.Changed += CatalogChanged; Closed += (_, _) => owner.Changed -= CatalogChanged;
+        return Ui.Column(Ui.Text("当前伙伴", 20), selectors, Ui.Row(import, bulk), description, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
+            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
+            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
+            Ui.AsyncButton("恢复已删除伙伴", async () => {
+                if (owner.ExplainGuideCompanions()) return;
                 if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再恢复伙伴。");
-                var id = owner.Skin.Id; CompanionPackStorage.RestoreHidden(owner.DataDirectory); var restored = SpriteAssets.LoadSkins(owner.DataDirectory);
-                owner.Skins.Clear(); owner.Skins.AddRange(restored); await owner.SelectSkinAsync(owner.Skins.FirstOrDefault(s => s.Id == id) ?? owner.Skins[0]); RefreshChoices();
+                var key = owner.Skin.PickerKey; CompanionPackStorage.RestoreHidden(owner.DataDirectory); var restored = await Task.Run(() => SpriteAssets.LoadSkins(owner.DataDirectory));
+                if (owner.ExplainGuideCompanions()) return;
+                // Retain the currently active verified source while rebuilding inactive entries.
+                var index = restored.FindIndex(s => s.PickerKey == key); if (index >= 0) restored[index] = owner.Skin;
+                owner.Skins.Clear(); owner.Skins.AddRange(restored); RefreshChoices();
             }, owner.Error), Ui.Text("同 ID 资源包更新素材并保留个人人格、音色与聊天。无 ID 的旧外观独立保存。"));
     }
     private Control PartnerRow(PetSkin? skin, ComboBox choices, Func<PetSkin, Task> remove)
     {
         if (skin == null) return new TextBlock();
-        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center;
-        var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1, IsVisible = false };
-        ToolTip.SetTip(button, "删除伙伴（保留聊天和配置）");
+        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
+        var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1 && skin.OfficialCharacterId != "e-bao", IsVisible = false };
+        ToolTip.SetTip(button, skin.OfficialCharacterId == "e-bao" ? "默认伙伴用于离线启动，不能删除" : "删除伙伴（保留聊天和配置）");
         button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();
         button.Click += (_, e) => { e.Handled = true; choices.IsDropDownOpen = false; owner.Run(() => remove(skin)); };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("40,*,32") };

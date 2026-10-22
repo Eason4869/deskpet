@@ -7,6 +7,12 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../assets/official/holiday-catalog.json" LogicalName="Dafeiyu.Holidays.catalog.json" />
+    <Compile Include="../../src/Holidays/*.cs" Link="Shared/Holidays/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../assets/holidays/calendar/solar-terms.json" LogicalName="Dafeiyu.Holidays.SolarTerms" />
+    <EmbeddedResource Include="../../assets/holidays/**/*.json;../../assets/holidays/**/*.png" Exclude="../../assets/holidays/calendar/solar-terms.json;../../assets/holidays/catalog.json;../../assets/holidays/**/dafeiyu/**/*;../../assets/holidays/**/marfu/**/*;../../assets/holidays/**/xiaobei/**/*;../../assets/holidays/**/gugugaga/**/*">
+      <LogicalName>Dafeiyu.Holidays.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\','.').Replace('/','.'))</LogicalName>
+    </EmbeddedResource>
     <Compile Include="../../src/GeneratedImageStore.Management.cs;../../src/ImageAssetReferenceResolver.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageTaskCenterState.cs" Link="Shared/ImageTaskCenterState.cs" />
     <Compile Include="../../src/GeneratedImageGroupState.cs" Link="Shared/GeneratedImageGroupState.cs" />
@@ -18,6 +24,7 @@
     <Compile Include="../../src/AgentQuestionController.cs;../../src/AgentProjectTools.cs;../../src/AgentImageInspection.cs;../../src/AgentGitTools.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebPValidation.cs" Link="Shared/WebPValidation.cs" />
     <Compile Include="../../src/ImageGenerationProvider.cs;../../src/GeneratedImage.cs;../../src/GeneratedImageStore.cs;../../src/ImageGenerationClient.cs;../../src/ImageDownloadSecurity.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/OfficialCompanion*.cs;../../src/GitHubAssetTransport.cs" Exclude="../../src/OfficialCompanionProgressWindow.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
@@ -33,5 +40,6 @@
     <Compile Include="../../src/GitHubUpdates.cs;../../src/GitHubReleaseChannels.cs" Link="Shared/GitHubUpdates.cs" />
     <Compile Include="../../src/AgentKernel/*.cs;../../src/GitHubClient.cs;../../src/ProjectCatalog.cs;../../src/ConversationOwnership.cs;../../src/ConversationWorkspace.cs;../../src/ConversationWorkspaceManager.cs;../../src/PetBusiness.cs;../../src/AudioContracts.cs;../../src/AudioLevel.cs;../../src/SecretProtection.cs;../../src/Settings.cs;../../src/HistoryStore.cs;../../src/ConversationQueue.cs;../../src/ConversationContextUsage.cs;../../src/ConversationSession.cs;../../src/ConversationPredictions.cs;../../src/DictationSession.cs;../../src/ApiClient.cs;../../src/ChatStream.cs;../../src/GeminiLiveSession.cs;../../src/ProxyConfiguration.cs;../../src/ReleaseInfo.cs;../../src/ReleaseVersion.cs;../../src/ReleaseIdentity.cs;../../src/PersonaProfiles.cs;../../src/VoicePresets.cs;../../src/ServicePresets.cs;../../src/DropMotion.cs;../../src/DropReaction.cs;../../src/IdleSleepSchedule.cs;../../src/GreetingSchedule.cs;../../src/GreetingService.cs;../../src/VisibilityPolicy.cs" Link="Shared/%(Filename)%(Extension)" />
     <InternalsVisibleTo Include="DeskPet.Tests" />
+    <InternalsVisibleTo Include="DeskPet.Desktop.Tests" />
   </ItemGroup>
 </Project>

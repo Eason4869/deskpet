@@ -78,7 +78,9 @@ internal static class ImageTaskCenterUiChecks
                 Check(All<TextBlock>(Row(page,weakId)).Any(t=>t.Text=="图片已删除")&&!All<Button>(Row(page,weakId)).Any(b=>b.Name=="ViewImageTaskResult"),"reopened center preserves deleted result state");
                 page.Dispose();host.Close();Check(count()<baseline,"disposed center releases asset subscription");
                 var restarted=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),assets,client,usage);Complete(restarted.RestoreAsync(CancellationToken.None));manager=restarted;typeof(DesktopController).GetField("<ImageTasks>k__BackingField",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner,manager);
-                page=new ImageWorkspacePage(owner,new Window());host=new Window{Content=page,Width=900,Height=740};host.Show();page.SelectedIndex=2;Dispatcher.UIThread.RunJobs(); Complete(Pause());
+                page=new ImageWorkspacePage(owner,new Window());host=new Window{Content=page,Width=900,Height=740};host.Show();Dispatcher.UIThread.RunJobs();
+                Check(All<TextBlock>(page).Any(t=>t.Text=="图片文件不可用，可在任务中查看详情。"),"reopened workspace preview tolerates permanently purged weak result");
+                page.SelectedIndex=2;Dispatcher.UIThread.RunJobs(); Complete(Pause());
                 Check(manager.Get(weakId).State==ImageGenerationTaskState.Succeeded&&All<TextBlock>(Row(page,weakId)).Any(t=>t.Text=="图片已删除")&&!All<Button>(Row(page,weakId)).Any(b=>b.Name=="ViewImageTaskResult"),"restart retains success and truthful deleted weak link");
             }
             if(scenario=="service"||scenario=="model")

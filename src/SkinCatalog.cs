@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,6 +7,8 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 
@@ -41,7 +43,7 @@ namespace Dafeiyu
         public bool Illustrated { get { return Manifest!=null && Manifest.Version==2; } }
         public string SpecialAction { get {
             if(Illustrated && !String.IsNullOrWhiteSpace(Manifest.SpecialAction))return Manifest.SpecialAction;
-            if(Embedded){switch(Id){case "e-bao":return "傲娇扭头";case "dafeiyu":return "摇尾欢呼";case "marfu":return "挥杖流光";}}
+            if(Embedded){switch(BuiltinCharacterId??Id){case "e-bao":return "傲娇扭头";case "dafeiyu":return "摇尾欢呼";case "marfu":return "挥杖流光";}}
             return "伙伴招牌";
         } }
         internal SkinDefinition(string id,string folder,SkinManifest manifest) : this(id,SkinCatalog.CleanName(manifest.Name),folder,manifest.Preview,false,manifest.SystemPrompt,manifest.Description) { Manifest=manifest; }
@@ -50,6 +52,18 @@ namespace Dafeiyu
         public string Source { get; private set; }
         public string Preview { get; private set; }
         public bool Embedded { get; private set; }
+        // Trusted registration metadata; imported manifests cannot assign this.
+        public string BuiltinCharacterId {get;internal set;}
+        string pickerKey;
+        public string PickerKey {get{return pickerKey??(!String.IsNullOrEmpty(BuiltinCharacterId)?"official:"+BuiltinCharacterId:Illustrated&&!String.IsNullOrEmpty(Manifest.PackageId)?"custom-pack:"+Manifest.PackageId:"legacy-skin:"+Id);}internal set{pickerKey=value;}}
+        public bool IsPlaceholder {get;internal set;}
+        public bool IsOfficial {get{return OfficialCompanionProfiles.IsOfficialId(BuiltinCharacterId);}}
+        readonly string nativeSourceKey=Guid.NewGuid().ToString("N");
+        public string NativeSourceKey {get{return nativeSourceKey;}}
+        internal OfficialCompanionInstallation OfficialInstallation {get;set;}
+        internal SpriteAtlas PreparedOfficialAtlas {get;set;}
+        internal bool FixtureEmbedded {get;set;}
+        public VoiceRecommendations VoiceRecommendations {get{return Manifest!=null&&Manifest.VoicePresets!=null?Manifest.VoicePresets:IsOfficial?OfficialCompanionProfiles.Find(BuiltinCharacterId).VoicePresets:null;}}
         internal bool Bundled { get; set; }
         public string SystemPrompt { get; private set; }
         public string Description { get; private set; }
@@ -62,23 +76,25 @@ namespace Dafeiyu
         public override string ToString() { return Name; }
         public SpriteAtlas Load()
         {
+            if(IsPlaceholder)throw new InvalidOperationException("请先下载完整角色包。");
+            if(PreparedOfficialAtlas!=null)return PreparedOfficialAtlas;
             return Illustrated ? new SpriteAtlas(Source,Manifest) : new SpriteAtlas(Source,Embedded);
         }
         public int ActionFrame(int row,int phase)
         {
             // Emphasize Marfu's planted/tucked/extended poses instead of holding
             // several near-identical planted frames; every selection is real artwork.
-            if(!Embedded || Id!="marfu" || phase<0 || phase>=8) return phase;
+            if(!Embedded || (BuiltinCharacterId??Id)!="marfu" || phase<0 || phase>=8) return phase;
             return row==1 || row==2 ? MarfuRightStride[phase] : phase;
         }
         public int ActionRow(int row) { return MirrorsAction(row) ? 1 : row; }
-        public bool MirrorsAction(int row) { return Embedded && (Id=="marfu" || Id=="dafeiyu") && row==2; }
+        public bool MirrorsAction(int row) { string id=BuiltinCharacterId??Id;return Embedded && (id=="marfu" || id=="dafeiyu") && row==2; }
         public AnimationPlayer CreateAnimation(int frameMultiplier=1)
         {
-            double period=Embedded && (Id=="marfu" || Id=="e-bao" || Id=="dafeiyu") ? .22 : .11;
+            double period=Embedded && ((BuiltinCharacterId??Id)=="marfu" || (BuiltinCharacterId??Id)=="e-bao" || (BuiltinCharacterId??Id)=="dafeiyu") ? .22 : .11;
             double[] durations=null;
-            if(Illustrated) durations=AnimationPlayer.States.Select(n=>Manifest.Animations[n].Loop ? 0 : Manifest.Animations[n].Frames/Manifest.Animations[n].Fps).ToArray();
-            if(AdditionalInteractions.Has(this,"jumping")){if(durations==null)durations=new double[AnimationPlayer.States.Length];IllustratedAnimation clip;durations[4]=AdditionalInteractions.Specification(this,"jumping",false,out clip)?clip.Frames/clip.Fps:1;}
+            if(Illustrated) durations=AnimationPlayer.States.Select(n=>Manifest.Animations[n].Loop ? 0 : Manifest.Animations[n].CompletionDuration).ToArray();
+            if(AdditionalInteractions.Has(this,"jumping")){if(durations==null)durations=new double[AnimationPlayer.States.Length];IllustratedAnimation clip;durations[4]=AdditionalInteractions.Specification(this,"jumping",false,out clip)?clip.CompletionDuration:1;}
             return new AnimationPlayer(frameMultiplier,period,durations);
         }
     }
@@ -88,78 +104,118 @@ namespace Dafeiyu
         private readonly string directory;
         private readonly string dataRoot;
         private readonly List<SkinDefinition> skins=new List<SkinDefinition>();
+        readonly Dictionary<string,SkinDefinition> officialRegistry=new Dictionary<string,SkinDefinition>(StringComparer.Ordinal);
+        readonly HashSet<string> customPackageIds=new HashSet<string>(StringComparer.Ordinal);
         private readonly List<SkinDefinition> supplied=new List<SkinDefinition>();
+        SkinDefinition embeddedFallback;
         private readonly Dictionary<string,string> aliases=new Dictionary<string,string>(StringComparer.Ordinal);
         public IList<SkinDefinition> Skins { get { return skins.AsReadOnly(); } }
+        internal event Action<SkinDefinition> CompanionRemoved;
         public bool HasRemoved {get{return CompanionPackStorage.Hidden(dataRoot).Count>0;}}
         public SkinCatalog(string dataDirectory)
         {
-            dataRoot=dataDirectory;
-            directory=Path.Combine(dataDirectory,"skins");
-            skins.Add(new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true));
-            skins.Add(new SkinDefinition("dafeiyu","大肥鱼","Dafeiyu.Atlas","Dafeiyu.Preview",true));
-            skins.Add(new SkinDefinition("marfu","马尔芙","Dafeiyu.MarfuAtlas","Dafeiyu.MarfuPreview",true,
-                PersonaProfiles.Marfu,
-                "聪明俏皮 · 金发绿眼魔法少女"));
-            skins.AddRange(BundledSkinCache.Registered(dataDirectory));
-            supplied.AddRange(skins.Where(s=>s.Illustrated && !String.IsNullOrEmpty(s.Manifest.PackageId)));
-            foreach(var pack in CompanionPackStorage.Installed(dataDirectory)) {
-                try { var manifest=ReadManifest(Path.Combine(pack.Value,"pet.json"));
-                    if(manifest.PackageId!=pack.Key)continue;
-                    IllustratedPack.Validate(pack.Value,manifest,false);
-                    Put(new SkinDefinition(CompanionPackStorage.Identity(dataDirectory,pack.Key),pack.Value,manifest));
-                } catch(Exception e) {if(!(e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is InvalidOperationException))throw;}
-            }
-            if(!Directory.Exists(directory)){ApplyHidden();return;}
-            foreach(string folder in Directory.GetDirectories(directory))
-            {
-                try
-                {
-                    var manifest=ReadManifest(Path.Combine(folder,"pet.json"));
-                    if(manifest.Version==2) { IllustratedPack.Validate(folder,manifest,false);skins.Add(new SkinDefinition(Path.GetFileName(folder),folder,manifest));continue; }
-                    string atlas=AtlasPath(folder,manifest.Atlas); ValidatePng(atlas);
-                    skins.Add(new SkinDefinition(Path.GetFileName(folder),CleanName(manifest.Name),atlas,null,false,manifest.SystemPrompt,manifest.Description));
+            dataRoot=dataDirectory;directory=Path.Combine(dataDirectory,"skins");
+            var existing=Task.Run(()=>DiscoverExisting()).GetAwaiter().GetResult();
+            var untrusted=existing.Where(s=>!s.IsOfficial).Select(s=>s.Id).ToArray();
+            foreach(var custom in existing.Where(s=>!s.IsOfficial&&s.Illustrated&&!String.IsNullOrEmpty(s.Manifest.PackageId)))customPackageIds.Add(custom.Manifest.PackageId);
+            var resources=new HashSet<string>(Assembly.GetExecutingAssembly().GetManifestResourceNames(),StringComparer.Ordinal);
+            foreach(var profile in OfficialCompanionProfiles.All) {
+                string persona=OfficialCompanionIdentity.ResolveOfficial(dataRoot,profile.Id,untrusted);
+                var canonical=existing.FirstOrDefault(s=>s.BuiltinCharacterId==profile.Id);SkinDefinition registered=canonical;
+                if(registered==null) {
+                    string atlas=profile.Id=="e-bao"?"Dafeiyu.EbaoAtlas":profile.Id=="dafeiyu"?"Dafeiyu.Atlas":profile.Id=="marfu"?"Dafeiyu.MarfuAtlas":null;
+                    string preview=profile.Id=="e-bao"?"Dafeiyu.EbaoPreview":profile.Id=="dafeiyu"?"Dafeiyu.Preview":"Dafeiyu.MarfuPreview";
+                    bool embedded=atlas!=null&&resources.Contains(atlas);
+                    registered=embedded?new SkinDefinition(persona,profile.Name,atlas,preview,true,profile.SystemPrompt,profile.Description){BuiltinCharacterId=profile.Id,FixtureEmbedded=profile.Id!="e-bao"}:new SkinDefinition(persona,profile.Name,null,null,false,profile.SystemPrompt,profile.Description){BuiltinCharacterId=profile.Id,IsPlaceholder=true};
                 }
-                catch(Exception e)
-                { if(!(e is IOException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is InvalidOperationException)) throw; }
+                if(registered.Id!=persona&&registered.Illustrated)registered=new SkinDefinition(persona,registered.Source,registered.Manifest){BuiltinCharacterId=profile.Id};
+                if(profile.Id=="e-bao"&&registered.Embedded)embeddedFallback=registered;
+                if(resources.Contains("Dafeiyu.Bundled."+(profile.Id=="xiaobei"?"Xiaobei":profile.Id=="gugugaga"?"Gugugaga":"None")+".pet.json")){registered.FixtureEmbedded=true;registered.Bundled=true;}
+                officialRegistry[profile.Id]=registered;skins.Add(registered);
             }
-            ReconcileLegacy();
+            foreach(var bundled in BundledSkinCache.Registered(dataDirectory)) {
+                var current=FindOfficial(bundled.BuiltinCharacterId);
+                if(current!=null&&current.IsPlaceholder)ReplaceOfficial(new SkinDefinition(current.Id,bundled.Source,bundled.Manifest){BuiltinCharacterId=current.BuiltinCharacterId,Bundled=true,FixtureEmbedded=true});
+            }
+            foreach(var item in existing.Where(s=>!s.IsOfficial))skins.Add(item);
             ApplyHidden();
         }
-        public SkinDefinition Find(string id) { string package;if(id!=null && aliases.TryGetValue(id,out package))id=package;return skins.FirstOrDefault(s=>s.Id==id || s.Illustrated && s.Manifest.PackageId==id) ?? skins[0]; }
+        List<SkinDefinition> DiscoverExisting()
+        {
+            var result=new List<SkinDefinition>();
+            foreach(var pack in CompanionPackStorage.Installed(dataRoot)) {
+                try {
+                    var manifest=ReadManifest(Path.Combine(pack.Value,"pet.json"));if(manifest.PackageId!=pack.Key)continue;
+                    IllustratedPack.Validate(pack.Value,manifest,false);
+                    result.Add(new SkinDefinition(OfficialCompanionIdentity.ResolveCustom(dataRoot,pack.Key,new string[0],false),pack.Value,manifest));
+                }catch(Exception e){if(!CatalogError(e))throw;}
+            }
+            if(Directory.Exists(directory))foreach(string folder in Directory.EnumerateDirectories(directory).Take(256)) {
+                try {
+                    var manifest=ReadManifest(Path.Combine(folder,"pet.json"));
+                    if(manifest.Version==2){IllustratedPack.Validate(folder,manifest,false);result.Add(new SkinDefinition(Path.GetFileName(folder),folder,manifest));continue;}
+                    string atlas=AtlasPath(folder,manifest.Atlas);ValidatePng(atlas);
+                    result.Add(new SkinDefinition(Path.GetFileName(folder),CleanName(manifest.Name),atlas,null,false,manifest.SystemPrompt,manifest.Description));
+                }catch(Exception e){if(!CatalogError(e))throw;}
+            }
+            foreach(var item in result.Where(s=>s.Illustrated))foreach(string id in new[]{"xiaobei","gugugaga"}) {
+                try {
+                    var proven=OfficialCompanionLegacy.MatchImport(item.Source,id,CancellationToken.None);if(proven==null)continue;
+                    string assigned=CompanionPackStorage.AssetPath(dataRoot,"official-companions/"+id+"/identity.txt");
+                    if(File.Exists(assigned)&&(new FileInfo(assigned).Length>128||File.ReadAllText(assigned)!=item.Id))continue;
+                    WpfOfficialNativeValidator.ValidateDefault(item.Source,CancellationToken.None);item.BuiltinCharacterId=id;
+                    if(item.Id.StartsWith("skin-",StringComparison.Ordinal))CompanionPackStorage.RetainIdentity(dataRoot,id,item.Id);
+                    break;
+                }catch(Exception e){if(!CatalogError(e))throw;}
+            }
+            foreach(string id in new[]{"xiaobei","gugugaga"})if(!result.Any(s=>s.BuiltinCharacterId==id)) {
+                try {
+                    var cached=OfficialCompanionLegacy.FindBundled(dataRoot,id,CancellationToken.None);if(cached==null)continue;
+                    WpfOfficialNativeValidator.ValidateDefault(cached.RootDirectory,CancellationToken.None);result.Add(new SkinDefinition(CompanionPackStorage.Identity(dataRoot,id),cached.RootDirectory,ReadManifest(Path.Combine(cached.RootDirectory,"pet.json"))){BuiltinCharacterId=id});
+                }catch(Exception e){if(!CatalogError(e))throw;}
+            }
+            return result;
+        }
+        static bool CatalogError(Exception e){return e is IOException||e is InvalidDataException||e is UnauthorizedAccessException||e is SerializationException||e is ArgumentException||e is InvalidOperationException||e is NotSupportedException;}
+        public SkinDefinition Find(string id){string alias;if(id!=null&&aliases.TryGetValue(id,out alias))id=alias;return skins.FirstOrDefault(s=>s.Id==id)??skins.FirstOrDefault(s=>s.PickerKey==id)??FindOfficial(id)??skins[0];}
+        public SkinDefinition FindPicker(string key){return skins.FirstOrDefault(s=>s.PickerKey==key);}
+        public SkinDefinition FindOfficial(string id){SkinDefinition found;return id!=null&&officialRegistry.TryGetValue(id,out found)?found:null;}
+        internal SkinDefinition EmbeddedFallback(){return embeddedFallback??skins.First(s=>s.BuiltinCharacterId=="e-bao"&&s.Embedded);}
+        internal void ReplaceOfficial(SkinDefinition skin){officialRegistry[skin.BuiltinCharacterId]=skin;int index=skins.FindIndex(s=>s.BuiltinCharacterId==skin.BuiltinCharacterId);if(index>=0)skins[index]=skin;else if(skin.BuiltinCharacterId=="e-bao"||!CompanionPackStorage.Hidden(dataRoot).Contains(skin.PickerKey))skins.Add(skin);}
+        internal void PreserveActive(SkinDefinition skin){if(skin.IsOfficial)ReplaceOfficial(skin);else{int index=skins.FindIndex(s=>s.PickerKey==skin.PickerKey);if(index>=0)skins[index]=skin;}}
+        internal SkinDefinition FromOfficial(OfficialCompanionInstallation installation){var current=FindOfficial(installation.Asset.Id);return new SkinDefinition(current.Id,installation.RootDirectory,ReadManifest(installation.PetManifestPath)){BuiltinCharacterId=installation.Asset.Id,OfficialInstallation=installation};}
         void Put(SkinDefinition skin)
         {
-            string package=skin.Manifest.PackageId;int index=skins.FindIndex(s=>s.Id==skin.Id || s.Illustrated && s.Manifest.PackageId==package);
-            skins.RemoveAll(s=>s.Id==skin.Id || s.Illustrated && s.Manifest.PackageId==package);
+            string key=skin.PickerKey;int index=skins.FindIndex(s=>s.PickerKey==key);
+            skins.RemoveAll(s=>s.PickerKey==key);
             skins.Insert(index<0?skins.Count:Math.Min(index,skins.Count),skin);
         }
         void ApplyHidden()
         {
             var hidden=CompanionPackStorage.Hidden(dataRoot);var fallback=skins[0];
-            skins.RemoveAll(s=>hidden.Contains(s.Illustrated && !String.IsNullOrEmpty(s.Manifest.PackageId)?s.Manifest.PackageId:s.Id));
+            skins.RemoveAll(s=>!(s.IsOfficial&&s.BuiltinCharacterId=="e-bao")&&(hidden.Contains(s.PickerKey)||!s.IsOfficial&&hidden.Contains(s.Illustrated&&!String.IsNullOrEmpty(s.Manifest.PackageId)?s.Manifest.PackageId:s.Id)));
             if(skins.Count==0)skins.Add(fallback);
         }
         public void Remove(SkinDefinition skin)
         {
+            if(skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao")throw new InvalidOperationException("默认伙伴用于离线启动，不能删除。");
             if(skins.Count<=1)throw new InvalidOperationException("至少保留一位伙伴。");
             if(!skins.Contains(skin))throw new InvalidOperationException("伙伴已不在列表中。");
-            CompanionPackStorage.SetHidden(dataRoot,skin.Illustrated && !String.IsNullOrEmpty(skin.Manifest.PackageId)?skin.Manifest.PackageId:skin.Id,true);skins.Remove(skin);
+            CompanionPackStorage.SetHidden(dataRoot,skin.PickerKey,true);skins.Remove(skin);if(CompanionRemoved!=null)CompanionRemoved(skin);
         }
         public void RestoreRemoved()
         {
             CompanionPackStorage.RestoreHidden(dataRoot);var restored=new SkinCatalog(dataRoot);
-            skins.Clear();skins.AddRange(restored.skins);supplied.Clear();supplied.AddRange(restored.supplied);aliases.Clear();foreach(var pair in restored.aliases)aliases[pair.Key]=pair.Value;
+            embeddedFallback=restored.embeddedFallback;skins.Clear();skins.AddRange(restored.skins);officialRegistry.Clear();foreach(var pair in restored.officialRegistry)officialRegistry[pair.Key]=pair.Value;customPackageIds.Clear();foreach(string id in restored.customPackageIds)customPackageIds.Add(id);supplied.Clear();supplied.AddRange(restored.supplied);aliases.Clear();foreach(var pair in restored.aliases)aliases[pair.Key]=pair.Value;
         }
         void ReconcileLegacy(bool restore=false)
         {
-            foreach(var legacy in skins.Where(s=>s.Illustrated && !s.Bundled && String.IsNullOrEmpty(s.Manifest.PackageId)).ToArray()) {
-                var original=supplied.Concat(skins.Where(s=>s.Illustrated && !String.IsNullOrEmpty(s.Manifest.PackageId))).FirstOrDefault(p=>SameArtwork(legacy,p));
-                if(original==null)continue;
-                string package=original.Manifest.PackageId,identity=CompanionPackStorage.RetainIdentity(dataRoot,package,legacy.Id);
-                var current=skins.FirstOrDefault(s=>s.Illustrated && s.Manifest.PackageId==package)??original;
-                if(restore)CompanionPackStorage.SetHidden(dataRoot,package,false);
-                aliases[legacy.Id]=package;
-                skins.Remove(legacy);Put(new SkinDefinition(identity,current.Source,current.Manifest){Bundled=current.Bundled});
+            foreach(var legacy in skins.Where(s=>s.Illustrated&&!s.IsOfficial).ToArray())foreach(string id in new[]{"xiaobei","gugugaga"}) {
+                var source=Task.Run(()=>OfficialCompanionLegacy.MatchImport(legacy.Source,id,CancellationToken.None)).GetAwaiter().GetResult();if(source==null)continue;
+                Task.Run(()=>WpfOfficialNativeValidator.ValidateDefault(legacy.Source,CancellationToken.None)).GetAwaiter().GetResult();
+                var official=FindOfficial(id);if(official==null)continue;
+                var updated=new SkinDefinition(official.Id,legacy.Source,legacy.Manifest){BuiltinCharacterId=id};
+                aliases[legacy.Id]=official.Id;skins.Remove(legacy);ReplaceOfficial(updated);break;
             }
         }
         static bool SameArtwork(SkinDefinition left,SkinDefinition right)
@@ -167,7 +223,7 @@ namespace Dafeiyu
             if(left.Name!=right.Name || left.SystemPrompt!=right.SystemPrompt)return false;
             foreach(string action in IllustratedPack.Actions) {
                 var a=left.Manifest.Animations[action];var b=right.Manifest.Animations[action];
-                if(a.Frames!=b.Frames || a.Fps!=b.Fps || a.Loop!=b.Loop || !SameFile(left.Source,a.File,right.Source,b.File))return false;
+                if(a.Frames!=b.Frames || a.Fps!=b.Fps || a.Loop!=b.Loop || a.HoldLastSeconds!=b.HoldLastSeconds || !SameFile(left.Source,a.File,right.Source,b.File))return false;
             }
             return SameFile(left.Source,left.Manifest.Gaze.File,right.Source,right.Manifest.Gaze.File) && SameFile(left.Source,left.Manifest.Preview,right.Source,right.Manifest.Preview);
         }
@@ -215,11 +271,13 @@ namespace Dafeiyu
             var files=IllustratedPack.Validate(source,manifest,true);
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
                 if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("完整角色包说明请命名为 pet.json。");
+                bool existing=customPackageIds.Contains(manifest.PackageId);
+                string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);
                 string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,files,
                     folder=>IllustratedPack.Validate(folder,ReadManifest(Path.Combine(folder,"pet.json")),true));
-                var updated=new SkinDefinition(CompanionPackStorage.Identity(dataRoot,manifest.PackageId),installedFolder,manifest);
+                var updated=new SkinDefinition(persona,installedFolder,manifest);customPackageIds.Add(manifest.PackageId);
                 CompanionPackStorage.SetHidden(dataRoot,manifest.PackageId,false);
-                Put(updated);ReconcileLegacy();return Find(manifest.PackageId);
+                CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;
             }
             string id="skin-"+Guid.NewGuid().ToString("N"),destination=Path.Combine(directory,id);
             Directory.CreateDirectory(destination);
@@ -276,20 +334,33 @@ namespace Dafeiyu
         private static int BigEndian(byte[] b,int i) { return (b[i]<<24)|(b[i+1]<<16)|(b[i+2]<<8)|b[i+3]; }
         public static BitmapSource GetAvatar(SkinDefinition skin)
         {
+            if(skin.IsPlaceholder)return OfficialAvatar(skin);
             if(skin.Illustrated && !String.IsNullOrEmpty(skin.Manifest.Avatar)) {
                 string path=IllustratedPack.AssetPath(skin.Source,skin.Manifest.Avatar);
                 lock(avatars) { BitmapSource cached;if(avatars.TryGetValue(path,out cached))return cached;
-                    var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=256;image.UriSource=new Uri(Path.GetFullPath(path));image.EndInit();image.Freeze();avatars.Add(path,image);return image; }
+                    var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=256;image.UriSource=new Uri(Path.GetFullPath(path));image.EndInit();image.Freeze();if(avatars.Count>=24)avatars.Clear();avatars.Add(path,image);return image; }
             }
             // Imported designs keep their own artwork, even when their ID matches a preset.
             if(!skin.Embedded && !skin.Bundled)return GetPreview(skin);
             lock(avatars)
             {
                 BitmapSource cached;if(avatars.TryGetValue(skin.Id,out cached))return cached;
-                using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Avatar."+skin.Id))
+                using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Avatar."+(skin.BuiltinCharacterId??skin.Id)))
                 {
                     if(stream==null)return GetPreview(skin);
                     var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=256;image.StreamSource=stream;image.EndInit();image.Freeze();avatars.Add(skin.Id,image);return image;
+                }
+            }
+        }
+        static BitmapSource OfficialAvatar(SkinDefinition skin)
+        {
+            var profile=OfficialCompanionProfiles.Find(skin.BuiltinCharacterId);if(profile==null)return null;
+            lock(avatars) {
+                string key="official-avatar:"+profile.Id;BitmapSource cached;if(avatars.TryGetValue(key,out cached))return cached;
+                using(var input=Assembly.GetExecutingAssembly().GetManifestResourceStream(profile.AvatarResourceName)) {
+                    if(input==null)return null;
+                    var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=256;image.StreamSource=input;image.EndInit();image.Freeze();
+                    if(avatars.Count>=24)avatars.Clear();avatars[key]=image;return image;
                 }
             }
         }
@@ -300,7 +371,7 @@ namespace Dafeiyu
             if(remove!=null) {
                 var button=new FrameworkElementFactory(typeof(System.Windows.Controls.Button));button.SetValue(FrameworkElement.NameProperty,"DeleteCompanion");button.SetValue(System.Windows.Controls.ContentControl.ContentProperty,"\uE74D");button.SetValue(System.Windows.Controls.Control.FontFamilyProperty,new System.Windows.Media.FontFamily("Segoe MDL2 Assets"));button.SetValue(FrameworkElement.WidthProperty,28.0);button.SetValue(FrameworkElement.HeightProperty,28.0);button.SetValue(FrameworkElement.MarginProperty,new Thickness(8,0,0,0));button.SetValue(System.Windows.Controls.Control.BackgroundProperty,System.Windows.Media.Brushes.Transparent);button.SetValue(System.Windows.Controls.Control.BorderThicknessProperty,new Thickness(0));button.SetValue(UIElement.FocusableProperty,false);button.SetValue(FrameworkElement.ToolTipProperty,"删除伙伴（保留聊天和配置）");button.SetValue(System.Windows.Controls.DockPanel.DockProperty,System.Windows.Controls.Dock.Right);
                 button.SetBinding(UIElement.VisibilityProperty,new System.Windows.Data.Binding("IsVisible"){RelativeSource=new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor,typeof(System.Windows.Controls.ComboBoxItem),1),Converter=new System.Windows.Controls.BooleanToVisibilityConverter(),FallbackValue=Visibility.Collapsed});
-                button.AddHandler(FrameworkElement.LoadedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){((System.Windows.Controls.Button)sender).IsEnabled=canRemove==null || canRemove();}));
+                button.AddHandler(FrameworkElement.LoadedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){var control=(System.Windows.Controls.Button)sender;var skin=control.DataContext as SkinDefinition;bool reserved=skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao";control.IsEnabled=!reserved&&(canRemove==null||canRemove());if(reserved)control.ToolTip="默认伙伴用于离线启动，不能删除";}));
                 button.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){e.Handled=true;var skin=((FrameworkElement)sender).DataContext as SkinDefinition;if(skin!=null)remove(skin);}));row.AppendChild(button);
             }
             var image=new FrameworkElementFactory(typeof(System.Windows.Controls.Image));image.SetValue(FrameworkElement.WidthProperty,28.0);image.SetValue(FrameworkElement.HeightProperty,28.0);image.SetValue(UIElement.ClipProperty,new System.Windows.Media.RectangleGeometry(new Rect(0,0,28,28),5.6,5.6));image.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,9,0));image.SetBinding(System.Windows.Controls.Image.SourceProperty,new System.Windows.Data.Binding{Converter=new AvatarConverter()});row.AppendChild(image);

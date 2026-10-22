@@ -13,6 +13,11 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1 && args[0]=="--holiday-assets-only")return HolidayAssetTests.Main();
+            if(args.Length==1 && args[0]=="--official-legacy-only")return OfficialCompanionLegacyTests.Main();
+            if(args.Length==1 && args[0]=="--official-identity-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionIdentityTests.Main();}
+            if(args.Length==1 && args[0]=="--holiday-source-only")return HolidaySourceBindingTests.Main();
+            if(args.Length==1 && args[0]=="--official-companion-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionTests.Main();}
             if(args.Length==1 && args[0]=="--image-task-center-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageTaskCenterLifecycleTests.Main();}
             if(args.Length==1 && args[0]=="--image-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGalleryManagementTests.Main();}
             if(args.Length==1 && args[0]=="--image-backend-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationBackendTests.Main();}
@@ -27,7 +32,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskManagerTests.Main();}
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -69,7 +74,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,

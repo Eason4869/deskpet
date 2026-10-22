@@ -77,6 +77,25 @@ static void TestWindows(void) {
     double x, y; dp_pointer(&x, &y);
     Check(isfinite(x) && isfinite(y), @"Quartz pointer ABI");
     Check(isfinite(dp_idle_seconds()) && dp_idle_seconds() >= 0, @"native idle query");
+    int initialInteractive = dp_session_interactive();
+    uint64_t initialLifecycle = dp_session_lifecycle_revision();
+    Check(initialInteractive == 0 || initialInteractive == 1, @"session lifecycle ABI");
+    NSNotificationCenter *workspaceCenter = NSWorkspace.sharedWorkspace.notificationCenter;
+    // These are local process notifications; they never lock, sleep or switch the Mac.
+    [workspaceCenter postNotificationName:NSWorkspaceSessionDidBecomeActiveNotification object:NSWorkspace.sharedWorkspace];
+    [workspaceCenter postNotificationName:NSWorkspaceScreensDidWakeNotification object:NSWorkspace.sharedWorkspace];
+    [workspaceCenter postNotificationName:NSWorkspaceDidWakeNotification object:NSWorkspace.sharedWorkspace]; Pump(.01);
+    Check(dp_session_interactive() == 1, @"active awake session allows holiday animation");
+    [workspaceCenter postNotificationName:NSWorkspaceScreensDidSleepNotification object:NSWorkspace.sharedWorkspace]; Pump(.01);
+    Check(dp_session_interactive() == 0, @"display sleep blocks holiday animation");
+    [workspaceCenter postNotificationName:NSWorkspaceScreensDidWakeNotification object:NSWorkspace.sharedWorkspace];
+    [workspaceCenter postNotificationName:NSWorkspaceWillSleepNotification object:NSWorkspace.sharedWorkspace]; Pump(.01);
+    Check(dp_session_interactive() == 0, @"system sleep blocks holiday animation");
+    [workspaceCenter postNotificationName:NSWorkspaceDidWakeNotification object:NSWorkspace.sharedWorkspace];
+    [workspaceCenter postNotificationName:NSWorkspaceSessionDidResignActiveNotification object:NSWorkspace.sharedWorkspace]; Pump(.01);
+    Check(dp_session_interactive() == 0, @"inactive user session blocks holiday animation");
+    Check(dp_session_lifecycle_revision() >= initialLifecycle + 3, @"sleep transitions remain observable after wake before managed tick");
+    if (initialInteractive) [workspaceCenter postNotificationName:NSWorkspaceSessionDidBecomeActiveNotification object:NSWorkspace.sharedWorkspace]; Pump(.01);
     NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(20,20,64,64) styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
     window.releasedWhenClosed = NO;
     @try {

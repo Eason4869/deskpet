@@ -1,9 +1,11 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Automation;
+using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using Dafeiyu;
 
@@ -22,14 +24,18 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private readonly TextBlock status = Ui.Text(""), referenceLabel = Ui.Text("未选择参考图"), capability = Ui.Text(""), warning = Ui.Text("");
     private readonly Button generate, cancel, referenceButton;
     private readonly Image referencePreview = new() { Height = 100, Stretch = Stretch.Uniform, IsVisible = false };
-    private readonly StackPanel result = Ui.Column();
+    private readonly StackPanel referenceChip;
+    private readonly ImageWorkspacePreview result;
+    private readonly TextBlock model = Ui.Text("", 13);
     private readonly ImageGalleryPanel gallery = new() { Name = "ImageGalleryTiles" };
     private readonly TextBlock galleryEmpty = Ui.Text("");
     private readonly TextBlock galleryCount = Ui.Text("");
     private readonly TextBlock galleryActionNotice = Ui.Text("");
     private readonly ImageGallerySelection gallerySelection = new();
-    private readonly WrapPanel galleryActions = new() { Orientation = Orientation.Horizontal, IsVisible = false };
-    private readonly Button multiSelect, trashAction, restoreAction, purgeAction, cancelExport, clearTrash;
+    private readonly MenuItem multiSelect, restoreAction, purgeAction, cancelExport, clearTrash;
+    private readonly Button trashAction;
+    private readonly ContextMenu filterMenu = new();
+    private readonly MenuItem providerMenu = new() { Header = "服务" }, modelMenu = new() { Header = "模型" }, sourceMenu = new() { Header = "来源" };
     private bool selecting;
     private CancellationTokenSource? exportCancellation;
     private readonly CheckBox favoritesOnly = new() { Content = "只看收藏" }, trashOnly = new() { Content = "回收站" };
@@ -39,10 +45,11 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     private IList<GeneratedImage> loadedGallery = new List<GeneratedImage>();
     private int galleryRevision;
     private bool updatingFilters;
-    private readonly Button masonryLayout, gridLayout, loadMore;
+    private readonly Button loadMore;
+    private readonly ComboBox layoutFilter = new() { Name = "GalleryLayout", Width = 94 };
     private int galleryLimit = 40;
     private readonly TextBox search = Ui.Input("", "按提示词或模型搜索图库");
-    private readonly List<GeneratedImageCard> resultCards = new(), galleryCards = new();
+    private readonly List<GeneratedImageCard> galleryCards = new();
 
 
     private bool submitting;
@@ -76,48 +83,107 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     internal static void SelectParameter(ComboBox box, string? value) { if (string.IsNullOrEmpty(value)) box.SelectedIndex = 0; else { var choices = box.ItemsSource!.Cast<string>().ToList(); if (!choices.Contains(value)) { choices.Add(value); box.ItemsSource = choices; } box.SelectedItem = value; } }
     public ImageWorkspacePage(DesktopController controller, Window window)
     {
-        owner = controller; host = window; Name = "ImageWorkspace"; prompt.Name = "ImagePrompt"; prompt.AcceptsReturn = true; prompt.Height = 140; prompt.MinWidth = 0; prompt.TextWrapping = TextWrapping.Wrap;
+        owner = controller; host = window; Name = "ImageWorkspace";
+        result = new ImageWorkspacePreview(owner, host, Prepare);
+        prompt.Name = "ImagePrompt"; prompt.AcceptsReturn = true; prompt.Height = 70; prompt.MinWidth = 0; prompt.TextWrapping = TextWrapping.Wrap;
+        prompt.Background = Brushes.Transparent; prompt.BorderThickness = new Thickness(0); prompt.Padding = new Thickness(4); prompt.UseFloatingPlaceholder = false;
         providers.SelectionChanged += (_, _) => { if (refreshing) return; if (providers.SelectedItem is ImageGenerationProvider p) { owner.Settings.ActiveImageProviderId = p.Id; owner.Save(); ConfigureParameters(size, quality, p.Protocol); SelectParameter(size, p.Size); SelectParameter(quality, p.Quality); } UpdateCapability(); };
-        generate = Ui.Button("开始生成", () => owner.Run(GenerateAsync)); generate.Name = "StartImageGeneration";
-        cancel = Ui.Button("取消生成", () => { if(imageJobId != null) _ = owner.ImageTasks.CancelAsync(imageJobId); }); cancel.Name = "CancelImageGeneration"; cancel.IsEnabled = false;
-        referenceButton = Ui.AsyncButton("上传参考图", UploadAsync, owner.Error); referenceButton.Name = "UploadImageReference";
-        var remove = Ui.Button("移除参考图", ClearReference); remove.Name = "RemoveImageReference";
-        var parameters = new WrapPanel(); parameters.Children.Add(Ui.Field("尺寸", size)); parameters.Children.Add(Ui.Field("质量", quality));
-        var generation = Ui.Column(Ui.Text("图片生成", 23), Ui.Text("选择独立配置的图片服务，或上传一张参考图进行编辑。", 13), Ui.Field("图片生成服务", providers), capability,
-            Ui.Button("配置图片服务", () => owner.ShowSettingsSection("image")), Ui.Field("提示词", prompt), parameters,
-            Ui.Row(referenceButton, remove), referenceLabel, referencePreview, Ui.Row(generate, cancel), status, result);
-        masonryLayout = Ui.Button("瀑布流", () => SelectGalleryLayout("masonry")); masonryLayout.Name = "GalleryMasonryLayout";
-        gridLayout = Ui.Button("网格", () => SelectGalleryLayout("grid")); gridLayout.Name = "GalleryGridLayout";
+        generate = Ui.Button("生成 ↑", () => owner.Run(GenerateAsync)); generate.Name = "StartImageGeneration"; generate.CornerRadius = new CornerRadius(18); generate.Background = DesktopTheme.Brush("#357FF5"); generate.Foreground = Brushes.White;
+        cancel = Ui.Button("取消", () => { if (imageJobId != null) _ = owner.ImageTasks.CancelAsync(imageJobId); }); cancel.Name = "CancelImageGeneration"; cancel.IsEnabled = false;
+        referenceButton = Ui.AsyncButton("+", UploadAsync, owner.Error); referenceButton.Name = "UploadImageReference"; referenceButton.Width = referenceButton.Height = 34; referenceButton.Padding = new Thickness(0); referenceButton.FontSize = 23; referenceButton.CornerRadius = new CornerRadius(17); ToolTip.SetTip(referenceButton, "上传参考图"); AutomationProperties.SetName(referenceButton, "上传参考图");
+        var remove = Ui.Button("移除", ClearReference); remove.Name = "RemoveImageReference";
+        referenceLabel.FontSize = 11; referenceLabel.MaxWidth = 140; referenceLabel.MaxHeight = 28; referencePreview.Height = 44;
+        referenceChip = Ui.Row(referencePreview, referenceLabel, remove); referenceChip.IsVisible = false;
+        referencePreview.PropertyChanged += (_, e) => { if (e.Property == IsVisibleProperty) referenceChip.IsVisible = referencePreview.IsVisible || missingReference; };
+        var parameters = Ui.Column(Ui.Text("图片生成", 20), Ui.Field("服务", providers), Ui.Field("模型", model), Ui.Field("尺寸 / 分辨率", size), Ui.Field("质量", quality), capability, Ui.Button("配置图片服务", () => owner.ShowSettingsSection("image")), cancel);
+        capability.FontSize = 11; parameters.Spacing = 14;
+        var parameterSurface = new Border { Name = "ImageGenerationParameters", Padding = new Thickness(16), Background = DesktopTheme.Surface, CornerRadius = new CornerRadius(16), Child = parameters };
+        var stage = new Grid { Name = "ImageGenerationStage", ColumnDefinitions = new ColumnDefinitions("208,*"), RowDefinitions = new RowDefinitions("*"), ColumnSpacing = 16 };
+        stage.Children.Add(parameterSurface); Grid.SetColumn(result, 1); stage.Children.Add(result);
+        var composerActions = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 8 }; composerActions.Children.Add(referenceButton); Grid.SetColumn(referenceChip, 1); composerActions.Children.Add(referenceChip); Grid.SetColumn(generate, 2); composerActions.Children.Add(generate);
+        var composer = new Border { Name = "ImagePromptComposer", CornerRadius = new CornerRadius(24), Padding = new Thickness(14, 10), Background = DesktopTheme.Surface, BorderBrush = DesktopTheme.Brush("#E0E4E9"), BorderThickness = new Thickness(1), Margin = new Thickness(0, 12, 0, 0), Child = Ui.Column(prompt, composerActions) };
+        var generation = new Grid { RowDefinitions = new RowDefinitions("*,Auto,Auto"), Margin = new Thickness(14) }; generation.Children.Add(stage); Grid.SetRow(composer, 1); generation.Children.Add(composer); Grid.SetRow(status, 2); status.FontSize = 11; status.Margin = new Thickness(6, 4, 0, 0); generation.Children.Add(status);
+        generation.SizeChanged += (_, _) =>
+        {
+            bool narrow = generation.Bounds.Width < 610;
+            stage.ColumnDefinitions = new ColumnDefinitions(narrow ? "*" : "208,*"); stage.RowDefinitions = new RowDefinitions(narrow ? "Auto,*" : "*");
+            Grid.SetColumn(result, narrow ? 0 : 1); Grid.SetRow(result, narrow ? 1 : 0);
+            parameterSurface.Margin = new Thickness(0, 0, 0, narrow ? 10 : 0); parameterSurface.Padding = new Thickness(narrow ? 10 : 16);
+            parameters.Orientation = narrow ? Orientation.Horizontal : Orientation.Vertical; parameters.Spacing = narrow ? 8 : 14;
+            for (int i = 0; i < parameters.Children.Count; i++) parameters.Children[i].IsVisible = !narrow || i == 1 || i == 3 || i == 4;
+            parameters.Children[1].Width = narrow ? Math.Max(86, generation.Bounds.Width - 254) : double.NaN;
+            parameters.Children[3].Width = parameters.Children[4].Width = narrow ? 100 : double.NaN;
+            providers.MinWidth = size.MinWidth = quality.MinWidth = 0;
+        };
         loadMore = Ui.Button("加载更多", () => { galleryLimit += 40; RefreshGallery(); }); loadMore.Name = "LoadMoreGalleryImages";
-        var galleryHeader = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; galleryHeader.Children.Add(Ui.Text("图库", 23)); var layouts = Ui.Row(masonryLayout, gridLayout); Grid.SetColumn(layouts, 1); galleryHeader.Children.Add(layouts);
         providerFilter.ItemsSource = new[] { "全部服务" }; providerFilter.SelectedIndex = 0; modelFilter.ItemsSource = new[] { "全部模型" }; modelFilter.SelectedIndex = 0;
-        sourceFilter.ItemsSource = new[] { "全部来源", "图像页", "对话", "设置测试", "未知" }; sourceFilter.SelectedIndex = 0; sortFilter.ItemsSource = new[] { "最新优先", "最早优先" }; sortFilter.SelectedIndex = 0;
-        var filters = new WrapPanel { Orientation = Orientation.Horizontal }; foreach (var control in new Control[] { favoritesOnly, trashOnly, providerFilter, modelFilter, sourceFilter, sortFilter, fromDate, toDate }) { control.Margin = new Thickness(0, 0, 8, 6); filters.Children.Add(control); }
-        multiSelect = Ui.Button("多选", () => { selecting = !selecting; if (!selecting) gallerySelection.Clear(); RefreshSelection(); }); multiSelect.Name = "GalleryMultiSelect";
-        var bulk = galleryActions;
-        var selectLoaded = Ui.Button("全选已加载", () => { gallerySelection.SelectLoaded(loadedGallery); RefreshSelection(); }); selectLoaded.Name = "GallerySelectLoaded"; bulk.Children.Add(selectLoaded);
-        bulk.Children.Add(Ui.Button("清除选择", () => { gallerySelection.Clear(); RefreshSelection(); }));
-        var favoriteAll = Ui.Button("收藏所选", () => SetSelectedFavorite(true)); favoriteAll.Name = "GalleryFavoriteSelected"; bulk.Children.Add(favoriteAll);
-        var unfavoriteAll = Ui.Button("取消收藏", () => SetSelectedFavorite(false)); unfavoriteAll.Name = "GalleryUnfavoriteSelected"; bulk.Children.Add(unfavoriteAll);
-        var export = Ui.AsyncButton("导出原图", ExportSelectedAsync, owner.Error); export.Name = "GalleryExportSelected"; bulk.Children.Add(export);
-        cancelExport = Ui.Button("取消导出", () => exportCancellation?.Cancel()); cancelExport.Name = "GalleryCancelExport"; cancelExport.IsVisible = false; bulk.Children.Add(cancelExport);
-        trashAction = Ui.Button("移入回收站", () => ModifySelected(false)); trashAction.Name = "GalleryTrashSelected"; bulk.Children.Add(trashAction);
-        restoreAction = Ui.Button("恢复", () => ModifySelected(true)); restoreAction.Name = "GalleryRestoreSelected"; bulk.Children.Add(restoreAction);
-        purgeAction = Ui.AsyncButton("永久删除", PurgeSelectedAsync, owner.Error); purgeAction.Name = "GalleryPurgeSelected"; bulk.Children.Add(purgeAction);
-        foreach (var button in bulk.Children.OfType<Button>()) button.Margin = new Thickness(0, 0, 7, 6);
-        var cleanup = Ui.AsyncButton("清理未使用参考图", CleanupOrphansAsync, owner.Error); cleanup.Name = "GalleryCleanupOrphans";
-        clearTrash = Ui.AsyncButton("清空回收站", ClearTrashAsync, owner.Error); clearTrash.Name = "GalleryClearTrash"; clearTrash.IsVisible = false;
-        var managementRow = new WrapPanel { Orientation = Orientation.Horizontal }; multiSelect.Margin = cleanup.Margin = clearTrash.Margin = new Thickness(0, 0, 8, 6); managementRow.Children.Add(multiSelect); managementRow.Children.Add(cleanup); managementRow.Children.Add(clearTrash);
-        generation.Margin = new Thickness(16); var galleryPage = Ui.Column(galleryHeader, search, filters, galleryCount, galleryActionNotice, managementRow, bulk, warning, galleryEmpty, gallery, loadMore); galleryPage.Margin = new Thickness(16);
-        var recoveryNotice = Ui.Text("");
-        var recovery = new Expander { Header = "图库恢复", Content = Ui.Column(Ui.Button("恢复图库索引", () => { try { var count = owner.ImageStore.Recover(); RefreshGallery(); recoveryNotice.Text = "图库索引已恢复，找回 " + count + " 张图片。"; } catch (Exception e) { owner.Error(e); } }), recoveryNotice) };
-        galleryPage.Children.Add(recovery);
+        sourceFilter.ItemsSource = new[] { "全部来源", "图像页", "对话", "设置测试", "未知" }; sourceFilter.SelectedIndex = 0;
+        sortFilter.Name = "GallerySort"; sortFilter.ItemsSource = new[] { "最新优先", "最早优先" }; sortFilter.SelectedIndex = 0; sortFilter.Width = 94; sortFilter.MinWidth = 0;
+        layoutFilter.ItemsSource = new[] { "瀑布流", "等大网格" }; layoutFilter.SelectionChanged += (_, _) => { if (!updatingFilters) SelectGalleryLayout(layoutFilter.SelectedIndex == 1 ? "grid" : "masonry"); };
+        search.Name = "GallerySearch"; search.PlaceholderText = "搜索"; search.Width = 90; search.MinWidth = 0; search.Height = 32; search.FontSize = 12; ToolTip.SetTip(search, "按提示词或模型搜索图库");
+        var filterArrow = new PathIcon { Name = "GalleryFilterArrow", Width = 12, Height = 12, VerticalAlignment = VerticalAlignment.Center };
+        PathIcon? sortArrow = null, layoutArrow = null;
+        void UseGalleryArrow(PathIcon target)
+        {
+            if (sortArrow == null) return;
+            target.Bind(PathIcon.DataProperty, sortArrow.GetObservable(PathIcon.DataProperty));
+            target.Bind(TemplatedControl.ForegroundProperty, sortArrow.GetObservable(TemplatedControl.ForegroundProperty));
+        }
+        // Copy the actual Fluent ComboBox vector and observe its foreground so
+        // all three arrows stay identical when the application theme changes.
+        sortFilter.TemplateApplied += (_, e) =>
+        {
+            sortArrow = e.NameScope.Find<PathIcon>("DropDownGlyph"); UseGalleryArrow(filterArrow); if (layoutArrow != null) UseGalleryArrow(layoutArrow);
+        };
+        layoutFilter.TemplateApplied += (_, e) => { layoutArrow = e.NameScope.Find<PathIcon>("DropDownGlyph"); if (layoutArrow != null) UseGalleryArrow(layoutArrow); };
+        var filterContent = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12") }; filterContent.Children.Add(new TextBlock { Text = "筛选", VerticalAlignment = VerticalAlignment.Center }); Grid.SetColumn(filterArrow, 1); filterContent.Children.Add(filterArrow);
+        var filter = new Button { Content = filterContent, HorizontalContentAlignment = HorizontalAlignment.Stretch }; filter.Click += (_, _) => { RefreshFilterMenu(); filterMenu.Open(filter); }; filter.Name = "GalleryFilter"; filter.ContextMenu = filterMenu; filter.Width = 66; filter.Padding = new Thickness(10, 0); AutomationProperties.SetName(filter, "筛选图库");
+        multiSelect = MenuAction("GalleryMultiSelect", "多选", () => { selecting = !selecting; if (!selecting) gallerySelection.Clear(); RefreshSelection(); });
+        var selectLoaded = MenuAction("GallerySelectLoaded", "全选已加载", () => { selecting = true; gallerySelection.SelectLoaded(loadedGallery); RefreshSelection(); });
+        var favoriteAll = MenuAction("GalleryFavoriteSelected", "收藏所选", () => SetSelectedFavorite(true));
+        var unfavoriteAll = MenuAction("GalleryUnfavoriteSelected", "取消收藏所选", () => SetSelectedFavorite(false));
+        var export = MenuAction("GalleryExportSelected", "导出所选原图", () => owner.Run(ExportSelectedAsync));
+        cancelExport = MenuAction("GalleryCancelExport", "取消导出", () => exportCancellation?.Cancel()); cancelExport.IsVisible = false;
+        trashAction = Ui.Button("", () => ModifySelected(false)); trashAction.Name = "GalleryTrashSelected"; trashAction.Width = trashAction.Height = 32; trashAction.Padding = new Thickness(7); trashAction.IsEnabled = false; ToolTip.SetTip(trashAction, "移入回收站"); AutomationProperties.SetName(trashAction, "移入回收站");
+        trashAction.Content = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse("M 3,5 L 15,5 M 6,5 L 6,2 L 12,2 L 12,5 M 5,5 L 6,17 L 12,17 L 13,5 M 8,8 L 8,14 M 10,8 L 10,14"), StrokeThickness = 1.5, Stroke = DesktopTheme.Brush("#A0A8B3"), Width = 18, Height = 18, Stretch = Stretch.Uniform };
+        restoreAction = MenuAction("GalleryRestoreSelected", "恢复所选", () => ModifySelected(true));
+        purgeAction = MenuAction("GalleryPurgeSelected", "永久删除所选", () => owner.Run(PurgeSelectedAsync));
+        clearTrash = MenuAction("GalleryClearTrash", "清空回收站", () => owner.Run(ClearTrashAsync));
+        var cleanup = MenuAction("GalleryCleanupOrphans", "清理未使用参考图", () => owner.Run(CleanupOrphansAsync));
+        var recovery = MenuAction("GalleryRecover", "恢复图库索引", () => { try { var count = owner.ImageStore.Recover(); RefreshGallery(); galleryActionNotice.Text = "图库索引已恢复，找回 " + count + " 张图片。"; } catch (Exception e) { owner.Error(e); } });
+        var favorites = new MenuItem { Name = "GalleryFavoritesOnly", Header = "只看收藏", ToggleType = MenuItemToggleType.CheckBox }; favorites.Click += (_, _) => favoritesOnly.IsChecked = favorites.IsChecked;
+        var trash = new MenuItem { Name = "GalleryTrashView", Header = "回收站", ToggleType = MenuItemToggleType.CheckBox }; trash.Click += (_, _) => trashOnly.IsChecked = trash.IsChecked;
+        var dates = new MenuItem { Header = "日期范围", ItemsSource = new object[] { new MenuItem { Header = Ui.Field("起始日期", fromDate) }, new MenuItem { Header = Ui.Field("截止日期", toDate) } } };
+        var management = new MenuItem { Header = "管理图库", ItemsSource = new object[] { multiSelect, selectLoaded, MenuAction("GalleryClearSelection", "清除选择", () => { gallerySelection.Clear(); RefreshSelection(); }), favoriteAll, unfavoriteAll, export, cancelExport, new Separator(), trash, restoreAction, purgeAction, clearTrash, new Separator(), cleanup, recovery } };
+        filterMenu.ItemsSource = new object[] { favorites, modelMenu, sourceMenu, providerMenu, dates, new Separator(), management }; filterMenu.Opening += (_, _) => { RefreshFilterMenu(); favorites.IsChecked = favoritesOnly.IsChecked == true; trash.IsChecked = trashOnly.IsChecked == true; };
+        var toolbar = Ui.Row(search, filter, sortFilter, layoutFilter, trashAction); toolbar.Name = "GalleryToolbar"; toolbar.Spacing = 5; toolbar.HorizontalAlignment = HorizontalAlignment.Right; toolbar.Margin = new Thickness(0, 0, 0, 12);
+        foreach (var control in new Control[] { filter, sortFilter, layoutFilter }) control.Height = 32;
+        filter.FontSize = sortFilter.FontSize = layoutFilter.FontSize = 12;
+        var galleryBody = Ui.Column(galleryActionNotice, warning, galleryEmpty, gallery, loadMore); galleryBody.Spacing = 8;
+        galleryActionNotice.IsVisible = warning.IsVisible = false;
+        galleryActionNotice.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty) galleryActionNotice.IsVisible = !string.IsNullOrEmpty(galleryActionNotice.Text); };
+        warning.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty) warning.IsVisible = !string.IsNullOrEmpty(warning.Text); };
+        var galleryPage = new DockPanel { Margin = new Thickness(14), LastChildFill = true }; DockPanel.SetDock(toolbar, Dock.Top); galleryPage.Children.Add(toolbar); galleryPage.Children.Add(new ScrollViewer { Content = galleryBody });
+        galleryPage.SizeChanged += (_, _) => search.Width = Math.Clamp(galleryPage.Bounds.Width - 306, 30, 140);
         taskCenter = new ImageTaskCenterPage(owner, host); taskTab.Content = taskCenter;
-        ItemsSource = new[] { new TabItem { Header = "生成", Content = new ScrollViewer { Content = generation } }, new TabItem { Header = "图库", Content = new ScrollViewer { Content = galleryPage } }, taskTab };
+        ItemsSource = new[] { new TabItem { Header = "生成", Content = generation }, new TabItem { Header = "图库", Content = galleryPage }, taskTab };
         SelectedIndex = 0;
-        search.TextChanged += (_, _) => FilterChanged(); favoritesOnly.IsCheckedChanged += (_, _) => FilterChanged(); trashOnly.IsCheckedChanged += (_, _) => FilterChanged(); providerFilter.SelectionChanged += (_, _) => FilterChanged(); modelFilter.SelectionChanged += (_, _) => FilterChanged(); sourceFilter.SelectionChanged += (_, _) => FilterChanged(); sortFilter.SelectionChanged += (_, _) => FilterChanged(); fromDate.TextChanged += (_, _) => FilterChanged(); toDate.TextChanged += (_, _) => FilterChanged(); owner.ImageStore.Changed += StoreChanged; owner.Changed += RefreshProviders;
-
-        RefreshProviders(); RefreshGallery();owner.ImageTasks.Changed+=TaskChanged;TaskChanged(null!);RebindTask();
+        search.TextChanged += (_, _) => { ToolTip.SetTip(search, string.IsNullOrEmpty(search.Text) ? "按提示词或模型搜索图库" : search.Text); FilterChanged(); }; favoritesOnly.IsCheckedChanged += (_, _) => FilterChanged(); trashOnly.IsCheckedChanged += (_, _) => FilterChanged(); providerFilter.SelectionChanged += (_, _) => FilterChanged(); modelFilter.SelectionChanged += (_, _) => FilterChanged(); sourceFilter.SelectionChanged += (_, _) => FilterChanged(); sortFilter.SelectionChanged += (_, _) => FilterChanged(); fromDate.TextChanged += (_, _) => FilterChanged(); toDate.TextChanged += (_, _) => FilterChanged(); owner.ImageStore.Changed += StoreChanged; owner.Changed += RefreshProviders;
+        RefreshProviders(); RefreshGallery(); owner.ImageTasks.Changed += TaskChanged; TaskChanged(null!); RebindTask();
+    }
+    private static MenuItem MenuAction(string name, string title, Action action)
+    {
+        var item = new MenuItem { Name = name, Header = title }; item.Click += (_, _) => action(); return item;
+    }
+    private void RefreshFilterMenu()
+    {
+        void Populate(MenuItem menu, ComboBox box)
+        {
+            menu.ItemsSource = box.Items.Cast<object>().Select((value, index) => { var item = new MenuItem { Header = value.ToString(), IsChecked = box.SelectedIndex == index, ToggleType = MenuItemToggleType.Radio, GroupName = menu.Header!.ToString() }; item.Click += (_, _) => box.SelectedIndex = index; return item; }).ToArray();
+        }
+        Populate(providerMenu, providerFilter); Populate(modelMenu, modelFilter); Populate(sourceMenu, sourceFilter);
+        restoreAction.IsVisible = purgeAction.IsVisible = clearTrash.IsVisible = trashOnly.IsChecked == true;
+        restoreAction.IsEnabled = purgeAction.IsEnabled = gallerySelection.Count > 0;
     }
     private void StoreChanged()
     {
@@ -145,11 +211,12 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var mode = owner.Settings.ImageGalleryLayout == "grid" ? "grid" : "masonry";
         gallery.LayoutMode = mode;
         foreach (var card in galleryCards) card.SetGalleryLayout(mode);
-        foreach (var button in new[] { masonryLayout, gridLayout }) { var active = ReferenceEquals(button, mode == "grid" ? gridLayout : masonryLayout); button.Background = active ? DesktopTheme.Brush("#357FF5") : Brushes.Transparent; button.Foreground = active ? Brushes.White : DesktopTheme.Brush("#777F89"); }
+        updatingFilters = true; layoutFilter.SelectedIndex = mode == "grid" ? 1 : 0; updatingFilters = false;
     }
     private void UpdateCapability()
     {
         var selected = providers.SelectedItem as ImageGenerationProvider; var busy = submitting;
+        model.Text = selected?.Connection.Model ?? "尚未选择模型"; model.MaxHeight = 48; model.TextTrimming = TextTrimming.CharacterEllipsis; ToolTip.SetTip(model, model.Text); ToolTip.SetTip(providers, selected == null ? "选择图片服务" : selected.Name + " · " + selected.Connection.Model);
         capability.Text = selected == null ? "尚未配置图片服务。请进入模型配置 → 图片生成。" : selected.SupportsEdits ? "支持生成和单张参考图编辑。" : "此服务未启用参考图编辑；可在图片生成配置中声明服务能力。";
         referenceButton.IsEnabled = !busy && selected?.SupportsEdits == true; generate.IsEnabled = !busy && selected != null; providers.IsEnabled = !busy;
         prompt.IsReadOnly = busy; size.IsEnabled = quality.IsEnabled = !busy; cancel.IsEnabled = IsGenerating;
@@ -170,7 +237,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var media = bytes.Length >= 8 && bytes[0] == 137 && bytes[1] == 80 && bytes[2] == 78 && bytes[3] == 71 ? "image/png" : bytes.Length >= 3 && bytes[0] == 255 && bytes[1] == 216 && bytes[2] == 255 ? "image/jpeg" : bytes.Length >= 12 && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP" ? "image/webp" : throw new InvalidOperationException("参考图仅支持 PNG、JPEG 和 WebP。");
         using var stream = new MemoryStream(bytes); var bitmap = Bitmap.DecodeToWidth(stream, 240); ClearReference(); referenceBitmap = bitmap; referenceBytes = bytes.ToArray(); referenceMediaType = media; referencePreview.Source = bitmap; referencePreview.IsVisible = true; referenceLabel.Text = filename;
     }
-    private void ClearReference() { if (submitting || disposed) return; referencePreview.Source = null; referenceBitmap?.Dispose(); referenceBitmap = null; referenceBytes = null; referenceMediaType = null; referenceId = null; missingReference = false; referencePreview.IsVisible = false; referenceLabel.Text = "未选择参考图"; }
+    private void ClearReference() { if (submitting || disposed) return; if (missingReference) status.Text = "已移除不可用的参考图，可直接生成。"; referencePreview.Source = null; referenceBitmap?.Dispose(); referenceBitmap = null; referenceBytes = null; referenceMediaType = null; referenceId = null; missingReference = false; referencePreview.IsVisible = false; referenceChip.IsVisible = false; referenceLabel.Text = "未选择参考图"; }
     internal void Prepare(GeneratedImage image)
     {
         if (submitting || disposed) return; SelectedIndex = 0; prompt.Text = image.Prompt;
@@ -180,7 +247,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         if (!string.IsNullOrEmpty(image.ReferenceImageId))
         {
             try { SetReference(owner.ImageStore.Read(image.ReferenceImageId), "原参考图"); referenceId = image.ReferenceImageId; }
-            catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { missingReference = true; referenceLabel.Text = "原参考图不可用，请重新上传或主动移除参考图。"; status.Text = referenceLabel.Text; }
+            catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { missingReference = true; referenceChip.IsVisible = true; referenceLabel.Text = "原参考图不可用，请重新上传或主动移除参考图。"; status.Text = referenceLabel.Text; }
         }
     }
     internal async Task GenerateAsync()
@@ -204,16 +271,16 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
     }
     private Task<ImageGenerationTaskHandle> AcceptSubmission(ImageGenerationProvider provider,string text)
     {
-        return owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider=provider,Prompt=text,Size=Parameter(size),Quality=Parameter(quality),ReferenceImageBytes=referenceBytes,ReferenceMediaType=referenceMediaType,ReferenceImageId=referenceId,Persistent=owner.Settings.SaveChatHistory,TaskId=Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart=id=>{ if(!disposed){imageJobId=id;result.Children.Clear();result.Children.Add(new ImageGenerationPendingCard(owner,host,id,Prepare));}return Task.CompletedTask;} },CancellationToken.None);
+        return owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest { Provider=provider,Prompt=text,Size=Parameter(size),Quality=Parameter(quality),ReferenceImageBytes=referenceBytes,ReferenceMediaType=referenceMediaType,ReferenceImageId=referenceId,Persistent=owner.Settings.SaveChatHistory,TaskId=Guid.NewGuid().ToString("N") },new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}) { BeforeStart=id=>{ if(!disposed){imageJobId=id;result.ShowTask(id);}return Task.CompletedTask;} },CancellationToken.None);
     }
     private void TaskChanged(ImageGenerationTaskSnapshot task)=>Dispatcher.UIThread.Post(()=>{if(!disposed){taskTab.Header="任务 ("+owner.ImageTasks.List().Count(t=>!t.IsTerminal)+")";UpdateCapability();}});
-    private void RebindTask(){var task=owner.ImageTasks.List().LastOrDefault(t=>t.Source==ImageGenerationSource.Workspace);if(task==null)return;imageJobId=task.Id;result.Children.Add(new ImageGenerationPendingCard(owner,host,task.Id,Prepare));}
-    private void FilterChanged() { if (updatingFilters) return; galleryLimit = 40; gallerySelection.Clear(); RefreshGallery(); }
+    private void RebindTask(){var task=owner.ImageTasks.List().LastOrDefault(t=>t.Source==ImageGenerationSource.Workspace);if(task==null)return;imageJobId=task.Id;result.ShowTask(task.Id);}
+    private void FilterChanged() { if (updatingFilters) return; galleryLimit = 40; gallerySelection.Clear(); RefreshSelection(); RefreshGallery(); }
     internal void RefreshGallery()
     {
         if (disposed) return;
         int revision = Interlocked.Increment(ref galleryRevision);
-        if (!ParseDate(fromDate.Text, false, out var from) || !ParseDate(toDate.Text, true, out var to)) { galleryCount.Text = "日期格式应为 YYYY-MM-DD。"; return; }
+        if (!ParseDate(fromDate.Text, false, out var from) || !ParseDate(toDate.Text, true, out var to)) { warning.Text = galleryCount.Text = "日期格式应为 YYYY-MM-DD。"; return; }
         var request = new ImageGalleryQuery { Keyword = search.Text, FavoritesOnly = favoritesOnly.IsChecked == true, Trash = trashOnly.IsChecked == true, ProviderId = providerFilter.SelectedIndex > 0 ? (providerFilter.SelectedItem as ImageGalleryProviderChoice)?.Id : null, Model = modelFilter.SelectedIndex > 0 ? modelFilter.SelectedItem as string : null, OldestFirst = sortFilter.SelectedIndex == 1, Limit = galleryLimit, FromUtc = from, ToUtc = to };
         if (sourceFilter.SelectedIndex > 0) request.Source = sourceFilter.SelectedIndex switch { 1 => ImageGenerationSource.Workspace, 2 => ImageGenerationSource.Conversation, 3 => ImageGenerationSource.SettingsTest, _ => ImageGenerationSource.Unknown };
         _ = Task.Run(() => { var options = owner.ImageStore.ListIncludingTrash(); return (Page: new ImageGalleryQueryService(owner.ImageStore).Query(request), Providers: options.Select(i => i.ProviderId).Where(i => !string.IsNullOrEmpty(i)).Distinct().OrderBy(i => i).ToArray(), Models: options.Select(i => i.Model).Where(i => !string.IsNullOrEmpty(i)).Distinct().OrderBy(i => i).ToArray()); }).ContinueWith(task => Dispatcher.UIThread.Post(() =>
@@ -226,7 +293,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
             if(request.ProviderId!=effectiveProvider||request.Model!=effectiveModel){FilterChanged();return;}
             foreach (var card in galleryCards) card.Dispose(); galleryCards.Clear(); gallery.Children.Clear(); warning.Text = owner.ImageStore.Warning;
             var result = task.Result.Page; loadedGallery = result.Items; galleryTotal=result.Total; galleryCount.Text = "共 " + result.Total + " 张 · 已加载 " + result.Items.Count + " 张 · 已选 " + gallerySelection.Count + " 张";
-            multiSelect.Content = selecting ? "完成多选" : "多选"; galleryActions.IsVisible = selecting; clearTrash.IsVisible = trashOnly.IsChecked == true; trashAction.IsVisible = trashOnly.IsChecked != true; restoreAction.IsVisible = trashOnly.IsChecked == true; purgeAction.IsVisible = trashOnly.IsChecked == true;
+            RefreshSelection(); RefreshFilterMenu();
             galleryEmpty.Text = string.IsNullOrWhiteSpace(search.Text) ? "还没有生成图片。" : "没有匹配的图片。"; galleryEmpty.IsVisible = result.Total == 0;
             foreach (var item in result.Items) { var card = new GeneratedImageCard(owner, host, item, Prepare, owner.Settings.ImageGalleryLayout, ToggleSelected, ToggleFavorite, gallerySelection.Contains(item.Id), selecting); galleryCards.Add(card); gallery.Children.Add(card); }
             gallery.SetImages(result.Items); loadMore.IsVisible = result.Total > result.Items.Count; RefreshGalleryLayout();
@@ -248,7 +315,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         box.ItemsSource = values; box.SelectedItem = values.FirstOrDefault(i => i.Id == selected) ?? values[0];
     }
     private void ToggleSelected(string id) { gallerySelection.Toggle(id); RefreshSelection(); }
-    private void RefreshSelection() { multiSelect.Content=selecting?"完成多选":"多选";galleryActions.IsVisible=selecting;galleryCount.Text="共 "+galleryTotal+" 张 · 已加载 "+loadedGallery.Count+" 张 · 已选 "+gallerySelection.Count+" 张";foreach(var card in galleryCards)card.UpdateSelection(gallerySelection.Contains(card.GalleryAssetId),selecting); }
+    private void RefreshSelection() { multiSelect.Header=selecting?"完成多选":"多选";trashAction.IsEnabled=gallerySelection.Count>0&&trashOnly.IsChecked!=true;if(trashAction.Content is Avalonia.Controls.Shapes.Path icon)icon.Stroke=DesktopTheme.Brush(trashAction.IsEnabled?"#D64B55":"#A0A8B3");galleryCount.Text="共 "+galleryTotal+" 张 · 已加载 "+loadedGallery.Count+" 张 · 已选 "+gallerySelection.Count+" 张";foreach(var card in galleryCards)card.UpdateSelection(gallerySelection.Contains(card.GalleryAssetId),selecting); }
     private void ToggleFavorite(string id) { try { var image = owner.ImageStore.Get(id); owner.ImageStore.SetFavorite(new[] { id }, !image.IsFavorite); } catch (Exception e) { owner.Error(e); } }
     private void SetSelectedFavorite(bool value) { if (gallerySelection.Count == 0) return; try { owner.ImageStore.SetFavorite(gallerySelection.Ids, value); galleryActionNotice.Text = value ? "已收藏所选图片。" : "已取消所选图片的收藏。"; } catch (Exception e) { owner.Error(e); } }
     private static string ManagementSummary(ImagePurgeResult result) => "已删除 " + result.DeletedIds.Count + " 张；保留 " + result.Blocked.Count + " 张。" + string.Join("；", result.Blocked.Select(i => i.Key + "：" + i.Value)) + (result.CleanupPendingIds.Count > 0 ? "；" + result.CleanupPendingIds.Count + " 张文件待下次清理。" : "");
@@ -271,6 +338,7 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var folders = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "选择原图导出目录", AllowMultiple = false }); var folder = folders.FirstOrDefault(); if (folder == null) return;
         var path = folder.TryGetLocalPath(); if (string.IsNullOrEmpty(path)) throw new InvalidOperationException("请选择本地目录。");
         using var source = new CancellationTokenSource(); exportCancellation = source; cancelExport.IsVisible = true; var ids = gallerySelection.Ids.ToArray();
+        galleryActionNotice.Text = "正在导出原图…";
         try
         {
             var progress = new Progress<ImageExportItem>(_ => galleryCount.Text = "正在导出原图…");
@@ -304,5 +372,5 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
         var result = await owner.ImageManagement.CleanupOrphanReferencesAsync(ids, CancellationToken.None); galleryActionNotice.Text = ManagementSummary(result);
     }
     internal void ShowTasks(string id) { SelectedIndex = 2; taskCenter.SelectTask(id); }
-    public void Dispose() { taskCenter.Dispose(); disposed = true; Interlocked.Increment(ref galleryRevision); exportCancellation?.Cancel(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; owner.ImageTasks.Changed-=TaskChanged; referenceBytes=null;referenceId=null;referenceMediaType=null;referencePreview.Source=null;result.Children.Clear(); foreach (var card in resultCards.Concat(galleryCards)) card.Dispose(); referenceBitmap?.Dispose();referenceBitmap=null; }
+    public void Dispose() { taskCenter.Dispose(); disposed = true; Interlocked.Increment(ref galleryRevision); exportCancellation?.Cancel(); owner.ImageStore.Changed -= StoreChanged; owner.Changed -= RefreshProviders; owner.ImageTasks.Changed-=TaskChanged; referenceBytes=null;referenceId=null;referenceMediaType=null;referencePreview.Source=null;result.Dispose(); foreach (var card in galleryCards) card.Dispose(); referenceBitmap?.Dispose();referenceBitmap=null; }
 }

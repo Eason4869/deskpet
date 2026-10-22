@@ -25,13 +25,14 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     private Button? selectionOverlay, favoriteOverlay;
     private bool selectionActive, selectedAsset;
     internal string GalleryAssetId => metadata.Id;
-    internal void UpdateSelection(bool selected, bool selecting) { selectedAsset=selected; selectionActive=selecting; if(selectionOverlay==null||favoriteOverlay==null)return;selectionOverlay.Content=selected?"已":"选";selectionOverlay.Opacity=favoriteOverlay.Opacity=IsPointerOver||IsKeyboardFocusWithin||selected||selecting?1:0; }
+    internal void UpdateSelection(bool selected, bool selecting) { selectedAsset=selected; selectionActive=selecting; if(selectionOverlay==null||favoriteOverlay==null)return;selectionOverlay.Content="√";selectionOverlay.Background=selected?DesktopTheme.Brush("#357FF5"):new SolidColorBrush(Color.Parse("#B0171B22"));AutomationProperties.SetName(selectionOverlay,selected?"取消选择图片":"选择图片");ToolTip.SetTip(selectionOverlay,selected?"取消选择":"选择图片");selectionOverlay.Opacity=favoriteOverlay.Opacity=IsPointerOver||IsKeyboardFocusWithin||selected||selecting?1:0; }
     internal bool IsGalleryTile { get; }
     internal void SetGalleryLayout(string layout) { if (tileImage != null) tileImage.Stretch = layout == "grid" ? Stretch.UniformToFill : Stretch.Uniform; }
-    public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null, Action<string>? choose = null, Action<string>? favorite = null, bool selected = false, bool selecting = false)
+    public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null, Action<string>? choose = null, Action<string>? favorite = null, bool selected = false, bool selecting = false, bool workspacePreview = false)
     {
         owner = controller; host = window; metadata = image.Copy(); regenerate = repeat; Name = "GeneratedImageCard";
         IsGalleryTile = galleryLayout != null;
+        if (workspacePreview) { BuildWorkspacePreview(); return; }
         if (IsGalleryTile) { BuildTile(galleryLayout!, choose, favorite, selected, selecting); return; }
         Padding = new Thickness(12); Margin = new Thickness(0, 0, 8, 8); CornerRadius = new CornerRadius(12); BorderBrush = DesktopTheme.Brush("#E0E4E9"); BorderThickness = new Thickness(1); MaxWidth = 520;
         var body = Ui.Column(); Child = body;
@@ -48,6 +49,20 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         foreach (var button in new[] { Ui.AsyncButton("另存为", SaveAsync, owner.Error), Ui.AsyncButton("复制图片", CopyAsync, owner.Error), Ui.Button("详情", Details), Ui.AsyncButton("打开目录", OpenDirectoryAsync, owner.Error), Ui.Button("再生成", Regenerate) }) { button.Margin = new Thickness(0, 0, 4, 4); actions.Children.Add(button); }
         body.Children.Add(actions);
     }
+    private void BuildWorkspacePreview()
+    {
+        Name = "WorkspaceGeneratedImage"; CornerRadius = new CornerRadius(14); ClipToBounds = true;
+        using var stream = new MemoryStream(owner.ImageStore.Read(metadata.Id)); thumbnail = Bitmap.DecodeToWidth(stream, Math.Min(1400, Math.Max(1, metadata.Width)));
+        var surface = new Grid(); Child = surface;
+        var preview = Ui.Button("", ShowPreview); preview.Name = "WorkspaceGeneratedImagePreview"; preview.Background = Brushes.Transparent; preview.BorderThickness = new Thickness(0); preview.Padding = new Thickness(0); preview.HorizontalAlignment = HorizontalAlignment.Stretch;
+        preview.VerticalAlignment = VerticalAlignment.Stretch; preview.HorizontalContentAlignment = HorizontalAlignment.Stretch; preview.VerticalContentAlignment = VerticalAlignment.Stretch;
+        preview.Content = new Image { Source = thumbnail, Stretch = Stretch.Uniform }; surface.Children.Add(preview); AutomationProperties.SetName(preview, "预览生成图片");
+        var menu = new ContextMenu();
+        MenuItem Action(string title, Action callback) { var item = new MenuItem { Header = title }; item.Click += (_, _) => callback(); return item; }
+        menu.ItemsSource = new object[] { Action("另存为", () => owner.Run(SaveAsync)), Action("复制图片", () => owner.Run(CopyAsync)), Action("打开目录", () => owner.Run(OpenDirectoryAsync)), Action("详情", Details), Action("再生成", Regenerate) };
+        ContextMenu = menu;
+        var more = Ui.Button("⋯", () => menu.Open(this)); more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Top; more.Margin = new Thickness(8); more.CornerRadius = new CornerRadius(16); more.Width = more.Height = 32; more.Padding = new Thickness(0); more.FontSize = 22; ToolTip.SetTip(more, "图片操作"); AutomationProperties.SetName(more, "图片操作"); surface.Children.Add(more);
+    }
     private void BuildTile(string layout, Action<string>? choose, Action<string>? favorite, bool selected, bool selecting)
     {
         Name = "GeneratedImageTile"; CornerRadius = new CornerRadius(14); ClipToBounds = true; Background = DesktopTheme.Brush("#F2F4F7");
@@ -62,9 +77,10 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         ContextMenu = menu;
         var more = Ui.Button("⋯", () => menu.Open(this)); more.Name = "GalleryTileActions"; more.Width = more.Height = 32; more.FontSize = 22; more.Padding = new Thickness(0); more.CornerRadius = new CornerRadius(16); more.Background = new SolidColorBrush(Color.Parse("#B0171B22")); more.Foreground = Brushes.White; more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Bottom; more.Margin = new Thickness(8); more.Opacity = 0;
         AutomationProperties.SetName(more, "图片操作"); ToolTip.SetTip(more, "图片操作"); surface.Children.Add(more);
-        var pick = Ui.Button(selected ? "已" : "选", () => choose?.Invoke(metadata.Id)); pick.Name = "GalleryTileSelect"; pick.Width = pick.Height = 32; pick.Padding = new Thickness(0); pick.HorizontalAlignment = HorizontalAlignment.Left; pick.VerticalAlignment = VerticalAlignment.Top; pick.Margin = new Thickness(8); AutomationProperties.SetName(pick, "选择图片"); surface.Children.Add(pick);
-        var star = Ui.Button(metadata.IsFavorite ? "藏" : "收", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); AutomationProperties.SetName(star, "收藏图片"); surface.Children.Add(star);
+        var pick = Ui.Button("√", () => choose?.Invoke(metadata.Id)); pick.Name = "GalleryTileSelect"; pick.Width = pick.Height = 32; pick.Padding = new Thickness(0); pick.HorizontalAlignment = HorizontalAlignment.Left; pick.VerticalAlignment = VerticalAlignment.Top; pick.Margin = new Thickness(8); pick.CornerRadius = new CornerRadius(16); pick.Foreground = Brushes.White; surface.Children.Add(pick);
+        var star = Ui.Button("♥", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); star.CornerRadius = new CornerRadius(16); star.Background = new SolidColorBrush(Color.Parse("#B0171B22")); star.Foreground = metadata.IsFavorite ? DesktopTheme.Brush("#F46E86") : Brushes.White; AutomationProperties.SetName(star, metadata.IsFavorite ? "取消收藏图片" : "收藏图片"); ToolTip.SetTip(star, metadata.IsFavorite ? "取消收藏" : "收藏图片"); surface.Children.Add(star);
         selectionOverlay=pick;favoriteOverlay=star;selectionActive=selecting;selectedAsset=selected;
+        UpdateSelection(selected, selecting);
         pick.Opacity = star.Opacity = selecting || selected ? 1 : 0;
         PropertyChanged += (_, e) => { if (e.Property == IsPointerOverProperty || e.Property == IsKeyboardFocusWithinProperty) { var visible = IsPointerOver || IsKeyboardFocusWithin; more.Opacity = visible ? 1 : 0; pick.Opacity = star.Opacity = visible || selectionActive || selectedAsset ? 1 : 0; } };
         SizeChanged += (_, _) => Clip = new RectangleGeometry(new Rect(Bounds.Size), 14, 14);

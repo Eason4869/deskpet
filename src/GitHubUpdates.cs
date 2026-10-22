@@ -39,7 +39,7 @@ namespace Dafeiyu
                 throw new InvalidOperationException("请填写 HTTPS 镜像地址，例如 https://gh-proxy.org；不要附带 GitHub 下载链接、账号或参数。");
             return value;
         }
-        public void ConfigureMirror(bool enabled,string address,IProgress<string> reporter){mirrorAddress=enabled?MirrorPrefix(address):null;useMirror=enabled;route=reporter;}
+        public void ConfigureMirror(bool enabled,string address,IProgress<string> reporter){string prefix=enabled?MirrorPrefix(address):null;lock(routingGate){mirrorAddress=prefix;useMirror=enabled;route=reporter;}}
         void Route(string text){if(route!=null)route.Report(text);}
         public GitHubUpdates() : this(new Uri("https://api.github.com/")){}
         public GitHubUpdates(Uri root)
@@ -99,51 +99,12 @@ namespace Dafeiyu
         }
         bool SafeAsset(string address){Uri uri;if(!Uri.TryCreate(address,UriKind.Absolute,out uri) || uri.UserInfo.Length>0 || uri.Fragment.Length>0)return false;if(apiRoot.IsLoopback && uri.IsLoopback && uri.Scheme=="http")return true;return uri.Scheme=="https" && uri.Host=="github.com" && uri.AbsolutePath.Contains("/releases/download/");}
         public Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,IProgress<double> progress,CancellationToken cancel){return DownloadAsync(release,folder,useProxy,ProxyConfiguration.DefaultAddress,progress,cancel);}
-        public async Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel)
-        {
-            if(useMirror)
-            {
-                if(release==null || !SafeAsset(release.AssetUrl) || !Regex.IsMatch(release.Digest??"",@"^sha256:[0-9a-fA-F]{64}$"))throw new ApiException("镜像下载需要 GitHub 提供的 SHA-256 校验值。");
-                Route("下载通道：GitHub 加速 · "+new Uri(mirrorAddress).Host);
-                try{return await DownloadCoreAsync(release,mirrorAddress+"/"+release.AssetUrl,folder,false,null,progress,cancel,true).ConfigureAwait(false);}
-                catch(OperationCanceledException){throw;}
-                catch(ApiException){cancel.ThrowIfCancellationRequested();Route("镜像下载未完成或校验失败，已回退 GitHub 直连。");if(progress!=null)progress.Report(0);}
-            }
-            else Route(useProxy?"下载通道：网络代理":"下载通道：GitHub 直连");
-            return await DownloadCoreAsync(release,release==null?null:release.AssetUrl,folder,useMirror?false:useProxy,proxyAddress,progress,cancel,false).ConfigureAwait(false);
-        }
-        async Task<string> DownloadCoreAsync(UpdateRelease release,string requestUrl,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel,bool mirrored)
+        public Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel)
         {
             if(release==null || !SafeAsset(release.AssetUrl) || Score(release.AssetName)<0 || release.AssetName!=Path.GetFileName(release.AssetName) || release.AssetName.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || release.AssetName.Length>150)throw new ApiException("没有可下载的 Windows EXE、MSI 或 ZIP 附件。");
-            Directory.CreateDirectory(folder);string target=Path.Combine(folder,release.AssetName);if(File.Exists(target))target=Path.Combine(folder,Path.GetFileNameWithoutExtension(release.AssetName)+"-"+Guid.NewGuid().ToString("N").Substring(0,8)+Path.GetExtension(release.AssetName));string partial=target+"."+Guid.NewGuid().ToString("N")+".part";bool complete=false,ownsPartial=false;
-            using(var proxy=useProxy?Create(true,proxyAddress):null)
-            using(var bounded=CancellationTokenSource.CreateLinkedTokenSource(cancel))
-            using(var idle=CancellationTokenSource.CreateLinkedTokenSource(bounded.Token))
-            {
-                bounded.CancelAfter(TimeSpan.FromMinutes(10));var token=idle.Token;
-                try
-                {
-                    using(var header=CancellationTokenSource.CreateLinkedTokenSource(token))
-                    {
-                        header.CancelAfter(TimeSpan.FromSeconds(mirrored?15:30));
-                    using(var response=await (useProxy?proxy:direct).GetAsync(requestUrl,HttpCompletionOption.ResponseHeadersRead,header.Token).ConfigureAwait(false))using(token.Register(response.Dispose))
-                    {
-                        if(mirrored)idle.CancelAfter(TimeSpan.FromSeconds(30));
-                        if(!response.IsSuccessStatusCode)throw new ApiException("更新包下载失败（HTTP "+(int)response.StatusCode+"）。");
-                        using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))using(var file=new FileStream(partial,FileMode.CreateNew,FileAccess.Write,FileShare.None,8192,true))
-                        {
-                            ownsPartial=true;
-                            byte[] block=new byte[32768];int count;long total=0;while((count=await stream.ReadAsync(block,0,block.Length,token).ConfigureAwait(false))>0){if(mirrored)idle.CancelAfter(TimeSpan.FromSeconds(30));total+=count;if(total>300L*1024*1024)throw new ApiException("更新包超过 300 MB 限制。");await file.WriteAsync(block,0,count,token).ConfigureAwait(false);if(progress!=null && release.Size>0)progress.Report(Math.Min(99,total*100.0/release.Size));}
-                            if(total==0 || (release.Size>0 && total!=release.Size))throw new ApiException("更新包不完整，请重新下载。");file.Flush(true);
-                        }
-                    }
-                    }
-                    token.ThrowIfCancellationRequested();if(!String.IsNullOrEmpty(release.Digest) && release.Digest.StartsWith("sha256:",StringComparison.OrdinalIgnoreCase)){using(var file=File.OpenRead(partial))using(var hash=SHA256.Create()){string actual=BitConverter.ToString(hash.ComputeHash(file)).Replace("-","");if(!String.Equals(actual,release.Digest.Substring(7),StringComparison.OrdinalIgnoreCase))throw new ApiException("更新包校验失败，请重新下载。");}}
-                    File.Move(partial,target);complete=true;if(progress!=null)progress.Report(100);return target;
-                }
-                catch(Exception e){throw SafeError(e,cancel,token,"下载更新");}
-                finally{if(ownsPartial && !complete && File.Exists(partial))File.Delete(partial);}
-            }
+            OfficialDownloadRouting routing;IProgress<string> reporter;
+            lock(routingGate){routing=new OfficialDownloadRouting(useMirror,mirrorAddress,useProxy,proxyAddress);reporter=route;}
+            return TransferAssetAsync(release.AssetUrl,release.AssetName,release.Size,release.Digest,300L*1024*1024,folder,routing,progress,reporter,cancel);
         }
         public async Task TestMirrorAsync(string address,CancellationToken cancel)
         {

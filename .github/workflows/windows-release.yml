@@ -69,6 +69,7 @@ jobs:
           path: |
             ${{ runner.temp }}/DeskPetArtifacts/*.zip
             ${{ runner.temp }}/DeskPetArtifacts/*.exe
+            ${{ runner.temp }}/DeskPetArtifacts/DeskPet-Companions-*.json
             ${{ runner.temp }}/DeskPetArtifacts/SHA256.txt
             ${{ runner.temp }}/DeskPetArtifacts/release-metadata.json
             ${{ runner.temp }}/DeskPetArtifacts/DafeiyuDeskPet/桌面伙伴.exe

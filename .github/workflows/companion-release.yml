@@ -1,0 +1,104 @@
+name: Publish verified complete companion packs
+on:
+  push:
+    tags: ['companions-v*']
+permissions:
+  contents: read
+concurrency:
+  group: companion-release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  PYTHONUTF8: '1'
+jobs:
+  build:
+    if: github.repository == 'Eason4869/deskpet'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check immutable source identity
+        shell: pwsh
+        env:
+          RESOURCE_TAG: ${{ github.ref_name }}
+        run: |
+          python tools/companion_release.py --tag $env:RESOURCE_TAG --output work/companion-source.json
+          if ($LASTEXITCODE) { throw 'Resource tag identity failed' }
+      - name: Build full HD packages and validate native final roots
+        shell: pwsh
+        env:
+          RESOURCE_TAG: ${{ github.ref_name }}
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+          python tests/CompanionReleaseTests.py
+          if ($LASTEXITCODE) { throw 'Publication guard tests failed' }
+          python tests/OfficialCompanionAuthoringTests.py
+          if ($LASTEXITCODE) { throw 'Authoring tests failed' }
+          $version = (Get-Content work/companion-source.json -Raw | ConvertFrom-Json).version
+          python tools/build_official_companions.py --output work/companion-release --version $version
+          if ($LASTEXITCODE) { throw 'Full HD authoring failed' }
+          & ./Build.ps1 -Target OfficialCompanionPackageSmoke -TestArguments work/companion-release/artifacts
+          if ($LASTEXITCODE) { throw 'Native package validation failed' }
+          python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts work/companion-release/artifacts --output work/companion-release/publication.json
+          if ($LASTEXITCODE) { throw 'Resource publication binding failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-complete-companions
+          path: |
+            work/companion-release/artifacts/*
+            work/companion-release/native-validation.json
+            work/companion-release/publication.json
+          if-no-files-found: error
+          compression-level: 0
+  publish:
+    needs: build
+    runs-on: windows-latest
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-complete-companions
+          path: work/companion-release
+      - name: Publish only after GitHub confirms every uploaded digest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESOURCE_TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'work/companion-release'
+          python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts "$root/artifacts" --output work/companion-checked.json
+          if ($LASTEXITCODE) { throw 'Downloaded artifact binding failed' }
+          $expected = Get-Content work/companion-checked.json -Raw | ConvertFrom-Json
+          $built = Get-Content "$root/publication.json" -Raw | ConvertFrom-Json
+          if ($expected.commit -ne $built.commit) { throw 'Build commit changed' }
+          $flags = @('--draft', '--verify-tag', '--title', ('DeskPet complete companions ' + $expected.version), '--notes', 'Full HD companion resources: each package includes the default outfit and all released holiday outfits. The application downloads and verifies these files automatically. This resource release does not update the application.')
+          if ($expected.prerelease) { $flags += '--prerelease' }
+          gh release create $env:RESOURCE_TAG @flags
+          if ($LASTEXITCODE) { throw 'Draft creation failed; existing releases are never overwritten' }
+          $files = @($expected.assets | ForEach-Object { Join-Path "$root/artifacts" $_.name })
+          gh release upload $env:RESOURCE_TAG @files
+          if ($LASTEXITCODE) { throw 'Upload failed; draft retained for inspection' }
+          gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RESOURCE_TAG" | Set-Content work/companion-remote.json -Encoding utf8
+          if ($LASTEXITCODE) { throw 'Remote release lookup failed' }
+          python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts "$root/artifacts" --output work/companion-checked.json --remote work/companion-remote.json
+          if ($LASTEXITCODE) { throw 'Remote digest verification failed; draft retained' }
+          gh release edit $env:RESOURCE_TAG --draft=false --latest=false
+          if ($LASTEXITCODE) { throw 'Publication failed; inspect release state' }
+          gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RESOURCE_TAG" | Set-Content work/companion-remote.json -Encoding utf8
+          if ($LASTEXITCODE) { throw 'Published release lookup failed' }
+          python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts "$root/artifacts" --output work/companion-published.json --remote work/companion-remote.json --published
+          if ($LASTEXITCODE) { throw 'Published release acceptance failed' }

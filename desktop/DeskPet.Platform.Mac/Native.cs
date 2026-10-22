@@ -25,6 +25,8 @@ internal static class Native
     [DllImport(Library, EntryPoint="dp_wave_volume")] internal static extern void WaveVolume(IntPtr handle, float volume);
     [DllImport(Library, EntryPoint="dp_wave_stop")] internal static extern void WaveStop(IntPtr handle);
     [DllImport(Library, EntryPoint="dp_idle_seconds")] internal static extern double IdleSeconds();
+    [DllImport(Library, EntryPoint="dp_session_interactive")] internal static extern int SessionInteractive();
+    [DllImport(Library, EntryPoint="dp_session_lifecycle_revision")] internal static extern ulong SessionLifecycleRevision();
     [DllImport(Library, EntryPoint="dp_pointer")] internal static extern void Pointer(out double x, out double y);
     [DllImport(Library, EntryPoint="dp_pointer_relative")] internal static extern int PointerRelative(IntPtr handle, out double x, out double y);
     [DllImport(Library, EntryPoint="dp_display_count")] internal static extern int DisplayCount();

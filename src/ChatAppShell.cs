@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -112,7 +112,7 @@ namespace Dafeiyu
             var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;var heading=new StackPanel{Margin=new Thickness(0,4,0,8)};heading.Children.Add(Ui.Text(pet.Skin.Name,14,AgentUi.Ink));heading.Children.Add(Ui.Text("桌面伙伴",11,AgentUi.Muted));menu.Items.Add(new MenuItem{Header=heading,Icon=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=24,Height=24},IsEnabled=false});menu.Items.Add(new Separator());
             AddProfile(menu,"ProfileUsage","用量统计","usage",ShowUsagePage);
             AddProfile(menu,"ProfilePetVisibility",pet.IsPetVisible?"隐藏桌宠":"显示桌宠","pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
-            var skins=new MenuItem{Name="ProfileCompanions",Header="切换伙伴",Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.Id==pet.Skin.Id,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=delegate{pet.SelectSkin(selected);};skins.Items.Add(entry);}menu.Items.Add(skins);
+            var skins=new MenuItem{Name="ProfileCompanions",Header="切换伙伴",Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
             AddProfile(menu,"ProfileSettings","设置","settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=new MenuItem{Name="ProfileHelp",Header="帮助",Icon=ShellIcons.Image("help")};foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
         }
         void AddProfile(ContextMenu menu,string name,string label,string icon,Action action){var item=new MenuItem{Name=name,Header=label,Icon=ShellIcons.Image(icon)};item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}

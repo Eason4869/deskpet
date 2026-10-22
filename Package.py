@@ -12,7 +12,7 @@ import re
 from zipfile import ZipFile, ZIP_DEFLATED
 from PIL import Image
 from tools.release_assets import installer_asset_name
-from tools.package_gugugaga import package as package_gugugaga
+from tools.build_official_companions import build as build_official_companions
 
 PROJECT=Path(__file__).resolve().parent
 arguments=argparse.ArgumentParser(description='Create clean versioned DeskPet release archives.')
@@ -97,25 +97,18 @@ with ZipFile(template_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
         if file.is_file() and file.name!='runtime-readme.md' and file.suffix.lower() in {'.png','.json','.svg','.md','.txt','.csv'}:
             bundle.write(file,'legacy-v1/'+file.name)
 
-skin_export=PROJECT/'work/release-skin-export'
-subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(PROJECT/'Build.ps1'),'-Target','SkinPackExport','-TestArguments',str(skin_export)],cwd=PROJECT,check=True,timeout=180)
+# Full official packages share one source-only authoring path with the resource
+# release. Default and every released holiday outfit stay in each versioned ZIP.
+companion_output=OUTPUT/('complete-companions-'+uuid.uuid4().hex)
+build_official_companions(PROJECT,companion_output,version)
+subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(PROJECT/'Build.ps1'),'-Target','OfficialCompanionPackageSmoke','-TestArguments',str(companion_output/'artifacts')],cwd=PROJECT,check=True,timeout=600)
 skin_artifacts=[]
-for pet,release_name in [('e-bao','Ebao'),('dafeiyu','Dafeiyu'),('marfu','Marfu'),('xiaobei','Xiaobei')]:
-    folder=PROJECT/'assets/bundled-skins/xiaobei' if pet=='xiaobei' else skin_export/pet
-    manifest=json.loads((folder/'pet.json').read_text(encoding='utf-8-sig'))
-    assert manifest['version']==2 and len(manifest['animations'])==17
-    assert manifest.get('system_prompt') and manifest.get('special_action'), 'Complete skins include persona and special action.'
-    assert all(1<=action['frames']<=8 for action in manifest['animations'].values()), 'Release skins use at most eight original keyframes.'
-    files={'pet.json',manifest['preview'],manifest['gaze']['file']} | {action['file'] for action in manifest['animations'].values()}
-    for name in files:
-        path=Path(name)
-        assert not path.is_absolute() and '..' not in path.parts and (folder/path).is_file(), 'Skin source must be self-contained.'
-    skin_zip=OUTPUT/(release_name+'-HD-Skin-'+version+'.zip');skin_artifacts.append(skin_zip)
-    with ZipFile(skin_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
-        for name in sorted(files):bundle.write(folder/name,name)
-        bundle.write(PROJECT/'docs/skin-format.md','外观格式说明.md')
-
-skin_artifacts.append(package_gugugaga(OUTPUT, release_version=version))
+for source in sorted((companion_output/'artifacts').iterdir()):
+    destination=OUTPUT/source.name
+    shutil.copyfile(source,destination)
+    if hashlib.sha256(source.read_bytes()).digest()!=hashlib.sha256(destination.read_bytes()).digest():
+        raise RuntimeError('Complete companion artifact copy changed bytes')
+    skin_artifacts.append(destination)
 
 with ZipFile(runtime_zip) as bundle:
     assert bundle.testzip() is None
