@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Include="../../src/Holidays/*.cs" Link="Shared/Holidays/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/holidays/calendar/solar-terms.json" LogicalName="Dafeiyu.Holidays.SolarTerms" />
-    <EmbeddedResource Include="../../assets/holidays/**/*.json;../../assets/holidays/**/*.png">
+    <EmbeddedResource Include="../../assets/holidays/**/*.json;../../assets/holidays/**/*.png" Exclude="../../assets/holidays/calendar/solar-terms.json">
       <LogicalName>Dafeiyu.Holidays.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\','.').Replace('/','.'))</LogicalName>
     </EmbeddedResource>
     <Compile Include="../../src/GeneratedImageStore.Management.cs;../../src/ImageAssetReferenceResolver.cs" Link="Shared/%(Filename)%(Extension)" />
