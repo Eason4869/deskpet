@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../../tests/HolidayStateTests.cs;../../tests/HolidayCalendarTests.cs;../../tests/HolidayRuntimeTests.cs;../../tests/HolidayHoverTests.cs;../../tests/HolidayGreetingTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/holidays/calendar-golden.json" LogicalName="Dafeiyu.Tests.HolidayGolden" />
+    <Compile Include="../../tests/OfficialCompanionTests.cs;../../tests/OfficialCompanionFixtures.cs" Link="Regression/%(Filename)%(Extension)" />
     <Compile Include="../../tests/ConversationWorkspaceManagerTests.cs" Link="Regression/ConversationWorkspaceManagerTests.cs" />
     <Compile Include="../../tests/ImageTaskCenterLifecycleTests.cs" Link="Regression/ImageTaskCenterLifecycleTests.cs" />
     <Compile Include="../../tests/ImageGalleryExportTests.cs" Link="Regression/ImageGalleryExportTests.cs" />

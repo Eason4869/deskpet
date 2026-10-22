@@ -23,6 +23,7 @@
     <Compile Include="../../src/AgentQuestionController.cs;../../src/AgentProjectTools.cs;../../src/AgentImageInspection.cs;../../src/AgentGitTools.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/WebPValidation.cs" Link="Shared/WebPValidation.cs" />
     <Compile Include="../../src/ImageGenerationProvider.cs;../../src/GeneratedImage.cs;../../src/GeneratedImageStore.cs;../../src/ImageGenerationClient.cs;../../src/ImageDownloadSecurity.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/OfficialCompanion*.cs;../../src/GitHubAssetTransport.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
