@@ -70,3 +70,12 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Preserve failed native link test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-link-input-diagnostics
+          if-no-files-found: ignore
+          path: |
+            work/permissions/link-right-click-hit.png
+            work/permissions/link-native-input-not-ready.png
