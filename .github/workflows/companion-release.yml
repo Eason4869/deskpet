@@ -92,13 +92,16 @@ jobs:
           $files = @($expected.assets | ForEach-Object { Join-Path "$root/artifacts" $_.name })
           gh release upload $env:RESOURCE_TAG @files
           if ($LASTEXITCODE) { throw 'Upload failed; draft retained for inspection' }
-          gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RESOURCE_TAG" | Set-Content work/companion-remote.json -Encoding utf8
+          $draftApi = gh release view $env:RESOURCE_TAG --json apiUrl --jq .apiUrl
+          if ($LASTEXITCODE) { throw 'Draft release lookup failed' }
+          if ($draftApi -isnot [string] -or $draftApi -cnotmatch '\Ahttps://api\.github\.com/repos/Eason4869/deskpet/releases/[1-9][0-9]*\z') { throw 'Unexpected draft release API URL' }
+          gh api $draftApi | Set-Content work/companion-remote.json -Encoding utf8
           if ($LASTEXITCODE) { throw 'Remote release lookup failed' }
           python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts "$root/artifacts" --output work/companion-checked.json --remote work/companion-remote.json
           if ($LASTEXITCODE) { throw 'Remote digest verification failed; draft retained' }
           gh release edit $env:RESOURCE_TAG --draft=false --latest=false
           if ($LASTEXITCODE) { throw 'Publication failed; inspect release state' }
-          gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RESOURCE_TAG" | Set-Content work/companion-remote.json -Encoding utf8
+          gh api $draftApi | Set-Content work/companion-remote.json -Encoding utf8
           if ($LASTEXITCODE) { throw 'Published release lookup failed' }
           python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts "$root/artifacts" --output work/companion-published.json --remote work/companion-remote.json --published
           if ($LASTEXITCODE) { throw 'Published release acceptance failed' }

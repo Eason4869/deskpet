@@ -146,6 +146,19 @@ internal static class OfficialCompanionUiChecks
     {
         int checks = 0;
         void Check(bool value, string message) { if (!value) throw new Exception("Official native: " + message); checks++; }
+        foreach (var format in new[] { PixelFormat.Bgra8888, PixelFormat.Rgba8888 })
+        {
+            uint Sample(byte blue)
+            {
+                using var bitmap = new WriteableBitmap(new PixelSize(96, 96), new Vector(96, 96), format, AlphaFormat.Unpremul);
+                var pixels = new byte[96 * 96 * 4]; int at = (90 * 96 + 70) * 4;
+                pixels[at + (format.Equals(PixelFormat.Bgra8888) ? 0 : 2)] = blue; pixels[at + 3] = 255;
+                using (var framebuffer = bitmap.Lock()) Marshal.Copy(pixels, 0, framebuffer.Address, pixels.Length);
+                return Pixel(bitmap);
+            }
+            uint before = Sample(180), after = Sample(210);
+            Check(before != after, "complete pixel distinguishes blue in " + format + ": " + before.ToString("X8") + " -> " + after.ToString("X8"));
+        }
         using var first = new HolidayReviewChecks.Fixture(Path.Combine(directory, "source-one"), "e-bao", null, false);
         using var second = new HolidayReviewChecks.Fixture(Path.Combine(directory, "source-two"), "e-bao", null, false);
         Paint(Path.Combine(second.Root, "normal.png"), 3840, 520, 8, 210);
@@ -290,10 +303,12 @@ internal static class OfficialCompanionUiChecks
         var asset = new OfficialCompanionAsset(role, profile.Name, "0.10.3-dev.1", "0.10.3-dev.1", "v0.10.3-dev.1", "DeskPet-Companion-" + role + "-0.10.3-dev.1.zip", 1, new string('b', 64), new[] { new OfficialCompanionOutfit("halloween-2026", "1.0.0") });
         return new OfficialCompanionInstallation(asset, root);
     }
-    private static byte Pixel(Bitmap bitmap)
+    private static uint Pixel(Bitmap bitmap)
     {
         var bytes = new byte[4]; var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-        try { bitmap.CopyPixels(new PixelRect(70, 90, 1, 1), handle.AddrOfPinnedObject(), 4, 4); return bytes[0]; }
+        // Native decode may expose BGRA or RGBA. Compare every channel rather
+        // than assuming the first byte contains the differing fixture blue.
+        try { bitmap.CopyPixels(new PixelRect(70, 90, 1, 1), handle.AddrOfPinnedObject(), 4, 4); return BitConverter.ToUInt32(bytes); }
         finally { handle.Free(); }
     }
     private static void Paint(string path, int width, int height, int columns, byte color)

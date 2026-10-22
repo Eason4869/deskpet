@@ -5,7 +5,7 @@
   "baseCommit": "02b022986b46939aeb46026473e623ad0f3979d3",
   "baseVersion": "0.10.2-dev.3",
   "targetVersion": "0.10.3-dev.1",
-  "status": "integration-in-progress",
+  "status": "local-and-published-resource-validation-passed",
   "ciCheckpoints": [
     {
       "scope": "conversation archive repair",
@@ -148,17 +148,11 @@
     "The final feature branch requires all five complete Ready outfits.",
     "Windows fixtures and Avalonia Headless do not establish macOS real-device interaction acceptance."
   ],
-  "remaining": [
-    "Downloaded-resource runtime memory measurements",
-    "Verified resource publication and actual feed/download acceptance",
-    "Final complete feature CI including actual five full packages on macOS Intel and ARM",
-    "Final whole-branch review, PR to dev, requested version tag and superseded temporary PR/branch cleanup"
-  ],
   "notVerified": [
     "macOS real-device lock, transparent input and holiday animation acceptance",
     "Installed user application update"
   ],
-  "published": false,
+  "published": true,
   "sharedPlatformChecks": {
     "identityProfiles": {
       "portable": 51,
@@ -184,7 +178,7 @@
       "stageAndFinalRoot": true,
       "report": "work/official-authoring-standalone/native-validation.json"
     },
-    "publicationGuardTests": 4,
+    "publicationGuardTests": 5,
     "affectedFrameworkRegression": {
       "importedSkins": 114,
       "profiles": 86,
@@ -209,14 +203,16 @@
     },
     "avalonia": {
       "fullDesktopChecks": 2968,
-      "focusedOfficialChecks": 45,
+      "focusedOfficialChecks": 47,
       "actualThinChecks": 54,
       "filesystemHolidayChecks": 428,
       "wardrobeChecks": 20,
       "holidayReviewChecks": 45,
       "actualPackageNativePngs": 304,
       "actualPackageNativeRoles": 5,
-      "platform": "Windows Skia; actual macOS final CI pending"
+      "platform": "Windows Skia; actual macOS final CI pending",
+      "macOSActualNativeGate": "Registered full five-ZIP native acceptance on Intel and ARM; final results are linked through PR25 checks.",
+      "nativePixelFormatRegression": "Actual RGBA fixture reproduced first-byte-only comparison failure; complete four-channel comparison passes BGRA and RGBA. Focused47 and actualthin54 pass without production changes."
     },
     "wpf": {
       "actualThinChecks": 89,
@@ -283,6 +279,128 @@
         }
       ],
       "retiredClipsCollected": true
+    }
+  },
+  "finalIntegration": {
+    "pullRequest": "https://github.com/Eason4869/deskpet/pull/25",
+    "checks": "https://github.com/Eason4869/deskpet/pull/25/checks",
+    "note": "This file records completed local/resource acceptance before the final commit. Final CI, merge commit and application tag are recorded on the linked PR to avoid a self-referential validation commit."
+  },
+  "completionGates": [
+    "Final combined Windows and macOS Intel/ARM CI must pass before merge",
+    "Merge PR25 into dev and tag its merged commit v0.10.3-dev.1",
+    "Close/delete only superseded task PRs and branches after final coverage"
+  ],
+  "publishedResources": {
+    "url": "https://github.com/Eason4869/deskpet/releases/tag/companions-v0.10.3-dev.1",
+    "releaseId": 421102238,
+    "tag": "companions-v0.10.3-dev.1",
+    "sourceCommit": "550afded3ed19ba9e12fe15e23973c618c116933",
+    "prerelease": true,
+    "latest": false,
+    "assets": [
+      {
+        "name": "DeskPet-Companion-e-bao-0.10.3-dev.1.zip",
+        "sha256": "28a5c2759ef0e2ce45eee4ac03e8f87abc6c37164ee8f7d79876d179a89535e4",
+        "size": 53373946
+      },
+      {
+        "name": "DeskPet-Companion-dafeiyu-0.10.3-dev.1.zip",
+        "sha256": "cb5a34784b2d0d633dcb9e607ebb11a196e85baa0ee8363b8ae29bc015fe91f9",
+        "size": 81779333
+      },
+      {
+        "name": "DeskPet-Companion-marfu-0.10.3-dev.1.zip",
+        "sha256": "1c4b6e253070dc75d13ce7d600c098bc1ce45273a1a3a0ab0206a3d90139be47",
+        "size": 75738943
+      },
+      {
+        "name": "DeskPet-Companion-xiaobei-0.10.3-dev.1.zip",
+        "sha256": "79f5c8f4720ee29df661a8d7c462d7be830fb173f884d5931ba5a6373c237d1a",
+        "size": 96842672
+      },
+      {
+        "name": "DeskPet-Companion-gugugaga-0.10.3-dev.1.zip",
+        "sha256": "b457635a5b8c3936d61b88cb807716cf573a58b06f6da22b789c501bec32d088",
+        "size": 113961870
+      },
+      {
+        "name": "DeskPet-Companions-0.10.3-dev.1.json",
+        "sha256": "e7cd8d6a0d9b8ea84c9eb22da7a85c34e74d8e4e52ab3efba0053171ce5b58d8",
+        "size": 2252
+      }
+    ],
+    "nativeGateRun": "https://github.com/Eason4869/deskpet/actions/runs/39837884207",
+    "nativeGate": "passed",
+    "publication": "Existing draft recovered by exact release ID after all six remote digests matched the downloaded CI artifact and native report; canonical published URLs reverified.",
+    "ciArtifactSha256": "e538b29c381faf7647b10ed2a0aeea6a725e699ae332273b5a8127b5a9b39c0c",
+    "initialPublicationFailures": [
+      "Windows runner short-vs-long temp-path assertion corrected without product changes.",
+      "Draft release uses temporary untagged URLs and tag lookup returned404; draft-ID lookup and state-aware strict URL checks corrected."
+    ],
+    "liveAcceptance": {
+      "status": "passed",
+      "id": "gugugaga",
+      "tag": "companions-v0.10.3-dev.1",
+      "version": "0.10.3-dev.1",
+      "size": 113961870,
+      "sha256": "b457635a5b8c3936d61b88cb807716cf573a58b06f6da22b789c501bec32d088",
+      "mirrorRequested": true,
+      "routes": [
+        "下载通道：GitHub 加速 · gh-proxy.org"
+      ],
+      "nativeFinalRoot": true,
+      "installedReuse": true,
+      "downloadedMemory": [
+        {
+          "stage": "before-downloaded-outfit",
+          "managedBytes": 1528448,
+          "privateBytes": 43241472,
+          "workingSetBytes": 61214720
+        },
+        {
+          "stage": "downloaded-idle",
+          "managedBytes": 4287744,
+          "privateBytes": 84176896,
+          "workingSetBytes": 98103296
+        },
+        {
+          "stage": "downloaded-all-actions-1",
+          "managedBytes": 12290520,
+          "privateBytes": 121454592,
+          "workingSetBytes": 139579392
+        },
+        {
+          "stage": "downloaded-cleared-1",
+          "managedBytes": 2287200,
+          "privateBytes": 43565056,
+          "workingSetBytes": 61829120
+        },
+        {
+          "stage": "downloaded-all-actions-2",
+          "managedBytes": 12290832,
+          "privateBytes": 113684480,
+          "workingSetBytes": 131739648
+        },
+        {
+          "stage": "downloaded-cleared-2",
+          "managedBytes": 2287544,
+          "privateBytes": 43745280,
+          "workingSetBytes": 61960192
+        },
+        {
+          "stage": "downloaded-all-actions-3",
+          "managedBytes": 12291112,
+          "privateBytes": 113803264,
+          "workingSetBytes": 131760128
+        },
+        {
+          "stage": "downloaded-cleared-3",
+          "managedBytes": 2287792,
+          "privateBytes": 43798528,
+          "workingSetBytes": 62001152
+        }
+      ]
     }
   }
 }

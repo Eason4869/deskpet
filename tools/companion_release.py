@@ -62,15 +62,23 @@ def prepare(root, tag, directory):
 
 def verify_remote(expected, remote, draft):
     tag = expected['tag']
-    if remote.get('tag_name') != tag or remote.get('html_url') != 'https://github.com/' + REPOSITORY + '/releases/tag/' + tag or remote.get('draft') is not draft or remote.get('prerelease') is not expected['prerelease']:
+    if remote.get('tag_name') != tag or remote.get('draft') is not draft or remote.get('prerelease') is not expected['prerelease']:
         raise ValueError('Unexpected remote release identity or publication state')
+    prefix = 'https://github.com/' + REPOSITORY + '/releases/'
+    download_tag = tag
+    html_url = remote.get('html_url')
+    if html_url != prefix + 'tag/' + tag:
+        temporary = re.fullmatch(re.escape(prefix + 'tag/') + r'(untagged-[a-f0-9]{16,64})', html_url) if isinstance(html_url, str) else None
+        if draft is not True or temporary is None:
+            raise ValueError('Unexpected remote release URL')
+        download_tag = temporary[1]
     assets = remote.get('assets', [])
     if len(assets) != len(expected['assets']) or len({x['name'] for x in assets}) != len(assets):
         raise ValueError('Unexpected remote asset set')
     by_name = {x['name']: x for x in assets}
     for asset in expected['assets']:
         actual = by_name.get(asset['name'], {})
-        url = 'https://github.com/' + REPOSITORY + '/releases/download/' + tag + '/' + asset['name']
+        url = prefix + 'download/' + download_tag + '/' + asset['name']
         if actual.get('digest') != 'sha256:' + asset['sha256'] or actual.get('size') != asset['size'] or actual.get('browser_download_url') != url or actual.get('state') != 'uploaded':
             raise ValueError('Remote asset bytes or URL differ: ' + asset['name'])
 

@@ -110,6 +110,64 @@ class CompanionReleaseTests(unittest.TestCase):
             remote['draft'] = False
             release.verify_remote(expected, remote, False)
 
+    def test_draft_temporary_urls_remain_bound_to_one_release(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True}):
+            directory, _, _ = self.fixture(Path(temp))
+            expected = release.prepare(ROOT, TAG, directory)
+            prefix = 'https://github.com/' + release.REPOSITORY + '/releases/'
+
+            def draft(suffix):
+                return {'tag_name': TAG, 'html_url': prefix + 'tag/' + suffix,
+                        'draft': True, 'prerelease': True,
+                        'assets': [{'name': asset['name'], 'digest': 'sha256:' + asset['sha256'],
+                                    'size': asset['size'], 'state': 'uploaded',
+                                    'browser_download_url': prefix + 'download/' + suffix + '/' + asset['name']}
+                                   for asset in expected['assets']]}
+
+            for suffix in ('untagged-' + 'a' * 16, 'untagged-7d1c9c11c63bfb7c6438', 'untagged-' + 'b' * 64):
+                with self.subTest(suffix=suffix):
+                    try:
+                        release.verify_remote(expected, draft(suffix), True)
+                    except ValueError as error:
+                        self.fail('A matching temporary draft URL must be accepted: ' + str(error))
+
+            valid = draft('untagged-7d1c9c11c63bfb7c6438')
+            for suffix in ('untagged-' + 'a' * 15, 'untagged-' + 'a' * 65, 'untagged-' + 'A' * 20,
+                           'untagged-' + 'g' * 20, 'untagged-' + 'a' * 20 + '/other'):
+                with self.subTest(invalid_suffix=suffix), self.assertRaises(ValueError):
+                    release.verify_remote(expected, draft(suffix), True)
+
+            mutations = [
+                ('foreign-release', lambda value: value.update(html_url=value['html_url'].replace(release.REPOSITORY, 'someone/else'))),
+                ('null-release-url', lambda value: value.update(html_url=None)),
+                ('queried-release-url', lambda value: value.update(html_url=value['html_url'] + '?other=1')),
+                ('wrong-tag', lambda value: value.update(tag_name='companions-v0.10.4-dev.1')),
+                ('mixed-canonical-asset', lambda value: value['assets'][0].update(browser_download_url=prefix + 'download/' + TAG + '/' + value['assets'][0]['name'])),
+                ('mixed-draft-asset', lambda value: value['assets'][0].update(browser_download_url=value['assets'][0]['browser_download_url'].replace('untagged-7d1c9c11c63bfb7c6438', 'untagged-' + 'c' * 20))),
+                ('foreign-asset', lambda value: value['assets'][0].update(browser_download_url=value['assets'][0]['browser_download_url'].replace(release.REPOSITORY, 'someone/else'))),
+                ('bad-digest', lambda value: value['assets'][0].update(digest='sha256:' + '0' * 64)),
+                ('bad-size', lambda value: value['assets'][0].update(size=1)),
+                ('bad-state', lambda value: value['assets'][0].update(state='starter')),
+                ('missing-asset', lambda value: value['assets'].pop()),
+                ('duplicate-asset', lambda value: value['assets'].append(value['assets'][0])),
+            ]
+            for name, mutate in mutations:
+                changed = copy.deepcopy(valid)
+                mutate(changed)
+                with self.subTest(mutation=name), self.assertRaises(ValueError):
+                    release.verify_remote(expected, changed, True)
+
+            canonical = draft(TAG)
+            canonical['assets'][0]['browser_download_url'] = valid['assets'][0]['browser_download_url']
+            with self.assertRaises(ValueError):
+                release.verify_remote(expected, canonical, True)
+            valid['draft'] = False
+            with self.assertRaises(ValueError):
+                release.verify_remote(expected, valid, False)
+            canonical = draft(TAG)
+            canonical['draft'] = False
+            release.verify_remote(expected, canonical, False)
+
 
 if __name__ == '__main__':
     unittest.main()
