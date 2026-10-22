@@ -48,8 +48,18 @@ namespace Dafeiyu.Tests
                 window=new SettingsWindow(pet){Width=1180,Height=850};window.Show();Pump();
                 var skins=(ComboBox)window.FindControl("SkinPicker");var wardrobe=(ComboBox)window.FindControl("HolidayOutfitPicker");var label=window.FindControl("HolidayWardrobeLabel");var import=(Button)window.FindControl("ImportSkin");
                 Check(label!=null && wardrobe!=null,"settings exposes the inline 衣柜 heading and picker");
-                double originalWidth=skins.ActualWidth;Check(!wardrobe.IsVisible && !label.IsVisible,"undiscovered wardrobe and heading have no visible placeholder");
-                Check(Math.Abs(import.TranslatePoint(new Point(),window).X-skins.TranslatePoint(new Point(),window).X-skins.ActualWidth-10)<2,"before discovery companion picker retains the original full width to import button");Capture(window,Path.Combine(folder,"wpf-before-unlock.png"));
+                Check(!wardrobe.IsVisible && !label.IsVisible,"undiscovered wardrobe and heading have no visible placeholder");
+                foreach(string theme in new[]{"light","dark"})foreach(double width in new[]{1180d,820d}) {
+                    ThemeManager.Apply(theme);window.Width=width;window.Height=width==820?650:850;Pump();
+                    Check(!wardrobe.IsVisible && !label.IsVisible,"undiscovered wardrobe remains collapsed in "+width+" "+theme);
+                    var row=Find(window,"CompanionWardrobeRow");var position=skins.TranslatePoint(new Point(),window);var action=import.TranslatePoint(new Point(),window);
+                    double available=action.Y<position.Y+skins.ActualHeight? action.X-position.X-10:row.ActualWidth;
+                    Check(Math.Abs(skins.ActualWidth-available)<2 && skins.ActualWidth>120,"undiscovered companion fills selector area before package actions in "+width+" "+theme);
+                    PackageActions(window,skins,skins,import,"undiscovered "+width+" "+theme);
+                    Capture(window,Path.Combine(folder,"wpf-before-unlock-"+width+"-"+theme+".png"));
+                }
+                ThemeManager.Apply("light");window.Width=1180;window.Height=850;Pump();double originalWidth=skins.ActualWidth;
+                Capture(window,Path.Combine(folder,"wpf-before-unlock.png"));
                 state.Unlock("e-bao","halloween-ui");Check(controller.SelectOwnedOutfit("halloween-ui"),"first completed unlock fixture selects the owned outfit");Pump();
                 Check(wardrobe.IsVisible && label.IsVisible,"already-open settings reveals permanent inline wardrobe immediately");EqualRow(window,skins,wardrobe,import,"normal light");Check(skins.ActualWidth<originalWidth*.6,"discovery splits the existing selector area instead of adding a separate full-width picker");
                 Check(wardrobe.Items.Count==2 && Text(wardrobe.Items[0])=="默认" && Id(wardrobe.SelectedItem)=="halloween-ui","wardrobe lists 默认 plus only current companion owned outfit");
@@ -82,7 +92,18 @@ namespace Dafeiyu.Tests
         static string Text(object item){return item==null?null:item.ToString();}
         static void Choose(ComboBox combo,string id){combo.SelectedItem=combo.Items.Cast<object>().Single(item=>Id(item)==id);Pump();}
         static void EqualRow(Window window,ComboBox skins,ComboBox wardrobe,Button import,string mode)
-        {Console.WriteLine("WIDTH "+mode+": companion="+skins.ActualWidth+", wardrobe="+wardrobe.ActualWidth);Check(Math.Abs(skins.ActualWidth-wardrobe.ActualWidth)<1.1 && skins.ActualWidth>120,"same-width companion and wardrobe dropdowns in "+mode);Check(Math.Abs(skins.TranslatePoint(new Point(),window).Y-wardrobe.TranslatePoint(new Point(),window).Y)<1 && Math.Abs(skins.ActualHeight-wardrobe.ActualHeight)<1,"dropdowns share top edge and height in "+mode);var location=import.TranslatePoint(new Point(),window);var edge=wardrobe.TranslatePoint(new Point(),window);Check(location.X>edge.X+wardrobe.ActualWidth || location.Y>=edge.Y+wardrobe.ActualHeight,"package actions fit beside or below equal-width selectors in "+mode);var bulk=Find(window,"DownloadAllOfficialCompanions");Check(bulk!=null&&bulk.IsVisible,"full download remains visible next to import in "+mode);}
+        {Console.WriteLine("WIDTH "+mode+": companion="+skins.ActualWidth+", wardrobe="+wardrobe.ActualWidth);Check(Math.Abs(skins.ActualWidth-wardrobe.ActualWidth)<1.1 && skins.ActualWidth>120,"same-width companion and wardrobe dropdowns in "+mode);Check(Math.Abs(skins.TranslatePoint(new Point(),window).Y-wardrobe.TranslatePoint(new Point(),window).Y)<1 && Math.Abs(skins.ActualHeight-wardrobe.ActualHeight)<1,"dropdowns share top edge and height in "+mode);PackageActions(window,skins,wardrobe,import,mode);}
+        static void PackageActions(Window window,ComboBox left,ComboBox right,Button import,string mode)
+        {
+            var bulk=Find(window,"DownloadAllOfficialCompanions");Check(import.IsVisible && bulk!=null && bulk.IsVisible,"import and full download remain visible in "+mode);
+            var first=left.TranslatePoint(new Point(),window);var edge=right.TranslatePoint(new Point(),window);var location=import.TranslatePoint(new Point(),window);var download=bulk.TranslatePoint(new Point(),window);
+            bool beside=Math.Abs(location.Y-edge.Y)<2 && Math.Abs(location.X-edge.X-right.ActualWidth-10)<2;
+            bool below=location.Y>=edge.Y+right.ActualHeight && Math.Abs(location.X-first.X)<2;
+            Console.WriteLine("LAYOUT "+mode+": left="+first+" / "+left.RenderSize+", right="+edge+" / "+right.RenderSize+", import="+location+", full="+download);
+            Check(beside || below,"package actions fit beside or below filled selector area in "+mode);
+            Check(download.X>=location.X+import.ActualWidth && Math.Abs(download.Y-location.Y)<2,"full download follows import on the same action row in "+mode);
+            Check(Inside(left,window) && Inside(right,window) && Inside(import,window) && Inside(bulk,window),"selectors and both package actions stay inside window in "+mode);
+        }
         static FrameworkElement Find(DependencyObject root,string name){var element=root as FrameworkElement;if(element!=null&&element.Name==name)return element;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var found=Find(VisualTreeHelper.GetChild(root,i),name);if(found!=null)return found;}return null;}
         static void AssertThumbnails(ComboBox combo)
         {Check(combo.ItemTemplate!=null,"wardrobe options have a thumbnail item template");bool open=combo.IsDropDownOpen;combo.IsDropDownOpen=true;Pump();foreach(object item in combo.Items){Check(item.GetType().GetProperty("Thumbnail").GetValue(item,null)!=null,"thumbnail data is loaded for "+Text(item));var container=combo.ItemContainerGenerator.ContainerFromItem(item) as ComboBoxItem;Check(container!=null && All<Image>(container).Any(image=>image.Source!=null),"actual dropdown renders a thumbnail for "+Text(item));}combo.IsDropDownOpen=open;Pump();}

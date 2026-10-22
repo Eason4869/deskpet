@@ -139,11 +139,23 @@ namespace Dafeiyu.Tests
         private static void SameIdentityUpdate(PetWindow pet,SettingsPage settings,string output)
         {
             pet.Settings.FollowCursor=false;pet.PlayAction("idle",0);
-            var previous=pet.Skin;string source=Path.Combine(output,"updated-pack");Directory.CreateDirectory(source);
-            foreach(string relative in IllustratedPack.Files(previous.Manifest)) {
-                string target=Path.Combine(source,relative.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(Path.Combine(previous.Source,relative.Replace('/',Path.DirectorySeparatorChar)),target);
+            var official=pet.Skin;int originalCount=pet.Catalog.Skins.Count;
+            string source=Path.Combine(output,"updated-pack");Directory.CreateDirectory(source);
+            foreach(string relative in IllustratedPack.Files(official.Manifest)) {
+                string target=Path.Combine(source,relative.Replace('/',Path.DirectorySeparatorChar));Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(Path.Combine(official.Source,relative.Replace('/',Path.DirectorySeparatorChar)),target);
             }
-            SkinManifest manifest;using(var input=File.OpenRead(Path.Combine(previous.Source,"pet.json")))manifest=SkinCatalog.ReadManifest(input);
+            SkinManifest manifest;using(var input=File.OpenRead(Path.Combine(official.Source,"pet.json")))manifest=SkinCatalog.ReadManifest(input);
+            // A manually edited official package is a custom import. Exercise same-package
+            // updates on a real custom identity without borrowing the official voice profile.
+            manifest.PackageId="voice-update-fixture";manifest.Name="语音更新测试";
+            using(var file=File.Create(Path.Combine(source,"pet.json")))SkinCatalog.Serializer().WriteObject(file,manifest);
+            var previous=pet.Catalog.Import(Path.Combine(source,"pet.json"));
+            Assert(!previous.IsOfficial && previous.Id!=official.Id,"manual package has an independent custom identity");
+            Assert(pet.SelectSkin(previous),"custom package can be selected");Pump();
+            settings.SelectAiSection(2);Pump();Editable((ComboBox)settings.FindControl("SpeechVoice")).Text="voice-custom-update-openai";
+            Assert(settings.SaveAiConfiguration(),"custom speech voice saved");
+            settings.SelectAiSection(3);Pump();Editable((ComboBox)settings.FindControl("LiveVoice")).Text="voice-custom-update-live";
+            Assert(settings.SaveAiConfiguration(),"custom live voice saved");
             manifest.PackVersion="ui-test";manifest.Animations["idle"].Fps=6;
             manifest.VoicePresets.Description="声音建议刷新校验";
             using(var file=File.Create(Path.Combine(source,"pet.json")))SkinCatalog.Serializer().WriteObject(file,manifest);
@@ -155,8 +167,11 @@ namespace Dafeiyu.Tests
             var clip=(MotionClip)typeof(PetWindow).GetField("shownMotion",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);
             Assert(Math.Abs(clip.Duration-8.0/6)<1e-8,"same ID update invalidates motion cache and uses new manifest timing");
             settings.SelectPage(0);Pump();Capture(settings,Path.Combine(output,"gugugaga-updated-partner.png"));
-            settings.SelectAiSection(2);Pump();Equal("voice-gugugaga-openai",Editable((ComboBox)settings.FindControl("SpeechVoice")).Text);
+            settings.SelectAiSection(2);Pump();Equal("voice-custom-update-openai",Editable((ComboBox)settings.FindControl("SpeechVoice")).Text);
             Assert(((TextBlock)settings.FindControl("SpeechCharacterRecommendation")).Text.Contains(manifest.VoicePresets.Description),"same ID update refreshes voice recommendation UI");
+            settings.SelectAiSection(3);Pump();Equal("voice-custom-update-live",Editable((ComboBox)settings.FindControl("LiveVoice")).Text);
+            Equal("voice-gugugaga-openai",PersonaProfiles.VoiceFor(pet.Settings,official.Id,"speech",pet.Settings.SpeechConnection()));
+            Equal("voice-gugugaga-live",PersonaProfiles.VoiceFor(pet.Settings,official.Id,"live",pet.Settings.Live));
             settings.SelectPage(0);Pump();var picker=(ComboBox)settings.FindControl("SkinPicker");picker.IsDropDownOpen=true;Pump();
             var popup=(System.Windows.Controls.Primitives.Popup)picker.Template.FindName("PART_Popup",picker);
             var deleteButtons=All<Button>(popup.Child).Where(b=>b.Name=="DeleteCompanion" && b.IsVisible).ToArray();
@@ -166,10 +181,10 @@ namespace Dafeiyu.Tests
             var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool confirmed=false;
             timer.Tick+=delegate {var dialog=Application.Current.Windows.OfType<DeleteConversationDialog>().FirstOrDefault(w=>w.Name=="RemoveCompanionDialog");if(dialog==null)return;confirmed=true;dialog.DialogResult=true;};
             timer.Start();try{settings.RemoveCompanion(updated);}finally{timer.Stop();}Pump();
-            Assert(confirmed && pet.Skin.Id!=updated.Id && pet.Catalog.Skins.Count==4,"removing current partner confirms and selects another companion");
+            Assert(confirmed && pet.Skin.Id!=updated.Id && pet.Catalog.Skins.Count==originalCount,"removing current partner confirms and selects another companion");
             Assert(pet.Settings.VoiceProfiles.ContainsKey(updated.Id) && Directory.Exists(updated.Source),"removing partner preserves voice configuration and source files");
             ((Button)settings.FindControl("RestoreCompanions")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
-            Assert(pet.Catalog.Skins.Count==5,"restore button returns removed companion");
+            Assert(pet.Catalog.Skins.Count==originalCount+1,"restore button returns removed companion");
         }
         private static IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var value in All<T>(VisualTreeHelper.GetChild(root,i)))yield return value;}
         private static TextBox Editable(ComboBox box){var field=box.Template.FindName("PART_EditableTextBox",box) as TextBox;Assert(box.IsEditable && field!=null && field.Visibility==Visibility.Visible,"visible editable voice part missing");return field;}

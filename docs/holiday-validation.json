@@ -281,6 +281,35 @@
       "retiredClipsCollected": true
     }
   },
+  "finalCiCorrections": {
+    "windowsFailureRun": "https://github.com/Eason4869/deskpet/actions/runs/39837886113",
+    "macosFailureRun": "https://github.com/Eason4869/deskpet/actions/runs/39840075483",
+    "windows": {
+      "HolidayIdentityTests": 13,
+      "HolidaySettingsSmoke": 95,
+      "VoicePresetTests": 14,
+      "cause": "Historical migration and custom package update fixtures had obsolete official-persona assumptions; the pre-unlock layout assertion omitted the supported narrow-window action row.",
+      "correction": "Use a genuine preexisting legacy package and independent custom update identity; retain source trust, voice isolation, and strict wide/narrow/light/dark selector and action bounds.",
+      "report": "work/ci-windows-550-failure-diagnosis.md",
+      "identityGreenLog": "work/ci-corrections/holiday-identity-green.log",
+      "layoutGreenLog": "work/ci-corrections/holiday-settings-green.log",
+      "voiceReport": "work/voice-presets-final-ci-fix.md"
+    },
+    "avalonia": {
+      "taskCenterAssertions": 54,
+      "fullDesktopAssertions": 2971,
+      "fullDesktopLog": "work/official-ava-final-fixture-full.log",
+      "cause": "Generic async-button completion re-enabled batch cancellation after selection had cleared; queued notifications could conceal the invalid state.",
+      "correction": "Keep a page-local cancellation busy flag and derive enabled state from current selection in the completion refresh. The regression holds queued UI notifications and preserves the original terminal-state assertion.",
+      "redLog": "work/official-ava-batch-cancel-red.log",
+      "greenLog": "work/official-ava-batch-cancel-green.log",
+      "nativeStageCorrection": "The actual-package test stages under its owned test-output GUID instead of macOS system temp, preserving strict no-linked-ancestor extraction and bounded cleanup.",
+      "actualFivePackages": 5,
+      "actualNativePngs": 304,
+      "nativeReport": "work/official-ava-stage-native.json"
+    },
+    "independentReview": "Approved; exact corrected-head Windows and Intel/ARM CI remains required before merge."
+  },
   "finalIntegration": {
     "pullRequest": "https://github.com/Eason4869/deskpet/pull/25",
     "checks": "https://github.com/Eason4869/deskpet/pull/25/checks",

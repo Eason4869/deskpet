@@ -22,7 +22,11 @@ internal static class OfficialCompanionUiChecks
         if (records.Length != 5 || records.Select(r => r.GetProperty("id").GetString()).Distinct().Count() != 5) throw new InvalidDataException("Expected complete five-role candidate index.");
         var results = new List<object>();
         using var validator = new OfficialCompanionNativeValidator();
-        var stagingRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "DeskPet-AvaloniaNative-" + Guid.NewGuid().ToString("N")));
+        // macOS's system temp directory may traverse /var -> /private/var.
+        // Keep the extractor's strict no-links policy and use our test output.
+        var stagingParent = Path.GetFullPath(AppContext.BaseDirectory);
+        OfficialCompanionStorage.SafeDirectory(stagingParent);
+        var stagingRoot = Path.Combine(stagingParent, "DeskPet-AvaloniaNative-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stagingRoot);
         try
         {
@@ -57,8 +61,8 @@ internal static class OfficialCompanionUiChecks
         }
         finally
         {
-            var tempParent = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!stagingRoot.StartsWith(tempParent, StringComparison.OrdinalIgnoreCase) || !Path.GetFileName(stagingRoot).StartsWith("DeskPet-AvaloniaNative-", StringComparison.Ordinal)) throw new InvalidDataException("Native QA staging path escaped temporary directory.");
+            var parentPrefix = stagingParent.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!stagingRoot.StartsWith(parentPrefix, StringComparison.OrdinalIgnoreCase) || !Path.GetFileName(stagingRoot).StartsWith("DeskPet-AvaloniaNative-", StringComparison.Ordinal)) throw new InvalidDataException("Native QA staging path escaped test output directory.");
             Directory.Delete(stagingRoot, true);
         }
         Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
