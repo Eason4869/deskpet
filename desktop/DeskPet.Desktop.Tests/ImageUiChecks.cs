@@ -19,7 +19,7 @@ internal static class ImageUiChecks
     {
         int checks = 0;
         void Check(bool condition, string reason) { if (!condition) throw new Exception("FAIL: image UI " + reason); checks++; }
-        void Until(Func<bool> done) { var watch = System.Diagnostics.Stopwatch.StartNew(); while (!done()) { if (watch.Elapsed.TotalSeconds > 15) throw new TimeoutException("Image UI task timed out"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
+        void Until(Func<bool> done, Func<string>? diagnostic = null) { var watch = System.Diagnostics.Stopwatch.StartNew(); while (!done()) { if (watch.Elapsed.TotalSeconds > 15) throw new TimeoutException("Image UI task timed out" + (diagnostic == null ? "" : ": " + diagnostic())); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
         void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
         var handler = new ImageHandler();
         using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(directory), store => new ImageGenerationClient(store, handler, null));
@@ -48,9 +48,21 @@ internal static class ImageUiChecks
         window.NavigateHistory(-1); Check(window.CurrentPage == "chat" && workspace.IsGenerating, "leaving image page retains running request");
         Complete(generation); Complete(handler.LastResponse);
         Check(handler.Requests == 1 && handler.LastPath.EndsWith("/images/edits") && owner.ImageStore.List().Count == 1, "reference generation performs exactly one edit and commits gallery asset");
+        var image = owner.ImageStore.List()[0];
+        var revisionField=typeof(ImageWorkspacePage).GetField("galleryRevision",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+        var loadedField=typeof(ImageWorkspacePage).GetField("loadedGallery",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+        var statusField=typeof(ImageWorkspacePage).GetField("galleryCount",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+        IList<GeneratedImage> GalleryItems() => (IList<GeneratedImage>)loadedField.GetValue(workspace)!;
+        string GalleryDiagnostic() => "search="+workspace.Search.Text+" cards="+workspace.GalleryCount+" revision="+revisionField.GetValue(workspace)+" status="+((TextBlock)statusField.GetValue(workspace)!).Text+" loaded="+String.Join(",",GalleryItems().Select(i=>i.Id+":"+i.Model))+" expected="+image.Id+":"+image.Model;
+        void AwaitGallery(int count) => Until(()=>workspace.GalleryCount==count&&GalleryItems().Count==count&&(count==0||GalleryItems()[0].Id==image.Id),GalleryDiagnostic);
         window.ShowImages();Dispatcher.UIThread.RunJobs();Check(workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.GetLogicalDescendants().OfType<GeneratedImageCard>().Any()&&!c.ClockRunning),"SuccessReplacesPlaceholderInPlace and stops frame clock"); workspace.SelectedIndex = 1; workspace.RefreshGallery();
-        Check(workspace.GalleryCount == 1, "workspace generation appears in gallery"); workspace.Search.Text = "not-present"; Dispatcher.UIThread.RunJobs(); Check(workspace.GalleryCount == 0, "gallery filtering excludes mismatched prompt/model"); workspace.Search.Text = "ui-image-model"; Dispatcher.UIThread.RunJobs(); Check(workspace.GalleryCount == 1, "gallery model search finds asset");
-        var image = owner.ImageStore.List()[0]; workspace.Prepare(image); Check(workspace.SelectedIndex == 0 && prompt.Text == image.Prompt && !workspace.IsGenerating, "regenerate prepares explicit new request without automatic call");
+        AwaitGallery(1); Check(workspace.GalleryCount == 1, "workspace generation appears in gallery"); workspace.Search.Text = "not-present"; AwaitGallery(0); Check(workspace.GalleryCount == 0, "gallery filtering excludes mismatched prompt/model");
+        var queryGate=typeof(GeneratedImageStore).GetField("gate",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.ImageStore)!;
+        Monitor.Enter(queryGate);
+        try{workspace.Search.Text="ui-image-model";Dispatcher.UIThread.RunJobs();Check(workspace.GalleryCount==0,"gallery query stays asynchronous while the store is busy");Console.WriteLine("Blocked gallery query: "+GalleryDiagnostic());}
+        finally{Monitor.Exit(queryGate);}
+        AwaitGallery(1);Check(workspace.GalleryCount==1,"gallery model search finds asset");Console.WriteLine("Completed gallery query: "+GalleryDiagnostic());
+        workspace.Prepare(image); Check(workspace.SelectedIndex == 0 && prompt.Text == image.Prompt && !workspace.IsGenerating, "regenerate prepares explicit new request without automatic call");
         handler.Delay = true; prompt.Text = "cancel this generation"; var cancelled = workspace.GenerateAsync(); Check(workspace.IsGenerating, "second generation runs");
         workspace.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "CancelImageGeneration").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Complete(cancelled);
         Check(owner.ImageStore.List().Count == 1 && !workspace.IsGenerating, "cancel creates no fake gallery asset");
@@ -64,7 +76,7 @@ internal static class ImageUiChecks
         card.ShowPreview(); Dispatcher.UIThread.RunJobs();
         var preview = owner.Pet.OwnedWindows.FirstOrDefault(w => w.Name == "GeneratedImagePreviewWindow") ?? window.OwnedWindows.FirstOrDefault(w => w.Name == "GeneratedImagePreviewWindow");
         Check(preview != null, "card opens image preview window"); preview?.Close(); replyView.DisposeImages();
-        window.Width = 430; window.Height = 650; workspace.SelectedIndex = 1; workspace.Search.Text = "";
+        window.Width = 430; window.Height = 650; workspace.SelectedIndex = 1; workspace.Search.Text = ""; AwaitGallery(1);
         var artifacts = Path.Combine(AppContext.BaseDirectory, "artifacts"); Directory.CreateDirectory(artifacts);
         foreach (var theme in new[] { "light", "dark" })
         {
