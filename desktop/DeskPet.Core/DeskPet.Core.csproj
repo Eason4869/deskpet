@@ -7,6 +7,11 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/Holidays/*.cs" Link="Shared/Holidays/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../assets/holidays/calendar/solar-terms.json" LogicalName="Dafeiyu.Holidays.SolarTerms" />
+    <EmbeddedResource Include="../../assets/holidays/**/*.json;../../assets/holidays/**/*.png">
+      <LogicalName>Dafeiyu.Holidays.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\','.').Replace('/','.'))</LogicalName>
+    </EmbeddedResource>
     <Compile Include="../../src/GeneratedImageStore.Management.cs;../../src/ImageAssetReferenceResolver.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageTaskCenterState.cs" Link="Shared/ImageTaskCenterState.cs" />
     <Compile Include="../../src/GeneratedImageGroupState.cs" Link="Shared/GeneratedImageGroupState.cs" />

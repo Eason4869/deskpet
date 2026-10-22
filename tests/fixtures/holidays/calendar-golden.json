@@ -1,0 +1,3216 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "year": 1995,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt",
+      "sha256": "17e7951a0babd178b1a8745b9ec15883b7422e6b33c89df77f7100c149be581c"
+    },
+    {
+      "year": 2006,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt",
+      "sha256": "6202b58cd3e95c0dfbb1221e60f5fa57d81f8def1ffe9427f724edb9fc1707d5"
+    },
+    {
+      "year": 2009,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt",
+      "sha256": "8cf17f7ff1f1524dad7eb271737c5eb1c7904a333422b2e989017ced79e2c192"
+    },
+    {
+      "year": 2020,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt",
+      "sha256": "e42824dab7a54fe1f6606cfa00b6ed778cb43cbbabd1bfe077120008b82f3a1b"
+    },
+    {
+      "year": 2021,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt",
+      "sha256": "e8d4aa9b79e2774a2dcba86c902d5ac3bde989867072ec4ab3567489cf9dfad2"
+    },
+    {
+      "year": 2022,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt",
+      "sha256": "3b9352be5d12b46b0278d9dc25b03c7de6669df2d89bf94183643b4768ba3d98"
+    },
+    {
+      "year": 2023,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt",
+      "sha256": "4a5fc4dbb7a1b78824bc2b0cf9c07083f9487e610cece066102759cd5d23edee"
+    },
+    {
+      "year": 2024,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt",
+      "sha256": "0120d4df9b6638b084dcf35a0633f970ec47f8c1adde2553fba3e3c3570217fc"
+    },
+    {
+      "year": 2025,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt",
+      "sha256": "7a2803584dcd12a38a13e3710e643369996f59e690d684b9e3705fc5e988ebc2"
+    },
+    {
+      "year": 2026,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt",
+      "sha256": "7b0831acb16a5a72a1ab553205e938b2f658c3837e06440f22c084e1a39832dd"
+    },
+    {
+      "year": 2027,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt",
+      "sha256": "2c6a406cd2f8c6f1cf11f154737b7c5ae4afb53c87d76b101bd561b482e3b93f"
+    },
+    {
+      "year": 2028,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt",
+      "sha256": "4b0c09cc20947f6199106f2664c3b1178f20510f5ccf044be502c352250bb3c0"
+    },
+    {
+      "year": 2029,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt",
+      "sha256": "4477676453008afe875869c3915acdfc7a62cdbc3c6001751978eea7d7c1f4f7"
+    },
+    {
+      "year": 2030,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt",
+      "sha256": "6f402ba7aa1c1db74172e0eb47cd38feb3562889c289a60d7fb9ba67ba8ca234"
+    },
+    {
+      "year": 2031,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt",
+      "sha256": "e4fc7d762e09c749a117a26e0164c140e1e6c0c110bc571ee4137cb60e75c863"
+    },
+    {
+      "year": 2032,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt",
+      "sha256": "4ccf673be92a44b0471a5aca12c48de3b95a967e07776e346a8ce0e63a5dcb42"
+    },
+    {
+      "year": 2033,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt",
+      "sha256": "d2ec5d438f5838512c38879a8d32b38a6e0cb5dcdd8993ed8b78741fc9f1e899"
+    },
+    {
+      "year": 2034,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt",
+      "sha256": "0b9cdf0733d7069d55851aeed05421365978c58ddc314e524328537a5a011ca2"
+    },
+    {
+      "year": 2035,
+      "url": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt",
+      "sha256": "18a341b931284ddf77d5fe2ca7a0ecc96a5fcf1427611b3e7d4282dc7de9be18"
+    }
+  ],
+  "cases": [
+    {
+      "date": "1995-01-08",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-01-07",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-01-09",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-01-29",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-01-30",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-01-31",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-02-13",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-02-14",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-02-14",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-02-13",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-02-15",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-06-02",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-06-01",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-06-03",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-08-02",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-08-01",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-08-03",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-09-09",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-09-08",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-09-10",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-10-09",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-11-01",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-10-31",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "1995-11-02",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T1995c.txt"
+    },
+    {
+      "date": "2006-01-27",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-01-28",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-01-29",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-02-11",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-02-12",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-02-12",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-02-11",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-02-13",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-05-31",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-05-30",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-06-01",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-07-31",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-07-30",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-08-01",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-08-30",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-06",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-05",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-07",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-30",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-29",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2006-10-31",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2006c.txt"
+    },
+    {
+      "date": "2009-01-24",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-01-25",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-01-26",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-02-08",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-02-09",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-02-09",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-02-08",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-02-10",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-05-28",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-05-27",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-05-29",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-06-27",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-08-26",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-08-25",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-08-27",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-03",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-02",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-04",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-26",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-25",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2009-10-27",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2009c.txt"
+    },
+    {
+      "date": "2020-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-01-23",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-01-24",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-01-25",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-02-07",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-02-08",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-02-08",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-02-07",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-02-09",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-06-25",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-06-24",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-06-26",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-08-25",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-08-24",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-08-26",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-10-01",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-09-30",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-10-02",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-10-25",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-10-24",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2020-10-26",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2020c.txt"
+    },
+    {
+      "date": "2021-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-01-20",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-01-19",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-01-21",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-10",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-11",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-12",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-25",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-26",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-26",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-25",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-02-27",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-06-14",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-06-13",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-06-15",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-08-14",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-08-13",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-08-15",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-09-21",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-09-20",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-09-22",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-10-14",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-10-13",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2021-10-15",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2021c.txt"
+    },
+    {
+      "date": "2022-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-01-10",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-01-09",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-01-11",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-01-30",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-01-31",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-01",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-14",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-15",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-15",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-14",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-02-16",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-06-03",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-06-02",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-06-04",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-08-04",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-08-03",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-08-05",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-09-10",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-09-09",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-09-11",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-10-04",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-10-03",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-10-05",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-30",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-29",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2022-12-31",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2022c.txt"
+    },
+    {
+      "date": "2023-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-01-20",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-01-21",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-01-22",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-02-04",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-02-05",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-02-05",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-02-04",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-02-06",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-06-22",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-06-21",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-06-23",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-08-22",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-08-21",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-08-23",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-09-29",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-09-28",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-09-30",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-10-23",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-10-22",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2023-10-24",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2023c.txt"
+    },
+    {
+      "date": "2024-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-01-18",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-01-17",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-01-19",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-08",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-09",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-10",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-23",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-24",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-24",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-23",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-02-25",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-06-10",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-06-09",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-06-11",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-08-10",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-08-09",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-08-11",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-09-17",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-09-16",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-09-18",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-10-11",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-10-10",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2024-10-12",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2024c.txt"
+    },
+    {
+      "date": "2025-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-01-27",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-01-28",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-01-29",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-02-11",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-02-12",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-02-12",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-02-11",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-02-13",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-05-31",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-05-30",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-06-01",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-08-29",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-08-28",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-08-30",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-06",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-05",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-07",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-29",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-28",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2025-10-30",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2025c.txt"
+    },
+    {
+      "date": "2026-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-01-26",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-01-25",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-01-27",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-02-15",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-02-16",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-02-17",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-03-02",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-03-03",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-03-03",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-03-02",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-03-04",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-06-19",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-06-18",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-06-20",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-08-19",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-08-18",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-08-20",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-09-25",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-09-24",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-09-26",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-10-18",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-10-17",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2026-10-19",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2026c.txt"
+    },
+    {
+      "date": "2027-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-01-15",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-01-14",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-01-16",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-04",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-05",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-06",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-19",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-20",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-20",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-19",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-02-21",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-06-09",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-06-08",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-06-10",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-08-08",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-08-07",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-08-09",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-09-15",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-09-14",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-09-16",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-10-08",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-10-07",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2027-10-09",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2027c.txt"
+    },
+    {
+      "date": "2028-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-01-24",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-01-25",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-01-26",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-02-08",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-02-09",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-02-09",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-02-08",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-02-10",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-05-28",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-05-27",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-05-29",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-06-27",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-08-26",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-08-25",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-08-27",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-03",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-02",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-04",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-26",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-25",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2028-10-27",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2028c.txt"
+    },
+    {
+      "date": "2029-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-01-22",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-01-21",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-01-23",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-11",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-12",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-13",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-26",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-27",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-27",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-26",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-02-28",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-06-16",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-06-15",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-06-17",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-08-16",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-08-15",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-08-17",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-09-22",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-09-21",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-09-23",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-10-16",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-10-15",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2029-10-17",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2029c.txt"
+    },
+    {
+      "date": "2030-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-01-11",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-01-10",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-01-12",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-01",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-02",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-03",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-16",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-17",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-17",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-16",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-02-18",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-06-05",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-06-04",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-06-06",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-08-05",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-08-04",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-08-06",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-09-12",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-09-11",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-09-13",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-10-05",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-10-04",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2030-10-06",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2030c.txt"
+    },
+    {
+      "date": "2031-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-01-21",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-01-22",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-01-23",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-02-05",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-02-06",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-02-06",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-02-05",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-02-07",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-06-24",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-06-23",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-06-25",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-08-24",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-08-23",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-08-25",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-10-01",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-09-30",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-10-02",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-10-24",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-10-23",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2031-10-25",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2031c.txt"
+    },
+    {
+      "date": "2032-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-01-20",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-01-19",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-01-21",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-09",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-10",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-11",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-24",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-25",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-25",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-24",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-02-26",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-06-12",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-06-11",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-06-13",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-08-12",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-08-11",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-08-13",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-09-19",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-09-18",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-09-20",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-10-12",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-10-11",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2032-10-13",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2032c.txt"
+    },
+    {
+      "date": "2033-04-03",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-04-04",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-04-05",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-12-20",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-12-21",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-12-22",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-08",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-07",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-09",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-29",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-30",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-01-31",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-02-13",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-02-14",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-02-14",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-02-13",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-02-15",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-06-01",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-05-31",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-06-02",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-08-01",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-07-31",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-08-02",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-09-08",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-09-07",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-09-09",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-10-01",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-09-30",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2033-10-02",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2033c.txt"
+    },
+    {
+      "date": "2034-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-01-27",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-01-26",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-01-28",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-02-17",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-02-18",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-02-19",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-03-04",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-03-05",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-03-05",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-03-04",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-03-06",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-06-20",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-06-19",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-06-21",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-08-20",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-08-19",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-08-21",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-09-27",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-09-26",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-09-28",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-10-20",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-10-19",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2034-10-21",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2034c.txt"
+    },
+    {
+      "date": "2035-04-04",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-04-05",
+      "holiday": "qingming",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-04-06",
+      "holiday": "qingming",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-12-21",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-12-22",
+      "holiday": "winter-solstice",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-12-23",
+      "holiday": "winter-solstice",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-01-16",
+      "holiday": "laba",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-01-15",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-01-17",
+      "holiday": "laba",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-06",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-07",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-08",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-21",
+      "holiday": "spring-festival",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-22",
+      "holiday": "spring-festival",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-22",
+      "holiday": "lantern",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-21",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-02-23",
+      "holiday": "lantern",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-06-10",
+      "holiday": "dragon-boat",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-06-09",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-06-11",
+      "holiday": "dragon-boat",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-08-10",
+      "holiday": "qixi",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-08-09",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-08-11",
+      "holiday": "qixi",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-09-16",
+      "holiday": "mid-autumn",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-09-15",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-09-17",
+      "holiday": "mid-autumn",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-10-09",
+      "holiday": "double-ninth",
+      "expected": true,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-10-08",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    },
+    {
+      "date": "2035-10-10",
+      "holiday": "double-ninth",
+      "expected": false,
+      "source": "https://www.hko.gov.hk/tc/gts/time/calendar/text/files/T2035c.txt"
+    }
+  ]
+}
