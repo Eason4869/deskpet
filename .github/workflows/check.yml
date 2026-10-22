@@ -81,3 +81,5 @@ jobs:
             work/permissions/link-native-input-not-ready.png
             work/image-ui-evidence/generation-layout-failure.png
             work/image-ui-evidence/generation-layout-failure.txt
+            work/image-ui-evidence/gallery-toolbar-failure.png
+            work/image-ui-evidence/gallery-toolbar-failure.txt
