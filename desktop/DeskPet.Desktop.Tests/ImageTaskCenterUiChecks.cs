@@ -14,6 +14,92 @@ using DeskPet.Desktop;
 
 internal static class ImageTaskCenterUiChecks
 {
+    static object Field(object target,string name)=>target.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(target)!;
+    internal static int RunFinalReview(string data,string scenario)
+    {
+        int checks=0;void Check(bool value,string name){if(!value)throw new Exception("FAIL "+name);checks++;Console.WriteLine("PASS "+name);}
+        Task Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>6)throw new Exception("FAIL native condition: "+scenario);Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();return Task.CompletedTask;}
+        void Complete(Task task){Until(()=>task.IsCompleted);task.GetAwaiter().GetResult();}
+        T Result<T>(Task<T> task){Complete(task);return task.Result;}
+        Task Pause(){var until=DateTime.UtcNow.AddMilliseconds(150);while(DateTime.UtcNow<until){Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}return Task.CompletedTask;}
+        IEnumerable<T> All<T>(StyledElement control)where T:StyledElement=>control.GetLogicalDescendants().OfType<T>().Distinct();
+        Button Find(StyledElement control,string name)=>All<Button>(control).Single(b=>b.Name==name);
+        void Click(Button button)=>button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Border Row(StyledElement control,string id)=>All<Border>(control).Single(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==id);
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data));
+
+            var bytes=Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=");
+            var session=owner.Session;var assets=owner.ImageStore;var usage=owner.ImageUsage;
+            var http=new Handler{Delay=false};var client=new ImageGenerationClient(assets,http,null);
+            var records=new List<ImageGenerationTaskRecord>();
+            var reply=session.History.BeginTurn("restored original","text",out var originalUser);
+            foreach(var state in new[]{ImageGenerationTaskState.Generating,ImageGenerationTaskState.Saving,ImageGenerationTaskState.Succeeded})
+            {
+                var id=Guid.NewGuid().ToString("N");var image=assets.Save(bytes,new GeneratedImage{ImageJobId=id,Source=ImageGenerationSource.Conversation,Prompt="restored "+state},true);
+                var record=new ImageGenerationTaskRecord{Id=id,RequestId=id,State=state,DeliveryState=ImageTaskDeliveryState.Pending,Origin=new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=session.ImageConversationId,PersonaId=session.PersonaId,MessageId=reply.Id},Prompt="restored "+state,QueuedUtc=DateTime.UtcNow,ReferenceImageIds=new List<string>(),ResultImageId=state==ImageGenerationTaskState.Succeeded?image.Id:null};
+                if(state==ImageGenerationTaskState.Succeeded)session.History.AttachGeneratedImage(reply.Id,image);
+                records.Add(record);
+            }
+            var weakId=Guid.NewGuid().ToString("N");var weak=assets.Save(bytes,new GeneratedImage{ImageJobId=weakId,Source=ImageGenerationSource.Workspace,Prompt="weak result"},true);
+            records.Add(new ImageGenerationTaskRecord{Id=weakId,RequestId=weakId,State=ImageGenerationTaskState.Succeeded,ResultImageId=weak.Id,Source=ImageGenerationSource.Workspace,Prompt="weak result",QueuedUtc=DateTime.UtcNow,ReferenceImageIds=new List<string>()});
+            new ImageGenerationTaskStore(data).Save(records);var manager=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),assets,client,usage);Complete(manager.RestoreAsync(CancellationToken.None));typeof(DesktopController).GetField("<ImageTasks>k__BackingField",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner,manager);
+            session.ImageTasks=manager;session.ImageStore=assets;session.ImageUsage=usage;
+            var management=new ImageAssetManagementService(assets,usage,new ImageAssetReferenceResolver(data,assets,manager));
+            var page=new ImageWorkspacePage(owner,new Window());var host=new Window{Content=page,Width=900,Height=740};host.Show();page.SelectedIndex=2;Dispatcher.UIThread.RunJobs();
+            Complete(Pause());Complete(Until(()=>All<Border>(page).Count(b=>b.Name=="ImageTaskRow")==4));
+            if(scenario=="recovery")
+            {
+                Check(new ImageGenerationTaskStore(data).Load().Take(3).All(t=>t.DeliveryState==ImageTaskDeliveryState.AwaitingSync),"awaiting sync survives encrypted task persistence");
+                foreach(var record in records.Take(3))
+                {
+                    var row=Row(page,record.Id);Check(manager.Get(record.Id).State==ImageGenerationTaskState.Succeeded,"committed asset restores successful "+record.State);
+                    Check(All<TextBlock>(row).Any(t=>t.Text=="图片已保存，等待同步到原会话。"),"recovered pending delivery truthfully awaits sync: "+record.State);
+                    Check(All<Button>(row).Any(b=>b.Name=="RepairImageDelivery"),"native recovered pending delivery offers saved-asset repair");
+                    Click(Find(row,"RepairImageDelivery"));Complete(Until(()=>manager.Get(record.Id).DeliveryState==ImageTaskDeliveryState.Delivered));
+                    Complete(session.RepairImageDeliveryAsync(record.Id,CancellationToken.None));
+                }
+                Check(http.Calls==0&&session.History.Messages.Single(m=>m.Id==reply.Id).GeneratedImages.Count==3,"recovery and repeat repair attach each original once with zero executor calls");
+                var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="fixture"}};
+                var live=Result(manager.EnqueueAsync(new ImageGenerationTaskSubmission("live-pending",new ImageGenerationRequest{Provider=provider,Prompt="live",Persistent=true},records[0].Origin),CancellationToken.None));Complete(live.Completion);Complete(Until(()=>All<Border>(page).Any(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==live.Id)));
+                Complete(Until(()=>All<TextBlock>(Row(page,live.Id)).Any(t=>t.Text=="结果已保存，可查看原图。")));
+                Check(manager.Get(live.Id).DeliveryState==ImageTaskDeliveryState.Pending&&!All<Button>(Row(page,live.Id)).Any(b=>b.Name=="RepairImageDelivery"),"live pending delivery is not exposed to a competing repair");
+                Complete(manager.SetDeliveryStateAsync(live.Id,ImageTaskDeliveryState.Detached));Complete(Until(()=>All<TextBlock>(Row(page,live.Id)).Any(t=>t.Text=="独立重试结果，可在图库查看。")));
+                Check(!All<Button>(Row(page,live.Id)).Any(b=>b.Name=="RepairImageDelivery"),"detached result never repairs old tool reply");
+                Check(ImageTaskCenterState.ResultLabel(new ImageGenerationTaskRecord{State=ImageGenerationTaskState.Generating,DeliveryState=ImageTaskDeliveryState.Pending},false)!="图片已删除"&&ImageTaskCenterState.ResultLabel(new ImageGenerationTaskRecord{State=ImageGenerationTaskState.Succeeded},false)=="图片结果暂不可用。","no result yet is distinct from a deleted saved result");
+            }
+            if(scenario=="purge")
+            {
+                var row=Row(page,weakId);Check(All<Button>(row).Any(b=>b.Name=="ViewImageTaskResult"),"saved weak result initially viewable");
+                var subscriptions=typeof(GeneratedImageStore).GetField("Changed",BindingFlags.Instance|BindingFlags.NonPublic)!;Func<int> count=()=>(subscriptions.GetValue(assets) as Delegate)?.GetInvocationList().Length??0;int baseline=count();
+                assets.MoveToTrash(new[]{weak.Id});var purged=Result(management.PurgeAsync(new[]{weak.Id},CancellationToken.None));Check(purged.DeletedIds.Contains(weak.Id),"successful task weak result remains safely purgeable");
+                Complete(Until(()=>All<TextBlock>(row).Any(t=>t.Text=="图片已删除")));
+                Check(ReferenceEquals(row,Row(page,weakId))&&!All<Button>(row).Any(b=>b.Name=="ViewImageTaskResult"),"visible purge updates label and removes stale action in same row");
+                host.Hide();Complete(Pause());Check(count()<baseline,"hidden task center releases asset subscription");host.Show();Complete(Pause());Check(count()==baseline,"reopened center rebinds asset subscription once");
+                Check(All<TextBlock>(Row(page,weakId)).Any(t=>t.Text=="图片已删除")&&!All<Button>(Row(page,weakId)).Any(b=>b.Name=="ViewImageTaskResult"),"reopened center preserves deleted result state");
+                page.Dispose();host.Close();Check(count()<baseline,"disposed center releases asset subscription");
+                var restarted=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),assets,client,usage);Complete(restarted.RestoreAsync(CancellationToken.None));manager=restarted;typeof(DesktopController).GetField("<ImageTasks>k__BackingField",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner,manager);
+                page=new ImageWorkspacePage(owner,new Window());host=new Window{Content=page,Width=900,Height=740};host.Show();page.SelectedIndex=2;Dispatcher.UIThread.RunJobs(); Complete(Pause());
+                Check(manager.Get(weakId).State==ImageGenerationTaskState.Succeeded&&All<TextBlock>(Row(page,weakId)).Any(t=>t.Text=="图片已删除")&&!All<Button>(Row(page,weakId)).Any(b=>b.Name=="ViewImageTaskResult"),"restart retains success and truthful deleted weak link");
+            }
+            if(scenario=="service"||scenario=="model")
+            {
+                page.SelectedIndex=1;Dispatcher.UIThread.RunJobs();
+                var first=assets.Save(bytes,new GeneratedImage{ProviderId="service-a",Model="model-a",Prompt="first filter"},true);var other=assets.Save(bytes,new GeneratedImage{ProviderId="service-b",Model="model-b",Prompt="remaining filter"},true);assets.MoveToTrash(new[]{first.Id,other.Id});
+                var trash=(CheckBox)Field(page,"trashOnly");trash.IsChecked=true;
+                var filter=(ComboBox)Field(page,scenario=="service"?"providerFilter":"modelFilter");
+                Complete(Until(()=>filter.Items.Count>2));filter.SelectedItem=scenario=="service"?filter.Items.OfType<ImageGalleryProviderChoice>().Single(p=>p.Id=="service-a"):(object)"model-a";
+                Complete(Until(()=>((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==1&&((IList<GeneratedImage>)Field(page,"loadedGallery"))[0].Id==first.Id));
+                ((ImageGallerySelection)Field(page,"gallerySelection")).Toggle(first.Id);
+                var purged=Result(management.PurgeAsync(new[]{first.Id},CancellationToken.None));Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");
+                Complete(Until(()=>filter.SelectedIndex==0));Complete(Pause());
+                var loaded=(IList<GeneratedImage>)Field(page,"loadedGallery");Check(loaded.Count==1&&loaded[0].Id==other.Id&&(int)Field(page,"galleryTotal")==1,"All "+scenario+" control renders the normalized page and count");
+                Check(((ImageGallerySelection)Field(page,"gallerySelection")).Count==0,"effective "+scenario+" filter change clears explicit selection");
+                var search=(TextBox)Field(page,"search");var gate=Field(assets,"gate");
+                Monitor.Enter(gate);try{search.Text="remaining";page.RefreshGallery(); search.Text="no match at latest revision";page.RefreshGallery();}finally{Monitor.Exit(gate);}
+                Complete(Until(()=>((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==0));Complete(Pause());Check((int)Field(page,"galleryTotal")==0&&((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==0,"stale queued gallery revision cannot replace latest query");
+            }
+            page.Dispose();host.Close();Complete(manager.StopAsync(CancellationToken.None));client.Dispose();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);return checks;
+    }
     internal static int Run(string directory)
     {
         int checks=0;
@@ -40,7 +126,7 @@ internal static class ImageTaskCenterUiChecks
         var repairHandles=new List<ImageGenerationTaskHandle>();foreach(var name in new[]{"same-owner-a","same-owner-b"}){var handle=Result(owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission(name,new ImageGenerationRequest{Provider=provider,Prompt=name,Persistent=true},new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=owner.Session.ImageConversationId,PersonaId=owner.Session.PersonaId,MessageId=reply.Id}),CancellationToken.None));Complete(handle.Completion);Complete(owner.ImageTasks.SetDeliveryStateAsync(handle.Id,ImageTaskDeliveryState.Failed));repairHandles.Add(handle);}before=handler.Calls;Complete(Task.WhenAll(repairHandles.Select(h=>owner.RepairImageDeliveryAsync(h.Id))));owner.Session.AddLiveTurn(owner.Session.PersonaId,"native edit after concurrent repairs","new reply");Complete(owner.Session.FlushHistoryAsync());Check(owner.Session.History.Messages.Single(m=>m.Id==reply.Id).GeneratedImages.Count==3&&owner.Session.History.Messages.Any(m=>m.Content=="native edit after concurrent repairs")&&handler.Calls==before,"native same-owner concurrent repairs preserve both images and new live message without HTTP");
         workspace.SelectedIndex=0;All<TextBox>(workspace).Single(t=>t.Name=="ImagePrompt").Text="first explicit submit";handler.Delay=true;var first=workspace.GenerateAsync();Until(()=>owner.ImageTasks.List().Last().State==ImageGenerationTaskState.Generating);var firstId=owner.ImageTasks.List().Last().Id;Check(Find(workspace,"StartImageGeneration").IsEnabled,"accepted submission unlocks form before HTTP completes");All<TextBox>(workspace).Single(t=>t.Name=="ImagePrompt").Text="second explicit submit";var second=workspace.GenerateAsync();Until(()=>owner.ImageTasks.List().Last().State==ImageGenerationTaskState.Queued);var secondId=owner.ImageTasks.List().Last().Id;workspace.Dispose();host.Close();var reopened=new ImageWorkspacePage(owner,new Window());host=new Window{Content=reopened,Width=900,Height=700};host.Show();reopened.SelectedIndex=2;Dispatcher.UIThread.RunJobs();Check(All<Border>(reopened).Any(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==firstId)&&!first.IsCompleted,"ReopenViewRebindsExistingJob");Complete(owner.ImageTasks.CancelAsync(secondId));Complete(owner.ImageTasks.CancelAsync(firstId));Complete(Task.WhenAll(first,second));
         var restart=Path.Combine(directory,"restart");new ImageGenerationTaskStore(restart).Save(new[]{new ImageGenerationTaskRecord{Id="old-job",RequestId="old",Origin=new ImageTaskOrigin{Source=ImageGenerationSource.Workspace},State=ImageGenerationTaskState.Generating,QueuedUtc=DateTime.UtcNow,Prompt="before restart",ReferenceImageIds=new()}});before=handler.Calls;var restored=new ImageGenerationTaskManager(new ImageGenerationTaskStore(restart),owner.ImageStore,owner.ImageClient,owner.ImageUsage);Complete(restored.RestoreAsync(CancellationToken.None));Check(restored.Get("old-job").State==ImageGenerationTaskState.Interrupted&&handler.Calls==before,"RestartShowsInterruptedWithoutNetwork");
-        var concurrency=typeof(PetSettings).GetProperty("ImageGenerationConcurrency");Check(concurrency!=null&&(int)concurrency.GetValue(new PetSettings())! ==1,"SettingsDefaultsAndRoundTrip default");var settings=new SettingsWindow(owner);settings.SelectSection("behavior");settings.Show();Dispatcher.UIThread.RunJobs();var number=All<NumericUpDown>(settings).Single(n=>n.Name=="ImageGenerationConcurrency");number.Value=3;var motion=All<CheckBox>(settings).Single(c=>c.Name=="ImageGenerationMotionEnabled");motion.IsChecked=false;var saved=new SettingsStore(Path.Combine(owner.DataDirectory,"settings.json")).Load();Check((int)concurrency!.GetValue(saved)! ==3&&!saved.ImageGenerationMotionEnabled&&owner.ImageTasks.Concurrency==3,"SettingsDefaultsAndRoundTrip native UI applies");settings.Close();var notificationId=(string?)typeof(DesktopController).GetField("imageNotificationId",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner);Click(All<Button>(completionNotice).Single(b=>b.Content as string=="查看任务"));Dispatcher.UIThread.RunJobs();var notificationHost=(ChatWindow)typeof(DesktopController).GetField("fullChat",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;Check(notificationHost.CurrentPage=="images"&&All<Border>(notificationHost).Any(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==notificationId&&b.BorderThickness.Left==2),"completion notification navigates to corresponding native task row");notificationHost.Close();reopened.Dispose();host.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);return checks;
+        var concurrency=typeof(PetSettings).GetProperty("ImageGenerationConcurrency");Check(concurrency!=null&&(int)concurrency.GetValue(new PetSettings())! ==1,"SettingsDefaultsAndRoundTrip default");var settings=new SettingsWindow(owner);settings.SelectSection("behavior");settings.Show();Dispatcher.UIThread.RunJobs();var number=All<NumericUpDown>(settings).Single(n=>n.Name=="ImageGenerationConcurrency");number.Value=3;var motion=All<CheckBox>(settings).Single(c=>c.Name=="ImageGenerationMotionEnabled");motion.IsChecked=false;var saved=new SettingsStore(Path.Combine(owner.DataDirectory,"settings.json")).Load();Check((int)concurrency!.GetValue(saved)! ==3&&!saved.ImageGenerationMotionEnabled&&owner.ImageTasks.Concurrency==3,"SettingsDefaultsAndRoundTrip native UI applies");settings.Close();var notificationId=(string?)typeof(DesktopController).GetField("imageNotificationId",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner);Click(All<Button>(completionNotice).Single(b=>b.Content as string=="查看任务"));Dispatcher.UIThread.RunJobs();var notificationHost=(ChatWindow)typeof(DesktopController).GetField("fullChat",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;Check(notificationHost.CurrentPage=="images"&&All<Border>(notificationHost).Any(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==notificationId&&b.BorderThickness.Left==2),"completion notification navigates to corresponding native task row");notificationHost.Close();reopened.Dispose();host.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);foreach(var scenario in new[]{"recovery","purge","service","model"})checks+=RunFinalReview(Path.Combine(directory,"final-"+scenario),scenario);return checks;
     }
     static ClassicDesktopStyleApplicationLifetime NativeLifetime()
     {

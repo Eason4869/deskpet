@@ -98,3 +98,25 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File Build.ps1 -Target ImageW
 - macOS 真机预览、保存对话框与系统减少动画探测未验收。应用内动效开关可用；macOS 原生减少动画探测尚未实现。
 - Windows 手工长期使用与系统级后台 CPU/功耗测量未执行。
 - 本地安装器因缺少编译器未构建；最终远端 CI、安装器、不可变标签和预览发布不得由本地结果代替。
+
+
+## 最终整分支审查修复补充（2026-10-22）
+
+本次仅处理最终审查的三项 Important：恢复出的成功对话任务从 `Pending` 转为追加的 `AwaitingSync` 状态，显示等待同步并提供原资产修复；当前进程的 `Pending` 仍由原写入者负责，独立重试保持 `Detached`。两端任务中心根据资产索引更新弱结果可用性，永久删除后保留任务成功状态、显示“图片已删除”并移除查看操作；资产事件随视图生命周期退订。服务／模型选项消失导致有效筛选改变时，清空选择并发起新的修订查询，不渲染旧筛选结果。
+
+新增的四组原生用例通过 `--final-review=recovery|purge|service|model` 分别捕获行为 RED，并已进入两端既有默认任务中心测试入口。覆盖 Generating／Saving／Succeeded 三个恢复窗口、原历史已附图但交付日志未提交、重复同步只附图一次且执行器调用为零、活动 Pending／Detached 不出现修复、可安全永久删除的成功弱结果、可见更新／隐藏退订／重新打开／任务恢复，以及服务和模型最后一项删除后的 All 数量、页面、清空选择和过期修订。
+
+本次定向 GREEN（不重跑完整 156 目标、Portable 2931 或 Avalonia 2241）：
+
+| 检查 | 本次结果 | 日志 |
+| --- | --- | --- |
+| WPF 默认任务中心（含已有退出与修复归属、新增四组） | 104 passed | `work/final-fix-wpf-task-ui-final.log` |
+| WPF 任务存储／调度／中心生命周期／图库管理／图片集成 | 25／43／47／132／53 passed | `work/final-fix-wpf-<目标名>.log` |
+| WPF 图像／图库原生 UI | 94 passed | `work/final-fix-wpf-ImageGenerationUiTests.log` |
+| .NET 10 上述五组共享检查 | 25／43／47／132／53 passed | `work/final-fix-portable--image-*.log` |
+| Avalonia 默认任务中心（含新增四组） | 52 assertions | `work/final-fix-ava-task-ui-final.log` |
+| Avalonia 图像／图库原生 UI | 153 assertions | `work/final-fix-ava-gallery-ui-final.log` |
+
+图库原生 UI 原有五秒等待在修复代码和原始 HEAD 上均失败，诊断均为正确 40 张但只有 28 张解码、任务中心未订阅。保留原失败及同一二进制重跑日志 `work/final-fix-ava-gallery-ui-green.log`、`work/final-fix-ava-gallery-ui-rerun.log`，对照日志为 `work/final-fix-ava-gallery-baseline.log`。临时 20 秒诊断测得原始 HEAD 完整解码耗时 7045 ms，修复代码 7083 ms，两者均通过原有 153 项断言；日志 `work/final-fix-ava-readiness-baseline.log`、`work/final-fix-ava-readiness-fix.log`。据此仅给四十张 2048×2048 测试图的两处等待显式 15 秒预算，其余等待仍默认五秒；图片数量、非空解码、控件／位图复用和焦点断言均保留。这是有界测试等待预算调整，不是产品性能保证；失败最多晚十秒报告。未保留临时诊断代码。
+
+全部 fixtures 隔离，未读取受保护的真实服务配置；真实生图累计仍为 5/5，本次没有增加真实 HTTP。版本与 README 三项未完成路线图保持原样。最终干净提交的三项二进制身份及九项打包清单由 `work/dev3-clean-latest.json` 指向的新报告记录；旧提交报告仍是历史证据。本次没有执行本地 ISCC、macOS 真机验收、远端 CI、推送、标签或发布，原有未执行项继续适用。

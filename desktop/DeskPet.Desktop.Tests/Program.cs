@@ -34,6 +34,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(a=>a.StartsWith("--final-review="))){Console.WriteLine("PASS final review: "+ImageTaskCenterUiChecks.RunFinalReview(Path.Combine(directory,"final-review"),args.Single(a=>a.StartsWith("--final-review=")).Substring(15)));return;}
     if (args.Contains("--image-writer-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunWriterGateQuit(Path.Combine(directory,"image-exit-writer")) + " writer gate native lifetime assertions"); return; }
     if (args.Contains("--image-held-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunHeldQuit(Path.Combine(directory,"image-exit-held")) + " held native lifetime assertions"); return; }
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }

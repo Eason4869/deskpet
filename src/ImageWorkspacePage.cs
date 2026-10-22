@@ -77,6 +77,9 @@ namespace Dafeiyu
             {
                 if(disposed||revision!=galleryRevision)return;if(task.IsFaulted){galleryCount.Text="图库读取失败，请检查存储。";return;}
                 filterUpdating=true;UpdateProviderOptions(galleryProvider,task.Result.Item2,pet.Settings.ImageProviders);UpdateOptions(galleryModel,"全部模型",task.Result.Item3);filterUpdating=false;
+                string effectiveProvider=galleryProvider.SelectedIndex>0?((ImageGalleryProviderChoice)galleryProvider.SelectedItem).Id:null;string effectiveModel=galleryModel.SelectedIndex>0?galleryModel.SelectedItem as string:null;
+                // Reconciliation can remove the selected option. Never render its obsolete page.
+                if(request.ProviderId!=effectiveProvider||request.Model!=effectiveModel){FilterChanged();return;}
                 foreach(ImageGalleryTile tile in gallery.Children)tile.Dispose();gallery.Children.Clear();galleryStatus.Children.Clear();var result=task.Result.Item1;loadedGallery=result.Items;galleryTotal=result.Total;galleryCount.Text="共 "+result.Total+" 张 · 已加载 "+result.Items.Count+" 张 · 已选 "+selection.Count+" 张";
                 multiSelect.Content=selecting?"完成多选":"多选";galleryActions.Visibility=selecting?Visibility.Visible:Visibility.Collapsed;clearTrash.Visibility=trashOnly.IsChecked==true?Visibility.Visible:Visibility.Collapsed;trashAction.Visibility=trashOnly.IsChecked==true?Visibility.Collapsed:Visibility.Visible;restoreAction.Visibility=trashOnly.IsChecked==true?Visibility.Visible:Visibility.Collapsed;purgeAction.Visibility=trashOnly.IsChecked==true?Visibility.Visible:Visibility.Collapsed;
                 if(result.Total==0)galleryStatus.Children.Add(Ui.Text("图库中还没有匹配图片。",12,Ui.Muted));foreach(var item in result.Items)gallery.Children.Add(new ImageGalleryTile(pet,item,gallery.Mode,Prepare,ToggleSelected,ToggleFavorite,selection.Contains(item.Id),selecting));

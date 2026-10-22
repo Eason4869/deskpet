@@ -221,6 +221,9 @@ internal sealed class ImageWorkspacePage : TabControl, IDisposable
             if (disposed || revision != galleryRevision) return;
             if (task.IsFaulted) { warning.Text = "图库读取失败，请检查存储。"; return; }
             updatingFilters = true; UpdateProviderOptions(providerFilter, task.Result.Providers, owner.Settings.ImageProviders); UpdateOptions(modelFilter, "全部模型", task.Result.Models); updatingFilters = false;
+            var effectiveProvider=providerFilter.SelectedIndex>0?(providerFilter.SelectedItem as ImageGalleryProviderChoice)?.Id:null;var effectiveModel=modelFilter.SelectedIndex>0?modelFilter.SelectedItem as string:null;
+            // Reconciliation can remove the selected option. Never render its obsolete page.
+            if(request.ProviderId!=effectiveProvider||request.Model!=effectiveModel){FilterChanged();return;}
             foreach (var card in galleryCards) card.Dispose(); galleryCards.Clear(); gallery.Children.Clear(); warning.Text = owner.ImageStore.Warning;
             var result = task.Result.Page; loadedGallery = result.Items; galleryTotal=result.Total; galleryCount.Text = "共 " + result.Total + " 张 · 已加载 " + result.Items.Count + " 张 · 已选 " + gallerySelection.Count + " 张";
             multiSelect.Content = selecting ? "完成多选" : "多选"; galleryActions.IsVisible = selecting; clearTrash.IsVisible = trashOnly.IsChecked == true; trashAction.IsVisible = trashOnly.IsChecked != true; restoreAction.IsVisible = trashOnly.IsChecked == true; purgeAction.IsVisible = trashOnly.IsChecked == true;

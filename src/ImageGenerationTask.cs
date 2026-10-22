@@ -8,7 +8,7 @@ namespace Dafeiyu
 {
     public enum ImageGenerationSource { Unknown, Workspace, Conversation, SettingsTest }
     public enum ImageGenerationTaskState { Queued, Generating, Downloading, Saving, Succeeded, Failed, Canceled, Interrupted }
-    public enum ImageTaskDeliveryState { NotRequired, Pending, Delivered, Failed, Detached }
+    public enum ImageTaskDeliveryState { NotRequired, Pending, Delivered, Failed, Detached, AwaitingSync }
     public enum ImageGenerationPhase { Generating, Downloading, Saving }
 
     [DataContract]

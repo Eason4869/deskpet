@@ -12,7 +12,7 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     readonly StackPanel rows=Ui.Column();readonly TextBlock summary=Ui.Text(""),notice=Ui.Text("");readonly Button more;readonly Button batchCancel;readonly Dictionary<string,Row> controls=new();readonly HashSet<string> selected=new();readonly DispatcherTimer clock=new(){Interval=TimeSpan.FromSeconds(1)};
     readonly List<Visual> ancestors=new();
     int limit=40;bool attached,subscribed,disposed;string? selectedId;
-    sealed class Row { internal required Border Root;internal required CheckBox Select;internal required TextBlock Stage,Elapsed,Result;internal required WrapPanel Actions;internal ImageGenerationTaskSnapshot? Task; }
+    sealed class Row { internal required Border Root;internal required CheckBox Select;internal required TextBlock Stage,Elapsed,Result;internal required WrapPanel Actions;internal bool ResultAvailable;internal ImageGenerationTaskSnapshot? Task; }
     internal bool ClockRunning=>clock.IsEnabled;
     internal ImageTaskCenterPage(DesktopController controller,Window window)
     {
@@ -25,8 +25,9 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     }
     void HostChanged(object? sender,AvaloniaPropertyChangedEventArgs e){if(e.Property==Window.WindowStateProperty||e.Property==IsVisibleProperty)VisibilityChanged();}
     void VisibilityChanged(){if(IsEffectivelyVisible&&TopLevel.GetTopLevel(this) is Window {IsVisible:true,WindowState:not WindowState.Minimized})Subscribe();else Unsubscribe();}
-    void Subscribe(){if(disposed||!attached||!IsEffectivelyVisible)return;if(!subscribed){tasks.Changed+=Changed;subscribed=true;}Refresh();}
-    void Unsubscribe(){if(subscribed){tasks.Changed-=Changed;subscribed=false;}clock.Stop();}
+    void Subscribe(){if(disposed||!attached||!IsEffectivelyVisible)return;if(!subscribed){tasks.Changed+=Changed;owner.ImageStore.Changed+=AssetsChanged;subscribed=true;}Refresh();}
+    void Unsubscribe(){if(subscribed){tasks.Changed-=Changed;owner.ImageStore.Changed-=AssetsChanged;subscribed=false;}clock.Stop();}
+    void AssetsChanged()=>Dispatcher.UIThread.Post(()=>{if(!disposed&&subscribed)Refresh();});
     void Changed(ImageGenerationTaskSnapshot task)=>Dispatcher.UIThread.Post(()=>{if(!disposed&&subscribed)Refresh(task);});
     void Refresh(ImageGenerationTaskSnapshot? changed=null)
     {
@@ -45,9 +46,9 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     }
     void Update(Row row,ImageGenerationTaskSnapshot task)
     {
-        bool actionsChanged=row.Task==null||row.Task.State!=task.State||row.Task.DeliveryState!=task.DeliveryState;row.Task=task;row.Select.IsChecked=selected.Contains(task.Id);row.Select.IsEnabled=!task.IsTerminal;row.Stage.Text=ImageGenerationMotion.Label(task);row.Elapsed.Text=ImageTaskCenterState.Elapsed(task);row.Result.Text=ImageTaskCenterState.ResultLabel(task);row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);if(!actionsChanged)return;row.Actions.Children.Clear();
+        bool available=ImageTaskCenterState.HasResult(task,owner.ImageStore);bool actionsChanged=row.Task==null||row.Task.State!=task.State||row.Task.DeliveryState!=task.DeliveryState||row.ResultAvailable!=available||row.Task.ResultImageId!=task.ResultImageId;row.ResultAvailable=available;row.Task=task;row.Select.IsChecked=selected.Contains(task.Id);row.Select.IsEnabled=!task.IsTerminal;row.Stage.Text=ImageGenerationMotion.Label(task);row.Elapsed.Text=ImageTaskCenterState.Elapsed(task);row.Result.Text=ImageTaskCenterState.ResultLabel(task,available);row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);if(!actionsChanged)return;row.Actions.Children.Clear();
         if(!task.IsTerminal)Add(row,"取消此任务","CancelImageTask",async()=>{await tasks.CancelAsync(task.Id);});else if(task.State!=ImageGenerationTaskState.Succeeded)Add(row,"重试…","RetryImageTask",()=>Retry(task));
-        if(task.State==ImageGenerationTaskState.Succeeded){Add(row,"查看结果","ViewImageTaskResult",()=>{var image=owner.ImageStore.Get(task.ResultImageId)??throw new InvalidOperationException("图片结果不可用。");var card=new GeneratedImageCard(owner,host,image);var dialog=Ui.Window("图片结果",new ScrollViewer{Content=card},600,650);dialog.Closed+=(_,_)=>card.Dispose();dialog.Show(host);return Task.CompletedTask;});if(task.Source==ImageGenerationSource.Conversation&&task.DeliveryState==ImageTaskDeliveryState.Failed)Add(row,"重试同步","RepairImageDelivery",()=>owner.RepairImageDeliveryAsync(task.Id));}
+        if(available){Add(row,"查看结果","ViewImageTaskResult",()=>{var image=owner.ImageStore.Get(task.ResultImageId)??throw new InvalidOperationException("图片结果不可用。");var card=new GeneratedImageCard(owner,host,image);var dialog=Ui.Window("图片结果",new ScrollViewer{Content=card},600,650);dialog.Closed+=(_,_)=>card.Dispose();dialog.Show(host);return Task.CompletedTask;});if(ImageTaskCenterState.CanRepairDelivery(task))Add(row,"重试同步","RepairImageDelivery",()=>owner.RepairImageDeliveryAsync(task.Id));}
         row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);
     }
     void Add(Row row,string label,string name,Func<Task> action){var button=Ui.AsyncButton(label,async()=>{try{await action();}catch(Exception e){notice.Text=e is InvalidOperationException or IOException?e.Message:"任务操作失败，请检查配置和存储。";}},owner.Error);button.Name=name;row.Actions.Children.Add(button);}

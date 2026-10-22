@@ -167,7 +167,10 @@ namespace Dafeiyu
         public Task RestoreAsync(CancellationToken token)
         {
             lock(gate){if(restored)return Task.FromResult(0);token.ThrowIfCancellationRequested();var records=log.Load();Warning=log.Warning;recoveryRequired=!String.IsNullOrEmpty(Warning);
-                foreach(var record in records){var j=new Job{Record=record};j.AssetsReady.TrySetResult(true);var image=assets.FindByJobId(record.Id);if(image!=null){record.ResultImageId=image.Id;if(record.State!=ImageGenerationTaskState.Succeeded)Terminal(j,ImageGenerationTaskState.Succeeded,"");j.Completion.TrySetResult(image);}else{if(!record.IsTerminal)Terminal(j,ImageGenerationTaskState.Interrupted,"上次图片任务已中断，未自动重新请求。");j.Completion.TrySetCanceled();}jobs.Add(j);Notify(j);}
+                foreach(var record in records){var j=new Job{Record=record};j.AssetsReady.TrySetResult(true);var image=assets.FindByJobId(record.Id);if(image!=null){record.ResultImageId=image.Id;if(record.State!=ImageGenerationTaskState.Succeeded)Terminal(j,ImageGenerationTaskState.Succeeded,"");
+                    // Only restoration can establish that the original delivery writer is gone.
+                    if(record.Source==ImageGenerationSource.Conversation&&record.DeliveryState==ImageTaskDeliveryState.Pending){record.DeliveryState=ImageTaskDeliveryState.AwaitingSync;record.UpdatedUtc=DateTime.UtcNow;}
+                    j.Completion.TrySetResult(image);}else{if(!record.IsTerminal)Terminal(j,ImageGenerationTaskState.Interrupted,"上次图片任务已中断，未自动重新请求。");j.Completion.TrySetCanceled();}jobs.Add(j);Notify(j);}
                 restored=true;if(String.IsNullOrEmpty(Warning))TrySave();
             }return Task.FromResult(0);
         }

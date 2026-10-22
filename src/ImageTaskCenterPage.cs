@@ -11,7 +11,7 @@ namespace Dafeiyu
     internal sealed class ImageTaskCenterPage:Grid,IDisposable
     {
         readonly PetWindow pet;readonly ImageGenerationTaskManager tasks;readonly ComboBox filter;readonly StackPanel rows=new StackPanel();readonly TextBlock summary,notice;readonly Button more;Button batchCancel;readonly Dictionary<string,Row> controls=new Dictionary<string,Row>();readonly HashSet<string> selected=new HashSet<string>();readonly DispatcherTimer clock;int limit=40;bool subscribed,disposed;Window host;string selectedId;
-        sealed class Row{internal Border Root;internal CheckBox select;internal TextBlock stage,elapsed,result;internal WrapPanel actions;internal ImageGenerationTaskSnapshot task;}
+        sealed class Row{internal Border Root;internal CheckBox select;internal TextBlock stage,elapsed,result;internal WrapPanel actions;internal bool resultAvailable;internal ImageGenerationTaskSnapshot task;}
         internal bool ClockRunning{get{return clock.IsEnabled;}}
         internal ImageTaskCenterPage(PetWindow owner)
         {
@@ -21,8 +21,9 @@ namespace Dafeiyu
             filter.SelectionChanged+=delegate{limit=40;Refresh();};clock=new DispatcherTimer{Interval=TimeSpan.FromSeconds(1)};clock.Tick+=delegate{foreach(var row in controls.Values)if(!row.task.IsTerminal)row.elapsed.Text=ImageTaskCenterState.Elapsed(row.task);};Loaded+=delegate{host=Window.GetWindow(this);if(host!=null)host.StateChanged+=HostChanged;Subscribe();};Unloaded+=delegate{if(host!=null)host.StateChanged-=HostChanged;host=null;Unsubscribe();};IsVisibleChanged+=delegate{if(IsVisible)Subscribe();else Unsubscribe();};
         }
         void HostChanged(object sender,EventArgs args){Refresh();}
-        void Subscribe(){if(disposed||!IsVisible)return;if(!subscribed){tasks.Changed+=Changed;subscribed=true;}Refresh();}
-        void Unsubscribe(){if(subscribed){tasks.Changed-=Changed;subscribed=false;}clock.Stop();}
+        void Subscribe(){if(disposed||!IsVisible)return;if(!subscribed){tasks.Changed+=Changed;pet.ImageStore.Changed+=AssetsChanged;subscribed=true;}Refresh();}
+        void Unsubscribe(){if(subscribed){tasks.Changed-=Changed;pet.ImageStore.Changed-=AssetsChanged;subscribed=false;}clock.Stop();}
+        void AssetsChanged(){if(disposed||!subscribed||Dispatcher.HasShutdownStarted)return;Dispatcher.BeginInvoke(new Action(delegate{if(!disposed&&subscribed)Refresh();}));}
         void Changed(ImageGenerationTaskSnapshot task){if(disposed||!subscribed||Dispatcher.HasShutdownStarted)return;Dispatcher.BeginInvoke(new Action(delegate{if(!disposed&&subscribed)Refresh(task);}));}
         void Refresh(ImageGenerationTaskSnapshot changed=null)
         {
@@ -37,10 +38,10 @@ namespace Dafeiyu
         }
         void Update(Row row,ImageGenerationTaskSnapshot task)
         {
-            bool actionsChanged=row.task==null||row.task.State!=task.State||row.task.DeliveryState!=task.DeliveryState;row.task=task;row.select.IsChecked=selected.Contains(task.Id);row.select.IsEnabled=!task.IsTerminal;row.stage.Text=ImageGenerationMotion.Label(task);row.elapsed.Text=ImageTaskCenterState.Elapsed(task);row.result.Text=ImageTaskCenterState.ResultLabel(task);row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);if(!actionsChanged)return;row.actions.Children.Clear();
+            bool available=ImageTaskCenterState.HasResult(task,pet.ImageStore);bool actionsChanged=row.task==null||row.task.State!=task.State||row.task.DeliveryState!=task.DeliveryState||row.resultAvailable!=available||row.task.ResultImageId!=task.ResultImageId;row.resultAvailable=available;row.task=task;row.select.IsChecked=selected.Contains(task.Id);row.select.IsEnabled=!task.IsTerminal;row.stage.Text=ImageGenerationMotion.Label(task);row.elapsed.Text=ImageTaskCenterState.Elapsed(task);row.result.Text=ImageTaskCenterState.ResultLabel(task,available);row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);if(!actionsChanged)return;row.actions.Children.Clear();
             if(!task.IsTerminal)Add(row,"取消此任务","CancelImageTask",async()=>{await tasks.CancelAsync(task.Id);});
             else if(task.State!=ImageGenerationTaskState.Succeeded)Add(row,"重试…","RetryImageTask",()=>Retry(task));
-            if(task.State==ImageGenerationTaskState.Succeeded){Add(row,"查看结果","ViewImageTaskResult",delegate{var image=pet.ImageStore.Get(task.ResultImageId);if(image==null)throw new InvalidOperationException("图片结果不可用。");var card=new GeneratedImageCard(pet,Window.GetWindow(this),image);var window=new Window{Title="图片结果",Content=Ui.Scroll(card),Width=600,Height=650,Owner=Window.GetWindow(this),Background=ThemeManager.Surface};window.Show();return Task.FromResult(0);});if(task.Source==ImageGenerationSource.Conversation&&task.DeliveryState==ImageTaskDeliveryState.Failed)Add(row,"重试同步","RepairImageDelivery",()=>pet.RepairImageDeliveryAsync(task.Id));}
+            if(available){Add(row,"查看结果","ViewImageTaskResult",delegate{var image=pet.ImageStore.Get(task.ResultImageId);if(image==null)throw new InvalidOperationException("图片结果不可用。");var card=new GeneratedImageCard(pet,Window.GetWindow(this),image);var window=new Window{Title="图片结果",Content=Ui.Scroll(card),Width=600,Height=650,Owner=Window.GetWindow(this),Background=ThemeManager.Surface};window.Show();return Task.FromResult(0);});if(ImageTaskCenterState.CanRepairDelivery(task))Add(row,"重试同步","RepairImageDelivery",()=>pet.RepairImageDeliveryAsync(task.Id));}
             row.Root.BorderThickness=new Thickness(task.Id==selectedId?2:1);
         }
         void Add(Row row,string label,string name,Func<Task> action){var button=Ui.Button(label);button.Name=name;button.Click+=async delegate{button.IsEnabled=false;try{await action();}catch(Exception e){notice.Text=e is InvalidOperationException||e is System.IO.IOException?e.Message:"任务操作失败，请检查配置和存储。";}finally{button.IsEnabled=true;}};row.actions.Children.Add(button);}
