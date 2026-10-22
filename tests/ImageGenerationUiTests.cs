@@ -61,7 +61,7 @@ namespace Dafeiyu.Tests
             for(int i=0;i<40;i++)pet.ImageStore.Save(bytes,new GeneratedImage{Prompt="performance fixture "+i,Model="large-image"},true);
             var search=(TextBox)typeof(ImageWorkspacePage).GetField("search",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(page);search.Text="performance fixture";Click(Button(chat,"ImageGalleryTab"));
             var clock=System.Diagnostics.Stopwatch.StartNew();while(clock.ElapsedMilliseconds<15000&&(All<ImageGalleryTile>(page).Count()!=40||All<ImageGalleryTile>(page).Any(t=>All<Image>(t).Single().Source==null)))await Task.Delay(20);
-            var tiles=All<ImageGalleryTile>(page).ToArray();Check(tiles.Length==40,"forty large-image gallery thumbnails settle");
+            var tiles=All<ImageGalleryTile>(page).ToArray();Check(tiles.Length==40&&tiles.All(t=>All<Image>(t).Single().Source!=null),"forty large-image gallery thumbnails settle");
             if(Button(page,"GalleryMultiSelect").Content as string!="完成多选")Click(Button(page,"GalleryMultiSelect"));await Task.Delay(150);
             tiles=All<ImageGalleryTile>(page).ToArray();var thumbs=tiles.Select(t=>All<Image>(t).Single().Source).ToArray();var pick=All<Button>(tiles[0]).Single(b=>b.Name=="GalleryTileSelect");chat.Activate();Check(pick.Focus(),"gallery overlay accepts keyboard focus");
             clock.Restart();Click(pick);await Task.Delay(200);

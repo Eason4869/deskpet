@@ -12,11 +12,11 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 **当前正式版本：[0.10.0](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
 
-**本地开发候选：0.10.2-dev.3**。新增共享生图队列、任务中心、点阵阶段动效、对话多图切换，以及图库收藏、筛选、多选、原图导出和受引用保护的回收站。当前本地验收与平台限制见 [dev.3 验收记录](docs/image-workflow-dev3-validation.md)；远端 CI、安装器和预览发布状态由发布流程确认。
+**本版开发预览：0.10.2-dev.3**。新增共享生图队列、任务中心、点阵阶段动效、对话多图切换，以及图库收藏、筛选、多选、原图导出和受引用保护的回收站。发行状态与下载以 [对应 Release](https://github.com/Eason4869/deskpet/releases/tag/v0.10.2-dev.3) 为准；本地验收与平台限制见 [dev.3 验收记录](docs/image-workflow-dev3-validation.md)。
 
-**最新开发快照：[0.10.2-dev.2](https://github.com/Eason4869/deskpet/tree/v0.10.2-dev.2)**。新增图像生成工作区、参考图、两种排列的图库及对话图片卡片；内置 OpenAI Images、Gemini、豆包、MiniMax、千问和 Grok 服务预设，并增加询问用户、检查本地图片和 Git 只读工具。保留技能仓库发现、会话草稿及局域网中转支持。本快照仅提供 dev 分支与源码标签，不发布 GitHub Release，也不通过应用更新通道分发。
+**历史源码快照：[0.10.2-dev.2](https://github.com/Eason4869/deskpet/tree/v0.10.2-dev.2)**。新增图像生成工作区、参考图、两种排列的图库及对话图片卡片；内置 OpenAI Images、Gemini、豆包、MiniMax、千问和 Grok 服务预设，并增加询问用户、检查本地图片和 Git 只读工具。保留技能仓库发现、会话草稿及局域网中转支持。本快照仅提供 dev 分支与源码标签，不发布 GitHub Release，也不通过应用更新通道分发。
 
-**当前开发预览版：[0.10.1-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.10.1-dev.2)**。统一设置页与深色界面，支持对话链接右键及侧边打开，将操作确认嵌入对话，并修复 Agent 错误重复入队；归档管理、快捷键编辑和用量矩阵同步完善。提供 Windows 安装／便携包、macOS 双架构预览及完整源码；在“关于”页选择预览版通道后可检查更新，正式版仍为 0.10.0。
+**历史开发预览版：[0.10.1-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.10.1-dev.2)**。统一设置页与深色界面，支持对话链接右键及侧边打开，将操作确认嵌入对话，并修复 Agent 错误重复入队；归档管理、快捷键编辑和用量矩阵同步完善。提供 Windows 安装／便携包、macOS 双架构预览及完整源码；在“关于”页选择预览版通道后可检查更新，正式版仍为 0.10.0。
 
 0.10.0 新增正式／预览更新通道、防降级和立即更新重启，精简 Windows 安装包与便携 ZIP，并改善 Live 声纹动效。五位内置伙伴及完整 ZIP 角色包继续可用，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
 
