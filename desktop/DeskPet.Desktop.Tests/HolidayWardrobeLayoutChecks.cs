@@ -34,6 +34,8 @@ internal static class HolidayWardrobeLayoutChecks
     {
         int checks = 0;
         void Check(bool value, string name) { if (!value) throw new Exception("FAIL wardrobe layout: " + name); checks++; }
+        Check(!RendersPreview(new Border { Background = Avalonia.Media.Brushes.Red }), "thumbnail assertion rejects swapped red/blue channels");
+        Check(!RendersPreview(new Border { Background = Avalonia.Media.Brushes.Transparent }), "thumbnail assertion rejects an empty render");
         using var fixture = new HolidayReviewChecks.Fixture(directory, "e-bao", null, false, "蝙蝠小披风");
         fixture.EnterHoliday(); var owner = fixture.Owner;
         var window = new SettingsWindow(owner, new SpriteAssets(name => File.OpenRead(Path.Combine(fixture.Root, name.Substring("Dafeiyu.Holidays.".Length)))));
@@ -111,9 +113,15 @@ internal static class HolidayWardrobeLayoutChecks
         thumbnail.Measure(new Size(32, 32)); thumbnail.Arrange(new Rect(0, 0, 32, 32));
         using var target = new RenderTargetBitmap(new PixelSize(32, 32));
         using (var context = target.CreateDrawingContext()) thumbnail.Render(context);
-        var pixels = new byte[32 * 32 * 4]; var pin = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
-        try { target.CopyPixels(new PixelRect(0, 0, 32, 32), pin.AddrOfPinnedObject(), pixels.Length, 32 * 4); }
-        finally { pin.Free(); }
+        // Render targets use Skia's platform format (BGRA on Windows, RGBA on
+        // macOS). Copy into a declared format before checking the blue fixture.
+        using var normalized = new WriteableBitmap(new PixelSize(32, 32), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+        var pixels = new byte[32 * 32 * 4];
+        using (var frame = normalized.Lock())
+        {
+            target.CopyPixels(frame);
+            for (int y = 0; y < 32; y++) System.Runtime.InteropServices.Marshal.Copy(frame.Address + y * frame.RowBytes, pixels, y * 32 * 4, 32 * 4);
+        }
         for (int i = 0; i < pixels.Length; i += 4) if (pixels[i] > 100 && pixels[i + 1] < 50 && pixels[i + 2] < 50 && pixels[i + 3] > 16) return true;
         return false;
     }
