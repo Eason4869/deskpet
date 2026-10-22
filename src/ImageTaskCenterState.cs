@@ -47,11 +47,16 @@ namespace Dafeiyu
             if(task==null||task.Source!=ImageGenerationSource.Conversation||task.State!=ImageGenerationTaskState.Succeeded||task.DeliveryState==ImageTaskDeliveryState.Detached)
                 throw new InvalidOperationException("没有可同步的原会话结果。");
             var session=sessions.FirstOrDefault(s=>String.Equals(s.ImageConversationId,task.Origin.ConversationId,StringComparison.Ordinal));
-            if(session==null)
+            if(workspaceOwners!=null&&catalog!=null&&(ProjectCatalogStore.AllConversations(catalog).Any(c=>c.Id==task.Origin.ConversationId)||workspaceOwners.AllOwnedWorkspaces.Any(w=>w.Id==task.Origin.ConversationId)))
+            {
+                if(session==null&&!persist)throw new InvalidOperationException("请先开启聊天记录保存，再同步未打开的原会话。");
+                session=await workspaceOwners.GetExistingImageOwnerAsync(catalog,task.Origin).ConfigureAwait(false);
+            }
+            else if(session==null)
             {
                 if(catalog==null||workspaceOwners==null)throw new InvalidOperationException("原会话已不可用，请在图库查看图片。");
                 if(!persist)throw new InvalidOperationException("请先开启聊天记录保存，再同步未打开的原会话。");
-                session=workspaceOwners.GetExistingImageOwner(catalog,task.Origin);
+                session=await workspaceOwners.GetExistingImageOwnerAsync(catalog,task.Origin).ConfigureAwait(false);
             }
             token.ThrowIfCancellationRequested();
             await session.RepairImageDeliveryAsync(id,token).ConfigureAwait(false);

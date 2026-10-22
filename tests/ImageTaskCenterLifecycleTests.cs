@@ -15,6 +15,7 @@ namespace Dafeiyu.Tests
         {
             await ConcurrentRepairsAndOpening();
             await ExistingHistoryConflict();
+            await CloseFailureRetainsOwner();
             var trackerType=typeof(ImageGenerationTaskManager).Assembly.GetType("Dafeiyu.ImageTaskCompletionTracker");Check(trackerType!=null,"completion notification tracker available");
             var old=new ImageGenerationTaskRecord{Id="restored",State=ImageGenerationTaskState.Succeeded};var tracker=Activator.CreateInstance(trackerType,new object[]{new[]{new ImageGenerationTaskSnapshot(old)}});var observe=trackerType.GetMethod("Observe");
             Func<ImageGenerationTaskRecord,bool> publish=record=>(bool)observe.Invoke(tracker,new object[]{new ImageGenerationTaskSnapshot(record)});
@@ -45,14 +46,18 @@ namespace Dafeiyu.Tests
                 var concurrent=await RepairRace(protector,false);
                 var opened=await RepairRace(protector,true);
                 var legacy=await RepairRace(protector,true,true);
+                var closed=await RepairRace(protector,true,false,true);
+                var deleted=await RepairRace(protector,true,false,true,true);
                 Console.WriteLine("Held repair diagnostics: concurrent images="+concurrent.Item1+", opened images="+opened.Item1+", opened new message="+opened.Item2);
                 Check(concurrent.Item1==2,"simultaneous same-owner repairs preserve both delivered images");
                 Check(opened.Item1==2&&opened.Item2,"opening owner during held repair commit preserves both images and new message");
                 Check(legacy.Item1==2&&legacy.Item2,"legacy existing owner migrates once and shares repair/open history");
+                Check(closed.Item1==2&&closed.Item2,"closing owner hands off both attachments and new user message truthfully");
+                Check(deleted.Item1==1&&deleted.Item2,"deleted owner is revalidated after close handoff without new writer or false delivery");
             }
             finally{protector.Release.Set();SecretProtection.Configure(previous);}
         }
-        static async Task<Tuple<int,bool>> RepairRace(HeldHistoryCommit protector,bool openWhileHeld,bool legacy=false)
+        static async Task<Tuple<int,bool>> RepairRace(HeldHistoryCommit protector,bool openWhileHeld,bool legacy=false,bool closeWhileHeld=false,bool deleteWhileHeld=false)
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","task8-repair-race-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             var usage=new ImageAssetUsageRegistry();using(var assets=new GeneratedImageStore(root,usage))
@@ -67,15 +72,39 @@ namespace Dafeiyu.Tests
                     protector.Reset();
                     var first=Task.Run(()=>RepairWithOwner(tasks,assets,usage,owners,catalog,root,handles[0].Id));
                     if(await Task.WhenAny(protector.Entered.Task,first,Task.Delay(5000))!=protector.Entered.Task){protector.Release.Set();await first;throw new Exception("history commit was not held");}
+                    var closing=closeWhileHeld?owners.CloseWorkspaceAsync(definition.Id):Task.FromResult(0);
                     var second=Task.Run(()=>RepairWithOwner(tasks,assets,usage,owners,catalog,root,handles[1].Id));
                     await Task.WhenAny(second,Task.Delay(150));
                     ConversationWorkspace opened=null;
                     try
                     {
-                        if(openWhileHeld){opened=owners.CreateWorkspace(project,definition);opened.Session.AddLiveTurn("persona","new message while repair held","new reply");}
+                        if(closeWhileHeld)
+                        {
+                            var method=typeof(ConversationWorkspaceManager).GetMethod("CreateWorkspaceAsync");
+                            var reopening=deleteWhileHeld?owners.OpenCatalogWorkspaceAsync(catalog,definition.Id):method==null?Task.FromResult(owners.CreateWorkspace(project,definition)):(Task<ConversationWorkspace>)method.Invoke(owners,new object[]{project,definition,null});
+                            await Task.Delay(150);
+                            Check(!closing.IsCompleted&&!reopening.IsCompleted&&!second.IsCompleted,"closing canonical owner asynchronously holds reopen and second repair until commit drains");
+                            bool busy=false;try{owners.CreateWorkspace(project,definition);}catch(InvalidOperationException){busy=true;}
+                            Check(busy&&owners.OpenCount==0&&owners.AllOwnedWorkspaces.Count==1&&ReferenceEquals(closing,owners.CloseWorkspaceAsync(definition.Id)),"closing writer stays owned while sync open reports retryable busy and repeated close coalesces");
+                            if(deleteWhileHeld)catalog.UnassignedConversations.Remove(definition);
+                            protector.Release.Set();
+                            if(deleteWhileHeld)
+                            {
+                                bool openDenied=false,repairDenied=false;
+                                try{await reopening;}catch(InvalidOperationException){openDenied=true;}
+                                try{await second;}catch(InvalidOperationException){repairDenied=true;}
+                                await Task.WhenAll(first,closing);
+                                var saved=new HistoryStore(historyPath).Load("persona");
+                                Check(openDenied&&repairDenied&&owners.AllOwnedWorkspaces.Count==0&&executor.Calls==2&&tasks.Get(handles[0].Id).DeliveryState==ImageTaskDeliveryState.Delivered&&tasks.Get(handles[1].Id).DeliveryState==ImageTaskDeliveryState.Failed,"catalog deletion during close rejects waiting open and repair without new owner or HTTP");
+                                await tasks.StopAsync(CancellationToken.None);return Tuple.Create(saved.Single(m=>m.Id==reply.Id).GeneratedImages.Count,true);
+                            }
+                            opened=await reopening;
+                        }
+                        else if(openWhileHeld)opened=owners.CreateWorkspace(project,definition);
+                        if(opened!=null)opened.Session.AddLiveTurn("persona","new message while repair held","new reply");
                     }
                     finally{protector.Release.Set();}
-                    await Task.WhenAll(first,second);if(opened!=null)await opened.Session.FlushHistoryAsync();await owners.SaveAllAsync();
+                    await Task.WhenAll(first,second,closing);if(opened!=null)await opened.Session.FlushHistoryAsync();await owners.SaveAllAsync();
                     var finalHistory=Path.Combine(ConversationWorkspace.ResolveDataDirectory(root,definition.Id),"history");var messages=new HistoryStore(finalHistory).Load("persona");int images=messages.Single(m=>m.Id==reply.Id).GeneratedImages.Count;
                     Check(tasks.Get(handles[0].Id).DeliveryState==ImageTaskDeliveryState.Delivered&&tasks.Get(handles[1].Id).DeliveryState==ImageTaskDeliveryState.Delivered,"race fixture records both repaired tasks delivered");
                     Check(executor.Calls==2&&catalog.UnassignedConversations.Count==1,"repair/open race creates no request or catalog chat");
@@ -83,6 +112,24 @@ namespace Dafeiyu.Tests
                     await tasks.StopAsync(CancellationToken.None);return Tuple.Create(images,messages.Any(m=>m.Content=="new message while repair held"));
                 }
             }
+        }
+        static async Task CloseFailureRetainsOwner()
+        {
+            string root=Path.Combine(Directory.GetCurrentDirectory(),"work","task8-close-failure-"+Guid.NewGuid().ToString("N"));var settings=new PetSettings();var project=new ProjectDefinition{Id="project",Name="existing"};var definition=new ConversationDefinition{Id="owner",Name="existing",PetId="persona",Mode="chat"};
+            using(var owners=new ConversationWorkspaceManager(root,"persona",()=>new NoNetworkApi(),()=>new NoopSpeech(),()=>null,()=>settings,()=>true))
+            {
+                var workspace=owners.CreateWorkspace(project,definition);workspace.Session.AddLiveTurn("persona","initial","reply");await workspace.Session.FlushHistoryAsync();
+                string path=Directory.GetFiles(Path.Combine(workspace.DataDirectory,"history"),"*.history").Single();File.Delete(path);Directory.CreateDirectory(path);
+                workspace.Session.AddLiveTurn("persona","retained unsaved user message","reply");await workspace.Session.FlushHistoryAsync();bool rejected=false;
+                try{await owners.CloseWorkspaceAsync(definition.Id);}catch(IOException){rejected=true;}
+                Check(rejected&&owners.OpenCount==1&&ReferenceEquals(owners.CreateWorkspace(project,definition),workspace)&&workspace.Session.History.Messages.Any(m=>m.Content=="retained unsaved user message"),"failed close retains canonical live owner and unsaved message for retry");
+                Directory.Delete(path);await owners.CloseWorkspaceAsync(definition.Id);var reopened=await OpenOwner(owners,project,definition);
+                Check(!ReferenceEquals(reopened,workspace)&&reopened.Session.History.Messages.Any(m=>m.Content=="retained unsaved user message"),"corrected storage closes safely then reopens retained history");
+            }
+        }
+        static Task<ConversationWorkspace> OpenOwner(ConversationWorkspaceManager owners,ProjectDefinition project,ConversationDefinition definition)
+        {
+            var method=typeof(ConversationWorkspaceManager).GetMethod("CreateWorkspaceAsync");return method==null?Task.FromResult(owners.CreateWorkspace(project,definition)):(Task<ConversationWorkspace>)method.Invoke(owners,new object[]{project,definition,null});
         }
         static async Task ExistingHistoryConflict()
         {

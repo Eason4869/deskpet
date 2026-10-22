@@ -42,27 +42,64 @@ internal static class ImageTaskCenterUiChecks
         var restart=Path.Combine(directory,"restart");new ImageGenerationTaskStore(restart).Save(new[]{new ImageGenerationTaskRecord{Id="old-job",RequestId="old",Origin=new ImageTaskOrigin{Source=ImageGenerationSource.Workspace},State=ImageGenerationTaskState.Generating,QueuedUtc=DateTime.UtcNow,Prompt="before restart",ReferenceImageIds=new()}});before=handler.Calls;var restored=new ImageGenerationTaskManager(new ImageGenerationTaskStore(restart),owner.ImageStore,owner.ImageClient,owner.ImageUsage);Complete(restored.RestoreAsync(CancellationToken.None));Check(restored.Get("old-job").State==ImageGenerationTaskState.Interrupted&&handler.Calls==before,"RestartShowsInterruptedWithoutNetwork");
         var concurrency=typeof(PetSettings).GetProperty("ImageGenerationConcurrency");Check(concurrency!=null&&(int)concurrency.GetValue(new PetSettings())! ==1,"SettingsDefaultsAndRoundTrip default");var settings=new SettingsWindow(owner);settings.SelectSection("behavior");settings.Show();Dispatcher.UIThread.RunJobs();var number=All<NumericUpDown>(settings).Single(n=>n.Name=="ImageGenerationConcurrency");number.Value=3;var motion=All<CheckBox>(settings).Single(c=>c.Name=="ImageGenerationMotionEnabled");motion.IsChecked=false;var saved=new SettingsStore(Path.Combine(owner.DataDirectory,"settings.json")).Load();Check((int)concurrency!.GetValue(saved)! ==3&&!saved.ImageGenerationMotionEnabled&&owner.ImageTasks.Concurrency==3,"SettingsDefaultsAndRoundTrip native UI applies");settings.Close();var notificationId=(string?)typeof(DesktopController).GetField("imageNotificationId",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner);Click(All<Button>(completionNotice).Single(b=>b.Content as string=="查看任务"));Dispatcher.UIThread.RunJobs();var notificationHost=(ChatWindow)typeof(DesktopController).GetField("fullChat",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;Check(notificationHost.CurrentPage=="images"&&All<Border>(notificationHost).Any(b=>b.Name=="ImageTaskRow"&&(string?)b.Tag==notificationId&&b.BorderThickness.Left==2),"completion notification navigates to corresponding native task row");notificationHost.Close();reopened.Dispose();host.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);return checks;
     }
+    static ClassicDesktopStyleApplicationLifetime NativeLifetime()
+    {
+        var lifetime=new ClassicDesktopStyleApplicationLifetime{ShutdownMode=ShutdownMode.OnExplicitShutdown};
+        typeof(ClassicDesktopStyleApplicationLifetime).GetMethod("SubscribeGlobalEvents",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(lifetime,null);
+        return lifetime;
+    }
     internal static int RunQuit(string directory)
     {
         void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>8)throw new TimeoutException("Native lifetime exit did not finish");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
-        var lifetime=new ClassicDesktopStyleApplicationLifetime{ShutdownMode=ShutdownMode.OnExplicitShutdown};var handler=new Handler();using var owner=new DesktopController(lifetime,new TestRuntime(directory),store=>new ImageGenerationClient(store,handler,null));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
-        var provider=new ImageGenerationProvider{Name="exit fixture",Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="fixture"}};var accepted=owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission("quit-fixture",new ImageGenerationRequest{Provider=provider,Prompt="pending at native quit",Persistent=true},new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}),CancellationToken.None);Until(()=>accepted.IsCompleted&&handler.Calls==1);var handle=accepted.Result;bool exited=false;lifetime.Exit+=(_,_)=>exited=true;bool immediate=lifetime.TryShutdown();if(immediate)throw new Exception("FAIL native ShutdownRequested must defer OS quit for graceful aggregate drain");Until(()=>exited);if(!owner.ImageTasks.Get(handle.Id).IsTerminal)throw new Exception("FAIL native lifetime exited before manager drain");owner.Dispose();Until(()=>owner.ImageServicesShutdown.IsCompleted);Console.WriteLine("PASS native OS quit defers termination, drains manager, and disposes after writers finish");return 2;
+        var lifetime=NativeLifetime();var handler=new Handler();using var owner=new DesktopController(lifetime,new TestRuntime(directory),store=>new ImageGenerationClient(store,handler,null));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
+        var provider=new ImageGenerationProvider{Name="exit fixture",Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="fixture"}};var accepted=owner.ImageTasks.EnqueueAsync(new ImageGenerationTaskSubmission("quit-fixture",new ImageGenerationRequest{Provider=provider,Prompt="pending at native quit",Persistent=true},new ImageTaskOrigin{Source=ImageGenerationSource.Workspace}),CancellationToken.None);Until(()=>accepted.IsCompleted&&handler.Calls==1);var handle=accepted.Result;bool exited=false,hostClosed=false;host.Closed+=(_,_)=>hostClosed=true;lifetime.Exit+=(_,_)=>exited=true;bool immediate=lifetime.TryShutdown();if(immediate)throw new Exception("FAIL native ShutdownRequested must defer OS quit for graceful aggregate drain");Until(()=>exited);if(!hostClosed)throw new Exception("FAIL graceful native quit did not close real ChatWindow");if(!owner.ImageTasks.Get(handle.Id).IsTerminal)throw new Exception("FAIL native lifetime exited before manager drain");owner.Dispose();Until(()=>owner.ImageServicesShutdown.IsCompleted);Console.WriteLine("PASS native OS quit defers termination, drains manager, and disposes after writers finish");return 2;
     }
     internal static int RunHeldQuit(string directory)
     {
         void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>10)throw new TimeoutException("Held native exit did not finish");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
-        var lifetime=new ClassicDesktopStyleApplicationLifetime{ShutdownMode=ShutdownMode.OnExplicitShutdown};using var owner=new DesktopController(lifetime,new TestRuntime(directory));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
+        var lifetime=NativeLifetime();using var owner=new DesktopController(lifetime,new TestRuntime(directory));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
         var api=new HeldConversationApi();var speech=new HeldFinalization();var setupSafety=Task.Run(async()=>{await Task.Delay(15000);api.Release.TrySetResult("cleanup");speech.Release.Set();});typeof(ConversationSession).GetField("api",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,api);typeof(ConversationSession).GetField("speech",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,speech);
         owner.Settings.AgentEnabled=false;owner.Settings.ReadReplies=false;owner.Settings.Text.BaseUrl="https://unused.invalid/v1";owner.Settings.Text.Model="fixture";owner.Settings.Text.ApiKey="local-fixture-only";var sending=owner.Session.SendTextAsync("hold active session on native quit",owner.Settings,"pet");Until(()=>api.Entered.Task.IsCompleted||sending.IsCompleted);if(!api.Entered.Task.IsCompleted){speech.Release.Set();sending.GetAwaiter().GetResult();throw new Exception("active Avalonia session did not enter held API");}
-        bool exited=false;lifetime.Exit+=(_,_)=>{owner.Dispose();exited=true;};var watchdog=Task.Run(async()=>{await Task.Delay(7500);speech.Release.Set();});var watch=System.Diagnostics.Stopwatch.StartNew();
+        bool exited=false,hostClosed=false;host.Closed+=(_,_)=>hostClosed=true;lifetime.Exit+=(_,_)=>{owner.Dispose();exited=true;};var watchdog=Task.Run(async()=>{await Task.Delay(7500);speech.Release.Set();});var watch=System.Diagnostics.Stopwatch.StartNew();
         try
         {
             if(lifetime.TryShutdown())throw new Exception("FAIL native held session quit was not deferred");Until(()=>exited);
             if(watch.Elapsed.TotalSeconds>=6.5)throw new Exception("FAIL actual native OS quit exceeded budget in synchronous active-session finalization");
+            if(!hostClosed)throw new Exception("FAIL held native quit did not close real ChatWindow");
             if(speech.Entered.Task.IsCompleted||owner.ImageServicesShutdown.IsCompleted)throw new Exception("FAIL native OS quit finalized resources before active writer drained");
         }
         finally{api.Release.TrySetResult("finished");speech.Release.Set();}
         Until(()=>sending.IsCompleted&&owner.ImageServicesShutdown.IsCompleted);Console.WriteLine("PASS actual native OS quit defers held active-session finalization beyond deadline, then drains safely");return 3;
+    }
+    internal static int RunWriterGateQuit(string directory)
+    {
+        void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>12)throw new TimeoutException("Writer gate native exit did not finish");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
+        var lifetime=NativeLifetime();using var owner=new DesktopController(lifetime,new TestRuntime(directory));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();Dispatcher.UIThread.RunJobs();
+        if(lifetime.Windows.Count!=1)throw new Exception("Actual native ChatWindow is not tracked by lifetime");
+        bool hostClosed=false;host.Closed+=(_,_)=>hostClosed=true;
+        var original=(ISecretProtector)typeof(SecretProtection).GetField("current",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!;
+        var held=new HeldAssetCommit(original);Task writer=Task.CompletedTask;bool exited=false;
+        try
+        {
+            var image=owner.ImageStore.Save(Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="),new GeneratedImage{Prompt="held-writer-gate-marker"},false);
+            ChatMessage user;var reply=owner.Session.History.BeginTurn("original image","text",out user);owner.Session.History.AttachGeneratedImage(reply.Id,image);
+            SecretProtection.Configure(held);writer=Task.Run(()=>owner.Session.AddLiveTurn(owner.Skin.Id,"writer save","reply"));
+            if(!held.Entered.Task.Wait(5000))throw new Exception("asset promotion did not enter held commit");
+            lifetime.Exit+=(_,_)=>{owner.Dispose();exited=true;};var watchdog=Task.Run(async()=>{await Task.Delay(8000);held.Release.Set();});var watch=System.Diagnostics.Stopwatch.StartNew();
+            if(lifetime.TryShutdown())throw new Exception("FAIL writer-gate native quit was not deferred");Until(()=>exited);
+            if(watch.Elapsed.TotalSeconds>=6.5)throw new Exception("FAIL actual ChatWindow native quit blocked on held session writer gate after deadline");
+            if(!hostClosed)throw new Exception("FAIL native lifetime did not actually close ChatWindow");
+            if(writer.IsCompleted||owner.ImageServicesShutdown.IsCompleted)throw new Exception("FAIL native writer resources completed before held commit released");
+        }
+        finally{held.Release.Set();SecretProtection.Configure(original);}
+        Until(()=>writer.IsCompleted&&owner.ImageServicesShutdown.IsCompleted);writer.GetAwaiter().GetResult();Console.WriteLine("PASS actual ChatWindow OS quit stays bounded with session gate held in asset promotion, then storage drains");return 3;
+    }
+    sealed class HeldAssetCommit:ISecretProtector
+    {
+        readonly ISecretProtector inner;internal readonly TaskCompletionSource<bool> Entered=new();internal readonly ManualResetEvent Release=new(false);
+        internal HeldAssetCommit(ISecretProtector original){inner=original;}
+        public byte[] Protect(byte[] plain){var json=System.Text.Encoding.UTF8.GetString(plain);if(json.Contains("\"Images\"")&&json.Contains("held-writer-gate-marker")){Entered.TrySetResult(true);Release.WaitOne();}return inner.Protect(plain);}
+        public byte[] Unprotect(byte[] data)=>inner.Unprotect(data);
     }
     sealed class HeldConversationApi:IConversationApi
     {

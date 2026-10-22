@@ -67,7 +67,10 @@ namespace Dafeiyu
             {
                 // Session/workspace Dispose can save, promote assets, or run callbacks.
                 // Keep every such finalizer in the tracked worker, including after timeout.
-                FinalizeConversationServices();
+                // This finally runs in the tracked worker; the .NET Framework C# 5
+                // compiler cannot await in finally. Keep its close join off the UI.
+                try{if(workspaces!=null)workspaces.WaitForClosingAsync().GetAwaiter().GetResult();}
+                finally{FinalizeConversationServices();}
             }
         }
         void FinalizeConversationServices()

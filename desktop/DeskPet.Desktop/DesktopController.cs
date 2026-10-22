@@ -159,6 +159,9 @@ internal sealed class DesktopController : IDisposable
     internal void ChatHostClosed(ChatWindow host)
     {
         chatHosts.Remove(host);
+        // True exit owns question cleanup in the tracked drain. The view must
+        // not read PersonaId (the session writer gate) after the exit deadline.
+        if(exiting)return;
         var session = host.QuestionSessionId;
         if (!chatHosts.Any(other => other.IsVisible && other.QuestionSessionId == session)) Questions.CancelSession(session);
     }

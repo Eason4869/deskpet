@@ -14,6 +14,7 @@ namespace Dafeiyu
         public ConversationSession Session {get;private set;}public AgentSessionModel KernelSession {get{return Session.KernelSession;}}
         internal ProjectDefinition Project {get{return project;}}
         internal bool UiObserved;
+        internal bool IsDisposed {get{return disposed;}}
         internal bool IsDraft;internal ConversationDefinition Definition;
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
@@ -72,7 +73,11 @@ namespace Dafeiyu
         public async Task CloseAsync()
         {
             if(disposed)return;
-            try{await Queue.PauseAsync().ConfigureAwait(false);await Session.FlushHistoryAsync().ConfigureAwait(false);}finally{Dispose();}
+            await Queue.PauseAsync().ConfigureAwait(false);
+            await Session.StopAsync().ConfigureAwait(false);
+            await Session.SaveHistoryForCloseAsync().ConfigureAwait(false);
+            if(saveHistory()&&(!String.IsNullOrEmpty(Session.HistoryWarning)||!String.IsNullOrEmpty(Session.AgentTaskWarning)))throw new IOException("会话记录尚未保存，已保留当前会话；请处理存储问题后重试关闭。");
+            Dispose();
         }
         public void Dispose()
         {
