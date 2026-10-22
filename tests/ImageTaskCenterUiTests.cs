@@ -68,6 +68,50 @@ namespace Dafeiyu.Tests
             await closing;await Task.Delay(100);
             Check(app.Windows.OfType<ChatWindow>().Any(w=>w.ConversationId==b.Id)&&!app.Windows.OfType<ChatWindow>().Any(w=>w.ConversationId==a.Id),"stale awaited A navigation cannot override later B selection");
         }
+        sealed class HeldRepairHistory:ISecretProtector
+        {
+            readonly ISecretProtector inner;internal readonly TaskCompletionSource<bool> Entered=new TaskCompletionSource<bool>();internal readonly ManualResetEvent Release=new ManualResetEvent(false);int armed=1;
+            internal HeldRepairHistory(ISecretProtector original){inner=original;}
+            public byte[] Protect(byte[] plain){var json=System.Text.Encoding.UTF8.GetString(plain);if(json.Contains("\"Messages\"")&&json.Contains("repair-admission-marker")&&Interlocked.CompareExchange(ref armed,0,1)==1){Entered.TrySetResult(true);Release.WaitOne();}return inner.Protect(plain);}
+            public byte[] Unprotect(byte[] data){return inner.Unprotect(data);}
+        }
+        static async Task RepairAdmissionExitCheck(bool deletedOwner=false)
+        {
+            var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,AiGreetingEnabled=false,ReadReplies=false,OnboardingState="completed",AgentEnabled=false};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+            string data=Path.Combine(Directory.GetCurrentDirectory(),"work","task8-repair-admission-"+Guid.NewGuid().ToString("N"));pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
+            var handler=new Handler{Delay=false};var client=new ImageGenerationClient(pet.ImageStore,handler,null);var tasks=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),pet.ImageStore,client,pet.ImageUsage);await tasks.RestoreAsync(CancellationToken.None);typeof(PetWindow).GetField("imageTasks",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,tasks);typeof(PetWindow).GetField("imageClient",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,client);
+            var definition=new ConversationDefinition{Id="admissionowner",Name="Existing admission owner",Mode="chat",PetId=pet.Skin.Id};pet.Projects.UnassignedConversations.Add(definition);var project=ProjectCatalogStore.UnassignedProject(pet.Projects,settings);var log=new ConversationLog();ChatMessage user;var reply=log.BeginTurn("repair-admission-marker","text",out user);log.Update(reply.Id,"original","complete");string historyPath=Path.Combine(data,"conversations",definition.Id,"history");await new HistoryStore(historyPath).SaveAsync(pet.Skin.Id,log.Messages);
+            var provider=new ImageGenerationProvider{Name="fixture",Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="fixture"}};var handle=await tasks.EnqueueAsync(new ImageGenerationTaskSubmission("admission-result",new ImageGenerationRequest{Provider=provider,Prompt="fixture",Persistent=true},new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=definition.Id,PersonaId=pet.Skin.Id,MessageId=reply.Id}),CancellationToken.None);await handle.Completion;await tasks.SetDeliveryStateAsync(handle.Id,ImageTaskDeliveryState.Failed);int before=handler.Calls;
+            var owner=pet.Workspaces.CreateWorkspace(project,definition);var originalSession=owner.Session;var speech=new HeldFinalization();typeof(ConversationSession).GetField("speech",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(owner.Session,speech);var closingOwner=pet.Workspaces.CloseWorkspaceAsync(owner.Id);await Until(()=>speech.Entered.Task.IsCompleted);
+            var original=(ISecretProtector)typeof(SecretProtection).GetField("current",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);var held=new HeldRepairHistory(original);SecretProtection.Configure(held);Task repair=null;var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};
+            var safety=Task.Run(async()=>{await Task.Delay(15000);speech.Release.Set();held.Release.Set();});
+            try
+            {
+                repair=pet.RepairImageDeliveryAsync(handle.Id);
+                Check(!repair.IsCompleted&&!closingOwner.IsCompleted,"actual repair entry accepts operation waiting for held owner close");
+                var pending=typeof(PetWindow).GetField("pendingImageRepairs",BindingFlags.Instance|BindingFlags.NonPublic);
+                Check(pending!=null&&((ICollection<Task>)pending.GetValue(pet)).Contains(repair),"application owns complete accepted repair before awaiting owner handoff");
+                if(deletedOwner)pet.Projects.UnassignedConversations.Remove(definition);
+                var watch=System.Diagnostics.Stopwatch.StartNew();pet.Close();bool denied=false;try{await pet.RepairImageDeliveryAsync(handle.Id);}catch(OperationCanceledException){denied=true;}
+                Check(denied,"true exit freezes new repair admission");speech.Release.Set();
+                if(!deletedOwner)await Until(()=>held.Entered.Task.IsCompleted);
+                await closed.Task;
+                var actualDrain=(Task)typeof(PetWindow).GetField("applicationExitDrain",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);
+                if(deletedOwner)Check(watch.Elapsed.TotalSeconds<6.5,"failed accepted repair does not prevent actual application close");
+                else Check(watch.Elapsed.TotalSeconds<6.5&&!repair.IsCompleted&&!actualDrain.IsCompleted&&!pet.ImageServicesShutdown.IsCompleted,"actual close honors deadline while accepted handoff repair and image resources remain tracked");
+            }
+            finally{speech.Release.Set();held.Release.Set();SecretProtection.Configure(original);}
+            bool failed=false;try{await repair;}catch(InvalidOperationException){failed=true;}await closingOwner;await pet.ImageServicesShutdown;
+            if(deletedOwner)
+            {
+                var pending=(ICollection<Task>)typeof(PetWindow).GetField("pendingImageRepairs",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);
+                Check(failed&&pending.Count==0&&tasks.Get(handle.Id).DeliveryState==ImageTaskDeliveryState.Failed&&handler.Calls==before,"exit observes failed accepted handoff repair without new owner, HTTP or leaked operation");return;
+            }
+            var retainedOwners=(ConversationSession[])typeof(PetWindow).GetField("imageExitOwners",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);
+            Check(retainedOwners.Any(session=>session.ImageConversationId==definition.Id&&!ReferenceEquals(session,originalSession)),"exit refreshes ownership snapshot after accepted repair creates replacement session");
+            var messages=new HistoryStore(historyPath).Load(pet.Skin.Id);
+            Check(tasks.Get(handle.Id).DeliveryState==ImageTaskDeliveryState.Delivered&&messages.Single(m=>m.Id==reply.Id).GeneratedImages.Count==1&&handler.Calls==before,"accepted handoff repair completes before resource release without HTTP or lost attachment");
+        }
         sealed class HeldConversationApi:IConversationApi
         {
             internal readonly TaskCompletionSource<bool> Entered=new TaskCompletionSource<bool>();
@@ -105,6 +149,6 @@ namespace Dafeiyu.Tests
             try{await sending;}catch(OperationCanceledException){}await pet.ImageServicesShutdown;
             Check(speech.Entered.Task.IsCompleted,"deferred WPF session finalizes after its writer drains");
         }
-        [STAThread] public static int Main(){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run();await ExitFinalizationCheck();Console.WriteLine("Task center WPF including held finalization: "+checks+" passed");code=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return code;}
+        [STAThread] public static int Main(string[] args){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--repair-admission-only"))await RepairAdmissionExitCheck();else{await Run();await ExitFinalizationCheck();await RepairAdmissionExitCheck();await RepairAdmissionExitCheck(true);}Console.WriteLine("Task center WPF including held finalization and repair admission: "+checks+" passed");code=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return code;}
     }
 }
