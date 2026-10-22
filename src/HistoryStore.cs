@@ -30,6 +30,8 @@ namespace Dafeiyu
             [DataMember] public List<ChatMessage> Messages;
         }
         public string DirectoryPath {get{return directory;}}
+        internal bool HasSavedHistory(string petId){return File.Exists(FilePath(petId));}
+        internal bool IsUnreadable(string petId){lock(gate)return unreadableFiles.Contains(FilePath(petId));}
         public HistoryStore(string directoryPath=null)
         { directory=Path.GetFullPath(directoryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DeskPet","history")); }
         private string FilePath(string petId)

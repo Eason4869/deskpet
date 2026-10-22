@@ -43,7 +43,7 @@ namespace Dafeiyu
         public string RuntimeAction {get{return runtimeAction;}private set{runtimeAction=value;}}
         public int TerminalRevision {get;private set;}
         public bool IsBusy { get { lock(gate) return active!=null; } }
-        public Task WaitForIdleAsync(){Operation op;lock(gate)op=active;return op==null?Task.FromResult(true):op.Complete.Task;}
+        public Task WaitForIdleAsync(){lock(gate)return Task.WhenAll(active==null?Task.FromResult(true):active.Complete.Task,imageRepairTail);}
         public string PersonaId { get { lock(gate)return personaId; } }
         public string LastNotice { get; private set; }
         string imageHistoryWarning="";
@@ -465,7 +465,7 @@ namespace Dafeiyu
         public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }
         public Task FlushHistoryAsync()
         {
-            lock(gate){if(active!=null && active.ReplyId!=null)Save(active.PersonaId,active.History);return Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),taskStore==null?Task.FromResult(0):taskStore.FlushAsync());}
+            lock(gate){if(active!=null && active.ReplyId!=null)Save(active.PersonaId,active.History);return Task.WhenAll(imageRepairTail,store==null?Task.FromResult(0):store.FlushAsync(),taskStore==null?Task.FromResult(0):taskStore.FlushAsync());}
         }
         public string ExportHistory()
         {

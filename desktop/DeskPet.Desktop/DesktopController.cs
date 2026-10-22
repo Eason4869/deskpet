@@ -20,6 +20,7 @@ internal sealed class DesktopController : IDisposable
     private LiveWindow? liveWindow;
     private GuideWindow? guide;
     private Task applicationExitDrain=Task.CompletedTask;
+    private int conversationServicesFinalized,disposeStarted;
     private bool exiting,exitPrepared;
     private ImageTaskCompletionTracker imageCompletions=null!;
     private Window? imageNotification;
@@ -152,7 +153,7 @@ internal sealed class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
-    internal Task RepairImageDeliveryAsync(string id) => ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None);
+    internal Task RepairImageDeliveryAsync(string id) { if(exiting)throw new OperationCanceledException("应用正在退出。");return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None); }
     public void ShowImages(GeneratedImage? image = null) { ShowChat(false); fullChat!.ShowImages(image); }
     internal void RegisterChatHost(ChatWindow host) => chatHosts.Add(host);
     internal void ChatHostClosed(ChatWindow host)
@@ -208,12 +209,44 @@ internal sealed class DesktopController : IDisposable
     }
     private async Task DrainApplicationForExitAsync()
     {
-        await Task.WhenAll(Task.Run(()=>ImageTasks.StopAsync(CancellationToken.None)),Task.Run(()=>Session.StopAsync()),StopAsync());
-        Save();await Session.FlushHistoryAsync();
+        try
+        {
+            await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
+            Save();
+            await Session.FlushHistoryAsync();
+        }
+        finally
+        {
+            FinalizeConversationServices();
+        }
+    }
+    private void FinalizeConversationServices()
+    {
+        if(Interlocked.Exchange(ref conversationServicesFinalized,1)!=0)return;
+        Queue.Dispose();
+        Dictation.Dispose();
+        Live.Dispose();
+        Session.Dispose();
+        Questions.Dispose();
     }
     public void Dispose()
     {
-        lifetime.ShutdownRequested-=ShutdownRequested;imageNoticeTimer.Stop();imageNotification?.Close();ImageTasks.Changed-=ImageTaskCompleted;tray?.Dispose(); foreach (var binding in hotkeys) binding.Dispose();
-        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose(); Questions.Dispose(); ImageServicesShutdown = Task.Run(async () => { try{await applicationExitDrain;}catch(Exception){} await ImageTasks.StopAsync(CancellationToken.None); await Session.WaitForIdleAsync(); ImageClient.Dispose(); ImageStore.Dispose(); });
+        if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
+        lifetime.ShutdownRequested-=ShutdownRequested;
+        imageNoticeTimer.Stop();
+        imageNotification?.Close();
+        ImageTasks.Changed-=ImageTaskCompleted;
+        tray?.Dispose();
+        foreach(var binding in hotkeys)binding.Dispose();
+        ImageServicesShutdown=Task.Run(async()=>
+        {
+            try{await applicationExitDrain;}catch(Exception){}
+            await ImageTasks.StopAsync(CancellationToken.None);
+            FinalizeConversationServices();
+            await Session.WaitForIdleAsync();
+            await Session.FlushHistoryAsync();
+            ImageClient.Dispose();
+            ImageStore.Dispose();
+        });
     }
 }

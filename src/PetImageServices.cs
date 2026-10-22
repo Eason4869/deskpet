@@ -11,6 +11,7 @@ namespace Dafeiyu
         public ImageAssetManagementService ImageManagement {get{return imageManagement??(imageManagement=new ImageAssetManagementService(ImageStore,ImageUsage,new ImageAssetReferenceResolver(Store.DirectoryPath,ImageStore,ImageTasks)));}}
         ImageGenerationTaskManager imageTasks;
         Task applicationExitDrain=Task.FromResult(0);
+        ConversationSession[] imageExitOwners=new ConversationSession[0];int conversationServicesFinalized;
         Task imageServicesShutdown=Task.FromResult(0);
         public Task ImageServicesShutdown {get{return imageServicesShutdown;}}
         ImageAssetUsageRegistry imageUsage;
@@ -26,7 +27,7 @@ namespace Dafeiyu
         public AgentQuestionController QuestionController {get{return questionController??(questionController=new AgentQuestionController());}}
         void ConfigureImageServices(ConversationSession session)
         {session.ImageStore=ImageStore;session.ImageClient=ImageClient;session.ImageTasks=ImageTasks;session.ImageUsage=ImageUsage;session.QuestionProvider=QuestionController;}
-        internal Task RepairImageDeliveryAsync(string id) { return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,ConversationSessions,Projects,Store.DirectoryPath,id,Settings.SaveChatHistory,CancellationToken.None); }
+        internal Task RepairImageDeliveryAsync(string id) { if(closing)throw new OperationCanceledException("应用正在退出。");return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,ConversationSessions,Projects,Store.DirectoryPath,id,Settings.SaveChatHistory,CancellationToken.None,Workspaces); }
         internal void ShowImageConfiguration()
         {ShowSettings(true);if(preferences!=null)preferences.SelectImageConfiguration();}
         internal void OpenImageWorkspace(GeneratedImage previous){ShowChat();if(chat!=null)chat.ShowImagesPage(previous);}
@@ -46,17 +47,57 @@ namespace Dafeiyu
         }
         async Task DrainApplicationForExitAsync(PetSettings exitSettings)
         {
-            var pending=new System.Collections.Generic.List<Task>();
-            if(imageTasks!=null)pending.Add(Task.Run(()=>imageTasks.StopAsync(CancellationToken.None)));
-            foreach(var session in ConversationSessions)pending.Add(Task.Run(()=>session.StopAsync()));
-            pending.Add(CloseCallForExitAsync());if(dictation!=null)pending.Add(dictation.CancelAsync());if(inputQueue!=null)pending.Add(inputQueue.PauseAsync());if(live!=null)pending.Add(live.StopAsync());
-            await Task.WhenAll(pending);if(workspaces!=null)await workspaces.SaveAllAsync();await Task.WhenAll(ConversationSessions.Select(s=>s.FlushHistoryAsync()));Store.Save(exitSettings);
+            var owners=ConversationSessions.ToArray();
+            imageExitOwners=owners;
+            try
+            {
+                var pending=new System.Collections.Generic.List<Task>();
+                if(imageTasks!=null)pending.Add(imageTasks.StopAsync(CancellationToken.None));
+                foreach(var session in owners)pending.Add(Task.Run(()=>session.StopAsync()));
+                pending.Add(CloseCallForExitAsync());
+                if(dictation!=null)pending.Add(dictation.CancelAsync());
+                if(inputQueue!=null)pending.Add(inputQueue.PauseAsync());
+                if(live!=null)pending.Add(live.StopAsync());
+                await Task.WhenAll(pending).ConfigureAwait(false);
+                if(workspaces!=null)await workspaces.SaveAllAsync().ConfigureAwait(false);
+                await Task.WhenAll(owners.Select(s=>s.FlushHistoryAsync())).ConfigureAwait(false);
+                Store.Save(exitSettings);
+            }
+            finally
+            {
+                // Session/workspace Dispose can save, promote assets, or run callbacks.
+                // Keep every such finalizer in the tracked worker, including after timeout.
+                FinalizeConversationServices();
+            }
+        }
+        void FinalizeConversationServices()
+        {
+            if(Interlocked.Exchange(ref conversationServicesFinalized,1)!=0)return;
+            if(workspaces!=null)workspaces.Dispose();
+            if(dictation!=null)dictation.Dispose();
+            if(inputQueue!=null)inputQueue.Dispose();
+            if(live!=null)live.Dispose();
+            if(conversation!=null)conversation.Dispose();
+            if(mcpConnections!=null)mcpConnections.Dispose();
+            if(questionController!=null)questionController.Dispose();
         }
         Task CloseCallForExitAsync()
         {
             var completion=new TaskCompletionSource<bool>();Dispatcher.BeginInvoke(new Action(async delegate{try{if(call!=null)await call.CloseAsync();completion.TrySetResult(true);}catch(Exception error){completion.TrySetException(error);}}));return completion.Task;
         }
-        void DisposeImageServices(ConversationSession[] owners)
-        {if(notificationTasks!=null)notificationTasks.Changed-=ImageTaskCompleted;if(questionController!=null)questionController.Dispose();imageServicesShutdown=Task.Run(async delegate{try{await applicationExitDrain.ConfigureAwait(false);}catch(Exception){}if(imageTasks!=null)await imageTasks.StopAsync(CancellationToken.None).ConfigureAwait(false);await Task.WhenAll(owners.Select(s=>s.WaitForIdleAsync())).ConfigureAwait(false);if(imageClient!=null)imageClient.Dispose();if(imageStore!=null)imageStore.Dispose();});}
+        void DisposeImageServices()
+        {
+            if(notificationTasks!=null)notificationTasks.Changed-=ImageTaskCompleted;
+            imageServicesShutdown=Task.Run(async delegate
+            {
+                try{await applicationExitDrain.ConfigureAwait(false);}catch(Exception){}
+                if(imageTasks!=null)await imageTasks.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                FinalizeConversationServices();
+                await Task.WhenAll(imageExitOwners.Select(s=>s.WaitForIdleAsync())).ConfigureAwait(false);
+                await Task.WhenAll(imageExitOwners.Select(s=>s.FlushHistoryAsync())).ConfigureAwait(false);
+                if(imageClient!=null)imageClient.Dispose();
+                if(imageStore!=null)imageStore.Dispose();
+            });
+        }
     }
 }

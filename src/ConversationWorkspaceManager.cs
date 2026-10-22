@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 namespace Dafeiyu
 {
@@ -26,8 +27,43 @@ namespace Dafeiyu
         public bool Busy {get{lock(gate)return workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
         {
-            if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
-            var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);workspace.Session.ApprovalProvider=ApprovalProvider;workspace.Session.QuestionProvider=QuestionProvider;workspace.Session.ImageStore=ImageStore;workspace.Session.ImageClient=ImageClient;workspace.Session.ImageTasks=ImageTasks;workspace.Session.ImageUsage=ImageUsage;workspace.Session.McpConnections=McpConnections;workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;lock(gate)workspaces.Add(workspace);return workspace;
+            if(project==null||conversation==null)throw new ArgumentNullException("conversation");
+            lock(gate)
+            {
+                if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
+                var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
+                if(existing!=null)return existing;
+                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);
+                workspace.Session.ApprovalProvider=ApprovalProvider;
+                workspace.Session.QuestionProvider=QuestionProvider;
+                workspace.Session.ImageStore=ImageStore;
+                workspace.Session.ImageClient=ImageClient;
+                workspace.Session.ImageTasks=ImageTasks;
+                workspace.Session.ImageUsage=ImageUsage;
+                workspace.Session.McpConnections=McpConnections;
+                workspace.Session.StateChanged+=NotifyState;
+                workspace.Queue.Changed+=NotifyState;
+                workspaces.Add(workspace);
+                return workspace;
+            }
+        }
+        internal ConversationSession GetExistingImageOwner(ProjectCatalog catalog,ImageTaskOrigin origin)
+        {
+            // Resolve catalog membership before registering an owner; never invent a chat.
+            var definition=ProjectCatalogStore.AllConversations(catalog).SingleOrDefault(c=>c.Id==origin.ConversationId);
+            if(definition==null)throw new InvalidOperationException("原会话已不可用，请在图库查看图片。");
+            var project=catalog.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==definition.Id));
+            if(project==null)project=catalog.QuickConversations.Any(c=>c.Id==definition.Id)?ProjectCatalogStore.QuickProject(catalog,settings()):ProjectCatalogStore.UnassignedProject(catalog,settings());
+            lock(gate)
+            {
+                if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
+                var existing=workspaces.SingleOrDefault(w=>w.Id==definition.Id);
+                if(existing!=null)return existing.Session;
+                string directory=ConversationWorkspace.ResolveDataDirectory(dataRoot,definition.Id);
+                var history=new HistoryStore(Path.Combine(directory,"history"));
+                if(!history.HasSavedHistory(origin.PersonaId??""))throw new InvalidOperationException("原会话记录不存在，请在图库查看图片。");
+                return CreateWorkspace(project,definition).Session;
+            }
         }
         public async Task CloseWorkspaceAsync(string id)
         {

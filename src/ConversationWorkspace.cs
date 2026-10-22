@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 namespace Dafeiyu
 {
@@ -56,10 +57,15 @@ namespace Dafeiyu
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {
             if(String.IsNullOrWhiteSpace(conversationId) || conversationId.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || conversationId=="." || conversationId=="..")throw new ArgumentException("会话 ID 无效。");
-            string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));if(Directory.Exists(target))return target;
+            string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));bool targetExists=Directory.Exists(target);if(targetExists&&Directory.Exists(Path.Combine(target,"history")))return target;
             string projects=Path.Combine(dataRoot,"projects");if(!Directory.Exists(projects))return target;
             var sources=new System.Collections.Generic.List<string>();
             foreach(string directory in Directory.EnumerateDirectories(projects)){string source=Path.Combine(directory,"chats",conversationId);if(Directory.Exists(source))sources.Add(source);}
+            if(targetExists)
+            {
+                if(!Directory.Exists(Path.Combine(target,"history"))&&sources.Any(source=>Directory.Exists(Path.Combine(source,"history"))))throw new IOException("现有会话目录与旧版历史目录冲突，原记录已保留，请先核对。");
+                return target;
+            }
             if(sources.Count>1)throw new IOException("发现多个同 ID 会话目录，已保留原数据，请先核对。");
             if(sources.Count==1){Directory.CreateDirectory(Path.GetDirectoryName(target));Directory.Move(sources[0],target);}return target;
         }

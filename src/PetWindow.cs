@@ -809,6 +809,7 @@ namespace Dafeiyu
         }
         async Task CloseConversationWorkspacesAsync()
         {
+            if(closing)return;
             var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);
         }
         // New chats remain drafts until the first submission; their project is chosen in the composer.
@@ -1045,9 +1046,9 @@ namespace Dafeiyu
                 try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
                 catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
             }
-            var imageOwners=ConversationSessions.ToArray();if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(mcpConnections!=null)mcpConnections.Dispose();if(workspaces!=null)workspaces.Dispose();if(dictation!=null)dictation.Dispose();if(inputQueue!=null)inputQueue.Dispose();if(live!=null)live.Dispose();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;conversation.Dispose();}if(preferences!=null)preferences.Dispose();
+            if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
-            DisposeImageServices(imageOwners);tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
+            DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
         }
     }
 }
