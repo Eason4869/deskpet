@@ -42,13 +42,19 @@ namespace Dafeiyu.Tests
                 string export=Path.Combine(root,"user-export.png");File.WriteAllBytes(export,assets.Read(savedId));var temp=assets.Save(picture,new GeneratedImage{Prompt="temporary"},false);string temporaryPath=assets.PathFor(temp.Id);assets.Dispose();Check(!File.Exists(temporaryPath)&&File.Exists(export),"temporary cleanup preserves user exported original");
             }
             using(var assets=new GeneratedImageStore(root)){Check(assets.Read(savedId).SequenceEqual(picture),"restart resolves saved original bytes");File.Delete(assets.PathFor(savedId));var restored=new HistoryStore(Path.Combine(root,"history")).Load("pet");Check(restored.Count==2&&restored.Last().GeneratedImages[0].Id==savedId,"missing image does not invalidate the whole chat history");}
-            await AgentBinding(root);
-            await QuestionBinding(root);
-            await ServiceRejection(root);
-            await QueueOwnershipAndDelivery(root);
-            await PreflightFailure(root);
-            await RepairOwnership(root,true);
-            await RepairOwnership(root,false);
+            // File Agent execution is Windows-only; portable sessions deliberately use plain chat.
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT)
+            {
+                await AgentBinding(root);
+                await QuestionBinding(root);
+                await ServiceRejection(root);
+                await QueueOwnershipAndDelivery(root);
+                await PreflightFailure(root);
+                await RepairOwnership(root,true);
+                await RepairOwnership(root,false);
+            }
+            else await PortableAgentFallback(root);
+            await SharedDeliveryRepair(root);
             WorkspaceImageOwners(root);
         }
         sealed class HeldHandler:HttpMessageHandler
@@ -59,12 +65,46 @@ namespace Dafeiyu.Tests
         }
         sealed class ImageApi:IConversationApi,IAgentConversationApi
         {
-            internal string Tool="generate_image",Arguments="{\"prompt\":\"a test image\"}",LastResult;internal bool ExpectError,NeedsReconciliation,SkipTool;
+            internal string Tool="generate_image",Arguments="{\"prompt\":\"a test image\"}",LastResult;internal bool ExpectError,NeedsReconciliation,SkipTool;internal int AgentCalls;
             public Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel){return Task.FromResult("plain");}
-            public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tools,bool stream,CancellationToken cancel){if(SkipTool)return "continued without image";LastResult=await workspace.ExecuteAsync(Tool,Arguments,"integration-call",cancel);NeedsReconciliation=workspace.NeedsReconciliation;if(LastResult.StartsWith("错误：")&&!ExpectError)throw new ApiException(LastResult);return ExpectError?LastResult:"图片已生成。";}
+            public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tools,bool stream,CancellationToken cancel){AgentCalls++;if(SkipTool)return "continued without image";LastResult=await workspace.ExecuteAsync(Tool,Arguments,"integration-call",cancel);NeedsReconciliation=workspace.NeedsReconciliation;if(LastResult.StartsWith("错误：")&&!ExpectError)throw new ApiException(LastResult);return ExpectError?LastResult:"图片已生成。";}
             public Task<string> TranscribeAsync(ConnectionSettings settings,byte[] wave,CancellationToken cancel){throw new NotSupportedException();}public Task<byte[]> SpeechAsync(ConnectionSettings settings,string voice,string text,CancellationToken cancel){throw new NotSupportedException();}public void Dispose(){}
         }
         sealed class SilentSpeech:IReplySpeech{public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){return Task.FromResult(0);}public void SetVolume(int volume){}public void Stop(){}public void Dispose(){}}
+        static async Task PortableAgentFallback(string root)
+        {
+            string path=Path.Combine(root,"portable-fallback");var cfg=AgentSettings(Path.Combine(path,"workspace"));var api=new ImageApi();var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="image"}};cfg.ImageProviders=new List<ImageGenerationProvider>{provider};cfg.ActiveImageProviderId=provider.Id;
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var questions=new AgentQuestionController())using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
+            {
+                session.ImageStore=assets;session.ImageClient=client;session.ImageTasks=await Manager(path,assets,client);session.QuestionProvider=questions;session.SelectPersona("pet");await session.SendTextAsync("draw",cfg,"pet");
+                Check(session.History.Messages.Last().Content=="plain"&&session.KernelSession==null,"unsupported file Agent uses plain conversation without a kernel");
+                Check(api.AgentCalls==0&&handler.Calls==0&&session.ImageTasks.List().Count==0&&questions.Requests.Count==0,"portable fallback creates no Agent tool image request or question");
+            }
+        }
+        static async Task SharedDeliveryRepair(string root)
+        {
+            string path=Path.Combine(root,"shared-delivery-repair"),historyPath=Path.Combine(path,"history"),jobId,replyId;var provider=new ImageGenerationProvider{Connection=new ConnectionSettings{BaseUrl="https://unused.invalid/v1",Model="image"}};
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var session=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null,new HistoryStore(historyPath),()=>true))
+            {
+                session.ImageStore=assets;session.ImageClient=client;session.ImageTasks=await Manager(path,assets,client);session.SelectPersona("pet");ChatMessage user;replyId=session.History.BeginTurn("draw","image",out user).Id;
+                var submission=new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),new ImageGenerationRequest{Provider=provider,Prompt="shared repair",Persistent=true},new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=session.ImageConversationId,PersonaId="pet",MessageId=replyId,KernelSessionId="old-kernel",AgentTaskId="old-task",ToolCallId="old-call"});
+                submission.BeforeStart=async id=>{session.History.AttachImageTask(replyId,id);await new HistoryStore(historyPath).SaveAsync("pet",session.History.Messages);};handler.Release.TrySetResult(true);var handle=await session.ImageTasks.EnqueueAsync(submission,CancellationToken.None);jobId=handle.Id;await handle.Completion;
+                string historyFile=Directory.GetFiles(historyPath,"*.history").Single();File.Move(historyFile,historyFile+".backup");Directory.CreateDirectory(historyFile);bool failed=false;try{await session.RepairImageDeliveryAsync(jobId,CancellationToken.None);}catch(IOException){failed=true;}
+                Check(failed&&session.ImageTasks.Get(jobId).DeliveryState==ImageTaskDeliveryState.Failed,"shared repair records delivery failure after successful generation");Directory.Delete(historyFile);File.Move(historyFile+".backup",historyFile);
+                byte[] journal=File.ReadAllBytes(Path.Combine(path,"generated-images","tasks.dat"));byte[] history=File.ReadAllBytes(historyFile);string messages=new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(session.History.Messages);
+                using(var foreign=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null))
+                {
+                    foreign.ImageTasks=session.ImageTasks;foreign.ImageStore=assets;bool rejected=false;try{await foreign.RepairImageDeliveryAsync(jobId,CancellationToken.None);}catch(InvalidOperationException){rejected=true;}
+                    Check(rejected&&foreign.History.Messages.Count==0&&foreign.KernelSession==null,"shared repair rejects an unbound foreign session without creating history or kernel");
+                }
+                Check(journal.SequenceEqual(File.ReadAllBytes(Path.Combine(path,"generated-images","tasks.dat")))&&history.SequenceEqual(File.ReadAllBytes(historyFile))&&messages==new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(session.History.Messages)&&session.ImageTasks.Get(jobId).DeliveryState==ImageTaskDeliveryState.Failed,"shared foreign repair preserves original journal history and failed delivery");Check(handler.Calls==1,"shared delivery failure and foreign repair never regenerate");await session.ImageTasks.StopAsync(CancellationToken.None);
+            }
+            using(var assets=new GeneratedImageStore(path))using(var handler=new HeldHandler())using(var client=new ImageGenerationClient(assets,handler,null))using(var restored=new ConversationSession(new ImageApi(),new SilentSpeech(),()=>null,new HistoryStore(historyPath),()=>true))
+            {
+                restored.ImageStore=assets;restored.ImageClient=client;restored.ImageTasks=await Manager(path,assets,client);restored.SelectPersona("pet");var pending=restored.History.Messages.Single(m=>m.Id==replyId);Check((pending.GeneratedImages==null||pending.GeneratedImages.Count==0)&&restored.ImageTasks.Get(jobId).DeliveryState==ImageTaskDeliveryState.Failed,"shared restart begins with persisted pending message and failed delivery");restored.ConfigureKernelSession(new AgentSessionModel("replacement-kernel","project","replacement-conversation"),null);await restored.RepairImageDeliveryAsync(jobId,CancellationToken.None);await restored.RepairImageDeliveryAsync(jobId,CancellationToken.None);
+                var job=restored.ImageTasks.Get(jobId);var reply=restored.History.Messages.Single(m=>m.Id==replyId);Check(job.DeliveryState==ImageTaskDeliveryState.Delivered&&reply.GeneratedImages.Count==1&&reply.GeneratedImages[0].Id==job.ResultImageId,"shared restart repair restores original message once across kernel replacement");Check(handler.Calls==0,"shared restart repair performs zero image HTTP requests");await restored.ImageTasks.StopAsync(CancellationToken.None);
+            }
+        }
         static async Task AgentBinding(string root)
         {
             string workspace=Path.Combine(root,"workspace");Directory.CreateDirectory(workspace);var cfg=new PetSettings{AgentEnabled=true,AgentApprovalMode=AgentApprovalMode.Full,AgentWorkspace=workspace,ReadReplies=false,ShowPredictedMessages=false};cfg.Text.BaseUrl="https://unused.invalid/v1";cfg.Text.ApiKey="fixture-key";cfg.Text.Model="test-chat";cfg.Text.ToolSupport=CapabilitySupport.Supported;

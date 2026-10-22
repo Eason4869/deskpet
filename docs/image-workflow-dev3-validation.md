@@ -2,6 +2,10 @@
 
 验收平台为 Windows、Windows PowerShell 5.1、.NET Framework WPF 和 Windows 上的 .NET 10 Avalonia Headless/Skia。Windows 上的 Avalonia 结果不能代表 macOS 真机。任务 1–8 的分项红／绿和审查已完成；本记录补充任务 9 的当前树回归、真实调用及打包范围。
 
+文件 Agent 及其 `generate_image`、`ask_user` 和项目工具执行当前仅支持 Windows；macOS 的图像工作区、设置、任务管理、图库和图片历史不受此限制。共享集成测试在 Windows 保留实际 Agent 路径，在其他平台验证普通聊天回退，并在所有平台直接通过任务管理器及会话验证资产投递、跨会话拒绝、重启修复与零重复图片请求；这些检查不能作为完整 macOS 文件 Agent 的验收。
+
+首轮真实 CI（`b3b924a`，macOS run `39739424146`）两种架构均暴露三处测试平台假设：普通聊天回退被误当作 Agent 图片请求未启动，以及打开的临时原图／隔离文件在 Unix 可成功 unlink，却被断言必须留存并报告清理警告。修正测试合同后，本机 .NET 10 完整共享回归 2,940 项通过，图片集成 60、管理 133、后端 68；Windows Framework 相关目标分别 60／133／68 项通过。保留 Windows 全部 Agent 与锁定重试断言，新增共享投递失败、外部会话拒绝和重启零重复请求覆盖。首次本机全量因新增夹具对合法 null 图片列表的断言错误退出 1，修正后重跑；沙箱 localhost 阻断的未完成尝试也保留。证据在 `work/dev3-verification/ci-fix-*`；本机结果不代表修复后原生 macOS CI 已通过。
+
 ## 本地自动化
 
 运行记录保留在忽略的 `work/dev3-*` 中，不包含服务凭据。测试使用隔离数据目录，不修改日常数据、设置或 dev.2 证据。

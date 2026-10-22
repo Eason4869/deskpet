@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -100,7 +101,12 @@ namespace Dafeiyu.Tests
             using(var store=new GeneratedImageStore(failedRoot)){Check(store.Get(failedId)!=null && store.Get(failedReferenceId)!=null && store.Read(failedId).Length==Png.Length,"retried promotion restores both stable asset references on restart");}
             string lockedSource;using(var store=new GeneratedImageStore(Path.Combine(directory,"promotion-cleanup"))){
                 var image=store.Save(Png,new GeneratedImage(),false);lockedSource=store.PathFor(image.Id);
-                using(var input=new FileStream(lockedSource,FileMode.Open,FileAccess.Read,FileShare.Read)){Check(!store.Promote(image.Id).Temporary && File.Exists(lockedSource),"locked temporary source does not invalidate committed durable promotion");}
+                using(var input=new FileStream(lockedSource,FileMode.Open,FileAccess.Read,FileShare.Read)){
+                    var promoted=store.Promote(image.Id);Check(!promoted.Temporary && promoted.Id==image.Id && store.Read(image.Id).SequenceEqual(Png),"open temporary source does not invalidate committed durable promotion");
+                    // Windows denies deletion without FileShare.Delete; Unix can unlink an open file.
+                    bool deletionBlocked=Environment.OSVersion.Platform==PlatformID.Win32NT;
+                    Check(File.Exists(lockedSource)==deletionBlocked && !String.IsNullOrEmpty(store.Warning)==deletionBlocked && input.ReadByte()==Png[0],"promotion source cleanup follows native open-file deletion semantics");
+                }
             }
             Check(!File.Exists(lockedSource),"dispose retries cleanup of temporary sources locked during promotion");
         }

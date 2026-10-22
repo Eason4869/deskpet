@@ -335,7 +335,10 @@ namespace Dafeiyu.Tests
                 using(var heldOpen=new FileStream(held,FileMode.Open,FileAccess.Read,FileShare.None))
                 using(var restarted=new GeneratedImageStore(lockedRoot))
                 {
-                    Check(restarted.Get(lockedAsset.Id)==null&&!String.IsNullOrEmpty(restarted.Warning),"locked committed quarantine does not prevent startup");
+                    Check(restarted.Get(lockedAsset.Id)==null&&heldOpen.ReadByte()==Png[0],"open committed quarantine does not prevent startup or resurrect a purged asset");
+                    // A deny-delete share blocks Windows cleanup; Unix unlinks the open file immediately.
+                    bool deletionBlocked=Environment.OSVersion.Platform==PlatformID.Win32NT;
+                    Check(File.Exists(held)==deletionBlocked&&!String.IsNullOrEmpty(restarted.Warning)==deletionBlocked,"quarantine cleanup warning follows native open-file deletion semantics");
                 }
                 using(var restarted=new GeneratedImageStore(lockedRoot))Check(!File.Exists(held)&&restarted.Get(lockedAsset.Id)==null,"later restart completes locked quarantine cleanup");
             }
