@@ -12,7 +12,7 @@ namespace Dafeiyu
     internal sealed partial class ConversationComposer : StackPanel
     {
         static readonly ControlTemplate hintTemplate=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='ToolTip'><Border Background='#202329' CornerRadius='8' Padding='9,6'><ContentPresenter/></Border></ControlTemplate>");
-        PredictionSuggestions predictionSuggestions;AgentChangeStatus changeStatus;
+        PredictionSuggestions predictionSuggestions;AgentChangeStatus changeStatus;AgentApprovalSurface approvals;
         readonly PetWindow pet;readonly Window host;readonly MarkdownEditor input;readonly TextBlock status,aiNotice;ConversationQueue queue;ConversationSession session;
         readonly Button primary,options;readonly Border queueBox;readonly StackPanel rows;readonly TextBlock queueLabel;readonly Button resume;
         readonly Button modelPicker;readonly TextBlock modelLabel;readonly ContextMenu modelMenu;
@@ -72,7 +72,7 @@ namespace Dafeiyu
             modelLabel=Ui.InlineText("",12,Ui.Muted);modelLabel.Name="CurrentTextModel";modelLabel.TextWrapping=TextWrapping.NoWrap;modelLabel.TextTrimming=TextTrimming.CharacterEllipsis;modelLabel.VerticalAlignment=VerticalAlignment.Center;
             var modelContent=new DockPanel();var arrow=UiIcons.Image("down",Ui.Muted);arrow.Width=arrow.Height=12;arrow.Margin=new Thickness(7,0,0,0);arrow.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(arrow,Dock.Right);modelContent.Children.Add(arrow);modelContent.Children.Add(modelLabel);
             modelPicker=Ui.Button("");modelPicker.Name="TextModelPicker";modelPicker.Content=modelContent;modelPicker.MinHeight=32;modelPicker.MinWidth=0;modelPicker.MaxWidth=280;modelPicker.Padding=new Thickness(7,3,7,3);modelPicker.Margin=new Thickness(0,0,6,0);modelPicker.Background=Brushes.Transparent;modelPicker.BorderBrush=Brushes.Transparent;modelPicker.HorizontalAlignment=HorizontalAlignment.Right;
-            modelPicker.Template=(ControlTemplate)System.Windows.Markup.XamlReader.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='9' Padding='{TemplateBinding Padding}'><ContentPresenter HorizontalAlignment='Stretch' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+            modelPicker.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='9' Padding='{TemplateBinding Padding}'><ContentPresenter HorizontalAlignment='Stretch' VerticalAlignment='Center'/></Border><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='surface' Property='Background' Value='#EFEFEF'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
             modelMenu=ChatUi.Menu();modelMenu.MaxHeight=420;modelMenu.MaxWidth=460;modelMenu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;modelPicker.ContextMenu=modelMenu;
             modelPicker.Click+=delegate{OpenModels();};modelPicker.ContextMenuOpening+=delegate(object sender,ContextMenuEventArgs e){e.Handled=true;OpenModels();};
             modelPicker.PreviewKeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Down || e.Key==Key.F4){e.Handled=true;OpenModels();}};
@@ -98,10 +98,10 @@ namespace Dafeiyu
             normalSurface=ChatUi.Composer(input,leading,controls,new TextBlock{Visibility=Visibility.Collapsed},compact,attachmentArea);if(conversationOnly)ChatUi.GetComposerPlaceholder(input).Text="想聊点什么？";Children.Add(normalSurface);
             var recordingBody=new StackPanel();var recordingLabel=Ui.Text("正在听写…",12,Ui.Muted);recordingLabel.MinHeight=48;recordingLabel.Padding=new Thickness(4,6,4,6);recordingBody.Children.Add(recordingLabel);var recordingControls=new DockPanel{Margin=new Thickness(2,8,2,0)};
             stopDictation=UiIcons.Button("stop-solid","停止听写");stopDictation.Name="StopDictation";stopDictation.Width=32;stopDictation.Height=32;stopDictation.MinHeight=32;stopDictation.Content=UiIcons.Image("stop-solid",Ui.Brush("#202329"));stopDictation.Margin=new Thickness(0,0,5,0);stopDictation.Click+=async delegate{await FinishDictation(false);};
-            finishDictation=ChatUi.Action("send","发送听写");finishDictation.Name="FinishDictation";finishDictation.Width=finishDictation.Height=finishDictation.MinHeight=32;finishDictation.Background=Ui.Brush("#202329");finishDictation.BorderBrush=finishDictation.Background;finishDictation.Content=UiIcons.Image("send",Brushes.White);finishDictation.Click+=async delegate{await FinishDictation(true);};DockPanel.SetDock(finishDictation,Dock.Right);recordingControls.Children.Add(finishDictation);
+            finishDictation=ChatUi.Action("send","发送听写");finishDictation.Name="FinishDictation";finishDictation.Width=finishDictation.Height=finishDictation.MinHeight=32;finishDictation.Background=ThemeManager.ActionSurface;finishDictation.BorderBrush=finishDictation.Background;finishDictation.Content=UiIcons.Image("send",Brushes.White);finishDictation.Click+=async delegate{await FinishDictation(true);};DockPanel.SetDock(finishDictation,Dock.Right);recordingControls.Children.Add(finishDictation);
             DockPanel.SetDock(stopDictation,Dock.Right);recordingControls.Children.Add(stopDictation);
             waveform=new DictationWaveform{Height=32};recordingControls.Children.Add(waveform);recordingBody.Children.Add(recordingControls);
-            recordingSurface=new Border{Child=recordingBody,Background=Brushes.White,BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(22),Padding=new Thickness(8),Visibility=Visibility.Collapsed};Children.Add(recordingSurface);
+            recordingSurface=new Border{Child=recordingBody,Background=ThemeManager.Surface,BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(22),Padding=new Thickness(8),Visibility=Visibility.Collapsed};Children.Add(recordingSurface);
             var footer=new Grid{Name="ComposerFooter",Margin=new Thickness(3,3,3,0)};footer.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});footer.ColumnDefinitions.Add(new ColumnDefinition());
             status.Margin=new Thickness(0);status.MinHeight=0;status.MaxHeight=28;status.TextWrapping=TextWrapping.NoWrap;status.TextTrimming=TextTrimming.CharacterEllipsis;status.VerticalAlignment=VerticalAlignment.Center;footer.Children.Add(status);
             status.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=status});
@@ -111,9 +111,9 @@ namespace Dafeiyu
             meter.Tick+=async delegate{if(!dictation.Owns(this)){meter.Stop();return;}waveform.Push(dictation.InputLevel);if(dictation.Stage==DictationStage.Recording && recordingTime.Elapsed.TotalSeconds>=60)await FinishDictation(false);};
             host.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape && dictation.Owns(this)){e.Handled=true;try{await dictation.CancelAsync(this);}catch(Exception error){Error(error);}}};
             input.ToolTip="Enter 发送或排队（显示预测时先填入草稿）· Shift + Enter 换行 · Ctrl + Enter 引导当前任务";
-            input.TextChanged+=delegate{RefreshAction();RefreshTrigger();};
+            input.TextChanged+=InputChanged;session.InputDraftChanged+=RestoreDraft;RestoreDraft();
             triggerPopup=new Popup{Name="ComposerTriggerMenu",Placement=System.Windows.Controls.Primitives.PlacementMode.Top,PlacementTarget=input,StaysOpen=false,AllowsTransparency=true};
-            triggerScroll.Content=new StackPanel{Children={triggerList,triggerEmpty}};triggerPopup.Child=new Border{Child=triggerScroll,Background=Brushes.White,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Padding=new Thickness(5),Margin=new Thickness(2,2,2,7)};
+            triggerScroll.Content=new StackPanel{Children={triggerList,triggerEmpty}};triggerPopup.Child=new Border{Child=triggerScroll,Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Padding=new Thickness(5),Margin=new Thickness(2,2,2,7)};
             input.LostKeyboardFocus+=delegate{CloseTrigger();};input.SelectionChanged+=delegate{RefreshTrigger();};input.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e)
             {
                 if(HandleTriggerKey(e))return;
@@ -155,12 +155,20 @@ namespace Dafeiyu
             Loaded+=delegate{if(!subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;pet.Live.StateChanged+=Refresh;dictation.Changed+=Refresh;subscribed=true;}Refresh();};
             host.IsVisibleChanged+=async delegate{if(!host.IsVisible && dictation.Owns(this))try{await dictation.CancelAsync(this);}catch(Exception e){Error(e);}};
             host.Closed+=HostClosed;
-            RefreshModels();Refresh();
+            BindApprovals();RefreshModels();Refresh();
+        }
+        void BindApprovals()
+        {
+            if(approvals!=null){Children.Remove(approvals);approvals.Dispose();}
+            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r));
+            Children.Insert(Children.IndexOf(normalSurface),approvals);
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
-            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RefreshModels();Refresh();
+            if(nextSession==null || nextQueue==null)throw new ArgumentNullException("session");CloseContextPreview();session.InputDraftChanged-=RestoreDraft;if(subscribed){queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;}session=nextSession;queue=nextQueue;session.InputDraftChanged+=RestoreDraft;if(subscribed){queue.Changed+=Refresh;session.ContextUsageChanged+=Refresh;}predictionSuggestions.Rebind(nextSession,nextQueue);if(changeStatus!=null)changeStatus.Rebind(nextSession);RestoreDraft();BindApprovals();RefreshModels();Refresh();
         }
+        void InputChanged(object sender,TextChangedEventArgs args){if(closed)return;session.InputDraft=input.Text;RefreshAction();RefreshTrigger();}
+        void RestoreDraft(){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RestoreDraft));return;}input.Text=session.InputDraft;}
         public void RefreshModels()
         {
             aiNotice.Text=pet.Skin.Name+"是人工智能，有时会出错。请仔细核对回答。";
@@ -308,7 +316,7 @@ namespace Dafeiyu
                 FrameworkElement visual=UiIcons.Image("file",Ui.Muted);visual.Width=visual.Height=27;visual.HorizontalAlignment=HorizontalAlignment.Center;visual.VerticalAlignment=VerticalAlignment.Center;
                 if(file.IsImage)try{var bitmap=new System.Windows.Media.Imaging.BitmapImage();using(var stream=new System.IO.MemoryStream(Convert.FromBase64String(file.Data))){bitmap.BeginInit();bitmap.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;bitmap.DecodePixelWidth=240;bitmap.StreamSource=stream;bitmap.EndInit();bitmap.Freeze();}visual=new Image{Name="AttachmentThumbnail",Source=bitmap,Stretch=Stretch.UniformToFill};}catch(Exception e){if(!(e is System.IO.IOException || e is FormatException || e is NotSupportedException || e is ArgumentException))throw;}
                 card.Children.Add(visual);var name=Ui.Text(file.Name,11);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.Margin=new Thickness(7,4,7,3);Grid.SetRow(name,1);card.Children.Add(name);
-                var remove=SmallText("×","RemoveAttachment");remove.ToolTip="移除 "+file.Name;remove.Width=remove.Height=remove.MinHeight=22;remove.Background=Brushes.White;remove.HorizontalAlignment=HorizontalAlignment.Right;remove.VerticalAlignment=VerticalAlignment.Top;remove.Margin=new Thickness(0,3,3,0);remove.Click+=delegate{Attachments.Remove(file);RefreshAttachments();RefreshAction();};card.Children.Add(remove);
+                var remove=SmallText("×","RemoveAttachment");remove.ToolTip="移除 "+file.Name;remove.Width=remove.Height=remove.MinHeight=22;remove.Background=ThemeManager.Surface;remove.HorizontalAlignment=HorizontalAlignment.Right;remove.VerticalAlignment=VerticalAlignment.Top;remove.Margin=new Thickness(0,3,3,0);remove.Click+=delegate{Attachments.Remove(file);RefreshAttachments();RefreshAction();};card.Children.Add(remove);
                 var attachmentCard=new Border{Name="AttachmentCard",Child=card,Background=Ui.Brush("#F7F7F8"),BorderBrush=Ui.Brush("#E4E5E8"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(9),Margin=new Thickness(0,0,7,6),ClipToBounds=true,ToolTip=file.Name};
                 if(file.IsImage)
                 {
@@ -456,9 +464,10 @@ namespace Dafeiyu
         }
         internal void Detach()
         {
-            if(closed)return;closed=true;meter.Stop();reorder.Cancel();CloseTrigger();
+            if(closed)return;closed=true;input.TextChanged-=InputChanged;session.InputDraftChanged-=RestoreDraft;meter.Stop();reorder.Cancel();CloseTrigger();DetachContextPreview();
             if(predictionSuggestions!=null)predictionSuggestions.Dispose();
             if(changeStatus!=null)changeStatus.Dispose();
+            if(approvals!=null)approvals.Dispose();
             if(subscribed)
             {
                 queue.Changed-=Refresh;session.ContextUsageChanged-=Refresh;

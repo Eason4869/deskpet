@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -14,11 +14,19 @@ internal sealed class DesktopController : IDisposable
     private readonly DesktopRuntime runtime;
     private readonly TrayIcon? tray;
     private readonly List<IDisposable> hotkeys = new();
+    private readonly HashSet<ChatWindow> chatHosts = new();
     private ChatWindow? quickChat, fullChat;
     private SettingsWindow? settingsWindow;
     private LiveWindow? liveWindow;
     private GuideWindow? guide;
-    private bool exiting;
+    private Task applicationExitDrain=Task.CompletedTask;
+    private int conversationServicesFinalized,disposeStarted;
+    private bool exiting,exitPrepared;
+    private ImageTaskCompletionTracker imageCompletions=null!;
+    private Window? imageNotification;
+    private TextBlock? imageNotificationText;
+    private string? imageNotificationId;
+    private readonly DispatcherTimer imageNoticeTimer=new(){Interval=TimeSpan.FromSeconds(8)};
     private readonly bool showAutomaticGuide;
     internal bool ShouldShowAutomaticGuide => showAutomaticGuide;
     public Dictionary<string, string> Drafts { get; } = new();
@@ -30,12 +38,19 @@ internal sealed class DesktopController : IDisposable
     public DictationSession Dictation { get; }
     public GeminiLiveSession Live { get; }
     public ApiClient Api { get; }
+    public GeneratedImageStore ImageStore { get; }
+    public ImageGenerationClient ImageClient { get; }
+    public ImageGenerationTaskManager ImageTasks { get; }
+    public ImageAssetUsageRegistry ImageUsage { get; }
+    public ImageAssetManagementService ImageManagement { get; }
+    public Task ImageServicesShutdown { get; private set; } = Task.CompletedTask;
+    public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
     public string DataDirectory { get; }
     public bool GuideLocked => guide != null;
     public bool HasOpenPanel => GuideLocked || quickChat?.IsVisible == true || fullChat?.IsVisible == true || settingsWindow?.IsVisible == true || liveWindow?.IsVisible == true;
     public event Action? Changed;
-    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null)
+    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null)
     {
         lifetime = desktop;
         runtime ??= new MacRuntime();
@@ -46,6 +61,7 @@ internal sealed class DesktopController : IDisposable
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
         bool firstLaunch = !File.Exists(settingsPath);
         store = new SettingsStore(settingsPath); Settings = store.Load();
+        DesktopTheme.Apply(Settings.ThemeMode);
         // The Avalonia client starts in chat; Mac has no local file Agent.
         // Shared settings also serve the WPF client, whose default is work.
         if (firstLaunch || !OperatingSystem.IsWindows()) Settings.AgentEnabled = false;
@@ -55,7 +71,17 @@ internal sealed class DesktopController : IDisposable
         Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.PackageId == Settings.SkinId) ?? Skins[0];
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Api = new ApiClient();
+        ImageUsage = new ImageAssetUsageRegistry();
+        ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
+        ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
+        ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage);
+        ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
+        ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
+        imageCompletions=new ImageTaskCompletionTracker(ImageTasks.List());ImageTasks.Changed+=ImageTaskCompleted;imageNoticeTimer.Tick+=(_,_)=>{imageNoticeTimer.Stop();imageNotification?.Hide();};
+        Session.ImageStore = ImageStore; Session.ImageClient = ImageClient; Session.ImageTasks = ImageTasks; Session.ImageUsage = ImageUsage;
+        ImageManagement = new ImageAssetManagementService(ImageStore, ImageUsage, new ImageAssetReferenceResolver(DataDirectory, ImageStore, ImageTasks));
+        Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);
         Queue = new ConversationQueue(Session, () => Settings, () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
@@ -63,7 +89,9 @@ internal sealed class DesktopController : IDisposable
         Live.TurnCommitted += (user, reply, status) => Session.AddLiveTurn(Session.PersonaId, user, reply, status);
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
+        Questions.Changed += Notify;
         Pet = new PetWindow(this);
+        lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
         tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.Name, IsVisible = true };
@@ -81,8 +109,25 @@ internal sealed class DesktopController : IDisposable
         if (showAutomaticGuide) Dispatcher.UIThread.Post(ShowGuide);
         if (!string.IsNullOrWhiteSpace(store.Warning)) Dispatcher.UIThread.Post(() => Error(new InvalidOperationException(store.Warning)));
     }
+    private void ImageTaskCompleted(ImageGenerationTaskSnapshot task)
+    {
+        if(!imageCompletions.Observe(task))return;
+        Dispatcher.UIThread.Post(()=>
+        {
+            if(exiting)return;imageNotificationId=task.Id;
+            if(imageNotification==null)
+            {
+                imageNotificationText=Ui.Text("");
+                imageNotification=Ui.Window("图片任务",Ui.Column(imageNotificationText,Ui.Row(Ui.Button("查看任务",()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),Ui.Button("关闭",()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
+                imageNotification.Name="ImageTaskCompletionNotification";imageNotification.ShowActivated=false;imageNotification.ShowInTaskbar=false;
+                imageNotification.Closed+=(_,_)=>{imageNotification=null;imageNoticeTimer.Stop();};
+            }
+            imageNotificationText!.Text=ImageGenerationMotion.Label(task)+"。可在任务中心查看结果和处理详情。";
+            imageNotification.Show();imageNoticeTimer.Stop();imageNoticeTimer.Start();
+        });
+    }
     private void Notify() => Dispatcher.UIThread.Post(() => Changed?.Invoke());
-    public void Save() { store.Save(Settings); Notify(); }
+    public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     public async Task SelectSkinAsync(PetSkin skin)
     {
         await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
@@ -108,6 +153,18 @@ internal sealed class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
+    internal Task RepairImageDeliveryAsync(string id) { if(exiting)throw new OperationCanceledException("应用正在退出。");return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None); }
+    public void ShowImages(GeneratedImage? image = null) { ShowChat(false); fullChat!.ShowImages(image); }
+    internal void RegisterChatHost(ChatWindow host) => chatHosts.Add(host);
+    internal void ChatHostClosed(ChatWindow host)
+    {
+        chatHosts.Remove(host);
+        // True exit owns question cleanup in the tracked drain. The view must
+        // not read PersonaId (the session writer gate) after the exit deadline.
+        if(exiting)return;
+        var session = host.QuestionSessionId;
+        if (!chatHosts.Any(other => other.IsVisible && other.QuestionSessionId == session)) Questions.CancelSession(session);
+    }
     public void ShowLive()
     {
         if (liveWindow == null) { liveWindow = new LiveWindow(this); liveWindow.Closed += (_, _) => liveWindow = null; }
@@ -146,15 +203,53 @@ internal sealed class DesktopController : IDisposable
         var text = e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : "操作失败（" + e.GetType().Name + "）。请检查网络、权限和数据目录。";
         var window = Ui.Window("DeskPet · 操作提示", Ui.Text(text), 460, 250); window.Show();
     }
+    private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()
     {
         if (exiting) return; exiting = true;
-        try { await StopAsync(); await Session.StopAsync(); Save(); await Session.FlushHistoryAsync(); lifetime.Shutdown(); }
+        try { await ImageTaskCenterState.BeginExitDrain(DrainApplicationForExitAsync,out applicationExitDrain); exitPrepared=true;lifetime.Shutdown(); }
         catch { exiting = false; throw; }
+    }
+    private async Task DrainApplicationForExitAsync()
+    {
+        try
+        {
+            await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
+            Save();
+            await Session.FlushHistoryAsync();
+        }
+        finally
+        {
+            FinalizeConversationServices();
+        }
+    }
+    private void FinalizeConversationServices()
+    {
+        if(Interlocked.Exchange(ref conversationServicesFinalized,1)!=0)return;
+        Queue.Dispose();
+        Dictation.Dispose();
+        Live.Dispose();
+        Session.Dispose();
+        Questions.Dispose();
     }
     public void Dispose()
     {
-        tray?.Dispose(); foreach (var binding in hotkeys) binding.Dispose();
-        Queue.Dispose(); Dictation.Dispose(); Live.Dispose(); Session.Dispose();
+        if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
+        lifetime.ShutdownRequested-=ShutdownRequested;
+        imageNoticeTimer.Stop();
+        imageNotification?.Close();
+        ImageTasks.Changed-=ImageTaskCompleted;
+        tray?.Dispose();
+        foreach(var binding in hotkeys)binding.Dispose();
+        ImageServicesShutdown=Task.Run(async()=>
+        {
+            try{await applicationExitDrain;}catch(Exception){}
+            await ImageTasks.StopAsync(CancellationToken.None);
+            FinalizeConversationServices();
+            await Session.WaitForIdleAsync();
+            await Session.FlushHistoryAsync();
+            ImageClient.Dispose();
+            ImageStore.Dispose();
+        });
     }
 }

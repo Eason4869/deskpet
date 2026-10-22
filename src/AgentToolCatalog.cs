@@ -14,6 +14,12 @@ namespace Dafeiyu
         static Dictionary<string,object> Fields(params object[] fields){var d=new Dictionary<string,object>();for(int i=0;i<fields.Length;i+=2)d[(string)fields[i]]=fields[i+1];return d;}
         static AgentToolDefinition D(string name,string description,bool readOnly,Dictionary<string,object> properties,params string[] required){return new AgentToolDefinition{Name=name,Description=description,ReadOnly=readOnly,Properties=properties,Required=required};}
         internal static readonly AgentToolDefinition[] Definitions={
+            D("ask_user","在原会话中询问任务信息并等待回答。此工具不能授予文件、终端或其他操作权限。",true,Fields("question",P("string","必填问题，最多 4000 字符"),"options",new{type="array",items=new{type="string"},minItems=2,maxItems=6},"allow_free_input",P("boolean","允许自由回答，默认 true")),"question"),
+            D("inspect_image","读取工作区图片并作为视觉输入交给当前模型；支持 PNG/JPEG/GIF/WebP，最多 3 MiB、2000 万像素，需模型支持图片输入。",true,Fields("path",P("string","图片路径"),"question",P("string","可选图片问题")),"path"),
+            D("git_status","读取本地 Git 状态与分支，无写入或联网。",true,Fields("path",P("string","仓库内路径，默认工作区"))),
+            D("git_diff","读取 Git 差异；不包括未跟踪文件补丁。",true,Fields("path",P("string","仓库内路径，默认工作区"),"scope",new{type="string",@enum=new[]{"unstaged","staged"}})),
+            D("git_log","读取有界的本地 Git 提交记录。",true,Fields("path",P("string","仓库内路径，默认工作区"),"limit",P("integer","1～50，默认 10"))),
+            D("generate_image","按文字描述生成图片并显示在原会话。",false,Fields("prompt",P("string","图片内容描述")),"prompt"),
             D("list_files","分页列出目录，稳定排序。offset 从 0 开始，limit 默认 200；截断时使用 next_offset 继续。",true,Fields("path",P("string","目录，默认 ."),"offset",P("integer","跳过项目数"),"limit",P("integer","1～200 项"))),
             D("read_file","读取文件文字并返回行号：UTF-8 文本，或 .docx/.xlsx 文档（含表格文字）；.doc/.xls 需本机 Word/Excel 或 WPS。文本最多 1 MiB，文档最多 8 MiB；offset 从 0 开始，limit 默认 200。",true,Fields("path",P("string","文件路径"),"offset",P("integer","跳过行数"),"limit",P("integer","1～1000 行")),"path"),
             D("write_file","创建或完整覆盖文件：文本按 UTF-8 写入；.docx 生成真实 Word 文档（每行一段，# 为标题，** 为加粗）；.xlsx 生成真实表格（制表符或逗号分列）；.doc/.xls 需本机 Word/Excel 或 WPS。保存原文件备份，拒绝覆盖读取后已变化的文件。",false,Fields("path",P("string","文件路径"),"content",P("string","完整文件内容")),"path","content"),

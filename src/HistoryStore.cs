@@ -19,6 +19,8 @@ namespace Dafeiyu
         private Task worker=Task.FromResult(0);
         private readonly HashSet<string> unreadableFiles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private string warning="";
+        readonly Dictionary<string,List<IDisposable>> pendingImageReferences=new Dictionary<string,List<IDisposable>>(StringComparer.OrdinalIgnoreCase);
+        void ReleasePendingImages(string path){lock(gate){List<IDisposable> pending;if(pendingImageReferences.TryGetValue(path,out pending)){pendingImageReferences.Remove(path);foreach(var lease in pending)lease.Dispose();}}}
         private readonly Dictionary<string,string> warnings=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         public string Warning { get { lock(gate)return warning; } }
         public event Action WarningChanged;
@@ -28,6 +30,8 @@ namespace Dafeiyu
             [DataMember] public List<ChatMessage> Messages;
         }
         public string DirectoryPath {get{return directory;}}
+        internal bool HasSavedHistory(string petId){return File.Exists(FilePath(petId));}
+        internal bool IsUnreadable(string petId){lock(gate)return unreadableFiles.Contains(FilePath(petId));}
         public HistoryStore(string directoryPath=null)
         { directory=Path.GetFullPath(directoryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DeskPet","history")); }
         private string FilePath(string petId)
@@ -55,10 +59,19 @@ namespace Dafeiyu
             }
             catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning(path,"聊天记录无法读取，原文件已保留；可清空记录后重新保存。");return new List<ChatMessage>(); }
         }
+        internal ImageAssetUsageRegistry ImageUsage {get;set;}
+        internal static IList<ChatMessage> InspectFileStrict(string path)
+        {
+            var info=new FileInfo(path);if(!info.Exists||info.Length<=0||info.Length>MaximumBytes||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("历史文件无法安全读取。");
+            byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));if(plain.Length>MaximumBytes)throw new SerializationException();Document document;
+            using(var stream=new MemoryStream(plain))document=(Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(stream);
+            if(document==null||document.Version!=1||document.Messages==null||document.Messages.Count>400||document.Messages.Any(m=>m==null))throw new SerializationException();return document.Messages;
+        }
         public Task SaveAsync(string petId,IList<ChatMessage> messages)
         {
-            var copy=messages.Select(m=>m.Copy()).ToList();string path=FilePath(petId);
+            var copy=messages.Select(m=>m.Copy()).ToList();string path=FilePath(petId);var protection=ImageUsage==null?null:ImageUsage.AcquireMessages(copy);
             return Enqueue(delegate {
+                if(protection!=null)lock(gate){List<IDisposable> pending;if(!pendingImageReferences.TryGetValue(path,out pending)){pending=new List<IDisposable>();pendingImageReferences[path]=pending;}pending.Add(protection);}
                 string temporary=null;
                 try {
                     bool blocked;lock(gate)blocked=unreadableFiles.Contains(path);
@@ -76,7 +89,7 @@ namespace Dafeiyu
                     temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
                     using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(encrypted,0,encrypted.Length);stream.Flush(true);}
                     AtomicFile.Commit(temporary,path);
-                    temporary=null;SetWarning(path,"");
+                    temporary=null;ReleasePendingImages(path);SetWarning(path,"");
                 }
                 catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,"聊天记录保存失败；当前窗口中的记录仍可导出，请检查本地存储权限或空间。"); }
                 finally { if(temporary!=null)try{File.Delete(temporary);}catch(IOException){}catch(UnauthorizedAccessException){} }
@@ -87,7 +100,7 @@ namespace Dafeiyu
             string path=FilePath(petId);return Enqueue(delegate {
                 try {
                     try{File.Delete(path);}catch(DirectoryNotFoundException){}
-                    lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");
+                    lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");
                 }
                 catch(Exception e){if(!IsStorageError(e))throw;SetWarning(path,"聊天记录文件删除失败，请检查本地存储权限。");}
             });

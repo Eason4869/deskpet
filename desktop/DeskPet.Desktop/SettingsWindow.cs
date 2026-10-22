@@ -14,6 +14,8 @@ internal sealed class SettingsWindow : Window
 {
     private readonly DesktopController owner;
     private readonly List<ProviderEditor> providers = new();
+    private readonly ImageProviderEditor imageProvider;
+    private readonly TabControl modelTabs = new();
     private readonly TabControl tabs = new();
     private readonly SpriteAssets avatarAssets = new();
     private Action? refreshVoice;
@@ -22,13 +24,15 @@ internal sealed class SettingsWindow : Window
         owner = controller; Title = "DeskPet · 设置"; Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
         var pages = new List<TabItem>();
         void Add(string title, Control content) => pages.Add(new TabItem { Header = title, Content = new ScrollViewer { Content = new Border { Padding = new Thickness(20), Child = content } } });
-        Add("伙伴", Partner()); Add("桌面", Behavior());
-        foreach (var item in new[] { ("模型配置", "text"), ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
+        Add("伙伴", Partner()); Add("通用", Behavior());
+        var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
+        modelTabs.ItemsSource = new[] { new TabItem { Header = "文字对话", Content = textProvider }, new TabItem { Header = "图片生成", Content = imageProvider } }; modelTabs.SelectedIndex = 0; Add("模型配置", modelTabs);
+        foreach (var item in new[] { ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); avatarAssets.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); };
     }
-    public void SelectSection(string section) => tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 };
+    public void SelectSection(string section) { tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
@@ -95,10 +99,12 @@ internal sealed class SettingsWindow : Window
     private Control Behavior()
     {
         var s = owner.Settings;
+        var theme = new ThemeModePicker(s.ThemeMode);
+        theme.Changed += mode => { s.ThemeMode = mode; DesktopTheme.Apply(mode); owner.Save(); };
         void Apply() { owner.Pet.ApplySettings(); owner.Save(); }
         var scale = new Slider { Minimum = .5, Maximum = 2.5, Value = s.Scale, TickFrequency = .1 };
         scale.ValueChanged += (_, _) => { s.Scale = scale.Value; Apply(); };
-        var panel = Ui.Column(Ui.Text("桌面行为", 20), Ui.Field("伙伴大小", scale),
+        var panel = Ui.Column(Ui.Text("桌面行为", 20), Ui.Column(Ui.Text("视觉风格", 16), theme), Ui.Field("伙伴大小", scale),
             Ui.Check("始终置顶", s.Topmost, v => { s.Topmost = v; Apply(); }),
             Ui.Check("锁定位置", s.LockPosition, v => { s.LockPosition = v; Apply(); }),
             Ui.Check("前台应用全屏时隐藏伙伴", s.HideOnFullscreen, v => { s.HideOnFullscreen = v; Apply(); }),
@@ -110,6 +116,8 @@ internal sealed class SettingsWindow : Window
             Ui.Check("免打扰（关闭回复朗读）", s.QuietMode, v => { s.QuietMode = v; Apply(); }),
             Ui.Button("暂停 / 恢复动画", () => owner.Pet.Paused = !owner.Pet.Paused),
             Ui.Button("显示伙伴并移回屏幕", owner.ShowPet));
+        var imageMotion=Ui.Check("图片生成动效",s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";panel.Children.Add(imageMotion);
+        var imageConcurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};imageConcurrency.ValueChanged+=(_,_)=>{if(imageConcurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)imageConcurrency.Value.Value;owner.Save();}};panel.Children.Add(Ui.Field("图片生成并发（同一服务最多 1 项）",imageConcurrency));
         panel.Children.Add(Ui.Text("全局快捷键", 18));
         foreach (var entry in new[] { ("chat", "⌘ ⇧ Space · 快聊"), ("show", "⌘ ⇧ D · 显示伙伴"), ("hide", "⌘ ⇧ H · 隐藏伙伴") })
             panel.Children.Add(Ui.Check(entry.Item2, s.Hotkeys.GetValueOrDefault(entry.Item1) == "enabled", v => { s.Hotkeys[entry.Item1] = v ? "enabled" : "disabled"; owner.Save(); owner.RegisterHotkeys(); }));

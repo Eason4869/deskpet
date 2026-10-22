@@ -7,6 +7,18 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/ConversationWorkspaceManagerTests.cs" Link="Regression/ConversationWorkspaceManagerTests.cs" />
+    <Compile Include="../../tests/ImageTaskCenterLifecycleTests.cs" Link="Regression/ImageTaskCenterLifecycleTests.cs" />
+    <Compile Include="../../tests/ImageGalleryExportTests.cs" Link="Regression/ImageGalleryExportTests.cs" />
+    <Compile Include="../../tests/ImageGalleryManagementTests.cs" Link="Regression/ImageGalleryManagementTests.cs" />
+    <Compile Include="../../tests/GeneratedImageGroupTests.cs" Link="Regression/GeneratedImageGroupTests.cs" />
+    <Compile Include="../../tests/ImageGenerationMotionTests.cs" Link="Regression/ImageGenerationMotionTests.cs" />
+    <Compile Include="../../tests/ImageGenerationIntegrationTests.cs" Link="Regression/ImageGenerationIntegrationTests.cs" />
+    <Compile Include="../../tests/ImageGenerationTaskManagerTests.cs" Link="Regression/ImageGenerationTaskManagerTests.cs" />
+    <Compile Include="../../tests/ImageGenerationTaskStoreTests.cs" Link="Regression/ImageGenerationTaskStoreTests.cs" />
+    <Compile Include="../../tests/ImageProviderProtocolTests.cs" Link="Regression/ImageProviderProtocolTests.cs" />
+    <Compile Include="../../tests/ImageGalleryLayoutTests.cs" Link="Regression/ImageGalleryLayoutTests.cs" />
+    <Compile Include="../../tests/ImageGenerationBackendTests.cs" Link="Regression/ImageGenerationBackendTests.cs" />
     <Compile Include="../../tests/McpConnectionTests.cs" Link="Regression/McpConnectionTests.cs" />
     <Compile Include="../../tests/AgentContextPolicyTests.cs;../../tests/AgentRunRecoveryTests.cs;../../tests/AgentTaskMemoryTests.cs;../../tests/AgentIsolationTests.cs;../../tests/AgentApprovalTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" />

@@ -13,7 +13,7 @@ namespace Dafeiyu
         internal AgentChangeSummaryData Summary{get;private set;}
         internal LiveChangeSummary(Action<AgentTaskState> open)
         {
-            this.open=open;Name="AgentLiveChangeSummary";Style=Ui.Button("").Style;Content=label;MinHeight=32;Padding=new Thickness(12,5,12,5);Margin=new Thickness(0);HorizontalAlignment=HorizontalAlignment.Right;Background=Brushes.White;BorderBrush=AgentUi.Line;Foreground=AgentUi.Ink;Cursor=System.Windows.Input.Cursors.Hand;Visibility=Visibility.Collapsed;
+            this.open=open;Name="AgentLiveChangeSummary";Style=Ui.Button("").Style;Content=label;MinHeight=32;Padding=new Thickness(12,5,12,5);Margin=new Thickness(0);HorizontalAlignment=HorizontalAlignment.Right;Background=ThemeManager.Surface;BorderBrush=AgentUi.Line;Foreground=AgentUi.Ink;Cursor=System.Windows.Input.Cursors.Hand;Visibility=Visibility.Collapsed;
             Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=12,ShadowDepth=1,Opacity=.10,Color=Colors.Black};Summary=AgentChangeSummaryData.FromTask(null);
             Click+=delegate{if(task!=null&&Visibility==Visibility.Visible&&Summary.FileCount>0&&this.open!=null)this.open(AgentChangeSummaryData.CopyTask(task));};
         }

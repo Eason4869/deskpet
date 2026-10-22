@@ -3,20 +3,27 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace Dafeiyu
 {
-    // Wrap only the history ScrollViewer. The composer remains a separate sibling.
+    // Artwork can decorate a standalone history or the stable conversation surface.
     public sealed class ChatAtmosphere : Grid
     {
         readonly Image artwork;
         SkinDefinition currentSkin;
         double artworkOpacity;
+        double previewWidth,previewHeight;
 
-        public ChatAtmosphere(ScrollViewer history)
+        public ChatAtmosphere(ScrollViewer history):this()
         {
             if(history==null)throw new ArgumentNullException("history");
             if(history.Parent!=null)throw new InvalidOperationException("Detach the history before wrapping it, or use ChatAtmosphere.Attach.");
+            history.Background=Brushes.Transparent;Children.Add(history);
+        }
+
+        ChatAtmosphere()
+        {
             Name="ChatAtmosphere";ClipToBounds=true;
             var fade=new LinearGradientBrush{StartPoint=new Point(.08,0),EndPoint=new Point(.88,.9)};
             fade.GradientStops.Add(new GradientStop(Colors.Transparent,0));
@@ -25,8 +32,17 @@ namespace Dafeiyu
             fade.GradientStops.Add(new GradientStop(Colors.White,1));fade.Freeze();
             artwork=new Image{Name="ChatAtmosphereArtwork",Stretch=Stretch.Uniform,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,20,2),IsHitTestVisible=false,Focusable=false,OpacityMask=fade,Visibility=Visibility.Collapsed};
             RenderOptions.SetBitmapScalingMode(artwork,BitmapScalingMode.HighQuality);
-            Children.Add(artwork);history.Background=Brushes.Transparent;Children.Add(history);
+            Children.Add(artwork);
             SizeChanged+=delegate{RefreshArtwork();};
+        }
+
+        public static ChatAtmosphere AttachSurface(Grid surface,int row,int rowSpan)
+        {
+            if(surface==null)throw new ArgumentNullException("surface");
+            var result=new ChatAtmosphere{IsHitTestVisible=false,Margin=new Thickness(0,0,0,20)};
+            // Span history and composer together: approvals and queued drafts resize
+            // only their foreground rows, never the background's bottom anchor.
+            SetRow(result,row);SetRowSpan(result,rowSpan);Panel.SetZIndex(result,-1);surface.Children.Insert(0,result);return result;
         }
 
         // The reusable layer starts disabled; ChatWindow applies the chosen 20% level.
@@ -43,7 +59,12 @@ namespace Dafeiyu
         public void SetSkin(SkinDefinition skin)
         {
             if(ReferenceEquals(currentSkin,skin))return;
-            try{artwork.Source=skin==null?null:SkinCatalog.GetPreview(skin);currentSkin=skin;}
+            try
+            {
+                var preview=skin==null?null:SkinCatalog.GetPreview(skin);
+                previewWidth=preview==null?0:preview.PixelWidth;previewHeight=preview==null?0:preview.PixelHeight;
+                artwork.Source=preview==null?null:CropTransparentPadding(preview);currentSkin=skin;
+            }
             catch(Exception error)
             {
                 if(!(error is IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException))throw;
@@ -53,13 +74,30 @@ namespace Dafeiyu
             RefreshArtwork();
         }
 
+        static BitmapSource CropTransparentPadding(BitmapSource preview)
+        {
+            var pixelsSource=new FormatConvertedBitmap(preview,PixelFormats.Bgra32,null,0);
+            int width=pixelsSource.PixelWidth,height=pixelsSource.PixelHeight,stride=width*4;
+            var pixels=new byte[stride*height];pixelsSource.CopyPixels(pixels,stride,0);
+            int left=width,top=height,right=-1,bottom=-1;
+            for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+                if(pixels[y*stride+x*4+3]!=0){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);}
+            if(right<0)return null;
+            var crop=new CroppedBitmap(preview,new Int32Rect(left,top,right-left+1,bottom-top+1));crop.Freeze();return crop;
+        }
+
         void RefreshArtwork()
         {
             double width=ActualWidth,height=ActualHeight;
             bool show=artwork.Source!=null&&artworkOpacity>0&&width>=440&&height>=160;
             artwork.Visibility=show?Visibility.Visible:Visibility.Collapsed;
             if(!show)return;
-            artwork.Width=Math.Min(450,width*.56);artwork.Height=Math.Min(648,height*.92);
+            // Keep the established sprite scale, but size its box to the visible pixels.
+            // Aligning the full preview canvas leaves its transparent right/bottom
+            // padding between the character and the container's bottom-right corner.
+            var bitmap=(BitmapSource)artwork.Source;
+            double scale=Math.Min(Math.Min(450,width*.56)/previewWidth,Math.Min(648,height*.92)/previewHeight);
+            artwork.Width=bitmap.PixelWidth*scale;artwork.Height=bitmap.PixelHeight*scale;
             double compact=Math.Min(1,.30+.70*Math.Max(0,width-440)/180);
             artwork.Opacity=artworkOpacity*compact;
         }

@@ -74,11 +74,11 @@ namespace Dafeiyu
             tab.Glyph=glyph;tab.Title=label;if(pinned){label.Name="ConversationPreviewTitle";label.ToolTip=title;}
             tab.Header=new Border{Name=pinned?"ConversationPreviewTab":"PreviewTab",Tag=key,Child=row,CornerRadius=new CornerRadius(9),BorderThickness=new Thickness(1),Height=36,Width=230,VerticalAlignment=VerticalAlignment.Top,Padding=new Thickness(12,4,pinned?12:7,4),Margin=new Thickness(2,0,4,4),Cursor=System.Windows.Input.Cursors.Hand,Focusable=true,ToolTip=pinned||key.StartsWith("terminal:")||key.StartsWith("page:")?title:key};tab.Header.MouseLeftButtonDown+=delegate{Select(tab);};tab.Header.MouseEnter+=delegate{PaintTab(tab);};tab.Header.MouseLeave+=delegate{PaintTab(tab);};tab.Header.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){Select(tab);e.Handled=true;}};return tab;
         }
-        void Select(Tab selected){if(!selected.Pinned)lastTool=selected;Selected=selected.View;body.Background=selected.Pinned?Brushes.White:Ui.Brush("#F8F9FB");foreach(var tab in tabs){tab.View.Visibility=ReferenceEquals(tab,selected)?Visibility.Visible:Visibility.Collapsed;PaintTab(tab);}FitTabWidths();selected.Header.BringIntoView();}
+        void Select(Tab selected){if(!selected.Pinned)lastTool=selected;Selected=selected.View;body.Background=selected.Pinned?ThemeManager.Surface:Ui.Brush("#F8F9FB");foreach(var tab in tabs){tab.View.Visibility=ReferenceEquals(tab,selected)?Visibility.Visible:Visibility.Collapsed;PaintTab(tab);}FitTabWidths();selected.Header.BringIntoView();}
         void PaintTab(Tab tab)
         {
             bool active=ReferenceEquals(tab.View,Selected),hover=tab.Header.IsMouseOver;
-            tab.Header.Background=active?Brushes.White:hover?Ui.Brush("#F6F6F7"):Brushes.Transparent;tab.Header.BorderBrush=active?Ui.Brush("#DEDFE2"):Brushes.Transparent;
+            tab.Header.Background=active?ThemeManager.Surface:hover?Ui.Brush("#F6F6F7"):Brushes.Transparent;tab.Header.BorderBrush=active?Ui.Brush("#DEDFE2"):Brushes.Transparent;
             tab.Header.Effect=active?new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=3,ShadowDepth=1,Opacity=.06,Color=Colors.Black}:null;
             tab.Title.Foreground=active?Ui.Brush("#25282D"):Ui.Brush("#85898F");tab.Glyph.Opacity=active?1:.65;if(tab.Close!=null)tab.Close.Opacity=active||hover?.85:.55;
         }

@@ -8,6 +8,7 @@ namespace Dafeiyu
     public sealed class ConnectionSettingsPanel : Grid
     {
         readonly PetWindow pet;readonly TextProviderEditor text,recognition,synthesis,live;readonly ComboBox voice,liveVoice;
+        readonly ImageGenerationSettings images;
         readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
         readonly TextBlock speechAdvice,liveAdvice;
         string speechContext,liveContext;
@@ -18,7 +19,7 @@ namespace Dafeiyu
         readonly System.Collections.Generic.Dictionary<string,string> voiceSavedValues=new System.Collections.Generic.Dictionary<string,string>();
         public bool HasUnsavedChanges
         {
-            get{return !text.Matches(pet.Settings) || !recognition.Matches(pet.Settings) || !synthesis.Matches(pet.Settings) || !live.Matches(pet.Settings) ||
+            get{return images.HasUnsavedChanges || !text.Matches(pet.Settings) || !recognition.Matches(pet.Settings) || !synthesis.Matches(pet.Settings) || !live.Matches(pet.Settings) ||
                 (cloud.IsChecked==true)!=pet.Settings.UseCloudVoice ||
                 voice.Text.Trim()!=pet.Settings.VoiceName || liveVoice.Text.Trim()!=pet.Settings.LiveVoice || HasVoiceDraftChanges;}
         }
@@ -49,13 +50,14 @@ namespace Dafeiyu
             var testLive=Ui.Button("测试 Live 通话",true);testLive.Name="PreviewLive";testLive.HorizontalAlignment=HorizontalAlignment.Left;testLive.Margin=new Thickness(0,12,0,0);
             testLive.Click+=delegate{if(pet.DialogueBusy){notice.Text="请先结束当前对话，再测试 Live。";return;}if(!SaveGuideSection(3))return;var host=Window.GetWindow(this);if(host!=null)pet.ShowLiveCall(host);};live.Extras.Children.Add(testLive);
             live.Extras.Children.Add(Ui.Text("测试使用当前 Live 模型和音色；连接成功后收音，结束通话返回设置。",11,Ui.Muted));
-            sections=new UIElement[]{text,recognition,synthesis,live};ShowSection(0);
+            images=new ImageGenerationSettings(pet);sections=new UIElement[]{text,recognition,synthesis,live,images};ShowSection(0);
             RefreshVoices(true);text.Changed+=delegate {RefreshVoices(false);};synthesis.Changed+=delegate {RefreshVoices(false);};live.Changed+=delegate {RefreshVoices(false);};
             var footer=new StackPanel{Margin=new Thickness(0,14,0,0)};var row=new WrapPanel();var save=Ui.Button("保存配置",true);save.Name="SaveConnections";save.Click+=delegate {Save();};row.Children.Add(save);
             footer.Children.Add(row);
             notice=Ui.Text("连接设置需点击保存。密钥由当前 Windows 用户加密存储。",11,Ui.Muted);notice.Name="ConnectionNotice";notice.Margin=new Thickness(0,10,0,0);footer.Children.Add(notice);Grid.SetRow(footer,1);Children.Add(footer);
         }
         public void ShowSection(int index){var previous=page.Content as ScrollViewer;if(previous!=null)previous.Content=null;page.Content=Ui.Scroll(sections[index]);}
+        internal void DisposeImageGeneration(){images.Dispose();}
         static ComboBox VoiceField(string value,string name)
         {return new ComboBox{Name=name,IsEditable=true,IsTextSearchEnabled=true,MinHeight=38,Padding=new Thickness(8),Text=value ?? ""};}
         void RefreshVoices(bool initial)
@@ -112,6 +114,7 @@ namespace Dafeiyu
         {
             try
             {
+                if(images.HasUnsavedChanges&&!images.Save())return false;
                 var nextProviders=text.ReadProviders();var nextAsrProviders=recognition.ReadProviders();var nextSpeechProviders=synthesis.ReadProviders();var nextLiveProviders=live.ReadProviders();var nextText=text.Read();var nextAsr=recognition.Read();var nextSpeech=synthesis.Read();var nextLive=live.Read();
                 if(voice.Text.Trim().Length>512 || liveVoice.Text.Trim().Length>512)throw new InvalidOperationException("音色 ID 不能超过 512 个字符。");
                 foreach(var provider in nextProviders)ValidateAddress(provider.Connection,ApiClient.ChatPath(provider.Connection));ValidateAddress(nextAsr,ApiClient.AsrPath(nextAsr));ValidateAddress(nextSpeech,ApiClient.SpeechPath(nextSpeech));
@@ -177,13 +180,13 @@ namespace Dafeiyu
             {
                 Name=prefix+"GuideSection";kind=serviceKind;var heading=Ui.Text(title,17);heading.FontWeight=FontWeights.SemiBold;Children.Add(heading);Children.Add(Ui.Text(kind=="text" ? "选择常用服务，或接入自己的兼容接口。" : kind=="live" ? "边说边听，支持字幕与语音打断。" : kind=="asr" ? "把录音转成文字，再交给当前对话模型。" : "给伙伴选一副声音。",12,Ui.Muted));
                 address=Ui.Field(settings.BaseUrl);address.Name=prefix+"Url";model=Ui.Field(settings.Model);model.Name=prefix+"Model";
-                key=new PasswordBox{Name=prefix+"Key",Password=settings.ApiKey,MinHeight=38,Padding=new Thickness(10,7,10,7),BorderBrush=Ui.Line,Background=Brushes.White};
+                key=new PasswordBox{Name=prefix+"Key",Password=settings.ApiKey,MinHeight=38,Padding=new Thickness(10,7,10,7),BorderBrush=Ui.Line,Background=ThemeManager.FieldSurface};
                 protocol=new ComboBox{Name=prefix+"Protocol",ItemsSource=kind=="text" ? new[]{"OpenAI Chat Completions","Anthropic Messages"} : kind=="live" ? new[]{"Gemini Live WebSocket"} : new[]{"自动识别（MiMo 模型使用 MiMo 协议）","OpenAI Audio","MiMo Chat Audio"},MinHeight=38,Padding=new Thickness(8)};
                 protocol.SelectedIndex=kind=="text" ? (settings.Protocol=="anthropic"?1:0) : kind=="live"?0:settings.Protocol=="mimo"?2:settings.Protocol=="openai"?1:0;
                 proxy=Ui.Toggle("使用代理连接",settings.UseProxy,v=>{});proxy.Name=prefix+"Proxy";
                 proxyAddress=Ui.Field(ProxyConfiguration.Normalize(settings.ProxyAddress));proxyAddress.Name=prefix+"ProxyAddress";
                 var presets=new ComboBox{Name=prefix+"Preset",ItemsSource=ServicePresets.For(kind),SelectedIndex=0,MinHeight=38,Padding=new Thickness(8)};
-                hint=Ui.Text("可修改地址和模型。切换到其他服务域名时会清空密钥。",11,Ui.Muted);hint.Margin=new Thickness(0,7,0,3);
+                hint=Ui.Text(kind=="live"?"支持 WSS；本机测试可使用 ws://127.0.0.1。切换到其他服务时会清空密钥。":"支持 HTTPS，或本机／局域网 IP 的 HTTP 地址。切换到其他服务时会清空密钥。",11,Ui.Muted);hint.Margin=new Thickness(0,7,0,3);
                 string keyOrigin=address.Text;
                 key.PasswordChanged+=delegate {keyOrigin=address.Text;};
                 address.TextChanged+=delegate {if(key.Password.Length>0 && !ServicePresets.SameOrigin(keyOrigin,address.Text)){key.Clear();hint.Text="服务地址已改变，请填写该服务的 API 密钥。";}};

@@ -23,7 +23,8 @@ namespace Dafeiyu.Tests {
   static IList Records(){return (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(Find("UsageRecord")));}
   static object Record(string id,DateTime day,long? input,long? output,long? total,string feature,string conversation,string provider,bool estimated){var value=Activator.CreateInstance(Find("UsageRecord"));Set(value,"RequestId",id);Set(value,"TimestampUtc",day.ToUniversalTime());Set(value,"InputTokens",input);Set(value,"OutputTokens",output);Set(value,"TotalTokens",total);Set(value,"Feature",feature);Set(value,"ConversationId",conversation);Set(value,"Provider",provider);Set(value,"Model","model-a");Set(value,"Status","complete");Set(value,"IsEstimated",estimated);return value;}
   static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var x in All<T>(VisualTreeHelper.GetChild(root,i)))yield return x;}
-  [STAThread]public static int Main(string[] args){try{
+  [STAThread]public static int Main(string[] args){Application app=null;try{
+   if(!args.Contains("--headless")&&Application.Current==null)app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
    Check(Find("UsageStatisticsModel")!=null,"usage statistics aggregation is implemented");
    var date=new DateTime(2026,10,18,12,0,0,DateTimeKind.Local);var records=Records();
    var first=Record("first",date,100,50,150,"chat","one","provider-a",false);Set(first,"CachedInputTokens",80L);Set(first,"ReasoningTokens",20L);records.Add(first);
@@ -48,10 +49,11 @@ namespace Dafeiyu.Tests {
    Check(Find("UsageStatisticsModel").GetMethod("HeatDetail",BindingFlags.Static|BindingFlags.NonPublic)!=null,"heatmap details define each selected aggregation mode");var dayDetail=Call("HeatDetail",Call("Day",records,date.Date),0,date.Date.AddDays(-364),date.Date);Check((string)Get(dayDetail,"Title")=="2026年10月18日"&&((string)Get(dayDetail,"Value")).Contains("当日 180 Token")&&((string)Get(dayDetail,"Value")).Contains("含估算"),"daily detail identifies the real date amount and estimated source");var weekDetail=Call("HeatDetail",weekly[weekly.Count-1],1,date.Date.AddDays(-364),date.Date);Check(((string)Get(weekDetail,"Title")).Contains("2026年10月12日")&&((string)Get(weekDetail,"Title")).Contains("2026年10月18日")&&((string)Get(weekDetail,"Value")).Contains("周合计"),"weekly detail names its actual range and weekly total");var cumulativeDetail=Call("HeatDetail",cumulative[cumulative.Count-1],2,date.Date.AddDays(-364),date.Date);Check((string)Get(cumulativeDetail,"Title")=="累计至 2026年10月18日"&&((string)Get(cumulativeDetail,"Value")).Contains("自 2025.10.19 起")&&((string)Get(cumulativeDetail,"Value")).Contains("未知"),"cumulative detail states its cutoff origin and unknown remainder");var emptyDetail=Call("HeatDetail",Call("Day",records,date.AddDays(-3).Date),0,date.Date.AddDays(-364),date.Date);Check((string)Get(emptyDetail,"Value")=="当日未采集","uncollected detail avoids an invented zero");
    if(!args.Contains("--headless"))Ui(records);
    Console.WriteLine("Usage statistics tests: "+checks+" passed");return 0;
-  }catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}}
+  }catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}finally{if(app!=null)app.Shutdown();}}
   static void Ui(IList records){
    string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"usage-ui-"+Guid.NewGuid().ToString("N"));var store=Activator.CreateInstance(Find("UsageStore"),new object[]{folder});foreach(var row in records)Find("UsageStore").GetMethod("AddOrUpdate").Invoke(store,new[]{row});
    var page=(UserControl)Activator.CreateInstance(Find("UsageStatisticsPage"),new[]{store});var window=new Window{Title="用量统计 · 自有样本验收",Width=1040,Height=900,Content=page,WindowStartupLocation=WindowStartupLocation.CenterScreen,UseLayoutRounding=true,SnapsToDevicePixels=true};
+   Find("Ui").GetMethod("Window").Invoke(null,new object[]{window,window.Title,1040d,900d});window.MinWidth=320;
    try{window.Show();Pump();
     Check(page is IDisposable,"usage page supports deterministic event cleanup");
     Check(All<TextBlock>(page).Any(t=>t.Text=="用量统计"),"independent page shows Chinese heading");
@@ -59,6 +61,7 @@ namespace Dafeiyu.Tests {
     Check(All<ComboBox>(page).Count()==5,"provider model project feature and heatmap mode controls are present");
     var cells=All<Button>(page).Where(b=>b.Name=="UsageHeatCell").ToList();Check(cells.Count>=365&&cells.Any(b=>b.ToolTip!=null),"year heatmap exposes actual tooltips on keyboard-focusable cells");
     var heatGrid=(Grid)VisualTreeHelper.GetParent(cells[0]);var padding=heatGrid.Children.OfType<Border>().Where(b=>b.Name=="UsageHeatPadding").ToList();Check(cells.Count==365&&cells.Count+padding.Count==heatGrid.ColumnDefinitions.Count*7,"daily heatmap fills complete week columns without adding fabricated date buttons");Check(padding.All(b=>b.Tag is DateTime&&((DateTime)b.Tag<DateTime.Today.AddDays(-364)||(DateTime)b.Tag>DateTime.Today)&&!b.Focusable),"calendar padding only covers dates outside the measured interval and cannot be selected");
+    HeatThemeChecks(page,heatGrid,cells);
     CheckHeatSpacing(heatGrid);
     cells.Last().Focus();Pump();var focusedTip=(ToolTip)cells.Last().ToolTip;Check(focusedTip.IsOpen,"keyboard focus opens the same actual cell detail as pointer hover");var tipSurface=(Border)focusedTip.Content;Check(((SolidColorBrush)tipSurface.Background).Color==Color.FromRgb(36,38,43)&&tipSurface.CornerRadius.TopLeft==8&&All<TextBlock>(tipSurface).Count()==2,"heatmap tooltip uses one dark rounded surface and exactly two white text lines");Check(All<TextBlock>(tipSurface).All(t=>((SolidColorBrush)t.Foreground).Color.R>=220),"heatmap tooltip text stays readable on the dark surface");Save(tipSurface,"usage-heat-tooltip-daily-fixture.png");
     Save(page,"usage-overview-fixture.png");
@@ -71,6 +74,7 @@ namespace Dafeiyu.Tests {
     var conversation=All<Expander>(page).First();conversation.IsExpanded=true;Pump();Check(All<TextBlock>(conversation).Any(t=>t.IsVisible&&t.Text.Contains("输入 120")&&t.Text.Contains("输出 60"))&&All<TextBlock>(conversation).Any(t=>t.IsVisible&&t.Text.Contains("辅助请求 1 次")),"expanded conversation shows measured input output and attributed helper count");
     window.Width=370;Pump();Check(page.ActualWidth<=370&&page.DesiredSize.Width<=370,"usage page measures within narrow host");var provider=All<ComboBox>(page).Single(c=>c.Name=="UsageProviderFilter");var model=All<ComboBox>(page).Single(c=>c.Name=="UsageModelFilter");Check(Math.Abs(provider.TranslatePoint(new Point(),page).Y-model.TranslatePoint(new Point(),page).Y)<1,"narrow filters retain two usable columns");Save(page,"usage-narrow-fixture.png");var scroll=All<ScrollViewer>(page).First();scroll.ScrollToEnd();Pump();Save(page,"usage-narrow-detail-fixture.png");
     WarningUi(window,folder,records[0]);
+    HeatmapVisualFixture(window,folder);
    }finally{window.Close();((IDisposable)page).Dispose();string testRoot=Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);if(Path.GetFullPath(folder).StartsWith(testRoot,StringComparison.OrdinalIgnoreCase))Directory.Delete(folder,true);}
   }
   static void WarningUi(Window window,string folder,object record){string blocked=Path.Combine(folder,"blocked-directory");File.WriteAllText(blocked,"fixture");var store=Activator.CreateInstance(Find("UsageStore"),new object[]{blocked});Find("UsageStore").GetMethod("AddOrUpdate").Invoke(store,new[]{record});var page=(UserControl)Activator.CreateInstance(Find("UsageStatisticsPage"),new[]{store});object original=window.Content;try{window.Content=page;Pump();var warning=All<TextBlock>(page).Single(t=>t.Name=="UsageStorageWarning");Check(warning.IsVisible&&warning.Text.Contains("内存"),"storage failure explains that visible current records are retained in memory");File.Delete(blocked);Find("UsageStore").GetMethod("AddOrUpdate").Invoke(store,new[]{record});Pump();Pump();Pump();Check(warning.Visibility==Visibility.Collapsed,"successful retry clears the visible storage warning through ledger notifications");}finally{window.Content=original;((IDisposable)page).Dispose();}}
@@ -81,6 +85,32 @@ namespace Dafeiyu.Tests {
    var horizontal=row.Zip(row.Skip(1),(a,b)=>b.TranslatePoint(new Point(),grid).X-a.TranslatePoint(new Point(),grid).X-a.ActualWidth).ToArray();
    var vertical=column.Zip(column.Skip(1),(a,b)=>b.TranslatePoint(new Point(),grid).Y-a.TranslatePoint(new Point(),grid).Y-a.ActualHeight).ToArray();
    Check(horizontal.Max()-horizontal.Min()<.01&&vertical.Max()-vertical.Min()<.01&&Math.Abs(horizontal[0]-vertical[0])<.01,"heatmap row and column gaps stay equal after pixel rounding, including padding cells (x="+string.Join(",",horizontal.Select(x=>x.ToString("0.##")))+"; y="+string.Join(",",vertical.Select(x=>x.ToString("0.##")))+")");
+  }
+  static void HeatThemeChecks(UserControl page,Grid grid,IList<Button> cells){
+   var apply=Find("ThemeManager").GetMethod("Apply",BindingFlags.Static|BindingFlags.NonPublic);var heat=Find("UsageStatisticsPage").GetMethod("HeatColor",BindingFlags.Static|BindingFlags.NonPublic);
+   foreach(string theme in new[]{"dark","light"}){
+    apply.Invoke(null,new object[]{theme});Pump();var empty=(Brush)heat.Invoke(null,new[]{Call("Day",Records(),DateTime.Today),(object)100L});
+    var surface=(SolidColorBrush)page.Background;var color=((SolidColorBrush)empty).Color;
+    Check(ColorDistance(color,surface.Color)>25,"uncollected matrix cells remain visibly distinct from the "+theme+" surface");
+    var card=All<Border>(page).Single(b=>b.CornerRadius.TopLeft==10&&All<Grid>(b).Contains(grid));Check(ColorDistance(color,((SolidColorBrush)card.Background).Color)>(theme=="dark"?50:25),"uncollected cells remain distinct from the containing "+theme+" card as well as the page");
+    var levels=new[]{0L,5L,25L,55L,100L}.Select(total=>{var summary=Activator.CreateInstance(Find("UsageSummary"));summary.GetType().GetField("Requests",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(summary,1);summary.GetType().GetField("KnownTokens",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(summary,total);return ((SolidColorBrush)heat.Invoke(null,new[]{summary,(object)100L})).Color;}).ToList();
+    Check(levels.Distinct().Count()==5&&levels.All(c=>ColorDistance(c,color)>20),"zero and four activity levels stay distinct from uncollected dates in "+theme+" mode");
+    var cell=cells[0];var drawing=new DrawingVisual();using(var context=drawing.RenderOpen())context.DrawRectangle(new VisualBrush(cell),null,new Rect(0,0,cell.ActualWidth,cell.ActualHeight));var image=new RenderTargetBitmap((int)Math.Ceiling(cell.ActualWidth),(int)Math.Ceiling(cell.ActualHeight),96,96,PixelFormats.Pbgra32);image.Render(drawing);var pixel=new byte[4];image.CopyPixels(new Int32Rect((int)cell.ActualWidth/2,(int)cell.ActualHeight/2,1,1),pixel,4,0);
+    Check(pixel[3]>240&&ColorDistance(Color.FromRgb(pixel[2],pixel[1],pixel[0]),((SolidColorBrush)cell.Background).Color)<5,"actual "+theme+" matrix paints its cell fill instead of relying on a hidden backing property (pixel "+string.Join(",",pixel)+", brush "+cell.Background+", size "+cell.ActualWidth+"x"+cell.ActualHeight+")");
+    image.CopyPixels(new Int32Rect(0,0,1,1),pixel,4,0);Check(pixel[3]<100,"actual "+theme+" matrix cell has a visibly rounded transparent corner");
+    Save(page,"usage-overview-"+theme+".png");
+   }
+   Check(cells[0].ActualWidth>=12&&cells[0].ActualHeight>=12,"heatmap cells use the readable reference density");
+   var months=grid.Children.OfType<TextBlock>().ToArray();Check(months.Length>=11&&months.All(t=>t.TranslatePoint(new Point(),grid).Y>=cells.Max(c=>c.TranslatePoint(new Point(),grid).Y+c.ActualHeight)),"month labels sit below the complete activity matrix");
+  }
+  static int ColorDistance(Color a,Color b){return Math.Abs(a.R-b.R)+Math.Abs(a.G-b.G)+Math.Abs(a.B-b.B);}
+  static void HeatmapVisualFixture(Window window,string folder){
+   var store=Activator.CreateInstance(Find("UsageStore"),new object[]{Path.Combine(folder,"heatmap-colors")});
+   for(int i=0;i<28;i++){long? total=i%11==0?(long?)null:i%9==0?0:new[]{25L,200L,500L,1000L}[i%4];var row=Record("heat-"+i,DateTime.Today.AddDays(-27+i).AddHours(12),total,0,total,"chat","heat-fixture","fixture",false);Find("UsageStore").GetMethod("AddOrUpdate").Invoke(store,new[]{row});}
+   var page=(UserControl)Activator.CreateInstance(Find("UsageStatisticsPage"),new[]{store});object original=window.Content;
+   try{window.Width=1120;window.Height=900;window.Content=page;Pump();var apply=Find("ThemeManager").GetMethod("Apply",BindingFlags.Static|BindingFlags.NonPublic);
+    foreach(string theme in new[]{"dark","light"}){apply.Invoke(null,new object[]{theme});Pump();var cells=All<Button>(page).Where(b=>b.Name=="UsageHeatCell").ToArray();Check(cells.Select(c=>((SolidColorBrush)c.Background).Color).Distinct().Count()==7,"actual "+theme+" activity matrix includes uncollected unknown zero and all four blue levels");Save(page,"usage-reference-"+theme+".png");}
+   }finally{window.Content=original;((IDisposable)page).Dispose();}
   }
   static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
   static void Save(FrameworkElement element,string name){var bitmap=new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth),(int)Math.Ceiling(element.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(element);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name)))encoder.Save(output);}

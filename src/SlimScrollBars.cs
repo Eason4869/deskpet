@@ -9,7 +9,7 @@ namespace Dafeiyu
         static Style style;
         public static void Install(FrameworkElement owner)
         {
-            if(style==null)style=(Style)XamlReader.Parse(@"<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ScrollBar'>
+            if(style==null)style=(Style)ThemeManager.Parse(@"<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='ScrollBar'>
 <Setter Property='OverridesDefaultStyle' Value='True'/><Setter Property='Focusable' Value='False'/><Setter Property='Background' Value='Transparent'/><Setter Property='Width' Value='12'/><Setter Property='MinWidth' Value='12'/>
 <Setter Property='Template'><Setter.Value><ControlTemplate TargetType='ScrollBar'>
 <Grid Background='Transparent'><Track x:Name='PART_Track' IsDirectionReversed='True' Orientation='{TemplateBinding Orientation}' Minimum='{TemplateBinding Minimum}' Maximum='{TemplateBinding Maximum}' ViewportSize='{TemplateBinding ViewportSize}' Value='{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}'>

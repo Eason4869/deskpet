@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 namespace Dafeiyu
 {
@@ -13,6 +14,7 @@ namespace Dafeiyu
         public ConversationSession Session {get;private set;}public AgentSessionModel KernelSession {get{return Session.KernelSession;}}
         internal ProjectDefinition Project {get{return project;}}
         internal bool UiObserved;
+        internal bool IsDisposed {get{return disposed;}}
         internal bool IsDraft;internal ConversationDefinition Definition;
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
@@ -24,7 +26,7 @@ namespace Dafeiyu
             var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,saveHistory=saveHistory??delegate{return true;}};
             workspace.DataDirectory=ResolveDataDirectory(dataRoot,conversation.Id);
             Directory.CreateDirectory(workspace.DataDirectory);
-            workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory);
+            workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id);
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
             try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else kernelStore.Clear();}
@@ -56,17 +58,26 @@ namespace Dafeiyu
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {
             if(String.IsNullOrWhiteSpace(conversationId) || conversationId.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || conversationId=="." || conversationId=="..")throw new ArgumentException("会话 ID 无效。");
-            string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));if(Directory.Exists(target))return target;
+            string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));bool targetExists=Directory.Exists(target);if(targetExists&&Directory.Exists(Path.Combine(target,"history")))return target;
             string projects=Path.Combine(dataRoot,"projects");if(!Directory.Exists(projects))return target;
             var sources=new System.Collections.Generic.List<string>();
             foreach(string directory in Directory.EnumerateDirectories(projects)){string source=Path.Combine(directory,"chats",conversationId);if(Directory.Exists(source))sources.Add(source);}
+            if(targetExists)
+            {
+                if(!Directory.Exists(Path.Combine(target,"history"))&&sources.Any(source=>Directory.Exists(Path.Combine(source,"history"))))throw new IOException("现有会话目录与旧版历史目录冲突，原记录已保留，请先核对。");
+                return target;
+            }
             if(sources.Count>1)throw new IOException("发现多个同 ID 会话目录，已保留原数据，请先核对。");
             if(sources.Count==1){Directory.CreateDirectory(Path.GetDirectoryName(target));Directory.Move(sources[0],target);}return target;
         }
         public async Task CloseAsync()
         {
             if(disposed)return;
-            try{await Queue.PauseAsync().ConfigureAwait(false);await Session.FlushHistoryAsync().ConfigureAwait(false);}finally{Dispose();}
+            await Queue.PauseAsync().ConfigureAwait(false);
+            await Session.StopAsync().ConfigureAwait(false);
+            await Session.SaveHistoryForCloseAsync().ConfigureAwait(false);
+            if(saveHistory()&&(!String.IsNullOrEmpty(Session.HistoryWarning)||!String.IsNullOrEmpty(Session.AgentTaskWarning)))throw new IOException("会话记录尚未保存，已保留当前会话；请处理存储问题后重试关闭。");
+            Dispose();
         }
         public void Dispose()
         {

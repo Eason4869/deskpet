@@ -98,6 +98,8 @@ namespace Dafeiyu
         {
             IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection) && !connection.Connected)return false;
             if(name=="exec_command")return TerminalAvailable;
+            if(name=="ask_user")return QuestionProvider!=null;
+            if(name=="generate_image")return ImageGenerator!=null;
             if(name=="spawn_subagent" || name=="interrupt_subagent" || name=="get_subagent" || name=="wait_subagents")return childWorkers!=null;
             if(name=="complete_subagent")return false;
             return !name.StartsWith("github_",StringComparison.Ordinal) || (githubConnected && (AgentPermissionRuntime.ActionForTool(name)=="github_read" || kernelApproval!=null));
@@ -111,6 +113,7 @@ namespace Dafeiyu
             if(args==null)return Task.FromResult("错误：工具参数必须是 JSON 对象。");
             if(name=="exec_command")NormalizeTerminalArguments(args);
             string resource=name!=null&&name.StartsWith("github_",StringComparison.Ordinal)&&github!=null?github.Repository+" :: "+AgentPermissionRuntime.ResourceForTool(name,args):null;
+            if(name=="git_status"||name=="git_diff"||name=="git_log")try{resource=AgentGitTools.FindRoot(Resolve(GetString(args,"path",".")),Root,RestrictToRoot,token);}catch(UnauthorizedAccessException){return Task.FromResult("错误：Git 仓库或元数据超出授权工作区，或路径经过链接。");}catch(ArgumentException ex){return Task.FromResult("错误："+ex.Message);}catch(IOException){return Task.FromResult("错误：无法读取 Git 仓库目录。");}
             var invocation=new AgentToolInvocation(name,args,new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,ProjectId=kernelSessionModel==null?Root:kernelSessionModel.ProjectId,AgentId=kernelProfile==null?"":kernelProfile.Id,TaskId=kernelTaskId,CallId=callId},resource??dynamicTools.Where(t=>t.Name==name).Select(t=>t.ApprovalResource).FirstOrDefault());
             return executionGuard.RunAsync(invocation,()=>ExecuteRecordedAsync(invocation,token));
         }
@@ -118,20 +121,29 @@ namespace Dafeiyu
         {
             string name=invocation.ToolName,argumentsJson=invocation.Arguments,callId=invocation.CallId;
             token.ThrowIfCancellationRequested();
+            if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return "错误：当前模型不支持图片理解；请选择支持图片输入的模型。";
             if(providerCapabilities!=null && !providerCapabilities.CanUseTool(name))return "错误：当前模型未启用工具能力。";
             if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return "错误：独立 worker 尚未连接，不会执行子任务。";
             if(desktopSession && !DesktopToolAvailable(name))return "错误：此工具尚未在桌面端启用或连接，不会执行操作。";
             if(name=="exec_command")return await ExecuteTerminalAsync(invocation,token,beforeEffect).ConfigureAwait(false);
-            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId,ProjectId=invocation.ProjectId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token,beforeEffect).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=AgentPermissionRuntime.ResourceForTool(name,args);
+            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId,ProjectId=invocation.ProjectId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token,beforeEffect).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=invocation.Resource;
             var decision=await new AgentAuthorizationService(kernelPermissions,kernelApproval).AuthorizeAsync(invocation,token).ConfigureAwait(false);
             if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return "错误：权限拒绝："+decision.Reason;}
             token.ThrowIfCancellationRequested();
             if(name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")return await ExecuteChildToolAsync(name,args,token).ConfigureAwait(false);
-            if(beforeEffect!=null)beforeEffect();
-            try{var result=await ExecuteCoreAsync(name,argumentsJson,callId,token).ConfigureAwait(false);if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
+            try{
+                string result;
+                if(name=="ask_user")result=await AskUserAsync(args,callId,token).ConfigureAwait(false);
+                else if(name=="generate_image"){
+                    if(readOnly)result="错误：计划模式不能生成图片。";
+                    else if(ImageGenerator==null)result="错误：当前入口未配置图片生成。";
+                    else {string prompt=GetString(args,"prompt",null);if(String.IsNullOrWhiteSpace(prompt)||prompt.Length>16000)result="错误：图片描述必须为 1～16000 字符。";else{if(beforeEffect!=null)beforeEffect();result=await ImageGenerator(prompt,callId,token).ConfigureAwait(false);}}
+                }
+                else{if(beforeEffect!=null)beforeEffect();result=await ExecuteCoreAsync(name,argumentsJson,callId,token,invocation.Resource).ConfigureAwait(false);}
+                if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
             catch(Exception){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="error",CreatedUtc=DateTime.UtcNow});throw;}
         }
-        private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token)
+        private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token,string authorizedResource=null)
         {
             return Task.Run(delegate
             {
@@ -150,6 +162,8 @@ namespace Dafeiyu
                     if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return "错误：尚未连接 GitHub，请在工作设置中填写 owner/repo 和访问令牌。";return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
                     if(name=="load_skill" || name=="read_instructions")return InstructionTool(name,args);
                     string path = Resolve(GetString(args, "path", "."));
+                    if(name=="inspect_image")return InspectImage(path,args,callId,token);
+                    if(name=="git_status"||name=="git_diff"||name=="git_log")return ReadGit(name,path,args,token,authorizedResource);
                     if (name == "list_files") return ListPage(path, GetInt(args,"offset",0,0,1000000), GetInt(args,"limit",200,1,200), token);
                     if (name == "find_files") return FindFiles(path,GetString(args,"pattern",null),GetInt(args,"offset",0,0,1500),GetInt(args,"limit",100,1,200),token);
                     if (name == "read_files") return ReadFiles(args,token);
@@ -594,14 +608,14 @@ namespace Dafeiyu
             return (int)value;
         }
         private static string Clip(string value) { return value.Length <= MaxResultChars ? value : value.Substring(0, MaxResultChars - 20) + "\n[结果已截断]"; }
-        public void Dispose(){if(disposed)return;disposed=true;if(childWorkers!=null)childWorkers.Dispose();foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
+        public void Dispose(){if(disposed)return;disposed=true;DisposeProjectTools();if(childWorkers!=null)childWorkers.Dispose();foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
         readonly Dictionary<string,IMcpConnectionState> mcpAvailability=new Dictionary<string,IMcpConnectionState>();
         private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);var state=transport as IMcpConnectionState;if(state!=null)mcpAvailability[definition.Name]=state;}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
         private void BuildSchemas()
         {
             object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
-        bool RuntimeToolAvailable(string name){if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        bool RuntimeToolAvailable(string name){if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
         public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }

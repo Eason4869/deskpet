@@ -33,6 +33,11 @@ result = subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'By
                         cwd=checkout, capture_output=True, timeout=180)
 assert result.returncode == 0, result.stdout.decode('utf-8', errors='replace') + result.stderr.decode('utf-8', errors='replace')
 print('PASS application compiles from the fresh public source tree')
+for executable in ['桌面伙伴.exe', 'DeskPet.Update.exe']:
+    assert (runtime / executable).is_file(), (
+        'Fresh build is missing ' + ascii(executable) + '; actual executables: ' +
+        ascii(sorted(path.name for path in runtime.glob('*.exe'))) +
+        '. Keep non-ASCII PowerShell scripts UTF-8 with BOM for Windows PowerShell 5.1.')
 # A reused portable folder must not leak previous executables or private loose files.
 (runtime / '大肥鱼桌宠.exe').write_bytes(b'legacy binary, do not ship')
 (runtime / 'private-key.txt').write_text('private sentinel', encoding='utf-8')
@@ -53,6 +58,10 @@ if result.returncode:
     print(result.stdout + result.stderr)
     raise AssertionError('fresh source packaging needs no local test artifacts')
 print('PASS fresh source packaging needs no local test artifacts')
+app_asset = output / ('DeskPet-Windows-App-' + version + '.exe')
+assert app_asset.is_file(), 'versioned standalone application release asset missing: ' + app_asset.name
+assert app_asset.read_bytes() == (runtime / '桌面伙伴.exe').read_bytes(), 'standalone release asset must preserve the built application bytes'
+print('PASS versioned standalone application matches the runtime executable')
 with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
     assert not any(name.endswith('大肥鱼桌宠.exe') or 'private-key' in name or '/data/' in name for name in bundle.namelist())
     for name in ['桌面伙伴.exe', '桌面伙伴.exe.config', 'DeskPet.Update.exe', 'DeskPet.Update.exe.config']:
@@ -114,6 +123,11 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
 print('PASS portable and installer share the same explicit runtime contract')
 
 manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
+manifest_names = [line.split('  ', 1)[1] for line in manifest]
+assert manifest_names.count(app_asset.name) == 1, 'standalone application must appear exactly once in the release manifest'
+assert all('/' not in name and '\\' not in name for name in manifest_names), 'release manifest must contain flat uploadable asset names'
+assert all(version in name for name in manifest_names), 'each release asset must retain the complete release version'
+assert set(manifest_names) == {path.name for path in output.iterdir() if path.is_file() and path.suffix in {'.exe', '.zip'}}, 'manifest must cover every release asset'
 for line in manifest:
     digest, name = line.split('  ', 1)
     assert digest == hashlib.sha256((output / name).read_bytes()).hexdigest(), 'stale digest: ' + name

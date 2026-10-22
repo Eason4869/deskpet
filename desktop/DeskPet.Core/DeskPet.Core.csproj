@@ -7,6 +7,17 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/GeneratedImageStore.Management.cs;../../src/ImageAssetReferenceResolver.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ImageTaskCenterState.cs" Link="Shared/ImageTaskCenterState.cs" />
+    <Compile Include="../../src/GeneratedImageGroupState.cs" Link="Shared/GeneratedImageGroupState.cs" />
+    <Compile Include="../../src/ImageGenerationMotion.cs" Link="Shared/ImageGenerationMotion.cs" />
+    <Compile Include="../../src/ImageAssetUsageRegistry.cs;../../src/ImageGenerationTaskManager.cs;../../src/ImageGenerationTask.cs;../../src/ImageGenerationTaskStore.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ImageServicePresets.cs;../../src/ImageGenerationProtocols.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ImageGalleryLayout.cs;../../src/ImageGalleryQuery.cs;../../src/ImageGalleryExport.cs;../../src/ImageGalleryDateFilter.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ConversationImageGeneration.cs" Link="Shared/ConversationImageGeneration.cs" />
+    <Compile Include="../../src/AgentQuestionController.cs;../../src/AgentProjectTools.cs;../../src/AgentImageInspection.cs;../../src/AgentGitTools.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/WebPValidation.cs" Link="Shared/WebPValidation.cs" />
+    <Compile Include="../../src/ImageGenerationProvider.cs;../../src/GeneratedImage.cs;../../src/GeneratedImageStore.cs;../../src/ImageGenerationClient.cs;../../src/ImageDownloadSecurity.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
@@ -15,6 +26,8 @@
     <PackageReference Include="Markdig" Version="1.3.2" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
     <Compile Include="../../src/ApplicationSnapshots.cs;../../src/AttachmentPicker.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ShortcutDefinitions.cs" Link="Shared/ShortcutDefinitions.cs" />
+    <Compile Include="../../src/ThemeColors.cs" Link="Shared/ThemeColors.cs" />
     <Compile Include="../../src/OnboardingUpgrade.cs" Link="Shared/OnboardingUpgrade.cs" />
     <Compile Include="../../src/WanderSchedule.cs" Link="Shared/WanderSchedule.cs" />
     <Compile Include="../../src/GitHubUpdates.cs;../../src/GitHubReleaseChannels.cs" Link="Shared/GitHubUpdates.cs" />

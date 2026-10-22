@@ -34,6 +34,12 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(a=>a.StartsWith("--final-review="))){Console.WriteLine("PASS final review: "+ImageTaskCenterUiChecks.RunFinalReview(Path.Combine(directory,"final-review"),args.Single(a=>a.StartsWith("--final-review=")).Substring(15)));return;}
+    if (args.Contains("--image-writer-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunWriterGateQuit(Path.Combine(directory,"image-exit-writer")) + " writer gate native lifetime assertions"); return; }
+    if (args.Contains("--image-held-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunHeldQuit(Path.Combine(directory,"image-exit-held")) + " held native lifetime assertions"); return; }
+    if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
+    if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
+    if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
     using (var gugaAssets = new SpriteAssets())
@@ -214,6 +220,8 @@ try
     }
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
     using var controller = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), runtime);
+    assertions += ImageUiChecks.Run(Path.Combine(directory, "image-ui"));
+    assertions += ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui"));
     const string richMarkdown = "# 原生标题\n\n普通 **粗体**、*斜体*、~~删除~~、`inline()` 和 [文档](https://example.com)。\n\n> 引用文本\n\n3. 有序项目\n4. 第二项\n\n- 无序项目\n\n```csharp\nvar answer = 42;\n```\n\n| 名称 | 值 |\n| --- | --- |\n| Markdown | **已渲染** |";
     var richLog = new ConversationLog(); var richReply = richLog.BeginTurn(richMarkdown, "text", out var richUser);
     var richTools = new[] { new AgentToolEvent { Id = "tool-1", Name = "read_file", Summary = "查看 README.md", Status = "running" } };
@@ -368,7 +376,32 @@ try
     foreach (var window in windows) { window.Show(); window.Measure(new Size(900, 800)); window.Arrange(new Rect(0, 0, 900, 800)); Dispatcher.UIThread.RunJobs(); Check(window.IsVisible && window.Bounds.Width > 0, window.GetType().Name + " opens with actual controls"); }
     var composerChat = (ChatWindow)windows[0];
     Check(composerChat.GetLogicalDescendants().OfType<AvatarView>().Single(a => a.Name == "ChatPartnerAvatar").Skin.Id == controller.Skin.Id && windows[4].GetLogicalDescendants().OfType<AvatarView>().Any(), "chat and Live use the current companion portrait");
-    var partnerSettings = (SettingsWindow)windows[2]; partnerSettings.SelectSection("partner"); Dispatcher.UIThread.RunJobs();
+    var partnerSettings = (SettingsWindow)windows[2];
+    var initialTheme = controller.Settings.ThemeMode;
+    partnerSettings.SelectSection("behavior"); Dispatcher.UIThread.RunJobs();
+    var themePicker = partnerSettings.GetLogicalDescendants().OfType<ThemeModePicker>().Distinct().Single();
+    void ChooseTheme(string mode) => themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoice" + mode).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Check(themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Count() == 3, "desktop settings expose three theme preview cards");
+    ChooseTheme("dark"); Dispatcher.UIThread.RunJobs();
+    Check(Application.Current!.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark && controller.Settings.ThemeMode == "dark", "desktop theme selection applies dark immediately");
+    Check(new SettingsStore(Path.Combine(controller.DataDirectory, "settings.json")).Load().ThemeMode == "dark", "desktop theme selection persists dark");
+    var themedInk = DesktopTheme.Brush("#203754"); var themedSurface = DesktopTheme.Brush("#FFFFFF");
+    Check(themedInk.Color.R > 160 && themedSurface.Color.R < 60 && composerChat.Background == themedSurface, "existing desktop chat follows dark palette");
+    Check(DesktopTheme.Caret is SolidColorBrush darkCaret && darkCaret.Color == Colors.White, "desktop dark caret is white");
+    var selectedThemeCard = themePicker.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "ThemeChoicedark");
+    foreach (var cardState in new[] { ":pointerover", ":pressed", ":focus-visible" })
+    {
+        ((IPseudoClasses)selectedThemeCard.Classes).Set(cardState, true); Dispatcher.UIThread.RunJobs();
+        var cardPresenter = selectedThemeCard.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        Check(cardPresenter.BorderBrush is ISolidColorBrush outline && outline.Color == DesktopTheme.Brush("#456DE6").Color, "selected theme blue outline survives " + cardState);
+        ((IPseudoClasses)selectedThemeCard.Classes).Set(cardState, false);
+    }
+    ChooseTheme("light"); Dispatcher.UIThread.RunJobs();
+    Check(themedInk.Color.R < 100 && themedSurface.Color.R == 255, "existing desktop brushes return to light");
+    ChooseTheme("system"); Dispatcher.UIThread.RunJobs();
+    Check(Application.Current.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Default && controller.Settings.ThemeMode == "system", "desktop system choice inherits OS theme");
+    ChooseTheme(initialTheme);
+    partnerSettings.SelectSection("partner"); Dispatcher.UIThread.RunJobs();
     Check(partnerSettings.GetLogicalDescendants().OfType<ComboBox>().Distinct().Single(c => ReferenceEquals(c.ItemsSource, controller.Skins)).ItemTemplate != null && controller.Pet.ContextMenu!.Items.OfType<MenuItem>().Count(i => i.Icon is AvatarView) == controller.Skins.Count, "partner selector and every partner menu entry use avatar views");
     Check(!controller.Settings.AgentEnabled, "new Avalonia client defaults to pure conversation without file Agent");
     var modeButton = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatModeAction");
@@ -538,7 +571,7 @@ try
     }
     uploadWindow.Close(); Dispatcher.UIThread.RunJobs();
     var settings = (SettingsWindow)windows[2];
-    foreach (var section in new[] { "partner", "behavior", "text", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().Single().SelectedItem != null, "settings section " + section); }
+    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem != null, "settings section " + section); }
     var settingsFile = Path.Combine(controller.DataDirectory, "settings.json"); var beforeWorkOpen = File.GetLastWriteTimeUtc(settingsFile);
     _ = new WorkSettingsView(controller, settings); Dispatcher.UIThread.RunJobs();
     Check(File.GetLastWriteTimeUtc(settingsFile) == beforeWorkOpen, "creating work settings does not save or dirty initial values");
@@ -590,6 +623,8 @@ try
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
+    var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
+    Check(guideExit.FontSize >= 14 && guideExit.FontWeight == Avalonia.Media.FontWeight.SemiBold && guideExit.Foreground == DesktopTheme.Brush("#203754"), "desktop guide exit is larger semibold and theme aware");
     var later = guide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "稍后继续"); later.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Check(controller.Settings.OnboardingState == "deferred", "guide deferred state persists");
     var nextGuide = new GuideWindow(controller); nextGuide.Show();
@@ -602,7 +637,7 @@ try
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
-    Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().Single().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
+    Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(guideNext.Content as string == "完成引导" && workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "17 / 17 · 更新与开始使用"), "seventeenth lesson exposes reachable completion button");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();

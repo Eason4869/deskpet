@@ -8,6 +8,11 @@ import subprocess
 from pathlib import Path
 from zipfile import ZipFile
 
+if __package__:
+    from .release_assets import release_metadata
+else:
+    from release_assets import release_metadata
+
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
@@ -19,14 +24,15 @@ def main():
     p.add_argument('--run-id', type=int, required=True)
     p.add_argument('--release-id', type=int, required=True)
     a = p.parse_args()
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', a.version) or not re.fullmatch(r'[0-9a-f]{40}', a.commit):
-        raise ValueError('Expected a stable numeric version and full commit SHA')
+    if not re.fullmatch(r'[0-9a-f]{40}', a.commit):
+        raise ValueError('Expected a full commit SHA')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', a.repository):
         raise ValueError('Invalid repository')
     tag = 'v' + a.version
     def api(path):
         return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + a.repository + path], text=True))
     run = api('/actions/runs/' + str(a.run_id))
+    metadata = release_metadata(a.version, tag, run['head_branch'])
     if run['status'] != 'completed' or run['conclusion'] != 'success' or run['head_sha'] != a.commit or run['path'] != '.github/workflows/macos.yml':
         raise ValueError('Expected a successful native macOS run for the tagged commit')
     ref = api('/git/ref/tags/' + tag)['object']
@@ -36,8 +42,8 @@ def main():
         raise ValueError('Tag target differs from expected release commit')
     # Drafts are addressed by numeric ID; tag lookup can omit unpublished releases.
     release = api('/releases/' + str(a.release_id))
-    if not release['draft'] or release['tag_name'] != tag:
-        raise ValueError('Promotion requires an existing draft release')
+    if not release['draft'] or release['tag_name'] != tag or release['prerelease'] is not metadata['prerelease']:
+        raise ValueError('Promotion requires an existing draft release in the expected channel')
     a.output.mkdir(parents=True, exist_ok=False)
     records = []
     for arch in ['arm64', 'x86_64']:

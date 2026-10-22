@@ -24,8 +24,8 @@ namespace Dafeiyu
             var title=Ui.Text("新版已就绪",14,Ui.Blue);title.FontWeight=FontWeights.SemiBold;body.Children.Add(title);
             message=Ui.Text("",12);message.Name="UpdateCountdown";message.Margin=new Thickness(0,8,0,10);body.Children.Add(message);
             cancel=Ui.Button("取消本次更新");cancel.Name="CancelPendingUpdate";cancel.MinHeight=28;cancel.Padding=new Thickness(12,3,12,3);cancel.Margin=new Thickness(0);cancel.HorizontalAlignment=HorizontalAlignment.Left;cancel.Click+=delegate {updates.Cancel();};body.Children.Add(cancel);
-            root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=Brushes.White});
-            tail=new Polygon{Fill=Brushes.White,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
+            root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});
+            tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             SourceInitialized+=delegate {DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
         }
         public void Refresh()

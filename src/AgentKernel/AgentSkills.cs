@@ -26,14 +26,34 @@ namespace Dafeiyu
         internal static AgentSkillInfo ReadInfo(string folder)
         {
             folder=Path.GetFullPath(folder);string path=Path.Combine(folder,"SKILL.md");AgentInstructions.RequireWithin(folder,path);string body=AgentInstructions.Read(path).Content;
-            // Metadata must be in the initial front matter, never instructions in the body.
+            return ParseInfo(body,folder);
+        }
+        internal static AgentSkillInfo ParseInfo(string body,string folder)
+        {
+            if(body==null||Encoding.UTF8.GetByteCount(body)>65536)throw new InvalidOperationException("技能正文超过 64 KiB。");
+            body=body.TrimStart('\ufeff');
+            // Read only a small YAML scalar subset; tags, aliases and executable objects are never interpreted.
             var frontMatter=Regex.Match(body,@"\A---[ \t]*\r?\n(?<header>[\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)");
-            if(!frontMatter.Success||frontMatter.Length>4096)throw new InvalidOperationException("技能缺少有效的前置元数据："+path);
+            if(!frontMatter.Success||frontMatter.Length>4096)throw new InvalidOperationException("技能缺少有效的前置元数据："+folder);
             string header=frontMatter.Groups["header"].Value;
-            var names=Regex.Matches(header,@"(?m)^name:[ \t]*([a-z0-9][a-z0-9_-]{0,63})[ \t]*\r?$");var descriptions=Regex.Matches(header,@"(?m)^description:[ \t]*(.+?)[ \t]*\r?$");
-            if(names.Count!=1||descriptions.Count!=1)throw new InvalidOperationException("技能缺少有效 name/description："+path);
-            string summary=descriptions[0].Groups[1].Value.Trim().Trim('"','\'');if(String.IsNullOrWhiteSpace(summary))throw new InvalidOperationException("技能 description 不能为空："+path);if(summary.Length>512)summary=summary.Substring(0,512);
-            return new AgentSkillInfo{Name=names[0].Groups[1].Value,Description=summary,Directory=folder};
+            string name=Scalar(header,"name"),summary=Scalar(header,"description");
+            if(!Regex.IsMatch(name,@"\A[a-z0-9][a-z0-9_-]{0,63}\z")||String.IsNullOrWhiteSpace(summary))throw new InvalidOperationException("技能缺少有效 name/description："+folder);
+            if(summary.Length>512)summary=summary.Substring(0,512);
+            return new AgentSkillInfo{Name=name,Description=summary,Directory=folder};
+        }
+        static string Scalar(string header,string key)
+        {
+            var matches=Regex.Matches(header,@"(?m)^"+key+@":([^\r\n]*)\r?$");
+            if(matches.Count!=1)throw new InvalidOperationException("技能元数据须包含唯一 "+key+"。");
+            var match=matches[0];string value=match.Groups[1].Value.Trim();
+            var continuation=Regex.Match(header.Substring(match.Index+match.Length),@"\A(?:\r?\n[ \t]+[^\r\n]*)+").Value;
+            if(value=="|"||value=="|-"||value=="|+"||value==">"||value==">-"||value==">+")return String.Join(value[0]=='>'?" ":"\n",continuation.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).Select(s=>s.Trim())).Trim();
+            if(continuation.Length>0)value+=" "+String.Join(" ",continuation.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).Select(s=>s.Trim()));
+            if(value.StartsWith("\"")&&value.EndsWith("\"")){
+                try{return new System.Web.Script.Serialization.JavaScriptSerializer().Deserialize<string>(value);}catch(ArgumentException){throw new InvalidOperationException("技能元数据引号格式无效。");}}
+            if(value.StartsWith("'")&&value.EndsWith("'"))return value.Substring(1,value.Length-2).Replace("''","'");
+            if(value.StartsWith("\"")||value.StartsWith("'")||value.StartsWith("!")||value.StartsWith("&")||value.StartsWith("*"))throw new InvalidOperationException("技能元数据不支持此格式。");
+            int comment=value.IndexOf(" #",StringComparison.Ordinal);return comment<0?value:value.Substring(0,comment).TrimEnd();
         }
         public AgentInstructionSource Load(string name,string resource=null)
         {

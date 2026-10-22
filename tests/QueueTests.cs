@@ -64,6 +64,25 @@ namespace Dafeiyu.Tests
                 session.SelectPersona("other");Check(queue.Items.Count==0,"queues are isolated by companion");session.SelectPersona("e-bao");Check(queue.Items.Count==1,"companion queue survives switching");
             }
             await Reordering(cfg);
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT){
+            var failingAgent=new FailingAgent();var agentCfg=cfg.Copy();agentCfg.AgentEnabled=true;agentCfg.AgentWorkspace=Path.GetDirectoryName(path);
+            using(var session=new ConversationSession(failingAgent,new Speech(),()=>null))
+            using(var queue=new ConversationQueue(session,()=>agentCfg,()=>"fixture",path+".agent-failure"))
+            {
+                queue.Enqueue("clone and analyse repository");await Until(()=>failingAgent.Started.Task.IsCompleted);queue.Enqueue("later request");failingAgent.Boundary.TrySetResult(true);
+                await Until(()=>queue.IsPaused&&!queue.IsRunning);
+                Check(queue.Items.Count==1&&queue.Items.Single().Text=="later request","started Agent failure pauses only pending inputs without resubmitting the failed task");
+                Check(session.History.Messages.Count(m=>m.Role=="user"&&m.Content=="clone and analyse repository")==1&&session.History.Messages.Last().Status=="error","failed Agent task stays in its original conversation turn");
+                failingAgent.Resume=true;queue.Resume();await Until(()=>!queue.IsRunning&&queue.Items.Count==0);
+                Check(failingAgent.Calls==2,"resuming the queue sends only the later request rather than cloning again");
+            }
+            string blockedWorkspace=Path.Combine(Path.GetDirectoryName(path),"not-a-directory.txt");File.WriteAllText(blockedWorkspace,"fixture");var beforeStart=agentCfg.Copy();beforeStart.AgentWorkspace=blockedWorkspace;var unusedAgent=new FailingAgent();
+            using(var session=new ConversationSession(unusedAgent,new Speech(),()=>null))using(var queue=new ConversationQueue(session,()=>beforeStart,()=>"fixture",path+".before-start"))
+            {
+                queue.Enqueue("not started");await Until(()=>queue.IsPaused&&!queue.IsRunning);
+                Check(queue.Items.Single().Text=="not started"&&unusedAgent.Calls==0,"Agent setup failure retains the unstarted input for retry");
+            }
+            }
 
             var modeCfg=new PetSettings{AgentEnabled=true,ReadReplies=false,Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="fixture"}};
             var modeApi=new Api();using(var session=new ConversationSession(modeApi,new Speech(),()=>null))
@@ -207,6 +226,12 @@ namespace Dafeiyu.Tests
             public readonly TaskCompletionSource<bool> Started=new TaskCompletionSource<bool>(),Boundary=new TaskCompletionSource<bool>(),Applied=new TaskCompletionSource<bool>();public bool Resume;public IList<ChatMessage> Last;
             public virtual async Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken cancel){Last=messages;if(Resume)return "done";Started.TrySetResult(true);await Boundary.Task;await workspace.TakeGuidanceAsync(cancel);Applied.TrySetResult(true);await Task.Delay(Timeout.Infinite,cancel);return "done";}
             public Task<string> ChatAsync(ConnectionSettings c,IList<ChatMessage>m,CancellationToken t){throw new NotSupportedException();}public Task<string> TranscribeAsync(ConnectionSettings c,byte[]b,CancellationToken t){throw new NotSupportedException();}public Task<byte[]> SpeechAsync(ConnectionSettings c,string v,string s,CancellationToken t){throw new NotSupportedException();}public void Dispose(){}
+        }
+        sealed class FailingAgent:GuidanceApi
+        {
+            public int Calls;
+            public override async Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken cancel)
+            {Calls++;if(Resume)return "done";Started.TrySetResult(true);await Boundary.Task;throw new ApiException("命令执行失败，请核对已完成操作。");}
         }
         static async Task Until(Func<bool> condition){for(int i=0;i<300;i++){if(condition())return;await Task.Delay(10);}throw new Exception("Timed out");}
         sealed class Api:IConversationApi,IStreamingConversationApi

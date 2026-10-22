@@ -112,6 +112,7 @@ namespace Dafeiyu
                             if(workspace==null)throw new ApiException("此会话未启用 Agent 工具，模型返回的工具调用已拒绝。");
                             history.Add(reply.Message);
                             var toolResults=new List<object>();
+                            var inspectedImages=new List<object>();
                             var boundaryGuidance=new List<ChatMessage>();
                             foreach(AgentCall call in reply.Calls)
                             {
@@ -153,10 +154,12 @@ namespace Dafeiyu
                                 item.Status=error?"error":"complete";item.Summary=AgentToolSummary(call,item.Status);item.ElapsedMilliseconds=watch.ElapsedMilliseconds;
                                 workspace.RecordTool(item,result);if(onToolEvent!=null)onToolEvent(item.Copy());
                                 if(error){string failureKey=call.Name+"\n"+call.Arguments.ToString()+"\n"+result;consecutiveFailures=failureKey==lastFailure?consecutiveFailures+1:1;lastFailure=failureKey;if(consecutiveFailures>=3)throw new ApiException("同一工具及参数已重复失败三次且没有进展，任务已停止；请检查错误和项目现状后继续。");}else{lastFailure=null;consecutiveFailures=0;}
-                                if(anthropic)toolResults.Add(new {type="tool_result",tool_use_id=call.Id,content=result,is_error=error});
-                                else history.Add(new {role="tool",tool_call_id=call.Id,content=result});
+                                var inspection=workspace.TakeInspectionResult(call.Id);
+                                if(anthropic)toolResults.Add(new {type="tool_result",tool_use_id=call.Id,content=inspection==null?(object)result:inspection.Content(result,true),is_error=error});
+                                else {history.Add(new {role="tool",tool_call_id=call.Id,content=result});if(inspection!=null)inspectedImages.AddRange(inspection.Content("inspect_image 调用 "+call.Id+" 的视觉内容：\n"+result,false));}
                             }
                             if(anthropic)history.Add(new {role="user",content=toolResults});
+                            else if(inspectedImages.Count>0)history.Add(new{role="user",content=inspectedImages});
                             foreach(var guide in boundaryGuidance)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});
                         }
                     }
@@ -208,12 +211,13 @@ namespace Dafeiyu
         }
         private static string AgentToolSummary(AgentCall call,string status)
         {
-            string operation=call.Name=="read_file"?"读取":call.Name=="write_file"?"写入":call.Name=="edit_file"?"修改":call.Name=="search_files"?"搜索":call.Name=="list_files"?"列出":call.Name=="find_files"?"查找文件":call.Name=="read_files"?"批量读取":call.Name=="apply_patch"?"应用补丁":call.Name=="exec_command"?"运行命令":call.Name=="update_plan"?"更新计划":call.Name=="restore_file"?"恢复文件":call.Name=="create_directory"?"创建目录":call.Name=="open_directory"?"打开目录":"执行工具";
+            string operation=call.Name=="ask_user"?"询问任务信息":call.Name=="inspect_image"?"检查图片":call.Name=="generate_image"?"生成图片":call.Name=="git_status"?"读取 Git 状态":call.Name=="git_diff"?"读取 Git 差异":call.Name=="git_log"?"读取 Git 历史":call.Name=="read_file"?"读取":call.Name=="write_file"?"写入":call.Name=="edit_file"?"修改":call.Name=="search_files"?"搜索":call.Name=="list_files"?"列出":call.Name=="find_files"?"查找文件":call.Name=="read_files"?"批量读取":call.Name=="apply_patch"?"应用补丁":call.Name=="exec_command"?"运行命令":call.Name=="update_plan"?"更新计划":call.Name=="restore_file"?"恢复文件":call.Name=="create_directory"?"创建目录":call.Name=="open_directory"?"打开目录":"执行工具";
             string path="";
             try
             {
                 var args=new JavaScriptSerializer{MaxJsonLength=AgentMaximumArguments}.DeserializeObject(call.Arguments.ToString()) as Dictionary<string,object>;
                 string raw=args==null?null:AgentString(args,"path");
+                if(call.Name=="inspect_image"&&!String.IsNullOrEmpty(raw))raw=Path.GetFileName(raw);
                 if(String.IsNullOrEmpty(raw) && (call.Name=="list_files" || call.Name=="search_files"))raw=".";
                 // Only the path argument is displayed, including full-access absolute paths.
                 // File content, search text and other arguments never enter the tool log.

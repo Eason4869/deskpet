@@ -13,8 +13,9 @@ namespace Dafeiyu.Tests
     public static class WorkSettingsTests
     {
         static int checks;
-        [STAThread] public static int Main()
+        [STAThread] public static int Main(string[] args)
         {
+            if(args.Contains("--archive-contract-only")){bool exists=typeof(PetWindow).Assembly.GetType("Dafeiyu.ArchivedConversationsPanel")!=null;Console.WriteLine((exists?"PASS ":"FAIL ")+"archived conversations have a dedicated settings panel");return exists?0:1;}
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
             string scratch=Path.Combine(Directory.GetCurrentDirectory(),"work","work-settings-"+Guid.NewGuid().ToString("N"));
             try
@@ -87,10 +88,35 @@ namespace Dafeiyu.Tests
                 cfg.Text.ContextWindowTokens=262144;Refresh(panel);Check(All<FrameworkElement>(panel).Single(e=>e.Name=="ContextFallbackRow").Visibility==Visibility.Collapsed && All<TextBlock>(panel).Single(t=>t.Name=="WorkContextSummary").Text.Contains("262,144"),"known model hides fallback and shows its actual configured capacity");
                 cfg.Text.ContextWindowTokens=0;Refresh(panel);Check(All<FrameworkElement>(panel).Single(e=>e.Name=="ContextFallbackRow").Visibility==Visibility.Visible && Field(panel,"AgentContextTokenLimit").Text=="8192","unknown model restores the saved fallback input");
                 Check(!pet.Store.Load().AgentCommandsEnabled && pet.Store.Load().AgentCommandRecipes=="[]","saving removes obsolete command grants without exposing a command editor");
-                CaptureEditor(panel,scratch);Console.WriteLine("Work settings tests: "+checks+" passed");return 0;
+                ArchivedSettings(pet,scratch);CaptureEditor(panel,scratch);Console.WriteLine("Work settings tests: "+checks+" passed");return 0;
             }
             catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
             finally{if(pet!=null){pet.Close();Pump();}app.Shutdown();}
+        }
+        static void ArchivedSettings(PetWindow pet,string scratch)
+        {
+            var archived=ProjectCatalogStore.CreateProject(pet.Projects,"Archived project",scratch);archived.Archived=true;archived.Conversations[0].Name="Project archive child";
+            var active=ProjectCatalogStore.CreateProject(pet.Projects,"Active project",scratch);active.Conversations[0].Archived=true;
+            var personal=ProjectCatalogStore.CreateConversation(pet.Projects,ProjectCatalogStore.UnassignedProjectId,"Archived personal");personal.Mode="chat";personal.PetId=pet.Skin.Id;personal.Archived=true;
+            var quick=ProjectCatalogStore.CreateConversation(pet.Projects,ProjectCatalogStore.QuickProjectId,"Archived quick");quick.PetId=pet.Skin.Id;quick.Archived=true;pet.ProjectStore.Save(pet.Projects);
+            var settings=new WorkSettingsPanel(pet);var host=new Window{Width=1030,Height=800,Content=settings};
+            try
+            {
+                host.Show();Pump();var tab=All<Button>(settings).Single(b=>b.Name=="WorkSettingsArchivedTab");tab.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                var archive=All<ArchivedConversationsPanel>(settings).Single();Check(archive.IsVisible&&!All<Button>(settings).Single(b=>b.Name=="SaveWorkSettings").IsVisible,"work settings third tab displays archives without a misleading save footer");
+                Check(All<FrameworkElement>(archive).Any(e=>e.Name=="ArchivedProject_"+archived.Id)&&All<FrameworkElement>(archive).Count(e=>e.Name.StartsWith("ArchivedConversation_"))==4,"archive view includes projects and their conversations plus project personal and quick archives");
+                Check(All<Button>(archive).Any(b=>b.Name=="DeleteArchivedProject_"+archived.Id),"archived projects retain the original project removal action");
+                foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);Pump();var png=new System.Windows.Media.Imaging.PngBitmapEncoder();var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)host.ActualWidth,(int)host.ActualHeight,96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(host);png.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(scratch,"archived-settings-"+theme+".png")))png.Save(output);Check(ThemeManager.IsDark==(theme=="dark"),"archive renders in "+theme+" theme");}ThemeManager.Apply("system");
+                All<Button>(settings).Single(b=>b.Name=="WorkSettingsGeneralTab").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Field(settings,"AgentGoal").Text="archive navigation draft";tab.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));settings.RefreshState();Check(Field(settings,"AgentGoal").Text=="archive navigation draft"&&settings.HasUnsavedChanges,"archive navigation and refresh preserve pending work settings");
+                All<Button>(archive).Single(b=>b.Name=="RestoreArchivedConversation_"+archived.Conversations[0].Id).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(!archived.Archived&&!archived.Conversations[0].Archived&&!pet.ProjectStore.Load().Projects.Single(p=>p.Id==archived.Id).Archived,"restoring a project-owned conversation restores its archived owner without changing its original conversation state");
+                All<Button>(archive).Single(b=>b.Name=="RestoreArchivedConversation_"+personal.Id).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(!personal.Archived&&!pet.ProjectStore.Load().UnassignedConversations.Single(c=>c.Id==personal.Id).Archived,"personal archive restore persists to its original source");
+                Action<bool> removeQuick=confirm=>{var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(60)};timer.Tick+=delegate{var dialog=Application.Current.Windows.OfType<Window>().FirstOrDefault(w=>w.Name=="DeleteConversationDialog");if(dialog==null)return;timer.Stop();All<Button>(dialog).Single(b=>b.Name==(confirm?"ConfirmDeleteConversation":"CancelDeleteConversation")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));};timer.Start();try{All<Button>(archive).Single(b=>b.Name=="DeleteArchivedConversation_"+quick.Id).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}finally{timer.Stop();}};
+                removeQuick(false);Check(pet.Projects.QuickConversations.Contains(quick),"canceling archive delete preserves the conversation");removeQuick(true);Check(!pet.Projects.QuickConversations.Contains(quick)&&!pet.ProjectStore.Load().QuickConversations.Any(c=>c.Id==quick.Id),"confirming archive delete removes the quick conversation from memory and disk");
+                All<Button>(archive).Single(b=>b.Name=="RestoreArchivedConversation_"+active.Conversations[0].Id).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(All<TextBlock>(archive).Any(t=>t.Name=="ArchivedConversationsEmpty"),"restoring final archived conversation displays the empty state");
+                personal.Archived=true;pet.ProjectStore.Save(pet.Projects);typeof(PetWindow).GetMethod("NotifyProjectsChanged",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);Pump();Check(All<FrameworkElement>(archive).Any(e=>e.Name=="ArchivedConversation_"+personal.Id),"project catalog change events refresh the visible archive list without reopening settings");
+                pet.RestoreConversation(ProjectCatalogStore.UnassignedProject(pet.Projects,pet.Settings),personal);typeof(PetWindow).GetMethod("NotifyProjectsChanged",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);Pump();Check(All<TextBlock>(archive).Any(t=>t.Name=="ArchivedConversationsEmpty")&&Field(settings,"AgentGoal").Text=="archive navigation draft","restoration events clear archives while preserving unsaved work draft");
+            }
+            finally{ThemeManager.Apply("system");host.Close();}
         }
         static AgentPermissionEffect PolicyDecision(AgentAccessPolicy policy,string tool,string path)
         {

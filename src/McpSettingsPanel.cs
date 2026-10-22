@@ -20,7 +20,7 @@ namespace Dafeiyu
         readonly Dictionary<string,string> argumentDrafts=new Dictionary<string,string>();
         readonly StackPanel list=new StackPanel{Name="McpServerList"},rows=new StackPanel(),editor=new StackPanel{Name="McpServerEditor",Visibility=Visibility.Collapsed};
         readonly TextBox name=Ui.Field(),endpoint=Ui.Field(),arguments=Ui.Field("",true),directory=Ui.Field();
-        readonly PasswordBox key=new PasswordBox{MinHeight=38,Padding=new Thickness(10,7,10,7),Background=Brushes.White,BorderBrush=Ui.Brush("#E0E3E8"),BorderThickness=new Thickness(1)};
+        readonly PasswordBox key=new PasswordBox{MinHeight=38,Padding=new Thickness(10,7,10,7),Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E0E3E8"),BorderThickness=new Thickness(1)};
         readonly ComboBox transport=new ComboBox{ItemsSource=new[]{"HTTP JSON","stdio"},MinHeight=38};
         readonly CheckBox enabled=Ui.Toggle("启用此配置",false,delegate{});
         readonly TextBlock status=Ui.Text("",12,Ui.Muted),editorTitle=Ui.Text("添加服务器",20,Ui.PageInk),endpointLabel=Ui.Text("服务 URL",12,Ui.PageInk),protocolHint=Ui.Text("",11,Ui.Muted),draftHint=Ui.Text("",11,Ui.Brush("#91682E"));
@@ -54,7 +54,7 @@ namespace Dafeiyu
             enabled.Foreground=Ui.PageInk;editor.Children.Add(enabled);
             remove.Name="RemoveMcpServer";remove.Foreground=Ui.Brush("#A65050");remove.Background=Brushes.Transparent;remove.BorderBrush=Brushes.Transparent;remove.HorizontalAlignment=HorizontalAlignment.Left;remove.Margin=new Thickness(0,6,0,0);remove.Click+=delegate{RemoveSelected();};editor.Children.Add(remove);body.Children.Add(editor);
             draftHint.Name="McpDraftStatus";draftHint.Margin=new Thickness(8,12,0,0);body.Children.Add(draftHint);
-            save.Name="SaveMcpServers";save.Background=Ui.Brush("#282A2F");save.BorderBrush=save.Background;save.HorizontalAlignment=HorizontalAlignment.Left;save.Margin=new Thickness(0,16,0,0);save.Click+=delegate{Save();};body.Children.Add(save);
+            save.Name="SaveMcpServers";save.Background=ThemeManager.ActionSurface;save.BorderBrush=save.Background;save.HorizontalAlignment=HorizontalAlignment.Left;save.Margin=new Thickness(0,16,0,0);save.Click+=delegate{Save();};body.Children.Add(save);
             status.Name="McpConnectionStatus";status.Margin=new Thickness(0,12,0,0);body.Children.Add(status);Content=Ui.Scroll(body);
             transport.SelectionChanged+=delegate{if(!updating)ShowProtocol();};
             foreach(var field in new[]{name,endpoint,arguments,directory})field.TextChanged+=delegate{Edited();};key.PasswordChanged+=delegate{Edited();};enabled.Checked+=delegate{Edited();};enabled.Unchecked+=delegate{Edited();};
@@ -152,7 +152,7 @@ namespace Dafeiyu
             RefreshDraftStatus();
         }
         static string State(McpConnectionStatus state){if(state==null)return "未连接";switch(state.State){case "connected":return "已连接 · "+state.Tools+" 个工具";case "connecting":return "连接中";case "failed":return "连接失败";default:return "未连接";}}
-        static Border Card(UIElement child){return new Border{Child=child,CornerRadius=new CornerRadius(13),Background=Brushes.White,BorderBrush=Ui.Brush("#E6E9EE"),BorderThickness=new Thickness(1),Padding=new Thickness(16),Margin=new Thickness(0,0,0,12)};}
+        static Border Card(UIElement child){return new Border{Child=child,CornerRadius=new CornerRadius(13),Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E9EE"),BorderThickness=new Thickness(1),Padding=new Thickness(16),Margin=new Thickness(0,0,0,12)};}
         static void Field(Panel panel,string label,UIElement field){var caption=Ui.Text(label,12,Ui.PageInk);caption.Margin=new Thickness(0,panel.Children.Count==0?0:14,0,7);panel.Children.Add(caption);panel.Children.Add(field);}
         static Button Button(string title,string controlName,Action action){var button=Ui.Button(title);button.Name=controlName;button.FontSize=12;button.Foreground=Ui.PageInk;button.BorderBrush=Ui.Brush("#E0E3E8");button.Padding=new Thickness(12,5,12,5);button.Margin=new Thickness(0,0,8,5);button.Click+=delegate{action();};System.Windows.Automation.AutomationProperties.SetName(button,title);return button;}
         void Changed(){if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(Changed));return;}RenderRows();}

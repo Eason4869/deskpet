@@ -31,6 +31,7 @@ namespace Dafeiyu
         public void SelectPage(int index){Page.SelectPage(index);}
         public void SelectCompanionSection(int index){Page.SelectCompanionSection(index);}
         public void SelectAiSection(int index){Page.SelectAiSection(index);}
+        public void SelectGeneralSection(int index){Page.SelectGeneralSection(index);}
         internal void SelectMcpSettings(){Page.SelectMcpSettings();}
         public void SelectWorkSettings(){Page.SelectWorkSettings();}
         public bool ValidateGuideNetwork(out string error){return Page.ValidateGuideNetwork(out error);}

@@ -14,11 +14,25 @@ namespace Dafeiyu.Tests
     public static class AgentProtocolTests
     {
         private static int passed,failed;
+        // These checks verify protocol observations, not PowerShell cold-start speed on hosted runners.
+        const int CommandVerificationTimeoutSeconds=30;
         public static int Main(string[] args)
         {
             if(args.Length>0 && args[0]=="--wait-command"){File.WriteAllText(args[1],"started");for(int i=0;i<1000;i++){if(File.Exists(args[2])){Console.WriteLine("finished naturally");return 0;}Thread.Sleep(10);}return 9;}
             if(args.Length>0 && args[0]=="--changing-error"){int count=File.Exists("count.txt")?Int32.Parse(File.ReadAllText("count.txt")):0;File.WriteAllText("count.txt",(++count).ToString());Console.Error.WriteLine("diagnostic-"+count);return 1;}
             if(args.Length>0 && args[0]=="--verify-fixture"){Console.WriteLine(File.ReadAllText("verified.txt"));return 0;}
+            Run("inspect_image transmits visual blocks on both protocols without logging bytes",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"vision","inspect_image",new{path="visual.png",question="Identify the color"})),Json(FinalReply(anthropic,"The supplied image is red."))}))using(var api=new ApiClient())using(var ws=new AgentWorkspace(folder.Path))
+                {
+                    string path=System.IO.Path.Combine(folder.Path,"visual.png");using(var image=new System.Drawing.Bitmap(2,2)){using(var g=System.Drawing.Graphics.FromImage(image))g.Clear(System.Drawing.Color.Red);image.Save(path,System.Drawing.Imaging.ImageFormat.Png);}
+                    string data=Convert.ToBase64String(File.ReadAllBytes(path));ws.ConfigureProvider(anthropic?"anthropic":"openai",anthropic?"claude":"gpt-4o");ws.BeginTask(new AgentTaskState{Workspace=folder.Path,Goal="Inspect"});
+                    var result=await api.ChatAgentAsync(Config(server,anthropic),Messages(),ws,null,null,null,false,CancellationToken.None);await Within(server.Done);
+                    Assert(result.Contains("red"),"vision follow-up failed");string body=server.Bodies[1];Assert(body.Contains(data),"image bytes never reached model follow-up");Assert(body.Contains(anthropic?"\"type\":\"image\"":"\"type\":\"image_url\""),"image was serialized as ordinary text");
+                    string saved=J(ws.TaskState);Assert(!saved.Contains(data)&&!saved.Contains("base64"),"image bytes entered saved task history");Assert(ws.TakeInspectionResult("vision")==null,"vision side channel retained consumed image");
+                }
+            });
             Run("guidance preserves the current tool and revises an unstarted tool batch",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
@@ -204,10 +218,10 @@ namespace Dafeiyu.Tests
             });
             Run("both protocols patch actual files then execute an authorized verification",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","exec_command",new{command="Get-Content verified.txt",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"patch","apply_patch",new{edits=new[]{new{path="verified.txt",content="verified-content"}}})),Json(ToolReply(anthropic,"command","exec_command",new{command="Get-Content verified.txt",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(FinalReply(anthropic,"verified"))}))using(var api=new ApiClient())
                 {
                     var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);
-                    Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Equal(0,workspace.CommandResults[0].ExitCode);Assert(workspace.CommandResults[0].Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
+                    Equal("verified",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);var command=workspace.CommandResults[0];Assert(command.ExitCode==0&&!command.TimedOut&&!command.Cancelled,"verification failed: exit="+command.ExitCode+", timedOut="+command.TimedOut+", cancelled="+command.Cancelled+", elapsedMs="+command.ElapsedMilliseconds+", output="+command.Output);Assert(command.Output.Contains("verified-content"),"command did not read the patched file");Assert(server.Bodies[2].Contains("verified-content"),"real command observation absent");Equal(1,workspace.TaskState.Changes.Count);
                 }
             });
             Run("successful edits reset the repeated-error streak",async delegate
@@ -217,7 +231,7 @@ namespace Dafeiyu.Tests
             });
             Run("different real command diagnostics reset the error streak",async delegate
             {
-                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"b","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(ToolReply(anthropic,"c","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=5})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"a","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(ToolReply(anthropic,"b","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(ToolReply(anthropic,"c","exec_command",new{command="& '"+System.Reflection.Assembly.GetExecutingAssembly().Location.Replace("'","''")+"' --changing-error",working_directory=folder.Path,timeout_seconds=CommandVerificationTimeoutSeconds})),Json(FinalReply(anthropic,"new diagnostics retained"))}))using(var api=new ApiClient())
                 {var workspace=new AgentWorkspace(folder.Path);Terminal(workspace);Equal("new diagnostics retained",await api.ChatAgentAsync(Config(server,anthropic),Messages(),workspace,null,null,null,false,CancellationToken.None));await Within(server.Done);Assert(workspace.CommandResults[2].Output.Contains("diagnostic-3"),"changing command errors lost");}
             });
             Run("repeated identical errors stop after three real protocol rounds",async delegate
@@ -261,7 +275,42 @@ namespace Dafeiyu.Tests
                     }
                 }
             });
+            Run("failed link tools reach the model without returning the conversation to the queue",async delegate
+            {
+                foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
+                using(var server=new Fixture(new[]{Json(ToolReply(anthropic,"web","fetch_url",new{url="https://example.test/page"})),Json(FinalReply(anthropic,"无法读取网页，请提供正文。"))}))
+                using(var api=new LinkApi())
+                {
+                    var cfg=new PetSettings{AgentEnabled=true,AgentApprovalMode=AgentApprovalMode.Full,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;
+                    using(var session=new ConversationSession(api,new SilentSpeech(),()=>null))
+                    using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json")))
+                    {
+                        queue.Enqueue("请分析 https://example.test/page");await WaitCondition(()=>!queue.IsRunning&&!session.IsBusy);
+                        Assert(!queue.IsPaused&&queue.Items.Count==0,"failed link was forced back into the paused queue: "+queue.Notice);
+                        var reply=session.History.Messages.Last();Equal("complete",reply.Status);Equal("无法读取网页，请提供正文。",reply.Content);
+                        Assert(reply.ToolEvents.Any(e=>e.Id=="web"&&e.Status=="error"),"failed fetch remained a running tool");
+                        await Within(server.Done);Equal(2,server.Bodies.Count);
+                        Assert(server.Bodies[1].Contains("错误：")&&server.Bodies[1].Contains(anthropic?"tool_use_id":"tool_call_id"),"model did not receive a linked tool error");
+                    }
+                }
+            });
             Console.WriteLine("AgentProtocolTests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
+        }
+
+        sealed class LinkHandler:System.Net.Http.HttpMessageHandler
+        {
+            protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request,CancellationToken token)
+            {return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.Forbidden){Content=new System.Net.Http.StringContent("private error body")});}
+        }
+        sealed class LinkApi:IConversationApi,IAgentConversationApi
+        {
+            readonly ApiClient native=new ApiClient();
+            public Task<string> ChatAgentAsync(ConnectionSettings c,IList<ChatMessage> m,AgentWorkspace w,Action<string>d,Action<string>r,Action<AgentToolEvent>t,bool stream,CancellationToken token)
+            {w.ConfigureGitHub(new GitHubClient(new Uri("https://api.github.com"),new LinkHandler(),"",""));return native.ChatAgentAsync(c,m,w,d,r,t,stream,token);}
+            public Task<string> ChatAsync(ConnectionSettings c,IList<ChatMessage>m,CancellationToken t){return native.ChatAsync(c,m,t);}
+            public Task<string> TranscribeAsync(ConnectionSettings c,byte[]b,CancellationToken t){throw new NotSupportedException();}
+            public Task<byte[]> SpeechAsync(ConnectionSettings c,string v,string s,CancellationToken t){throw new NotSupportedException();}
+            public void Dispose(){native.Dispose();}
         }
 
         sealed class TerminalApproval:IAgentApprovalProvider {public Task<bool> ApproveAsync(AgentApprovalRequest request){return Task.FromResult(true);}}

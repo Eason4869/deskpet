@@ -41,7 +41,7 @@ internal sealed class WorkSettingsView : StackPanel
         Children.Add(Ui.Text("自动压缩旧上下文；任务持续到完成或手动停止。", 12));
         var detail = Ui.Check("7. 显示详细工作过程", settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
     }
-    private void Save() { owner.Save(); notice.Text = "已保存；将在下一次任务生效，不会自动发送请求。"; notice.Foreground = new SolidColorBrush(Color.Parse("#687282")); }
+    private void Save() { owner.Save(); notice.Text = "已保存；将在下一次任务生效，不会自动发送请求。"; notice.Foreground = DesktopTheme.Brush("#687282"); }
     private void ApplyDirectory()
     {
         try
@@ -49,7 +49,7 @@ internal sealed class WorkSettingsView : StackPanel
             var value = (directory.Text ?? "").Trim(); if (owner.Settings.AgentWorkspace == value) return; if (!Path.IsPathRooted(value) || !Directory.Exists(value)) throw new InvalidOperationException("请选择已存在的本机目录。");
             value = Path.GetFullPath(value); if (owner.Settings.AgentWorkspace == value) return; owner.Settings.AgentWorkspace = value; directory.Text = value; Save();
         }
-        catch (Exception e) when (e is ArgumentException or IOException or InvalidOperationException or UnauthorizedAccessException) { notice.Text = e.Message; notice.Foreground = new SolidColorBrush(Color.Parse("#A54A37")); }
+        catch (Exception e) when (e is ArgumentException or IOException or InvalidOperationException or UnauthorizedAccessException) { notice.Text = e.Message; notice.Foreground = DesktopTheme.Brush("#A54A37"); }
     }
     private async Task BrowseDirectoryAsync()
     {

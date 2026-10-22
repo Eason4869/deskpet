@@ -23,7 +23,7 @@ namespace Dafeiyu
             var b=AgentUi.Nav(title,name,true);
             b.Content=Label(title);b.Height=30;b.MinHeight=30;b.Padding=new Thickness(14,0,14,0);b.Margin=new Thickness(0);b.HorizontalContentAlignment=HorizontalAlignment.Center;b.VerticalContentAlignment=VerticalAlignment.Center;b.Click+=delegate{action();};return b;
         }
-        internal void Refresh(bool isWork,bool running){chat.Background=isWork?Brushes.Transparent:Brushes.White;work.Background=isWork?Brushes.White:Brushes.Transparent;chat.Tag=!isWork;work.Tag=isWork;busy.Visibility=running?Visibility.Visible:Visibility.Collapsed;work.ToolTip=running?"工作任务正在后台运行":"项目与任务";}
+        internal void Refresh(bool isWork,bool running){chat.Background=isWork?Brushes.Transparent:ThemeManager.Surface;work.Background=isWork?ThemeManager.Surface:Brushes.Transparent;chat.Tag=!isWork;work.Tag=isWork;busy.Visibility=running?Visibility.Visible:Visibility.Collapsed;work.ToolTip=running?"工作任务正在后台运行":"项目与任务";}
     }
     public sealed partial class ChatWindow
     {

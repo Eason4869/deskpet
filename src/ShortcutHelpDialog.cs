@@ -38,7 +38,7 @@ namespace Dafeiyu
             search=new TextBox{Name="ShortcutSearch",Background=Brushes.Transparent,BorderThickness=new Thickness(0),Padding=new Thickness(0),MinHeight=44,FontSize=13,Foreground=ink,VerticalContentAlignment=VerticalAlignment.Center,TabIndex=0};
             System.Windows.Automation.AutomationProperties.SetName(search,"搜索快捷键、操作名称或分组");
             inputLayer.Children.Add(search);placeholder=Ui.Text("搜索快捷键",13,muted);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;inputLayer.Children.Add(placeholder);searchRow.Children.Add(inputLayer);
-            var searchBox=new Border{Child=searchRow,Background=Brushes.White,BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(13,0,13,0),Margin=new Thickness(0,0,0,18)};
+            var searchBox=new Border{Child=searchRow,Background=ThemeManager.Surface,BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(13,0,13,0),Margin=new Thickness(0,0,0,18)};
             Grid.SetRow(searchBox,1);root.Children.Add(searchBox);
             groups=new StackPanel{Margin=new Thickness(0,0,12,0)};
             scroll=new ScrollViewer{Name="ShortcutScroll",Content=groups,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Focusable=true,TabIndex=1,Padding=new Thickness(0),CanContentScroll=false};

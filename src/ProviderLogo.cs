@@ -27,7 +27,7 @@ namespace Dafeiyu
                     foreach(var raw in (object[])icon["paths"])
                     {
                         var path=(Dictionary<string,object>)raw;var geometry=Geometry.Parse(((bool)path["evenOdd"]?"F0 ":"F1 ")+(string)path["data"]);geometry.Freeze();
-                        var fill=path.ContainsKey("fill")?Ui.Brush((string)path["fill"]):Color(brand);
+                        var fill=path.ContainsKey("fill")?Ui.FixedBrush((string)path["fill"]):Color(brand);
                         group.Children.Add(new GeometryDrawing(fill,null,geometry));
                     }
                     group.Freeze();source=new DrawingImage(group);source.Freeze();images[brand]=source;
@@ -39,7 +39,7 @@ namespace Dafeiyu
         }
         static Brush Color(string brand)
         {
-            switch(brand){case "openai":return Ui.Brush("#16836B");case "anthropic":return Ui.Brush("#A86C53");case "deepseek":return Ui.Brush("#4D6BFE");case "gemini":return Ui.Brush("#4285F4");case "xiaomimimo":return Brushes.Black;case "minimax":return Ui.Brush("#EF4768");case "moonshot":return Ui.Brush("#111827");case "qwen":return Ui.Brush("#615CED");case "zhipu":return Ui.Brush("#3B62F6");case "doubao":return Ui.Brush("#4A72F5");default:return Ui.Ink;}
+            switch(brand){case "openai":return Ui.FixedBrush("#16836B");case "anthropic":return Ui.FixedBrush("#A86C53");case "deepseek":return Ui.FixedBrush("#4D6BFE");case "gemini":return Ui.FixedBrush("#4285F4");case "xiaomimimo":return Brushes.Black;case "minimax":return Ui.FixedBrush("#EF4768");case "moonshot":return Ui.FixedBrush("#111827");case "qwen":return Ui.FixedBrush("#615CED");case "zhipu":return Ui.FixedBrush("#3B62F6");case "doubao":return Ui.FixedBrush("#4A72F5");default:return Ui.FixedBrush("#203754");}
         }
     }
 }

@@ -26,6 +26,19 @@ namespace Dafeiyu
         }
         public async Task<string> ExecuteAsync(string name,Dictionary<string,object> args,CancellationToken token)
         {
+            // Writes may have reached the server before a transport failure;
+            // preserve their existing interruption/reconciliation behavior.
+            if(!AgentToolCatalog.IsReadOnly(name))return await ExecuteCoreAsync(name,args,token).ConfigureAwait(false);
+            // A remote failure is an observation for the agent, not a failed
+            // conversation submission that should be returned to the input queue.
+            try{return await ExecuteCoreAsync(name,args,token).ConfigureAwait(false);}
+            catch(OperationCanceledException){if(token.IsCancellationRequested)throw;return "错误：网络工具请求超时，请稍后重试或改用其他来源。";}
+            catch(ApiException e){return "错误："+e.Message;}
+            catch(HttpRequestException){return "错误：网络工具连接失败，请检查网络或改用其他来源。";}
+            catch(IOException){return "错误：网络工具响应读取失败，请稍后重试。";}
+        }
+        async Task<string> ExecuteCoreAsync(string name,Dictionary<string,object> args,CancellationToken token)
+        {
             if(disposed)throw new ObjectDisposedException("GitHubClient");
             args=args??new Dictionary<string,object>();
             if(name=="fetch_url")return await FetchUrlAsync(GetString(args,"url",null),token).ConfigureAwait(false);

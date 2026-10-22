@@ -20,6 +20,8 @@ namespace Dafeiyu.Tests
   [STAThread] public static int Main()
   {
    var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
+   // Raised test events must resume on the same dispatcher as real WPF input.
+   System.Threading.SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
    string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"provider-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
    PetWindow pet=null;SettingsWindow window=null;
    try {

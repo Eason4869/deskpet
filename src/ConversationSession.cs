@@ -11,6 +11,9 @@ namespace Dafeiyu
     public enum ConversationStage { Idle, Recording, Recognizing, Thinking, Speaking }
     public sealed partial class ConversationSession : IDisposable
     {
+        string inputDraft="";
+        internal string InputDraft {get{return inputDraft;}set{value=value??"";if(inputDraft==value)return;inputDraft=value;var changed=InputDraftChanged;if(changed!=null)changed();}}
+        internal event Action InputDraftChanged;
         private readonly IConversationApi api;
         private readonly IReplySpeech speech;
         private readonly Func<IAudioRecorder> microphone;
@@ -40,10 +43,11 @@ namespace Dafeiyu
         public string RuntimeAction {get{return runtimeAction;}private set{runtimeAction=value;}}
         public int TerminalRevision {get;private set;}
         public bool IsBusy { get { lock(gate) return active!=null; } }
-        public Task WaitForIdleAsync(){Operation op;lock(gate)op=active;return op==null?Task.FromResult(true):op.Complete.Task;}
+        public Task WaitForIdleAsync(){lock(gate)return Task.WhenAll(active==null?Task.FromResult(true):active.Complete.Task,imageRepairTail);}
         public string PersonaId { get { lock(gate)return personaId; } }
         public string LastNotice { get; private set; }
-        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
+        string imageHistoryWarning="";
+        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
         public event Action<ChatMessage> MessageAdded;
         public event Action<ChatMessage> MessageUpdated;
@@ -53,7 +57,7 @@ namespace Dafeiyu
             public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
             public readonly TaskCompletionSource<bool> Complete=new TaskCompletionSource<bool>();
             public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
-            public Action<string> RecordingFailure;
+            public Action<string> RecordingFailure;public Action AgentStarted;
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
             public readonly StringBuilder Reasoning=new StringBuilder();public readonly Stopwatch ThinkingTime=Stopwatch.StartNew();public readonly Stopwatch ProcessingTime=new Stopwatch();public List<ChatAttachment> Attachments;
@@ -61,8 +65,8 @@ namespace Dafeiyu
             public readonly List<AgentToolEvent> ToolEvents=new List<AgentToolEvent>();public bool Regenerating;
             public readonly HashSet<string> PresentedGuidance=new HashSet<string>();
         }
-        public ConversationSession(IConversationApi transport,IReplySpeech output,Func<IAudioRecorder> recorderFactory,HistoryStore historyStore=null,Func<bool> persistenceEnabled=null)
-        { api=transport;speech=output;microphone=recorderFactory;store=historyStore;taskStore=store==null?null:new AgentTaskStore(System.IO.Path.Combine(store.DirectoryPath,"agent-tasks"));if(taskStore!=null)taskStore.WarningChanged+=OnWarningChanged;saveEnabled=persistenceEnabled??delegate{return true;};History=new ConversationLog();histories[""]=History;LastNotice="";if(store!=null)store.WarningChanged+=OnWarningChanged; }
+        public ConversationSession(IConversationApi transport,IReplySpeech output,Func<IAudioRecorder> recorderFactory,HistoryStore historyStore=null,Func<bool> persistenceEnabled=null,string imageConversationId=null)
+        { ImageConversationId=String.IsNullOrWhiteSpace(imageConversationId)?CreateImageConversationId(historyStore):imageConversationId;api=transport;speech=output;microphone=recorderFactory;store=historyStore;taskStore=store==null?null:new AgentTaskStore(System.IO.Path.Combine(store.DirectoryPath,"agent-tasks"));if(taskStore!=null)taskStore.WarningChanged+=OnWarningChanged;saveEnabled=persistenceEnabled??delegate{return true;};History=new ConversationLog();histories[""]=History;LastNotice="";if(store!=null)store.WarningChanged+=OnWarningChanged; }
         private void OnWarningChanged() { if(!disposed && StateChanged!=null)StateChanged(); }
         private ConversationLog GetHistory(string id)
         {
@@ -70,11 +74,15 @@ namespace Dafeiyu
             lock(gate)if(histories.TryGetValue(id,out history))return history;
             // Storage completion can publish warnings back into the session/queue.
             // Never wait for that worker while holding the session gate.
-            var loaded=new ConversationLog();if(store!=null)loaded.Replace(store.Load(id));
-            lock(gate){if(histories.TryGetValue(id,out history))return history;histories[id]=loaded;return loaded;}
+            var loaded=new ConversationLog();loaded.ConfigureImageUsage(imageUsage);if(store!=null)loaded.Replace(store.Load(id));
+            lock(gate){if(histories.TryGetValue(id,out history)){loaded.ReleaseImageUsage();return history;}histories[id]=loaded;return loaded;}
         }
         private void Save(string id,ConversationLog history)
-        { if(store!=null && saveEnabled())store.SaveAsync(id,history.Messages); }
+        {
+            if(store==null||!saveEnabled())return;
+            try{PromoteImageTasksAsync(history,CancellationToken.None).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
+            catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning="临时图片尚未转为永久保存，聊天记录暂未更新；请检查图片目录权限和空间。";OnWarningChanged();}
+        }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
         internal void ConfigureKernelSession(AgentSessionModel model,AgentSessionStore store){kernelSession=model;kernelStore=store;}
         internal void ReportKernelWarning(string warning){kernelWarning=warning??"";kernelReadFailed=true;}
@@ -145,14 +153,14 @@ namespace Dafeiyu
             if(op.Workspace!=null)op.History.LinkAgentTask(reply.Id,op.Workspace.TaskState.Id);
             op.History.Update(reply.Id,"","pending",tools:op.ToolEvents,processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);
         }
-        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null)
+        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null)
         {
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text="请查看附件。";
             if(settings!=null&&settings.Text!=null&&AgentCapabilityResolver.Resolve(settings,null).Images==CapabilitySupport.Unsupported&&files.Any(f=>f.IsImage))throw new ApiException("当前模型已设置为不支持图片，请移除图片或修改模型能力配置。");
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException("请输入 1～8000 个字符。");
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
             Operation op=Begin(settings,ConversationStage.Thinking);
-            op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
+            op.AgentStarted=onAgentStarted;op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
             op.Attachments=files;op.ResumeTask=resumeTask==null?null:resumeTask.Copy();
             try { if(kernelSession!=null){kernelSession.Enqueue(new AgentSessionInput{IdempotencyId=String.IsNullOrWhiteSpace(kernelInputId)?Guid.NewGuid().ToString("N"):kernelInputId,Kind=resumeTask==null?"prompt":"resume",Text=text,Resume=resumeTask!=null});kernelSession.DeliverNext();kernelSession.StartStep();}await RequestReply(op,text,petName);if(kernelSession!=null)kernelSession.CompleteStep(op.ReplyId); }
             catch(OperationCanceledException) { if(kernelSession!=null)kernelSession.FailStep("cancelled"); LastNotice="已停止本次对话。"; throw; }
@@ -248,10 +256,12 @@ namespace Dafeiyu
                 var agent=api as IAgentConversationApi;
                 if(op.Snapshot.AgentEnabled && Environment.OSVersion.Platform==PlatformID.Win32NT && agent!=null){
                     var approval=ApprovalProvider==null?null:new AgentApprovalTracking(ApprovalProvider,action=>{lock(gate)SetRuntimeAction(op,action);});
-                    op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);op.Workspace.AttachKernelSession(kernelSession);
+                    op.Workspace=OpenAgentWorkspace(op.Snapshot,approval,McpConnections,text);
+                    if(kernelSession==null&&(QuestionProvider!=null||ImageClient!=null))kernelSession=new AgentSessionModel(Guid.NewGuid().ToString("N"),"","local-"+Guid.NewGuid().ToString("N"));
+                    op.Workspace.AttachKernelSession(kernelSession);
                     var state=op.ResumeTask??new AgentTaskState{PersonaId=op.PersonaId,Workspace=op.Workspace.Root,Goal=text};
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException("任务检查点不属于当前伙伴。");
-                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
+                    op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);ConfigureInteractiveTools(op);if(op.AgentStarted!=null)op.AgentStarted();op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
                 }
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
                 answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token) : await api.ChatAsync(op.Snapshot.Text,request,token);
@@ -452,10 +462,16 @@ namespace Dafeiyu
             lock(gate) if(Object.ReferenceEquals(active,op)){active=null;RuntimeAction=op.Outcome=="complete"?"review":op.Outcome=="error"?"failed":"idle";TerminalRevision++;}
             if(op.Workspace!=null){op.Workspace.Dispose();op.Workspace=null;}op.Cancel.Dispose(); SetStage(ConversationStage.Idle); op.Complete.TrySetResult(true);
         }
-        public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null)store.ClearAsync(personaId);if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }
+        public void Clear() { lock(gate){if(active!=null)throw new InvalidOperationException("请先停止当前对话再清空。");History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning="会话恢复记录删除失败，请检查数据目录权限。";}}if(HistoryChanged!=null)HistoryChanged(); }
+        internal async Task SaveHistoryForCloseAsync()
+        {
+            await WaitForIdleAsync().ConfigureAwait(false);
+            lock(gate)foreach(var entry in histories)Save(entry.Key,entry.Value);
+            await FlushHistoryAsync().ConfigureAwait(false);
+        }
         public Task FlushHistoryAsync()
         {
-            lock(gate){if(active!=null && active.ReplyId!=null)Save(active.PersonaId,active.History);return Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),taskStore==null?Task.FromResult(0):taskStore.FlushAsync());}
+            lock(gate){if(active!=null && active.ReplyId!=null)Save(active.PersonaId,active.History);return Task.WhenAll(imageRepairTail,store==null?Task.FromResult(0):store.FlushAsync(),taskStore==null?Task.FromResult(0):taskStore.FlushAsync());}
         }
         public string ExportHistory()
         {
@@ -471,6 +487,7 @@ namespace Dafeiyu
             if(op!=null)
             { try {op.Cancel.Cancel();}catch(ObjectDisposedException){} if(op.Recorder!=null) op.Recorder.Dispose(); if(!op.Finishing && Stage==ConversationStage.Recording) End(op); }
             if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();
+            Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),op==null?Task.FromResult(true):op.Complete.Task).ContinueWith(t=>{lock(gate)foreach(var log in histories.Values)log.ReleaseImageUsage();});
         }
     }
 }

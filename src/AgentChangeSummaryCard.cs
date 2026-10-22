@@ -35,7 +35,7 @@ namespace Dafeiyu
     internal sealed class AgentChangeSummaryCard : Border
     {
         readonly StackPanel body=new StackPanel();readonly Action<string> preview;readonly Action<AgentChange> restore;AgentTaskState task;bool expanded,allowRunning;
-        internal AgentChangeSummaryCard(Action<string> show,Action<AgentChange> restore=null){preview=show;this.restore=restore;Name="AgentChangeSummary";Child=body;Background=System.Windows.Media.Brushes.White;BorderBrush=AgentUi.Line;BorderThickness=new Thickness(1);CornerRadius=new CornerRadius(13);Padding=new Thickness(15);Margin=new Thickness(0,12,0,0);Visibility=Visibility.Collapsed;}
+        internal AgentChangeSummaryCard(Action<string> show,Action<AgentChange> restore=null){preview=show;this.restore=restore;Name="AgentChangeSummary";Child=body;Background=ThemeManager.Surface;BorderBrush=AgentUi.Line;BorderThickness=new Thickness(1);CornerRadius=new CornerRadius(13);Padding=new Thickness(15);Margin=new Thickness(0,12,0,0);Visibility=Visibility.Collapsed;}
         internal void Refresh(AgentTaskState snapshot,bool includeRunning=false)
         {
             if(task==null || snapshot==null || task.Id!=snapshot.Id)expanded=false;task=AgentChangeSummaryData.CopyTask(snapshot);allowRunning=includeRunning;body.Children.Clear();var summary=AgentChangeSummaryData.FromTask(task);
