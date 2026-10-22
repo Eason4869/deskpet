@@ -44,7 +44,12 @@ internal static class ImageUiChecks
         try { Complete(workspace.GenerateAsync()); throw new Exception("FAIL: unsupported edit accepted"); } catch (InvalidOperationException) { checks++; }
         Check(handler.Requests == 0, "unsupported reference edit is rejected before any request");
         workspace.ProviderChoices.SelectedIndex = 1;
-        handler.Gate=new TaskCompletionSource<bool>();var generation = workspace.GenerateAsync();Until(()=>workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>c.ClockRunning));var pendingCard=workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().First();checks+=ImageMotionUiChecks.Run(owner,window,pendingCard);handler.Gate.SetResult(true);handler.Gate=null; Check(workspace.IsGenerating, "generation exposes running state");
+        handler.Gate=new TaskCompletionSource<bool>();var generation = workspace.GenerateAsync();
+        string PendingDiagnostic()=>"tasks="+String.Join(",",owner.ImageTasks.List().Select(t=>t.State))+" cards="+String.Join(";",workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Distinct().Select(c=>ImageMotionUiChecks.Diagnostic(owner,window,c)));
+        Until(()=>owner.ImageTasks.List().Any(t=>t.State==ImageGenerationTaskState.Generating)&&workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().Any(c=>ImageMotionUiChecks.GeneratingCardReady(window,c)),PendingDiagnostic);
+        var pendingCard=workspace.GetLogicalDescendants().OfType<ImageGenerationPendingCard>().First(c=>ImageMotionUiChecks.GeneratingCardReady(window,c));
+        Console.WriteLine("Avalonia pending motion fixture: "+PendingDiagnostic());
+        checks+=ImageMotionUiChecks.Run(owner,window,pendingCard);handler.Gate.SetResult(true);handler.Gate=null; Check(workspace.IsGenerating, "generation exposes running state");
         window.NavigateHistory(-1); Check(window.CurrentPage == "chat" && workspace.IsGenerating, "leaving image page retains running request");
         Complete(generation); Complete(handler.LastResponse);
         Check(handler.Requests == 1 && handler.LastPath.EndsWith("/images/edits") && owner.ImageStore.List().Count == 1, "reference generation performs exactly one edit and commits gallery asset");
