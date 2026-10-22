@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "branch": "codex/holiday-outfit-20261022-plan",
+  "baseCommit": "6c42f311a8425b7e8e2156093b9514b30d239872",
+  "baseVersion": "0.10.2-dev.3",
+  "developmentDeadline": "2026-10-22T17:45:00+08:00",
+  "codeFrozenAt": "2026-10-22T17:42:21+08:00",
+  "frameworkChecks": {
+    "HolidayCalendarTests": 547,
+    "HolidayStateTests": 21,
+    "GreetingTestsBaseline": 19
+  },
+  "windowsApplicationBuild": "passed",
+  "portableSuite": {
+    "schemaVersion": 1,
+    "success": true,
+    "exitCode": 0,
+    "passedChecks": 3508,
+    "failures": [],
+    "framework": ".NET 10.0.13",
+    "operatingSystem": "Microsoft Windows 10.0.26300",
+    "architecture": "X64"
+  },
+  "review": {
+    "findings": 2,
+    "fixedWithRegressionTests": 2,
+    "deferred": 0
+  },
+  "notVerified": [
+    "WPF full UI suite",
+    "Avalonia Headless UI",
+    "macOS real device",
+    "installer",
+    "remote CI"
+  ],
+  "featureStatus": "Calendar and persistence foundations only; no runtime/UI/artwork integration"
+}
