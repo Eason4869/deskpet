@@ -43,6 +43,13 @@ namespace Dafeiyu
         internal static string Read(string tool,string path,string repository,string scope,int limit,int timeout,CancellationToken cancel)
         {
             var common=new List<string>{"--no-pager","--no-optional-locks","--literal-pathspecs","-c","core.fsmonitor=false","-c","core.untrackedCache=false","-c","core.hooksPath=","-c","diff.external=","-c","core.quotePath=false","-c","color.ui=false","-c","submodule.recurse=false","-c","protocol.allow=never","-c","credential.helper=","-c","core.worktree="+repository,"-C",repository};
+            if(tool=="git_status"||tool=="git_diff"){
+                // Worktree reads can execute clean/process filters even with external diffs disabled.
+                // Ask Git to resolve includes and worktree config; only an empty no-match result is safe.
+                var filters=RunCommand(common.Concat(new[]{"config","--includes","--name-only","--get-regexp",@"^filter\..*\.(clean|process)$"}).ToArray(),repository,timeout,cancel);
+                if(filters.ExitCode==0)throw new ArgumentException("仓库配置了 Git clean/process 过滤器；只读工具已停止，避免执行过滤器。请通过获准的终端操作检查此仓库。");
+                if(filters.Truncated||filters.ExitCode!=1||!String.IsNullOrEmpty(filters.Output))throw new ArgumentException("无法安全检查 Git 过滤器配置，已停止只读操作；请检查仓库配置。");
+            }
             string relative=String.Equals(path,repository,StringComparison.OrdinalIgnoreCase)?".":path.Substring(repository.TrimEnd('\\','/').Length+1).Replace('\\','/');
             cancel.ThrowIfCancellationRequested();string branch=Run(common.Concat(new[]{"symbolic-ref","--short","-q","HEAD"}).ToArray(),repository,timeout,cancel,false);
             branch=(branch??"").Trim();if(branch.Length>256)branch=branch.Substring(0,256)+"…";
@@ -56,14 +63,19 @@ namespace Dafeiyu
         }
         static string Run(string[] arguments,string directory,int timeout,CancellationToken cancel,bool requireSuccess)
         {
+            var result=RunCommand(arguments,directory,timeout,cancel);
+            if(requireSuccess&&result.ExitCode!=0){string diagnostic=result.Output??"";if(diagnostic.Length>1000)diagnostic=diagnostic.Substring(0,1000);throw new ArgumentException("Git 读取失败，请检查仓库、safe.directory 或文件权限："+diagnostic);}
+            string text=result.Output??"";return text+(result.Truncated?"\n[输出已截断]":"");
+        }
+        static CommandResult RunCommand(string[] arguments,string directory,int timeout,CancellationToken cancel)
+        {
             string executable=LocateGit();var environment=new Dictionary<string,string>{{"GIT_OPTIONAL_LOCKS","0"},{"GIT_NO_LAZY_FETCH","1"},{"GIT_TERMINAL_PROMPT","0"},{"GIT_CONFIG_NOSYSTEM","1"},{"GIT_CONFIG_GLOBAL",Environment.OSVersion.Platform==PlatformID.Win32NT?"NUL":"/dev/null"},{"GIT_PAGER",""},{"GIT_ATTR_NOSYSTEM","1"}};
             var command=new AgentCommand{Id=Guid.NewGuid().ToString("N"),Executable=executable,Workspace=directory,Arguments=arguments};
             CommandResult result;
             if(Environment.OSVersion.Platform==PlatformID.Win32NT)result=WindowsCommandRunner.Run(command,timeout,cancel,true,null,environment,false);
             else result=RunPortable(command,timeout,cancel,environment);
             cancel.ThrowIfCancellationRequested();if(result.TimedOut)throw new ArgumentException("Git 读取超时，请缩小路径范围。");
-            if(requireSuccess&&result.ExitCode!=0){string diagnostic=result.Output??"";if(diagnostic.Length>1000)diagnostic=diagnostic.Substring(0,1000);throw new ArgumentException("Git 读取失败，请检查仓库、safe.directory 或文件权限："+diagnostic);}
-            string text=result.Output??"";return text+(result.Truncated?"\n[输出已截断]":"");
+            return result;
         }
         static CommandResult RunPortable(AgentCommand command,int timeout,CancellationToken cancel,IDictionary<string,string> environment)
         {
