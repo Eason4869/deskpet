@@ -10,11 +10,12 @@ using Dafeiyu;
 
 namespace DeskPet.Desktop;
 
-internal sealed record ClipSpec(string File, int Columns, int Frames, double Fps, bool Loop, int Width = 480, int Height = 520, int Top = 0);
+internal sealed record ClipSpec(string File, int Columns, int Frames, double Fps, bool Loop, int Width = 480, int Height = 520, int Top = 0, double OffsetX = 0, double OffsetY = 0);
 
 internal sealed class PetSkin
 {
     public required string Id { get; set; }
+    public string? BuiltinCharacterId { get; set; }
     public required string Name { get; init; }
     public required string Prompt { get; init; }
     public string? Folder { get; init; }
@@ -37,6 +38,8 @@ internal sealed class PetSkin
 
 internal sealed class SpriteAssets : IDisposable
 {
+    private readonly Func<string, Stream> openHoliday;
+    internal SpriteAssets(Func<string, Stream>? holidaySource = null) => openHoliday = holidaySource ?? (name => typeof(HolidayCatalog).Assembly.GetManifestResourceStream(name) ?? throw new InvalidDataException("节日服饰资源不存在。"));
     private readonly Dictionary<string, Bitmap> images = new();
     private readonly Dictionary<(string, int), byte[]> masks = new();
     public static readonly string[] Interactions = { "lifted", "landing", "petting", "poked", "feeding", "happy", "sleeping", "special" };
@@ -46,14 +49,15 @@ internal sealed class SpriteAssets : IDisposable
     {
         var skins = new List<PetSkin>();
         foreach (var item in new[] { ("e-bao", "E包", "e-bao-spritesheet.png", PersonaProfiles.Ebao), ("dafeiyu", "大肥鱼", "spritesheet.png", PersonaProfiles.Dafeiyu), ("marfu", "马尔芙", "marfu-spritesheet.png", PersonaProfiles.Marfu) })
-            skins.Add(new PetSkin { Id = item.Item1, Name = item.Item2, Atlas = item.Item3, Prompt = item.Item4 });
+            skins.Add(new PetSkin { Id = item.Item1, BuiltinCharacterId = item.Item1, Name = item.Item2, Atlas = item.Item3, Prompt = item.Item4 });
         using (var source = OpenAsset("bundled-skins/catalog.json"))
         using (var registry = JsonDocument.Parse(source)) foreach (var entry in registry.RootElement.EnumerateArray())
         {
             var id = entry.GetProperty("id").GetString()!;
             if (!CompanionPackStorage.ValidId(id)) throw new InvalidDataException("内置角色包 ID 无效。");
             using var manifest = OpenAsset($"bundled-skins/{id}/pet.json");
-            skins.Add(ReadManifest(manifest, CompanionPackStorage.Identity(data, id), null, $"bundled-skins/{id}/"));
+            var skin = ReadManifest(manifest, CompanionPackStorage.Identity(data, id), null, $"bundled-skins/{id}/");
+            skin.BuiltinCharacterId = id; skins.Add(skin);
         }
         var supplied = skins.Where(s => s.PackageId != null).ToArray();
         foreach (var pack in CompanionPackStorage.Installed(data))
@@ -78,6 +82,8 @@ internal sealed class SpriteAssets : IDisposable
             var original = supplied.Concat(skins.Where(s => s.PackageId != null)).FirstOrDefault(p => SameArtwork(legacy, p));
             if (original == null) continue;
             var current = skins.First(s => s.PackageId == original.PackageId);
+            // Identity migration is authorized by exact original artwork, never a manifest ID.
+            current.BuiltinCharacterId = original.BuiltinCharacterId != null && (ReferenceEquals(current, original) || SameArtwork(current, original)) ? original.BuiltinCharacterId : null;
             current.Id = CompanionPackStorage.RetainIdentity(data, original.PackageId!, legacy.Id);
             if (aliases != null) aliases[legacy.Id] = current.Id;
             if (restoreAliases) CompanionPackStorage.SetHidden(data, current.PackageId!, false);
@@ -243,17 +249,34 @@ internal sealed class SpriteAssets : IDisposable
         var key = ImageKey(skin, path);
         if (!images.TryGetValue(key, out var image))
         {
-            using var stream = skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null));
+            using var stream = path.StartsWith("holiday|", StringComparison.Ordinal)
+                ? openHoliday(path.Split('|')[2])
+                : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null));
             if (stream.Length > 64L * 1024 * 1024) throw new InvalidDataException("单张外观图不能超过 64 MB。");
             Span<byte> header = stackalloc byte[24]; stream.ReadExactly(header); stream.Position = 0;
             if (!header[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) throw new InvalidDataException("外观图像必须是 PNG。");
             var width = BinaryPrimitives.ReadUInt32BigEndian(header[16..20]); var height = BinaryPrimitives.ReadUInt32BigEndian(header[20..24]);
             if (width == 0 || height == 0 || width > 8192 || height > 33280 || (long)width * height > 55000000) throw new InvalidDataException("外观 PNG 尺寸过大或无效。");
-            image = new Bitmap(stream); images[key] = image;
+            image = new Bitmap(stream);
+            if (images.Count >= 5)
+            {
+                var oldest = images.Keys.First(); images[oldest].Dispose(); images.Remove(oldest);
+                foreach (var mask in masks.Keys.Where(k => k.Item1.StartsWith(oldest + "/", StringComparison.Ordinal)).ToArray()) masks.Remove(mask);
+            }
+            images[key] = image;
         }
         return image;
     }
-    private static string ImageKey(PetSkin skin, string path) => (skin.BuiltIn ? "builtin/" + skin.Id : "custom/" + Path.GetFullPath(skin.Folder!)) + "/" + path;
+    private static string ImageKey(PetSkin skin, string path) => path.StartsWith("holiday|", StringComparison.Ordinal) ? path : (skin.BuiltIn ? "builtin/" + skin.Id : "custom/" + Path.GetFullPath(skin.Folder!)) + "/" + path;
+    public static ClipSpec OutfitClip(OutfitDefinition outfit, OutfitClipDefinition clip) => new("holiday|" + outfit.CharacterId + ":" + outfit.OutfitId + ":" + outfit.Version + "|" + clip.ResourceName, clip.Columns, clip.FrameCount, clip.Fps, clip.Loop, clip.FrameWidth, clip.FrameHeight, OffsetX: clip.OffsetX, OffsetY: clip.OffsetY);
+    internal static bool IsHolidayClip(ClipSpec clip) => clip.File.StartsWith("holiday|", StringComparison.Ordinal);
+    internal void PrepareFrame(PetSkin skin, ClipSpec clip, int frame)
+    {
+        var image = Get(skin, clip.File); var rect = Rect(clip, frame);
+        if (frame < 0 || frame >= clip.Frames || rect.Right > image.PixelSize.Width || rect.Bottom > image.PixelSize.Height) throw new InvalidDataException("服饰帧超出图像范围。");
+        if (IsHolidayClip(clip)) _ = Mask(skin, clip, frame);
+    }
+    internal static ClipSpec MatchSourceTiming(ClipSpec visual, ClipSpec source) => visual with { Fps = visual.Frames * source.Fps / source.Frames, Loop = source.Loop };
     public static string? AvatarPath(PetSkin skin) => skin.Avatar ?? (skin.BuiltIn && skin.Id is "e-bao" or "dafeiyu" or "marfu" or "xiaobei" ? "avatars/" + skin.Id + ".png" : null);
     public Bitmap? GetAvatar(PetSkin skin) => AvatarPath(skin) is { } path ? Get(skin, path) : null;
     public static bool HasExtra(PetSkin skin,string action) => skin.ExtraClips.ContainsKey(action) || skin.Alternates.ContainsKey(action) || skin.BuiltIn && skin.PackageId == null && PairedActions.Contains(action);
@@ -262,8 +285,14 @@ internal sealed class SpriteAssets : IDisposable
         if (LoadSkins(data).Count <= 1) throw new InvalidOperationException("至少保留一位伙伴。");
         CompanionPackStorage.SetHidden(data, skin.PackageId ?? skin.Id, true);
     }
-    public ClipSpec Resolve(PetSkin skin, string action, bool original)
+    public ClipSpec Resolve(PetSkin skin, string action, bool original, OutfitDefinition? outfit = null)
     {
+        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId)
+        {
+            var useAlternate = !original && outfit.FindClip(action, "alternate") != null;
+            var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException("节日服饰缺少当前动作。");
+            return MatchSourceTiming(OutfitClip(outfit, clip), Resolve(skin, action, original));
+        }
         if (!original && skin.Alternates.TryGetValue(action, out var alternate)) return alternate;
         if (skin.ExtraClips.TryGetValue(action, out var extra)) return extra;
         if (skin.Alternates.ContainsKey(action) && skin.Clips.TryGetValue(action, out var first)) return first;
@@ -279,15 +308,16 @@ internal sealed class SpriteAssets : IDisposable
         var atlas = Get(skin, skin.Atlas!); var w = atlas.PixelSize.Width / 8; var h = atlas.PixelSize.Height / 11;
         return new ClipSpec(skin.Atlas!, 8, AnimationPlayer.Counts[row], 8, action is "idle" or "running" or "running-right" or "running-left", w, h, row * h);
     }
-    public ClipSpec Gaze(PetSkin skin)
+    public ClipSpec Gaze(PetSkin skin, OutfitDefinition? outfit = null)
     {
+        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
         if (skin.Gaze != null) return skin.Gaze;
         var atlas = Get(skin, skin.Atlas!); return new ClipSpec(skin.Atlas!, 8, 16, 8, true, atlas.PixelSize.Width / 8, atlas.PixelSize.Height / 11, atlas.PixelSize.Height / 11 * 9);
     }
     public static PixelRect Rect(ClipSpec spec, int frame) => new(frame % spec.Columns * spec.Width, spec.Top + frame / spec.Columns * spec.Height, spec.Width, spec.Height);
     private byte[] Mask(PetSkin skin, ClipSpec spec, int frame)
     {
-        var key = (ImageKey(skin, spec.File) + "/" + spec.Top, frame);
+        var key = (ImageKey(skin, spec.File) + "/" + spec.Top + "/" + spec.Width + "/" + spec.Height + "/" + spec.Columns, frame);
         if (masks.TryGetValue(key, out var result)) return result;
         var bytes = new byte[spec.Width * spec.Height * 4];
         var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
@@ -295,6 +325,9 @@ internal sealed class SpriteAssets : IDisposable
         finally { handle.Free(); }
         result = new byte[spec.Width * spec.Height];
         for (int i = 0; i < result.Length; i++) result[i] = bytes[i * 4 + 3];
+        // Some native decoders accept broken IDAT as empty pixels rather than
+        // throwing. A holiday frame must still have a character and transparency.
+        if (IsHolidayClip(spec) && (!result.Any(b => b > 16) || !result.Any(b => b == 0))) throw new InvalidDataException("节日服饰帧无法解码为有效透明人物。");
         masks[key] = result; return result;
     }
     private void ValidateFrame(PetSkin skin, ClipSpec spec, int frame)
@@ -317,13 +350,27 @@ internal sealed class SpriteView : Control
     public new ClipSpec? Clip { get; set; }
     public int Frame { get; set; }
     public bool MirrorX { get; set; }
+    public event Action? FrameRendered;
+    public event Action<Exception>? HolidayFrameFailed;
     public override void Render(DrawingContext context)
     {
         base.Render(context);
         if (Clip == null) return;
-        var r = SpriteAssets.Rect(Clip, Frame);
-        using var transform = context.PushTransform(MirrorX ? new Matrix(-1, 0, 0, 1, Bounds.Width, 0) : Matrix.Identity);
-        context.DrawImage(Assets.Get(Skin, Clip.File), new Rect(r.X, r.Y, r.Width, r.Height), new Rect(Bounds.Size));
+        try { DrawFrame(context); }
+        catch (Exception error) when (CanRecover(error)) { HolidayFrameFailed!(error); if (Clip == null || SpriteAssets.IsHolidayClip(Clip)) return; DrawFrame(context); }
+        FrameRendered?.Invoke();
     }
-    public bool Hits(Point point) => Clip != null && Bounds.Width > 0 && Bounds.Height > 0 && Assets.Hit(Skin, Clip, Frame, MirrorX ? 1 - point.X / Bounds.Width : point.X / Bounds.Width, point.Y / Bounds.Height);
+    private bool CanRecover(Exception error) => Clip != null && SpriteAssets.IsHolidayClip(Clip) && HolidayFrameFailed != null && (error is InvalidDataException or IOException or ArgumentException or InvalidOperationException or ExternalException);
+    private void DrawFrame(DrawingContext context)
+    {
+        var clip = Clip!; Assets.PrepareFrame(Skin, clip, Frame); var r = SpriteAssets.Rect(clip, Frame);
+        using var transform = context.PushTransform(MirrorX ? new Matrix(-1, 0, 0, 1, Bounds.Width, 0) : Matrix.Identity);
+        context.DrawImage(Assets.Get(Skin, clip.File), new Rect(r.X, r.Y, r.Width, r.Height), new Rect(clip.OffsetX / clip.Width * Bounds.Width, clip.OffsetY / clip.Height * Bounds.Height, Bounds.Width, Bounds.Height));
+    }
+    public bool Hits(Point point)
+    {
+        try { return HitFrame(point); }
+        catch (Exception error) when (CanRecover(error)) { HolidayFrameFailed!(error); return Clip != null && !SpriteAssets.IsHolidayClip(Clip) && HitFrame(point); }
+    }
+    private bool HitFrame(Point point) => Clip != null && Bounds.Width > 0 && Bounds.Height > 0 && Assets.Hit(Skin, Clip, Frame, (MirrorX ? 1 - point.X / Bounds.Width : point.X / Bounds.Width) - Clip.OffsetX / Clip.Width, point.Y / Bounds.Height - Clip.OffsetY / Clip.Height);
 }

@@ -17,10 +17,12 @@ internal sealed class SettingsWindow : Window
     private readonly ImageProviderEditor imageProvider;
     private readonly TabControl modelTabs = new();
     private readonly TabControl tabs = new();
-    private readonly SpriteAssets avatarAssets = new();
+    private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
-    public SettingsWindow(DesktopController controller)
+    private HolidayOutfitPanel? holidayOutfits;
+    public SettingsWindow(DesktopController controller, SpriteAssets? avatarSource = null)
     {
+        avatarAssets = avatarSource ?? new SpriteAssets();
         owner = controller; Title = "DeskPet · 设置"; Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
         var pages = new List<TabItem>();
         void Add(string title, Control content) => pages.Add(new TabItem { Header = title, Content = new ScrollViewer { Content = new Border { Padding = new Thickness(20), Child = content } } });
@@ -30,7 +32,7 @@ internal sealed class SettingsWindow : Window
         foreach (var item in new[] { ("听写", "asr"), ("云朗读", "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
         Add("工作设置", new WorkSettingsView(owner, this)); Add("语音", Voice()); Add("数据", Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
     }
     public void SelectSection(string section) { tabs.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
@@ -38,7 +40,7 @@ internal sealed class SettingsWindow : Window
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         var description = Ui.Text(owner.Skin.Description);
         bool refreshingPartners = false;
-        var choices = new ComboBox { ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var choices = new ComboBox { Name = "PartnerPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
         choices.ItemTemplate = new FuncDataTemplate<PetSkin>((skin, _) => PartnerRow(skin, choices, RemoveAsync));
         choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { if (!ReferenceEquals(owner.Skin,skin)) await owner.SelectSkinAsync(skin); prompt.Text = owner.Settings.SystemPrompt; description.Text = skin.Description; refreshVoice?.Invoke(); }); };
@@ -55,10 +57,7 @@ internal sealed class SettingsWindow : Window
             if (owner.Skin.Id == target.Id) await owner.SelectSkinAsync(owner.Skins.First(s => s.Id != target.Id));
             SpriteAssets.Remove(target, owner.DataDirectory); owner.Skins.RemoveAll(s => s.Id == target.Id); RefreshChoices();
         }
-        return Ui.Column(Ui.Text("当前伙伴", 20), choices, description, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
-            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
-            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
-            Ui.AsyncButton("导入 / 更新角色包（ZIP / pet.json）", async () =>
+        var import = Ui.AsyncButton("导入 / 更新角色包", async () =>
             {
                 var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "导入 / 更新角色包", AllowMultiple = false, FileTypeFilter = new[] { new FilePickerFileType("角色包 / 外观说明") { Patterns = new[] { "*.zip", "*.json" } } } });
                 var file = files.FirstOrDefault(); if (file == null) return;
@@ -67,7 +66,19 @@ internal sealed class SettingsWindow : Window
                 var existing = owner.Skins.FindIndex(s => s.Id == skin.Id || skin.PackageId != null && s.PackageId == skin.PackageId);
                 if (existing >= 0) owner.Skins[existing] = skin; else owner.Skins.Add(skin);
                 await owner.SelectSkinAsync(skin); RefreshChoices();
-            }, owner.Error), Ui.AsyncButton("恢复已删除伙伴", async () => {
+            }, owner.Error);
+        import.Name = "ImportCompanion"; import.MinHeight = 44; import.VerticalAlignment = VerticalAlignment.Top; import.Margin = new Thickness(0, 26, 0, 0);
+        holidayOutfits = new HolidayOutfitPanel(owner.Holidays, () => owner.Skin, avatarAssets);
+        var selectors = new Grid { Name = "PartnerWardrobeSelectors" };
+        var companion = new StackPanel { Spacing = 6 }; companion.Children.Add(Ui.Text("选择伙伴")); companion.Children.Add(choices);
+        selectors.Children.Add(companion); Grid.SetColumn(holidayOutfits, 2); selectors.Children.Add(holidayOutfits); Grid.SetColumn(import, 4); selectors.Children.Add(import);
+        void LayoutSelectors() => selectors.ColumnDefinitions = new ColumnDefinitions(holidayOutfits.IsVisible ? "*,12,*,12,Auto" : "*,12,0,0,Auto");
+        holidayOutfits.PropertyChanged += (_, e) => { if (e.Property == IsVisibleProperty) LayoutSelectors(); };
+        LayoutSelectors();
+        return Ui.Column(Ui.Text("当前伙伴", 20), selectors, description, Ui.Field("人格（此伙伴独立保存，最多 8000 字）", prompt),
+            Ui.Button("保存人格", () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
+            Ui.Button("恢复默认人格", () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
+            Ui.AsyncButton("恢复已删除伙伴", async () => {
                 if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再恢复伙伴。");
                 var id = owner.Skin.Id; CompanionPackStorage.RestoreHidden(owner.DataDirectory); var restored = SpriteAssets.LoadSkins(owner.DataDirectory);
                 owner.Skins.Clear(); owner.Skins.AddRange(restored); await owner.SelectSkinAsync(owner.Skins.FirstOrDefault(s => s.Id == id) ?? owner.Skins[0]); RefreshChoices();
@@ -76,7 +87,7 @@ internal sealed class SettingsWindow : Window
     private Control PartnerRow(PetSkin? skin, ComboBox choices, Func<PetSkin, Task> remove)
     {
         if (skin == null) return new TextBlock();
-        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center;
+        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
         var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1, IsVisible = false };
         ToolTip.SetTip(button, "删除伙伴（保留聊天和配置）");
         button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();

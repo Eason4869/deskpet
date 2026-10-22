@@ -46,17 +46,22 @@ internal sealed class DesktopController : IDisposable
     public Task ImageServicesShutdown { get; private set; } = Task.CompletedTask;
     public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
+    public HolidayController Holidays { get; }
+    internal bool HolidayBusinessBusy => exiting || Session.IsBusy || Session.NeedsExecutionReconciliation ||
+        Session.CurrentAgentTask?.Status is "running" or "needs_reconciliation" or "waiting_approval" or "waiting_input" or "recovering" ||
+        Queue.IsRunning || Queue.HasPending || Questions.Requests.Count != 0 || Live.IsActive || Dictation.IsBusy;
     public string DataDirectory { get; }
     public bool GuideLocked => guide != null;
     public bool HasOpenPanel => GuideLocked || quickChat?.IsVisible == true || fullChat?.IsVisible == true || settingsWindow?.IsVisible == true || liveWindow?.IsVisible == true;
     public event Action? Changed;
-    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null)
+    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null, HolidayController? holidays = null, Func<SpriteAssets>? spriteAssetsFactory = null)
     {
         lifetime = desktop;
         runtime ??= new MacRuntime();
         this.runtime = runtime;
         DataDirectory = runtime.DataDirectory;
         Directory.CreateDirectory(DataDirectory);
+        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         runtime.InitializeProtection();
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
         bool firstLaunch = !File.Exists(settingsPath);
@@ -90,7 +95,8 @@ internal sealed class DesktopController : IDisposable
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
         Questions.Changed += Notify;
-        Pet = new PetWindow(this);
+        Session.AgentTaskChanged += Notify;
+        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
@@ -130,6 +136,7 @@ internal sealed class DesktopController : IDisposable
     public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     public async Task SelectSkinAsync(PetSkin skin)
     {
+        Pet.CancelHolidayForSkinChange();
         await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
         PersonaProfiles.SaveVoices(Settings); Skin = skin;
         PersonaProfiles.Activate(Settings, skin.Id, skin.Prompt, skin.Voices); Session.SelectPersona(skin.Id);
@@ -216,6 +223,7 @@ internal sealed class DesktopController : IDisposable
         {
             await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
             Save();
+            Holidays.RetrySave();
             await Session.FlushHistoryAsync();
         }
         finally
@@ -239,6 +247,8 @@ internal sealed class DesktopController : IDisposable
         imageNoticeTimer.Stop();
         imageNotification?.Close();
         ImageTasks.Changed-=ImageTaskCompleted;
+        Session.AgentTaskChanged -= Notify;
+        Holidays.RetrySave();
         tray?.Dispose();
         foreach(var binding in hotkeys)binding.Dispose();
         ImageServicesShutdown=Task.Run(async()=>

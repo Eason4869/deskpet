@@ -17,6 +17,14 @@ internal sealed class InteractionPlayback
         Action = action; Original = original; Frame = 0; elapsed = 0; Clip = resolve(action, original);
     }
     public void Land(bool stumble) => Play(stumble ? "stumble" : "landing", Original);
+    public void RefreshAppearance()
+    {
+        var progress = (Frame + elapsed * Clip.Fps) / Clip.Frames;
+        Clip = resolve(Action, Original);
+        var position = Math.Clamp(progress, 0, Math.BitDecrement(1d)) * Clip.Frames;
+        Frame = Math.Min(Clip.Frames - 1, (int)position);
+        elapsed = (position - Frame) / Clip.Fps;
+    }
     public void Advance(double seconds)
     {
         if (!double.IsFinite(seconds) || seconds <= 0) return;

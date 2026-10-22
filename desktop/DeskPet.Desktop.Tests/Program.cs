@@ -34,12 +34,22 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--holiday-switch-source")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch")) + " source switch assertions"); return; }
+    if (args.Contains("--holiday-wardrobe-layout")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui")) + " wardrobe layout assertions"); return; }
+    if (args.Any(a => a.StartsWith("--holiday-review="))) { var part = args.Single(a => a.StartsWith("--holiday-review=")).Substring("--holiday-review=".Length); Console.WriteLine("PASS: " + HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"), part) + " holiday review regressions"); return; }
+    if (args.Contains("--holiday-ui-only")) { Console.WriteLine("PASS: " + HolidayUiChecks.Run(Path.Combine(directory, "holiday")) + " holiday UI assertions"); return; }
+    if (args.Contains("--holiday-resources-only")) { Console.WriteLine("PASS: " + HolidayUiChecks.RunResources(Path.Combine(directory, "holiday-resources")) + " holiday resources/lifecycle assertions"); return; }
     if(args.Any(a=>a.StartsWith("--final-review="))){Console.WriteLine("PASS final review: "+ImageTaskCenterUiChecks.RunFinalReview(Path.Combine(directory,"final-review"),args.Single(a=>a.StartsWith("--final-review=")).Substring(15)));return;}
     if (args.Contains("--image-writer-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunWriterGateQuit(Path.Combine(directory,"image-exit-writer")) + " writer gate native lifetime assertions"); return; }
     if (args.Contains("--image-held-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunHeldQuit(Path.Combine(directory,"image-exit-held")) + " held native lifetime assertions"); return; }
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    assertions += HolidayUiChecks.Run(Path.Combine(directory, "holiday"));
+    assertions += HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch"));
+    assertions += HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui"));
+    assertions += HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"));
+    // Full five-outfit resource acceptance is reserved for the final content checkpoint.
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
     using (var gugaAssets = new SpriteAssets())
@@ -64,6 +74,7 @@ try
         }
         var archive = Path.Combine(directory, "guga-complete.zip"); System.IO.Compression.ZipFile.CreateFromDirectory(packSource, archive);
         var installed = SpriteAssets.Import(archive, directory);
+        Check(installed.BuiltinCharacterId == null, "same-ID installed package cannot grant trusted holiday provenance");
         Check(SpriteAssets.HasExtra(installed, "special2") && SpriteAssets.HasExtra(installed, "stumble"), "installed package enables second signature and stumble capabilities");
         Check(installed.Id == guga.Id && installed.PackageId == "gugugaga" && installed.Folder != null && SpriteAssets.LoadSkins(directory).Count == skins.Count, "ZIP replaces bundled resource without duplicate companion");
         Check(gugaAssets.GetAvatar(installed) is { PixelSize.Width: 512 }, "installed resource package supplies its own portrait");
@@ -85,6 +96,9 @@ try
         var migrated = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory);
         Check(migrated.Id.StartsWith("skin-") && migrated.PackageId == "gugugaga" && SpriteAssets.LoadSkins(directory).Count == skins.Count, "legacy original keeps personal identity with one installed companion");
         Check(SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory).Id == migrated.Id, "repeated legacy import returns retained identity");
+        var trustedLegacyData = Path.Combine(directory, "trusted-legacy-data");
+        var trustedLegacy = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), trustedLegacyData);
+        Check(trustedLegacy.Id.StartsWith("skin-") && trustedLegacy.BuiltinCharacterId == "gugugaga", "verified legacy original retains canonical holiday source with its personal identity");
         var previewBytes = File.ReadAllBytes(Path.Combine(legacySource, "preview.png"));
         using (var previewStream = new MemoryStream(previewBytes))
         using (var bitmap = new Bitmap(previewStream)) bitmap.Save(Path.Combine(legacySource, "changed-preview.png"), new PngBitmapEncoderOptions());

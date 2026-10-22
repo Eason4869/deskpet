@@ -14,6 +14,9 @@ namespace Dafeiyu
         private readonly TextBlock name,notice,sizeLabel;
         private readonly Image avatar;
         private readonly ComboBox skins;
+        private readonly HolidayOutfitPanel holidayOutfits;
+        private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
+        private readonly TextBlock wardrobeHeading;
         private readonly Button restoreCompanions;
         private readonly CheckBox follow,wander,top,pause,autoStart,greetings,aiGreetings,stumble,autoSleep;
         private readonly TextBox greetingMin,greetingMax;
@@ -56,10 +59,12 @@ namespace Dafeiyu
             introduction.Children.Add(Ui.Text("陪你写代码，也陪你发会儿呆。",12,Ui.Muted));
             Grid.SetColumn(introduction,1); header.Children.Add(introduction); root.Children.Add(header);
 
-            var appearance=new StackPanel(); appearance.Children.Add(Heading("选择伙伴"));
-            var appearanceRow=new Grid { Margin=new Thickness(0,8,0,6) };
-            appearanceRow.ColumnDefinitions.Add(new ColumnDefinition()); appearanceRow.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
-            skins=new ComboBox { Name="SkinPicker",ItemTemplate=SkinCatalog.AvatarTemplate(RemoveCompanion,()=>pet.Catalog.Skins.Count>1),ItemsSource=pet.Catalog.Skins,SelectedItem=pet.Skin,MinHeight=36,Padding=new Thickness(8,4,8,4),Margin=new Thickness(0,0,10,0),HorizontalContentAlignment=HorizontalAlignment.Stretch };
+            var appearance=new StackPanel();
+            var appearanceRow=new Grid {Name="CompanionWardrobeRow",Margin=new Thickness(0,0,0,6)};
+            appearanceRow.ColumnDefinitions.Add(new ColumnDefinition());wardrobeGap=new ColumnDefinition{Width=new GridLength(0)};appearanceRow.ColumnDefinitions.Add(wardrobeGap);wardrobeColumn=new ColumnDefinition{Width=new GridLength(0)};appearanceRow.ColumnDefinitions.Add(wardrobeColumn);appearanceRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(10)});appearanceRow.ColumnDefinitions.Add(new ColumnDefinition { Width=GridLength.Auto });
+            appearanceRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});appearanceRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
+            appearanceRow.Children.Add(Heading("选择伙伴"));wardrobeHeading=Heading("衣柜");wardrobeHeading.Name="HolidayWardrobeLabel";Grid.SetColumn(wardrobeHeading,2);appearanceRow.Children.Add(wardrobeHeading);
+            skins=new ComboBox { Name="SkinPicker",ItemTemplate=SkinCatalog.AvatarTemplate(RemoveCompanion,()=>pet.Catalog.Skins.Count>1),ItemsSource=pet.Catalog.Skins,SelectedItem=pet.Skin,MinHeight=36,Padding=new Thickness(8,4,8,4),Margin=new Thickness(0,8,0,0),VerticalAlignment=VerticalAlignment.Top,HorizontalContentAlignment=HorizontalAlignment.Stretch };
             skins.SelectionChanged+=delegate
             {
                 if(refreshing || skins.SelectedItem==null) return;
@@ -68,10 +73,12 @@ namespace Dafeiyu
                 if(HasUnsavedEdits){refreshing=true;skins.SelectedItem=pet.Skin;refreshing=false;ShowNotice("请先保存当前修改，再切换伙伴。");return;}
                 if(pet.SelectSkin(selected)) RefreshAvatar(); else { RefreshState(); ShowNotice(pet.Notice); }
             };
-            appearanceRow.Children.Add(skins);
-            var import=Ui.Button("导入 / 更新角色包"); import.Name="ImportSkin"; import.Margin=new Thickness(0); import.Click+=ImportSkin;
-            Grid.SetColumn(import,1); appearanceRow.Children.Add(import); appearance.Children.Add(appearanceRow);
+            Grid.SetRow(skins,1);appearanceRow.Children.Add(skins);
+            holidayOutfits=new HolidayOutfitPanel(pet.Holidays,()=>pet.Skin){Margin=new Thickness(0,8,0,0)};Grid.SetColumn(holidayOutfits,2);Grid.SetRow(holidayOutfits,1);appearanceRow.Children.Add(holidayOutfits);
+            var import=Ui.Button("导入 / 更新角色包"); import.Name="ImportSkin"; import.Margin=new Thickness(0,8,0,0);import.VerticalAlignment=VerticalAlignment.Top;import.SetBinding(HeightProperty,new System.Windows.Data.Binding("ActualHeight"){Source=skins}); import.Click+=ImportSkin;
+            Grid.SetColumn(import,4);Grid.SetRow(import,1); appearanceRow.Children.Add(import); appearance.Children.Add(appearanceRow);
             appearance.Children.Add(Ui.Text("支持 ZIP 角色包、PNG 与 pet.json。同 ID 更新素材，保留个人人格、音色与聊天。",11,Ui.Muted));
+            pet.Holidays.Changed+=HolidayWardrobeChanged;RefreshHolidayLayout();
             restoreCompanions=Ui.Button("恢复已删除伙伴");restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice("请先保存修改并结束当前对话，再恢复伙伴。");return;}pet.Catalog.RestoreRemoved();var current=pet.Catalog.Find(pet.Skin.Id);pet.SelectSkin(current);RefreshSkinChoices();ShowNotice("已恢复已删除伙伴，聊天和配置保持原样。");};appearance.Children.Add(restoreCompanions);
             var guide=new Expander{Name="ImportGuide",Header="如何制作和导入桌宠？",Margin=new Thickness(0,12,0,0)};var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
             tutorial.Children.Add(Ui.Text("1. 打开模板文件夹，选择 v1 原版或 v2 逐帧动作模板。\n2. v1：8 列 × 11 行透明 PNG，可直接导入。\n3. v2：每个动作独立 PNG，8 列、单格 480 × 520；在 pet.json 填写帧数、FPS 和循环方式。视线为 4 列 × 4 行的 16 张原画，不做插值。\n4. 填写角色名称、人格与专属动作名称；保留整个文件夹结构。可直接导入 ZIP（根目录放 pet.json），或选择 pet.json。\n固定 ID 的完整角色包还支持头像、双套动作和音色推荐；同 ID 更新会保留个人配置。导入后会复制素材，原文件保持不变。",12,Ui.Muted));
@@ -189,6 +196,8 @@ namespace Dafeiyu
         public void RefreshTextProviders(){connections.RefreshTextProviders();}
         public void RefreshState()
         {
+            if(holidayOutfits!=null)holidayOutfits.RefreshState();
+            RefreshHolidayLayout();
             if(!ReferenceEquals(displayedSkin,pet.Skin))RefreshAvatar();
             if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
@@ -196,6 +205,10 @@ namespace Dafeiyu
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
             RefreshAutoStart();if(quiet!=null)quiet.RefreshState();if(work!=null)RefreshWorkState();
         }
+        private void HolidayWardrobeChanged(object sender,EventArgs args)
+        {if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshHolidayLayout));return;}RefreshHolidayLayout();}
+        private void RefreshHolidayLayout()
+        {if(wardrobeColumn==null)return;bool visible=pet.Holidays.WardrobeVisible;wardrobeColumn.Width=visible?new GridLength(1,GridUnitType.Star):new GridLength(0);wardrobeGap.Width=new GridLength(visible?10:0);wardrobeHeading.Visibility=visible?Visibility.Visible:Visibility.Collapsed;}
         private void SetAutoStart(bool enabled)
         {
             if(refreshing)return;
@@ -252,7 +265,7 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
-            if(disposed)return;disposed=true;connections.DisposeImageGeneration();about.Dispose();
+            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();connections.DisposeImageGeneration();about.Dispose();
         }
         public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
         public bool ValidateGuideNetwork(out string error){return about.ValidateNetwork(out error);}

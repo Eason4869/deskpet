@@ -38,6 +38,10 @@ public static class MacServices
         return completion.Task;
     }
     public static TimeSpan GetIdleTime() { EnsureMac(); return TimeSpan.FromSeconds(Math.Clamp(Native.IdleSeconds(), 0, TimeSpan.MaxValue.TotalSeconds - 1)); }
+    // Public workspace session, display-sleep and system-sleep signals. This is
+    // deliberately not a claim that macOS exposes a public screen-lock query.
+    public static bool IsSessionInteractive { get { EnsureMac(); return Native.SessionInteractive() != 0; } }
+    public static ulong SessionLifecycleRevision { get { EnsureMac(); return Native.SessionLifecycleRevision(); } }
     // Quartz global coordinates: origin at main display's upper left, consistent across displays.
     public static (double X, double Y) GetPointerPosition() { EnsureMac(); Native.Pointer(out var x, out var y); return (x, y); }
     /// <summary>Pointer in logical points relative to the NSView/NSWindow content's upper-left, including outside points.</summary>

@@ -50,6 +50,8 @@ namespace Dafeiyu
         public string Source { get; private set; }
         public string Preview { get; private set; }
         public bool Embedded { get; private set; }
+        // Trusted registration metadata; imported manifests cannot assign this.
+        public string BuiltinCharacterId {get;internal set;}
         internal bool Bundled { get; set; }
         public string SystemPrompt { get; private set; }
         public string Description { get; private set; }
@@ -96,11 +98,11 @@ namespace Dafeiyu
         {
             dataRoot=dataDirectory;
             directory=Path.Combine(dataDirectory,"skins");
-            skins.Add(new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true));
-            skins.Add(new SkinDefinition("dafeiyu","大肥鱼","Dafeiyu.Atlas","Dafeiyu.Preview",true));
+            skins.Add(new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true){BuiltinCharacterId="e-bao"});
+            skins.Add(new SkinDefinition("dafeiyu","大肥鱼","Dafeiyu.Atlas","Dafeiyu.Preview",true){BuiltinCharacterId="dafeiyu"});
             skins.Add(new SkinDefinition("marfu","马尔芙","Dafeiyu.MarfuAtlas","Dafeiyu.MarfuPreview",true,
                 PersonaProfiles.Marfu,
-                "聪明俏皮 · 金发绿眼魔法少女"));
+                "聪明俏皮 · 金发绿眼魔法少女"){BuiltinCharacterId="marfu"});
             skins.AddRange(BundledSkinCache.Registered(dataDirectory));
             supplied.AddRange(skins.Where(s=>s.Illustrated && !String.IsNullOrEmpty(s.Manifest.PackageId)));
             foreach(var pack in CompanionPackStorage.Installed(dataDirectory)) {
@@ -159,7 +161,7 @@ namespace Dafeiyu
                 var current=skins.FirstOrDefault(s=>s.Illustrated && s.Manifest.PackageId==package)??original;
                 if(restore)CompanionPackStorage.SetHidden(dataRoot,package,false);
                 aliases[legacy.Id]=package;
-                skins.Remove(legacy);Put(new SkinDefinition(identity,current.Source,current.Manifest){Bundled=current.Bundled});
+                skins.Remove(legacy);Put(new SkinDefinition(identity,current.Source,current.Manifest){Bundled=current.Bundled,BuiltinCharacterId=current.BuiltinCharacterId});
             }
         }
         static bool SameArtwork(SkinDefinition left,SkinDefinition right)
