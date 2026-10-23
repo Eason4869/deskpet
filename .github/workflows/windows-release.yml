@@ -43,7 +43,7 @@ jobs:
         run: |
           python -m pip install Pillow
           if ($LASTEXITCODE) { throw 'Dependency installation failed' }
-          foreach ($target in @('ReleaseVersionTests','ReleaseIdentityTests','UpdateChannelTests','UpdateTests','UpdateApplyTests','UpdateScheduleTests','AutoUpdateSmoke')) {
+          foreach ($target in @('CompanionStartupTests','ReleaseVersionTests','ReleaseIdentityTests','UpdateChannelTests','UpdateTests','UpdateApplyTests','UpdateScheduleTests','AutoUpdateSmoke')) {
             & ./Build.ps1 -Target $target
             if ($LASTEXITCODE) { throw "Failed: $target" }
           }
