@@ -54,6 +54,10 @@ def string_tokens(source):
             i = close + quotes; continue
         while i < len(source):
             c = source[i]; i += 1
+            if interpolated and c=='{':
+                if i<len(source) and source[i]=='{':value.append('{{');i+=1;continue
+                end=interpolation_end(source,i)
+                value.append('{'+source[i:end]);i=end;continue
             if c == '"':
                 if verbatim and i < len(source) and source[i] == '"': value.append('"'); i += 1; continue
                 break
@@ -70,6 +74,33 @@ def string_tokens(source):
             else: value.append(c)
         else: raise ValueError("Unterminated C# string")
         yield start, i, "".join(value), "interpolated" if interpolated else "literal"
+
+
+def interpolation_end(source,i):
+    """Consume a balanced interpolation, including nested C# string expressions."""
+    depth=1
+    while i<len(source):
+        if source.startswith('//',i):
+            end=source.find('\n',i);i=len(source) if end<0 else end+1;continue
+        if source.startswith('/*',i):
+            end=source.find('*/',i+2)
+            if end<0:raise ValueError('Unterminated interpolation comment')
+            i=end+2;continue
+        if any(source.startswith(p,i) for p in ('$@"','@$"','@"','$"','"')):
+            token=next(string_tokens(source[i:]));i+=token[1];continue
+        if source[i]=="'":
+            i+=1
+            while i<len(source):
+                if source[i]=='\\':i+=2
+                elif source[i]=="'":i+=1;break
+                else:i+=1
+            continue
+        if source[i]=='{':depth+=1
+        elif source[i]=='}':
+            depth-=1
+            if depth==0:return i+1
+        i+=1
+    raise ValueError('Unterminated interpolated expression')
 
 
 def load_catalog(text):

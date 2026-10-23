@@ -4,7 +4,7 @@
 
 资源为 4,347 个扁平字符串；清单有 4,999 条记录，其中 4,649 条 migrate、350 条 exclude（包括有解释的已移除文字比较点），包含七个从旧菜单身份派生的显示词条。直接从原始 dev 提交扫描得到 4,937 个中文候选，未分类为 0。清单和资源词条不是一对一关系，因此不以其比值冒充迁移完成率。
 
-本机为 Windows x64，Framework 4.8 编译器及隔离 .NET SDK 10.0.402 / Runtime 10.0.13。证据位于忽略目录 `work/localization-validation/`，共享默认报告 `portable-report.json`：success=true、8,203 passed、0 failures。Avalonia 默认：3,006 UI/resource/animation assertions。资源专用 Framework：4,370 项；缺资源真实宿主：2 项；UI 解耦：7 项；角色启动恢复：11 项；主题：32 项；Python 审计：11 项。所有测试使用隔离数据；未调用付费模型。
+本机为 Windows x64，Framework 4.8 编译器及隔离 .NET SDK 10.0.402 / Runtime 10.0.13。证据位于忽略目录 `work/localization-validation/`，共享默认报告 `portable-report.json`：success=true、8,203 passed、0 failures。Avalonia 默认：3,006 UI/resource/animation assertions。资源专用 Framework：4,370 项；缺资源真实宿主：2 项；UI 解耦：7 项；角色启动恢复：11 项；主题：32 项；Python 审计：12 项。所有测试使用隔离数据；未调用付费模型。
 
 | 验收 | 状态和证据 |
 | --- | --- |

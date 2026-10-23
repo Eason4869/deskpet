@@ -33,3 +33,5 @@
 - Visual acceptance: nine WPF screenshot pairs against immutable 0.10.4 are pixel-identical after masking only authorized version identity / isolated fixture workspace path; four Avalonia screenshot pairs are fully pixel-identical, including 390-DIP chat in light/dark themes.
 - Current native checks passed: LocalizationTests 4,370, missing-resource 2, UI decoupling 7, CompanionStartup 11, Theme 32, MenuSmoke and BrowserPaneTests. ProviderUiSmoke first audio playback attempt failed; isolated rerun 91 passed.
 - Baseline classification: SettingsNavigationSmoke and OnboardingSmoke fail identically on released 0.10.4 and this branch (old picker identity/synchronous or guide-state expectations). Assertions and production behavior remain unchanged. Report these as known baseline failures, not successful tests or new localization regressions.
+
+- Final audit hardening: nested interpolation expressions with quoted/nested strings now remain one explicit token; negative scanner case RED→GREEN, audit 12/12, strict gate and original dev provenance green. This changes only developer auditing, not application behavior.

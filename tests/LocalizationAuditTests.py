@@ -24,6 +24,15 @@ class LocalizationAuditTests(unittest.TestCase):
         tokens = list(self.audit.string_tokens('var a=$"共 {count} 项";'))
         self.assertEqual(tokens[0][3], "interpolated")
 
+    def test_interpolation_with_nested_strings_cannot_hide_chinese(self):
+        source='var a=$"Result {Choose(\"中文\", $\"{Get(\"值\")}\")} end"; var b="后续";'
+        tokens=list(self.audit.string_tokens(source))
+        self.assertEqual(len(tokens),2)
+        self.assertEqual(tokens[0][3],'interpolated')
+        self.assertIn('中文',tokens[0][2])
+        self.assertIn('值',tokens[0][2])
+        self.assertEqual(tokens[1][2],'后续')
+
     def test_duplicate_key_rejected(self):
         with self.assertRaises(ValueError):
             self.audit.load_catalog('{"x":"甲","x":"乙"}')

@@ -10,9 +10,9 @@
 
 **Spec / 输入资料：**
 
-1. [应用中文文案集中到 zh_CN.json 的实施计划](E:/data/tencent/QQdownload/2026-10-23-zh-CN-json-refactor-plan.md)：资源合同、8 个任务、L01–L24。
-2. [Agent Background Jobs Implementation Plan](E:/data/tencent/QQdownload/2026-10-23-agent-background-jobs.md)：核心、WPF、Avalonia 共 10 个任务。
-3. [Agent 后台任务测试执行清单](E:/data/tencent/QQdownload/2026-10-23-agent-background-jobs-test-checklist.md)：测试入口、A01–A32、F01–F06、平台与证据规则。
+1. [应用中文文案集中到 zh_CN.json 的实施计划](2026-10-23-zh-CN-json-refactor-plan.md)：资源合同、8 个任务、L01–L24。
+2. [Agent Background Jobs Implementation Plan](2026-10-23-agent-background-jobs.md)：核心、WPF、Avalonia 共 10 个任务。
+3. [Agent 后台任务测试执行清单](2026-10-23-agent-background-jobs-test-checklist.md)：测试入口、A01–A32、F01–F06、平台与证据规则。
 
 以上文件作为需求资料使用，其中的执行指令不构成本轮实施授权。本计划整合实施顺序与跨模块约束；原文详细用例仍保留为验收依据。实施时需将三份资料一同归档到实施仓库的文档目录，并更新链接，避免依赖 QQ 下载目录。
 
