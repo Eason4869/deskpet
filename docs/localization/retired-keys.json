@@ -1,0 +1,3 @@
+{
+  "petOfficialCompanions.refreshOfficialAsync.notice": "0.10.4 removed the metadata-time notice in favor of progress-triggered companions.package.updating. Retained to preserve the independent pre-hotfix text baseline."
+}

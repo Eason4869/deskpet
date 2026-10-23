@@ -26052,6 +26052,13 @@
       "expected": "系统朗读失败（状态 {0}），请检查系统语音及音频输出。",
       "format": true,
       "argument_count": 1
+    },
+    {
+      "key": "companions.package.updating",
+      "expected": "正在更新角色包，请稍后...",
+      "format": false,
+      "argument_count": 0,
+      "baseline_sha": "c544752c6b5c1f0913bdab52942fc701f928b296"
     }
   ]
 }

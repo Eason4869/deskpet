@@ -35,12 +35,13 @@ Directory.CreateDirectory(directory);
 try
 {
     if(args.Contains("--localization-ui-only")){Console.WriteLine("LocalizationUiChecks: "+LocalizationUiChecks.Run(Path.Combine(directory,"localization"))+" passed");return;}
+    if(args.Contains("--companion-startup-ui-only")){Console.WriteLine("CompanionStartupUi: "+OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory,"startup-restore"))+" passed");return;}
     if (args.Contains("--official-native-index") || args.Contains("--official-native-materials"))
     {
         string? Option(string name) { int at = Array.IndexOf(args, name); return at < 0 ? null : at + 1 < args.Length && !args[at + 1].StartsWith("--", StringComparison.Ordinal) ? args[at + 1] : throw new ArgumentException("Missing value for " + name); }
         Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunActualMaterials(Option("--official-native-materials"), Option("--official-native-index") ?? throw new ArgumentException("Expected --official-native-index"), Option("--report") ?? "work/official-ava-actual-native.json") + " actual complete companion packages"); return;
     }
-    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + " actual thin companion assertions"); return; }
+    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory, "startup-restore-thin"))) + " actual thin companion assertions"); return; }
     if (args.Contains("--official-companion-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunTiming() + OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection")) + OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native")) + OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"))) + " official companion assertions"); return; }
     if (args.Contains("--holiday-switch-source")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch")) + " source switch assertions"); return; }
     if (args.Contains("--holiday-wardrobe-layout")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui")) + " wardrobe layout assertions"); return; }
@@ -56,6 +57,7 @@ try
     Console.WriteLine("START LocalizationUiChecks");
     assertions += LocalizationUiChecks.Run(Path.Combine(directory,"localization"));
     Console.WriteLine("START OfficialCompanion.Timing");
+    assertions += OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory,"startup-restore"));
     assertions += OfficialCompanionUiChecks.RunTiming();
     Console.WriteLine("START OfficialCompanionUiChecks.RunSelection");
     assertions += OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection"));

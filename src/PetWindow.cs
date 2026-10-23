@@ -224,7 +224,10 @@ namespace Dafeiyu
             atlas=source; Settings=settings; Store=store; wake=wakeSignal; Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
-            Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;Skin=Catalog.FindPicker(Settings.SelectedCompanionKey)??Catalog.Skins.FirstOrDefault(s=>s.Id==Settings.SkinId)??Catalog.EmbeddedFallback();
+            Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;
+            Skin=Catalog.Skins.FirstOrDefault(s=>s.IsOfficial&&s.BuiltinCharacterId==Settings.PendingOfficialCompanionId)
+                ??Catalog.FindPicker(Settings.SelectedCompanionKey)??Catalog.Skins.FirstOrDefault(s=>s.Id==Settings.SkinId)??Catalog.EmbeddedFallback();
+            Skin=RestoreCachedStartupCompanion(Skin);
             if(Skin.IsPlaceholder){Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;PersonaProfiles.SaveVoices(Settings);if(!String.IsNullOrWhiteSpace(Settings.SystemPrompt)&&Settings.PersonaProfileVersion>0)Settings.PersonaOverrides[Settings.SkinId]=Settings.SystemPrompt;Skin=Catalog.EmbeddedFallback();}
             try { atlas=Skin.Load(); }
             catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
@@ -285,7 +288,7 @@ namespace Dafeiyu
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
-            InitializeHoliday();timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
+            InitializeHoliday();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
             IsVisibleChanged+=delegate { RefreshRendering(); };
         }
         private void RefreshRendering()
