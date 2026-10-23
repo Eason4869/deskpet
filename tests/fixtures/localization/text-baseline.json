@@ -21848,24 +21848,6 @@
       "argument_count": 0
     },
     {
-      "key": "retiredRuntimeFiles.known.knownDictionary",
-      "expected": "templates/high-fps-v2/AI绘制提示词.md",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "retiredRuntimeFiles.known.knownDictionary.alternativeA",
-      "expected": "templates/high-fps-v2/先读我.md",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "retiredRuntimeFiles.known.knownDictionary.alternativeB",
-      "expected": "templates/high-fps-v2/动作表.md",
-      "format": false,
-      "argument_count": 0
-    },
-    {
       "key": "secretProtection.current.text",
       "expected": "平台密钥保护尚未初始化，无法读取或保存私密数据。",
       "format": false,
