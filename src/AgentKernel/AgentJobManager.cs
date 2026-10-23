@@ -1,0 +1,293 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Script.Serialization;
+namespace Dafeiyu
+{
+    // This service belongs to the application, never to a disposable chat workspace.
+    public sealed class AgentJobManager
+    {
+        sealed class Entry
+        {
+            internal AgentJobRecord Record;
+            internal volatile AgentJobSnapshot Published;
+            internal IAgentJobProcess Process;
+            internal IDisposable DirectoryLease;
+            internal readonly SemaphoreSlim Mutation=new SemaphoreSlim(1,1);
+            internal readonly CancellationTokenSource Lifetime=new CancellationTokenSource();
+            internal Task<AgentJobSnapshot> Start;
+        }
+        readonly object gate=new object();
+        readonly AgentJobStore store;
+        readonly IAgentJobProcessFactory factory;
+        readonly IAgentJobClock clock;
+        readonly Dictionary<string,Entry> jobs=new Dictionary<string,Entry>(StringComparer.Ordinal),invocations=new Dictionary<string,Entry>(StringComparer.Ordinal);
+        readonly Dictionary<string,SemaphoreSlim> ownerGates=new Dictionary<string,SemaphoreSlim>(StringComparer.Ordinal);
+        readonly CancellationTokenSource exiting=new CancellationTokenSource();
+        bool recovered,recovering,exitRequested;
+        public event Action Changed;
+        public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock)
+        {if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;}
+        public async Task RecoverAsync(CancellationToken token)
+        {
+            lock(gate){if(recovered)return;if(recovering)throw new InvalidOperationException("jobs_recovering");recovering=true;}
+            try
+            {
+                var restored=await store.LoadAsync(token).ConfigureAwait(false);
+                lock(gate){foreach(var snapshot in restored){var entry=new Entry{Record=snapshot.ToRecord(),Published=snapshot};jobs.Add(snapshot.Id,entry);invocations.Add(entry.Record.InvocationKey,entry);}recovered=true;}
+                Notify();
+            }
+            finally{lock(gate)recovering=false;}
+        }
+        static string Payload(AgentJobSpec spec)
+        {
+            var json=new JavaScriptSerializer().Serialize(new object[]{spec.Command,spec.Title,spec.WorkingDirectory,spec.TimeoutSeconds});
+            using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(json))).Replace("-","").ToLowerInvariant();
+        }
+        static void ValidatePolicy(AgentJobPolicySnapshot policy,AgentJobSpec spec)
+        {
+            if(policy==null||!policy.TerminalAllowed||policy.ReadOnly)throw new InvalidOperationException("job_permission_denied");
+            AgentJobPolicy.ResolveTimeout(spec.TimeoutSeconds,policy.TimeoutCeiling);
+            if(String.IsNullOrWhiteSpace(policy.Root)||!Path.IsPathRooted(policy.Root))throw new InvalidOperationException("job_directory_changed");
+            var root=Path.GetFullPath(policy.Root).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
+            var path=spec.WorkingDirectory.TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
+            var comparison=Environment.OSVersion.Platform==PlatformID.Win32NT?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal;
+            if(!String.Equals(path,root,comparison)&&!path.StartsWith(root+Path.DirectorySeparatorChar,comparison))throw new InvalidOperationException("job_directory_denied");
+            if(!Directory.Exists(spec.WorkingDirectory))throw new InvalidOperationException("job_directory_changed");
+            AgentInstructions.RejectLinks(spec.WorkingDirectory);
+        }
+        static bool SamePolicy(AgentJobPolicySnapshot a,AgentJobPolicySnapshot b)
+        {return a.Root==b.Root&&a.DirectoryIdentity==b.DirectoryIdentity&&a.PermissionVersion==b.PermissionVersion&&a.TimeoutCeiling==b.TimeoutCeiling&&a.TerminalAllowed==b.TerminalAllowed&&a.ReadOnly==b.ReadOnly&&a.Sandbox==b.Sandbox&&a.ApprovalMode==b.ApprovalMode&&a.ReadDirectories.SequenceEqual(b.ReadDirectories);}
+        static void ValidateInvocation(AgentJobStartContext context,AgentJobSpec spec)
+        {
+            var invocation=context.Invocation;var args=invocation.ReadArguments();object command,title,directory,timeout;
+            if(invocation.ToolName!="start_job"||invocation.Action!="shell"||args==null||args.Count!=4||!args.TryGetValue("command",out command)||!args.TryGetValue("title",out title)||!args.TryGetValue("working_directory",out directory)||!args.TryGetValue("timeout_seconds",out timeout)||!(timeout is int)||command as string!=spec.Command||title as string!=spec.Title||directory as string!=spec.WorkingDirectory||(int)timeout!=spec.TimeoutSeconds||invocation.Resource!=spec.WorkingDirectory)
+                throw new InvalidOperationException("job_invocation_mismatch");
+        }
+        public Task<AgentJobSnapshot> StartAsync(AgentJobStartContext context,AgentJobSpec spec,CancellationToken requestToken)
+        {
+            if(context==null||spec==null)throw new ArgumentNullException("context");
+            if(context.Owner.AgentId!="primary")throw new InvalidOperationException("job_owner_denied");
+            var key=AgentJobPolicy.IdempotencyKey(context.Owner,context.Invocation);var payload=Payload(spec);Entry entry;
+            var result=new TaskCompletionSource<AgentJobSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock(gate)
+            {
+                if(!recovered)throw new InvalidOperationException("jobs_recovering");
+                if(invocations.TryGetValue(key,out entry))
+                {
+                    if(entry.Record.PayloadHash!=payload)throw new InvalidOperationException("job_idempotency_conflict");
+                    return entry.Start??Task.FromResult(Snapshot(entry));
+                }
+                if(exitRequested)throw new InvalidOperationException("jobs_exiting");
+                entry=new Entry{Record=new AgentJobRecord{Id=Guid.NewGuid().ToString("N"),InvocationKey=key,PayloadHash=payload,Owner=context.Owner,Spec=spec,State=AgentJobState.Starting,CreatedUtc=clock.UtcNow},Start=result.Task};
+                entry.Published=new AgentJobSnapshot(entry.Record);
+                invocations.Add(key,entry);
+            }
+            // StartCore owns all exceptions and never exposes an unobserved async-void task.
+            CompleteStartAsync(entry,context,requestToken,result);
+            return result.Task;
+        }
+        async void CompleteStartAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken,TaskCompletionSource<AgentJobSnapshot> result)
+        {
+            await entry.Mutation.WaitAsync().ConfigureAwait(false);
+            try{result.TrySetResult(await StartCoreAsync(entry,context,requestToken).ConfigureAwait(false));}
+            catch(OperationCanceledException){result.TrySetCanceled();}
+            catch(Exception error){result.TrySetException(error);}
+            finally{entry.Mutation.Release();}
+        }
+        async Task<AgentJobSnapshot> StartCoreAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken)
+        {
+            var elapsed=Stopwatch.StartNew();bool reserved=false,saved=false,ownerHeld=false;var ownerGate=OwnerGate(context.Owner.ProjectId);
+            try
+            {
+            using(var cancellation=CancellationTokenSource.CreateLinkedTokenSource(requestToken,exiting.Token))
+            {
+                var token=cancellation.Token;Exception failure=null;
+                try
+                {
+                    token.ThrowIfCancellationRequested();ValidateInvocation(context,entry.Record.Spec);var original=context.RecheckPolicy();ValidatePolicy(original,entry.Record.Spec);
+                    var authorization=Stopwatch.StartNew();var decision=await context.Authorization.AuthorizeAsync(context.Invocation,token).ConfigureAwait(false);
+                    entry.Record.TimingsMs["authorization"]=authorization.ElapsedMilliseconds;
+                    if(decision==null||decision.Effect!=AgentPermissionEffect.Allow)throw new InvalidOperationException("job_permission_denied");
+                    await ownerGate.WaitAsync(token).ConfigureAwait(false);ownerHeld=true;
+                    token.ThrowIfCancellationRequested();entry.DirectoryLease=context.AcquireDirectory();
+                    var current=context.RecheckPolicy();ValidatePolicy(current,entry.Record.Spec);if(!SamePolicy(original,current))throw new InvalidOperationException("job_policy_changed");
+                    lock(gate)
+                    {
+                        if(exitRequested)throw new InvalidOperationException("jobs_exiting");
+                        var active=jobs.Values.Where(job=>!AgentJobStore.IsTerminal(job.Record.State)).ToArray();
+                        if(active.Length>=AgentJobPolicy.MaximumActiveJobs)throw new InvalidOperationException("job_application_capacity");
+                        if(active.Count(job=>job.Record.Owner.ProjectId==entry.Record.Owner.ProjectId)>=AgentJobPolicy.MaximumProjectJobs)throw new InvalidOperationException("job_project_capacity");
+                        jobs.Add(entry.Record.Id,entry);reserved=true;
+                    }
+                    await PersistAsync(entry,token).ConfigureAwait(false);saved=true;
+                    var log=store.OpenLog(entry.Record.Id);
+                    log.Faulted+=error=>HandleLogFault(entry);
+                    var preparation=Stopwatch.StartNew();entry.Process=await factory.PrepareAsync(entry.Record.Spec,current,chunk=>log.Append(chunk),token).ConfigureAwait(false);
+                    entry.Record.TimingsMs["prepare"]=preparation.ElapsedMilliseconds;
+                    if(entry.Process==null)throw new InvalidOperationException("job_process_missing");
+                    var metrics=entry.Process as IAgentJobPreparationMetrics;
+                    entry.Record.TimingsMs["sandbox_prepare"]=metrics==null?0:Math.Max(0,Math.Min(preparation.ElapsedMilliseconds,metrics.SandboxPreparationMilliseconds));
+                    token.ThrowIfCancellationRequested();var final=context.RecheckPolicy();ValidatePolicy(final,entry.Record.Spec);if(!SamePolicy(current,final))throw new InvalidOperationException("job_policy_changed");
+                    if(context.BeforeEffect==null)throw new InvalidOperationException("execution_reconciliation_required");context.BeforeEffect();
+                    token.ThrowIfCancellationRequested();entry.Record.MayHaveExecuted=true;entry.Process.Resume();
+                    entry.Record.State=AgentJobState.Running;entry.Record.StartedUtc=clock.UtcNow;
+                    await PersistAsync(entry,token).ConfigureAwait(false);
+                    lock(gate){token.ThrowIfCancellationRequested();if(exitRequested)throw new OperationCanceledException(token);}
+                    entry.Record.TimingsMs["start_total"]=elapsed.ElapsedMilliseconds;
+                    entry.Record.TimingsMs["start_excluding_authorization_and_sandbox"]=Math.Max(0,elapsed.ElapsedMilliseconds-entry.Record.TimingsMs["authorization"].Value-entry.Record.TimingsMs["sandbox_prepare"].Value);
+                    entry.Published=new AgentJobSnapshot(entry.Record);var started=Snapshot(entry);Notify();MonitorAsync(entry);return started;
+                }
+                catch(Exception error){failure=error;}
+                    if(entry.Process!=null)
+                    {
+                        bool clean=await CleanupAsync(entry).ConfigureAwait(false);
+                        entry.Record.CleanupConfirmed=clean;entry.Record.State=clean?AgentJobState.StartFailed:AgentJobState.CleanupFailed;
+                    }
+                    else{entry.Record.State=AgentJobState.StartFailed;entry.Record.CleanupConfirmed=true;}
+                    if(AgentJobStore.IsTerminal(entry.Record.State)){entry.Record.FinishedUtc=clock.UtcNow;Release(entry);}
+                    if(saved)try{await PersistAsync(entry,CancellationToken.None).ConfigureAwait(false);}catch(Exception error){Debug.WriteLine(error);}
+                    if(!reserved)Release(entry);entry.Published=new AgentJobSnapshot(entry.Record);Notify();System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();throw new InvalidOperationException();
+            }
+            }
+            finally{if(ownerHeld)ownerGate.Release();}
+        }
+        void HandleLogFault(Entry entry){StopAfterLogFaultAsync(entry);}
+        async void StopAfterLogFaultAsync(Entry entry){try{await StopEntryAsync(entry,AgentJobStopReason.LogStorageFailed,CancellationToken.None).ConfigureAwait(false);}catch(Exception error){Debug.WriteLine(error);}}
+        async void MonitorAsync(Entry entry)
+        {
+            Exception failure=null;
+            try
+            {
+                while(!entry.Lifetime.IsCancellationRequested)
+                {
+                    await RefreshAsync(entry,CancellationToken.None).ConfigureAwait(false);
+                    if(entry.Lifetime.IsCancellationRequested)return;
+                    if(entry.Record.StartedUtc.HasValue&&(clock.UtcNow-entry.Record.StartedUtc.Value).TotalSeconds>=entry.Record.Spec.TimeoutSeconds)
+                    {await StopEntryAsync(entry,AgentJobStopReason.Timeout,CancellationToken.None).ConfigureAwait(false);return;}
+                    await Task.WhenAny(entry.Process.Completion,Task.Delay(100,entry.Lifetime.Token)).ConfigureAwait(false);
+                    // A broken adapter must not spin forever on a completed-but-inconsistent task.
+                    if(entry.Process.Completion.IsCompleted)await Task.Delay(25,entry.Lifetime.Token).ConfigureAwait(false);
+                }
+            }
+            catch(OperationCanceledException){}
+            catch(Exception error){failure=error;}
+            if(failure!=null){Debug.WriteLine(failure);try{await StopEntryAsync(entry,AgentJobStopReason.LogStorageFailed,CancellationToken.None).ConfigureAwait(false);}catch(Exception cleanup){Debug.WriteLine(cleanup);}}
+        }
+        async Task RefreshAsync(Entry entry,CancellationToken token)
+        {
+            await entry.Mutation.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                if(entry.Process==null||AgentJobStore.IsTerminal(entry.Record.State)||entry.Record.State!=AgentJobState.Running)return;
+                var status=entry.Process.Status;bool changed=entry.Record.RootExited!=status.RootExited||entry.Record.RootExitCode!=status.RootExitCode;
+                entry.Record.RootExited=status.RootExited;entry.Record.RootExitCode=status.RootExitCode;
+                if(status.TreeExited&&status.StreamsDrained)
+                {
+                    entry.Record.State=status.RootExitCode==0?AgentJobState.Succeeded:AgentJobState.Failed;
+                    entry.Record.CleanupConfirmed=true;entry.Record.FinishedUtc=clock.UtcNow;
+                    await store.OpenLog(entry.Record.Id).FlushAsync(token).ConfigureAwait(false);Release(entry);changed=true;
+                }
+                if(changed){await PersistAsync(entry,token).ConfigureAwait(false);Notify();}
+            }
+            finally{entry.Mutation.Release();}
+        }
+        static AgentJobSnapshot Snapshot(Entry entry){return entry.Published;}
+        async Task PersistAsync(Entry entry,CancellationToken token){var snapshot=new AgentJobSnapshot(entry.Record);await store.SaveAsync(snapshot,token).ConfigureAwait(false);entry.Published=snapshot;}
+        Entry Find(AgentJobOwner owner,string id)
+        {
+            lock(gate){Entry entry;if(!jobs.TryGetValue(id??"",out entry)||owner==null||!owner.Matches(entry.Record.Owner))throw new KeyNotFoundException("job_not_found");return entry;}
+        }
+        public async Task<AgentJobPage> GetAsync(AgentJobOwner owner,string id,string cursor,int limitBytes,CancellationToken token)
+        {
+            var entry=Find(owner,id);await RefreshAsync(entry,token).ConfigureAwait(false);var page=await store.OpenLog(id).ReadAsync(cursor,limitBytes,token).ConfigureAwait(false);
+            return new AgentJobPage(Snapshot(entry),page.Records,page.NextCursor,page.HasMore,page.Gap);
+        }
+        public Task<AgentJobSnapshot> StopAsync(AgentJobOwner owner,string id,AgentJobStopReason reason,CancellationToken token)
+        {return StopEntryAsync(Find(owner,id),reason,token);}
+        internal Task<AgentJobSnapshot> StopForUserAsync(string id,AgentJobStopReason reason,CancellationToken token)
+        {Entry entry;lock(gate){if(!jobs.TryGetValue(id??"",out entry))throw new KeyNotFoundException("job_not_found");}return StopEntryAsync(entry,reason,token);}
+        async Task<bool> CleanupAsync(Entry entry)
+        {
+            using(var deadline=new CancellationTokenSource(5000))
+            {
+                try{return (await AgentAuthorizationService.AwaitCancellation(entry.Process.StopAsync(deadline.Token),deadline.Token).ConfigureAwait(false)).CleanupConfirmed;}
+                catch(Exception error){Debug.WriteLine(error);return false;}
+            }
+        }
+        async Task<AgentJobSnapshot> StopEntryAsync(Entry entry,AgentJobStopReason reason,CancellationToken token)
+        {
+            await entry.Mutation.WaitAsync(token).ConfigureAwait(false);var elapsed=Stopwatch.StartNew();
+            try
+            {
+                if(AgentJobStore.IsTerminal(entry.Record.State))return Snapshot(entry);
+                // Pending starts are owned by their request until handoff; exit cancels those first.
+                if(entry.Process==null)throw new InvalidOperationException("job_starting");
+                entry.Record.StopReason=entry.Record.StopReason??reason;entry.Record.State=AgentJobState.Stopping;
+                if(reason==AgentJobStopReason.LogStorageFailed)entry.Record.LogWarning="log_storage_failed";
+                Exception storageFailure=null;
+                try{await PersistAsync(entry,CancellationToken.None).ConfigureAwait(false);}catch(Exception error){storageFailure=error;}
+                Notify();
+                bool clean=await CleanupAsync(entry).ConfigureAwait(false);var status=entry.Process.Status;
+                entry.Record.RootExited=status.RootExited;entry.Record.RootExitCode=status.RootExitCode;entry.Record.CleanupConfirmed=clean;
+                entry.Record.State=clean?(entry.Record.StopReason==AgentJobStopReason.Timeout?AgentJobState.TimedOut:AgentJobState.Stopped):AgentJobState.CleanupFailed;
+                entry.Record.TimingsMs["stop"]=elapsed.ElapsedMilliseconds;
+                if(clean){entry.Record.FinishedUtc=clock.UtcNow;Release(entry);}
+                try{await PersistAsync(entry,CancellationToken.None).ConfigureAwait(false);}catch(Exception error){storageFailure=error;entry.Published=new AgentJobSnapshot(entry.Record);}
+                Notify();if(storageFailure!=null)throw new IOException("job_metadata_failed",storageFailure);return Snapshot(entry);
+            }
+            finally{entry.Mutation.Release();}
+        }
+        void Release(Entry entry)
+        {entry.Lifetime.Cancel();if(entry.Process!=null)entry.Process.Dispose();if(entry.DirectoryLease!=null){entry.DirectoryLease.Dispose();entry.DirectoryLease=null;}}
+        internal IList<AgentJobSnapshot> ListForProject(string projectId)
+        {lock(gate)return jobs.Values.Where(entry=>entry.Record.Owner.ProjectId==projectId).Select(Snapshot).ToList().AsReadOnly();}
+        SemaphoreSlim OwnerGate(string projectId)
+        {lock(gate){SemaphoreSlim owner;if(!ownerGates.TryGetValue(projectId,out owner)){owner=new SemaphoreSlim(1,1);ownerGates.Add(projectId,owner);}return owner;}}
+        internal async Task RunOwnerMutationAsync(string projectId,string conversationId,bool stopActive,Func<Task> mutation,CancellationToken token)
+        {
+            if(String.IsNullOrWhiteSpace(projectId)||mutation==null)throw new ArgumentException("owner");
+            var ownerGate=OwnerGate(projectId);await ownerGate.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                Entry[] active;lock(gate)
+                {
+                    if(!recovered)throw new InvalidOperationException("jobs_recovering");
+                    if(exitRequested)throw new InvalidOperationException("jobs_exiting");
+                    active=jobs.Values.Where(entry=>entry.Record.Owner.ProjectId==projectId&&(conversationId==null||entry.Record.Owner.ConversationId==conversationId)&&!AgentJobStore.IsTerminal(entry.Record.State)).ToArray();
+                }
+                if(active.Length>0&&!stopActive)throw new InvalidOperationException("job_owner_busy");
+                foreach(var entry in active)
+                {var stopped=await StopEntryAsync(entry,AgentJobStopReason.OwnerDeleted,token).ConfigureAwait(false);if(!stopped.CleanupConfirmed)throw new InvalidOperationException("job_cleanup_unconfirmed");}
+                token.ThrowIfCancellationRequested();await mutation().ConfigureAwait(false);
+            }
+            finally{ownerGate.Release();}
+        }
+        public async Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token)
+        {
+            var elapsed=Stopwatch.StartNew();Entry[] pending;
+            lock(gate){exitRequested=true;pending=invocations.Values.ToArray();}exiting.Cancel();
+            using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(token))
+            {
+                deadline.CancelAfter(10000);
+                try
+                {
+                    foreach(var entry in pending)if(entry.Start!=null)try{await AgentAuthorizationService.AwaitCancellation(entry.Start,deadline.Token).ConfigureAwait(false);}catch(OperationCanceledException){deadline.Token.ThrowIfCancellationRequested();}catch(Exception error){Debug.WriteLine(error);}
+                    Entry[] active;lock(gate)active=jobs.Values.Where(entry=>!AgentJobStore.IsTerminal(entry.Record.State)).ToArray();
+                    var stops=active.Select(entry=>StopEntryAsync(entry,AgentJobStopReason.ApplicationExit,deadline.Token)).ToArray();
+                    await AgentAuthorizationService.AwaitCancellation(Task.WhenAll(stops),deadline.Token).ConfigureAwait(false);
+                }
+                catch(OperationCanceledException){}
+                AgentJobSnapshot[] snapshots;lock(gate)snapshots=jobs.Values.Select(Snapshot).ToArray();
+                return new AgentJobExitReport(snapshots.All(job=>AgentJobStore.IsTerminal(job.State)),snapshots,elapsed.ElapsedMilliseconds);
+            }
+        }
+        void Notify(){var changed=Changed;if(changed!=null)foreach(Action callback in changed.GetInvocationList())try{callback();}catch(Exception error){Debug.WriteLine(error);}}
+    }
+}

@@ -157,6 +157,8 @@ namespace Dafeiyu
     {
         Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token);
     }
+    // Optional adapter timing: only sandbox setup is excluded from the launch budget.
+    public interface IAgentJobPreparationMetrics {long SandboxPreparationMilliseconds {get;}}
     public sealed class AgentJobPolicySnapshot
     {
         public string Root {get;private set;}
