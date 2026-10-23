@@ -7,7 +7,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../tests/SpeechLanguagePolicyTests.cs;../../tests/SystemLanguageTests.cs;../../tests/ReplyLanguagePolicyTests.cs;../../tests/LanguagePackTests.cs;../../tests/AgentJobSessionTests.cs;../../tests/AgentJobToolTests.cs;../../tests/AgentJobIntegrationTests.cs;../../tests/AgentJobSandboxTests.cs;../../tests/AgentJobProcessTests.cs;../../tests/AgentJobManagerTests.cs;../../tests/AgentJobLifecycleTests.cs;../../tests/AgentJobLogTests.cs;../../tests/AgentJobStoreTests.cs;../../tests/AgentJobContractTests.cs;../../tests/AgentJobTestSupport.cs" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/SpeechLanguagePolicyTests.cs;../../tests/SystemLanguageTests.cs;../../tests/ReplyLanguagePolicyTests.cs;../../tests/LanguagePackTests.cs;../../tests/AgentJobSessionTests.cs;../../tests/AgentJobToolTests.cs;../../tests/AgentJobIntegrationTests.cs;../../tests/AgentJobSandboxTests.cs;../../tests/AgentJobProcessTests.cs;../../tests/AgentJobManagerTests.cs;../../tests/AgentJobLifecycleTests.cs;../../tests/AgentJobViewStateTests.cs;../../tests/AgentJobLogTests.cs;../../tests/AgentJobStoreTests.cs;../../tests/AgentJobContractTests.cs;../../tests/AgentJobTestSupport.cs" Link="Tests/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/localization/text-baseline.json" LogicalName="Dafeiyu.Tests.LocalizationBaseline" />
     <Compile Include="../../tests/LocalizationTests.cs" Link="Tests/LocalizationTests.cs" />
     <Compile Include="../../tests/OfficialCompanionLegacyTests.cs;../../tests/OfficialCompanionIdentityTests.cs;../../tests/HolidaySourceBindingTests.cs" Link="Tests/%(Filename)%(Extension)" />

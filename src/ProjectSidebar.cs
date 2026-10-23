@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -36,9 +36,11 @@ namespace Dafeiyu
         }
         internal Popup HoverDetails {get{return hover;}}
         internal void RefreshIfNeeded(){if(renderedSignature!=Signature())Refresh();}
+        internal Action<ProjectDefinition> BackgroundJobsRequested;
         ContextMenu ProjectMenu(ProjectDefinition project)
         {
             var menu=ChatUi.Menu();
+            if(BackgroundJobsRequested!=null){var jobs=new MenuItem{Name="ProjectBackgroundJobs",Header=TextResources.Get("agent.jobs.ui.title")};jobs.Click+=delegate{BackgroundJobsRequested(project);};menu.Items.Add(jobs);}
             if(!project.Archived){var pin=new MenuItem{Name="PinProject",Header=project.Pinned?TextResources.Get("projectSidebar.projectMenu.headerProjectPinned"):TextResources.Get("projectSidebar.projectMenu.headerProjectPinned.alternativeA"),Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleProjectPin(project);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebar.projectMenu.messageBoxShow"));}};menu.Items.Add(pin);}
             if(project.Archived){if(restoreProject!=null){var restore=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header"),Icon=UiIcons.Image("folder-open",AgentUi.Muted)};restore.Click+=delegate{restoreProject(project);};menu.Items.Add(restore);}}
             else{

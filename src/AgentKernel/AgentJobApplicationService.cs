@@ -14,6 +14,7 @@ namespace Dafeiyu
         readonly string dataDirectory;
         readonly Func<IAgentJobClock,IAgentJobProcessFactory> createFactory;
         readonly IAgentJobClock clock;
+        readonly AgentJobStorageIO storageIO;
         Task<bool> initialization;
         Task storeClosing;
         AgentJobStore store;
@@ -21,11 +22,21 @@ namespace Dafeiyu
         readonly HashSet<Task> mutations=new HashSet<Task>();
         bool exiting,cleanupConfirmed,disposed;
         string failureCode;
-        public AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock)
+        AgentJobCompletionTracker completions;
+        public event Action<AgentJobSnapshot> TerminalCompleted;
+        void JobsChanged()
+        {
+            AgentJobManager owned;AgentJobCompletionTracker tracker;lock(gate){owned=manager;tracker=completions;}
+            if(owned==null||tracker==null)return;
+            foreach(var job in tracker.Observe(owned.ListAll()))
+            {var handler=TerminalCompleted;if(handler!=null)foreach(Action<AgentJobSnapshot> callback in handler.GetInvocationList())try{callback(job);}catch(Exception error){Debug.WriteLine(error);}}
+        }
+        public AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock):this(dataDirectory,createFactory,clock,null){}
+        internal AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock,AgentJobStorageIO storageIO)
         {
             if(String.IsNullOrWhiteSpace(dataDirectory)||!Path.IsPathRooted(dataDirectory))throw new ArgumentException("dataDirectory");
             if(createFactory==null||clock==null)throw new ArgumentNullException("services");
-            this.dataDirectory=dataDirectory;this.createFactory=createFactory;this.clock=clock;
+            this.dataDirectory=dataDirectory;this.createFactory=createFactory;this.clock=clock;this.storageIO=storageIO;
         }
         public AgentJobManager Manager {get{lock(gate)return manager;}}
         public string FailureCode {get{lock(gate)return failureCode;}}
@@ -37,16 +48,32 @@ namespace Dafeiyu
                 return initialization??(initialization=Task.Run((Func<Task<bool>>)InitializeCoreAsync));
             }
         }
+        public Task<bool> RetryInitializationAsync()
+        {
+            lock(gate)
+            {
+                if(!exiting&&!disposed&&manager==null&&initialization!=null&&initialization.IsCompleted){initialization=null;failureCode=null;}
+                return InitializeAsync();
+            }
+        }
+        sealed class DeferredFactory : IAgentJobProcessFactory
+        {
+            readonly Lazy<IAgentJobProcessFactory> native;
+            internal DeferredFactory(Func<IAgentJobClock,IAgentJobProcessFactory> create,IAgentJobClock clock)
+            {native=new Lazy<IAgentJobProcessFactory>(()=>create(clock),true);}
+            public Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
+            {return Task.Run(delegate{token.ThrowIfCancellationRequested();return native.Value.PrepareAsync(spec,policy,output,token);},token);}
+        }
         async Task<bool> InitializeCoreAsync()
         {
             AgentJobStore opened=null;
             try
             {
                 // Acquire the exclusive lease before constructing any platform executor.
-                opened=new AgentJobStore(dataDirectory,clock);
-                var recovered=new AgentJobManager(opened,createFactory(clock),clock);
+                opened=storageIO==null?new AgentJobStore(dataDirectory,clock):new AgentJobStore(dataDirectory,clock,storageIO);
+                var recovered=new AgentJobManager(opened,new DeferredFactory(createFactory,clock),clock);
                 await recovered.RecoverAsync(CancellationToken.None).ConfigureAwait(false);
-                lock(gate){store=opened;manager=recovered;}
+                lock(gate){store=opened;manager=recovered;completions=new AgentJobCompletionTracker(recovered.ListAll());recovered.Changed+=JobsChanged;}
                 return true;
             }
             catch(Exception error)
@@ -158,7 +185,7 @@ namespace Dafeiyu
                 if(disposed)return;
                 if(!cleanupConfirmed)throw new InvalidOperationException("job_cleanup_unconfirmed");
                 // Native, catalog and storage cleanup has already joined off the UI thread.
-                disposed=true;store=null;manager=null;
+                if(manager!=null)manager.Changed-=JobsChanged;disposed=true;store=null;manager=null;completions=null;
             }
         }
     }

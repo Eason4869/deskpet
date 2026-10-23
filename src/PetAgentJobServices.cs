@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,9 +21,34 @@ namespace Dafeiyu
         }
         async void InitializeAgentJobs()
         {
+            AgentJobs.TerminalCompleted+=AgentJobCompleted;
             if(!await AgentJobs.InitializeAsync()||Dispatcher.HasShutdownStarted)return;
             try{await Dispatcher.InvokeAsync(delegate{if(!closing&&projectCatalog!=null)CompleteProjectOwnership();});}
             catch(OperationCanceledException){}
+        }
+        internal bool HasActiveAgentJobs
+        {
+            get{AgentJobApplicationService services;lock(agentJobServicesGate)services=agentJobServices;var manager=services==null?null:services.Manager;return manager!=null&&manager.ListAll().Any(AgentJobUiText.IsActive);}
+        }
+        readonly System.Collections.Generic.List<Window> agentJobWindows=new System.Collections.Generic.List<Window>();
+        internal void ShowAgentJobs(string projectId,string conversationId=null)
+        {
+            if(closing||String.IsNullOrWhiteSpace(projectId))return;
+            var window=new Window{MinWidth=360,MinHeight=420};Ui.Window(window,TextResources.Get("agent.jobs.ui.title"),720,680);window.MinWidth=360;
+            var root=new System.Windows.Controls.DockPanel{Margin=new Thickness(16)};window.Content=root;
+            var actions=new System.Windows.Controls.WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};System.Windows.Controls.DockPanel.SetDock(actions,System.Windows.Controls.Dock.Bottom);root.Children.Add(actions);
+            var panel=new AgentJobsPanel(AgentJobs,projectId,conversationId,null,false,OpenChatBrowserLink);var retry=Ui.Button(TextResources.Get("agent.jobs.ui.retry"));retry.Click+=delegate{panel.Retry();};actions.Children.Add(retry);
+            var close=Ui.Button(TextResources.Get("agent.jobs.ui.close"));close.Click+=delegate{window.Close();};actions.Children.Add(close);root.Children.Add(panel);
+            agentJobWindows.Add(window);window.Closed+=delegate{panel.Dispose();agentJobWindows.Remove(window);};window.Show();
+        }
+        void AgentJobCompleted(AgentJobSnapshot job)
+        {
+            if(Dispatcher.HasShutdownStarted)return;Dispatcher.BeginInvoke(new Action(delegate
+            {
+                if(closing)return;Notice=TextResources.Format("agent.jobs.ui.finishedNotice",job.Spec.Title,AgentJobUiText.State(job.State));
+                if(workspaces!=null){var owner=workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==job.Owner.ConversationId&&w.ProjectId==job.Owner.ProjectId);if(owner!=null)owner.Session.ReportNotice(Notice);}
+                if(tray!=null)tray.ShowBalloonTip(4000,TextResources.Get("agent.jobs.ui.title"),Notice.Length>240?Notice.Substring(0,240):Notice,System.Windows.Forms.ToolTipIcon.Info);
+            }));
         }
         internal bool TryChangeWorkBindings(string[] projects,string conversationId,Action change)
         {
@@ -45,7 +71,7 @@ namespace Dafeiyu
             return false;
         }
         void DisposeAgentJobs()
-        {lock(agentJobServicesGate)if(agentJobServices!=null)agentJobServices.Dispose();}
+        {lock(agentJobServicesGate)if(agentJobServices!=null){agentJobServices.TerminalCompleted-=AgentJobCompleted;agentJobServices.Dispose();}}
         sealed class ApplicationJobClock : IAgentJobClock
         {
             readonly Stopwatch elapsed=Stopwatch.StartNew();

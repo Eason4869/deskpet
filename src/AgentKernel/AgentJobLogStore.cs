@@ -33,7 +33,7 @@ namespace Dafeiyu
         FileStream segment;
         long nextSequence=1,droppedBytes,lastRotatedSequence,lastIndexMilliseconds;
         int activeSegment,pendingBytes;
-        bool stopping,disposed,partialTail;
+        bool stopping,disposed,partialTail,inputCompleted;
         Exception failure;
         public event Action<Exception> Faulted;
         [DataContract] sealed class Frame
@@ -129,20 +129,39 @@ namespace Dafeiyu
             if(chunk==null)throw new ArgumentNullException("chunk");var input=chunk.Bytes;
             lock(appendGate)
             {
-                EnsureReadable();if(stopping)throw new InvalidOperationException("job_log_closed");if(failure!=null)throw new IOException("log_storage_failed",failure);
+                EnsureReadable();if(stopping||inputCompleted)throw new InvalidOperationException("job_log_closed");if(failure!=null)throw new IOException("log_storage_failed",failure);
                 var characters=new char[input.Length+2];int count=decoders[chunk.Stream].GetChars(input,0,input.Length,characters,0,false);
-                if(count==0)return;var body=utf8.GetBytes(characters,0,count);int offset=0;
+                if(count==0)return;EnqueueBody(chunk.Stream,chunk.TimestampUtc,utf8.GetBytes(characters,0,count));
+            }
+        }
+        // Flush is a persistence boundary, not EOF. Finalize decoder tails only
+        // after the process owner confirms its output streams have drained.
+        public void Complete()
+        {
+            lock(appendGate)
+            {
+                EnsureReadable();if(inputCompleted)return;inputCompleted=true;
+                if(failure!=null)return;
+                foreach(var decoder in decoders)
+                {
+                    var characters=new char[4];int count=decoder.Value.GetChars(new byte[0],0,0,characters,0,true);
+                    if(count>0)EnqueueBody(decoder.Key,clock.UtcNow,utf8.GetBytes(characters,0,count));
+                }
+            }
+        }
+        void EnqueueBody(string stream,DateTime timestamp,byte[] body)
+        {
+                int offset=0;
                 while(offset<body.Length)
                 {
                     int take=Math.Min(AgentJobPolicy.MaximumLogRecordBytes,body.Length-offset);while(offset+take<body.Length&&(body[offset+take]&0xC0)==0x80)take--;
-                    var frame=new Frame{JobId=id,Sequence=nextSequence++,Stream=chunk.Stream,TimestampUtc=chunk.TimestampUtc,Text=utf8.GetString(body,offset,take)};
+                    var frame=new Frame{JobId=id,Sequence=nextSequence++,Stream=stream,TimestampUtc=timestamp,Text=utf8.GetString(body,offset,take)};
                     byte[] json=Serialize(frame),bytes=new byte[json.Length+1];Buffer.BlockCopy(json,0,bytes,0,json.Length);bytes[bytes.Length-1]=10;
                     if(bytes.Length>FrameMaximum)throw new IOException("job_log_record_too_large");
                     while(pendingBytes+bytes.Length>AgentJobPolicy.MaximumPendingLogBytes&&queue.Count>0){var removed=queue.Dequeue();pendingBytes-=removed.Bytes.Length;Interlocked.Add(ref droppedBytes,removed.BodyBytes);}
                     if(pendingBytes==0)drained=NewDrain();
                     queue.Enqueue(new Pending{Frame=frame,Bytes=bytes,BodyBytes=take});pendingBytes+=bytes.Length;if(signal.CurrentCount==0)signal.Release();offset+=take;
                 }
-            }
         }
         async Task WriteLoopAsync()
         {
@@ -237,7 +256,7 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
-            lock(appendGate){if(disposed)return;stopping=true;if(signal.CurrentCount==0)signal.Release();}
+            lock(appendGate){if(disposed)return;Complete();stopping=true;if(signal.CurrentCount==0)signal.Release();}
             var budget=Stopwatch.StartNew();
             using(var deadline=new CancellationTokenSource(2000))
             {

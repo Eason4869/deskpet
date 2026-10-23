@@ -62,11 +62,13 @@ namespace Dafeiyu
     {
         [DataMember] public int Version=1;
         [DataMember] public string Id,InvocationKey,PayloadHash;
+        [DataMember] public string SourceTaskId,SourceCallId,SourceReplyId;
         [DataMember] public AgentJobOwner Owner;
         [DataMember] public AgentJobSpec Spec;
         [DataMember] public AgentJobState State;
         [DataMember] public DateTime CreatedUtc;
         [DataMember] public DateTime? StartedUtc,FinishedUtc;
+        [DataMember] public DateTime? RootExitObservedUtc,TreeExitObservedUtc;
         [DataMember] public bool RootExited,CleanupConfirmed,MayHaveExecuted;
         [DataMember] public int? RootExitCode;
         [DataMember] public AgentJobStopReason? StopReason;
@@ -81,11 +83,16 @@ namespace Dafeiyu
         internal AgentJobRecord ToRecord(){return record.Copy();}
         public string Id {get{return record.Id;}}
         public AgentJobOwner Owner {get{return record.Owner;}}
+        public string SourceTaskId {get{return record.SourceTaskId;}}
+        public string SourceCallId {get{return record.SourceCallId;}}
+        public string SourceReplyId {get{return record.SourceReplyId;}}
         public AgentJobSpec Spec {get{return record.Spec;}}
         public AgentJobState State {get{return record.State;}}
         public DateTime CreatedUtc {get{return record.CreatedUtc;}}
         public DateTime? StartedUtc {get{return record.StartedUtc;}}
         public DateTime? FinishedUtc {get{return record.FinishedUtc;}}
+        public DateTime? RootExitObservedUtc {get{return record.RootExitObservedUtc;}}
+        public DateTime? TreeExitObservedUtc {get{return record.TreeExitObservedUtc;}}
         public bool RootExited {get{return record.RootExited;}}
         public int? RootExitCode {get{return record.RootExitCode;}}
         public AgentJobStopReason? StopReason {get{return record.StopReason;}}
@@ -184,6 +191,7 @@ namespace Dafeiyu
         public Func<AgentJobPolicySnapshot> RecheckPolicy {get;private set;}
         public Func<IDisposable> AcquireDirectory {get;private set;}
         public Action BeforeEffect {get;private set;}
+        internal string ReplyId;
         public AgentJobStartContext(AgentJobOwner owner,AgentToolInvocation invocation,IAgentAuthorizationService authorization,Func<AgentJobPolicySnapshot> recheckPolicy,Func<IDisposable> acquireDirectory,Action beforeEffect)
         {
             if(owner==null||invocation==null||authorization==null||recheckPolicy==null||acquireDirectory==null)throw new ArgumentNullException("context");

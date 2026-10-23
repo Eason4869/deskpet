@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -39,6 +39,8 @@ namespace Dafeiyu
         }
         void AddConversation(Panel host,ProjectDefinition project,ConversationDefinition conversation,bool ownerArchived)
         {
+            if(conversation.Mode=="work"&&project.Id!=ProjectCatalogStore.UnassignedProjectId)
+            {var jobs=Ui.Button(TextResources.Get("agent.jobs.ui.title"));jobs.Name="ArchivedBackgroundJobs_"+conversation.Id;jobs.Click+=delegate{pet.ShowAgentJobs(project.Id,conversation.Id);};host.Children.Add(jobs);}
             string source=project.Id==ProjectCatalogStore.QuickProjectId?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId"):project.Id==ProjectCatalogStore.UnassignedProjectId?(conversation.Mode=="chat"?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeA"):TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeB")):project.Name;
             var skin=pet.Catalog.Skins.FirstOrDefault(s=>s.Id==conversation.PetId);if(skin!=null)source+=" · "+skin.DisplayName;
             if(ownerArchived)source+=TextResources.Get("archivedConversationsPanel.addConversation.source");

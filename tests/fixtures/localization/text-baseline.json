@@ -26605,6 +26605,240 @@
       "expected": "后台任务尚未确认停止，窗口已保留。请稍后再次退出。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.title",
+      "expected": "后台任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.empty",
+      "expected": "暂无后台任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.openLog",
+      "expected": "查看日志",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.stop",
+      "expected": "停止任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.retryStop",
+      "expected": "重试停止",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.command",
+      "expected": "命令",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.directory",
+      "expected": "工作目录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.owner",
+      "expected": "所属会话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.timeout",
+      "expected": "时限：{0} 秒",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "agent.jobs.ui.exitCode",
+      "expected": "退出码：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "agent.jobs.ui.logEmpty",
+      "expected": "暂无日志",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.logGap",
+      "expected": "部分日志已丢弃：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "agent.jobs.ui.logError",
+      "expected": "无法读取日志，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.stopError",
+      "expected": "尚未确认任务已停止，请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.preview",
+      "expected": "本地预览地址",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.previewUnchecked",
+      "expected": "地址来自任务输出，尚未检查是否可用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.openPreview",
+      "expected": "在浏览器中打开",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.unavailable",
+      "expected": "后台任务服务不可用，普通聊天仍可继续。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.recovering",
+      "expected": "正在恢复后台任务记录…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.starting",
+      "expected": "正在启动",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.running",
+      "expected": "运行中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.stopping",
+      "expected": "正在停止",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.succeeded",
+      "expected": "已完成",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.failed",
+      "expected": "失败",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.stopped",
+      "expected": "已停止",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.timedOut",
+      "expected": "已超时",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.interrupted",
+      "expected": "已中断",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.cleanupFailed",
+      "expected": "清理未确认",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.state.startFailed",
+      "expected": "启动失败",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.finishedNotice",
+      "expected": "任务“{0}”：{1}。",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "agent.jobs.ui.all",
+      "expected": "全部任务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.active",
+      "expected": "进行中",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.finished",
+      "expected": "已结束",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.latest",
+      "expected": "最新优先",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.oldest",
+      "expected": "最早优先",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.retry",
+      "expected": "重试",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.close",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.bindingBusy",
+      "expected": "该项目仍有后台任务或正在处理其他操作，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.jobs.ui.bindingChanged",
+      "expected": "项目记录已在其他窗口更新，请重新打开应用后重试。",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

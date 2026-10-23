@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGIC = ('AgentJobContractTests', 'AgentJobStoreTests', 'AgentJobLogTests',
-         'AgentJobManagerTests', 'AgentJobLifecycleTests', 'AgentJobToolTests')
+         'AgentJobManagerTests', 'AgentJobLifecycleTests', 'AgentJobViewStateTests', 'AgentJobToolTests')
 WINDOWS = ('AgentJobIntegrationTests', 'AgentJobSessionTests',
            'AgentJobProcessTests', 'AgentJobSandboxTests')
 
@@ -45,6 +45,13 @@ class RegistrationTests(unittest.TestCase):
         self.assertIn("'AgentJobProjectTests'",source('Build.ps1'))
         self.assertIn("'AgentJobProjectTests'",self.windows_ci)
         self.assertNotIn('AgentJobProjectTests.cs',source('desktop/DeskPet.Tests/DeskPet.Tests.csproj'))
+
+    def test_wpf_job_ui_and_real_browser_acceptance_remain_reachable(self):
+        self.assertIn("'AgentJobUiTests'",source('Build.ps1'))
+        self.assertIn("'AgentJobUiTests'",self.windows_ci)
+        self.assertIn("-Target AgentJobUiTests -TestArguments '--native-preview'",self.windows_ci)
+        self.assertNotIn('AgentJobUiTests.cs',source('desktop/DeskPet.Tests/DeskPet.Tests.csproj'))
+        self.assertNotIn('--native-preview',self.mac_ci)
 
     def assertRegex(self, text, pattern, msg=None):
         # Keep a registration failure readable instead of dumping whole workflows.
@@ -101,7 +108,7 @@ class RegistrationTests(unittest.TestCase):
     def test_existing_focused_aliases_remain_available(self):
         for flag in ('--agent-job-tools-only', '--agent-job-session-only',
                      '--agent-job-contract-only', '--agent-job-store-only',
-                     '--agent-job-manager-only', '--agent-job-lifecycle-only', '--agent-job-log-only',
+                     '--agent-job-manager-only', '--agent-job-view-state-only', '--agent-job-lifecycle-only', '--agent-job-log-only',
                      '--agent-jobs-resources-only'):
             self.assertRegex(self.runner, r'args\[0\]=="' + flag + '"')
 

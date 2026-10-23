@@ -108,7 +108,7 @@ namespace Dafeiyu
                     return entry.Start??Task.FromResult(Snapshot(entry));
                 }
                 if(exitRequested)throw new InvalidOperationException("jobs_exiting");
-                entry=new Entry{Record=new AgentJobRecord{Id=Guid.NewGuid().ToString("N"),InvocationKey=key,PayloadHash=payload,Owner=context.Owner,Spec=spec,State=AgentJobState.Starting,CreatedUtc=clock.UtcNow},Start=result.Task};
+                entry=new Entry{Record=new AgentJobRecord{Id=Guid.NewGuid().ToString("N"),InvocationKey=key,PayloadHash=payload,SourceTaskId=context.Invocation.TaskId,SourceCallId=context.Invocation.CallId,SourceReplyId=context.ReplyId,Owner=context.Owner,Spec=spec,State=AgentJobState.Starting,CreatedUtc=clock.UtcNow},Start=result.Task};
                 foreach(string phase in new[]{"approval","sandbox_prepare","process_prepare","resume","handoff","stop","eof_drain"})entry.Record.TimingsMs[phase]=null;
                 entry.Published=new AgentJobSnapshot(entry.Record);
                 invocations.Add(key,entry);
@@ -174,7 +174,7 @@ namespace Dafeiyu
                 catch(Exception error){failure=error;}
                     if(entry.Process!=null)
                     {
-                        bool clean=await CleanupAsync(entry).ConfigureAwait(false);
+                        bool clean=await CleanupAsync(entry).ConfigureAwait(false);ObserveExit(entry,entry.Process.Status);
                         entry.Record.CleanupConfirmed=clean;entry.Record.State=clean?(entry.RequestedStop.HasValue?AgentJobState.Stopped:AgentJobState.StartFailed):AgentJobState.CleanupFailed;
                     }
                     else{entry.Record.State=entry.RequestedStop.HasValue?AgentJobState.Stopped:AgentJobState.StartFailed;entry.Record.CleanupConfirmed=true;}
@@ -211,6 +211,14 @@ namespace Dafeiyu
             catch(Exception error){failure=error;}
             if(failure!=null){Debug.WriteLine(failure);try{await StopEntryAsync(entry,AgentJobStopReason.LogStorageFailed,CancellationToken.None,failure is IOException&&failure.Message=="job_stream_drain_timeout"?"stream_drain_timeout":"process_monitor_failed").ConfigureAwait(false);}catch(Exception cleanup){Debug.WriteLine(cleanup);}}
         }
+        bool ObserveExit(Entry entry,AgentJobProcessExit status)
+        {
+            bool changed=entry.Record.RootExited!=status.RootExited||entry.Record.RootExitCode!=status.RootExitCode;
+            entry.Record.RootExited=status.RootExited;entry.Record.RootExitCode=status.RootExitCode;
+            if(status.RootExited&&!entry.Record.RootExitObservedUtc.HasValue){entry.Record.RootExitObservedUtc=clock.UtcNow;changed=true;}
+            if(status.TreeExited&&!entry.Record.TreeExitObservedUtc.HasValue){entry.Record.TreeExitObservedUtc=clock.UtcNow;changed=true;}
+            return changed;
+        }
         async Task RefreshAsync(Entry entry,CancellationToken token)
         {
             await entry.Mutation.WaitAsync(token).ConfigureAwait(false);
@@ -219,13 +227,12 @@ namespace Dafeiyu
             try
             {
                 if(entry.Process==null||AgentJobStore.IsTerminal(entry.Record.State)||entry.Record.State!=AgentJobState.Running)return;
-                var status=entry.Process.Status;bool changed=entry.Record.RootExited!=status.RootExited||entry.Record.RootExitCode!=status.RootExitCode;
-                entry.Record.RootExited=status.RootExited;entry.Record.RootExitCode=status.RootExitCode;
+                var status=entry.Process.Status;bool changed=ObserveExit(entry,status);
                 if(status.TreeExited&&status.StreamsDrained)
                 {
                     bool clean=await CleanupAsync(entry).ConfigureAwait(false);entry.Record.CleanupConfirmed=clean;
                     entry.Record.State=clean?(status.RootExitCode==0?AgentJobState.Succeeded:AgentJobState.Failed):AgentJobState.CleanupFailed;
-                    if(clean){entry.Record.FinishedUtc=clock.UtcNow;await LogFor(entry).FlushAsync(token).ConfigureAwait(false);Release(entry);}
+                    if(clean){entry.Record.FinishedUtc=clock.UtcNow;LogFor(entry).Complete();await LogFor(entry).FlushAsync(token).ConfigureAwait(false);Release(entry);}
                     else entry.Record.LogWarning="cleanup_unconfirmed";
                     changed=true;
                 }
@@ -296,10 +303,10 @@ namespace Dafeiyu
                 entry.Published=new AgentJobSnapshot(entry.Record);Notify();
                 // An unavailable disk must never stand between Stop and tree cleanup.
                 bool clean=await CleanupAsync(entry,deadline.Token).ConfigureAwait(false);var status=entry.Process.Status;
-                entry.Record.RootExited=status.RootExited;entry.Record.RootExitCode=status.RootExitCode;entry.Record.CleanupConfirmed=clean;
+                ObserveExit(entry,status);entry.Record.CleanupConfirmed=clean;
                 entry.Record.State=clean?(entry.Record.StopReason==AgentJobStopReason.Timeout?AgentJobState.TimedOut:AgentJobState.Stopped):AgentJobState.CleanupFailed;
                 entry.Record.TimingsMs["stop"]=elapsed.ElapsedMilliseconds;
-                if(clean){entry.Record.FinishedUtc=clock.UtcNow;Release(entry);}
+                if(clean){entry.Record.FinishedUtc=clock.UtcNow;if(entry.Log!=null)entry.Log.Complete();Release(entry);}
                 entry.Published=new AgentJobSnapshot(entry.Record);
                 try{await AgentAuthorizationService.AwaitCancellation(PersistAsync(entry,deadline.Token).ContinueWith(task=>{task.GetAwaiter().GetResult();return true;},TaskScheduler.Default),deadline.Token).ConfigureAwait(false);}catch(Exception error){storageFailure=error;entry.Record.LogWarning=entry.Record.LogWarning??"metadata_storage_failed";entry.Published=new AgentJobSnapshot(entry.Record);}
                 Notify();if(storageFailure!=null)throw new IOException("job_metadata_failed",storageFailure);return Snapshot(entry);
@@ -309,7 +316,9 @@ namespace Dafeiyu
         }
         void Release(Entry entry)
         {entry.Lifetime.Cancel();if(entry.Process!=null)entry.Process.Dispose();if(entry.DirectoryLease!=null){entry.DirectoryLease.Dispose();entry.DirectoryLease=null;}}
-        internal IList<AgentJobSnapshot> ListForProject(string projectId)
+        public IList<AgentJobSnapshot> ListForConversation(string conversationId){lock(gate)return jobs.Values.Where(entry=>entry.Record.Owner.ConversationId==conversationId).Select(Snapshot).ToList().AsReadOnly();}
+        internal IList<AgentJobSnapshot> ListAll(){lock(gate)return jobs.Values.Select(Snapshot).ToList().AsReadOnly();}
+        public IList<AgentJobSnapshot> ListForProject(string projectId)
         {lock(gate)return jobs.Values.Where(entry=>entry.Record.Owner.ProjectId==projectId).Select(Snapshot).ToList().AsReadOnly();}
         SemaphoreSlim OwnerGate(string projectId)
         {lock(gate){SemaphoreSlim owner;if(!ownerGates.TryGetValue(projectId,out owner)){owner=new SemaphoreSlim(1,1);ownerGates.Add(projectId,owner);}return owner;}}

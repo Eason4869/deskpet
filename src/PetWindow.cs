@@ -102,7 +102,7 @@ namespace Dafeiyu
         public UpdateCoordinator Updates {get{return updates ?? (updates=new UpdateCoordinator(this));}}
         public bool CanApplyUpdate(bool manual)
         {
-            return !closing && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
+            return !closing && !HasActiveAgentJobs && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
                 (chat==null || (!chat.HasDraft && !chat.HasUnsavedMcpEdits && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
                 (preferences==null || (!preferences.HasUnsavedEdits && (manual || !preferences.IsVisible))) && (guide==null || !guide.IsVisible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen();
         }
@@ -174,7 +174,7 @@ namespace Dafeiyu
             {
                 AgentJobs.EnsureWritable();
                 var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
-                if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);projectCatalog=upgraded;}
+                if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);RestoreProjectCatalog(upgraded);NotifyProjectsChanged();}
             }
             catch(Exception){projectCatalogStore.PreserveAfterReadFailure();Notice=TextResources.Get("petWindow.projects.notice");}
         }
@@ -185,8 +185,8 @@ namespace Dafeiyu
             {
                 string path=Path.Combine(Store.DirectoryPath,"projects.json");
                 var persisted=File.Exists(path)?new ProjectCatalogStore(path).Load():new ProjectCatalog();
-                if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException("job_catalog_changed");
-                if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)AgentJobs.EnsureWritable();
+                if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException(TextResources.Get("agent.jobs.ui.bindingChanged"));
+                if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)try{AgentJobs.EnsureWritable();}catch(Exception error){throw new IOException(AgentJobUiText.Error(error),error);}
             };
             projectCatalogStore.AfterSave=catalog=>baseline=ProjectCatalogStore.WorkBindingSignature(catalog);
         }
@@ -790,7 +790,7 @@ namespace Dafeiyu
             if(project==null||conversation==null)return;
             var dialog=new DeleteConversationDialog(conversation.Name);if(dialog.ShowDialog()!=true)return;
             try{await DeleteConversationAsync(project,conversation);}
-            catch(Exception error){new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog",error.Message)).ShowDialog();}
+            catch(Exception error){new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog",AgentJobUiText.Error(error))).ShowDialog();}
         }
         internal Task DeleteConversationAsync(ProjectDefinition project,ConversationDefinition conversation)
         {
@@ -799,7 +799,7 @@ namespace Dafeiyu
             {
                 int index=project.Conversations.IndexOf(conversation);if(index<0)return;
                 bool wasCurrent=chat!=null&&chat.ConversationId==conversation.Id;
-                await Workspaces.CloseWorkspaceAsync(conversation.Id);
+                try{await Workspaces.CloseWorkspaceAsync(conversation.Id);}catch(Exception error){throw new IOException(TextResources.Format("petWindow.deleteConversation.deleteConversationDialog.alternativeA",error.Message),error);}
                 project.Conversations.RemoveAt(index);
                 try{ProjectStore.Save(Projects);}catch{project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);throw;}
                 if(quickWorkspace!=null&&quickWorkspace.Id==conversation.Id&&quick!=null)quick.Close();
@@ -961,8 +961,8 @@ namespace Dafeiyu
             if(open!=null)open.FollowProject(to);
             if(chat!=null)chat.RefreshAppearance();return true;
         }
-        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
-        void ShowProjectSaveError(Exception error){MessageBox.Show(error.Message,TextResources.Get("petWindow.showProjectSaveError.messageBoxShow"),MessageBoxButton.OK,MessageBoxImage.Warning);}
+        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.Version=previous.Version;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;Projects.SidebarConversationOrder=previous.SidebarConversationOrder;Projects.SidebarSectionLabels=previous.SidebarSectionLabels;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
+        void ShowProjectSaveError(Exception error){MessageBox.Show(AgentJobUiText.Error(error),TextResources.Get("petWindow.showProjectSaveError.messageBoxShow"),MessageBoxButton.OK,MessageBoxImage.Warning);}
         public void OpenProjectWorkspace(ProjectDefinition project)
         {
             if(project==null || !Directory.Exists(project.Workspace))return;Process.Start(new ProcessStartInfo("explorer.exe","\""+project.Workspace+"\""){UseShellExecute=true});
@@ -1149,9 +1149,11 @@ namespace Dafeiyu
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
             DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
-        }        async void PrepareCloseOnDispatcherAsync()
+        }
+        async void PrepareCloseOnDispatcherAsync()
         {
             if(!await StopAgentJobsForExitAsync()){closing=false;return;}
+            foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
             var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();

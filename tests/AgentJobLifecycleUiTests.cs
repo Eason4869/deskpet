@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -28,6 +28,11 @@ namespace Dafeiyu.Tests
                     Check(Object.ReferenceEquals(pet.Workspaces.JobServices,service),"all WPF persistent workspaces receive the application service");
                     var manager=service.Manager;pet.HidePet();await Task.Delay(50);
                     Check(Object.ReferenceEquals(manager,service.Manager),"hiding the companion preserves application task ownership");
+                    var initialization=typeof(AgentJobApplicationService).GetField("initialization",BindingFlags.Instance|BindingFlags.NonPublic);
+                    var originalInitialization=initialization.GetValue(service);var pendingInitialization=new TaskCompletionSource<bool>();initialization.SetValue(service,pendingInitialization.Task);
+                    var exposedCatalog=pet.Projects;pendingInitialization.SetResult(true);initialization.SetValue(service,originalInitialization);
+                    typeof(PetWindow).GetMethod("CompleteProjectOwnership",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    Check(Object.ReferenceEquals(exposedCatalog,pet.Projects)&&pet.Projects.LegacyRootImported,"delayed ownership migration preserves the catalog already exposed to the sidebar");
                     pet.RestorePet();pet.Close();
                     for(int attempt=0;attempt<100&&service.Manager!=null;attempt++)await Task.Delay(50);
                     Check(service.Manager==null,"normal WPF exit drains and releases its task store");

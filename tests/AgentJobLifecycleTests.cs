@@ -62,15 +62,13 @@ namespace Dafeiyu.Tests
         {
             readonly object instance;readonly Type type;
             internal int Factories;
-            internal bool HoldFactory;
             internal Factory ProcessFactory;
-            internal readonly ManualResetEventSlim FactoryEntered=new ManualResetEventSlim(false),FactoryRelease=new ManualResetEventSlim(false);
-            internal Service(string directory,IAgentJobClock clock)
+            internal Service(string directory,IAgentJobClock clock,AgentJobStorageIO io=null)
             {
                 type=typeof(AgentJobManager).Assembly.GetType("Dafeiyu.AgentJobApplicationService");
                 if(type==null)throw new Exception("Application-owned background job service is missing");
-                Func<IAgentJobClock,IAgentJobProcessFactory> create=unused=>{Interlocked.Increment(ref Factories);FactoryEntered.Set();if(HoldFactory)FactoryRelease.Wait();return ProcessFactory=new Factory();};
-                instance=Activator.CreateInstance(type,directory,create,clock);
+                ProcessFactory=new Factory();Func<IAgentJobClock,IAgentJobProcessFactory> create=unused=>{Interlocked.Increment(ref Factories);return ProcessFactory;};
+                instance=io==null?Activator.CreateInstance(type,directory,create,clock):Activator.CreateInstance(type,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic,null,new object[]{directory,create,clock,io},null);
             }
             internal T Invoke<T>(string method,params object[] args)
             {try{return (T)type.GetMethod(method,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(instance,args);}catch(TargetInvocationException error){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}}
@@ -104,7 +102,6 @@ namespace Dafeiyu.Tests
                 var report=Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult();
                 if(!report.CleanupConfirmed)throw new Exception("Fixture cannot release unconfirmed jobs");
                 ((IDisposable)instance).Dispose();
-                FactoryEntered.Dispose();FactoryRelease.Dispose();
             }
         }
         static void ConcurrentInitializationAndRecovery()
@@ -116,9 +113,9 @@ namespace Dafeiyu.Tests
                 using(var service=new Service(root.Path,clock))
                 {
                     var callers=Enumerable.Range(0,8).Select(unused=>Task.Run(()=>service.Initialize())).ToArray();Task.WaitAll(callers);
-                    Check(callers.All(task=>task.Result)&&service.Factories==1,"concurrent application initialization acquires one lease and constructs one process factory");
+                    Check(callers.All(task=>task.Result)&&service.Factories==0,"concurrent recovery owns one lease without constructing a process factory");
                     var manager=service.Manager;
-                    var list=(System.Collections.Generic.IList<AgentJobSnapshot>)typeof(AgentJobManager).GetMethod("ListForProject",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(manager,new object[]{"project"});
+                    var list=(System.Collections.Generic.IList<AgentJobSnapshot>)typeof(AgentJobManager).GetMethod("ListForProject",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(manager,new object[]{"project"});
                     Check(list.Count==1&&list[0].Id==id&&list[0].State==AgentJobState.Interrupted,"application recovers a prior running task as Interrupted without executing it");
                     service.Initialize().GetAwaiter().GetResult();Check(Object.ReferenceEquals(manager,service.Manager),"reopening a panel retains the application manager");
                 }
@@ -155,23 +152,28 @@ namespace Dafeiyu.Tests
         }
         static void ExitRetainsAnInitializingLeaseUntilRetry()
         {
-            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var service=new Service(root.Path,new AgentJobTestSupport.Clock()))
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var io=new AgentJobTestSupport.ControlledIO())
             {
-                service.HoldFactory=true;var initialize=service.Initialize();
-                try
+                var clock=new AgentJobTestSupport.Clock();using(var seed=new AgentJobTestSupport.Store(root.Path,clock))seed.Save(AgentJobTestSupport.Snapshot(root.Path,new string('a',32),AgentJobState.Running,clock));
+                io.HoldMetadataCommit=true;
+                using(var service=new Service(root.Path,clock,io))
                 {
-                    Check(service.FactoryEntered.Wait(3000),"initialization fixture reaches the owned-lease boundary");
-                    using(var deadline=new CancellationTokenSource(100))
+                    var initialize=service.Initialize();
+                    try
                     {
-                        var report=service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",deadline.Token).GetAwaiter().GetResult();
-                        Check(!report.CleanupConfirmed,"cancelled exit retains a still-initializing lease for retry");
+                        Check(io.CommitEntered.Wait(3000),"initialization fixture reaches recovery with its exclusive lease held");
+                        Check(service.Factories==0,"recovering interrupted metadata never constructs a process executor");
+                        using(var deadline=new CancellationTokenSource(100))
+                        {
+                            var report=service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",deadline.Token).GetAwaiter().GetResult();
+                            Check(!report.CleanupConfirmed,"cancelled exit retains a still-initializing lease for retry");
+                        }
+                        bool denied=false;try{service.Invoke<object>("Dispose");}catch(InvalidOperationException error){denied=error.Message=="job_cleanup_unconfirmed";}
+                        Check(denied,"disposing an unconfirmed service cannot release its writer lease");
                     }
-                    bool denied=false;try{service.Invoke<object>("Dispose");}catch(InvalidOperationException error){denied=error.Message=="job_cleanup_unconfirmed";}
-                    Check(denied,"disposing an unconfirmed service cannot release its writer lease");
+                    finally{io.HoldMetadataCommit=false;io.CommitRelease.Set();initialize.GetAwaiter().GetResult();}
+                    Check(service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"exit retry joins late recovery and confirms cleanup");
                 }
-                finally{service.FactoryRelease.Set();initialize.GetAwaiter().GetResult();}
-                var retry=service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult();
-                Check(retry.CleanupConfirmed,"exit retry joins late initialization and confirms cleanup");
             }
         }
         static void CatalogGateOrdersProjectsAndReleasesAfterFailure()
@@ -298,6 +300,7 @@ namespace Dafeiyu.Tests
                         Check(model.UsedJobs&&model.Calls==1&&service.ProcessFactory.Last!=null,useProvider?"real conversation requests use the application manager without manual ConfigureJobs":"explicitly configured legacy sessions retain their task manager");
                     }
                     finally{workspaces.CloseWorkspaceAsync(workspace.Id).GetAwaiter().GetResult();}
+                    Check(service.Factories==1,"first authorized conversation start constructs exactly one deferred executor");
                     Check(!service.ProcessFactory.Last.Status.TreeExited,"closing the real conversation leaves its handed-off task running");
                 }
             }

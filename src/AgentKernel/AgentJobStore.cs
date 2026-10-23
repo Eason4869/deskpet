@@ -49,6 +49,7 @@ namespace Dafeiyu
         {
             if(record==null||record.Version!=1||record.Id!=expectedId||!Enum.IsDefined(typeof(AgentJobState),record.State)||record.Owner==null||record.Spec==null)throw new SerializationException("job_metadata_invalid");
             ValidateId(record.Id);
+            if(new[]{record.SourceTaskId,record.SourceCallId,record.SourceReplyId}.Any(value=>value!=null&&value.Length>256))throw new SerializationException("job_source_invalid");
             new AgentJobOwner(record.Owner.ProjectId,record.Owner.ConversationId,record.Owner.AgentId);
             new AgentJobSpec(record.Spec.Command,record.Spec.Title,record.Spec.WorkingDirectory,record.Spec.TimeoutSeconds);
             if(record.InvocationKey==null||record.PayloadHash==null||!hash.IsMatch(record.InvocationKey)||!hash.IsMatch(record.PayloadHash)||record.CreatedUtc==default(DateTime)||record.TimingsMs==null||record.TimingsMs.Count>16)throw new SerializationException("job_metadata_invalid");

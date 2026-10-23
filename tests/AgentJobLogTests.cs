@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -32,6 +32,22 @@ namespace Dafeiyu.Tests
                         log.Append("stdout",new byte[]{0xE4},clock.UtcNow);log.Flush();Check(log.Read(later.NextCursor,1024).Records.Count==0,"a disk flush does not finalize an incomplete UTF-8 codepoint");
                         log.Append("stdout",new byte[]{0xB8,0xAD},clock.UtcNow);log.Flush();Check(log.Read(later.NextCursor,1024).Records.Single().Text=="中","UTF-8 continuation survives an intermediate flush");
                     }
+                }
+            }
+        }
+        static void EofFinalizesOnlyTheRemainingUtf8Tail()
+        {
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var store=new AgentJobTestSupport.Store(root.Path,new AgentJobTestSupport.Clock()))
+            {
+                string id=Id();store.Save(AgentJobTestSupport.Snapshot(root.Path,id,AgentJobState.Running,new AgentJobTestSupport.Clock()));
+                using(var log=new AgentJobTestSupport.Logs(store,id))
+                {
+                    log.Append("stdout",new byte[]{0xE4},DateTime.UtcNow);log.Append("stderr",new byte[]{0xF0,0x9F},DateTime.UtcNow);log.Flush();
+                    Check(log.Read("",1024).Records.Count==0,"a normal disk flush retains both incomplete UTF-8 tails");
+                    var method=typeof(AgentJobLogStore).GetMethod("Complete");if(method==null)throw new Exception("EOF completion is missing");
+                    var instance=typeof(AgentJobTestSupport.Logs).GetField("instance",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(log);method.Invoke(instance,null);method.Invoke(instance,null);log.Flush();
+                    var records=log.Read("",1024).Records;Check(records.Count==2&&records.All(record=>record.Text=="\ufffd")&&records.Select(record=>record.Stream).Distinct().Count()==2,"EOF replaces each truncated UTF-8 tail exactly once without mixing streams");
+                    bool denied=false;try{log.Append("stdout",new byte[]{65},DateTime.UtcNow);}catch(InvalidOperationException){denied=true;}Check(denied,"completed log input cannot accept late bytes after EOF");
                 }
             }
         }
@@ -269,7 +285,7 @@ namespace Dafeiyu.Tests
         static int Run(string selected)
         {
             checks=0;int failures=0;
-            var tests=new Action[]{Utf8SplitPreservesChinese,MinPageAdvancesWithinLargeRecord,CursorIsBoundToJobAndGeneration,TwentyMiBStaysBoundedAndExpiredCursorReportsGap,PartialTailDoesNotCorruptOtherJobs,SlowWriterDrainsPipe,HeldWriterCleanupIsBoundedAndRetryable,FailedStorageIsIsolatedAndNotifiedOnce,EmptyStoredRecordCannotStallPagination,IndexPersistsAfterOneSecondOfOutput,ConcurrentReadAndRotationNeverRepeatRecords,ManyTinyRecordsUseBoundedPages};
+            var tests=new Action[]{EofFinalizesOnlyTheRemainingUtf8Tail,Utf8SplitPreservesChinese,MinPageAdvancesWithinLargeRecord,CursorIsBoundToJobAndGeneration,TwentyMiBStaysBoundedAndExpiredCursorReportsGap,PartialTailDoesNotCorruptOtherJobs,SlowWriterDrainsPipe,HeldWriterCleanupIsBoundedAndRetryable,FailedStorageIsIsolatedAndNotifiedOnce,EmptyStoredRecordCannotStallPagination,IndexPersistsAfterOneSecondOfOutput,ConcurrentReadAndRotationNeverRepeatRecords,ManyTinyRecordsUseBoundedPages};
             if(selected!=null){tests=tests.Where(test=>test.Method.Name==selected).ToArray();if(tests.Length!=1)return 2;}
             foreach(var test in tests)
                 try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}

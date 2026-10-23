@@ -141,9 +141,13 @@ namespace Dafeiyu.Tests
                 request.Cancel();var process=f.Factory.Processes[0];process.Status=new AgentJobProcessExit(true,0,false,false,1);
                 var running=f.Invoke<Task<AgentJobPage>>("GetAsync",started.Owner,started.Id,"",1024,CancellationToken.None).Result.Snapshot;
                 Check(running.State==AgentJobState.Running&&running.RootExited&&running.RootExitCode==0&&process.Stops==0,"root exit and request cancellation preserve a committed job with live children");
+                var rootTime=typeof(AgentJobSnapshot).GetProperty("RootExitObservedUtc");var treeTime=typeof(AgentJobSnapshot).GetProperty("TreeExitObservedUtc");if(rootTime==null||treeTime==null)throw new Exception("Distinct root/tree observation timestamps are missing");
+                Check((DateTime?)rootTime.GetValue(running,null)==f.Clock.UtcNow&&treeTime.GetValue(running,null)==null,"running descendants retain a distinct observed root-exit UTC time");
+                var observedRoot=f.Clock.UtcNow;f.Clock.Advance(TimeSpan.FromSeconds(2));
                 process.Status=new AgentJobProcessExit(true,0,true,true,0);process.Done.TrySetResult(process.Status);
                 var done=f.Invoke<Task<AgentJobPage>>("GetAsync",started.Owner,started.Id,"",1024,CancellationToken.None).Result.Snapshot;
                 Check(done.State==AgentJobState.Succeeded&&done.CleanupConfirmed,"whole-tree and stream completion produce a successful terminal snapshot");
+                Check((DateTime?)rootTime.GetValue(done,null)==observedRoot&&(DateTime?)treeTime.GetValue(done,null)==f.Clock.UtcNow,"whole-tree observation keeps the earlier root exit and its own UTC time");
             }
         }
         static void CancellationBeforeResumeAndRunningSaveFailure()

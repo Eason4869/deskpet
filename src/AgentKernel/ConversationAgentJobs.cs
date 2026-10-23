@@ -15,6 +15,7 @@ namespace Dafeiyu
         AgentJobOwner jobsOwner;
         AgentRunJournal jobsJournal;
         int jobsTimeoutCeiling;
+        internal string JobReplyId;
         internal void ConfigureJobs(AgentJobManager manager,AgentJobOwner owner,int maximumTimeout)
         {
             if(manager==null||owner==null||owner.AgentId!="primary")throw new ArgumentException("owner");
@@ -90,7 +91,7 @@ namespace Dafeiyu
                 var context=new AgentJobStartContext(jobsOwner,invocation,authorization,()=>{
                     if(!Object.ReferenceEquals(permissions,kernelPermissions)||!Object.ReferenceEquals(approval,kernelApproval))throw new InvalidOperationException("job_policy_changed");
                     return JobPolicy(spec.WorkingDirectory);
-                },()=>LockDirectories(spec.WorkingDirectory,false),beforeEffect);
+                },()=>LockDirectories(spec.WorkingDirectory,false),beforeEffect){ReplyId=JobReplyId};
                 bool replayed;var operation=jobsManager.StartForToolAsync(context,spec,token,out replayed);return AgentJobTools.Success(await operation.ConfigureAwait(false),replayed);
             }
             var decision=await authorization.AuthorizeAsync(invocation,token).ConfigureAwait(false);
@@ -154,7 +155,7 @@ namespace Dafeiyu
             }
             if(manager==null||owner==null)return;
             if(kernelSession==null||owner.ProjectId!=kernelSession.ProjectId||owner.ConversationId!=kernelSession.ConversationId)throw new InvalidOperationException("job_owner_changed");
-            op.Workspace.ConfigureJobs(manager,owner,op.Snapshot.AgentBackgroundJobTimeoutSeconds);
+            op.Workspace.ConfigureJobs(manager,owner,op.Snapshot.AgentBackgroundJobTimeoutSeconds);op.Workspace.JobReplyId=op.ReplyId;
         }
     }
 }
