@@ -14,11 +14,11 @@ namespace Dafeiyu.Tests
     public static class LanguagePackTests
     {
         static int checks;
-        static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR"};
-        static readonly string[] Names={"简体中文","繁體中文","English","日本語","한국어"};
-        static readonly string[] MenuLabels={"语言","語言","Language","言語","언어"};
-        static readonly string[] CompanionLabels={"桌面伙伴","桌面夥伴","Desktop Companion","デスクトップコンパニオン","데스크톱 동반자"};
-        static readonly string[] Hashes={null,"51b116959f275e6098989459c593d77beb78b65e8f419a4e029fa9a349fb1184","a8c26af5bb4104364b7de85c67e38b71602b5bdeb29f59ab04da85b0a8b9de02","95019bdc61557d99d328771bb2f8aeb56be21a6d68df7b5c229914196c47c024","0fedd9c74f370117e9465c2718c03f2b1777932fc74f7c65ca4a6035b04a1bcc"};
+        static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"};
+        static readonly string[] Names={"简体中文","繁體中文","English","日本語","한국어","Français (France)","Deutsch (Deutschland)","हिन्दी (भारत)","Bahasa Indonesia","Italiano (Italia)","Português (Brasil)","Español (Latinoamérica)","Español (España)"};
+        static readonly string[] MenuLabels={"语言","語言","Language","言語","언어","Langue","Sprache","भाषा","Bahasa","Lingua","Idioma","Idioma","Idioma"};
+        static readonly string[] CompanionLabels={"桌面伙伴","桌面夥伴","Desktop Companion","デスクトップコンパニオン","데스크톱 동반자","Compagnon de bureau","Desktopbegleiter","डेस्कटॉप साथी","Teman desktop","Compagno desktop","Companhia de desktop","Compañía de escritorio","Compañero de escritorio"};
+        static readonly string[] Hashes={"9dde61f461a11a7e7b4aa535a4d5ff4a8ce01fca7f4127c6f227c504848478a8","39819d361d6317a0c1e39f8aab92768a9ed157c5ce6d96bda40a27fe822b548d","bf959061f4082bcd38af457e93b0cf94968ca99150efccbc7c58406d74f69cc8","fc3f67e8d8f3706eb76bd5f7544453517b8626abaf9244c6accb85a4af2c1135","661b851bac8ecaa970532289c2ba440ab5f2e953c5a053d8708e6213fe80cfce","075e2e2129e5cc5ce01d8b8ddf595d6d8edc118e6fbe6ffb7d19ed4cbb1a48ec","0656d77a2d4a2e39f92c32877016de843282e1d8dbb1904c84066a220096b246","ead35061f7117b240362f53c00965caad4b8af6b4dd61e4ef24f9fc5d4112647","b5b1a206ae61df0a0f830be65d242e1c1f622fb9848378d43053a00a8bcefca3","2a355bc5f4e6c6d03fb4890f5ef5266675956a4fb68b8e95533ebcf98c31e015","108d5786ecab2135634691937f4dbc1e8a96cd9c7dc9e763786ca72f50831724","7ae76492469118631c3a95f4e2d43602f84fb44b4687c57c7b953a9abf41c957","24910f6bc587b9cda66200abf48b11527c8bd536c7413882b8855a02c8b83cd0"};
         static void Check(bool yes,string why){if(!yes)throw new Exception(why);checks++;Console.WriteLine("PASS "+why);}
         static object Call(Type type,string method,params object[] args)
         {
@@ -47,7 +47,7 @@ namespace Dafeiyu.Tests
         {
             var type=typeof(TextResources).Assembly.GetType("Dafeiyu.UiLanguages");if(type==null)throw new Exception("Language choice policy is missing");
             var choices=((IEnumerable)type.GetProperty("Choices").GetValue(null,null)).Cast<object>().Where(choice=>(string)choice.GetType().GetProperty("Code").GetValue(choice,null)!="system").ToArray();
-            Check(choices.Select(choice=>(string)choice.GetType().GetProperty("Code").GetValue(choice,null)).SequenceEqual(Codes),"five language options have the requested stable order");
+            Check(choices.Select(choice=>(string)choice.GetType().GetProperty("Code").GetValue(choice,null)).SequenceEqual(Codes),"thirteen language options have the requested stable order");
             Check(choices.Select(choice=>(string)choice.GetType().GetProperty("NativeName").GetValue(choice,null)).SequenceEqual(Names),"language choices use exactly the requested native names");
             Check((string)Call(type,"Normalize","en-US")=="en_US"&&(string)Call(type,"Normalize","../../other.json")=="system","legacy locale aliases normalize and unknown codes follow the system without loading paths");
             string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"language-pack-fixtures",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);

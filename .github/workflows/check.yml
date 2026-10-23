@@ -9,7 +9,7 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,27 +131,31 @@ jobs:
             if ($LASTEXITCODE) { throw '.NET native background job and conversation checks failed' }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-resources-only
             if ($LASTEXITCODE) { throw '.NET native resource checks failed (P1)' }
-            dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- ((@('zh_CN','zh_TW','en_US','ja_JP','ko_KR') | ForEach-Object { $_+'='+((Get-FileHash ('assets/locales/'+$_+'.json')).Hash.ToLowerInvariant()) }) -join ';') desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Core.dll
+            dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- ((@('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES') | ForEach-Object { $_+'='+((Get-FileHash ('assets/locales/'+$_+'.json')).Hash.ToLowerInvariant()) }) -join ';') desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Core.dll
             if ($LASTEXITCODE) { throw 'Core locale artifact verification failed' }
           } catch { Write-Host ($_ | Out-String); throw } finally { Stop-Transcript }
-      - name: Five startup languages and complete UI capture matrix
+      - name: Thirteen startup languages and complete UI capture matrix
         shell: powershell
         run: |
+          ./Build.ps1 -Target SpeechLanguagePolicyTests
+          if ($LASTEXITCODE) { throw 'Framework speech language checks failed' }
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --speech-language-only
+          if ($LASTEXITCODE) { throw '.NET speech language checks failed' }
           ./Build.ps1 -Target SystemLanguageTests
           if ($LASTEXITCODE) { throw 'Framework system language startup checks failed' }
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --system-language-only
           if ($LASTEXITCODE) { throw '.NET system language startup checks failed' }
-          foreach ($culture in @('zh-TW','en-GB','ar-SA')) {
+          foreach ($culture in @('zh-TW','en-GB','ar-SA','fr-CA','de-DE','hi-IN','id-ID','it-IT','pt-PT','es-ES','es-MX')) {
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--system-language-ui='+$culture)
             if ($LASTEXITCODE) { throw ('Avalonia system language startup failed: '+$culture) }
           }
           ./Build.ps1 -Target LanguagePickerTests -TestArguments zh_CN
           if ($LASTEXITCODE) { throw 'WPF language picker failed' }
-          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR')) {
+          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             & work/LanguagePickerTests.exe $locale
             if ($LASTEXITCODE) { throw ('WPF translated language picker failed: '+$locale) }
           }
-          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR')) {
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             & work/AppShellTests.exe --language-ui $locale
             if ($LASTEXITCODE) { throw ('WPF language dialog integration failed: '+$locale) }
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--language-picker='+$locale)
@@ -161,11 +165,11 @@ jobs:
           }
           ./Build.ps1 -Target MultilingualUiAuditTests -TestArguments zh_CN
           if ($LASTEXITCODE) { throw 'WPF Chinese UI audit failed' }
-          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR')) {
+          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             & work/MultilingualUiAuditTests.exe $locale
             if ($LASTEXITCODE) { throw ('WPF translated UI audit failed: '+$locale) }
           }
-          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR')) {
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--full-language-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia translated UI audit failed: '+$locale) }
           }

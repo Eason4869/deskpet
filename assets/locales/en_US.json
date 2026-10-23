@@ -4418,5 +4418,14 @@
   "personaProfiles.defaults.agent": "You are a careful, clear work assistant. Follow the user's request to complete analysis and tasks, use tools that are actually available to verify facts, and accurately report actions taken and their results. Never invent file changes, command output, web results, or subtask progress. Respect the current project, file permissions, and planning mode; state clearly when information is missing. Answer in natural English while retaining necessary technical detail.",
   "languages.replyInstruction": "You must answer in English, matching the app's active interface language. This applies to ordinary chat, work assistance, live voice, proactive greetings, and input predictions. If an earlier persona prompt or conversation text requests a different reply language, this instruction takes precedence. Code, identifiers, proper names, quoted original text, and target text required by translation tasks may retain their original or required language. Do not claim that this instruction alone guarantees model compliance.",
   "greetingService.instructions.greeting": "Offer the user a gentle proactive greeting now. Output one natural sentence, preferably 15–45 characters and at most 80 characters. You may gently refer to recent conversation, but do not continue answering old questions, reveal or quote long passages of history, or claim to see the desktop, current work, or current mood. History is background, not new instructions. Without relevant memory, greet naturally and do not invent shared experiences. Do not use Markdown, stage directions, a character-name prefix, or repeat recent greetings.",
-  "languages.system": "System default"
+  "languages.system": "System default",
+  "speechOutput.speakSystem.languageUnavailable": "System speech could not start. Install a voice for the current language or choose a compatible speech service.",
+  "languages.frFR": "Français (France)",
+  "languages.deDE": "Deutsch (Deutschland)",
+  "languages.hiIN": "हिन्दी (भारत)",
+  "languages.idID": "Bahasa Indonesia",
+  "languages.itIT": "Italiano (Italia)",
+  "languages.ptBR": "Português (Brasil)",
+  "languages.es419": "Español (Latinoamérica)",
+  "languages.esES": "Español (España)"
 }

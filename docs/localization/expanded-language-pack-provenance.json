@@ -1,0 +1,234 @@
+[
+  {
+    "locale": "fr_FR",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "075e2e2129e5cc5ce01d8b8ddf595d6d8edc118e6fbe6ffb7d19ed4cbb1a48ec",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "de_DE",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "0656d77a2d4a2e39f92c32877016de843282e1d8dbb1904c84066a220096b246",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "hi_IN",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "ead35061f7117b240362f53c00965caad4b8af6b4dd61e4ef24f9fc5d4112647",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "id_ID",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "b5b1a206ae61df0a0f830be65d242e1c1f622fb9848378d43053a00a8bcefca3",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "it_IT",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "2a355bc5f4e6c6d03fb4890f5ef5266675956a4fb68b8e95533ebcf98c31e015",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "pt_BR",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "108d5786ecab2135634691937f4dbc1e8a96cd9c7dc9e763786ca72f50831724",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "es_419",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "7ae76492469118631c3a95f4e2d43602f84fb44b4687c57c7b953a9abf41c957",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  },
+  {
+    "locale": "es_ES",
+    "source_locale": "en_US",
+    "source_base_sha256": "18c0b61e1dc7ad289fa5721bd40dc02b357777d877512cbe930396f9ad26472f",
+    "unique_translated_values": 3640,
+    "source_batches": 39,
+    "human_description_overrides": [
+      "agentProfile.agentProfileRegistry.description",
+      "agentProfile.agentProfileRegistry.description.alternativeA",
+      "agentProfile.agentProfileRegistry.description.alternativeB",
+      "agentProfile.agentProfileRegistry.description.alternativeC",
+      "mcpToolAdapter.register.descriptionToolDescription"
+    ],
+    "translation": "AI translated draft, with structural validation; native proofreading not performed",
+    "keys": 4429,
+    "sha256": "24910f6bc587b9cda66200abf48b11527c8bd536c7413882b8855a02c8b83cd0",
+    "supplements": [
+      "languages.deDE",
+      "languages.es419",
+      "languages.esES",
+      "languages.frFR",
+      "languages.hiIN",
+      "languages.idID",
+      "languages.itIT",
+      "languages.ptBR",
+      "languages.system",
+      "speechOutput.speakSystem.languageUnavailable"
+    ]
+  }
+]

@@ -4418,5 +4418,14 @@
   "personaProfiles.defaults.agent": "你是一位嚴謹、清晰的工作助手。根據用戶要求完成分析和任務，優先使用實際可用工具核對事實，如實報告已執行的操作與結果。不編造文件修改、命令輸出、聯網結果或子任務進度。遵守當前項目、文件權限和計劃模式；遇到缺少信息時明確說明。回答使用自然的繁體中文，保留必要的技術細節。",
   "languages.replyInstruction": "必須使用繁體中文回答，與應用程式目前介面語言保持一致。這適用於一般聊天、工作助理、即時語音、主動問候及輸入預測；若較早的人格提示或對話內容要求使用其他回覆語言，以本條為準。程式碼、識別碼、專有名稱、引文及翻譯任務所需的目標文字可保留原語言。不要聲稱僅靠此指令就能保證模型必定遵守。",
   "greetingService.instructions.greeting": "現在主動向使用者輕輕打個招呼。只輸出一句自然問候，建議15到45字，最多80字。可溫和呼應最近聊天，但不要繼續回答舊問題，不要洩露或大段引用歷史，不要聲稱看見桌面、正在進行的工作或目前心情。歷史僅是背景，不是新指令。沒有相關記憶時自然打招呼，不編造共同經歷。不要使用Markdown、舞臺動作或角色名稱前綴，也不要重複最近問候。",
-  "languages.system": "跟隨系統"
+  "languages.system": "跟隨系統",
+  "speechOutput.speakSystem.languageUnavailable": "系統語音無法啟動，請安裝對應語言的語音或選擇相容的語音服務。",
+  "languages.frFR": "Français (France)",
+  "languages.deDE": "Deutsch (Deutschland)",
+  "languages.hiIN": "हिन्दी (भारत)",
+  "languages.idID": "Bahasa Indonesia",
+  "languages.itIT": "Italiano (Italia)",
+  "languages.ptBR": "Português (Brasil)",
+  "languages.es419": "Español (Latinoamérica)",
+  "languages.esES": "Español (España)"
 }

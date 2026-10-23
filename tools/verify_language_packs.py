@@ -33,8 +33,9 @@ def audit(directory):
             packs.append(dict(locale=path.stem, keys=len(entries), missing=len(missing), extra=len(extra), sha256=hashlib.sha256(raw).hexdigest()))
         except (ValueError, UnicodeError) as error:
             errors.append(f"{path.name}: {error}")
-    if len(files) < 5:
-        errors.append("Expected at least the five approved source language packs.")
+    expected = {"zh_CN", "zh_TW", "en_US", "ja_JP", "ko_KR", "fr_FR", "de_DE", "hi_IN", "id_ID", "it_IT", "pt_BR", "es_419", "es_ES"}
+    if {path.stem for path in files} != expected:
+        errors.append("Expected exactly the thirteen accepted language packs.")
     return dict(success=not errors, canonical_keys=len(canonical), packs=packs, errors=errors)
 
 

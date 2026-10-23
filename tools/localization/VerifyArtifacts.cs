@@ -63,7 +63,7 @@ internal static class VerifyArtifacts
         string label=(string)texts.GetMethod("Get",new[]{typeof(string)}).Invoke(null,new object[]{"common.cancel"});
         Console.Write(Convert.ToBase64String(Encoding.UTF8.GetBytes(label)));
     }
-    static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR"};
+    static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"};
     static Dictionary<string,string> ParseCatalogs(string value)
     {
         var result=new Dictionary<string,string>(StringComparer.Ordinal);
@@ -73,7 +73,7 @@ internal static class VerifyArtifacts
             var parts=pair.Split('=');if(parts.Length!=2||!Array.Exists(Codes,code=>code==parts[0])||parts[1].Length!=64)throw new ArgumentException("Invalid locale hash manifest.");
             foreach(char digit in parts[1])if(!Uri.IsHexDigit(digit))throw new ArgumentException("Invalid locale SHA256.");result.Add(parts[0],parts[1].ToLowerInvariant());
         }
-        if(result.Count!=Codes.Length)throw new ArgumentException("All five locale hashes are required.");return result;
+        if(result.Count!=Codes.Length)throw new ArgumentException("All thirteen locale hashes are required.");return result;
     }
     static string[] Slice(string[] args){var paths=new string[args.Length-1];Array.Copy(args,1,paths,0,paths.Length);return paths;}
 }

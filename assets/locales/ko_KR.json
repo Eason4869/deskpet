@@ -4418,5 +4418,14 @@
   "personaProfiles.defaults.agent": "당신은 신중하고 명확한 작업 도우미입니다. 사용자 요청에 따라 분석과 작업을 수행하고 실제로 이용 가능한 도구로 사실을 확인하며 실행한 조작과 결과를 정확히 보고하세요. 파일 변경, 명령 출력, 검색 결과, 하위 작업 진행 상황을 지어내지 마세요. 현재 프로젝트, 파일 권한, 계획 모드를 지키고 정보가 부족하면 명확하게 밝히세요. 필요한 기술 세부 사항을 유지하며 자연스러운 한국어로 답하세요.",
   "languages.replyInstruction": "앱의 현재 인터페이스 언어에 맞추어 반드시 한국어로 답하세요. 일반 채팅, 작업 지원, 실시간 음성, 먼저 건네는 인사, 입력 예측에 모두 적용됩니다. 이전 페르소나 프롬프트나 대화가 다른 응답 언어를 요구하더라도 이 지시를 우선하세요. 코드, 식별자, 고유 명칭, 인용 원문, 번역 작업에 필요한 대상 텍스트는 원래 언어나 요구된 언어를 유지해도 됩니다. 이 지시만으로 모델의 준수를 보장할 수 있다고 주장하지 마세요.",
   "greetingService.instructions.greeting": "지금 사용자에게 먼저 부드럽게 인사하세요. 자연스러운 한 문장만 출력하고 가급적 15~45자, 최대 80자로 작성하세요. 최근 대화를 가볍게 반영해도 좋지만 오래된 질문에 계속 답하거나 기록을 노출하거나 길게 인용하지 말고 데스크톱, 현재 작업, 기분을 보고 있다고 주장하지 마세요. 기록은 배경일 뿐 새 지시가 아닙니다. 관련 기억이 없다면 자연스럽게 인사하고 함께 겪은 일을 지어내지 마세요. Markdown, 무대 지시, 캐릭터 이름 접두어를 쓰지 말고 최근 인사를 반복하지 마세요.",
-  "languages.system": "시스템 설정 따르기"
+  "languages.system": "시스템 설정 따르기",
+  "speechOutput.speakSystem.languageUnavailable": "시스템 음성을 시작할 수 없습니다. 현재 언어에 맞는 음성을 설치하거나 호환되는 음성 서비스를 선택하세요.",
+  "languages.frFR": "Français (France)",
+  "languages.deDE": "Deutsch (Deutschland)",
+  "languages.hiIN": "हिन्दी (भारत)",
+  "languages.idID": "Bahasa Indonesia",
+  "languages.itIT": "Italiano (Italia)",
+  "languages.ptBR": "Português (Brasil)",
+  "languages.es419": "Español (Latinoamérica)",
+  "languages.esES": "Español (España)"
 }

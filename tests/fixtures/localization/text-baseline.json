@@ -26545,6 +26545,60 @@
       "expected": "跟随系统",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "speechOutput.speakSystem.languageUnavailable",
+      "expected": "系统语音无法启动，请安装相应语言的语音或选择兼容语音服务。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.frFR",
+      "expected": "Français (France)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.deDE",
+      "expected": "Deutsch (Deutschland)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.hiIN",
+      "expected": "हिन्दी (भारत)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.idID",
+      "expected": "Bahasa Indonesia",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.itIT",
+      "expected": "Italiano (Italia)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.ptBR",
+      "expected": "Português (Brasil)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.es419",
+      "expected": "Español (Latinoamérica)",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "languages.esES",
+      "expected": "Español (España)",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

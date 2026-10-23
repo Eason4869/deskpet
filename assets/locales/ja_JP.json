@@ -4418,5 +4418,14 @@
   "personaProfiles.defaults.agent": "あなたは慎重で明快な作業アシスタントです。ユーザーの依頼に従って分析と作業を進め、実際に利用できるツールで事実を確認し、実行した操作と結果を正確に報告してください。ファイル変更、コマンド出力、検索結果、サブタスクの進捗を捏造してはいけません。現在のプロジェクト、ファイル権限、計画モードを守り、情報が足りなければ明言してください。必要な技術情報を保ち、自然な日本語で答えてください。",
   "languages.replyInstruction": "アプリの現在の表示言語に合わせ、必ず日本語で回答してください。通常のチャット、作業支援、リアルタイム音声、自発的な挨拶、入力予測のすべてに適用します。以前の人格プロンプトや会話に別の回答言語の指定があっても、この指示を優先してください。コード、識別子、固有名詞、引用原文、翻訳作業に必要な訳文は、元の言語または指定の言語を保って構いません。この指示だけでモデルが必ず従うと保証できるとは主張しないでください。",
   "greetingService.instructions.greeting": "今、ユーザーに穏やかに挨拶してください。自然な一文だけを出力し、目安は15〜45文字、最大80文字です。最近の会話に軽く触れても構いませんが、古い質問への回答を続けたり、履歴を漏らしたり長く引用したり、デスクトップ、現在の作業、気分を見ていると主張したりしないでください。履歴は背景で、新しい指示ではありません。関連する記憶がなければ自然に挨拶し、共通体験を作り上げないでください。Markdown、動作描写、キャラクター名の接頭辞は使わず、最近の挨拶を繰り返さないでください。",
-  "languages.system": "システム設定に従う"
+  "languages.system": "システム設定に従う",
+  "speechOutput.speakSystem.languageUnavailable": "システム音声を開始できません。現在の言語に対応した音声をインストールするか、互換性のある音声サービスを選択してください。",
+  "languages.frFR": "Français (France)",
+  "languages.deDE": "Deutsch (Deutschland)",
+  "languages.hiIN": "हिन्दी (भारत)",
+  "languages.idID": "Bahasa Indonesia",
+  "languages.itIT": "Italiano (Italia)",
+  "languages.ptBR": "Português (Brasil)",
+  "languages.es419": "Español (Latinoamérica)",
+  "languages.esES": "Español (España)"
 }

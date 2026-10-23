@@ -25,15 +25,11 @@ namespace Dafeiyu.Tests
                 checks=0;Check(new PetSettings().UiLanguage=="system","new settings follow the system UI language by default");
                 foreach(var pair in new[]{new[]{"zh-CN","zh_CN"},new[]{"zh-SG","zh_CN"},new[]{"zh-Hant","zh_TW"},new[]{"zh-TW","zh_TW"},new[]{"zh-HK","zh_TW"},new[]{"zh-MO","zh_TW"},new[]{"en-GB","en_US"},new[]{"en-AU","en_US"},new[]{"ja-JP","ja_JP"},new[]{"ko-KR","ko_KR"},new[]{"zz-ZZ","en_US"},new[]{"","en_US"}})
                     Check(Resolve("system",pair[0])==pair[1],"system language family/region resolves: "+pair[0]);
-                foreach(string culture in new[]{"fr-FR","de-DE","hi-IN","id-ID","it-IT","pt-PT","pt-BR","es-ES","es-MX","es-AR"})
-                {
-                    string target=culture.StartsWith("pt-")?"pt_BR":culture=="es-ES"?"es_ES":culture.StartsWith("es-")?"es_419":culture.Replace('-','_');
-                    bool available=UiLanguages.Choices.Any(choice=>choice.Code==target);
-                    Check(Resolve("system",culture)==(available?target:"en_US"),"system region selects an available translation or English: "+culture);
-                }
+                foreach(var pair in new[]{new[]{"fr-FR","fr_FR"},new[]{"fr-CA","fr_FR"},new[]{"de-DE","de_DE"},new[]{"hi-IN","hi_IN"},new[]{"id-ID","id_ID"},new[]{"it-IT","it_IT"},new[]{"pt-PT","pt_BR"},new[]{"pt-BR","pt_BR"},new[]{"es-ES","es_ES"},new[]{"es","es_ES"},new[]{"es-MX","es_419"},new[]{"es-AR","es_419"},new[]{"es-419","es_419"},new[]{"es-US","es_419"}})
+                    Check(Resolve("system",pair[0])==pair[1],"system region selects its accepted translation: "+pair[0]);
                 Check(Resolve("en_US","zh-TW")=="en_US"&&Resolve("zh_CN","en-GB")=="zh_CN","manual choices override the system UI language");
                 Check(UiLanguages.Choices.First().Code=="system","system-following choice is first");
-                foreach(var item in new[]{new[]{"system","zh-TW","zh_TW"},new[]{"system","en-GB","en_US"},new[]{"system","ja-JP","ja_JP"},new[]{"en_US","zh-CN","en_US"}})
+                foreach(var item in new[]{new[]{"system","zh-TW","zh_TW"},new[]{"system","en-GB","en_US"},new[]{"system","ja-JP","ja_JP"},new[]{"en_US","zh-CN","en_US"},new[]{"system","fr-CA","fr_FR"},new[]{"system","de-DE","de_DE"},new[]{"system","hi-IN","hi_IN"},new[]{"system","id-ID","id_ID"},new[]{"system","it-IT","it_IT"},new[]{"system","pt-PT","pt_BR"},new[]{"system","es-ES","es_ES"},new[]{"system","es-MX","es_419"}})
                 {
                     string assembly=typeof(SystemLanguageTests).Assembly.Location;var start=new ProcessStartInfo{UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
                     if(assembly.EndsWith(".dll",StringComparison.OrdinalIgnoreCase)){using(var current=Process.GetCurrentProcess())start.FileName=current.MainModule.FileName;start.Arguments="\""+assembly+"\" ";}else start.FileName=assembly;

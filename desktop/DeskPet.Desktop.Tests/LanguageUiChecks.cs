@@ -14,14 +14,14 @@ internal static class LanguageUiChecks
 {
     internal static int RunSystemStartup(string directory,string culture)
     {
-        string expected=culture switch {"zh-TW"=>"zh_TW","en-GB" or "ar-SA"=>"en_US",_=>throw new ArgumentException("Unknown system-language UI fixture")};
+        string expected=culture switch {"zh-TW"=>"zh_TW","en-GB" or "ar-SA"=>"en_US","fr-CA"=>"fr_FR","de-DE"=>"de_DE","hi-IN"=>"hi_IN","id-ID"=>"id_ID","it-IT"=>"it_IT","pt-PT"=>"pt_BR","es-ES"=>"es_ES","es-MX"=>"es_419",_=>throw new ArgumentException("Unknown system-language UI fixture")};
         int checks=0;void Check(bool value,string why){if(!value)throw new Exception(why);checks++;}
         Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,"settings.json"),"{\"AutoUpdate\":false,\"GreetingEnabled\":false,\"ReadReplies\":false,\"OnboardingState\":\"completed\"}");
         using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(directory));
         Check(owner.Settings.UiLanguage=="system"&&TextResources.CurrentLanguage==expected,"legacy settings follow system UI culture before controller UI creation");
         var chat=new ChatWindow(owner,false);chat.Show();Dispatcher.UIThread.RunJobs();
         var avatar=chat.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="ShellAvatar");avatar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        var menu=avatar.ContextMenu!;Check(menu.ItemsSource!.OfType<MenuItem>().Single(item=>item.Name=="ProfileLanguage").Header as string==(expected=="zh_TW"?"語言":"Language"),"actual avatar menu uses the resolved system language");menu.Close();
+        var menu=avatar.ContextMenu!;Check(menu.ItemsSource!.OfType<MenuItem>().Single(item=>item.Name=="ProfileLanguage").Header as string==TextResources.Get("menus.language"),"actual avatar menu uses the resolved system language");menu.Close();
         owner.SetUiLanguage("ja_JP");Check(owner.Settings.UiLanguage=="ja_JP"&&TextResources.CurrentLanguage==expected&&owner.Session.LastNotice==TextResources.Get("languages.restartRequired"),"manual preference persists while the process language stays frozen");
         owner.SetUiLanguage("system");Check(owner.Settings.UiLanguage=="system"&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().UiLanguage=="system"&&String.IsNullOrEmpty(owner.Session.LastNotice),"returning to the active system language clears an unnecessary restart notice");
         chat.Close();owner.Pet.Close();owner.Dispose();var watch=System.Diagnostics.Stopwatch.StartNew();while(!owner.ImageServicesShutdown.IsCompleted){if(watch.ElapsedMilliseconds>10000)throw new TimeoutException("System language fixture cleanup timed out");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}owner.ImageServicesShutdown.GetAwaiter().GetResult();return checks;
@@ -36,7 +36,6 @@ internal static class LanguageUiChecks
         new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=code,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,ReadReplies=false});
         using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),runtime);
         Check(TextResources.CurrentLanguage==code,"startup uses selected catalog "+code);
-        var names=new[]{"简体中文","繁體中文","English","日本語","한국어"};
         foreach(string mode in new[]{"light","dark"})
         {
             DesktopTheme.Apply(mode);var chat=new ChatWindow(owner,false);chat.Show();chat.Width=390;Dispatcher.UIThread.RunJobs();

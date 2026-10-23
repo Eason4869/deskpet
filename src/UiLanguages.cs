@@ -23,6 +23,14 @@ namespace Dafeiyu
                     case "en_US":return TextResources.Get("languages.enUS");
                     case "ja_JP":return TextResources.Get("languages.jaJP");
                     case "ko_KR":return TextResources.Get("languages.koKR");
+                    case "fr_FR":return TextResources.Get("languages.frFR");
+                    case "de_DE":return TextResources.Get("languages.deDE");
+                    case "hi_IN":return TextResources.Get("languages.hiIN");
+                    case "id_ID":return TextResources.Get("languages.idID");
+                    case "it_IT":return TextResources.Get("languages.itIT");
+                    case "pt_BR":return TextResources.Get("languages.ptBR");
+                    case "es_419":return TextResources.Get("languages.es419");
+                    case "es_ES":return TextResources.Get("languages.esES");
                     default:return TextResources.Get("languages.zhCN");
                 }
             }
@@ -32,7 +40,7 @@ namespace Dafeiyu
     {
         public const string Default="system";
         public const string FollowSystem="system";
-        static readonly ReadOnlyCollection<UiLanguageChoice> choices=Array.AsReadOnly(new[]{new UiLanguageChoice("system","ProfileLanguageSystem"),new UiLanguageChoice("zh_CN","ProfileLanguageZhCn"),new UiLanguageChoice("zh_TW","ProfileLanguageZhTw"),new UiLanguageChoice("en_US","ProfileLanguageEnUs"),new UiLanguageChoice("ja_JP","ProfileLanguageJaJp"),new UiLanguageChoice("ko_KR","ProfileLanguageKoKr")});
+        static readonly ReadOnlyCollection<UiLanguageChoice> choices=Array.AsReadOnly(new[]{new UiLanguageChoice("system","ProfileLanguageSystem"),new UiLanguageChoice("zh_CN","ProfileLanguageZhCn"),new UiLanguageChoice("zh_TW","ProfileLanguageZhTw"),new UiLanguageChoice("en_US","ProfileLanguageEnUs"),new UiLanguageChoice("ja_JP","ProfileLanguageJaJp"),new UiLanguageChoice("ko_KR","ProfileLanguageKoKr"),new UiLanguageChoice("fr_FR","ProfileLanguageFrFR"),new UiLanguageChoice("de_DE","ProfileLanguageDeDE"),new UiLanguageChoice("hi_IN","ProfileLanguageHiIN"),new UiLanguageChoice("id_ID","ProfileLanguageIdID"),new UiLanguageChoice("it_IT","ProfileLanguageItIT"),new UiLanguageChoice("pt_BR","ProfileLanguagePtBR"),new UiLanguageChoice("es_419","ProfileLanguageEs419"),new UiLanguageChoice("es_ES","ProfileLanguageEsES")});
         public static ReadOnlyCollection<UiLanguageChoice> Choices {get{return choices;}}
         public static string Normalize(string code)
         {
@@ -58,7 +66,7 @@ namespace Dafeiyu
             return "en_US";
         }
         internal static bool IsNativeNameKey(string key)
-        {return key=="languages.zhCN"||key=="languages.zhTW"||key=="languages.enUS"||key=="languages.jaJP"||key=="languages.koKR";}
+        {return key=="languages.zhCN"||key=="languages.zhTW"||key=="languages.enUS"||key=="languages.jaJP"||key=="languages.koKR"||key=="languages.frFR"||key=="languages.deDE"||key=="languages.hiIN"||key=="languages.idID"||key=="languages.itIT"||key=="languages.ptBR"||key=="languages.es419"||key=="languages.esES";}
         // The standalone updater needs only this setting, not the app's secret store.
         internal static string ReadSavedLanguage(string path)
         {

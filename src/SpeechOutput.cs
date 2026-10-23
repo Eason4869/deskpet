@@ -58,13 +58,16 @@ namespace Dafeiyu
         {
             token.ThrowIfCancellationRequested();SpeechSynthesizer voice;
             try{voice=new SpeechSynthesizer();}
-            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.text"));}
+            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.languageUnavailable"));}
             activeVoice=voice;var completion=new TaskCompletionSource<bool>();
             EventHandler<SpeakCompletedEventArgs> done=delegate(object sender,SpeakCompletedEventArgs e){if(e.Cancelled)completion.TrySetCanceled();else if(e.Error!=null)completion.TrySetException(new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.completionTrySetException")));else completion.TrySetResult(true);};
             voice.SpeakCompleted+=done;
             try
             {
-                var chinese=voice.GetInstalledVoices().FirstOrDefault(v=>v.Enabled && v.VoiceInfo.Culture.TwoLetterISOLanguageName=="zh");if(chinese!=null)voice.SelectVoice(chinese.VoiceInfo.Name);
+                var enabledVoices=voice.GetInstalledVoices().Where(v=>v.Enabled).ToArray();
+                string culture=SpeechLanguagePolicy.SelectCulture(TextResources.CurrentLanguage,enabledVoices.Select(v=>v.VoiceInfo.Culture.Name));
+                var selectedVoice=enabledVoices.FirstOrDefault(v=>String.Equals(v.VoiceInfo.Culture.Name,culture,StringComparison.Ordinal));
+                if(selectedVoice!=null)voice.SelectVoice(selectedVoice.VoiceInfo.Name);
                 voice.SetOutputToDefaultAudioDevice();voice.Volume=Math.Max(0,Math.Min(100,volume));
                 using(token.Register(delegate {CancelOnUi(token,completion,delegate {if(Object.ReferenceEquals(activeVoice,voice))voice.SpeakAsyncCancelAll();});}))
                 {token.ThrowIfCancellationRequested();voice.SpeakAsync(text);await completion.Task;}

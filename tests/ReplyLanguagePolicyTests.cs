@@ -14,7 +14,7 @@ namespace Dafeiyu.Tests
 {
     public static class ReplyLanguagePolicyTests
     {
-        static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR"};
+        static readonly string[] Codes={"zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"};
         static int checks;
         static void Check(bool yes,string reason){if(!yes)throw new Exception(reason);checks++;}
         static TextCatalog Catalog(string code){return (TextCatalog)typeof(TextResources).GetMethod("CatalogFor",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{code});}
