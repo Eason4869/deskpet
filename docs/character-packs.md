@@ -10,7 +10,7 @@
 
 标准 v2 仍保持 17 个动作、4×4 视线及 480×520 预览；旧 PNG／v1／无 ID 的 v2 继续兼容。完整示例是 [`assets/bundled-skins/gugugaga/pet.json`](../assets/bundled-skins/gugugaga/pet.json)。
 
-官方完整包名为 `DeskPet-Companion-角色ID-版本.zip`，例如 `DeskPet-Companion-gugugaga-0.10.3-dev.1.zip`；包内 `pack_version` 随素材更新，固定 `id` 仍为 `gugugaga`。`DeskPet-Companions-版本.json` 是五位官方伙伴的完整目录。仓库中的旧咕嘎示例仍保留其原始 `pack_version`，完整包由构建工具另行生成，不改写原始素材。
+官方完整包名为 `DeskPet-Companion-角色ID-版本.zip`，例如 `DeskPet-Companion-gugugaga-0.10.3.zip`；包内 `pack_version` 随素材更新，固定 `id` 仍为 `gugugaga`。`DeskPet-Companions-版本.json` 是五位官方伙伴的完整目录。仓库中的旧咕嘎示例仍保留其原始 `pack_version`，完整包由构建工具另行生成，不改写原始素材。
 
 可选字段：
 
