@@ -7,7 +7,7 @@ using DeskPet.Platform.Mac;
 
 namespace DeskPet.Desktop;
 
-internal sealed class DesktopController : IDisposable
+internal sealed partial class DesktopController : IDisposable
 {
     private readonly IClassicDesktopStyleApplicationLifetime lifetime;
     private readonly SettingsStore store;
@@ -19,6 +19,7 @@ internal sealed class DesktopController : IDisposable
     private SettingsWindow? settingsWindow;
     private LiveWindow? liveWindow;
     private GuideWindow? guide;
+    private bool openingGuide;
     private Task applicationExitDrain=Task.CompletedTask;
     private int conversationServicesFinalized,disposeStarted;
     private bool exiting,exitPrepared;
@@ -46,17 +47,22 @@ internal sealed class DesktopController : IDisposable
     public Task ImageServicesShutdown { get; private set; } = Task.CompletedTask;
     public AgentQuestionController Questions { get; } = new();
     public PetWindow Pet { get; }
+    public HolidayController Holidays { get; }
+    internal bool HolidayBusinessBusy => exiting || Session.IsBusy || Session.NeedsExecutionReconciliation ||
+        Session.CurrentAgentTask?.Status is "running" or "needs_reconciliation" or "waiting_approval" or "waiting_input" or "recovering" ||
+        Queue.IsRunning || Queue.HasPending || Questions.Requests.Count != 0 || Live.IsActive || Dictation.IsBusy;
     public string DataDirectory { get; }
-    public bool GuideLocked => guide != null;
+    public bool GuideLocked => guide != null || openingGuide;
     public bool HasOpenPanel => GuideLocked || quickChat?.IsVisible == true || fullChat?.IsVisible == true || settingsWindow?.IsVisible == true || liveWindow?.IsVisible == true;
     public event Action? Changed;
-    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null)
+    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null, HolidayController? holidays = null, Func<SpriteAssets>? spriteAssetsFactory = null, Func<Func<OfficialCompanionInstallation, CancellationToken, Task>, IOfficialCompanionSource>? officialSourceFactory = null)
     {
         lifetime = desktop;
         runtime ??= new MacRuntime();
         this.runtime = runtime;
         DataDirectory = runtime.DataDirectory;
         Directory.CreateDirectory(DataDirectory);
+        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         runtime.InitializeProtection();
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
         bool firstLaunch = !File.Exists(settingsPath);
@@ -68,8 +74,15 @@ internal sealed class DesktopController : IDisposable
         var onboarding = OnboardingUpgrade.Prepare(Settings, ReleaseInfo.DisplayVersion);
         if (onboarding.Changed) store.Save(Settings);
         showAutomaticGuide = onboarding.ShowGuide;
-        Skins = SpriteAssets.LoadSkins(DataDirectory); Skin = Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.PackageId == Settings.SkinId) ?? Skins[0];
+        InitializeCompanions(officialSourceFactory);
+        Skins = Task.Run(() => SpriteAssets.LoadSkins(DataDirectory)).GetAwaiter().GetResult();
+        embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
+        var requested = Settings.PendingOfficialCompanionId.Length != 0 ? Skins.FirstOrDefault(s => s.OfficialCharacterId == Settings.PendingOfficialCompanionId) : ResolveSavedCompanion();
+        requested ??= embeddedEbao;
+        Skin = requested;
+        if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
+        Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
         ImageUsage = new ImageAssetUsageRegistry();
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
@@ -90,7 +103,8 @@ internal sealed class DesktopController : IDisposable
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
         Questions.Changed += Notify;
-        Pet = new PetWindow(this);
+        Session.AgentTaskChanged += Notify;
+        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
@@ -107,6 +121,7 @@ internal sealed class DesktopController : IDisposable
     {
         RegisterHotkeys();
         if (showAutomaticGuide) Dispatcher.UIThread.Post(ShowGuide);
+        Dispatcher.UIThread.Post(() => Run(StartOfficialCompanionsAsync));
         if (!string.IsNullOrWhiteSpace(store.Warning)) Dispatcher.UIThread.Post(() => Error(new InvalidOperationException(store.Warning)));
     }
     private void ImageTaskCompleted(ImageGenerationTaskSnapshot task)
@@ -126,15 +141,8 @@ internal sealed class DesktopController : IDisposable
             imageNotification.Show();imageNoticeTimer.Stop();imageNoticeTimer.Start();
         });
     }
-    private void Notify() => Dispatcher.UIThread.Post(() => Changed?.Invoke());
+    private void Notify() => Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });
     public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
-    public async Task SelectSkinAsync(PetSkin skin)
-    {
-        await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
-        PersonaProfiles.SaveVoices(Settings); Skin = skin;
-        PersonaProfiles.Activate(Settings, skin.Id, skin.Prompt, skin.Voices); Session.SelectPersona(skin.Id);
-        Pet.SelectSkin(); Save(); if (tray != null) tray.ToolTipText = "DeskPet · " + skin.Name;
-    }
     public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp(); }
     public void ShowChat(bool quick)
     {
@@ -172,12 +180,18 @@ internal sealed class DesktopController : IDisposable
     }
     public void ShowGuide()
     {
+        if (openingGuide) return;
         if (guide != null) { guide.Activate(); return; }
+        openingGuide = true;
         Run(async () =>
         {
-            await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
-            if (guide != null) { guide.Activate(); return; }
-            guide = new GuideWindow(this); guide.Closed += (_, _) => { guide = null; Notify(); }; guide.Show();
+            try
+            {
+                await Queue.PauseAsync(); await Dictation.CancelAsync(); await Live.StopAsync(); await Session.StopAsync();
+                if (guide != null) { guide.Activate(); return; }
+                guide = new GuideWindow(this); guide.Closed += (_, _) => { guide = null; Notify(); Run(StartOfficialCompanionsAsync); }; guide.Show();
+            }
+            finally { openingGuide = false; }
         });
     }
     public void ShowAbout() => new AboutWindow(this).Show();
@@ -216,6 +230,7 @@ internal sealed class DesktopController : IDisposable
         {
             await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
             Save();
+            Holidays.RetrySave();
             await Session.FlushHistoryAsync();
         }
         finally
@@ -235,10 +250,14 @@ internal sealed class DesktopController : IDisposable
     public void Dispose()
     {
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
+        exiting = true;
+        companionLifetime.Cancel(); companionSelection?.Cancel(); officialCompanions.Dispose(); companionNative.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         imageNoticeTimer.Stop();
         imageNotification?.Close();
         ImageTasks.Changed-=ImageTaskCompleted;
+        Session.AgentTaskChanged -= Notify;
+        Holidays.RetrySave();
         tray?.Dispose();
         foreach(var binding in hotkeys)binding.Dispose();
         ImageServicesShutdown=Task.Run(async()=>

@@ -54,3 +54,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Agent 开源参考
+
+原生 C# 工具循环参考 [OpenManus-Lite（MIT）](https://github.com/Celebez/OpenManus-Lite/tree/1aed3c29ec12be7f68dc5471d48eacd84c891565) 与 [OpenCode（MIT）](https://github.com/anomalyco/opencode/tree/bc5ebf00a4c169ece10f276e6ce02eaf18c326e6) 的工具边界、权限和有界上下文设计，未复制或翻译其代码。交互参考 Codex App 与 Mimo Code Desktop；后者采用 PolyForm Noncommercial，仅参考需求，未复制代码或界面资源。

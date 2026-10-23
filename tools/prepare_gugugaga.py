@@ -172,8 +172,8 @@ def build_assets():
             fps = clips.get(action, {}).get('fps', 8)
             views[0].save(qa / (action + '.gif'), save_all=True, append_images=views[1:], duration=round(1000 / fps), loop=0, disposal=2, optimize=False)
     (run / 'frames/frames-manifest.json').write_text(json.dumps({'rows': manifest_rows}), encoding='utf-8')
-    design = (ROOT / 'docs/plans/2026-10-20-gugugaga-companion-design.md').read_text(encoding='utf-8-sig')
-    prompt = next(block.strip() for block in design.split('```') if block.strip().startswith('text\n你是')).removeprefix('text\n')
+    # The shipped manifest owns the persona; asset rebuilding must not depend on historical plans.
+    prompt = json.loads((bundle / 'pet.json').read_text(encoding='utf-8-sig'))['system_prompt']
     manifest = {'version': 2, 'name': '咕嘎', 'description': '呆萌好奇 · 贪吃小企鹅', 'format': 'illustrated-atlases-v1',
         'cell_width': 480, 'cell_height': 520, 'preview': 'preview.png', 'special_action': '咕嘎摇摇', 'system_prompt': prompt,
         'animations': {a: clips[a] for a in STANDARD}, 'gaze': {'file': 'gaze.png', 'columns': 4, 'frames': 16, 'interpolation': 'none', 'order': 'clockwise-from-up'}}

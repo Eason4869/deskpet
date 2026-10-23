@@ -34,12 +34,33 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if (args.Contains("--official-native-index") || args.Contains("--official-native-materials"))
+    {
+        string? Option(string name) { int at = Array.IndexOf(args, name); return at < 0 ? null : at + 1 < args.Length && !args[at + 1].StartsWith("--", StringComparison.Ordinal) ? args[at + 1] : throw new ArgumentException("Missing value for " + name); }
+        Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunActualMaterials(Option("--official-native-materials"), Option("--official-native-index") ?? throw new ArgumentException("Expected --official-native-index"), Option("--report") ?? "work/official-ava-actual-native.json") + " actual complete companion packages"); return;
+    }
+    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + " actual thin companion assertions"); return; }
+    if (args.Contains("--official-companion-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunTiming() + OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection")) + OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native")) + OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"))) + " official companion assertions"); return; }
+    if (args.Contains("--holiday-switch-source")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch")) + " source switch assertions"); return; }
+    if (args.Contains("--holiday-wardrobe-layout")) { Console.WriteLine("PASS: " + HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui")) + " wardrobe layout assertions"); return; }
+    if (args.Any(a => a.StartsWith("--holiday-review="))) { var part = args.Single(a => a.StartsWith("--holiday-review=")).Substring("--holiday-review=".Length); Console.WriteLine("PASS: " + HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"), part) + " holiday review regressions"); return; }
+    if (args.Contains("--holiday-ui-only")) { Console.WriteLine("PASS: " + HolidayUiChecks.Run(Path.Combine(directory, "holiday")) + " holiday UI assertions"); return; }
+    if (args.Contains("--holiday-resources-only")) { Console.WriteLine("PASS: " + HolidayUiChecks.RunResources(Path.Combine(directory, "holiday-resources")) + " holiday resources/lifecycle assertions"); return; }
     if(args.Any(a=>a.StartsWith("--final-review="))){Console.WriteLine("PASS final review: "+ImageTaskCenterUiChecks.RunFinalReview(Path.Combine(directory,"final-review"),args.Single(a=>a.StartsWith("--final-review=")).Substring(15)));return;}
     if (args.Contains("--image-writer-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunWriterGateQuit(Path.Combine(directory,"image-exit-writer")) + " writer gate native lifetime assertions"); return; }
     if (args.Contains("--image-held-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunHeldQuit(Path.Combine(directory,"image-exit-held")) + " held native lifetime assertions"); return; }
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    assertions += OfficialCompanionUiChecks.RunTiming();
+    assertions += OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection"));
+    assertions += OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native"));
+    assertions += OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"));
+    assertions += HolidayUiChecks.Run(Path.Combine(directory, "holiday"));
+    assertions += HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch"));
+    assertions += HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui"));
+    assertions += HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"));
+    assertions += HolidayUiChecks.RunResources(Path.Combine(directory, "holiday-resources"));
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
     using (var gugaAssets = new SpriteAssets())
@@ -57,6 +78,9 @@ try
         var packSource = Path.Combine(directory, "guga-complete-source"); Directory.CreateDirectory(packSource);
         const string prefix = "bundled-skins/gugugaga/";
         using (var input = SpriteAssets.OpenAsset(prefix + "pet.json")) using (var output = File.Create(Path.Combine(packSource, "pet.json"))) input.CopyTo(output);
+        var customProfile = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(packSource, "pet.json")))!;
+        customProfile["name"] = "自定义咕嘎";
+        File.WriteAllText(Path.Combine(packSource, "pet.json"), customProfile.ToJsonString());
         foreach (var path in guga.Clips.Values.Concat(guga.ExtraClips.Values).Concat(guga.Alternates.Values).Select(c => c.File).Concat(new[] { guga.Gaze!.File, guga.Avatar!, guga.Preview! }).Distinct())
         {
             var target = Path.Combine(packSource, path[prefix.Length..]); Directory.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -64,8 +88,9 @@ try
         }
         var archive = Path.Combine(directory, "guga-complete.zip"); System.IO.Compression.ZipFile.CreateFromDirectory(packSource, archive);
         var installed = SpriteAssets.Import(archive, directory);
+        Check(installed.BuiltinCharacterId == null, "same-ID installed package cannot grant trusted holiday provenance");
         Check(SpriteAssets.HasExtra(installed, "special2") && SpriteAssets.HasExtra(installed, "stumble"), "installed package enables second signature and stumble capabilities");
-        Check(installed.Id == guga.Id && installed.PackageId == "gugugaga" && installed.Folder != null && SpriteAssets.LoadSkins(directory).Count == skins.Count, "ZIP replaces bundled resource without duplicate companion");
+        Check(installed.Id != guga.Id && installed.PackageId == "gugugaga" && installed.PickerKey == "custom-pack:gugugaga" && installed.Folder != null && SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "custom ZIP preserves separate official entry and receives its own stable persona");
         Check(gugaAssets.GetAvatar(installed) is { PixelSize.Width: 512 }, "installed resource package supplies its own portrait");
         foreach (var action in SpriteAssets.PairedActions.Append("jumping"))
         {
@@ -77,14 +102,17 @@ try
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(packSource, "pet.json")))!;
         json["pack_version"] = "update-test"; json["name"] = "咕嘎 · 更新"; File.WriteAllText(Path.Combine(packSource, "pet.json"), json.ToJsonString());
         var updated = SpriteAssets.Import(Path.Combine(packSource, "pet.json"), directory);
-        Check(updated.Id == installed.Id && updated.Folder != installed.Folder && SpriteAssets.LoadSkins(directory).Count == skins.Count, "new same-ID version atomically replaces resource selection");
+        Check(updated.Id == installed.Id && updated.Folder != installed.Folder && SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "new custom same-ID version replaces only its own source with stable persona");
         var legacySource = Path.Combine(directory, "guga-legacy-source"); Directory.CreateDirectory(legacySource);
         foreach (var path in Directory.GetFiles(packSource, "*.png", SearchOption.AllDirectories)) { var target = Path.Combine(legacySource, Path.GetRelativePath(packSource, path)); Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(path, target); }
         foreach (var key in new[] { "id", "pack_version", "avatar", "special_action2", "extra_animations", "alternate_animations", "voice_presets" }) json.AsObject().Remove(key);
         json["name"] = guga.Name; File.WriteAllText(Path.Combine(legacySource, "pet.json"), json.ToJsonString());
         var migrated = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory);
-        Check(migrated.Id.StartsWith("skin-") && migrated.PackageId == "gugugaga" && SpriteAssets.LoadSkins(directory).Count == skins.Count, "legacy original keeps personal identity with one installed companion");
+        Check(migrated.Id == guga.Id && migrated.PickerKey == "official:gugugaga" && migrated.BuiltinCharacterId == "gugugaga" && SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "verified legacy artwork uses the already assigned official persona and keeps custom entry independent");
         Check(SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), directory).Id == migrated.Id, "repeated legacy import returns retained identity");
+        var trustedLegacyData = Path.Combine(directory, "trusted-legacy-data");
+        var trustedLegacy = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), trustedLegacyData);
+        Check(trustedLegacy.Id.StartsWith("skin-") && trustedLegacy.BuiltinCharacterId == "gugugaga", "verified legacy original retains canonical holiday source with its personal identity");
         var previewBytes = File.ReadAllBytes(Path.Combine(legacySource, "preview.png"));
         using (var previewStream = new MemoryStream(previewBytes))
         using (var bitmap = new Bitmap(previewStream)) bitmap.Save(Path.Combine(legacySource, "changed-preview.png"), new PngBitmapEncoderOptions());
@@ -92,8 +120,10 @@ try
         var custom = SpriteAssets.Import(Path.Combine(legacySource, "pet.json"), Path.Combine(directory, "modified-preview-data"));
         Check(custom.PackageId == null, "custom legacy preview is preserved as a separate companion");
         SpriteAssets.Remove(migrated, directory);
-        Check(SpriteAssets.LoadSkins(directory).Count == skins.Count - 1, "removing package persists across catalog reload");
-        Check(SpriteAssets.Import(archive, directory).Id == migrated.Id && SpriteAssets.LoadSkins(directory).Count == skins.Count, "reimport restores removed package with retained personal identity");
+        Check(SpriteAssets.LoadSkins(directory).Count == skins.Count && SpriteAssets.LoadSkins(directory).Any(s => s.PickerKey == "custom-pack:gugugaga"), "removing official picker preserves independent custom source");
+        Check(SpriteAssets.Import(archive, directory).Id == installed.Id && SpriteAssets.LoadSkins(directory).Count == skins.Count, "reimport updates custom persona without unhiding a different official picker");
+        CompanionPackStorage.RestoreHidden(directory);
+        Check(SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "explicit restore recovers official and custom entries independently");
         foreach (var candidate in SpriteAssets.LoadSkins(directory).Skip(1)) SpriteAssets.Remove(candidate, directory);
         bool lastBlocked = false; try { SpriteAssets.Remove(SpriteAssets.LoadSkins(directory).Single(), directory); } catch (InvalidOperationException) { lastBlocked = true; }
         Check(lastBlocked, "last companion cannot be removed"); CompanionPackStorage.RestoreHidden(directory);
@@ -146,6 +176,7 @@ try
     }
     var manifest = Path.Combine(source, "pet.json");
     File.WriteAllText(manifest, "{\"version\":1,\"name\":\"大肥鱼\",\"atlas\":\"spritesheet.png\"}");
+    int beforeIndependentImport = SpriteAssets.LoadSkins(directory).Count;
     var imported = SpriteAssets.Import(manifest, directory);
     Check(!imported.BuiltIn && imported.Id.StartsWith("skin-"), "same-name skin gets independent identity");
     using (var assets = new SpriteAssets()) Check(assets.Resolve(imported, "feeding", false).File == "spritesheet.png", "custom skin never uses bundled interaction");
@@ -157,11 +188,11 @@ try
     }
     File.WriteAllText(manifest, "{\"version\":1,\"name\":\"bad\",\"atlas\":\"../escape.png\"}");
     Reject(() => SpriteAssets.Import(manifest, directory), "path traversal");
-    Check(SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "rejected import preserves existing skins");
+    Check(SpriteAssets.LoadSkins(directory).Count == beforeIndependentImport + 1, "rejected import preserves official and independent custom skins");
     var abandoned = Path.Combine(directory, "skins", ".import-abandoned"); Directory.CreateDirectory(abandoned);
     File.Copy(Path.Combine(source, "spritesheet.png"), Path.Combine(abandoned, "spritesheet.png"));
     File.WriteAllText(Path.Combine(abandoned, "pet.json"), "{\"version\":1,\"name\":\"interrupted\",\"atlas\":\"spritesheet.png\"}");
-    Check(SpriteAssets.LoadSkins(directory).Count == skins.Count + 1, "interrupted staging import never appears as a companion");
+    Check(SpriteAssets.LoadSkins(directory).Count == beforeIndependentImport + 1, "interrupted staging import never appears as a companion");
     Check(AboutWindow.MatchesArchitecture("DeskPet-macOS-0.6.0-x86_64-preview.zip", "x64"), "Intel release packaging name matches current architecture");
     Check(!AboutWindow.MatchesArchitecture("DeskPet-macOS-0.6.0-arm64-preview.zip", "x64"), "Intel query excludes arm64 archive");
     Check(!AboutWindow.MatchesArchitecture("DeskPet-Windows-macos-notes-x64-template.zip", "x64"), "platform words inside an unrelated filename are not a Mac package");

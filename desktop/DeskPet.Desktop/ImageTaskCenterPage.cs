@@ -11,13 +11,20 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     readonly DesktopController owner;readonly ImageGenerationTaskManager tasks;readonly Window host;readonly ComboBox filter=new(){Name="ImageTaskFilter",ItemsSource=new[]{"全部","排队中","进行中","已完成","失败及取消"},SelectedIndex=0,MinWidth=140};
     readonly StackPanel rows=Ui.Column();readonly TextBlock summary=Ui.Text(""),notice=Ui.Text("");readonly Button more;readonly Button batchCancel;readonly Dictionary<string,Row> controls=new();readonly HashSet<string> selected=new();readonly DispatcherTimer clock=new(){Interval=TimeSpan.FromSeconds(1)};
     readonly List<Visual> ancestors=new();
-    int limit=40;bool attached,subscribed,disposed;string? selectedId;
+    int limit=40;bool attached,subscribed,disposed,cancelingSelection;string? selectedId;
     sealed class Row { internal required Border Root;internal required CheckBox Select;internal required TextBlock Stage,Elapsed,Result;internal required WrapPanel Actions;internal bool ResultAvailable;internal ImageGenerationTaskSnapshot? Task; }
     internal bool ClockRunning=>clock.IsEnabled;
     internal ImageTaskCenterPage(DesktopController controller,Window window)
     {
         owner=controller;tasks=owner.ImageTasks;host=window;Name="ImageTaskCenterPage";RowDefinitions=new RowDefinitions("Auto,*");
-        var cancel=Ui.AsyncButton("取消所选任务",async()=>{foreach(var id in selected.ToArray()){var task=tasks.Get(id);if(task!=null&&!task.IsTerminal)await tasks.CancelAsync(id);}selected.Clear();Refresh();},owner.Error);cancel.Name="CancelSelectedImageTasks";batchCancel=cancel;cancel.IsEnabled=false;
+        var cancel=new Button{Content="取消所选任务",Name="CancelSelectedImageTasks",IsEnabled=false};batchCancel=cancel;
+        cancel.Click+=async(_,_)=>
+        {
+            if(cancelingSelection)return;cancelingSelection=true;cancel.IsEnabled=false;
+            try{foreach(var id in selected.ToArray()){var task=tasks.Get(id);if(task!=null&&!task.IsTerminal)await tasks.CancelAsync(id);}selected.Clear();}
+            catch(OperationCanceledException){}catch(Exception e){owner.Error(e);}
+            finally{cancelingSelection=false;Refresh();}
+        };
         var actions=new WrapPanel{Orientation=Orientation.Horizontal};actions.Children.Add(filter);actions.Children.Add(cancel);Children.Add(Ui.Column(summary,actions,notice));
         more=Ui.Button("加载更多任务",()=>{limit+=40;Refresh();});more.Name="LoadMoreImageTasks";var scroll=new ScrollViewer{Content=Ui.Column(rows,more),HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled};Grid.SetRow(scroll,1);Children.Add(scroll);
         filter.SelectionChanged+=(_,_)=>{limit=40;Refresh();};clock.Tick+=(_,_)=>{foreach(var row in controls.Values)if(row.Task is {IsTerminal:false} task)row.Elapsed.Text=ImageTaskCenterState.Elapsed(task);};
@@ -31,7 +38,7 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     void Changed(ImageGenerationTaskSnapshot task)=>Dispatcher.UIThread.Post(()=>{if(!disposed&&subscribed)Refresh(task);});
     void Refresh(ImageGenerationTaskSnapshot? changed=null)
     {
-        if(disposed)return;var all=tasks.List();selected.RemoveWhere(id=>!all.Any(t=>t.Id==id&&!t.IsTerminal));batchCancel.IsEnabled=selected.Count>0;summary.Text=all.Count(t=>!t.IsTerminal)+" 项未完成 · 已选择 "+selected.Count+" 项";notice.Text=tasks.Warning;
+        if(disposed)return;var all=tasks.List();selected.RemoveWhere(id=>!all.Any(t=>t.Id==id&&!t.IsTerminal));batchCancel.IsEnabled=!cancelingSelection&&selected.Count>0;summary.Text=all.Count(t=>!t.IsTerminal)+" 项未完成 · 已选择 "+selected.Count+" 项";notice.Text=tasks.Warning;
         var matches=all.Reverse().Where(t=>ImageTaskCenterState.Matches(t,filter.SelectedIndex)).ToList();var visible=matches.Take(limit).ToList();var ids=visible.Select(t=>t.Id).ToHashSet();
         foreach(var id in controls.Keys.Where(id=>!ids.Contains(id)).ToArray()){rows.Children.Remove(controls[id].Root);controls.Remove(id);}
         for(int index=0;index<visible.Count;index++){var task=visible[index];if(!controls.TryGetValue(task.Id,out var row)){row=CreateRow(task);controls.Add(task.Id,row);rows.Children.Insert(index,row.Root);}if(changed==null||changed.Id==task.Id||row.Task==null)Update(row,task);}
@@ -39,7 +46,7 @@ internal sealed class ImageTaskCenterPage : Grid, IDisposable
     }
     Row CreateRow(ImageGenerationTaskSnapshot task)
     {
-        var check=new CheckBox{Content=Ui.Text(task.Prompt),IsChecked=selected.Contains(task.Id),HorizontalAlignment=HorizontalAlignment.Stretch};check.IsCheckedChanged+=(_,_)=>{if(check.IsChecked==true)selected.Add(task.Id);else selected.Remove(task.Id);batchCancel.IsEnabled=selected.Count>0;summary.Text=tasks.List().Count(t=>!t.IsTerminal)+" 项未完成 · 已选择 "+selected.Count+" 项";};
+        var check=new CheckBox{Content=Ui.Text(task.Prompt),IsChecked=selected.Contains(task.Id),HorizontalAlignment=HorizontalAlignment.Stretch};check.IsCheckedChanged+=(_,_)=>{if(check.IsChecked==true)selected.Add(task.Id);else selected.Remove(task.Id);batchCancel.IsEnabled=!cancelingSelection&&selected.Count>0;summary.Text=tasks.List().Count(t=>!t.IsTerminal)+" 项未完成 · 已选择 "+selected.Count+" 项";};
         var stage=Ui.Text("",15);var elapsed=Ui.Text("",12);var result=Ui.Text("",12);var actions=new WrapPanel{Orientation=Orientation.Horizontal};
         var body=Ui.Column(check,Ui.Text(ImageTaskCenterState.Metadata(task),12),stage,elapsed,result,actions);
         return new Row{Select=check,Root=new Border{Name="ImageTaskRow",Tag=task.Id,Child=body,Padding=new Thickness(14),Margin=new Thickness(0,0,0,10),CornerRadius=new CornerRadius(12),Background=DesktopTheme.Brush("#EDF3FF"),BorderBrush=DesktopTheme.Brush("#E0E4E9"),BorderThickness=new Thickness(1)},Stage=stage,Elapsed=elapsed,Result=result,Actions=actions};

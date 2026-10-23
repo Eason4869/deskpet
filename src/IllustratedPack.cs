@@ -17,6 +17,9 @@ namespace Dafeiyu
         [DataMember(Name="frames")] public int Frames {get;set;}
         [DataMember(Name="fps")] public double Fps {get;set;}
         [DataMember(Name="loop")] public bool Loop {get;set;}
+        [DataMember(Name="hold_last_seconds",EmitDefaultValue=false)] public double HoldLastSeconds {get;set;}
+        public double PoseDuration {get{return Frames/Fps;}}
+        public double CompletionDuration {get{return PoseDuration+HoldLastSeconds;}}
     }
     [DataContract] public sealed class IllustratedGaze
     {
@@ -53,6 +56,7 @@ namespace Dafeiyu
             long size=0;int frames=0;
             foreach(string action in Actions) {
                 var clip=manifest.Animations[action];
+                ValidateHold(action,clip);
                 if(clip==null || clip.Columns!=8 || clip.Frames<1 || clip.Frames>128 || Double.IsNaN(clip.Fps) || Double.IsInfinity(clip.Fps) || clip.Fps<1 || clip.Fps>60)throw new InvalidOperationException("动作需要 8 列、1–128 帧和 1–60 FPS。");
                 frames+=clip.Frames;
                 if(frames>1024)throw new InvalidOperationException("外观总帧数不能超过 1024。");
@@ -78,11 +82,12 @@ namespace Dafeiyu
                 bool extra=ReferenceEquals(set,manifest.ExtraAnimations);
                 string[] allowed=extra?new[]{"stumble","special2"}:new[]{"lifted","landing","feeding","happy","sleeping","special","special2","stumble","jumping"};
                 var clip=item.Value;
+                ValidateHold(item.Key,clip);
                 if(!allowed.Contains(item.Key) || clip==null || clip.Columns!=8 || clip.Frames<1 || clip.Frames>128 || Double.IsNaN(clip.Fps) || Double.IsInfinity(clip.Fps) || clip.Fps<1 || clip.Fps>60)throw new InvalidOperationException("扩展动作说明无效。");
                 if(!extra) {
                     IllustratedAnimation first;
                     if(!manifest.Animations.TryGetValue(item.Key,out first) && (manifest.ExtraAnimations==null || !manifest.ExtraAnimations.TryGetValue(item.Key,out first)))throw new InvalidOperationException("第二套动作缺少第一套。");
-                    if(clip.Loop!=first.Loop || item.Key=="jumping" && Math.Abs(clip.Frames/clip.Fps-first.Frames/first.Fps)>1e-8)throw new InvalidOperationException("两套动作的循环或跳跃时长不一致。");
+                    if(clip.Loop!=first.Loop || item.Key=="jumping" && Math.Abs(clip.CompletionDuration-first.CompletionDuration)>1e-8)throw new InvalidOperationException("两套动作的循环或跳跃时长不一致。");
                 }
                 string asset=AssetPath(folder,clip.File);if(files.Add(clip.File))size+=new FileInfo(asset).Length;
                 frames+=clip.Frames;if(size>256L*1024*1024 || frames>1024)throw new InvalidOperationException("角色包素材总量过大。");
@@ -99,6 +104,12 @@ namespace Dafeiyu
                 }
             }
             return files.ToList();
+        }
+        internal static void ValidateHold(string action,IllustratedAnimation clip)
+        {
+            if(clip==null)return;
+            double hold=clip.HoldLastSeconds;
+            if(Double.IsNaN(hold)||Double.IsInfinity(hold)||hold<0||hold>2||hold>0&&(action!="jumping"||clip.Loop))throw new InvalidOperationException("仅不循环的跳跃动作可设置 0–2 秒的末帧停留。");
         }
         static void ValidateImage(string path,int width,int height,bool inspect,int frames,int columns)
         {

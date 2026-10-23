@@ -34,6 +34,8 @@ using (var wrong = new MacSecretProtector(() => RandomNumberGenerator.GetBytes(3
 if (!OperatingSystem.IsMacOS())
 {
     Reject<PlatformNotSupportedException>(() => MacServices.GetIdleTime(), "idle guarded before native load");
+    Reject<PlatformNotSupportedException>(() => _ = MacServices.IsSessionInteractive, "session lifecycle guarded before native load");
+    Reject<PlatformNotSupportedException>(() => _ = MacServices.SessionLifecycleRevision, "session lifecycle revision guarded before native load");
     Reject<PlatformNotSupportedException>(() => MacServices.CreateRecorder(), "microphone guarded before native load");
     Reject<PlatformNotSupportedException>(() => MacServices.CreateLiveOutput(), "playback guarded before native load");
     Reject<PlatformNotSupportedException>(() => MacServices.InstallSecretProtection(), "Keychain guarded before native load");
@@ -53,6 +55,7 @@ if (args.Contains("--native-smoke"))
     Check(OperatingSystem.IsMacOS(), "native smoke requires Mac");
     Check(Enum.IsDefined(MacServices.MicrophoneAccess), "microphone status native ABI");
     Check(MacServices.GetIdleTime() >= TimeSpan.Zero, "native idle query");
+    Check(Native.SessionInteractive() is 0 or 1, "native session lifecycle ABI");
     var pointer = MacServices.GetPointerPosition();
     Check(double.IsFinite(pointer.X) && double.IsFinite(pointer.Y), "native pointer query");
     var displays = MacServices.GetDisplays();

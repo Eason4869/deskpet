@@ -13,19 +13,24 @@
   <ItemGroup>
     <Content Include="../../docs/third-party-notices.md" Link="docs/third-party-notices.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../docs/conversation-agent.md" Link="docs/conversation-agent.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../docs/holiday-outfits.md" Link="docs/holiday-outfits.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
     <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" />
     <ProjectReference Include="../DeskPet.Platform.Mac/DeskPet.Platform.Mac.csproj" />
-    <AvaloniaResource Include="../../assets/*.png" Link="Assets/%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/*.png" Link="Assets/%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/e-bao-*.png;../../assets/deskpet-logo.png;../../assets/pet-icon.png" Link="Assets/%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/additional/e-bao.png" Link="Assets/additional/e-bao.png" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/companion-animations/e-bao/*.png" Link="Assets/companion-animations/e-bao/%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/official/bundled-catalog.json" Link="Assets/bundled-skins/catalog.json" />
     <AvaloniaResource Include="../../assets/avatars/**/*.png" Link="Assets/avatars/%(RecursiveDir)%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/additional/*.png" Link="Assets/additional/%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/companion-animations/**/*.png" Link="Assets/companion-animations/%(RecursiveDir)%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/bundled-skins/**/*.png" Link="Assets/bundled-skins/%(RecursiveDir)%(Filename)%(Extension)" />
-    <AvaloniaResource Include="../../assets/bundled-skins/**/pet.json" Link="Assets/bundled-skins/%(RecursiveDir)pet.json" />
-    <AvaloniaResource Include="../../assets/bundled-skins/catalog.json" Link="Assets/bundled-skins/catalog.json" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/additional/*.png" Link="Assets/additional/%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/companion-animations/**/*.png" Link="Assets/companion-animations/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/bundled-skins/**/*.png" Link="Assets/bundled-skins/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/bundled-skins/**/pet.json" Link="Assets/bundled-skins/%(RecursiveDir)pet.json" />
+    <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/bundled-skins/catalog.json" Link="Assets/bundled-skins/catalog.json" />
     <AvaloniaResource Include="../../assets/provider-logos.json" Link="Assets/provider-logos.json" />
     <AvaloniaResource Include="../../assets/pet.ico" Link="Assets/pet.ico" />
   </ItemGroup>

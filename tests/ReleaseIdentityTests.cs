@@ -31,12 +31,15 @@ namespace Dafeiyu.Tests
                 Compile(target,"0.9.4-dev.2",sha);Reject(()=>UpdateInstall.CheckWorker(job,target));Compile(target,"0.9.4",sha);
                 string docs=Path.Combine(root,"docs");Directory.CreateDirectory(docs);
                 string project=Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
-                File.WriteAllText(Path.Combine(docs,"native-agent-design.md"),File.ReadAllText(Path.Combine(project,"docs","native-agent-design.md")).Replace("\r\n","\n").Replace("\n",Environment.NewLine),new System.Text.UTF8Encoding(false));File.WriteAllText(Path.Combine(docs,"roadmap.md"),"user edited roadmap");
+                string retired=Path.Combine(root,"templates","pet.json");Directory.CreateDirectory(Path.GetDirectoryName(retired));
+                File.Copy(Path.Combine(project,"templates","pet.json"),retired);
+                if(UpdateInstall.Hash(retired)!=RetiredRuntimeFiles.Known["templates/pet.json"])throw new Exception("retirement fixture no longer matches previously shipped bytes");
+                File.WriteAllText(Path.Combine(docs,"roadmap.md"),"user edited roadmap");
                 try{UpdateInstall.ApplyPortable(job,count=>{if(count==4)throw new InvalidOperationException("rollback cleanup fixture");});throw new Exception("cleanup rollback not exercised");}catch(InvalidOperationException error){if(error.Message!="rollback cleanup fixture")throw;}
-                if(!File.Exists(Path.Combine(docs,"native-agent-design.md"))||!ReleaseIdentity.Read(old).Version.IsPreview)throw new Exception("cleanup rollback lost old files");
+                if(!File.Exists(retired)||UpdateInstall.Hash(retired)!=RetiredRuntimeFiles.Known["templates/pet.json"]||!ReleaseIdentity.Read(old).Version.IsPreview)throw new Exception("cleanup rollback lost old files");
                 string next=Path.Combine(root,"data","updates",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(next);string nextPackage=Path.Combine(next,Path.GetFileName(package));File.Copy(package,nextPackage);job.WorkDirectory=next;job.PackagePath=nextPackage;
                 UpdateInstall.ApplyPortable(job,null);
-                if(File.Exists(Path.Combine(docs,"native-agent-design.md"))||File.ReadAllText(Path.Combine(docs,"roadmap.md"))!="user edited roadmap")throw new Exception("retired cleanup lost user modifications");
+                if(File.Exists(retired)||File.ReadAllText(Path.Combine(docs,"roadmap.md"))!="user edited roadmap")throw new Exception("retired cleanup lost user modifications");
                 ReleaseIdentity.Read(old).Require("0.9.4","0.9.4.0","0.9.4+"+sha);
                 Reject(()=>UpdateInstall.Validate(job));
                 Console.WriteLine("Release identity tests passed: same-base dev to stable, commit mismatch and changed installation");return 0;

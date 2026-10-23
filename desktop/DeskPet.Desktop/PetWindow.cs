@@ -9,10 +9,10 @@ using DeskPet.Platform.Mac;
 
 namespace DeskPet.Desktop;
 
-internal sealed class PetWindow : Window
+internal sealed partial class PetWindow : Window
 {
     private readonly DesktopController owner;
-    private readonly SpriteAssets assets = new();
+    private readonly SpriteAssets assets;
     private readonly SpriteView sprite;
     private readonly DispatcherTimer timer;
     private readonly Stopwatch clock = Stopwatch.StartNew();
@@ -24,7 +24,7 @@ internal sealed class PetWindow : Window
     private readonly InteractionPlayback playback;
     private string action => playback.Action;
     private bool original => playback.Original;
-    private bool dragging, moved, nativeIgnored, fullscreenHidden, hoverActive;
+    private bool dragging, moved, nativeIgnored, fullscreenHidden;
     private Point press;
     private PixelPoint start;
     private double lastTime, wanderAt, runUntil, policyAt;
@@ -35,10 +35,13 @@ internal sealed class PetWindow : Window
     private CancellationTokenSource? greetingRequest;
     private Window? greetingBubble;
     private readonly List<string> recentGreetings = new();
-    public bool Paused { get; set; }
-    public PetWindow(DesktopController controller)
+    private bool paused;
+    internal bool CompanionSourceRefreshSafe => !dragging && !drop.Active && !holidayPlayback.Active && !holidayTransition.Active && action == "idle";
+    public bool Paused { get => paused; set { paused = value; if (value) CancelHoliday(); RefreshHoliday(true); } }
+    public PetWindow(DesktopController controller, SpriteAssets? spriteAssets = null)
     {
         owner = controller;
+        assets = spriteAssets ?? new SpriteAssets();
         reaction = new DropReaction(random.NextDouble);
         sleep = new IdleSleepSchedule(0, random.NextDouble);
         greetingSchedule = new GreetingSchedule(DateTime.UtcNow, owner.Settings.GreetingMinMinutes, owner.Settings.GreetingMaxMinutes, random.NextDouble);
@@ -47,17 +50,17 @@ internal sealed class PetWindow : Window
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
         Title = "DeskPet";
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
-        playback = new InteractionPlayback((name, version) => assets.Resolve(owner.Skin, name, version));
-        Content = sprite;
+        playback = new InteractionPlayback(ResolveHolidayAction);
+        InitializeHoliday();
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
-        PointerExited += (_, _) => hoverActive = false;
+        PointerExited += (_, _) => LeaveHolidayHover();
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
         Opened += (_, _) => { ApplySettings(); Clamp(); ConfigureNative(false); };
         timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => Tick());
-        Closed += (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; DismissGreeting(); assets.Dispose(); };
+        Closed += (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
         wanderAt = WanderSchedule.Next(0, random.NextDouble());
         ApplySettings();
         if (owner.Settings.X == null || owner.Settings.Y == null)
@@ -68,22 +71,33 @@ internal sealed class PetWindow : Window
     }
     public void ApplySettings()
     {
+        CancelHoliday();
         Width = 192 * owner.Settings.Scale; Height = 208 * owner.Settings.Scale;
         Topmost = owner.Settings.Topmost;
         if (!owner.Settings.Wander && !owner.Settings.FollowCursor) { runUntil = 0; walkTarget = null; if (action is "running-left" or "running-right") Play("idle", false); }
         if (owner.Settings.X is double x && owner.Settings.Y is double y && !IsVisible) Position = new PixelPoint((int)x, (int)y);
         Clamp(); ConfigureNative(false);
+        RefreshHoliday(true);
     }
     public void SelectSkin()
     {
+        // DesktopController already cancelled using the old skin before changing
+        // its identity. Clear ownership here without publishing the old clip
+        // through the new skin's resource folder.
+        owner.Holidays.CancelHover(); holidayPlayback.Cancel(); holidayTransition.FinishImmediately();
+        committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
         drop.Cancel(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        RefreshHoliday(true);
     }
+    // Headless windows can expose an IPlatformHandle with a zero Handle even on
+    // macOS. Only an attached native window can use desktop input and policies.
+    private IntPtr NativeWindowHandle => OperatingSystem.IsMacOS() ? TryGetPlatformHandle()?.Handle ?? IntPtr.Zero : IntPtr.Zero;
     private void ConfigureNative(bool ignored)
     {
-        if (!OperatingSystem.IsMacOS() || !IsVisible) return;
-        var handle = TryGetPlatformHandle();
-        if (handle == null) return;
-        MacServices.ConfigureWindow(handle.Handle, owner.Settings.Topmost, ignored, true); nativeIgnored = ignored;
+        if (!IsVisible) return;
+        var handle = NativeWindowHandle;
+        if (handle == IntPtr.Zero) return;
+        MacServices.ConfigureWindow(handle, owner.Settings.Topmost, ignored, true); nativeIgnored = ignored;
     }
     private ContextMenu BuildMenu()
     {
@@ -98,7 +112,7 @@ internal sealed class PetWindow : Window
         foreach (var skin in owner.Skins)
         {
             var item = new MenuItem { Header = "切换 · " + skin.Name, Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
-            item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin)); items.Add(item);
+            item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
         Add("设置", owner.ShowSettings); Add("使用引导", owner.ShowGuide); Add("关于与更新", owner.ShowAbout); Add("退出", () => owner.Run(owner.ExitAsync));
         menu.ItemsSource = items; return menu;
@@ -113,7 +127,9 @@ internal sealed class PetWindow : Window
     }
     public void Interact(string name)
     {
+        if (name == "holiday" || name.StartsWith("holiday-", StringComparison.Ordinal)) return;
         if (owner.GuideLocked || dragging) return;
+        CancelHoliday();
         DismissGreeting();
         sleep.Touch(clock.Elapsed.TotalSeconds); wanderAt = WanderSchedule.Next(clock.Elapsed.TotalSeconds, random.NextDouble()); runUntil = 0; walkTarget = null; drop.Cancel();
         if (!owner.Skin.BuiltIn && !owner.Skin.Clips.ContainsKey(name) && !SpriteAssets.HasExtra(owner.Skin,name) && !SpriteAssets.Interactions.Contains(name)) return;
@@ -121,13 +137,13 @@ internal sealed class PetWindow : Window
     }
     private void Play(string name, bool useOriginal)
     {
-        playback.Play(name, useOriginal); sprite.Frame = playback.Frame;
-        sprite.Clip = playback.Clip;
+        playback.Play(name, useOriginal); PublishHolidayFrame(playback.Clip, playback.Frame, OriginalMirror());
         sprite.InvalidateVisual();
     }
     private void Pressed(object? sender, PointerPressedEventArgs e)
     {
         if (owner.GuideLocked || !sprite.Hits(e.GetPosition(sprite))) return;
+        CancelHoliday();
         DismissGreeting();
         sleep.Touch(clock.Elapsed.TotalSeconds); wanderAt = WanderSchedule.Next(clock.Elapsed.TotalSeconds, random.NextDouble());
         var point = e.GetCurrentPoint(this);
@@ -140,9 +156,14 @@ internal sealed class PetWindow : Window
     {
         if (!dragging)
         {
-            var over = sprite.Hits(e.GetPosition(sprite));
-            if (over && !hoverActive && action == "idle" && !owner.Session.IsBusy && !owner.GuideLocked) Interact("petting");
-            hoverActive = over; return;
+            var position = e.GetPosition(sprite);
+            var inside = position.X >= 0 && position.Y >= 0 && position.X < sprite.Bounds.Width && position.Y < sprite.Bounds.Height;
+            if (!inside) LeaveHolidayHover();
+            else if (hoverEntry.TryEnter(true, sprite.Hits(position)) && action == "idle" && !owner.Session.IsBusy && !owner.GuideLocked)
+            {
+                if (!TryHolidayHover()) Interact("petting");
+            }
+            return;
         }
         var local = e.GetPosition(this); var scale = RenderScaling;
         var dx = (local.X - press.X) * scale; var dy = (local.Y - press.Y) * scale;
@@ -159,7 +180,7 @@ internal sealed class PetWindow : Window
         dragging = false;
         if (!moved) { Play("poked", false); return; }
         var stumble = reaction.TryStumble(true, owner.Settings.StumbleEnabled, SpriteAssets.HasExtra(owner.Skin,"stumble"), clock.Elapsed.TotalSeconds);
-        playback.Land(stumble); sprite.Clip = playback.Clip; sprite.Frame = playback.Frame;
+        playback.Land(stumble); PublishHolidayFrame(playback.Clip, playback.Frame, OriginalMirror());
         var area = WorkArea();
         drop.Start(Position.Y, Height * RenderScaling, area.Bottom);
         SavePosition();
@@ -175,32 +196,46 @@ internal sealed class PetWindow : Window
     private void SavePosition() { owner.Settings.X = Position.X; owner.Settings.Y = Position.Y; owner.Save(); }
     private void Tick()
     {
-        var now = clock.Elapsed.TotalSeconds; var dt = Math.Clamp(now - lastTime, 0, .125); lastTime = now;
-        if (OperatingSystem.IsMacOS() && IsVisible && now >= policyAt)
+        var now = clock.Elapsed.TotalSeconds; var gap = now - lastTime; var dt = Math.Clamp(gap, 0, .125); lastTime = now;
+        var nativeWindow = NativeWindowHandle;
+        var hasNativeWindow = nativeWindow != IntPtr.Zero;
+        var wasInteractive = sessionInteractive;
+        bool lifecycleChanged = false;
+        if (hasNativeWindow)
+        {
+            sessionInteractive = MacServices.IsSessionInteractive;
+            var latestLifecycle = MacServices.SessionLifecycleRevision;
+            lifecycleChanged = latestLifecycle != lifecycleRevision; lifecycleRevision = latestLifecycle;
+        }
+        if (gap > 1 || !sessionInteractive || lifecycleChanged) { CancelHoliday(); DismissGreeting(); }
+        RefreshHoliday(gap > 1 || lifecycleChanged || wasInteractive != sessionInteractive);
+        if (hasNativeWindow && IsVisible && now >= policyAt)
         {
             policyAt = now + 1;
             fullscreenHidden = owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen();
             Opacity = fullscreenHidden ? 0 : 1;
+            if (fullscreenHidden) CancelHoliday();
         }
         if (now >= greetingProbeAt) { greetingProbeAt = now + 1; ProbeGreeting(); }
-        if (fullscreenHidden) { if (!nativeIgnored) ConfigureNative(true); return; }
+        if (fullscreenHidden || !sessionInteractive) { if (!nativeIgnored) ConfigureNative(true); return; }
         if (!IsVisible) return;
         if (Paused)
         {
-            if (OperatingSystem.IsMacOS()) { var ignored = owner.Settings.ClickThrough || !sprite.Hits(LocalPointer()); if (ignored != nativeIgnored) ConfigureNative(ignored); }
+            if (hasNativeWindow) { var ignored = owner.Settings.ClickThrough || !sprite.Hits(LocalPointer(nativeWindow)); if (ignored != nativeIgnored) ConfigureNative(ignored); }
             return;
         }
+        ApplyHolidayBusinessAction();
         if (drop.Active) { drop.Advance(dt); Position = new PixelPoint(Position.X, (int)Math.Round(drop.Position)); if (!drop.Active) SavePosition(); }
         if (!dragging)
         {
-            var idle = OperatingSystem.IsMacOS() ? MacServices.GetIdleTime().TotalSeconds : 0;
+            var idle = hasNativeWindow ? MacServices.GetIdleTime().TotalSeconds : 0;
             if (sleep.TrySleep(now, idle, !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy && action == "idle" && !owner.HasOpenPanel, owner.Settings.AutoSleepEnabled)) Interact("sleeping");
         }
         if (!dragging && !drop.Active && action is "idle" or "running-right" or "running-left" && !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy && !owner.HasOpenPanel && !owner.Settings.LockPosition && !owner.Settings.QuietMode)
         {
-            if (owner.Settings.FollowCursor && OperatingSystem.IsMacOS())
+            if (owner.Settings.FollowCursor && hasNativeWindow)
             {
-                var pointer = LocalPointer(); var dx = pointer.X - Width / 2;
+                var pointer = LocalPointer(nativeWindow); var dx = pointer.X - Width / 2;
                 if (Math.Abs(dx) > Width) { direction = Math.Sign(dx); runUntil = now + .2; walkTarget = null; }
             }
             if (owner.Settings.Wander && now >= wanderAt && now >= runUntil)
@@ -224,16 +259,18 @@ internal sealed class PetWindow : Window
             else if (action != "idle") { Play("idle", false); SavePosition(); }
         }
         else if (action is "running-right" or "running-left") { runUntil = 0; walkTarget = null; Play("idle", false); SavePosition(); }
-        playback.Advance(dt); sprite.Clip = playback.Clip; sprite.Frame = playback.Frame;
-        sprite.MirrorX = owner.Skin.BuiltIn && owner.Skin.Id is "dafeiyu" or "marfu" && action == "running-left";
-        if (owner.Skin.BuiltIn && owner.Skin.Id == "marfu" && action is "running-right" or "running-left") sprite.Frame = new[] { 0, 2, 3, 2, 4, 2, 6, 2 }[sprite.Frame % 8];
-        if (OperatingSystem.IsMacOS())
+        playback.Advance(dt);
+        var visibleFrame = committedOutfit == null && owner.Skin.BuiltIn && (owner.Skin.OfficialCharacterId ?? owner.Skin.Id) == "marfu" && action is "running-right" or "running-left" ? new[] { 0, 2, 3, 2, 4, 2, 6, 2 }[playback.Frame % 8] : playback.Frame;
+        PublishHolidayFrame(playback.Clip, visibleFrame, OriginalMirror());
+        AdvanceHoliday(dt);
+        owner.ApplyPendingCompanionAppearance();
+        if (hasNativeWindow)
         {
-            var local = LocalPointer();
-            if (action == "idle" && !owner.Settings.Wander && !owner.Settings.FollowCursor)
+            var local = LocalPointer(nativeWindow);
+            if (!holidayPlayback.Active && action == "idle" && !owner.Settings.Wander && !owner.Settings.FollowCursor)
             {
                 gaze.Advance(local.X - Width / 2, local.Y - Height / 2, dt);
-                sprite.Clip = assets.Gaze(owner.Skin); sprite.Frame = gaze.Frame(1);
+                PublishHolidayGaze(gaze.Frame(1));
             }
             else if (action == "idle" && sprite.Clip?.Frames == 16) Play("idle", false);
             var ignored = !dragging && (owner.Settings.ClickThrough || !sprite.Hits(local));
@@ -241,10 +278,9 @@ internal sealed class PetWindow : Window
         }
         sprite.InvalidateVisual();
     }
-    private Point LocalPointer()
+    private static Point LocalPointer(IntPtr handle)
     {
-        var handle = TryGetPlatformHandle() ?? throw new InvalidOperationException("窗口尚未连接到桌面。");
-        var point = MacServices.GetPointerRelativeToWindow(handle.Handle);
+        var point = MacServices.GetPointerRelativeToWindow(handle);
         return new Point(point.X, point.Y);
     }
     private double greetingProbeAt;
@@ -253,7 +289,7 @@ internal sealed class PetWindow : Window
         greetingSchedule = new GreetingSchedule(DateTime.UtcNow, owner.Settings.GreetingMinMinutes, owner.Settings.GreetingMaxMinutes, random.NextDouble);
         DismissGreeting();
     }
-    private bool GreetingAllowed => IsVisible && !fullscreenHidden && !Paused && !dragging && action == "idle" && owner.Settings.GreetingEnabled && !owner.Settings.QuietMode && !owner.HasOpenPanel && !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy && owner.Queue.Items.Count == 0;
+    private bool GreetingAllowed => sessionInteractive && IsVisible && !fullscreenHidden && !Paused && !dragging && !holidayPlayback.Active && !holidayTransition.Active && action == "idle" && owner.Settings.GreetingEnabled && !owner.Settings.QuietMode && !owner.HasOpenPanel && !owner.HolidayBusinessBusy;
     private void ProbeGreeting()
     {
         if (!GreetingAllowed) { DismissGreeting(); greetingSchedule.TryTake(DateTime.UtcNow, false); return; }
@@ -263,16 +299,28 @@ internal sealed class PetWindow : Window
     {
         var cancellation = new CancellationTokenSource(); greetingRequest = cancellation;
         var id = owner.Skin.Id; var name = owner.Skin.Name;
+        RefreshHoliday(true);
+        var holiday = owner.Holidays.CreateGreetingContext(random.NextDouble());
+        var revision = owner.Holidays.Revision; var date = HolidayLocalNow().Date;
+        var aiEnabled = owner.Settings.AiGreetingEnabled;
         try
         {
             var service = new GreetingService();
-            var text = await service.GenerateAsync(owner.Settings, id, name, new CompanionMemory(() => owner.Session).Capture(id), DateTime.Now, random.Next(GreetingPhrases.Count), recentGreetings.ToList(), cancellation.Token);
-            if (cancellation.IsCancellationRequested || owner.Skin.Id != id || !GreetingAllowed) return;
+            string text;
+            var phrase = random.Next(GreetingPhrases.Count);
+            IList<ChatMessage>? memory = null;
+            try { memory = new CompanionMemory(() => owner.Session).Capture(id); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException) { }
+            if (memory == null) text = GreetingService.Fallback(id, name, HolidayLocalNow(), phrase, recentGreetings.ToList(), holiday);
+            else text = await service.GenerateAsync(owner.Settings, id, name, memory, HolidayLocalNow(), phrase, recentGreetings.ToList(), cancellation.Token, holiday);
+            RefreshHoliday(true);
+            if (cancellation.IsCancellationRequested || owner.Skin.Id != id || !GreetingAllowed || HolidayLocalNow().Date != date || owner.Holidays.Revision != revision || owner.Settings.AiGreetingEnabled != aiEnabled || holiday != null && !owner.Holidays.IsGreetingCurrent(holiday)) return;
             recentGreetings.Add(text); if (recentGreetings.Count > 6) recentGreetings.RemoveAt(0);
             var bubble = new Window { Width = 320, Height = 115, CanResize = false, ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = name + "的问候", Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(Ui.Text(text), Ui.Button("聊两句", () => { DismissGreeting(); owner.ShowChat(true); })) } };
             greetingBubble = bubble;
             var area = WorkArea(); bubble.Position = new PixelPoint(Math.Clamp(Position.X - 50, area.X, Math.Max(area.X, area.Right - (int)(320 * RenderScaling))), Math.Max(area.Y, Position.Y - (int)(120 * RenderScaling)));
             bubble.Show();
+            if (holiday != null) owner.Holidays.MarkGreetingShown(holiday);
             var dismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) }; dismiss.Tick += (_, _) => { dismiss.Stop(); if (ReferenceEquals(greetingBubble, bubble)) DismissGreeting(); };
             bubble.Closed += (_, _) => dismiss.Stop(); dismiss.Start();
         }

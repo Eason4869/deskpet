@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "outfits": [
+    {
+      "character_id": "e-bao",
+      "outfit_id": "halloween-2026",
+      "holiday_id": "halloween",
+      "name": "绯夜小伯爵",
+      "version": "1.0.0",
+      "ready": true,
+      "greetings_ready": true,
+      "definition": "halloween/e-bao/outfit.json"
+    },
+    {
+      "character_id": "dafeiyu",
+      "outfit_id": "halloween-2026",
+      "holiday_id": "halloween",
+      "name": "南瓜海盗船长",
+      "version": "1.0.0",
+      "ready": true,
+      "greetings_ready": true,
+      "definition": "halloween/dafeiyu/outfit.json"
+    },
+    {
+      "character_id": "marfu",
+      "outfit_id": "halloween-2026",
+      "holiday_id": "halloween",
+      "name": "月夜南瓜女巫",
+      "version": "1.0.0",
+      "ready": true,
+      "greetings_ready": true,
+      "definition": "halloween/marfu/outfit.json"
+    },
+    {
+      "character_id": "xiaobei",
+      "outfit_id": "halloween-2026",
+      "holiday_id": "halloween",
+      "name": "幽灵机械术士",
+      "version": "1.0.0",
+      "ready": true,
+      "greetings_ready": true,
+      "definition": "halloween/xiaobei/outfit.json"
+    },
+    {
+      "character_id": "gugugaga",
+      "outfit_id": "halloween-2026",
+      "holiday_id": "halloween",
+      "name": "南瓜糖果怪盗",
+      "version": "1.0.0",
+      "ready": true,
+      "greetings_ready": true,
+      "definition": "halloween/gugugaga/outfit.json"
+    }
+  ]
+}

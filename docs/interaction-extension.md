@@ -1,6 +1,6 @@
 # 互动扩展接口
 
-0.5.6 已提供以下互动扩展。四位内置伙伴悬停时等概率选择 `jumping`、`waving`、`special`、`special2`；菜单和轮盘显示具体动作名称，内部 ID 保持稳定。`HoverInteraction` 负责“一次移入只触发一次”，动作候选由 `HoverActions.Choices` 生成。
+支持以下互动扩展。伙伴悬停时从可用动作中选择 `jumping`、`waving`、`special`、`special2`；缺少第二招牌素材时不提供 `special2`，节日服饰还可追加对应彩蛋。菜单和轮盘显示具体动作名称，内部 ID 保持稳定。`HoverInteraction` 负责“一次移入只触发一次”，动作候选由 `HoverActions.Choices` 生成。
 
 ## 节日彩蛋
 

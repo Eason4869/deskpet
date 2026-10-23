@@ -39,7 +39,7 @@ def package(output_directory=None, release_version=None):
    后续发布同 id 的新素材包即可更新，已有个人人格、音色及聊天记录优先保留。安装包内置同角色时，已安装资源包优先，不重复显示。
 6. 共 240 个有效姿态、31 张 PNG（含头像和预览）。身体转圈与鼠标视线是不同素材。
 7. 普通聊天人格为呆萌、好奇、贪吃、有点小脾气的小企鹅；不覆盖工作模式提示词。未附音轨，不预设付费音色。
-8. 本包是待评审的首版二创素材，不属于游戏官方资源。动作参考和精确生成提示见 provenance.json 及仓库 docs/plans/2026-10-20-gugugaga-motion-references.md。
+8. 本包是待评审的首版二创素材，不属于游戏官方资源。精确生成提示与素材校验值见包内 provenance.json；资源格式见仓库 docs/character-packs.md。
 '''
     output = Path(output_directory or ROOT / 'work/delivery') / f'gugugaga-HD-Skin-{version}.zip'
     output.parent.mkdir(parents=True, exist_ok=True)

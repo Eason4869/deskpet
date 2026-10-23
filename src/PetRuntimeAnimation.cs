@@ -31,6 +31,7 @@ namespace Dafeiyu
             if(LiveActive || DictationActive)state="waiting";
             if(state=="idle"&&sessions.Any(s=>s.NeedsExecutionReconciliation))state="waiting";
             if(state=="idle")state=HasQueuedMessages?"waiting":now<completionUntil?completionAction:"idle";
+            if(state!="idle" || HolidayBusinessBusy)CancelHolidayEffects();
             if(dragging || interaction.Active || dropMotion.Active || Paused || !IsPetVisible || now<manualActionUntil)return;
             // Wandering and explicit actions retain their normal duration outside a run.
             if(state=="idle" && !runtimeOwnsAnimation)return;

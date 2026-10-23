@@ -10,17 +10,13 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-**当前正式版本：[0.10.0](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)**。Windows 将聊天、工具、插件、设置和用量统计放进同一个主窗口；macOS 提供独立预览，界面与能力范围见 [平台与升级](#平台与升级)。本页应用截图以 Windows 为准。
+**当前正式版本：[0.10.3](https://github.com/Eason4869/deskpet/releases/tag/v0.10.3)**。提供 Windows 安装／便携包、macOS Apple Silicon／Intel 双架构预览、完整源码、五位官方伙伴的完整高清角色包和创作模板。macOS 的界面与能力范围见 [平台与升级](#平台与升级)，本页应用截图以 Windows 为准。
 
-**本版开发预览：0.10.2-dev.3**。新增共享生图队列、任务中心、点阵阶段动效、对话多图切换，以及图库收藏、筛选、多选、原图导出和受引用保护的回收站。发行状态与下载以 [对应 Release](https://github.com/Eason4869/deskpet/releases/tag/v0.10.2-dev.3) 为准；本地验收与平台限制见 [dev.3 验收记录](docs/image-workflow-dev3-validation.md)。
+0.10.3 汇总本轮开发更新：五角色万圣节新装、悬停彩蛋收藏与节日问候；共享生图队列、任务中心、对话多图及图库管理；技能仓库发现、局域网中转和会话草稿；统一深色设置与对话内操作确认。应用只内置 E包的完整高清素材，其他官方伙伴首次选择时按需下载，也可在设置中全量下载／更新。详见 [节日服饰](docs/holiday-outfits.md)、[图像生成](docs/image-generation.md)、[角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
 
-**历史源码快照：[0.10.2-dev.2](https://github.com/Eason4869/deskpet/tree/v0.10.2-dev.2)**。新增图像生成工作区、参考图、两种排列的图库及对话图片卡片；内置 OpenAI Images、Gemini、豆包、MiniMax、千问和 Grok 服务预设，并增加询问用户、检查本地图片和 Git 只读工具。保留技能仓库发现、会话草稿及局域网中转支持。本快照仅提供 dev 分支与源码标签，不发布 GitHub Release，也不通过应用更新通道分发。
+历史开发版本及源码快照保留在更新日志中；正式版与预览版通道均可更新到更高的 0.10.3 正式版。
 
-**历史开发预览版：[0.10.1-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.10.1-dev.2)**。统一设置页与深色界面，支持对话链接右键及侧边打开，将操作确认嵌入对话，并修复 Agent 错误重复入队；归档管理、快捷键编辑和用量矩阵同步完善。提供 Windows 安装／便携包、macOS 双架构预览及完整源码；在“关于”页选择预览版通道后可检查更新，正式版仍为 0.10.0。
-
-0.10.0 新增正式／预览更新通道、防降级和立即更新重启，精简 Windows 安装包与便携 ZIP，并改善 Live 声纹动效。五位内置伙伴及完整 ZIP 角色包继续可用，详见 [角色包说明](docs/character-packs.md) 与 [更新日志](CHANGELOG.md)。
-
-在“关于”页选择更新通道，切换只保存偏好，不会降级。点击“立即更新并重启”可跳过剩余 5 秒等待，仍会保护运行任务和未保存内容。制作新角色的模板改为独立下载，现有角色无需额外资源，具体规则见 [发布与升级说明](docs/release-naming.md)。
+在“关于”页选择更新通道，切换只保存偏好，不会降级。点击“立即更新并重启”可跳过剩余 5 秒等待，仍会保护运行任务和未保存内容。制作新角色的模板独立下载；0.10.3-dev.1 起，非默认伙伴使用独立的完整高清角色包，下载沿用应用更新的 GitHub 加速方式，具体规则见 [发布与升级说明](docs/release-naming.md)。
 
 ## 先认识你的伙伴
 
@@ -31,7 +27,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 界面支持浅色、暗色与跟随系统，可在 **设置 → 通用 → 视觉风格** 点击缩略卡切换；选择自动保存，无需重启。
 
-五位内置伙伴可以直接切换，也支持导入自制外观。首次启动默认 **E包**；每位伙伴有各自的普通聊天记录、人格和音色偏好。
+五位官方伙伴均可选择，也支持导入自制外观。首次启动默认 **E包**；其余伙伴首次选择时会下载并安装完整高清角色包，成功后切换。首次引导只提醒下载需求，完成引导后再实际选择。每位伙伴有各自的普通聊天记录、人格和音色偏好。
 
 | 伙伴 | 认识一下 |
 | --- | --- |
@@ -41,7 +37,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 | **小贝** | 黑白青色的科技少年，机灵又温柔 |
 | **咕嘎** | 黑发灰蓝眼的企鹅服女孩，呆萌好奇、贪吃，有一点小脾气 |
 
-支持[完整角色资源包](docs/character-packs.md)：直接导入 ZIP 更新头像、人格、双套动作和音色推荐，同 ID 只展示一项并保留个人记录。伙伴下拉框右侧可删除或恢复伙伴。
+支持[完整角色资源包](docs/character-packs.md)：直接导入 ZIP 更新头像、人格、双套动作和音色推荐，同 ID 只展示一项并保留个人记录。设置中的“全量下载／更新”可一次安装或更新全部官方完整包；已解锁服饰在当前伙伴的“衣柜”中选择，保留个人记录。
 
 1. **拖动、单击和抚摸**：换个位置，触发伙伴的互动。锁定位置后保持原位。
 2. **鼠标中键**：打开动作轮盘，选择小憩、投喂或招牌动作。轮盘与右键里的跑动会实际移动一小段，到屏幕边缘停止；锁定时原地演示。
@@ -78,7 +74,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 ### 工具就在对话旁边
 
-本分支新增 **图像 → 生成 / 图库 / 任务**：配置独立生图模型后，可上传参考图生成，按瀑布流或网格浏览缩略图，点击查看详情、预览与另存。Agent 支持直接在对话反馈图片，并增加询问用户、检查本地图片和 Git 只读工具。详见 [使用说明](docs/image-generation.md) 与 [验证范围](docs/image-generation-validation.md)。
+本分支新增 **图像 → 生成 / 图库 / 任务**：配置独立生图模型后，可上传参考图生成，按瀑布流或网格浏览缩略图，点击查看详情、预览与另存。Agent 支持直接在对话反馈图片，并增加询问用户、检查本地图片和 Git 只读工具。详见 [使用说明](docs/image-generation.md)。
 
 ### 0.10.2-dev.3 已实现
 
@@ -87,15 +83,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 - [x] **生图任务中心**：统一任务队列、并发限制、完成通知、失败原因、手动重试及重启状态恢复。
 - [x] **对话多图切换**：左侧大图、右侧可点击缩略图，窄窗口适配，保留同组图片和生成状态。
 
-使用与限制见 [dev.3 验收记录](docs/image-workflow-dev3-validation.md)；设计与验收范围见 [dev.3 设计](docs/plans/2026-10-22-image-workflow-dev3-design.md) 和 [实施计划](docs/plans/2026-10-22-image-workflow-dev3-plan.md)。
-
-#### 后续 TODO
-
-- [ ] **Agent 后台任务**：增加 `start_job / get_job / stop_job`，管理构建、测试、本地预览、状态和日志。
-- [ ] **模型管理与诊断**：同一服务管理多个模型，提供能力提示和脱敏错误报告，帮助定位协议与服务兼容问题。
-- [ ] **对话连续改图**：引用上一张图片继续编辑，保留原图、修改版本与关联关系。
-
-以上三项分后续版本推进，跟踪与验收目标见 [更新路线图](docs/plans/2026-10-22-deskpet-image-agent-roadmap.md)。
+使用方法、保存与恢复及平台限制见 [图像生成说明](docs/image-generation.md)。
 
 通过标签栏 **+** 或 **Ctrl + Shift + B** 新建浏览器、文件预览、PowerShell 终端、临时侧边聊天或文件变更页。支持聊天与工具分屏，**Ctrl + Shift + F** 切换完整标签视图，窗口变窄时自动适配。
 
@@ -105,24 +93,25 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 ## 下载安装
 
-Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.10.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.10.0)。
+Windows 支持 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请按系统和芯片架构选择附件，完整版本说明与校验文件见 [v0.10.3 发布页](https://github.com/Eason4869/deskpet/releases/tag/v0.10.3)。
 
 | 平台 | 下载 |
 | --- | --- |
-| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.10.0.exe](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Windows-Setup-0.10.0.exe) |
-| Windows 便携版 | [DeskPet-Windows-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Windows-0.10.0.zip) |
-| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-arm64-preview.zip) |
-| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-macOS-0.10.0-x86_64-preview.zip) |
+| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.10.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Windows-Setup-0.10.3.exe) |
+| Windows 便携版 | [DeskPet-Windows-0.10.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Windows-0.10.3.zip) |
+| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-macOS-0.10.3-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-macOS-0.10.3-arm64-preview.zip) |
+| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-macOS-0.10.3-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-macOS-0.10.3-x86_64-preview.zip) |
 
 <details>
 <summary>源码、外观包、创作模板与 SHA256</summary>
 
 | 附件 | 下载 |
 | --- | --- |
-| 完整源码 | [DeskPet-Source-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Source-0.10.0.zip) |
-| 伙伴外观 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Ebao-HD-Skin-0.10.0.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Dafeiyu-HD-Skin-0.10.0.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Marfu-HD-Skin-0.10.0.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/Xiaobei-HD-Skin-0.10.0.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/gugugaga-HD-Skin-0.10.0.zip) |
-| 外观创作模板 | [DeskPet-Skin-Template-v2-0.10.0.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/DeskPet-Skin-Template-v2-0.10.0.zip) |
-| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.10.0/SHA256.txt) |
+| 完整源码 | [DeskPet-Source-0.10.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Source-0.10.3.zip) |
+| 完整角色包 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companion-e-bao-0.10.3.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companion-dafeiyu-0.10.3.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companion-marfu-0.10.3.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companion-xiaobei-0.10.3.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companion-gugugaga-0.10.3.zip) |
+| 官方角色目录 | [DeskPet-Companions-0.10.3.json](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Companions-0.10.3.json) |
+| 外观创作模板 | [DeskPet-Skin-Template-v2-0.10.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/DeskPet-Skin-Template-v2-0.10.3.zip) |
+| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.10.3/SHA256.txt) |
 
 </details>
 
