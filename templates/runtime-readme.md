@@ -13,4 +13,4 @@
   [GitHub Release](https://github.com/Eason4869/deskpet/releases) 寻找 DeskPet-Skin-Template-v2 附件。
 - 外观导入见 [外观说明](docs/skin-format.md)，第三方声明见 [许可说明](docs/third-party-notices.md)。
 
-已有角色和动画已内置，不需要额外下载创作模板。
+E包的完整素材已内置，可离线使用。其他官方伙伴首次选择时按需下载，也可在设置中“全量下载／更新”；完整角色包包含默认服装和已发布节日服装。使用角色不需要额外下载创作模板。
