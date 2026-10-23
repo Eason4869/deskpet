@@ -39,6 +39,9 @@ namespace Dafeiyu.Tests
             try {
                 var settings=new PetSettings{SkinId="e-bao",FollowCursor=false,Wander=false,GreetingEnabled=false,AutoUpdate=false,SaveChatHistory=false};foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
                 pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                // This test owns an artificial holiday catalog. Keep its embedded
+                // role fixed; startup acquisition/hot reload has dedicated coverage.
+                pet.Skin.FixtureEmbedded=true;
                 var character=pet.Skin;var animation=pet.Animation;animation.Advance(.27);double phase=animation.Elapsed;
                 var specs=IllustratedPack.Actions.Concat(new[]{"special2","stumble"}).Select(action=>new OutfitClipDefinition(action+".png",8,8,4,true,480,520,0,0,action,"default")).ToArray();
                 var outfit=new OutfitDefinition("e-bao","halloween","halloween","夹具服饰","1",true,false,specs,null,new OutfitClipDefinition("egg.png",8,8,4,false,480,520,0,0,"egg","default"),null,"夹具动作");
