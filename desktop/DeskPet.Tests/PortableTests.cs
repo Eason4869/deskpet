@@ -13,6 +13,8 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length>0&&args[0]=="--agent-job-fixture")return AgentJobProcessTests.RunFixture(args);
+            if(args.Length==1&&args[0]=="--agent-jobs-resources-only")return AgentJobProcessTests.RunResourceChecks();
             if(args.Length==1 && args[0]=="--holiday-assets-only")return HolidayAssetTests.Main();
             if(args.Length==1 && args[0]=="--official-legacy-only")return OfficialCompanionLegacyTests.Main();
             if(args.Length==1 && args[0]=="--official-identity-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionIdentityTests.Main();}
@@ -33,6 +35,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--localization-only")return LocalizationTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-contract-only")return AgentJobContractTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-store-only")return AgentJobStoreTests.Main();
+            if(args.Length==1 && args[0]=="--agent-jobs-native-only")return AgentJobProcessTests.RunAll() | AgentJobSandboxTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-manager-only")return AgentJobManagerTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-log-only")return AgentJobLogTests.RunAll();
             string report=null;

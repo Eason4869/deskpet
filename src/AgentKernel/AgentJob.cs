@@ -159,6 +159,7 @@ namespace Dafeiyu
     }
     // Optional adapter timing: only sandbox setup is excluded from the launch budget.
     public interface IAgentJobPreparationMetrics {long SandboxPreparationMilliseconds {get;}}
+    public interface IAgentJobCompletionMetrics {long? EofDrainMilliseconds {get;}}
     public sealed class AgentJobPolicySnapshot
     {
         public string Root {get;private set;}

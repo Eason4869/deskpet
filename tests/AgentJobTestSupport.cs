@@ -73,14 +73,15 @@ namespace Dafeiyu.Tests
         }
         internal sealed class ControlledIO : AgentJobStorageIO,IDisposable
         {
-            internal bool FailCommit,HoldWrites;
+            internal bool FailCommit,HoldWrites,HoldMetadataCommit;
             internal string FailAppendFor;
             internal long AppendedBytes;
             internal int IndexCommits;
             internal readonly ManualResetEventSlim Entered=new ManualResetEventSlim(false),Release=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim IndexSaved=new ManualResetEventSlim(false);
+            internal readonly ManualResetEventSlim CommitEntered=new ManualResetEventSlim(false),CommitRelease=new ManualResetEventSlim(false);
             internal readonly Dictionary<string,long> ReportedLengths=new Dictionary<string,long>(StringComparer.Ordinal);
-            internal override void Commit(string temporary,string destination){if(FailCommit)throw new IOException("Controlled commit failure");base.Commit(temporary,destination);if(destination.EndsWith(".log-index",StringComparison.Ordinal)){Interlocked.Increment(ref IndexCommits);IndexSaved.Set();}}
+            internal override void Commit(string temporary,string destination){if(FailCommit)throw new IOException("Controlled commit failure");if(HoldMetadataCommit&&destination.EndsWith(".json",StringComparison.Ordinal)){CommitEntered.Set();CommitRelease.Wait();}base.Commit(temporary,destination);if(destination.EndsWith(".log-index",StringComparison.Ordinal)){Interlocked.Increment(ref IndexCommits);IndexSaved.Set();}}
             internal override void Append(Stream stream,byte[] bytes)
             {
                 if(HoldWrites){Entered.Set();Release.Wait();}
@@ -88,7 +89,7 @@ namespace Dafeiyu.Tests
                 base.Append(stream,bytes);Interlocked.Add(ref AppendedBytes,bytes.Length);
             }
             internal override long Length(string path){long value;return ReportedLengths.TryGetValue(Path.GetFileName(path),out value)?value:base.Length(path);}
-            public void Dispose(){Release.Set();Entered.Dispose();Release.Dispose();IndexSaved.Dispose();}
+            public void Dispose(){Release.Set();CommitRelease.Set();Entered.Dispose();Release.Dispose();IndexSaved.Dispose();CommitEntered.Dispose();CommitRelease.Dispose();}
         }
         internal sealed class TemporaryDirectory : IDisposable
         {

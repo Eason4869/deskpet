@@ -21,12 +21,14 @@ namespace Dafeiyu.Tests
         {
             internal int Resumes,Stops;
             internal bool ConfirmCleanup=true;
+            internal Action OnStop;
+            internal Action<AgentJobOutputChunk> Output;
             internal readonly TaskCompletionSource<AgentJobProcessExit> Done=new TaskCompletionSource<AgentJobProcessExit>(TaskCreationOptions.RunContinuationsAsynchronously);
             public AgentJobProcessExit Status {get;internal set;}
             public Task<AgentJobProcessExit> Completion {get{return Done.Task;}}
             internal Process(){Status=new AgentJobProcessExit(false,null,false,false,1);}
             public void Resume(){if(Stops>0)throw new Exception("Process resumed after cleanup");Interlocked.Increment(ref Resumes);}
-            public Task<AgentJobCleanupResult> StopAsync(CancellationToken token){Interlocked.Increment(ref Stops);if(ConfirmCleanup){Status=new AgentJobProcessExit(true,null,true,true,0);Done.TrySetResult(Status);}return Task.FromResult(new AgentJobCleanupResult(ConfirmCleanup,ConfirmCleanup?null:"held"));}
+            public Task<AgentJobCleanupResult> StopAsync(CancellationToken token){Interlocked.Increment(ref Stops);if(OnStop!=null)OnStop();if(ConfirmCleanup){Status=new AgentJobProcessExit(true,null,true,true,0);Done.TrySetResult(Status);}return Task.FromResult(new AgentJobCleanupResult(ConfirmCleanup,ConfirmCleanup?null:"held"));}
             public void Dispose(){}
         }
         sealed class Factory : IAgentJobProcessFactory
@@ -34,7 +36,7 @@ namespace Dafeiyu.Tests
             internal readonly List<Process> Processes=new List<Process>();
             internal Action<Process> BeforeReturn;
             public Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
-            {var process=new Process();lock(Processes)Processes.Add(process);if(BeforeReturn!=null)BeforeReturn(process);return Task.FromResult<IAgentJobProcess>(process);}
+            {var process=new Process{Output=output};lock(Processes)Processes.Add(process);if(BeforeReturn!=null)BeforeReturn(process);return Task.FromResult<IAgentJobProcess>(process);}
         }
         sealed class Lease : IDisposable {public void Dispose(){}}
         sealed class Fixture : IDisposable
@@ -212,9 +214,65 @@ namespace Dafeiyu.Tests
                 Check(mutations==1,"owner mutation runs exactly once after confirmed cleanup");
             }
         }
+        static void FaultedProcessCompletionIsObservedAndCleaned()
+        {
+            using(var f=new Fixture())using(var stopped=new ManualResetEventSlim(false))
+            {
+                var job=f.Start("completion-fault").Result;
+                Action handler=delegate{if(f.Invoke<IList<AgentJobSnapshot>>("ListForProject",job.Owner.ProjectId).Any(item=>item.Id==job.Id&&item.State==AgentJobState.Stopped))stopped.Set();};
+                f.ManagerType.GetEvent("Changed").AddEventHandler(f.Manager,handler);f.Factory.Processes[0].Done.TrySetException(new System.IO.IOException("job_stream_drain_timeout"));
+                Check(stopped.Wait(3000)&&f.Factory.Processes[0].Stops==1,"a failed native completion is observed and cleaned without waiting for the job timeout");
+                var snapshot=f.Invoke<IList<AgentJobSnapshot>>("ListForProject",job.Owner.ProjectId).Single();
+                Check(snapshot.LogWarning=="stream_drain_timeout","a stream EOF timeout is distinguished from a log storage failure");
+                f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,handler);
+            }
+        }
+        static void NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed()
+        {
+            using(var f=new Fixture())
+            {
+                var job=f.Start("natural-cleanup").Result;var process=f.Factory.Processes[0];process.ConfirmCleanup=false;
+                process.Status=new AgentJobProcessExit(true,0,true,true,0);process.Done.TrySetResult(process.Status);
+                var snapshot=f.Invoke<Task<AgentJobPage>>("GetAsync",job.Owner,job.Id,"",1024,CancellationToken.None).Result.Snapshot;
+                Check(snapshot.State==AgentJobState.CleanupFailed&&!snapshot.CleanupConfirmed,"natural tree completion does not release the slot before resource cleanup is confirmed");
+                process.ConfirmCleanup=true;
+            }
+        }
+        static void StalledMetadataCannotDelayProcessCleanup()
+        {
+            using(var f=new Fixture())using(var stopped=new ManualResetEventSlim(false))
+            {
+                f.Factory.BeforeReturn=process=>process.OnStop=()=>stopped.Set();var job=f.Start("stalled-metadata").Result;f.IO.HoldMetadataCommit=true;
+                var operation=Task.Run(()=>f.Invoke<Task<AgentJobSnapshot>>("StopAsync",job.Owner,job.Id,AgentJobStopReason.User,CancellationToken.None).GetAwaiter().GetResult());
+                try
+                {
+                    Check(f.IO.CommitEntered.Wait(3000),"stop fixture reaches an actually stalled metadata commit");
+                    Check(stopped.Wait(3000),"stalled metadata cannot delay cleanup of the owned process");
+                    Check(Task.WhenAny(operation,Task.Delay(6000)).GetAwaiter().GetResult()==operation,"stop reports within its deadline even while metadata remains stalled");
+                }
+                finally{f.IO.HoldMetadataCommit=false;f.IO.CommitRelease.Set();try{operation.GetAwaiter().GetResult();}catch(System.IO.IOException){}}
+            }
+        }
+        static void StalledMetadataDoesNotBlockAnotherJobLog()
+        {
+            using(var f=new Fixture())
+            {
+                var first=f.Start("stalled-first").Result;var healthy=f.Start("healthy-second").Result;var bytes=System.Text.Encoding.UTF8.GetBytes("healthy");
+                f.Factory.Processes[1].Output(new AgentJobOutputChunk("stdout",bytes,bytes.Length,f.Clock.UtcNow));f.Store.OpenLog(healthy.Id).FlushAsync(CancellationToken.None).GetAwaiter().GetResult();
+                f.IO.HoldMetadataCommit=true;var stop=Task.Run(()=>f.Invoke<Task<AgentJobSnapshot>>("StopAsync",first.Owner,first.Id,AgentJobStopReason.User,CancellationToken.None).GetAwaiter().GetResult());Task<AgentJobPage> read=null;
+                try
+                {
+                    Check(f.IO.CommitEntered.Wait(3000),"cross-job fixture stalls a real metadata write");
+                    read=Task.Run(()=>f.Invoke<Task<AgentJobPage>>("GetAsync",healthy.Owner,healthy.Id,"",1024,CancellationToken.None).GetAwaiter().GetResult());
+                    Check(Task.WhenAny(read,Task.Delay(1000)).GetAwaiter().GetResult()==read,"another job's log remains readable while metadata storage is stalled");
+                    Check(read.Result.Snapshot.State==AgentJobState.Running&&read.Result.Records.Single().Text=="healthy","unaffected job returns its current snapshot and committed output");
+                }
+                finally{f.IO.HoldMetadataCommit=false;f.IO.CommitRelease.Set();try{stop.GetAwaiter().GetResult();}catch(System.IO.IOException){}if(read!=null)read.GetAwaiter().GetResult();}
+            }
+        }
         public static int Main()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobManagerTests: "+checks+" passed");return failures==0?0:1;
         }
     }

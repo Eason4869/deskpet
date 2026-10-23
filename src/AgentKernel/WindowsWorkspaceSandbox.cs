@@ -29,8 +29,12 @@ namespace Dafeiyu
             readonly List<Tuple<string,FileSystemAccessRule>> granted=new List<Tuple<string,FileSystemAccessRule>>();SecurityIdentifier identity;IntPtr sid;
             internal string TemporaryDirectory {get;private set;}
             readonly CancellationToken cancellation;
+            readonly Action<DirectoryInfo,FileSystemAccessRule> revoke;
             internal WindowsSandboxLease(string root,string[] readDirectories,CancellationToken cancel=default(CancellationToken))
+                :this(root,readDirectories,cancel,null){}
+            internal WindowsSandboxLease(string root,string[] readDirectories,CancellationToken cancel,Action<DirectoryInfo,FileSystemAccessRule> revoke)
             {
+                this.revoke=revoke??RevokeGrant;
                 cancellation=cancel;
                 if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("Windows workspace sandbox unavailable.");
                 root=Path.GetFullPath(root);if(!Directory.Exists(root)||root.TrimEnd('\\')==Path.GetPathRoot(root).TrimEnd('\\'))throw new ArgumentException(TextResources.Get("windowsWorkspaceSandbox.windowsSandboxLease.text"));
@@ -127,12 +131,16 @@ namespace Dafeiyu
             public void Dispose()
             {
                 Exception failure=null;
-                foreach(var grant in granted.AsReadOnly()){try{using(new AclMutationLock()){var dir=new DirectoryInfo(grant.Item1);if(!dir.Exists)continue;var acl=dir.GetAccessControl();acl.RemoveAccessRuleSpecific(grant.Item2);dir.SetAccessControl(acl);}}catch(Exception e){failure=e;}}
-                granted.Clear();
-                if(sid!=IntPtr.Zero){FreeSid(sid);sid=IntPtr.Zero;int hr=DeleteAppContainerProfile(name);if(hr<0)failure=new Win32Exception(hr);}
-                if(TemporaryDirectory!=null){try{Directory.Delete(TemporaryDirectory,true);}catch(IOException){}catch(UnauthorizedAccessException){}}
+                foreach(var grant in new List<Tuple<string,FileSystemAccessRule>>(granted))
+                {try{var dir=new DirectoryInfo(grant.Item1);if(dir.Exists)revoke(dir,grant.Item2);granted.Remove(grant);}catch(Exception e){failure=e;}}
+                // Failed withdrawals retain their exact undo records and profile identity.
+                if(granted.Count==0&&sid!=IntPtr.Zero){int hr=DeleteAppContainerProfile(name);if(hr<0)failure=new Win32Exception(hr);else{FreeSid(sid);sid=IntPtr.Zero;}}
+                if(granted.Count==0&&sid==IntPtr.Zero&&TemporaryDirectory!=null)
+                {try{if(Directory.Exists(TemporaryDirectory))Directory.Delete(TemporaryDirectory,true);}catch(IOException e){failure=e;}catch(UnauthorizedAccessException e){failure=e;}}
                 if(failure!=null)throw new IOException(TextResources.Get("windowsWorkspaceSandbox.dispose.text"),failure);
             }
+            static void RevokeGrant(DirectoryInfo directory,FileSystemAccessRule rule)
+            {using(new AclMutationLock()){var acl=directory.GetAccessControl();acl.RemoveAccessRuleSpecific(rule);directory.SetAccessControl(acl);}}
             [StructLayout(LayoutKind.Sequential)]struct SecurityCapabilities{internal IntPtr AppContainerSid,Capabilities;internal uint CapabilityCount,Reserved;}
             [StructLayout(LayoutKind.Sequential)]struct StartupInfoEx{internal StartupInfo Startup;internal IntPtr Attributes;}
             [DllImport("userenv.dll",CharSet=CharSet.Unicode)]static extern int CreateAppContainerProfile(string name,string display,string description,IntPtr capabilities,uint count,out IntPtr sid);
