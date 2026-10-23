@@ -24,7 +24,7 @@ namespace Dafeiyu
             foreach(var preset in catalog)
             {
                 string brand=kind=="image"?imagePresets[preset].Id:ProviderIdentity.Brand(preset.Url);if(!seen.Add(brand))continue;
-                var config=new ConnectionSettings{BaseUrl=preset.Url};string name=kind=="image"?preset.Name:ProviderIdentity.Name(config);
+                var config=new ConnectionSettings{BaseUrl=preset.Url};string name=kind=="image"?preset.Name:ProviderIdentity.DisplayName(ProviderIdentity.Name(config),ProviderIdentity.Brand(config.BaseUrl));
                 var tile=new StackPanel{HorizontalAlignment=HorizontalAlignment.Center};tile.Children.Add(ProviderLogo.Create(preset.Url,name,29,kind=="image"&&brand=="minimax"?"minimax":null));
                 var label=Ui.Text(name,12);label.TextWrapping=TextWrapping.NoWrap;label.TextTrimming=TextTrimming.CharacterEllipsis;label.MaxWidth=116;label.Margin=new Thickness(0,7,0,0);label.HorizontalAlignment=HorizontalAlignment.Center;label.ToolTip=name;tile.Children.Add(label);
                 var choice=Ui.Button("");choice.Name="ChooseProvider_"+(brand.Length==0?"custom":brand);choice.Content=tile;choice.Width=132;choice.Height=76;choice.Margin=new Thickness(4);choice.ToolTip=preset.Url.Length==0?TextResources.Get("providerPickerWindow.providerPickerWindow.lengthPresetUrl"):preset.Url;

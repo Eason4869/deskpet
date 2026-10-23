@@ -36,7 +36,7 @@ namespace Dafeiyu
             var panel=new StackPanel();Children.Add(Ui.Scroll(panel));
             var hero=new DockPanel{Margin=new Thickness(0,0,0,18)};
             var logo=new Image{Source=Ui.ApplicationIcon(),Width=62,Height=62,Stretch=Stretch.Uniform,Margin=new Thickness(0,0,16,0)};RenderOptions.SetBitmapScalingMode(logo,BitmapScalingMode.HighQuality);DockPanel.SetDock(logo,Dock.Left);hero.Children.Add(logo);
-            var brand=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var title=Ui.Text("桌面伙伴",27);title.FontWeight=FontWeights.SemiBold;brand.Children.Add(title);
+            var brand=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var title=Ui.Text(TextResources.Get("app.displayName"),27);title.FontWeight=FontWeights.SemiBold;brand.Children.Add(title);
             brand.Children.Add(Ui.Text(TextResources.Format("aboutPanel.aboutPanel.template",ReleaseInfo.DisplayVersion,ReleaseInfo.Author),12,Ui.Muted));hero.Children.Add(brand);panel.Children.Add(hero);
             var introduction=Ui.Text(TextResources.Get("aboutPanel.aboutPanel.text"),13,Ui.Muted);introduction.Margin=new Thickness(0,0,0,20);panel.Children.Add(introduction);
             var update=new StackPanel();update.Children.Add(Heading(TextResources.Get("aboutPanel.aboutPanel.heading"),17));

@@ -26,7 +26,7 @@ namespace Dafeiyu
         }
         readonly PetSettings snapshot;
         readonly Window host;
-        readonly string companionName;
+        readonly string companionName,companionDisplayName;
         readonly ImageSource avatar;
         readonly StackPanel messages=new StackPanel{Margin=new Thickness(14,12,14,10)};
         readonly Dictionary<string,MessageRow> rendered=new Dictionary<string,MessageRow>();
@@ -42,6 +42,7 @@ namespace Dafeiyu
         {
             if(pet==null)throw new ArgumentNullException("pet");if(host==null)throw new ArgumentNullException("host");if(settings==null)throw new ArgumentNullException("settings");
             this.host=host;companionName=pet.Skin==null?TextResources.Get("sideChatPane.sideChatPane.petSkinName"):pet.Skin.Name;
+            companionDisplayName=pet.Skin==null?companionName:pet.Skin.DisplayName;
             snapshot=settings.Copy();snapshot.AgentEnabled=false;snapshot.SaveChatHistory=false;snapshot.ReadReplies=false;snapshot.ShowPredictedMessages=false;
             string project=String.IsNullOrWhiteSpace(projectName)?TextResources.Get("sideChatPane.sideChatPane.projectStringIsNullOrWhiteSpace"):projectName;
             snapshot.SystemPrompt=(settings.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt)+"\n\n当前是项目内独立的临时聊天。项目名称："+project+"\n工作目录："+(snapshot.AgentWorkspace??"")+"\n以上仅为项目背景，并不代表已读取项目。没有文件、目录、终端或其他 Agent 工具，不会自动读取文件，也无法看到主会话及其他临时聊天的历史。只根据本聊天中用户提供的内容交流，不要声称已经查看或修改电脑文件。";
@@ -81,7 +82,7 @@ namespace Dafeiyu
                 bool user=message.Role=="user";var line=new Grid{Margin=new Thickness(0,0,0,15)};line.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(30)});line.ColumnDefinitions.Add(new ColumnDefinition());
                 FrameworkElement icon=user?(FrameworkElement)Ui.Text(TextResources.Get("sideChatPane.messageAdded.text"),11,Ui.Blue):avatar==null?(FrameworkElement)Ui.Text(TextResources.Get("sideChatPane.messageAdded.text.alternativeA"),11,AgentUi.Muted):new Image{Source=avatar,Width=22,Height=22,Stretch=Stretch.Uniform};
                 line.Children.Add(new Border{Child=icon,Width=24,Height=24,CornerRadius=new CornerRadius(7),Background=Ui.Brush(user?"#EAF2FF":"#F0F1F4"),VerticalAlignment=VerticalAlignment.Top,Padding=new Thickness(2)});
-                var body=new StackPanel();var label=Ui.Text(user?TextResources.Get("sideChatPane.messageAdded.text"):companionName,11,AgentUi.Muted);label.Margin=new Thickness(0,0,0,4);body.Children.Add(label);
+                var body=new StackPanel();var label=Ui.Text(user?TextResources.Get("sideChatPane.messageAdded.text"):companionDisplayName,11,AgentUi.Muted);label.Margin=new Thickness(0,0,0,4);body.Children.Add(label);
                 row=new MessageRow{Body=new MarkdownView{Name="SideChatMessage",FontSize=13},State=Ui.Text("",10,AgentUi.Muted)};body.Children.Add(new Border{Child=row.Body,Background=user?Ui.Brush("#EDF4FF"):Brushes.Transparent,CornerRadius=new CornerRadius(10),Padding=user?new Thickness(10,7,10,7):new Thickness(0)});body.Children.Add(row.State);Grid.SetColumn(body,1);line.Children.Add(body);messages.Children.Add(line);rendered.Add(message.Id,row);
             }
             row.Body.Text=message.Content;row.State.Text=message.Status=="pending"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus"):message.Status=="cancelled"||message.Status=="interrupted"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus.alternativeA"):message.Status=="error"?TextResources.Get("sideChatPane.messageAdded.statusMessageStatus.alternativeB"):"";row.State.Visibility=String.IsNullOrEmpty(row.State.Text)?Visibility.Collapsed:Visibility.Visible;

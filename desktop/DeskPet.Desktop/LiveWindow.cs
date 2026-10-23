@@ -56,7 +56,7 @@ internal sealed class LiveWindow : Window
     private void RefreshPartner()
     {
         if (!ReferenceEquals(avatar.Skin, owner.Skin)) avatar.Skin = owner.Skin;
-        partnerName.Text = owner.Skin.Name;
+        partnerName.Text = owner.Skin.DisplayName;
     }
     private void Transcript(string role, string text) => Dispatcher.UIThread.Post(() => { if (role == "user") user.Text = text; else reply.Text = text; });
 }

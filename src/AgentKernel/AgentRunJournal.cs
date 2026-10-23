@@ -43,7 +43,7 @@ namespace Dafeiyu
             Save(path,record);bool started=false;
             try{
                 string result=await execute(delegate{record.State="started";Save(path,record);started=true;}).ConfigureAwait(false);
-                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000&&!AgentJobTools.IsJobTool(invocation.ToolName))record.Result=TextResources.Format("agentRunJournal.executeAsync.recordResultSubstring",record.Result.Substring(0,24000));record.State=(AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.IsFailure(record.Result):record.Result.StartsWith("错误："))?"failed":"completed";
+                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000&&!AgentJobTools.IsJobTool(invocation.ToolName))record.Result=TextResources.Format("agentRunJournal.executeAsync.recordResultSubstring",record.Result.Substring(0,24000));record.State=(AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.IsFailure(record.Result):TextResources.IsToolError(record.Result))?"failed":"completed";
                 try{Save(path,record);}catch(Exception){ReconciliationRequired=started;throw;}return result;
             }catch(OperationCanceledException){if(!started){record.State="cancelled";record.Result=TextResources.Get("agentRunJournal.executeAsync.recordResult");Save(path,record);}else ReconciliationRequired=true;throw;}
             catch(Exception){if(started)ReconciliationRequired=true;throw;}

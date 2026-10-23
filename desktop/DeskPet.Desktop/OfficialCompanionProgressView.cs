@@ -37,7 +37,7 @@ internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<Off
         if(isCurrent?.Invoke()==false){Dispose();return;}
         if(lazy&&!shown){if(!progress.RequiresUpdateNotice)return;Show();}
         if(passive)return;
-        var name = OfficialCompanionProfiles.Find(progress.CharacterId)?.Name ?? TextResources.Get("officialCompanionProgressView.report.nameOfficialCompanionProfilesFind");
+        var name = OfficialCompanionProfiles.Find(progress.CharacterId)?.DisplayName ?? TextResources.Get("officialCompanionProgressView.report.nameOfficialCompanionProfilesFind");
         var stage = progress.Stage switch { "metadata" => TextResources.Get("officialCompanionProgressView.report.progressStageSwitch"), "download" => TextResources.Get("officialCompanionProgressView.report.progressStageSwitch.alternativeA"), "validate" => TextResources.Get("officialCompanionProgressView.report.progressStageSwitch.alternativeB"), "install" => TextResources.Get("officialCompanionProgressView.report.progressStageSwitch.alternativeC"), _ => TextResources.Get("officialCompanionProgressView.report.progressStageSwitch.alternativeD") };
         var route = progress.RouteKind==OfficialCompanionRoute.Mirror ? TextResources.Get("officialCompanionProgressView.report.progressRouteContains") : progress.RouteKind==OfficialCompanionRoute.Proxy ? TextResources.Get("officialCompanionProgressView.report.progressRouteContains.alternativeA") : progress.RouteKind==OfficialCompanionRoute.Direct ? TextResources.Get("officialCompanionProgressView.report.progressRouteContains.alternativeB") : "";
         label.Text = name + " · " + stage + route + (progress.TotalBytes > 0 ? $"\n{progress.CompletedBytes / 1048576d:0.0} / {progress.TotalBytes / 1048576d:0.0} MB" : "");
@@ -49,7 +49,7 @@ internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<Off
         if (passive || disposed) return false;
         if(!shown)Show();
         var failed = error is AggregateException aggregate ? aggregate.Flatten().InnerExceptions : new[] { error }.AsEnumerable();
-        var names = OfficialCompanionProfiles.All.Where(p => failed.Any(e => e.Message.StartsWith(p.Id + "：", StringComparison.Ordinal) || e.Message.StartsWith(p.Id + ":", StringComparison.Ordinal))).Select(p => p.Name).ToArray();
+        var names = OfficialCompanionProfiles.All.Where(p => failed.Any(e => e.Message.StartsWith(p.Id + "：", StringComparison.Ordinal) || e.Message.StartsWith(p.Id + ":", StringComparison.Ordinal))).Select(p => p.DisplayName).ToArray();
         label.Text = (names.Length > 0 ? TextResources.Format("officialCompanionProgressView.retryAsync.label",string.Join("、", names)) : TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeA")) + TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeB");
         bar.IsIndeterminate = false; retry.IsVisible = true;
         retryAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

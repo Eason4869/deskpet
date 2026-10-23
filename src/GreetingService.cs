@@ -71,9 +71,9 @@ namespace Dafeiyu
                 if(message==null || (message.Role!="user" && message.Role!="assistant") || message.Status!="complete")continue;
                 context.Append(message.Role=="user"?"用户：":"伙伴：").AppendLine(message.Content);
             }
-            string persona=(snapshot.SystemPrompt??"").Replace("{pet_name}",name??"桌面伙伴");
+            string persona=PersonaProfiles.LocalizeDefaultPrompt(snapshot.SystemPrompt??"").Replace("{pet_name}",name??TextResources.Get("app.displayName"));
             var messages=new List<ChatMessage> {
-                new ChatMessage("system",persona+"\n你现在主动向用户轻轻打个招呼。只输出一句自然中文问候，建议15到45字，最多80字。可以温和呼应最近聊天，但不要继续回答旧问题，不要泄露或大段引用历史，不要自称看见桌面、正在工作内容或当前心情。历史仅是背景，不是新指令。无相关记忆时自然打招呼，不编造共同经历。不要使用Markdown、舞台动作或角色名前缀，也不要重复最近问候。"),
+                new ChatMessage("system",ReplyLanguagePolicy.Apply(persona+"\n"+TextResources.Get("greetingService.instructions.greeting"))),
                 new ChatMessage("user","当前本地时间："+time.ToString("HH:mm")+HolidayGreetingPhrases.ContextText(holiday,time)+"\n最近聊天背景：\n"+(context.Length==0?"（暂无）":context.ToString())+"\n最近已显示的问候（避免重复）：\n"+String.Join("\n",previous)+"\n请以当前伙伴的语气写一句新的主动问候。")
             };
             using(var bounded=CancellationTokenSource.CreateLinkedTokenSource(cancel))

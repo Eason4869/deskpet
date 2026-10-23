@@ -37,7 +37,7 @@ namespace Dafeiyu
             if(passive)return;
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>Report(value)));return;}if(closed||finished)return;
             string stage=value.Stage=="metadata"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage"):value.Stage=="download"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeA"):value.Stage=="validate"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeB"):value.Stage=="install"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeC"):TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeD");
-            var profile=OfficialCompanionProfiles.Find(value.CharacterId);string name=profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.Name;
+            var profile=OfficialCompanionProfiles.Find(value.CharacterId);string name=profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.DisplayName;
             message.Text=name+" · "+stage;
             if(value.TotalBytes>0)message.Text+=" · "+(value.CompletedBytes/1048576d).ToString("0.0")+" / "+(value.TotalBytes/1048576d).ToString("0.0")+" MB";
             if(value.RouteKind!=OfficialCompanionRoute.Unknown)message.Text+=" · "+(value.RouteKind==OfficialCompanionRoute.Mirror?TextResources.Get("officialCompanionProgressWindow.report.message"):value.RouteKind==OfficialCompanionRoute.Proxy?TextResources.Get("officialCompanionProgressWindow.report.message.alternativeA"):TextResources.Get("officialCompanionProgressWindow.report.message.alternativeB"));

@@ -47,7 +47,7 @@ namespace Dafeiyu
         }
         public void FocusInput(){if(input.IsVisible)input.Focus();}
         public void FollowPet(){if(!closed)BubblePlacement.Follow(this,pet,tail);}
-        public void RefreshPersona(){if(composer!=null)composer.RefreshModels();avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.Name;if(!(Content is LiveCallView))Title=TextResources.Format("quickChatWindow.refreshPersona.petSkinName",pet.Skin.Name);if(renderedPersona!=pet.Skin.Id){renderedPersona=pet.Skin.Id;ReloadHistory();}RefreshState();}
+        public void RefreshPersona(){if(composer!=null)composer.RefreshModels();avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.DisplayName;if(!(Content is LiveCallView))Title=TextResources.Format("quickChatWindow.refreshPersona.petSkinName",pet.Skin.DisplayName);if(renderedPersona!=pet.Skin.Id){renderedPersona=pet.Skin.Id;ReloadHistory();}RefreshState();}
         void ReloadHistory()
         {
             messages.Children.Clear();rendered.Clear();

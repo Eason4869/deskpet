@@ -34,7 +34,7 @@ namespace Dafeiyu
         }
         public void ShowGreeting(string text)
         {
-            name.Text=TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.Name);message.Text=text;Topmost=pet.Settings.Topmost;
+            name.Text=TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName);message.Text=text;Topmost=pet.Settings.Topmost;
             if(!IsVisible)Show();FollowPet();lifetime.Stop();lifetime.Start();
         }
         public void FollowPet(){BubblePlacement.Follow(this,pet,tail);}

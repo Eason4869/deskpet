@@ -144,7 +144,7 @@ internal sealed partial class DesktopController
             if (next.OfficialCharacterId != null && !CanPublishOfficial(next)) return;
             Pet.CancelHolidayForSkinChange();
             PersonaProfiles.SaveVoices(Settings); Skin = next;
-            PersonaProfiles.Activate(Settings, next.Id, next.Prompt, next.Voices); Session.SelectPersona(next.Id);
+            PersonaProfiles.Activate(Settings, next.Id, next.Prompt, next.Voices, next.OfficialCharacterId ?? next.BuiltinCharacterId); Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey = next.PickerKey; Settings.PendingOfficialCompanionId = "";
             ReplaceCompanionEntry(next); if (nextCatalog != null) MergeCompanionCatalog(next.OfficialCharacterId!, nextCatalog);
             Pet.SelectSkin(); Save(); if (tray != null) tray.ToolTipText = "DeskPet · " + next.Name;

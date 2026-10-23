@@ -49,6 +49,8 @@ namespace Dafeiyu
         internal SkinDefinition(string id,string folder,SkinManifest manifest) : this(id,SkinCatalog.CleanName(manifest.Name),folder,manifest.Preview,false,manifest.SystemPrompt,manifest.Description) { Manifest=manifest; }
         public string Id { get; private set; }
         public string Name { get; private set; }
+        public string DisplayName { get { return OfficialCompanionProfiles.GetDisplayName(BuiltinCharacterId,Name); } }
+        public string DisplayDescription { get { var profile=OfficialCompanionProfiles.Find(BuiltinCharacterId);return profile==null?Description:profile.Description; } }
         public string Source { get; private set; }
         public string Preview { get; private set; }
         public bool Embedded { get; private set; }
@@ -73,7 +75,7 @@ namespace Dafeiyu
             SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? (id=="dafeiyu" ? PersonaProfiles.Dafeiyu : id=="e-bao" ? PersonaProfiles.Ebao : PersonaProfiles.Generic(name)) : prompt.Trim();
             Description=description ?? (id=="e-bao" ? TextResources.Get("skinCatalog.skinDefinition.descriptionDescription") : id=="dafeiyu" ? TextResources.Get("skinCatalog.skinDefinition.descriptionDescription.alternativeA") : TextResources.Get("skinCatalog.skinDefinition.descriptionDescription.alternativeB"));
         }
-        public override string ToString() { return Name; }
+        public override string ToString() { return DisplayName; }
         public SpriteAtlas Load()
         {
             if(IsPlaceholder)throw new InvalidOperationException(TextResources.Get("skinCatalog.load.text"));
@@ -375,7 +377,7 @@ namespace Dafeiyu
                 button.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){e.Handled=true;var skin=((FrameworkElement)sender).DataContext as SkinDefinition;if(skin!=null)remove(skin);}));row.AppendChild(button);
             }
             var image=new FrameworkElementFactory(typeof(System.Windows.Controls.Image));image.SetValue(FrameworkElement.WidthProperty,28.0);image.SetValue(FrameworkElement.HeightProperty,28.0);image.SetValue(UIElement.ClipProperty,new System.Windows.Media.RectangleGeometry(new Rect(0,0,28,28),5.6,5.6));image.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,9,0));image.SetBinding(System.Windows.Controls.Image.SourceProperty,new System.Windows.Data.Binding{Converter=new AvatarConverter()});row.AppendChild(image);
-            var name=new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));name.SetBinding(System.Windows.Controls.TextBlock.TextProperty,new System.Windows.Data.Binding("Name"));name.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);row.AppendChild(name);return new DataTemplate{VisualTree=row};
+            var name=new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));name.SetBinding(System.Windows.Controls.TextBlock.TextProperty,new System.Windows.Data.Binding("DisplayName"));name.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);row.AppendChild(name);return new DataTemplate{VisualTree=row};
         }
         sealed class AvatarConverter:System.Windows.Data.IValueConverter
         {

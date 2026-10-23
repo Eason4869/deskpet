@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -66,7 +66,7 @@ namespace Dafeiyu.Tests
                 Check(settings.SystemPrompt==exact && !settings.SystemPrompt.Contains("鲸鱼"),"Ebao uses the exact user supplied persona");
                 PersonaProfiles.Save(settings,catalog.Find("e-bao"),"自定义E包");PersonaProfiles.Activate(settings,catalog.Find("dafeiyu"));PersonaProfiles.Activate(settings,catalog.Find("e-bao"));Check(settings.SystemPrompt=="自定义E包","per-pet override survives a round trip");
                 PersonaProfiles.Reset(settings,catalog.Find("e-bao"));Check(settings.SystemPrompt==exact,"reset restores only the current pet preset");
-                var legacy=new PetSettings {SkinId="e-bao",SystemPrompt="你是大肥鱼，蓝白鲸鱼娘。"};PersonaProfiles.Activate(legacy,catalog.Find("e-bao"));Check(legacy.SystemPrompt==exact,"old global whale persona does not become Ebao persona");PersonaProfiles.Activate(legacy,catalog.Find("dafeiyu"));Check(legacy.SystemPrompt=="你是大肥鱼，蓝白鲸鱼娘。","old custom whale persona is preserved for dafeiyu");
+                var legacy=new PetSettings {SkinId="e-bao",SystemPrompt="你是大肥鱼，蓝白鲸鱼娘。"};PersonaProfiles.Activate(legacy,catalog.Find("e-bao"));Check(legacy.SystemPrompt=="你是大肥鱼，蓝白鲸鱼娘。"&&legacy.PersonaOverrides.ContainsKey("e-bao"),"legacy custom persona remains with its saved owner without inferring ownership from text");PersonaProfiles.Activate(legacy,catalog.Find("dafeiyu"));Check(legacy.SystemPrompt==PersonaProfiles.Dafeiyu&&!legacy.PersonaOverrides.ContainsKey("dafeiyu"),"switching companions keeps the old custom persona on the original companion");
                 string atlas=Path.Combine(root,"spritesheet.png");using(var stream=typeof(SkinCatalog).Assembly.GetManifestResourceStream("Dafeiyu.Atlas"))using(var file=File.Create(atlas))stream.CopyTo(file);
                 string manifest=Path.Combine(root,"pet.json");File.WriteAllText(manifest,"{\"version\":1,\"name\":\"小墨\",\"atlas\":\"spritesheet.png\",\"system_prompt\":\"你是小墨，沉稳的画师。\",\"description\":\"喜欢画画\"}");var imported=catalog.Import(manifest);PersonaProfiles.Activate(settings,imported);Check(settings.SystemPrompt=="你是小墨，沉稳的画师。" && imported.Description=="喜欢画画","import retains its own preset and description");
                 var reloaded=new SkinCatalog(root).Find(imported.Id);Check(reloaded.SystemPrompt==imported.SystemPrompt,"imported persona survives catalog reload");

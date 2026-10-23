@@ -100,7 +100,7 @@ namespace Dafeiyu
             var advice=kind=="live"?liveAdvice:speechAdvice;
             if(advice!=null) {
                 string recommended=PersonaProfiles.RecommendedVoice(pet.Skin.Id,kind,settings,pet.Settings.ActiveVoiceRecommendations);
-                advice.Text=pet.Skin.Name+" · "+(recommended.Length==0?TextResources.Get("connectionSettingsPanel.fillVoices.petSkinName.alternativeA"):TextResources.Format("connectionSettingsPanel.fillVoices.petSkinName",recommended))+
+                advice.Text=pet.Skin.DisplayName+" · "+(recommended.Length==0?TextResources.Get("connectionSettingsPanel.fillVoices.petSkinName.alternativeA"):TextResources.Format("connectionSettingsPanel.fillVoices.petSkinName",recommended))+
                     (pet.Settings.ActiveVoiceRecommendations==null?"":"\n"+pet.Settings.ActiveVoiceRecommendations.Description);
             }
         }

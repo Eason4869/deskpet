@@ -5,9 +5,10 @@ namespace Dafeiyu
 {
     internal sealed class ShortcutDefinition
     {
-        internal string Id,Group,Title,Default;internal bool Global;
+        internal string Id,Group,Default;internal bool Global;readonly Func<string> title;
+        internal string Title {get{return title();}}
         internal string GroupTitle {get{return ShortcutCatalog.GroupTitle(Group);}}
-        internal ShortcutDefinition(string id,string group,string title,string value,bool global=false){Id=id;Group=group;Title=title;Default=value;Global=global;}
+        internal ShortcutDefinition(string id,string group,Func<string> title,string value,bool global=false){Id=id;Group=group;this.title=title;Default=value;Global=global;}
     }
     internal static partial class ShortcutCatalog
     {
@@ -24,39 +25,39 @@ namespace Dafeiyu
             return group;
         }
         internal static readonly ShortcutDefinition[] All={
-            new ShortcutDefinition("quick","全局",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition"),"Ctrl+Alt+Space",true),
-            new ShortcutDefinition("hide","全局",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeA"),"Ctrl+Alt+H",true),
-            new ShortcutDefinition("quiet","全局",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeB"),"Ctrl+Alt+D",true),
-            new ShortcutDefinition("passthrough","全局",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeC"),"Ctrl+Alt+P",true),
-            new ShortcutDefinition("newchat","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeD"),"Ctrl+N"),
-            new ShortcutDefinition("temporary","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeE"),"Ctrl+Shift+N"),
-            new ShortcutDefinition("newproject","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeF"),""),
-            new ShortcutDefinition("folder","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeG"),"Ctrl+O"),
-            new ShortcutDefinition("export","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeH"),""),
-            new ShortcutDefinition("close","文件",TextResources.Get("common.close"),"Ctrl+W"),
-            new ShortcutDefinition("quit","文件",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeI"),"Ctrl+Q"),
-            new ShortcutDefinition("settings","编辑",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeJ"),"Ctrl+OemComma"),
-            new ShortcutDefinition("sidebar","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeK"),"Ctrl+Shift+S"),
-            new ShortcutDefinition("summary","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeL"),""),
-            new ShortcutDefinition("terminal","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeM"),"Ctrl+Oem3"),
-            new ShortcutDefinition("tab","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeN"),"Ctrl+Shift+B"),
-            new ShortcutDefinition("tools","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeO"),"Ctrl+Alt+B"),
-            new ShortcutDefinition("fulltab","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeP"),"Ctrl+Shift+F"),
-            new ShortcutDefinition("sidechat","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeQ"),"Ctrl+Alt+S"),
-            new ShortcutDefinition("browser","视图",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeR"),"Ctrl+T"),
-            new ShortcutDefinition("back","导航",TextResources.Get("common.back"),"Alt+Left"),
-            new ShortcutDefinition("forward","导航",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeS"),"Alt+Right"),
-            new ShortcutDefinition("focus","导航",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeT"),"Alt+L"),
-            new ShortcutDefinition("docs","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeU"),""),
-            new ShortcutDefinition("help","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeV"),"Ctrl+OemQuestion"),
-            new ShortcutDefinition("news","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeW"),""),
-            new ShortcutDefinition("feedback","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeX"),""),
-            new ShortcutDefinition("guide","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeY"),""),
-            new ShortcutDefinition("about","帮助",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeZ"),""),
-            new ShortcutDefinition("menufile","菜单",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAA"),"Alt+F"),
-            new ShortcutDefinition("menuedit","菜单",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAB"),"Alt+E"),
-            new ShortcutDefinition("menuview","菜单",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAC"),"Alt+V"),
-            new ShortcutDefinition("menuhelp","菜单",TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAD"),"Alt+H")
+            new ShortcutDefinition("quick","全局",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition"),"Ctrl+Alt+Space",true),
+            new ShortcutDefinition("hide","全局",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeA"),"Ctrl+Alt+H",true),
+            new ShortcutDefinition("quiet","全局",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeB"),"Ctrl+Alt+D",true),
+            new ShortcutDefinition("passthrough","全局",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeC"),"Ctrl+Alt+P",true),
+            new ShortcutDefinition("newchat","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeD"),"Ctrl+N"),
+            new ShortcutDefinition("temporary","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeE"),"Ctrl+Shift+N"),
+            new ShortcutDefinition("newproject","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeF"),""),
+            new ShortcutDefinition("folder","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeG"),"Ctrl+O"),
+            new ShortcutDefinition("export","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeH"),""),
+            new ShortcutDefinition("close","文件",()=>TextResources.Get("common.close"),"Ctrl+W"),
+            new ShortcutDefinition("quit","文件",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeI"),"Ctrl+Q"),
+            new ShortcutDefinition("settings","编辑",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeJ"),"Ctrl+OemComma"),
+            new ShortcutDefinition("sidebar","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeK"),"Ctrl+Shift+S"),
+            new ShortcutDefinition("summary","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeL"),""),
+            new ShortcutDefinition("terminal","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeM"),"Ctrl+Oem3"),
+            new ShortcutDefinition("tab","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeN"),"Ctrl+Shift+B"),
+            new ShortcutDefinition("tools","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeO"),"Ctrl+Alt+B"),
+            new ShortcutDefinition("fulltab","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeP"),"Ctrl+Shift+F"),
+            new ShortcutDefinition("sidechat","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeQ"),"Ctrl+Alt+S"),
+            new ShortcutDefinition("browser","视图",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeR"),"Ctrl+T"),
+            new ShortcutDefinition("back","导航",()=>TextResources.Get("common.back"),"Alt+Left"),
+            new ShortcutDefinition("forward","导航",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeS"),"Alt+Right"),
+            new ShortcutDefinition("focus","导航",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeT"),"Alt+L"),
+            new ShortcutDefinition("docs","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeU"),""),
+            new ShortcutDefinition("help","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeV"),"Ctrl+OemQuestion"),
+            new ShortcutDefinition("news","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeW"),""),
+            new ShortcutDefinition("feedback","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeX"),""),
+            new ShortcutDefinition("guide","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeY"),""),
+            new ShortcutDefinition("about","帮助",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeZ"),""),
+            new ShortcutDefinition("menufile","菜单",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAA"),"Alt+F"),
+            new ShortcutDefinition("menuedit","菜单",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAB"),"Alt+E"),
+            new ShortcutDefinition("menuview","菜单",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAC"),"Alt+V"),
+            new ShortcutDefinition("menuhelp","菜单",()=>TextResources.Get("shortcutDefinitions.all.allShortcutDefinition.alternativeAD"),"Alt+H")
         };
         internal static Dictionary<string,string> Defaults(){return All.Where(d=>!d.Global).ToDictionary(d=>d.Id,d=>d.Default);}
         internal static string Value(PetSettings settings,ShortcutDefinition definition){string value;var source=definition.Global?settings.Hotkeys:settings.LocalShortcuts;return source!=null&&source.TryGetValue(definition.Id,out value)?value??"":definition.Default;}

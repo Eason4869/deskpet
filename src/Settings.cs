@@ -90,6 +90,14 @@ namespace Dafeiyu
             }
             return "";
         }
+        // Translate generated labels only; user-entered provider names and persisted IDs stay intact.
+        public static string DisplayName(string name,string brand)
+        {
+            if(name==TextResources.CatalogFor("zh_CN").Get("settings.name.text.alternativeA"))return TextResources.Get("settings.name.text.alternativeA");
+            if(name==NameForBrand(brand))switch(brand){case "doubao":return TextResources.Get("providers.brands.doubao");case "zhipu":return TextResources.Get("providers.brands.zhipu");case "qwen":return TextResources.Get("providers.brands.qwen");}
+            return name;
+        }
+        public static string DisplayName(TextProviderSettings provider){return DisplayName(provider.Name,provider.BrandId);}
         public static string Name(TextProviderSettings provider){string name=NameForBrand(provider.BrandId);return name.Length>0?name:Name(provider.Connection);}
         public static bool AutomaticName(string name,TextProviderSettings provider)
         {int number;bool generated=name.StartsWith("自定义服务 ",StringComparison.Ordinal) && Int32.TryParse(name.Substring(6),out number);return name=="默认服务" || name=="自定义服务" || generated || name==Name(provider);}
@@ -142,7 +150,7 @@ namespace Dafeiyu
         }
         public string DisplayName(string model) {string label;return ModelDisplayNames!=null && model!=null && ModelDisplayNames.TryGetValue(model,out label) && !String.IsNullOrWhiteSpace(label)?label:model ?? "";}
         public TextProviderSettings Copy() { return new TextProviderSettings {Id=Id,Name=Name,BrandId=BrandId,CapabilityEndpoint=CapabilityEndpoint,ServerCapabilities=(ServerCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelCapabilities=(ModelCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelContextWindows=ModelContextCapacity.Copy(ModelContextWindows),ModelContextOverrides=ModelContextCapacity.Copy(ModelContextOverrides),ModelDisplayNames=ModelDisplayNames==null?new Dictionary<string,string>():new Dictionary<string,string>(ModelDisplayNames),Connection=(Connection ?? new ConnectionSettings()).Copy(),Models=Models==null?new List<string>():new List<string>(Models)}; }
-        public override string ToString() {return Name;}
+        public override string ToString() {return ProviderIdentity.DisplayName(this);}
     }
 
     internal static class AtomicFile
@@ -212,6 +220,7 @@ namespace Dafeiyu
         [DataMember] public bool AgentPlanMode { get; set; }
         [DataMember] public string AgentGoal { get; set; }
         [DataMember] public string ThemeMode {get;set;}
+        [DataMember] public string UiLanguage {get;set;}
         [DataMember] public bool QuietMode { get; set; }
         [DataMember] public bool HideOnFullscreen { get; set; }
         [DataMember] public bool ClickThrough { get; set; }
@@ -256,7 +265,7 @@ namespace Dafeiyu
         [DataMember] public bool AutoUpdate { get; set; }
         [DataMember] public long LastUpdateCheckUtcTicks { get; set; }
         [DataMember] public string VoiceName { get; set; }
-        public const string DefaultAgentSystemPrompt="你是一位严谨、清晰的工作助手。根据用户要求完成分析和任务，优先使用实际可用工具核对事实，如实报告已执行的操作与结果。不编造文件修改、命令输出、联网结果或子任务进度。遵守当前项目、文件权限和计划模式；遇到缺少信息时明确说明。回答使用自然的中文，保留必要的技术细节。";
+        public static string DefaultAgentSystemPrompt {get{return TextResources.Get("personaProfiles.defaults.agent");}}
         [DataMember] public string AgentSystemPrompt {get;set;}
         [DataMember] public string SystemPrompt { get; set; }
         [DataMember] public ConnectionSettings Text { get; set; }
@@ -275,6 +284,7 @@ namespace Dafeiyu
         private void Defaults()
         {
             ThemeMode="system";
+            UiLanguage=UiLanguages.Default;
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
             SaveChatHistory=true; QuietMode=false; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
             AgentFullAccess=true;AgentBackupFiles=true;AgentContextTokenLimit=32768;AgentDetailedProcess=false;ShowPredictedMessages=true;PlainTextEditor=false;ShowContextUsage=true;SendOnEnter=true;FollowUpBehavior="queue";
@@ -301,11 +311,12 @@ namespace Dafeiyu
             UpdateProxyAddress=ProxyConfiguration.DefaultAddress;
             UpdateMirrorAddress=DefaultUpdateMirror;
             AutoUpdate=true;UpdateChannel=ReleaseInfo.DisplayVersion.Contains("-dev")?UpdateChannel.Preview:UpdateChannel.Stable;
-            SystemPrompt = "你是{pet_name}，一位温和、俏皮的桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
+            SystemPrompt = PersonaProfiles.Generic("{pet_name}");
         }
         public void Normalize()
         {
             ThemeMode=ThemeColors.Normalize(ThemeMode);
+            UiLanguage=UiLanguages.Normalize(UiLanguage);
             ImageGenerationConcurrency=Math.Max(1,Math.Min(4,ImageGenerationConcurrency));
             ImageGalleryLayout=ImageGalleryLayout=="grid"?"grid":"masonry";
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
@@ -432,7 +443,7 @@ namespace Dafeiyu
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var images=new List<ImageGenerationProvider>();if(ImageProviders!=null)foreach(var provider in ImageProviders)if(provider!=null)images.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
+            return new PetSettings { UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
                 ImageGenerationConcurrency=ImageGenerationConcurrency,ImageGenerationMotionEnabled=ImageGenerationMotionEnabled,ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
@@ -477,6 +488,12 @@ namespace Dafeiyu
                 catch (UnauthorizedAccessException) { Warning += TextResources.Get("settings.load.warning.alternativeC"); }
                 return new PetSettings();
             }
+        }
+        public void SaveUiLanguage(PetSettings settings,string code)
+        {
+            if(settings==null)throw new ArgumentNullException("settings");
+            string previous=settings.UiLanguage;settings.UiLanguage=UiLanguages.Normalize(code);
+            try{Save(settings);}catch{settings.UiLanguage=previous;throw;}
         }
         public void Save(PetSettings settings)
         {

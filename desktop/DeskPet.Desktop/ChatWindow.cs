@@ -75,9 +75,13 @@ internal sealed class ChatWindow : Window
         AddHandler(DragDrop.DropEvent, AttachmentDrop, RoutingStrategies.Bubble, handledEventsToo: true);
         history = new ScrollViewer { Content = messages, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         var root = new DockPanel { Margin = new Thickness(16), LastChildFill = true };
-        partnerAvatar = new AvatarView { Name = "ChatPartnerAvatar", Assets = avatarAssets, Skin = owner.Skin, Width = 28, Height = 28 }; partnerName.Text = owner.Skin.Name; partnerName.VerticalAlignment = VerticalAlignment.Center;
+        partnerAvatar = new AvatarView { Name = "ChatPartnerAvatar", Assets = avatarAssets, Skin = owner.Skin, Width = 28, Height = 28 }; partnerName.Text = owner.Skin.DisplayName; partnerName.VerticalAlignment = VerticalAlignment.Center;
+        var profileMenu=CreateProfileMenu();
+        var profileButton=new Button{Name="ShellAvatar",Content=partnerAvatar,Width=28,Height=28,MinWidth=0,MinHeight=0,Padding=new Thickness(0),BorderThickness=new Thickness(0),Background=Brushes.Transparent,CornerRadius=new CornerRadius(8),ContextMenu=profileMenu};
+        profileButton.Click+=(_,_)=>profileMenu.Open(profileButton);
+        Avalonia.Automation.AutomationProperties.SetName(profileButton,TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK"));
         questions.Name = "AgentQuestions";
-        var header = Ui.Column(Ui.Row(partnerAvatar, partnerName, Ui.Button(TextResources.Get("chatWindow.chatWindow.text"), owner.ShowSettings), Ui.Button(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB"), () => owner.ShowChat(!quick))), status, questions);
+        var header = Ui.Column(Ui.Row(profileButton, partnerName, Ui.Button(TextResources.Get("chatWindow.chatWindow.text"), owner.ShowSettings), Ui.Button(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB"), () => owner.ShowChat(!quick))), status, questions);
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (owner.Session.IsBusy) owner.Run(owner.StopAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
@@ -134,6 +138,13 @@ internal sealed class ChatWindow : Window
     internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }
     private void ApplyRoute() { pageHost.Content = null; pageHost.Content = CurrentPage == "images" ? imageWorkspace : chatPage; routeBack.IsEnabled = routeIndex > 0; routeForward.IsEnabled = routeIndex < routes.Count - 1; }
     private void Try(Action action) { try { action(); } catch (Exception e) { owner.Error(e); } }
+    private ContextMenu CreateProfileMenu()
+    {
+        var languages=new MenuItem{Name="ProfileLanguage",Header=TextResources.Get("menus.language")};
+        var settings=new MenuItem{Name="ProfileSettings",Header=TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC")};settings.Click+=(_,_)=>owner.ShowSettings();
+        var menu=new ContextMenu{Name="ShellProfileMenu",ItemsSource=new object[]{languages,settings}};
+        languages.Click+=async (_,_)=>{menu.Close();var dialog=new LanguagePickerWindow(owner.Settings.UiLanguage,owner.SetUiLanguage);await dialog.ShowDialog(this);};return menu;
+    }
     private void OpenAttachmentMenu() => addAttachment.ContextMenu!.Open(addAttachment);
     private void OpenModeMenu() => modeButton.ContextMenu!.Open(modeButton);
     internal void SetSnapshotTarget(ApplicationSnapshotTarget? target)
@@ -345,10 +356,10 @@ internal sealed class ChatWindow : Window
     private void Refresh()
     {
         RefreshQuestions();
-        partnerAvatar.Skin = owner.Skin; partnerName.Text = owner.Skin.Name;
+        partnerAvatar.Skin = owner.Skin; partnerName.Text = owner.Skin.DisplayName;
         if (persona != owner.Skin.Id) { uploadEpoch++; owner.Drafts[persona] = draft.Text ?? ""; persona = owner.Skin.Id; draft.Text = owner.Drafts.GetValueOrDefault(persona, ""); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         status.Text = owner.Session.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + owner.Session.LastNotice + " " + owner.Dictation.LastNotice + " " + owner.Queue.Notice + " " + owner.Session.HistoryWarning;
-        Title = TextResources.Get("chatWindow.refresh.ownerSkinName") + owner.Skin.Name + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"));
+        Title = TextResources.Get("chatWindow.refresh.ownerSkinName") + owner.Skin.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"));
         var followBottom = history.Offset.Y + history.Viewport.Height + 80 >= history.Extent.Height;
         RefreshModels(); RefreshAction();
         var visible = owner.Session.History.Messages.TakeLast(quick ? 20 : 400).ToList();
@@ -398,6 +409,6 @@ internal sealed class ChatWindow : Window
     private void ConfirmClear()
     {
         var confirm = Ui.Window(TextResources.Get("chatWindow.confirmClear.window"), Ui.Text(TextResources.Get("chatWindow.confirmClear.text")), 420, 240);
-        confirm.Content = new Border { Padding = new Thickness(20), Child = Ui.Column(Ui.Text(TextResources.Format("chatWindow.confirmClear.template",owner.Skin.Name)), Ui.Button(TextResources.Get("chatWindow.confirmClear.text.alternativeA"), () => { Try(owner.Session.Clear); confirm.Close(); }), Ui.Button(TextResources.Get("common.cancel"), confirm.Close)) }; confirm.Show();
+        confirm.Content = new Border { Padding = new Thickness(20), Child = Ui.Column(Ui.Text(TextResources.Format("chatWindow.confirmClear.template",owner.Skin.DisplayName)), Ui.Button(TextResources.Get("chatWindow.confirmClear.text.alternativeA"), () => { Try(owner.Session.Clear); confirm.Close(); }), Ui.Button(TextResources.Get("common.cancel"), confirm.Close)) }; confirm.Show();
     }
 }

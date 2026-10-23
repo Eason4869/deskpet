@@ -21,6 +21,8 @@ internal sealed class PetSkin
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
     public string? BuiltinCharacterId { get; set; }
     public required string Name { get; init; }
+    public string DisplayName => OfficialCompanionProfiles.GetDisplayName(OfficialCharacterId ?? BuiltinCharacterId, Name);
+    public string DisplayDescription => OfficialCompanionProfiles.Find(OfficialCharacterId ?? BuiltinCharacterId)?.Description ?? Description;
     public required string Prompt { get; init; }
     public string? Folder { get; init; }
     public bool BuiltIn => Folder == null;
@@ -37,7 +39,7 @@ internal sealed class PetSkin
     public Dictionary<string, ClipSpec> Alternates { get; } = new();
     public Dictionary<string, ClipSpec> Clips { get; } = new();
     public ClipSpec? Gaze { get; set; }
-    public override string ToString() => Name;
+    public override string ToString() => DisplayName;
 }
 
 internal sealed class SpriteAssets : IDisposable

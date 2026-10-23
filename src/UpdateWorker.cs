@@ -24,6 +24,7 @@ namespace Dafeiyu
                 if(args.Length!=1)return 2;job=UpdateInstall.Read<UpdateJob>(args[0]);UpdateInstall.Validate(job);
                 if(!String.Equals(Path.GetFullPath(args[0]),Path.Combine(job.WorkDirectory,"job.json"),StringComparison.OrdinalIgnoreCase))return 2;
                 if(!String.Equals(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName),Path.GetFullPath(job.WorkDirectory),StringComparison.OrdinalIgnoreCase))return 2;
+                TextResources.ConfigureStartupLanguage(UiLanguages.ReadSavedLanguage(Path.Combine(job.InstallationDirectory,"data","settings.json")));
                 CheckVersion(job);CheckAbort(job);
                 if(job.ParentPid<=0)throw new InvalidOperationException(TextResources.Get("updateWorker.main.text"));
                 Process parent=null;try{parent=Process.GetProcessById(job.ParentPid);}catch(ArgumentException){parentExited=true;}

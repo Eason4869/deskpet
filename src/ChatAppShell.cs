@@ -95,7 +95,7 @@ namespace Dafeiyu
         }
         void RefreshShellAppearance()
         {
-            if(!shellReady)return;shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);shellAvatarImage.ToolTip=pet.Skin.Name;
+            if(!shellReady)return;shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);shellAvatarImage.ToolTip=pet.Skin.DisplayName;
         }
         void SelectRailIcon(Button button,string icon,bool selected)
         {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("chatAppShell.selectRailIcon.automationAutomationPropertiesSetItemStatus"):"");}
@@ -109,13 +109,18 @@ namespace Dafeiyu
         void OpenProfileMenu()
         {
             var button=FindShellButton("ShellAvatar");if(button.ContextMenu!=null&&button.ContextMenu.IsOpen){button.ContextMenu.IsOpen=false;return;}
-            var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;var heading=new StackPanel{Margin=new Thickness(0,4,0,8)};heading.Children.Add(Ui.Text(pet.Skin.Name,14,AgentUi.Ink));heading.Children.Add(Ui.Text("桌面伙伴",11,AgentUi.Muted));menu.Items.Add(new MenuItem{Header=heading,Icon=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=24,Height=24},IsEnabled=false});menu.Items.Add(new Separator());
+            var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;var heading=new StackPanel{Margin=new Thickness(0,4,0,8)};heading.Children.Add(Ui.Text(pet.Skin.DisplayName,14,AgentUi.Ink));heading.Children.Add(new TextBlock{Name="ProfileCompanionLabel",Text=TextResources.Get("chatAppShell.openProfileMenu.companionLabel"),FontSize=11,Foreground=AgentUi.Muted});menu.Items.Add(new MenuItem{Header=heading,Icon=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=24,Height=24},IsEnabled=false});menu.Items.Add(new Separator());
             AddProfile(menu,"ProfileUsage",TextResources.Get("chatAppShell.openProfileMenu.addProfile"),"usage",ShowUsagePage);
             AddProfile(menu,"ProfilePetVisibility",pet.IsPetVisible?TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeA"):TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeB"),"pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
-            var skins=new MenuItem{Name="ProfileCompanions",Header=TextResources.Get("chatAppShell.openProfileMenu.header"),Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
-            var languages=new MenuItem{Name="ProfileLanguage",Header=TextResources.Get("menus.language"),Icon=ShellIcons.Image("language")};
-            var chinese=new MenuItem{Name="ProfileLanguageZhCn",Header=TextResources.Get("languages.zhCN"),Tag="zh-CN",IsCheckable=true,IsChecked=true};
-            chinese.Click+=delegate{chinese.IsChecked=true;};languages.Items.Add(chinese);menu.Items.Add(languages);
+            var skins=new MenuItem{Name="ProfileCompanions",Header=TextResources.Get("chatAppShell.openProfileMenu.header"),Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
+            AddProfile(menu,"ProfileLanguage",TextResources.Get("menus.language"),"language",delegate{
+                var dialog=new LanguagePickerWindow(pet.Settings.UiLanguage,delegate(string code){
+                    pet.Store.SaveUiLanguage(pet.Settings,code);
+                    string restart=TextResources.Get("languages.restartRequired");
+                    if(UiLanguages.Resolve(pet.Settings.UiLanguage)!=TextResources.CurrentLanguage){session.ReportNotice(restart);ShowStatus(restart);}
+                    else if(session.LastNotice==restart){session.ReportNotice("");RefreshState();}
+                });dialog.Owner=this;dialog.ShowDialog();
+            });
             AddProfile(menu,"ProfileSettings",TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC"),"settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=new MenuItem{Name="ProfileHelp",Header=TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA"),Icon=ShellIcons.Image("help")};foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
         }
         void AddProfile(ContextMenu menu,string name,string label,string icon,Action action){var item=new MenuItem{Name=name,Header=label,Icon=ShellIcons.Image(icon)};item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}

@@ -13,16 +13,58 @@ namespace Dafeiyu
     }
     public static class PersonaProfiles
     {
-        public const string Dafeiyu="你是大肥鱼，一位温和、俏皮的蓝白鲸鱼娘桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
-        public const string Ebao="你是E包，一位傲娇、毒舌的白发正太桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
-        public const string Marfu="你是马尔芙，一位金发绿眼的魔法少女桌面伙伴，角色背景是《哈利波特》中德拉科·马尔福的女性版本（性转马尔福）。你聪明、自信、俏皮，带一点马尔福式的骄傲和嘴硬，也愿意耐心陪伴用户。用自然的中文与用户聊天，帮助写代码、做设计和整理思路。可以偶尔用简短的魔法比喻，但不要让角色扮演妨碍清楚实用的回答。不挖苦用户，不编造能力，遇到不确定的信息如实说明。你不能直接看见用户桌面，也不会自动读取文件。";
-        public static string Generic(string name) { return "你是"+name+"，一位温和、俏皮的桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。"; }
+        public static string Dafeiyu { get { return TextResources.Get("personaProfiles.defaults.dafeiyu"); } }
+        public static string Ebao { get { return TextResources.Get("personaProfiles.defaults.ebao"); } }
+        public static string Marfu { get { return TextResources.Get("personaProfiles.defaults.marfu"); } }
+        public static string Generic(string name) { return TextResources.Get("personaProfiles.defaults.generic").Replace("{pet_name}",name??""); }
 #if !PORTABLE
-        public static void Activate(PetSettings settings,SkinDefinition skin) { Activate(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets); }
-        public static void Save(PetSettings settings,SkinDefinition skin,string prompt) { Save(settings,skin.Id,skin.SystemPrompt,prompt,skin.Manifest==null?null:skin.Manifest.VoicePresets); }
-        public static void Reset(PetSettings settings,SkinDefinition skin) { Reset(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets); }
+        public static void Activate(PetSettings settings,SkinDefinition skin) { Activate(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
+        public static void Save(PetSettings settings,SkinDefinition skin,string prompt) { Save(settings,skin.Id,skin.SystemPrompt,prompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
+        public static void Reset(PetSettings settings,SkinDefinition skin) { Reset(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
 #endif
-        public static void Activate(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null)
+        static readonly string[] DefaultKeys={"personaProfiles.defaults.ebao","personaProfiles.defaults.dafeiyu","personaProfiles.defaults.marfu","personaProfiles.defaults.xiaobei","personaProfiles.defaults.gugugaga","personaProfiles.defaults.agent","personaProfiles.defaults.generic"};
+        // Only exact known defaults/templates can be localized. A user edit is never inferred from keywords.
+        static bool RecognizeDefault(string prompt,out string key,out string name)
+        {
+            key=null;name=null;if(prompt==null)return false;
+            foreach(var choice in UiLanguages.Choices)foreach(string candidate in DefaultKeys)
+            {
+                string template=TextResources.CatalogFor(choice.Code).Get(candidate);
+                if(prompt==template){key=candidate;return true;}
+                if(candidate!="personaProfiles.defaults.generic")continue;
+                const string marker="{pet_name}";int split=template.IndexOf(marker,StringComparison.Ordinal);if(split<0)continue;
+                string prefix=template.Substring(0,split),suffix=template.Substring(split+marker.Length);
+                if(prompt.Length>=prefix.Length+suffix.Length&&prompt.StartsWith(prefix,StringComparison.Ordinal)&&prompt.EndsWith(suffix,StringComparison.Ordinal))
+                {key=candidate;name=prompt.Substring(prefix.Length,prompt.Length-prefix.Length-suffix.Length);return true;}
+            }
+            return false;
+        }
+        public static string LocalizeDefaultPrompt(string prompt)
+        {
+            string key,name;if(!RecognizeDefault(prompt,out key,out name))return prompt;
+            string result=CurrentDefault(key);return name==null?result:result.Replace("{pet_name}",name);
+        }
+        static string CurrentDefault(string key)
+        {
+            switch(key)
+            {
+                case "personaProfiles.defaults.ebao":return TextResources.Get("personaProfiles.defaults.ebao");
+                case "personaProfiles.defaults.dafeiyu":return TextResources.Get("personaProfiles.defaults.dafeiyu");
+                case "personaProfiles.defaults.marfu":return TextResources.Get("personaProfiles.defaults.marfu");
+                case "personaProfiles.defaults.xiaobei":return TextResources.Get("personaProfiles.defaults.xiaobei");
+                case "personaProfiles.defaults.gugugaga":return TextResources.Get("personaProfiles.defaults.gugugaga");
+                case "personaProfiles.defaults.agent":return TextResources.Get("personaProfiles.defaults.agent");
+                case "personaProfiles.defaults.generic":return TextResources.Get("personaProfiles.defaults.generic");
+                default:throw new ArgumentException("Unknown default persona key.","key");
+            }
+        }
+        static string DefaultPrompt(string prompt,string officialId)
+        {
+            string key;
+            switch(officialId){case "e-bao":key="personaProfiles.defaults.ebao";break;case "dafeiyu":key="personaProfiles.defaults.dafeiyu";break;case "marfu":key="personaProfiles.defaults.marfu";break;case "xiaobei":key="personaProfiles.defaults.xiaobei";break;case "gugugaga":key="personaProfiles.defaults.gugugaga";break;default:return LocalizeDefaultPrompt(prompt);}
+            return CurrentDefault(key);
+        }
+        public static void Activate(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null,string officialId=null)
         {
             settings.Normalize();
             SaveVoiceProfile(settings,settings.VoiceProfileVersion==0);
@@ -30,25 +72,26 @@ namespace Dafeiyu
             if(settings.PersonaProfileVersion==0)
             {
                 string old=settings.SystemPrompt ?? "";
-                if(!String.IsNullOrWhiteSpace(old) && old!=Generic("{pet_name}"))
+                string key,name;
+                if(!String.IsNullOrWhiteSpace(old) && !RecognizeDefault(old,out key,out name))
                 {
-                    string owner=old.Contains("鲸鱼") || old.Contains("大肥鱼") ? "dafeiyu" : settings.SkinId;
+                    string owner=settings.SkinId;
                     if(!settings.PersonaOverrides.ContainsKey(owner)) settings.PersonaOverrides[owner]=old;
                 }
                 settings.PersonaProfileVersion=1;
             }
-            string prompt; settings.SystemPrompt=settings.PersonaOverrides.TryGetValue(skinId,out prompt) ? prompt : defaultPrompt;
+            string prompt; settings.SystemPrompt=settings.PersonaOverrides.TryGetValue(skinId,out prompt) ? LocalizeDefaultPrompt(prompt) : DefaultPrompt(defaultPrompt,officialId);
             settings.SkinId=skinId;
             settings.ActiveVoiceRecommendations=voices;
             settings.VoiceName=VoiceFor(settings,skinId,"speech",settings.SpeechConnection());
             settings.LiveVoice=VoiceFor(settings,skinId,"live",settings.Live);
         }
-        public static void Save(PetSettings settings,string skinId,string defaultPrompt,string prompt,VoiceRecommendations voices=null)
+        public static void Save(PetSettings settings,string skinId,string defaultPrompt,string prompt,VoiceRecommendations voices=null,string officialId=null)
         {
             prompt=(prompt ?? "").Trim(); if(prompt.Length==0 || prompt.Length>8000) throw new InvalidOperationException(TextResources.Get("personaProfiles.save.text"));
-            Activate(settings,skinId,defaultPrompt,voices); settings.PersonaOverrides[skinId]=prompt; settings.SystemPrompt=prompt;
+            Activate(settings,skinId,defaultPrompt,voices,officialId); settings.PersonaOverrides[skinId]=prompt; settings.SystemPrompt=prompt;
         }
-        public static void Reset(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null) { Activate(settings,skinId,defaultPrompt,voices); settings.PersonaOverrides.Remove(skinId); settings.SystemPrompt=defaultPrompt; }
+        public static void Reset(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null,string officialId=null) { Activate(settings,skinId,defaultPrompt,voices,officialId); settings.PersonaOverrides.Remove(skinId); settings.SystemPrompt=DefaultPrompt(defaultPrompt,officialId); }
         public static void SaveVoices(PetSettings settings)
         {
             settings.Normalize();SaveVoiceProfile(settings,false);settings.VoiceProfileVersion=1;

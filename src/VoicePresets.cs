@@ -44,12 +44,12 @@ namespace Dafeiyu
             else if(kind == "live" && (protocol == "gemini-live" || protocol == "auto" || protocol == "") && !mimoHost && !openaiHost && NativeLiveModel(model))
             {
                 string[,] voices = {
-                    {"Kore","坚定"}, {"Zephyr","明亮"}, {"Puck","欢快"}, {"Charon","解说感"}, {"Fenrir","热情兴奋"},
-                    {"Leda","年轻感"}, {"Orus","坚定"}, {"Aoede","轻松轻盈"}, {"Callirrhoe","随和"}, {"Autonoe","明亮"},
-                    {"Enceladus","气声"}, {"Iapetus","清晰"}, {"Umbriel","随和"}, {"Algieba","顺滑"}, {"Despina","顺滑"},
-                    {"Erinome","清晰"}, {"Algenib","沙哑"}, {"Rasalgethi","解说感"}, {"Laomedeia","欢快"}, {"Achernar","柔和"},
-                    {"Alnilam","坚定"}, {"Schedar","平稳"}, {"Gacrux","成熟"}, {"Pulcherrima","直率"}, {"Achird","亲切"},
-                    {"Zubenelgenubi","随意自然"}, {"Vindemiatrix","温和"}, {"Sadachbia","活泼"}, {"Sadaltager","博学感"}, {"Sulafat","温暖"}
+                    {"Kore",TextResources.Get("voicePresets.gemini.kore.description")}, {"Zephyr",TextResources.Get("voicePresets.gemini.zephyr.description")}, {"Puck",TextResources.Get("voicePresets.gemini.puck.description")}, {"Charon",TextResources.Get("voicePresets.gemini.charon.description")}, {"Fenrir",TextResources.Get("voicePresets.gemini.fenrir.description")},
+                    {"Leda",TextResources.Get("voicePresets.gemini.leda.description")}, {"Orus",TextResources.Get("voicePresets.gemini.orus.description")}, {"Aoede",TextResources.Get("voicePresets.gemini.aoede.description")}, {"Callirrhoe",TextResources.Get("voicePresets.gemini.callirrhoe.description")}, {"Autonoe",TextResources.Get("voicePresets.gemini.autonoe.description")},
+                    {"Enceladus",TextResources.Get("voicePresets.gemini.enceladus.description")}, {"Iapetus",TextResources.Get("voicePresets.gemini.iapetus.description")}, {"Umbriel",TextResources.Get("voicePresets.gemini.umbriel.description")}, {"Algieba",TextResources.Get("voicePresets.gemini.algieba.description")}, {"Despina",TextResources.Get("voicePresets.gemini.despina.description")},
+                    {"Erinome",TextResources.Get("voicePresets.gemini.erinome.description")}, {"Algenib",TextResources.Get("voicePresets.gemini.algenib.description")}, {"Rasalgethi",TextResources.Get("voicePresets.gemini.rasalgethi.description")}, {"Laomedeia",TextResources.Get("voicePresets.gemini.laomedeia.description")}, {"Achernar",TextResources.Get("voicePresets.gemini.achernar.description")},
+                    {"Alnilam",TextResources.Get("voicePresets.gemini.alnilam.description")}, {"Schedar",TextResources.Get("voicePresets.gemini.schedar.description")}, {"Gacrux",TextResources.Get("voicePresets.gemini.gacrux.description")}, {"Pulcherrima",TextResources.Get("voicePresets.gemini.pulcherrima.description")}, {"Achird",TextResources.Get("voicePresets.gemini.achird.description")},
+                    {"Zubenelgenubi",TextResources.Get("voicePresets.gemini.zubenelgenubi.description")}, {"Vindemiatrix",TextResources.Get("voicePresets.gemini.vindemiatrix.description")}, {"Sadachbia",TextResources.Get("voicePresets.gemini.sadachbia.description")}, {"Sadaltager",TextResources.Get("voicePresets.gemini.sadaltager.description")}, {"Sulafat",TextResources.Get("voicePresets.gemini.sulafat.description")}
                 };
                 for(int i = 0; i < voices.GetLength(0); i++) items.Add(new VoicePreset(voices[i,0], voices[i,1]));
             }

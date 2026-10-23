@@ -37,7 +37,7 @@ namespace Dafeiyu
             cancel.ThrowIfCancellationRequested();
             if(beforeEffect!=null)beforeEffect();
             var watch=Stopwatch.StartNew();string result;string status="completed";
-            try{result=await registration.Handler(args??new Dictionary<string,object>(),context,cancel).ConfigureAwait(false);if(result!=null&&result.StartsWith("错误：",StringComparison.Ordinal))status="error";}
+            try{result=await registration.Handler(args??new Dictionary<string,object>(),context,cancel).ConfigureAwait(false);if(result!=null&&TextResources.IsToolError(result))status="error";}
             catch(Exception){status="error";throw;}
             finally{watch.Stop();Record(context,name,action,resource,status,watch.ElapsedMilliseconds);}
             result=result??"";return result.Length>24000?TextResources.Format("agentToolRuntime.executeOnceAsync.template.alternativeB",result.Substring(0,24000)):result;

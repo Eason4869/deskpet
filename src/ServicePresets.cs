@@ -25,10 +25,10 @@ namespace Dafeiyu
             items.Add(new ServicePreset("DeepSeek","https://api.deepseek.com","deepseek-flash"));
             items.Add(new ServicePreset("MiMo","https://api.xiaomimimo.com/v1","mimo-v2.6-flash"));
             items.Add(new ServicePreset(TextResources.Get("servicePresets.for.items.alternativeB"),"https://token-plan-cn.xiaomimimo.com/v1","mimo-v2.6-flash"));
-            items.Add(new ServicePreset("火山方舟","https://ark.cn-beijing.volces.com/api/v3","","openai",TextResources.Get("servicePresets.for.items.alternativeF")));
+            items.Add(new ServicePreset(TextResources.Get("providers.brands.doubao"),"https://ark.cn-beijing.volces.com/api/v3","","openai",TextResources.Get("servicePresets.for.items.alternativeF")));
             items.Add(new ServicePreset("Kimi","https://api.moonshot.cn/v1","kimi-k3"));
             items.Add(new ServicePreset("MiniMax","https://api.minimax.io/v1","MiniMax-M2.5"));
-            items.Add(new ServicePreset("智谱","https://open.bigmodel.cn/api/paas/v4","","openai",TextResources.Get("servicePresets.for.items.alternativeG")));
+            items.Add(new ServicePreset(TextResources.Get("providers.brands.zhipu"),"https://open.bigmodel.cn/api/paas/v4","","openai",TextResources.Get("servicePresets.for.items.alternativeG")));
             items.Add(new ServicePreset(TextResources.Get("servicePresets.for.items.alternativeH"),"https://dashscope.aliyuncs.com/compatible-mode/v1","qwen-plus"));
             items.Add(new ServicePreset("Claude / Anthropic","https://api.anthropic.com/v1","claude-sonnet-4-6","anthropic"));
             items.Add(new ServicePreset("DeepSeek · Anthropic","https://api.deepseek.com/anthropic/v1","deepseek-flash","anthropic"));return items;

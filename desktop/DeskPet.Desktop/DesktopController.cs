@@ -67,6 +67,7 @@ internal sealed partial class DesktopController : IDisposable
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
         bool firstLaunch = !File.Exists(settingsPath);
         store = new SettingsStore(settingsPath); Settings = store.Load();
+        TextResources.ConfigureStartupLanguage(Settings.UiLanguage);
         DesktopTheme.Apply(Settings.ThemeMode);
         // The Avalonia client starts in chat; Mac has no local file Agent.
         // Shared settings also serve the WPF client, whose default is work.
@@ -81,7 +82,7 @@ internal sealed partial class DesktopController : IDisposable
         requested ??= embeddedEbao;
         Skin = RestoreCachedStartupCompanion(requested);
         if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
-        PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
+        PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
         Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
         ImageUsage = new ImageAssetUsageRegistry();
@@ -108,7 +109,7 @@ internal sealed partial class DesktopController : IDisposable
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
-        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.Name, IsVisible = true };
+        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.DisplayName, IsVisible = true };
         tray.Clicked += (_, _) => ShowPet();
         var menu = new NativeMenu();
         void Add(string text, Action action) { var item = new NativeMenuItem(text); item.Click += (_, _) => action(); menu.Items.Add(item); }
@@ -143,6 +144,14 @@ internal sealed partial class DesktopController : IDisposable
     }
     private void Notify() => Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });
     public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
+    public void SetUiLanguage(string code)
+    {
+        store.SaveUiLanguage(Settings,code);
+        string restart=TextResources.Get("languages.restartRequired");
+        if(UiLanguages.Resolve(Settings.UiLanguage)!=TextResources.CurrentLanguage)Session.ReportNotice(restart);
+        else if(Session.LastNotice==restart)Session.ReportNotice("");
+        Notify();
+    }
     public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp(); }
     public void ShowChat(bool quick)
     {

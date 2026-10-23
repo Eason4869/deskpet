@@ -38,11 +38,12 @@ namespace Dafeiyu
                         app.DispatcherUnhandledException += delegate(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs args)
                         {
                             RuntimeDiagnostics.Record(args.Exception);
-                            MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow"), "桌面伙伴", MessageBoxButton.OK, MessageBoxImage.Information);
+                            MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow"), TextResources.StartupMessage("app.displayName"), MessageBoxButton.OK, MessageBoxImage.Information);
                             args.Handled = true; app.Shutdown(1);
                         };
                         var store = new SettingsStore(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "settings.json"));
                         var settings = store.Load();
+                        TextResources.ConfigureStartupLanguage(settings.UiLanguage);
                         var onboarding = OnboardingUpgrade.Prepare(settings, ReleaseInfo.DisplayVersion);
                         if(onboarding.Changed)store.Save(settings);
                         var pet = new PetWindow(null, settings, store, wake);
@@ -52,7 +53,7 @@ namespace Dafeiyu
                     catch (Exception error)
                     {
                         RuntimeDiagnostics.Record(error);
-                        MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow.alternativeA"), ReleaseInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow.alternativeA"), TextResources.StartupMessage("app.displayName"), MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     finally { mutex.ReleaseMutex(); }
                 }

@@ -171,7 +171,7 @@ namespace Dafeiyu
         void RestoreDraft(){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RestoreDraft));return;}input.Text=session.InputDraft;}
         public void RefreshModels()
         {
-            aiNotice.Text=TextResources.Format("conversationComposer.refreshModels.petSkinName",pet.Skin.Name);
+            aiNotice.Text=TextResources.Format("conversationComposer.refreshModels.petSkinName",pet.Skin.DisplayName);
             if(predictionSuggestions!=null)predictionSuggestions.RefreshState();
             input.PlainTextMode=pet.Settings.PlainTextEditor;input.ToolTip=TextResources.Format("conversationComposer.refreshModels.toolTipChatUiSendHint",ChatUi.SendHint(pet.Settings));if(status.Text.StartsWith(TextResources.Get("conversationComposer.refreshModels.statusStartsWith")) || status.Text.StartsWith(TextResources.Get("conversationComposer.refreshModels.statusStartsWith.alternativeA")))status.Text=ChatUi.SendHint(pet.Settings);RefreshAction();
             RefreshContextUsage();pet.Settings.EnsureTextProviders();var provider=pet.Settings.TextProviders.FirstOrDefault(p=>p.Id==pet.Settings.ActiveTextProviderId);

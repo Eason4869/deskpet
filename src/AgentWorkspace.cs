@@ -141,7 +141,7 @@ namespace Dafeiyu
                     else {string prompt=GetString(args,"prompt",null);if(String.IsNullOrWhiteSpace(prompt)||prompt.Length>16000)result=TextResources.Get("agentWorkspace.executeAuthorizedAsync.result.alternativeB");else{if(beforeEffect!=null)beforeEffect();result=await ImageGenerator(prompt,callId,token).ConfigureAwait(false);}}
                 }
                 else{if(beforeEffect!=null)beforeEffect();result=await ExecuteCoreAsync(name,argumentsJson,callId,token,invocation.Resource).ConfigureAwait(false);}
-                if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
+                if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&TextResources.IsToolError(result)?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
             catch(Exception){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="error",CreatedUtc=DateTime.UtcNow});throw;}
         }
         private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token,string authorizedResource=null)

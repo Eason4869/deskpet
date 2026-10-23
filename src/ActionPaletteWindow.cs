@@ -27,13 +27,13 @@ namespace Dafeiyu
         public ActionPaletteWindow(PetWindow companion)
         {
             pet=companion;
-            Ui.Window(this,TextResources.Format("actionPaletteWindow.actionPaletteWindow.window",pet.Skin.Name),360,394);
+            Ui.Window(this,TextResources.Format("actionPaletteWindow.actionPaletteWindow.window",pet.Skin.DisplayName),360,394);
             Owner=pet;ShowInTaskbar=false;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;
             MinWidth=0;MinHeight=0;Topmost=pet.Topmost;WindowStartupLocation=WindowStartupLocation.Manual;Focusable=true;
             var layout=new Grid{Width=448,Height=490};layout.RowDefinitions.Add(new RowDefinition{Height=new GridLength(440)});layout.RowDefinitions.Add(new RowDefinition());
             actions=new Canvas{Width=Diameter,Height=Diameter,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};layout.Children.Add(actions);
             var center=new StackPanel{VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10)};
-            var title=Ui.Text(pet.Skin.Name,15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
+            var title=Ui.Text(pet.Skin.DisplayName,15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
             var tabs=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,8)};
             interactionsTab=Ui.Button(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text"));interactionsTab.Name="PaletteInteractionsTab";
             basicTab=Ui.Button(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeA"));basicTab.Name="PaletteBasicTab";

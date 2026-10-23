@@ -40,7 +40,7 @@ namespace Dafeiyu
         void AddConversation(Panel host,ProjectDefinition project,ConversationDefinition conversation,bool ownerArchived)
         {
             string source=project.Id==ProjectCatalogStore.QuickProjectId?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId"):project.Id==ProjectCatalogStore.UnassignedProjectId?(conversation.Mode=="chat"?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeA"):TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeB")):project.Name;
-            var skin=pet.Catalog.Skins.FirstOrDefault(s=>s.Id==conversation.PetId);if(skin!=null)source+=" · "+skin.Name;
+            var skin=pet.Catalog.Skins.FirstOrDefault(s=>s.Id==conversation.PetId);if(skin!=null)source+=" · "+skin.DisplayName;
             if(ownerArchived)source+=TextResources.Get("archivedConversationsPanel.addConversation.source");
             host.Children.Add(ActionRow(conversation.Name,source,"ArchivedConversation_"+conversation.Id,ownerArchived?TextResources.Get("archivedConversationsPanel.addConversation.actionRow"):TextResources.Get("archivedConversationsPanel.addConversation.actionRow.alternativeA"),delegate{
                 if(project.Archived)pet.RestoreProject(project);if(conversation.Archived)pet.RestoreConversation(project,conversation);RefreshState();

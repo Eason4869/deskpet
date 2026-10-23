@@ -38,16 +38,16 @@ internal sealed class SettingsWindow : Window
     private Control Partner()
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
-        var description = Ui.Text(owner.Skin.Description);
+        var description = Ui.Text(owner.Skin.DisplayDescription);
         bool refreshingPartners = false;
         var choices = new ComboBox { Name = "PartnerPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
         choices.ItemTemplate = new FuncDataTemplate<PetSkin>((skin, _) => PartnerRow(skin, choices, RemoveAsync));
-        choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { await owner.SelectSkinAsync(skin); refreshingPartners = true; choices.SelectedItem = owner.Skin; refreshingPartners = false; description.Text = owner.Skin.Description; refreshVoice?.Invoke(); }); };
+        choices.SelectionChanged += (_, _) => { if (!refreshingPartners && choices.SelectedItem is PetSkin skin) owner.Run(async () => { await owner.SelectSkinAsync(skin); refreshingPartners = true; choices.SelectedItem = owner.Skin; refreshingPartners = false; description.Text = owner.Skin.DisplayDescription; refreshVoice?.Invoke(); }); };
         void RefreshChoices()
         {
             refreshingPartners = true; choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = owner.Skin; refreshingPartners = false;
-            prompt.Text = owner.Settings.SystemPrompt; description.Text = owner.Skin.Description; refreshVoice?.Invoke();
+            prompt.Text = owner.Settings.SystemPrompt; description.Text = owner.Skin.DisplayDescription; refreshVoice?.Invoke();
         }
         async Task RemoveAsync(PetSkin target)
         {
@@ -93,12 +93,12 @@ internal sealed class SettingsWindow : Window
             shownCatalog = next;
             refreshingPartners = true; choices.ItemsSource = null; choices.ItemsSource = owner.Skins; choices.SelectedItem = owner.Skin; refreshingPartners = false;
             if (shownPersona != owner.Skin.Id) { shownPersona = owner.Skin.Id; prompt.Text = owner.Settings.SystemPrompt; refreshVoice?.Invoke(); }
-            description.Text = owner.Skin.Description;
+            description.Text = owner.Skin.DisplayDescription;
         }
         owner.Changed += CatalogChanged; Closed += (_, _) => owner.Changed -= CatalogChanged;
         return Ui.Column(Ui.Text(TextResources.Get("settingsWindow.partner.text.alternativeB"), 20), selectors, Ui.Row(import, bulk), description, Ui.Field(TextResources.Get("settingsWindow.partner.field"), prompt),
-            Ui.Button(TextResources.Get("settingsWindow.partner.text.alternativeC"), () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
-            Ui.Button(TextResources.Get("settingsWindow.partner.text.alternativeD"), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
+            Ui.Button(TextResources.Get("settingsWindow.partner.text.alternativeC"), () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
+            Ui.Button(TextResources.Get("settingsWindow.partner.text.alternativeD"), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
             Ui.AsyncButton(TextResources.Get("settingsWindow.partner.asyncButton.alternativeB"), async () => {
                 if (owner.ExplainGuideCompanions()) return;
                 if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException(TextResources.Get("settings.companions.savePersonaFirst"));
@@ -112,7 +112,7 @@ internal sealed class SettingsWindow : Window
     private Control PartnerRow(PetSkin? skin, ComboBox choices, Func<PetSkin, Task> remove)
     {
         if (skin == null) return new TextBlock();
-        var name = Ui.Text(skin.Name); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
+        var name = Ui.Text(skin.DisplayName); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
         var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1 && skin.OfficialCharacterId != "e-bao", IsVisible = false };
         ToolTip.SetTip(button, skin.OfficialCharacterId == "e-bao" ? TextResources.Get("settingsWindow.partnerRow.toolTipSetTip") : TextResources.Get("settingsWindow.partnerRow.toolTipSetTip.alternativeA"));
         button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();
@@ -127,7 +127,7 @@ internal sealed class SettingsWindow : Window
         var dialog = Ui.Window(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.window"), Ui.Text(""), 450, 260);
         dialog.Name = "RemoveCompanionDialog"; dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         dialog.Content = new Border { Padding = new Thickness(22), Child = Ui.Column(
-            Ui.Text(TextResources.Format("settingsWindow.confirmRemoveCompanionAsync.template",target.Name), 19),
+            Ui.Text(TextResources.Format("settingsWindow.confirmRemoveCompanionAsync.template",target.DisplayName), 19),
             Ui.Text(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.text")),
             Ui.Row(Ui.Button(TextResources.Get("common.cancel"), () => dialog.Close(false)), Ui.Button(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.text.alternativeA"), () => dialog.Close(true)))) };
         return dialog.ShowDialog<bool>(this);
@@ -178,7 +178,7 @@ internal sealed class SettingsWindow : Window
         refreshVoice = () => {
             speech.Text = s.VoiceName; live.Text = s.LiveVoice;
             voices.ItemsSource = VoicePresets.For("speech", s.SpeechConnection()).Select(v => v.Id).ToList();
-            advice.Text = owner.Skin.Name + " · " + (owner.Skin.Voices?.Description ?? TextResources.Get("settingsWindow.voice.ownerSkinName"));
+            advice.Text = owner.Skin.DisplayName + " · " + (owner.Skin.Voices?.Description ?? TextResources.Get("settingsWindow.voice.ownerSkinName"));
         };
         refreshVoice();
         voices.SelectionChanged += (_, _) => { if (voices.SelectedItem is string choice) speech.Text = choice; };

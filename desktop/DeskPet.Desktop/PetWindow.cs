@@ -111,7 +111,7 @@ internal sealed partial class PetWindow : Window
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
-            var item = new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.Name), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
+            var item = new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
             item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
         Add(TextResources.Get("petWindow.buildMenu.text.alternativeH"), owner.ShowSettings); Add(TextResources.Get("petWindow.buildMenu.text.alternativeI"), owner.ShowGuide); Add(TextResources.Get("petWindow.buildMenu.text.alternativeJ"), owner.ShowAbout); Add(TextResources.Get("petWindow.buildMenu.text.alternativeK"), () => owner.Run(owner.ExitAsync));

@@ -261,7 +261,7 @@ namespace Dafeiyu
             if(failure==null){dialog.Complete();return;}
             if(failure is OperationCanceledException){dialog.Failure(TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeA"),()=>{var ignored=DownloadAllOfficialAsync(owner);});return;}
             var aggregate=failure as AggregateException;
-            var failures=aggregate==null?new string[0]:OfficialCompanionProfiles.All.Where(p=>aggregate.Flatten().InnerExceptions.Any(e=>e.Message.StartsWith(p.Id+"：",StringComparison.Ordinal)||e.Message.StartsWith(p.Id+":",StringComparison.Ordinal))).Select(p=>p.Name).ToArray();
+            var failures=aggregate==null?new string[0]:OfficialCompanionProfiles.All.Where(p=>aggregate.Flatten().InnerExceptions.Any(e=>e.Message.StartsWith(p.Id+"：",StringComparison.Ordinal)||e.Message.StartsWith(p.Id+":",StringComparison.Ordinal))).Select(p=>p.DisplayName).ToArray();
             dialog.Failure((failures.Length==0?TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeB"):TextResources.Format("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure",String.Join("、",failures)))+TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC"),()=>{var ignored=DownloadAllOfficialAsync(owner);});
         }
         async Task RefreshBulkInstallations(SkinDefinition captured,long token,IList<OfficialCompanionResult> results)

@@ -21,6 +21,10 @@ using Avalonia.Threading;
 using Dafeiyu;
 using DeskPet.Desktop;
 
+// Legacy UI fixtures assert Chinese copy. Pin their test UI culture so the new
+// system-language default does not depend on the CI runner's OS language.
+var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
+System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo(systemLanguageFixture==null?"zh-CN":systemLanguageFixture.Substring("--system-language-ui=".Length));
 AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
@@ -34,6 +38,10 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(systemLanguageFixture!=null){Console.WriteLine("SystemLanguageUiChecks: "+LanguageUiChecks.RunSystemStartup(Path.Combine(directory,"system-language-ui"),System.Globalization.CultureInfo.CurrentUICulture.Name)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--language-picker="))){string language=args.Single(arg=>arg.StartsWith("--language-picker=")).Substring("--language-picker=".Length);Console.WriteLine("LanguagePickerChecks: "+LanguagePickerChecks.Run(language)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--full-language-ui="))){string language=args.Single(arg=>arg.StartsWith("--full-language-ui=")).Substring("--full-language-ui=".Length);Console.WriteLine("MultilingualUiAuditChecks: "+MultilingualUiAuditChecks.Run(Path.Combine(directory,"multilingual-audit"),language)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--language-ui="))){string language=args.Single(arg=>arg.StartsWith("--language-ui=")).Substring("--language-ui=".Length);if(!UiLanguages.Choices.Any(choice=>choice.Code==language))throw new ArgumentException("Unsupported language fixture");Console.WriteLine("LanguageUiChecks: "+LanguageUiChecks.Run(Path.Combine(directory,"language-ui"),language)+" passed");return;}
     if(args.Contains("--localization-ui-only")){Console.WriteLine("LocalizationUiChecks: "+LocalizationUiChecks.Run(Path.Combine(directory,"localization"))+" passed");return;}
     if(args.Contains("--companion-startup-ui-only")){Console.WriteLine("CompanionStartupUi: "+OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory,"startup-restore"))+" passed");return;}
     if (args.Contains("--official-native-index") || args.Contains("--official-native-materials"))

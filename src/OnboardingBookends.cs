@@ -19,7 +19,7 @@ namespace Dafeiyu {
   }
   void StyleBookend(){
    bool complete=Current.Action=="complete";directory.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;locate.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;exitActions.Visibility=complete?Visibility.Collapsed:Visibility.Visible;
-   guideHeading.Text=Bookend?TextResources.Get("onboardingBookends.styleBookend.petSkinName.alternativeA"):TextResources.Format("onboardingBookends.styleBookend.petSkinName",pet.Skin.Name);guideHeading.FontSize=Bookend?12:18;guideHeading.Foreground=Bookend?Ui.Muted:Ui.Ink;guideHeading.FontWeight=Bookend?FontWeights.Normal:FontWeights.SemiBold;
+   guideHeading.Text=Bookend?TextResources.Get("onboardingBookends.styleBookend.petSkinName.alternativeA"):TextResources.Format("onboardingBookends.styleBookend.petSkinName",pet.Skin.DisplayName);guideHeading.FontSize=Bookend?12:18;guideHeading.Foreground=Bookend?Ui.Muted:Ui.Ink;guideHeading.FontWeight=Bookend?FontWeights.Normal:FontWeights.SemiBold;
    title.FontSize=complete?26:21;title.FontWeight=complete?FontWeights.Bold:FontWeights.SemiBold;title.TextAlignment=complete?TextAlignment.Center:TextAlignment.Left;title.Margin=new Thickness(0,0,0,complete?22:10);
    instruction.FontSize=complete?15:13;instruction.LineHeight=complete?27:23;instruction.TextAlignment=complete?TextAlignment.Center:TextAlignment.Left;instruction.Foreground=complete?Ui.Ink:Ui.Muted;
    bodyScroll.VerticalContentAlignment=complete?VerticalAlignment.Center:VerticalAlignment.Top;celebration.Visibility=complete?Visibility.Visible:Visibility.Collapsed;status.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;

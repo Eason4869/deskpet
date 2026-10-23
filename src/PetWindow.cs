@@ -232,12 +232,12 @@ namespace Dafeiyu
             try { atlas=Skin.Load(); }
             catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
             interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
-            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
+            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
             ResetGreetingSchedule();
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;
             Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
             Microsoft.Win32.SystemEvents.TimeChanged+=HolidayTimeChanged;
-            Title=TextResources.Format("petWindow.petWindow.titleSkinName",Skin.Name);Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
+            Title=TextResources.Format("petWindow.petWindow.titleSkinName",Skin.DisplayName);Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
             ResizeMode=ResizeMode.NoResize; Background=Brushes.Transparent; ShowInTaskbar=false;
             ShowActivated=false; Focusable=false; Topmost=Settings.Topmost;
             Width=192*Settings.Scale; Height=208*Settings.Scale;
@@ -284,7 +284,7 @@ namespace Dafeiyu
             AddTray(TextResources.Get("petWindow.petWindow.addTray"),ShowQuickChat,"TrayQuickChat","chat");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeA"),ShowChat,"TrayFullChat","full-view");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeB"),ShowSettings,"TraySettings","settings");
             AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeC"),ReturnHome,"TrayReturnHome","back");
             trayMenu.Items.Add(new Separator());AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeD"),Close,"TrayExit","close");
-            tray=new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.Name),Visible=true };tray.BalloonTipClicked+=OpenImageTaskNotification;
+            tray=new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true };tray.BalloonTipClicked+=OpenImageTaskNotification;
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
@@ -345,7 +345,7 @@ namespace Dafeiyu
             foreach(var skin in Catalog.Skins)
             {
                 SkinDefinition selected=skin;
-                var item=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey};
+                var item=new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey};
                 item.Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=28,Height=28,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,28,28),5.6,5.6)};
                 item.Click+=async delegate{await RequestSkinAsync(selected,CompanionSelectionOrigin.PassiveMenu,null);foreach(MenuItem entry in menu.Items)entry.IsChecked=(string)entry.Tag==Skin.PickerKey;};menu.Items.Add(item);
             }
@@ -676,10 +676,10 @@ namespace Dafeiyu
             try
             {
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
-                if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
+                if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();
-                Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.Name); tray.Text=Title;
+                Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
                 if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
             }

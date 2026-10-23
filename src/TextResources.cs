@@ -47,19 +47,75 @@ namespace Dafeiyu
         }
         public string Format(string key,params object[] args){return Format(CultureInfo.CurrentCulture,key,args);}
         public string Format(IFormatProvider provider,string key,params object[] args){return String.Format(provider,Get(key),args);}
+        internal TextCatalog WithFallback(TextCatalog fallback)
+        {
+            if(fallback==null)throw new ArgumentNullException("fallback");
+            var merged=new Dictionary<string,string>(fallback.values,StringComparer.Ordinal);
+            foreach(var item in values)if(!UiLanguages.IsNativeNameKey(item.Key))merged[item.Key]=item.Value;
+            return new TextCatalog(merged);
+        }
     }
 
     public static class TextResources
     {
         const string ResourceName="Dafeiyu.Locales.zh_CN.json";
         static readonly Lazy<TextCatalog> catalog=new Lazy<TextCatalog>(Load,LazyThreadSafetyMode.ExecutionAndPublication);
+        static readonly Dictionary<string,Lazy<TextCatalog>> catalogs=CreateCatalogs();
+        static readonly object languageGate=new object();
+        sealed class Selection
+        {
+            internal readonly string Code;internal readonly Lazy<TextCatalog> Catalog;
+            internal Selection(string code,Lazy<TextCatalog> catalog){Code=code;Catalog=catalog;}
+        }
+        static volatile Selection selection=new Selection("zh_CN",catalog);
+        static bool startupConfigured;
+        static readonly Lazy<string[]> errorPrefixes=new Lazy<string[]>(LoadErrorPrefixes,LazyThreadSafetyMode.ExecutionAndPublication);
         static TextCatalog Load()
         {
             using(var stream=typeof(TextResources).Assembly.GetManifestResourceStream(ResourceName))return TextCatalog.Load(stream);
         }
-        public static string Get(string key){return catalog.Value.Get(key);}
-        public static string Format(string key,params object[] args){return catalog.Value.Format(key,args);}
-        public static string Format(IFormatProvider provider,string key,params object[] args){return catalog.Value.Format(provider,key,args);}
+        static Dictionary<string,Lazy<TextCatalog>> CreateCatalogs()
+        {
+            var result=new Dictionary<string,Lazy<TextCatalog>>(StringComparer.Ordinal);
+            foreach(var choice in UiLanguages.Choices)
+            {
+                string code=choice.Code;
+                if(code==UiLanguages.FollowSystem)continue;
+                result.Add(code,code=="zh_CN"?catalog:new Lazy<TextCatalog>(()=>{
+                    using(var stream=typeof(TextResources).Assembly.GetManifestResourceStream("Dafeiyu.Locales."+code+".json"))return TextCatalog.Load(stream).WithFallback(catalog.Value);
+                },LazyThreadSafetyMode.ExecutionAndPublication));
+            }
+            return result;
+        }
+        internal static TextCatalog CatalogFor(string code){return catalogs[UiLanguages.Resolve(code)].Value;}
+        public static string CurrentLanguage {get{return selection.Code;}}
+        // Startup only. Existing controls keep one consistent language until restart.
+        public static void ConfigureStartupLanguage(string code)
+        {
+            string normalized=UiLanguages.Resolve(code);var chosen=catalogs[normalized];chosen.Value.Get("common.cancel");
+            lock(languageGate)
+            {
+                if(startupConfigured&&selection.Code!=normalized)throw new InvalidOperationException("UI language is frozen for this process.");
+                selection=new Selection(normalized,chosen);startupConfigured=true;
+            }
+        }
+        static string[] LoadErrorPrefixes()
+        {
+            var prefixes=new HashSet<string>(StringComparer.Ordinal);
+            foreach(var choice in UiLanguages.Choices)
+            {
+                if(choice.Code==UiLanguages.FollowSystem)continue;
+                string prefix=CatalogFor(choice.Code).Format(CultureInfo.InvariantCulture,"agentWorkspace.executeAsync.taskFromResult","").Trim();
+                if(prefix.Length<2)throw new InvalidDataException("Invalid embedded error prefix.");
+                prefixes.Add(prefix);prefixes.Add(prefix.Replace('\uff1a',':'));prefixes.Add(prefix.Replace(':','\uff1a'));
+            }
+            var result=new string[prefixes.Count];prefixes.CopyTo(result);return result;
+        }
+        public static bool IsToolError(string result)
+        {if(result==null)return false;foreach(string prefix in errorPrefixes.Value)if(result.StartsWith(prefix,StringComparison.Ordinal))return true;return false;}
+        public static string Get(string key){return selection.Catalog.Value.Get(key);}
+        public static string Format(string key,params object[] args){return selection.Catalog.Value.Format(key,args);}
+        public static string Format(IFormatProvider provider,string key,params object[] args){return selection.Catalog.Value.Format(provider,key,args);}
         // Error reporting must never recursively require a broken embedded catalog.
         public static string StartupMessage(string key)
         {

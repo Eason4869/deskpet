@@ -40,7 +40,7 @@ namespace Dafeiyu
             entries.Refresh(workEntry,pet.WorkIsRunning);var current=session.CurrentAgentTask;
             taskButton.Visibility=current==null?Visibility.Collapsed:Visibility.Visible;task.Text=current==null?"":current.Goal;taskButton.ToolTip=null;
             taskDot.Visibility=current!=null && current.Status=="running"?Visibility.Visible:Visibility.Collapsed;
-            identity.Text=pet.Skin.Name;if(!ReferenceEquals(avatarSkin,pet.Skin)){avatarSkin=pet.Skin;avatar.Source=SkinCatalog.GetAvatar(avatarSkin);}if(projectNav!=null){projectNav.SetPersona(pet.Skin.Id);projectNav.SetActiveConversation(conversationId);projectNav.RefreshIfNeeded();projectNav.SetCurrentTaskShortcut(taskButton,workEntry&&current!=null);}
+            identity.Text=pet.Skin.DisplayName;if(!ReferenceEquals(avatarSkin,pet.Skin)){avatarSkin=pet.Skin;avatar.Source=SkinCatalog.GetAvatar(avatarSkin);}if(projectNav!=null){projectNav.SetPersona(pet.Skin.Id);projectNav.SetActiveConversation(conversationId);projectNav.RefreshIfNeeded();projectNav.SetCurrentTaskShortcut(taskButton,workEntry&&current!=null);}
         }
         public void Dispose(){if(disposed)return;disposed=true;if(projectNav!=null)projectNav.Dispose();session.AgentTaskChanged-=Refresh;session.StateChanged-=Refresh;session.HistoryChanged-=Refresh;pet.ProjectsChanged-=Refresh;}
     }

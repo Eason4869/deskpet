@@ -71,7 +71,7 @@ namespace Dafeiyu
             {
                 if(disposed)throw new ObjectDisposedException("GeminiLiveSession");if(running!=null)throw new InvalidOperationException(TextResources.Get("geminiLiveSession.startAsync.text"));
                 cancellation=new CancellationTokenSource();configured=new TaskCompletionSource<bool>();volume=settings.Volume;
-                var snapshot=settings.Copy();running=Task.Run(()=>Run(snapshot,persona,cancellation.Token));
+                var snapshot=settings.Copy();string prompt=ReplyLanguagePolicy.Apply(PersonaProfiles.LocalizeDefaultPrompt(persona));running=Task.Run(()=>Run(snapshot,prompt,cancellation.Token));
             }
             Task timeout=Task.Delay(TimeSpan.FromSeconds(25));Task first=await Task.WhenAny(configured.Task,timeout);
             if(first==timeout){await StopAsync();throw new ApiException(TextResources.Get("geminiLiveSession.startAsync.text.alternativeA"));}

@@ -55,7 +55,7 @@ namespace Dafeiyu
             header.Children.Add(avatarCard);
             var introduction=new StackPanel { VerticalAlignment=VerticalAlignment.Center };
             var eyebrow=Ui.Text(TextResources.Get("settingsPage.settingsPage.text"),12,Ui.Muted); eyebrow.Margin=new Thickness(0,0,0,3); introduction.Children.Add(eyebrow);
-            name=Ui.Text(pet.Skin.Name,24); name.FontWeight=FontWeights.SemiBold; introduction.Children.Add(name);
+            name=Ui.Text(pet.Skin.DisplayName,24); name.FontWeight=FontWeights.SemiBold; introduction.Children.Add(name);
             introduction.Children.Add(Ui.Text(TextResources.Get("settingsPage.settingsPage.text.alternativeA"),12,Ui.Muted));
             Grid.SetColumn(introduction,1); header.Children.Add(introduction); root.Children.Add(header);
 
@@ -175,7 +175,7 @@ namespace Dafeiyu
             {
                 var skin=pet.Catalog.Import(dialog.FileName);
                 refreshing=true; skins.ItemsSource=null; skins.ItemsSource=pet.Catalog.Skins; refreshing=false;
-                skins.SelectedItem=skin; ShowNotice(TextResources.Format("settingsPage.importSkin.showNotice",skin.Name));
+                skins.SelectedItem=skin; ShowNotice(TextResources.Format("settingsPage.importSkin.showNotice",skin.DisplayName));
             }
             catch(Exception e)
             {
@@ -191,20 +191,20 @@ namespace Dafeiyu
             skins.IsDropDownOpen=false;
             if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice(TextResources.Get("settingsPage.removeCompanion.showNotice.alternativeB"));return;}
             if(pet.Catalog.Skins.Count<=1){ShowNotice(TextResources.Get("settingsPage.removeCompanion.showNotice.alternativeC"));return;}
-            var dialog=new DeleteConversationDialog(skin.Name,null,true){Owner=HostWindow};
+            var dialog=new DeleteConversationDialog(skin.DisplayName,null,true){Owner=HostWindow};
             if(dialog.ShowDialog()!=true)return;
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             if(pet.Skin.PickerKey==skin.PickerKey) {
                 SkinDefinition next=null;foreach(var candidate in pet.Catalog.Skins)if(candidate.PickerKey!=skin.PickerKey&&!candidate.IsPlaceholder){next=candidate;break;}
                 if(next==null || !pet.SelectSkin(next)){ShowNotice(pet.Notice);return;}
             }
-            pet.Catalog.Remove(skin);RefreshSkinChoices();ShowNotice(TextResources.Format("settingsPage.removeCompanion.showNotice",skin.Name));
+            pet.Catalog.Remove(skin);RefreshSkinChoices();ShowNotice(TextResources.Format("settingsPage.removeCompanion.showNotice",skin.DisplayName));
         }
         internal void RefreshSkinChoices()
         {refreshing=true;skins.ItemsSource=null;skins.ItemsSource=pet.Catalog.Skins;skins.SelectedItem=pet.Skin;refreshing=false;RefreshState();}
         static ComboBoxItem FindParentItem(DependencyObject source)
         {while(source!=null){var item=source as ComboBoxItem;if(item!=null)return item;source=source is Visual?VisualTreeHelper.GetParent(source):LogicalTreeHelper.GetParent(source);}return null;}
-        private void RefreshAvatar() { displayedSkin=pet.Skin;name.Text=pet.Skin.Name; avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
+        private void RefreshAvatar() { displayedSkin=pet.Skin;name.Text=pet.Skin.DisplayName; avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
         public void RefreshTextProviders(){connections.RefreshTextProviders();}
         public void RefreshState()
         {

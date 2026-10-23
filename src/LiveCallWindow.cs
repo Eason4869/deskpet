@@ -20,7 +20,7 @@ namespace Dafeiyu
             bool compact=host is QuickChatWindow;Background=Ui.Brush("#F7F9FD");
             var root=new Grid{Margin=new Thickness(compact?16:28,compact?12:22,compact?16:28,compact?12:24)};root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var header=new DockPanel();var back=UiIcons.Button("back",(host is SettingsWindow || host is ChatWindow && ((ChatWindow)host).CurrentPage=="settings")?TextResources.Get("liveCallWindow.liveCallView.uiIcons"):compact?TextResources.Get("liveCallWindow.liveCallView.uiIcons.alternativeA"):TextResources.Get("liveCallWindow.liveCallView.uiIcons.alternativeB"));back.Name="LiveBackToText";back.Click+=delegate{Close();};DockPanel.SetDock(back,Dock.Right);header.Children.Add(back);
-            var heading=new StackPanel();var title=Ui.Text(pet.Skin.Name,compact?16:24);title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);heading.Children.Add(Ui.Text(compact?TextResources.Get("liveCallWindow.liveCallView.text"):TextResources.Get("liveCallWindow.liveCallView.text.alternativeA"),11,Ui.Muted));header.Children.Add(heading);root.Children.Add(header);
+            var heading=new StackPanel();var title=Ui.Text(pet.Skin.DisplayName,compact?16:24);title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);heading.Children.Add(Ui.Text(compact?TextResources.Get("liveCallWindow.liveCallView.text"):TextResources.Get("liveCallWindow.liveCallView.text.alternativeA"),11,Ui.Muted));header.Children.Add(heading);root.Children.Add(header);
             var center=new Grid{Margin=new Thickness(0,compact?2:12,0,compact?4:12)};center.RowDefinitions.Add(new RowDefinition());center.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var stage=new Grid{MaxWidth=compact?146:330,MaxHeight=compact?146:330};orbit=new VoiceOrbit{Name="LiveVoiceOrbit",ClipToBounds=true};stage.Children.Add(orbit);
             var avatar=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=compact?66:118,Height=compact?66:118,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,compact?66:118,compact?66:118),compact?13.2:23.6,compact?13.2:23.6)};RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);stage.Children.Add(avatar);center.Children.Add(stage);
@@ -46,10 +46,10 @@ namespace Dafeiyu
             finally{connecting=false;if(!closed){connect.Visibility=session.IsActive?Visibility.Collapsed:Visibility.Visible;connect.IsEnabled=true;}}
         }
         void Refresh(){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(Refresh));return;}status.Text=session.Status;connect.Visibility=session.IsActive || connecting?Visibility.Collapsed:Visibility.Visible;connect.IsEnabled=!connecting;}
-        void Transcript(string role,string text){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>Transcript(role,text)));return;}subtitle.Text=(role=="user"?TextResources.Get("liveCallWindow.transcript.subtitle"):pet.Skin.Name+"：")+text;}
+        void Transcript(string role,string text){if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>Transcript(role,text)));return;}subtitle.Text=(role=="user"?TextResources.Get("liveCallWindow.transcript.subtitle"):pet.Skin.DisplayName+"：")+text;}
         public void Show()
         {
-            var main=host as ChatWindow;if(main!=null)main.MountLiveContent(this);else host.Content=this;host.Title=TextResources.Format("liveCallWindow.show.petSkinName",pet.Skin.Name);Activate();Focus();
+            var main=host as ChatWindow;if(main!=null)main.MountLiveContent(this);else host.Content=this;host.Title=TextResources.Format("liveCallWindow.show.petSkinName",pet.Skin.DisplayName);Activate();Focus();
         }
         public void Activate()
         {

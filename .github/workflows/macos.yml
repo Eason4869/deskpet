@@ -104,6 +104,7 @@ jobs:
           python3 tests/AgentJobRegistrationTests.py | tee "$REPORT_ROOT/agent-jobs-registration.log"
           python3 tests/LocalizationAuditTests.py
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
+          python3 tools/verify_language_packs.py --report "$REPORT_ROOT/language-pack-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json "$REPORT_ROOT/core-tests.json" | tee "$REPORT_ROOT/core-tests.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only 2>&1 | tee "$REPORT_ROOT/agent-jobs-logic.log"
@@ -123,6 +124,19 @@ jobs:
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-writer-exit-ui-only | tee "$REPORT_ROOT/image-writer-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-held-exit-ui-only | tee "$REPORT_ROOT/image-held-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-exit-ui-only | tee "$REPORT_ROOT/image-exit.log"
+      - name: Five translated startup UI matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          for culture in zh-TW en-GB ar-SA; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --system-language-ui="$culture" | tee "$REPORT_ROOT/system-language-$culture.log"
+          done
+          for locale in zh_CN zh_TW en_US ja_JP ko_KR; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-picker="$locale" | tee "$REPORT_ROOT/language-picker-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-ui="$locale" | tee "$REPORT_ROOT/language-dialog-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --full-language-ui="$locale" | tee "$REPORT_ROOT/ui-$locale.log"
+          done
+          cp -R work/language-ui "$REPORT_ROOT/language-ui"
       - name: Verify actual thin companion resources and restoration
         shell: bash
         run: |
@@ -150,7 +164,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          locale_sha="$(shasum -a 256 assets/locales/zh_CN.json | cut -d ' ' -f 1)"
+          locale_sha="$(python3 -c 'import hashlib,pathlib; print(";".join(code+"="+hashlib.sha256(pathlib.Path("assets/locales",code+".json").read_bytes()).hexdigest() for code in ["zh_CN","zh_TW","en_US","ja_JP","ko_KR"]))')"
           dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- "$locale_sha" 'work/macos-${{ matrix.arch }}/artifacts/DeskPet.app/Contents/MacOS/DeskPet.Core.dll' | tee "$REPORT_ROOT/localization-artifact.log"
           python3 - <<'PY'
           import json, os, pathlib, subprocess
