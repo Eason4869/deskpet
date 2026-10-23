@@ -12,3 +12,9 @@
 - Pre-flight: S12 → S15/S16 consumes persistent conversation identity; primary must not change on Build/Plan transitions, and get must bypass write-journal result truncation.
 - Pre-flight: S13/S14 → S15/S16 retains WPF-first stage acceptance, then required Windows Avalonia support; macOS only shared logic/capability denial.
 - Preparation: exported exact dev.1 tag bytes of zh_CN.json to E:/workspace/deskpet/exports/0.10.5-dev.1/zh_CN.json at user's request; 4,344 keys, SHA256 8b213b02142c7d7930e12b2d793254a1671d0153275767f9f18caad8c9690541.
+
+- User confirmation 2026-10-23: accepted the equivalent design contract and authorized development under it. S8 contract frozen in design-draft.md; only functional implementation remains gated on merged-dev CI. Protocol choices in sections 3–5 are now explicit user-approved scope.
+
+- CI prerequisite complete: merged-dev Windows 39943648201 and all four macOS jobs 39943648210 succeeded at cc868e1. Full run/job metadata and native logs archived under work/agent-jobs-validation/base-ci; accepted.json is the gate.
+- Added user scope: avatar language placeholder above settings, only selected Simplified Chinese; no translation, language switching, online packs or config migration. AppShellTests missing-entry RED → GREEN 77 checks; actual menu screenshot work/permissions/avatar-language-menu.png inspected; audit 12/12 and strict localization gate green (4,346 keys).
+- S8 in progress: first contract suite observed four expected runtime failures for missing settings/policy, not compiler errors. Independent global/project limits, copies, persistence and effective settings now pass 29 Framework checks; immutable job contracts and remaining regression checks still pending.

@@ -4342,5 +4342,7 @@
   "settings.companions.savePersonaFirst": "请先保存人格修改，再恢复伙伴。",
   "speech.codeOmitted": "（代码内容请看聊天窗口）",
   "browser.tab.title": "网页浏览器",
-  "images.recoveredPrompt": "恢复的图片（原元数据不可用）"
+  "images.recoveredPrompt": "恢复的图片（原元数据不可用）",
+  "menus.language": "语言",
+  "languages.zhCN": "简体中文"
 }

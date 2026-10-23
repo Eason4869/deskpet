@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root==null)yield break;if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}
         static Button Button(DependencyObject root,string name){return All<Button>(root).Single(b=>b.Name==name);}
         static void Click(Button b){b.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));}
-        static void Save(Window w,string name){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine("work","permissions",name)))png.Save(f);}
+        static void Save(FrameworkElement w,string name){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine("work","permissions",name)))png.Save(f);}
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","shell-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
@@ -27,6 +27,14 @@ namespace Dafeiyu.Tests
             Check(All<AgentWorkspaceNavigation>(chat).Single().IsVisible,"opening a full conversation defaults to an expanded sidebar even after the previous window hid it");
             Check(chat.WindowStyle==WindowStyle.None,"main window uses client-drawn chrome without a system title bar");
             var rail=All<Border>(chat).Single(b=>b.Name=="AppIconRail");Check(rail.IsVisible&&Button(chat,"ShellHome").IsVisible&&Button(chat,"ShellSettings").IsVisible&&Button(chat,"ShellAvatar").IsVisible,"home settings and avatar share the persistent left icon rail");
+            Click(Button(chat,"ShellAvatar"));await Task.Delay(60);
+            var profile=Button(chat,"ShellAvatar").ContextMenu;
+            var language=profile.Items.OfType<MenuItem>().SingleOrDefault(item=>item.Name=="ProfileLanguage");
+            Check(language!=null&&profile.Items.IndexOf(language)+1==profile.Items.IndexOf(profile.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileSettings")),"avatar language entry is immediately above settings");
+            var chinese=language.Items.OfType<MenuItem>().Single();
+            Check((string)language.Header=="语言"&&(string)chinese.Header=="简体中文"&&chinese.IsChecked,"language submenu exposes only the current Simplified Chinese choice");
+            chinese.IsChecked=false;chinese.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Check(chinese.IsChecked,"selecting the current language retains its selected state");Save(profile,"avatar-language-menu.png");profile.IsOpen=false;
             var frame=All<Border>(chat).Single(b=>b.Name=="AppContentFrame");var clip=frame.Clip as RectangleGeometry;Check(clip!=null&&clip.RadiusX==16&&!clip.FillContains(new Point(1,1))&&!clip.FillContains(new Point(frame.ActualWidth-1,frame.ActualHeight-1)),"page children are clipped at all rounded content-frame corners");
             Check(Button(chat,"ShellUsage").IsVisible&&Button(chat,"ShellMcp").IsVisible,"usage and approved puzzle extension entries are visible in the left rail");var homePath=All<System.Windows.Shapes.Path>(Button(chat,"ShellHome")).Single();Check(homePath.Fill is SolidColorBrush&&((SolidColorBrush)homePath.Fill).Color==Color.FromRgb(28,32,36),"active home icon is a solid black silhouette");
             var text=All<MarkdownEditor>(chat).Single(e=>e.Name=="MessageInput");text.Text="保留主聊天草稿";var sameInput=text;

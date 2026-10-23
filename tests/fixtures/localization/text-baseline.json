@@ -26065,6 +26065,20 @@
       "expected": "恢复的图片（原元数据不可用）",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "menus.language",
+      "expected": "语言",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "languages.zhCN",
+      "expected": "简体中文",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
     }
   ]
 }
