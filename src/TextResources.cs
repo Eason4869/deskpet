@@ -42,7 +42,7 @@ namespace Dafeiyu
         {
             if(key==null)throw new ArgumentNullException("key");
             string value;if(values.TryGetValue(key,out value))return value;
-            lock(reported)if(reported.Add(key))Trace.TraceWarning("Missing text resource: "+key);
+            lock(reported)if(reported.Add(key))foreach(TraceListener listener in Trace.Listeners)listener.WriteLine("Missing text resource: "+key);
             return "["+key+"]";
         }
         public string Format(string key,params object[] args){return Format(CultureInfo.CurrentCulture,key,args);}

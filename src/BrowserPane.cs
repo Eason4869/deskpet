@@ -82,7 +82,7 @@ namespace Dafeiyu
         {
             var next=new BrowserView(OnStarted,OnAddressChanged,OnNotice,OnDownloadNotice,Navigate,UpdateButtons);view=next;content.Content=next;await next.InitializeAsync();
         }
-        void OnStarted(Task task,string uri){if(disposed)return;address.Text=uri;notice.Text=TextResources.Get("browserPane.onStarted.notice");Observe(task);}
+        void OnStarted(Task task,string uri){if(disposed)return;downloadNotice=false;address.Text=uri;notice.Text=TextResources.Get("browserPane.onStarted.notice");Observe(task);}
         void OnAddressChanged(string uri){if(!disposed){address.Text=uri;UpdateButtons();}}
         void OnNotice(string text){if(!disposed)notice.Text=text;}
         void OnDownloadNotice(string text){downloadNotice=true;OnNotice(text);}

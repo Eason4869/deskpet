@@ -36,7 +36,7 @@ namespace Dafeiyu
         {
             if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException(TextResources.Get("speechOutput.speakOnUiAsync.text"));
             currentVolume=Math.Max(0,Math.Min(100,settings.Volume));
-            string text=Regex.Replace(reply??"","```[\\s\\S]*?```","（代码内容请看聊天窗口）");text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
+            string text=Regex.Replace(reply??"","```[\\s\\S]*?```",TextResources.Get("speech.codeOmitted"));text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
             if(text.Length>1800)text=TextResources.Format("speechOutput.speakOnUiAsync.textTextSubstring",text.Substring(0,1800));if(text.Length==0 || settings.Volume==0)return;
             using(var reading=CancellationTokenSource.CreateLinkedTokenSource(cancel))
             {

@@ -101,7 +101,7 @@ internal sealed class SettingsWindow : Window
             Ui.Button(TextResources.Get("settingsWindow.partner.text.alternativeD"), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),
             Ui.AsyncButton(TextResources.Get("settingsWindow.partner.asyncButton.alternativeB"), async () => {
                 if (owner.ExplainGuideCompanions()) return;
-                if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException("请先保存人格修改，再恢复伙伴。");
+                if (prompt.Text != owner.Settings.SystemPrompt) throw new InvalidOperationException(TextResources.Get("settings.companions.savePersonaFirst"));
                 var key = owner.Skin.PickerKey; CompanionPackStorage.RestoreHidden(owner.DataDirectory); var restored = await Task.Run(() => SpriteAssets.LoadSkins(owner.DataDirectory));
                 if (owner.ExplainGuideCompanions()) return;
                 // Retain the currently active verified source while rebuilding inactive entries.

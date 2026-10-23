@@ -71,7 +71,12 @@ namespace Dafeiyu.Tests
             using(var f=new OfficialCompanionFixture())using(var t=f.Transport())using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
                 f.CorruptMirror=true;int proxy=0;t.AssetClientFactory=(enabled,address)=>{proxy++;return new HttpClient(new OfficialDelegateHandler(f.Dispatch));};
                 var routing=new OfficialDownloadRouting(true," https://mirror.example/prefix/ ",true,"http://proxy.example");
-                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                var routeKind=typeof(OfficialCompanionProgress).GetProperty("RouteKind");
+                Check(routeKind!=null,"transport route identity must be independent of translated route text");
+                var routes=new List<string>();
+                var reporter=new OfficialProgress<OfficialCompanionProgress>(p=>{if(p.Stage=="download")routes.Add(routeKind.GetValue(p,null).ToString());});
+                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,reporter,CancellationToken.None);
+                Check(routes.Contains("Mirror")&&routes.Contains("Direct"),"mirror fallback reports explicit route identities without parsing display labels");
                 Check(result.InstalledNow&&f.Packages==2,"mirror wrong digest falls back to verified direct bytes");
                 Check(f.Requests.Any(x=>x.StartsWith("https://mirror.example/prefix/https://github.com/",StringComparison.Ordinal))&&proxy==1,"mirror address normalizes and assets bypass proxy while metadata uses it");
                 Check(!Directory.GetFiles(f.Root,"*.part",SearchOption.AllDirectories).Any(),"successful fallback removes only owned partial files");

@@ -26059,6 +26059,30 @@
       "format": false,
       "argument_count": 0,
       "baseline_sha": "c544752c6b5c1f0913bdab52942fc701f928b296"
+    },
+    {
+      "key": "settings.companions.savePersonaFirst",
+      "expected": "请先保存人格修改，再恢复伙伴。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "speech.codeOmitted",
+      "expected": "（代码内容请看聊天窗口）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "browser.tab.title",
+      "expected": "网页浏览器",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "images.recoveredPrompt",
+      "expected": "恢复的图片（原元数据不可用）",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

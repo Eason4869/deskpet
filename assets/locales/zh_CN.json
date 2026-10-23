@@ -4341,5 +4341,9 @@
   "workspaceImagePreview.workspaceImagePreview.text": "图片文件缺失",
   "workspaceImagePreview.workspaceImagePreview.text.alternativeA": "查看图片",
   "wpfOfficialNativeValidator.invalid.text": "角色素材无法完整读取，请重新下载后重试。",
-  "companions.package.updating": "正在更新角色包，请稍后..."
+  "companions.package.updating": "正在更新角色包，请稍后...",
+  "settings.companions.savePersonaFirst": "请先保存人格修改，再恢复伙伴。",
+  "speech.codeOmitted": "（代码内容请看聊天窗口）",
+  "browser.tab.title": "网页浏览器",
+  "images.recoveredPrompt": "恢复的图片（原元数据不可用）"
 }

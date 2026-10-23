@@ -15,7 +15,7 @@ internal sealed class MacSpeechOutput(ApiClient api) : IReplySpeech
     public async Task SpeakAsync(string reply, PetSettings settings, CancellationToken cancel)
     {
         MacServices.EnsureMac();
-        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", "（代码内容请看聊天窗口）");
+        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", TextResources.Get("speech.codeOmitted"));
         text = Regex.Replace(text, "[\\*#`]|https?://\\S+", "").Trim();
         if (text.Length > 1800) text = TextResources.Format("macSpeechOutput.speakAsync.textText",text[..1800]);
         if (text.Length == 0 || settings.Volume == 0) return;

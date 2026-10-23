@@ -34,5 +34,23 @@ class LocalizationAuditTests(unittest.TestCase):
         for value in ["{", "{name}", "{0", "}"]:
             with self.assertRaises(ValueError): self.audit.placeholders(value)
 
+    def test_references_ignore_comments_and_read_multiline_provider_calls(self):
+        source='// TextResources.Get("missing.key");\nvar x=TextResources.Format(\n CultureInfo.InvariantCulture, "files.count",\n Math.Max(1, 2));'
+        counts, errors = self.audit.check_references(source, {'files.count':'共 {0} 项'})
+        self.assertEqual(errors, [])
+        self.assertEqual(dict(counts), {'files.count': 1})
+
+    def test_format_call_argument_mismatch_is_rejected(self):
+        for source in ['TextResources.Format("files.count");', 'TextResources.Format("files.count", nested(1, 2));']:
+            _,errors = self.audit.check_references(source, {'files.count':'{0} / {1}'})
+            self.assertTrue(errors)
+
+    def test_commented_key_does_not_hide_missing_reference(self):
+        _,errors=self.audit.check_references('TextResources.Get("files.missing"); /* TextResources.Get("files.ok") */',{'files.ok':'值'})
+        self.assertEqual(len(errors),1)
+
+    def test_exclusion_cannot_move_to_unrelated_context(self):
+        self.assertNotEqual(self.audit.context_at('void Model(){Run("提示");}',17), self.audit.context_at('void UI(){Show("提示");}',15))
+
 
 if __name__ == "__main__": unittest.main()

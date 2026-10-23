@@ -46,13 +46,15 @@ namespace Dafeiyu
         internal OfficialCompanionResult(OfficialCompanionInstallation installation,bool fallback,bool metadata,bool installed,string warning)
         {Installation=installation;UsedOfflineFallback=fallback;MetadataChecked=metadata;InstalledNow=installed;Warning=warning;}
     }
+    public enum OfficialCompanionRoute { Unknown, Direct, Proxy, Mirror }
     public sealed class OfficialCompanionProgress
     {
         public string CharacterId {get;private set;} public string Stage {get;private set;} public string Route {get;private set;}
         public long CompletedBytes {get;private set;} public long TotalBytes {get;private set;} public double Percent {get;private set;}
+        public OfficialCompanionRoute RouteKind {get;private set;}
         public bool RequiresUpdateNotice {get{return Stage=="download"||Stage=="validate"||Stage=="install"&&Percent<100;}}
-        internal OfficialCompanionProgress(string id,string stage,string route,long completed,long total,double percent)
-        {CharacterId=id;Stage=stage;Route=route??"";CompletedBytes=completed;TotalBytes=total;Percent=Math.Max(0,Math.Min(100,percent));}
+        internal OfficialCompanionProgress(string id,string stage,string route,long completed,long total,double percent,OfficialCompanionRoute routeKind=OfficialCompanionRoute.Unknown)
+        {CharacterId=id;Stage=stage;Route=route??"";RouteKind=routeKind;CompletedBytes=completed;TotalBytes=total;Percent=Math.Max(0,Math.Min(100,percent));}
     }
     internal sealed class OfficialProgress<T> : IProgress<T>
     {

@@ -1,4 +1,4 @@
-# 语言 JSON 重构实施记录
+# SDD ledger — plan: docs/localization/planning/2026-10-23-localization-and-agent-background-jobs-plan.md
 
 计划：外层 `docs/superpowers/plans/2026-10-23-localization-and-agent-background-jobs-plan.md` 的 S0–S7；后台任务明确不做。
 
@@ -14,3 +14,18 @@
 - main=5670d6087f2ab017dcf3f560d956466bcf8d78bc，与 dev 基线源码树一致。
 - Framework 资源22项、缺资源真实宿主2项、解耦5项、新Avalonia语言UI12项通过；迁移后默认Avalonia2971断言通过（新增最终检查前的一轮）。
 - WPF原生MenuSmoke沙箱SetCursorPos error5，桌面重跑发生焦点关闭失败；其余原生回归逐项运行，结果位于work/localization-validation。
+
+## 继续实施：0.10.4 发布后
+
+- 2026-10-23 核对远端：dev 仍为 `4944d11416fec7b494a8eb8ac3c4b8376e1100fd`，main/v0.10.4 为 `c544752c6b5c1f0913bdab52942fc701f928b296`。
+- 本地检查点 `9a20366` 保存此前未提交迁移；集成提交 `a17c556` 合入正式热修复，保留 0.10.5-dev.1 / 0.10.5.0 版本身份。
+- 分支改名为 `codex/localization-v0.10.5-dev.1`，继续使用原隔离目录，未覆盖其他工作区。
+- S0 complete: 三份输入和统一计划归档到 planning；SDK 10.0.402 可用；后台设计缺口仍只约束后续后台阶段，本次不实施。
+- S1 complete: 对原始 dev 提交直接扫描 4,937 个中文候选，未分类为 0；额外英语 UI 候选和 S3 已删除的比较点一并保留记录。
+- S2/S3 regression: Framework missing-key diagnostic RED→GREEN；浏览器后续导航错误优先级 RED→GREEN；真实镜像失败转直连的路线身份 RED→GREEN，OfficialCompanionTests 78 passed。
+- S4/S5/S6: 既有迁移继续保留；修正五个误分类展示/朗读路径；文案精确基线包含 4,347 个资源。
+- S7 in progress: Python audit 9 tests passed，strict complete gate passed；WPF 主程序/更新器在独立目录通过资源 SHA256 和真实 Get；.NET Core 实际产物通过同样检查。
+- Shared full regression: `work/dotnet/dotnet.exe desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json work/localization-validation/portable-report.json` → success, 8,203 passed, 0 failures。
+- Ruling: 沿用既有实施记录作为主账本，S0–S7 的适配步骤直接记录于此，不重建或删除其他计划的 scratch 目录 — 避免重做已完成迁移 — 成本是与通用 task-start 工具格式略有差别。
+- Ruling: 0.10.4 的进度气泡新文案按正式标签内容加入独立基线；被移除的旧通知词条保留并在 retired-keys.json 解释 — 不盲删旧基线 — 成本是保留一个暂时不再引用的词条。
+- Ruling: 独立开发分支的远端推送/草稿 PR 仅用于本次开发验收；共享 dev/main 合并和 0.10.5-dev.1 发版留待明确发布授权 — 完成跨平台验证且不提前发布 — 成本是 CI 排队和产物下载时间。

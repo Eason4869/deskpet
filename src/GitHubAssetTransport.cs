@@ -19,10 +19,10 @@ namespace Dafeiyu
                 return OfficialJson.Array(response.Value);
             }
         }
-        internal Task<string> OfficialAssetAsync(string url,string name,long size,string hash,long maximum,string folder,OfficialDownloadRouting routing,IProgress<double> progress,IProgress<string> reporter,CancellationToken cancel)
+        internal Task<string> OfficialAssetAsync(string url,string name,long size,string hash,long maximum,string folder,OfficialDownloadRouting routing,IProgress<double> progress,IProgress<string> reporter,CancellationToken cancel,Action<OfficialCompanionRoute> routeChanged=null)
         {
             if(!TrustedOfficialAsset(url,name)||size<=0||size>maximum||maximum>(name.EndsWith(".json",StringComparison.Ordinal)?1024*1024:OfficialCompanionRules.MaximumPackage)||!OfficialCompanionRules.Hash(hash))throw new ApiException(TextResources.Get("gitHubAssetTransport.officialAssetAsync.text"));
-            return TransferAssetAsync(url,name,size,"sha256:"+hash,maximum,folder,routing,progress,reporter,cancel);
+            return TransferAssetAsync(url,name,size,"sha256:"+hash,maximum,folder,routing,progress,reporter,cancel,routeChanged);
         }
         static bool TrustedOfficialAsset(string url,string name)
         {
@@ -34,15 +34,16 @@ namespace Dafeiyu
             foreach(string id in OfficialCompanionRules.Ids){string lead="DeskPet-Companion-"+id+"-";if(name.StartsWith(lead,StringComparison.Ordinal)&&name.EndsWith(".zip",StringComparison.Ordinal)){string version=name.Substring(lead.Length,name.Length-lead.Length-4);ReleaseVersion parsed;if(ReleaseVersion.TryParse(version,out parsed)&&parsed.Canonical==version)return true;}}
             return false;
         }
-        async Task<string> TransferAssetAsync(string url,string name,long size,string digest,long maximum,string folder,OfficialDownloadRouting routing,IProgress<double> progress,IProgress<string> reporter,CancellationToken cancel)
+        async Task<string> TransferAssetAsync(string url,string name,long size,string digest,long maximum,string folder,OfficialDownloadRouting routing,IProgress<double> progress,IProgress<string> reporter,CancellationToken cancel,Action<OfficialCompanionRoute> routeChanged=null)
         {
             if(routing.UseMirror) {
+                if(routeChanged!=null)routeChanged(OfficialCompanionRoute.Mirror);
                 if(!Regex.IsMatch(digest??"",@"\Asha256:[0-9a-fA-F]{64}\z"))throw new ApiException(TextResources.Get("gitHubAssetTransport.transferAssetAsync.text"));
                 if(reporter!=null)reporter.Report(TextResources.Format("gitHubAssetTransport.transferAssetAsync.reporterReport",new Uri(routing.MirrorAddress).Host));
                 try{return await TransferAttemptAsync(routing.MirrorAddress.TrimEnd('/')+"/"+url,name,size,digest,maximum,folder,false,null,progress,cancel,true).ConfigureAwait(false);}
                 catch(OperationCanceledException){throw;}
-                catch(ApiException){cancel.ThrowIfCancellationRequested();if(reporter!=null)reporter.Report(TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeA"));if(progress!=null)progress.Report(0);}
-            } else if(reporter!=null)reporter.Report(routing.UseProxy?TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeB"):TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeC"));
+                catch(ApiException){cancel.ThrowIfCancellationRequested();if(routeChanged!=null)routeChanged(OfficialCompanionRoute.Direct);if(reporter!=null)reporter.Report(TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeA"));if(progress!=null)progress.Report(0);}
+            } else {if(routeChanged!=null)routeChanged(routing.UseProxy?OfficialCompanionRoute.Proxy:OfficialCompanionRoute.Direct);if(reporter!=null)reporter.Report(routing.UseProxy?TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeB"):TextResources.Get("gitHubAssetTransport.transferAssetAsync.reporterReport.alternativeC"));}
             return await TransferAttemptAsync(url,name,size,digest,maximum,folder,routing.UseMirror?false:routing.UseProxy,routing.ProxyAddress,progress,cancel,false).ConfigureAwait(false);
         }
         async Task<string> TransferAttemptAsync(string requestUrl,string name,long expected,string digest,long maximum,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel,bool mirrored)

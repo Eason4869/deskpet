@@ -5,11 +5,18 @@ using System.Text;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Web.Script.Serialization;
 namespace Dafeiyu.Tests
 {
     public static class LocalizationTests
     {
+        sealed class DiagnosticListener:TraceListener
+        {
+            internal int Count;
+            public override void Write(string message){if(message!=null&&message.Contains("Missing text resource:"))Count++;}
+            public override void WriteLine(string message){Write(message);}
+        }
         static int checks;
         static void Check(bool value,string name){if(!value)throw new Exception(name);checks++;}
         static object Call(Type type,object instance,string method,Type[] signature,params object[] args)
@@ -27,7 +34,12 @@ namespace Dafeiyu.Tests
                 {loaded=Call(catalog,null,"Load",new[]{typeof(Stream)},stream);Check(stream.CanRead,"Load leaves caller stream open");}
                 Func<string,string> get=key=>(string)Call(catalog,loaded,"Get",new[]{typeof(string)},key);
                 Check(get("plain")=="中文\n引号\"与 {普通}\\路径","Get retains literal text and braces");
-                Check(get("missing")=="[missing]" && get("PLAIN")=="[PLAIN]","missing and case-sensitive keys");
+                var listener=new DiagnosticListener();Trace.Listeners.Add(listener);
+                try{
+                    Check(get("missing")=="[missing]" && get("PLAIN")=="[PLAIN]","missing and case-sensitive keys");
+                    Parallel.For(0,10000,i=>get("missing"));
+                    Check(listener.Count==2,"missing resource diagnostics emitted once per distinct key, including non-TRACE builds");
+                }finally{Trace.Listeners.Remove(listener);listener.Dispose();}
                 var original=CultureInfo.CurrentCulture;
                 foreach(string culture in new[]{"zh-CN","en-US","de-DE"})
                 {

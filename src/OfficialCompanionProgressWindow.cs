@@ -40,7 +40,7 @@ namespace Dafeiyu
             var profile=OfficialCompanionProfiles.Find(value.CharacterId);string name=profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.Name;
             message.Text=name+" · "+stage;
             if(value.TotalBytes>0)message.Text+=" · "+(value.CompletedBytes/1048576d).ToString("0.0")+" / "+(value.TotalBytes/1048576d).ToString("0.0")+" MB";
-            if(!String.IsNullOrEmpty(value.Route))message.Text+=" · "+(value.Route.IndexOf("镜像",StringComparison.Ordinal)>=0?TextResources.Get("officialCompanionProgressWindow.report.message"):value.Route.IndexOf("代理",StringComparison.Ordinal)>=0?TextResources.Get("officialCompanionProgressWindow.report.message.alternativeA"):TextResources.Get("officialCompanionProgressWindow.report.message.alternativeB"));
+            if(value.RouteKind!=OfficialCompanionRoute.Unknown)message.Text+=" · "+(value.RouteKind==OfficialCompanionRoute.Mirror?TextResources.Get("officialCompanionProgressWindow.report.message"):value.RouteKind==OfficialCompanionRoute.Proxy?TextResources.Get("officialCompanionProgressWindow.report.message.alternativeA"):TextResources.Get("officialCompanionProgressWindow.report.message.alternativeB"));
             progress.IsIndeterminate=value.TotalBytes<=0;progress.Value=value.Percent;
             if(profile!=null)status[profile.Id]=name+"："+stage;
             roles.Text=String.Join("　",OfficialCompanionProfiles.All.Where(p=>status.ContainsKey(p.Id)).Select(p=>status[p.Id]));

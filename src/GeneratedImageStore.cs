@@ -119,7 +119,7 @@ namespace Dafeiyu
                     if(!ValidId(id) || (ext!=".png" && ext!=".jpg" && ext!=".gif" && ext!=".webp") || ids.Contains(id) || purgedIds.Contains(id))continue;
                     if(recovered.Count>=MaximumItems){invalid++;continue;}
                     try{if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException();var info=new FileInfo(path);if(info.Length<=0 || info.Length>MaximumBytes)throw new InvalidDataException();var format=GeneratedImageValidation.Validate(File.ReadAllBytes(path));if(Extension(format.MediaType)!=ext)throw new InvalidDataException();
-                        recovered.Add(new GeneratedImage{Id=id,Prompt="恢复的图片（原元数据不可用）",MediaType=format.MediaType,Width=format.Width,Height=format.Height,Bytes=info.Length,CreatedUtc=info.CreationTimeUtc,Temporary=false,IsReference=Path.GetDirectoryName(path)==referenceDirectory});ids.Add(id);count++;}
+                        recovered.Add(new GeneratedImage{Id=id,Prompt=TextResources.Get("images.recoveredPrompt"),MediaType=format.MediaType,Width=format.Width,Height=format.Height,Bytes=info.Length,CreatedUtc=info.CreationTimeUtc,Temporary=false,IsReference=Path.GetDirectoryName(path)==referenceDirectory});ids.Add(id);count++;}
                     catch(Exception e){if(!StorageError(e))throw;invalid++;}
                 }
                 SaveIndex(recovered);images.Clear();images.AddRange(recovered);recoveryRequired=false;Warning=invalid==0?"":TextResources.Get("generatedImageStore.recover.warningInvalid");
