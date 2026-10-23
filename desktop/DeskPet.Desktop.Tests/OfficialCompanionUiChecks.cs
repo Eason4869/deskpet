@@ -1,3 +1,5 @@
+using Avalonia.LogicalTree;
+using Avalonia.Controls;
 using Dafeiyu;
 using DeskPet.Desktop;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -307,6 +309,95 @@ internal static class OfficialCompanionUiChecks
         var asset = new OfficialCompanionAsset(role, profile.Name, "0.10.3-dev.1", "0.10.3-dev.1", "v0.10.3-dev.1", "DeskPet-Companion-" + role + "-0.10.3-dev.1.zip", 1, new string('b', 64), new[] { new OfficialCompanionOutfit("halloween-2026", "1.0.0") });
         return new OfficialCompanionInstallation(asset, root);
     }
+    internal static int RunStartupRestore(string directory)
+    {
+        int checks=0;
+        void Check(bool value,string label){if(!value)throw new Exception("Companion startup: "+label);checks++;}
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"dafeiyu",null,false);
+        var installation=CreatePackage(Path.Combine(directory,"installed"),"dafeiyu",fixture.Root);
+        string data=Path.Combine(directory,"data");Directory.CreateDirectory(data);
+        var store=new SettingsStore(Path.Combine(data,"settings.json"));
+        var saved=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",SystemPrompt="保留已保存人格",PersonaProfileVersion=1};
+        saved.PersonaOverrides["dafeiyu"]="保留已保存人格";store.Save(saved);
+        foreach(bool restart in new[]{false,true})
+        {
+            var source=new FakeSource{InstalledValue=installation};
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>source);
+            Check(owner.Skin.OfficialCharacterId=="dafeiyu","saved role selected before Start");
+            if(owner.Skins.Any(s=>s.IsPlaceholder))Check(owner.Skin.Folder==installation.RootDirectory,"thin application rehydrates installed package before fallback");
+            Check(owner.Settings.SelectedCompanionKey=="official:dafeiyu"&&owner.Settings.PendingOfficialCompanionId=="","saved selection survives constructor and restart");
+            Check(owner.Settings.SystemPrompt=="保留已保存人格","custom persona survives cached restoration");
+            Check(source.Calls==0&&source.BulkCalls==0,"restoration makes no HTTP/update calls");
+            owner.Save();Finish(owner);
+        }
+        // Cached manual selection must finish while the metadata response is held.
+        string switchData=Path.Combine(directory,"switch-data");Directory.CreateDirectory(switchData);
+        var switchSettings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped"};
+        new SettingsStore(Path.Combine(switchData,"settings.json")).Save(switchSettings);
+        var switchSource=new FakeSource{InstalledValue=installation};
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(switchData),officialSourceFactory:_=>switchSource))
+        {
+            var requested=owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu");
+            Complete(owner.SelectSkinAsync(requested,CompanionSelectionOrigin.PetMenu));
+            Check(owner.Skin.Folder==installation.RootDirectory,"cached old package is selected without awaiting metadata");
+            Until(()=>switchSource.Calls>0);
+            Check(!switchSource.Result.Task.IsCompleted,"new metadata may remain pending after selection completes");
+            var next=CreatePackage(Path.Combine(directory,"updated"),"dafeiyu",fixture.Root);
+            switchSource.InstalledValue=next;
+            string persona=owner.Skin.Id,key=owner.Settings.SelectedCompanionKey;
+            switchSource.Result.TrySetResult(new OfficialCompanionResult(next,false,true,true,""));
+            Until(()=>owner.Skin.Folder==next.RootDirectory);
+            Check(owner.Skin.Id==persona&&owner.Settings.SelectedCompanionKey==key,"silent update reloads the same role identity");
+            Finish(owner);
+        }
+        var staleSource=new FakeSource{InstalledValue=installation};
+        string staleData=Path.Combine(directory,"stale-data");Directory.CreateDirectory(staleData);
+        new SettingsStore(Path.Combine(staleData,"settings.json")).Save(switchSettings);
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(staleData),officialSourceFactory:_=>staleSource))
+        {
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.Settings));
+            Until(()=>staleSource.Progress!=null);
+            var progress=(OfficialCompanionProgressView)staleSource.Progress!;
+            var window=(Window)typeof(OfficialCompanionProgressView).GetField("window",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(progress)!;
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.PetMenu));
+            progress.Report(new OfficialCompanionProgress("dafeiyu","download","",0,100,0));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible&&owner.Skin.OfficialCharacterId=="e-bao","late download from previous role cannot open a dialog or change the current role");
+            staleSource.Result.TrySetResult(new OfficialCompanionResult(installation,false,false,true,""));Dispatcher.UIThread.RunJobs();
+            Finish(owner);
+        }
+        // The lightweight notice is lazy: metadata/cache reuse never opens it.
+        using(var cancellation=new CancellationTokenSource())
+        using(var progress=new OfficialCompanionProgressView(true,null,false,cancellation,lazy:true))
+        {
+            var field=typeof(OfficialCompanionProgressView).GetField("window",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+            var window=(Window)field.GetValue(progress)!;
+            progress.Report(new OfficialCompanionProgress("dafeiyu","metadata","",0,100,0));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible,"metadata check has no waiting bubble");
+            progress.Report(new OfficialCompanionProgress("dafeiyu","install","",100,100,100));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible,"unchanged cached package has no waiting bubble");
+            progress.Report(new OfficialCompanionProgress("dafeiyu","download","",0,100,0));Dispatcher.UIThread.RunJobs();
+            Check(window.IsVisible&&window.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="正在更新角色包，请稍后..."),"missing package download shows the requested waiting copy");
+        }
+        // Main-window/settings progress keeps its normal controls, but only
+        // appears when package work actually begins. Disposal ignores queued reports.
+        using(var cancellation=new CancellationTokenSource())
+        {
+            var progress=new OfficialCompanionProgressView(false,null,false,cancellation,lazy:true);
+            var field=typeof(OfficialCompanionProgressView).GetField("window",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+            var window=(Window)field.GetValue(progress)!;
+            progress.Report(new OfficialCompanionProgress("dafeiyu","metadata","",0,100,0));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible,"settings metadata check has no dialog");
+            progress.Report(new OfficialCompanionProgress("dafeiyu","install","",100,100,100));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible,"settings cache reuse has no dialog");
+            progress.Report(new OfficialCompanionProgress("dafeiyu","download","",25,100,25));Dispatcher.UIThread.RunJobs();
+            Check(window.IsVisible&&window.Name=="OfficialCompanionProgressDialog"&&window.GetLogicalDescendants().OfType<Button>().Any(b=>b.Content?.ToString()=="取消"),"settings actual update retains normal cancellable progress dialog");
+            progress.Dispose();
+            Check(!window.IsVisible&&!cancellation.IsCancellationRequested,"completed progress closes without cancelling the operation");
+            progress.Report(new OfficialCompanionProgress("dafeiyu","download","",50,100,50));Dispatcher.UIThread.RunJobs();
+            Check(!window.IsVisible,"late progress cannot reopen a completed dialog");
+        }
+        return checks;
+    }
     private static uint Pixel(Bitmap bitmap)
     {
         var bytes = new byte[4]; var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
@@ -386,7 +477,8 @@ internal static class OfficialCompanionUiChecks
         public long BeginSelection() => ++Selections;
         public bool OwnsSelection(long token) => token == Selections;
         public OfficialCompanionInstallation? Installed(string id) { Interlocked.Increment(ref InstalledCalls); return InstalledValue?.Asset.Id == id ? InstalledValue : null; }
-        public Task<OfficialCompanionResult> EnsureAsync(string id, OfficialDownloadRouting routing, OfficialCompanionCheckMode mode, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { Calls++; return Result.Task; }
+        internal IProgress<OfficialCompanionProgress>? Progress;
+        public Task<OfficialCompanionResult> EnsureAsync(string id, OfficialDownloadRouting routing, OfficialCompanionCheckMode mode, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { Calls++; Progress=progress; return Result.Task; }
         public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { BulkCalls++; return Task.FromResult<IList<OfficialCompanionResult>>(Array.Empty<OfficialCompanionResult>()); }
         public void Dispose() { Result.TrySetCanceled(); }
     }

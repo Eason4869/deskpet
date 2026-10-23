@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -79,7 +79,7 @@ internal sealed partial class DesktopController : IDisposable
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
         var requested = Settings.PendingOfficialCompanionId.Length != 0 ? Skins.FirstOrDefault(s => s.OfficialCharacterId == Settings.PendingOfficialCompanionId) : ResolveSavedCompanion();
         requested ??= embeddedEbao;
-        Skin = requested;
+        Skin = RestoreCachedStartupCompanion(requested);
         if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
@@ -251,7 +251,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
-        companionLifetime.Cancel(); companionSelection?.Cancel(); officialCompanions.Dispose(); companionNative.Dispose();
+        companionLifetime.Cancel(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         imageNoticeTimer.Stop();
         imageNotification?.Close();
