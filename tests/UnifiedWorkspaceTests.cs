@@ -51,6 +51,32 @@ namespace Dafeiyu.Tests
         static void ToggleFull(){typeof(ChatWindow).GetMethod("ToggleFullTabView",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(full,null);}
         static void Click(string name){All<Button>(full).Single(b=>b.Name==name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
         static async Task Settle(){await Task.Delay(130);full.UpdateLayout();}
+        static async Task WaitBrowserStage(Task task,string stage,int timeoutMilliseconds)
+        {
+            var elapsed=System.Diagnostics.Stopwatch.StartNew();
+            if(await Task.WhenAny(task,Task.Delay(timeoutMilliseconds))!=task)
+                throw new TimeoutException("Link browser "+stage+" timed out after "+elapsed.ElapsedMilliseconds+" ms; task="+task.Status);
+            await task;Console.WriteLine("LINK BROWSER: "+stage+" completed in "+elapsed.ElapsedMilliseconds+" ms");
+        }
+        static async Task WaitBrowser(BrowserPane browser)
+        {
+            try
+            {
+                var initializing=(Task)typeof(BrowserPane).GetField("initializing",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(browser);
+                Check(initializing!=null,"link browser starts native initialization after attaching to the workspace");
+                // Native environment/controller startup has its own cold-start budget.
+                // Keep the local HTTP navigation deadline independent of that startup.
+                await WaitBrowserStage(initializing,"initialization",60000);
+                await WaitBrowserStage(browser.Ready,"navigation",25000);
+            }
+            catch(Exception error)
+            {
+                string details=error+"\nBrowser loaded="+browser.IsLoaded+" visible="+browser.IsVisible+" size="+browser.ActualWidth+"x"+browser.ActualHeight+" ready="+browser.Ready.Status+"\n"+All<TextBlock>(browser).Single(t=>t.Name=="BrowserNotice").Text;
+                File.WriteAllText("work/permissions/link-navigation-failure.txt",details);
+                try{Capture("link-navigation-failure.png");}catch(Exception captureError){Console.Error.WriteLine("Link failure capture: "+captureError);}
+                throw;
+            }
+        }
         static async Task NativeRightClick(MarkdownView body,Hyperlink link,Point screen)
         {
             var window=new System.Windows.Interop.WindowInteropHelper(full).Handle;
@@ -202,7 +228,7 @@ namespace Dafeiyu.Tests
                 foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);menu.PlacementTarget=body;menu.IsOpen=true;await Settle();Check(menu.IsVisible&&menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").IsEnabled,"actual conversation exposes the "+theme+" link menu with side-tab navigation");var image=new RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth),(int)Math.Ceiling(menu.ActualHeight),96,96,PixelFormats.Pbgra32);image.Render(menu);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create("work/permissions/link-menu-"+theme+".png"))png.Save(file);menu.IsOpen=false;}
                 menu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));await Settle();var tabs=(PreviewWorkspace)Field("filePreview");var browser=tabs.Selected as BrowserPane;
                 Check(browser!=null&&tabs.ToolCount==1&&ReferenceEquals(Field("session"),session)&&editor.Text==draft,"link action opens a browser tab and preserves the conversation and unsent draft");
-                var navigation=browser.Ready;if(await Task.WhenAny(navigation,Task.Delay(25000))!=navigation)throw new Exception("link tab navigation timed out");await navigation;await browser.Ready;
+                await WaitBrowser(browser);
                 Check(await browser.EvaluateAsync("document.title")=="\"Link tab fixture\""&&All<TextBox>(browser).Single(t=>t.Name=="BrowserAddress").Text==url,"side-tab browser renders the exact clicked URL through real local HTTP");Capture("conversation-link-tab-dark.png");using(var page=File.Create("work/permissions/link-page-native.png"))await browser.CaptureAsync(page);
                 full.MinWidth=520;full.Width=850;await Settle();Check(tabs.HasConversation&&ReferenceEquals(tabs.Selected,browser)&&editor.Text==draft,"narrow layout keeps the clicked webpage and conversation in the existing tab workspace");Capture("conversation-link-tab-dark-narrow.png");
                 var userBody=All<MarkdownView>(full).Single(v=>v.Text==url);var userLink=userBody.Document.Blocks.OfType<Paragraph>().Single().Inlines.OfType<Hyperlink>().Single();userLink.ContextMenu.Items.OfType<MenuItem>().Single(i=>i.Name=="OpenLinkInSideTab").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));await Settle();Check(tabs.ToolCount==2&&tabs.Selected is BrowserPane&&!ReferenceEquals(tabs.Selected,browser),"automatic links in user messages also open independent side tabs");
