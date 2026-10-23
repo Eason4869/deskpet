@@ -45,6 +45,13 @@ namespace Dafeiyu.Tests
             var method=typeof(ConversationWorkspace).GetMethod("ConfigureJobs",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(AgentJobManager)},null);
             if(method==null)throw new Exception("Persistent conversation ConfigureJobs is missing");method.Invoke(workspace,new object[]{manager});
         }
+        sealed class CloseConversation : IDisposable
+        {
+            readonly ConversationWorkspace workspace;
+            internal CloseConversation(ConversationWorkspace value){workspace=value;}
+            // Dispose alone does not await history/checkpoint writes before fixture deletion.
+            public void Dispose(){workspace.CloseAsync().GetAwaiter().GetResult();}
+        }
         static PetSettings Settings(string root)
         {var settings=new PetSettings{AgentEnabled=true,AgentWorkspace=root,AgentApprovalMode=AgentApprovalMode.Full,AgentSandboxEnabled=false,AgentTerminalPolicy=AgentTerminalPolicy.ConfirmEach,ReadReplies=false,SaveChatHistory=true};settings.Text.BaseUrl="https://fixture.invalid/v1";settings.Text.ApiKey="fixture-only";settings.Text.Model="fixture";settings.Text.ToolSupport=CapabilitySupport.Supported;return settings;}
         static void RealConversationCrossesTurnsWithoutOwningTheProcess()
@@ -60,6 +67,7 @@ namespace Dafeiyu.Tests
                     try
                     {
                         using(var workspace=ConversationWorkspace.Create(project,definition,root.Path,"pet",()=>model,()=>new Speech(),()=>null,()=>settings,()=>true))
+                        using(var close=new CloseConversation(workspace))
                         {
                             Configure(workspace,manager);workspace.Session.SendTextAsync("start the fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             var owner=new AgentJobOwner(project.Id,definition.Id,"primary");AgentJobSnapshot snapshot;
@@ -97,6 +105,7 @@ namespace Dafeiyu.Tests
                     try
                     {
                         using(var workspace=ConversationWorkspace.Create(project,new ConversationDefinition{Id="response-conversation",Mode="work"},root.Path,"pet",()=>model,()=>new Speech(),()=>null,()=>settings,()=>true))
+                        using(var close=new CloseConversation(workspace))
                         {
                             Configure(workspace,manager);bool lost=false;try{workspace.Session.SendTextAsync("start once",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();}catch(ApiException){lost=true;}
                             Check(lost&&model.JobId!=null&&manager.ListForProject(project.Id).Count==1,"lost scripted model response leaves the real committed task in application ownership");
@@ -127,6 +136,7 @@ namespace Dafeiyu.Tests
                     try
                     {
                         using(var workspace=ConversationWorkspace.Create(project,new ConversationDefinition{Id="stop-conversation",Mode="work"},root.Path,"pet",()=>model,()=>new Speech(),()=>null,()=>settings,()=>true))
+                        using(var close=new CloseConversation(workspace))
                         {
                             Configure(workspace,manager);workspace.Session.SendTextAsync("start the fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             model.StopNext=true;workspace.Session.SendTextAsync("stop the owned fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
@@ -150,6 +160,7 @@ namespace Dafeiyu.Tests
                         foreach(var candidate in new[]{new{Project="project",Mode="chat",Draft=false},new{Project=ProjectCatalogStore.UnassignedProjectId,Mode="work",Draft=false},new{Project=ProjectCatalogStore.QuickProjectId,Mode="quick",Draft=false},new{Project="project",Mode="work",Draft=true}})
                         {
                             using(var workspace=ConversationWorkspace.Create(new ProjectDefinition{Id=candidate.Project,Workspace=root.Path},new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Mode=candidate.Mode},root.Path,"pet",()=>new Model(),()=>new Speech(),()=>null,()=>settings,()=>true))
+                            using(var close=new CloseConversation(workspace))
                             {
                                 workspace.IsDraft=candidate.Draft;bool denied=false;try{Configure(workspace,manager);}catch(TargetInvocationException error){denied=error.InnerException is InvalidOperationException;}
                                 Check(denied,"conversation binding denies background jobs for "+candidate.Project+"/"+candidate.Mode+"/draft="+candidate.Draft);
