@@ -122,7 +122,8 @@ jobs:
           $destination = Join-Path $PWD 'work/localization-installed'
           $process = Start-Process -FilePath $setup[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS',('/DIR="'+$destination+'"')) -WindowStyle Hidden -Wait -PassThru
           if ($process.ExitCode) { throw 'Isolated installer acceptance failed' }
-          ./tools/check_localization_artifacts.ps1 -AppRoot $destination | Tee-Object work/localization-installed.log
+          $log = Join-Path $PWD 'work/localization-installed.log'
+          ./tools/check_localization_artifacts.ps1 -AppRoot $destination | Tee-Object -FilePath $log
           if ($LASTEXITCODE) { throw 'Installed locale acceptance failed' }
       - name: Preserve localization acceptance evidence
         if: always()
