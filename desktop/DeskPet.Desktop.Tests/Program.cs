@@ -34,6 +34,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--localization-ui-only")){Console.WriteLine("LocalizationUiChecks: "+LocalizationUiChecks.Run(Path.Combine(directory,"localization"))+" passed");return;}
     if (args.Contains("--official-native-index") || args.Contains("--official-native-materials"))
     {
         string? Option(string name) { int at = Array.IndexOf(args, name); return at < 0 ? null : at + 1 < args.Length && !args[at + 1].StartsWith("--", StringComparison.Ordinal) ? args[at + 1] : throw new ArgumentException("Missing value for " + name); }
@@ -52,14 +53,25 @@ try
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    Console.WriteLine("START LocalizationUiChecks");
+    assertions += LocalizationUiChecks.Run(Path.Combine(directory,"localization"));
+    Console.WriteLine("START OfficialCompanion.Timing");
     assertions += OfficialCompanionUiChecks.RunTiming();
+    Console.WriteLine("START OfficialCompanionUiChecks.RunSelection");
     assertions += OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection"));
+    Console.WriteLine("START OfficialCompanionUiChecks.RunNative");
     assertions += OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native"));
+    Console.WriteLine("START OfficialCompanionUiChecks.RunIdentity");
     assertions += OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"));
+    Console.WriteLine("START HolidayUiChecks.Run");
     assertions += HolidayUiChecks.Run(Path.Combine(directory, "holiday"));
+    Console.WriteLine("START HolidayWardrobeLayoutChecks.RunSourceSwitch");
     assertions += HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch"));
+    Console.WriteLine("START HolidayWardrobeLayoutChecks.Run");
     assertions += HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui"));
+    Console.WriteLine("START HolidayReviewChecks.Run");
     assertions += HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"));
+    Console.WriteLine("START HolidayUiChecks.RunResources");
     assertions += HolidayUiChecks.RunResources(Path.Combine(directory, "holiday-resources"));
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");

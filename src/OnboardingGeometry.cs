@@ -11,7 +11,7 @@ namespace Dafeiyu
     {
         private void TargetVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
-            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); status.Text = "你切换了设置页，可点下方按钮回到当前步骤。"; }
+            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); status.Text = TextResources.Get("onboardingGeometry.targetVisibilityChanged.status"); }
         }
         private void RemoveHighlight()
         {

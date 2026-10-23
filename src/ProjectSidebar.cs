@@ -39,21 +39,21 @@ namespace Dafeiyu
         ContextMenu ProjectMenu(ProjectDefinition project)
         {
             var menu=ChatUi.Menu();
-            if(!project.Archived){var pin=new MenuItem{Name="PinProject",Header=project.Pinned?"取消置顶":"置顶",Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleProjectPin(project);}catch(Exception e){MessageBox.Show(e.Message,"置顶未保存");}};menu.Items.Add(pin);}
-            if(project.Archived){if(restoreProject!=null){var restore=new MenuItem{Header="恢复项目",Icon=UiIcons.Image("folder-open",AgentUi.Muted)};restore.Click+=delegate{restoreProject(project);};menu.Items.Add(restore);}}
+            if(!project.Archived){var pin=new MenuItem{Name="PinProject",Header=project.Pinned?TextResources.Get("projectSidebar.projectMenu.headerProjectPinned"):TextResources.Get("projectSidebar.projectMenu.headerProjectPinned.alternativeA"),Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleProjectPin(project);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebar.projectMenu.messageBoxShow"));}};menu.Items.Add(pin);}
+            if(project.Archived){if(restoreProject!=null){var restore=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header"),Icon=UiIcons.Image("folder-open",AgentUi.Muted)};restore.Click+=delegate{restoreProject(project);};menu.Items.Add(restore);}}
             else{
-                var edit=new MenuItem{Header="编辑项目",Icon=UiIcons.Image("settings",AgentUi.Muted)};edit.Click+=delegate{editProject(project);};menu.Items.Add(edit);
-                if(renameProject!=null){var rename=new MenuItem{Header="重命名项目",Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameProject(project);};menu.Items.Add(rename);}
-                var add=new MenuItem{Header="新建对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};add.Click+=delegate{newConversation(project);};menu.Items.Add(add);menu.Items.Add(new Separator());
+                var edit=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeA"),Icon=UiIcons.Image("settings",AgentUi.Muted)};edit.Click+=delegate{editProject(project);};menu.Items.Add(edit);
+                if(renameProject!=null){var rename=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeB"),Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameProject(project);};menu.Items.Add(rename);}
+                var add=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeC"),Icon=UiIcons.Image("chat",AgentUi.Muted)};add.Click+=delegate{newConversation(project);};menu.Items.Add(add);menu.Items.Add(new Separator());
             }
-            var moveSection=new MenuItem{Header="分区",Name="MoveProjectSection",Icon=UiIcons.Image("list",AgentUi.Muted)};foreach(var section in catalog.Sections.Where(s=>s.Mode=="work")){var target=section;var item=new MenuItem{Header=section.Name,IsCheckable=true,IsChecked=project.SectionId==section.Id};item.Click+=delegate{try{MoveProjectToSection(project,target.Id);}catch(Exception e){MessageBox.Show(e.Message,"分区未保存");}};moveSection.Items.Add(item);}menu.Items.Add(moveSection);
-            var open=new MenuItem{Header="在资源管理器中打开",Icon=UiIcons.Image("folder-open",AgentUi.Muted)};open.Click+=delegate{openWorkspace(project);};menu.Items.Add(open);
-            if(!project.Archived&&archiveProject!=null){menu.Items.Add(new Separator());var archive=new MenuItem{Header="归档项目",Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveProject(project);};menu.Items.Add(archive);}
-            if(deleteProject!=null){menu.Items.Add(new Separator());var delete=new MenuItem{Header="移除项目",Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteProject(project);};menu.Items.Add(delete);}return menu;
+            var moveSection=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeD"),Name="MoveProjectSection",Icon=UiIcons.Image("list",AgentUi.Muted)};foreach(var section in catalog.Sections.Where(s=>s.Mode=="work")){var target=section;var item=new MenuItem{Header=section.Name,IsCheckable=true,IsChecked=project.SectionId==section.Id};item.Click+=delegate{try{MoveProjectToSection(project,target.Id);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebar.projectMenu.messageBoxShow.alternativeA"));}};moveSection.Items.Add(item);}menu.Items.Add(moveSection);
+            var open=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeE"),Icon=UiIcons.Image("folder-open",AgentUi.Muted)};open.Click+=delegate{openWorkspace(project);};menu.Items.Add(open);
+            if(!project.Archived&&archiveProject!=null){menu.Items.Add(new Separator());var archive=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeF"),Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveProject(project);};menu.Items.Add(archive);}
+            if(deleteProject!=null){menu.Items.Add(new Separator());var delete=new MenuItem{Header=TextResources.Get("projectSidebar.projectMenu.header.alternativeG"),Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteProject(project);};menu.Items.Add(delete);}return menu;
         }
         ContextMenu ConversationMenu(ProjectDefinition project,ConversationDefinition conversation)
         {
-            var menu=ChatUi.Menu();if(!conversation.Archived){var pin=new MenuItem{Header=conversation.Pinned?"取消置顶":"置顶",Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleConversationPin(conversation);}catch(Exception e){MessageBox.Show(e.Message,"置顶未保存");}};menu.Items.Add(pin);}if(conversation.Archived){if(restoreConversation!=null){var restore=new MenuItem{Header="恢复对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};restore.Click+=delegate{restoreConversation(project,conversation);};menu.Items.Add(restore);}}else{if(renameConversation!=null){var rename=new MenuItem{Header="重命名",Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameConversation(project,conversation);};menu.Items.Add(rename);}var open=new MenuItem{Header="打开对话",Icon=UiIcons.Image("chat",AgentUi.Muted)};open.Click+=delegate{conversationActivated(project,conversation);};menu.Items.Add(open);if(archiveConversation!=null){var archive=new MenuItem{Header="归档",Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveConversation(project,conversation);};menu.Items.Add(archive);}}if(deleteConversation!=null){var delete=new MenuItem{Header="永久删除",Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteConversation(project,conversation);};menu.Items.Add(delete);}return menu;
+            var menu=ChatUi.Menu();if(!conversation.Archived){var pin=new MenuItem{Header=conversation.Pinned?TextResources.Get("projectSidebar.conversationMenu.headerConversationPinned"):TextResources.Get("projectSidebar.conversationMenu.headerConversationPinned.alternativeA"),Icon=UiIcons.Image("pin",AgentUi.Muted)};pin.Click+=delegate{try{ToggleConversationPin(conversation);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebar.conversationMenu.messageBoxShow"));}};menu.Items.Add(pin);}if(conversation.Archived){if(restoreConversation!=null){var restore=new MenuItem{Header=TextResources.Get("projectSidebar.conversationMenu.header"),Icon=UiIcons.Image("chat",AgentUi.Muted)};restore.Click+=delegate{restoreConversation(project,conversation);};menu.Items.Add(restore);}}else{if(renameConversation!=null){var rename=new MenuItem{Header=TextResources.Get("projectSidebar.conversationMenu.header.alternativeA"),Icon=UiIcons.Image("edit",AgentUi.Muted)};rename.Click+=delegate{renameConversation(project,conversation);};menu.Items.Add(rename);}var open=new MenuItem{Header=TextResources.Get("projectSidebar.conversationMenu.header.alternativeB"),Icon=UiIcons.Image("chat",AgentUi.Muted)};open.Click+=delegate{conversationActivated(project,conversation);};menu.Items.Add(open);if(archiveConversation!=null){var archive=new MenuItem{Header=TextResources.Get("projectSidebar.conversationMenu.header.alternativeC"),Icon=UiIcons.Image("folder",AgentUi.Muted)};archive.Click+=delegate{archiveConversation(project,conversation);};menu.Items.Add(archive);}}if(deleteConversation!=null){var delete=new MenuItem{Header=TextResources.Get("projectSidebar.conversationMenu.header.alternativeD"),Icon=UiIcons.Image("trash",AgentUi.Muted)};delete.Click+=delegate{deleteConversation(project,conversation);};menu.Items.Add(delete);}return menu;
         }        internal const string DragFormat="DeskPet.Conversation";
         static string[] ParseDrag(IDataObject data)
         {
@@ -76,9 +76,9 @@ namespace Dafeiyu
             // does not rebuild (and re-flash) the popup.
             if(hover.IsOpen && hovered!=null && hovered.Id==project.Id && ReferenceEquals(hover.PlacementTarget,row))return;
             CloseHover();hovered=project;var body=new StackPanel{Margin=new Thickness(11),Width=250};var name=Ui.Text(project.Name,15,AgentUi.Ink);name.Name="ProjectHoverName";body.Children.Add(name);
-            var count=Ui.Text(project.Conversations.Count+" 个会话 · "+project.Conversations.Count(c=>c.Status=="running")+" 个活跃会话",11,AgentUi.Muted);count.Name="ProjectHoverCount";body.Children.Add(count);
+            var count=Ui.Text(TextResources.Format("projectSidebar.showHover.template",project.Conversations.Count,project.Conversations.Count(c=>c.Status=="running")),11,AgentUi.Muted);count.Name="ProjectHoverCount";body.Children.Add(count);
             var workspace=Ui.Text(project.Workspace,11,AgentUi.Muted);workspace.Name="ProjectHoverWorkspace";workspace.TextWrapping=TextWrapping.Wrap;body.Children.Add(workspace);
-            var actions=new WrapPanel();var edit=AgentUi.Nav("编辑项目","EditProject");edit.Click+=delegate{editProject(project);};var open=AgentUi.Nav("打开工作目录","OpenProjectWorkspace");open.Click+=delegate{openWorkspace(project);};var add=AgentUi.Nav("新建会话","NewProjectConversation");add.Click+=delegate{newConversation(project);};actions.Children.Add(edit);actions.Children.Add(open);actions.Children.Add(add);body.Children.Add(actions);
+            var actions=new WrapPanel();var edit=AgentUi.Nav(TextResources.Get("projectSidebar.showHover.agentUiNav"),"EditProject");edit.Click+=delegate{editProject(project);};var open=AgentUi.Nav(TextResources.Get("projectSidebar.showHover.agentUiNav.alternativeA"),"OpenProjectWorkspace");open.Click+=delegate{openWorkspace(project);};var add=AgentUi.Nav(TextResources.Get("projectSidebar.showHover.agentUiNav.alternativeB"),"NewProjectConversation");add.Click+=delegate{newConversation(project);};actions.Children.Add(edit);actions.Children.Add(open);actions.Children.Add(add);body.Children.Add(actions);
             body.Background=ThemeManager.Surface;var card=new Border{Child=body,Background=ThemeManager.Surface,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(2)};
             // Pointer over the card must count as still hovering the row, otherwise
             // moving toward the details closes and reopens them in a loop.
@@ -98,7 +98,7 @@ namespace Dafeiyu
         void LatchHover(){hoverLatched=true;hoverClose.Stop();hoverClose.Start();}
         internal void NewProjectRequested(string sectionId="projects")
         {
-            var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return;try{CreateProject(dialog.ProjectName,dialog.Workspace,sectionId);}catch(Exception error){MessageBox.Show(error.Message,"新建项目未完成",MessageBoxButton.OK,MessageBoxImage.Warning);}
+            var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return;try{CreateProject(dialog.ProjectName,dialog.Workspace,sectionId);}catch(Exception error){MessageBox.Show(error.Message,TextResources.Get("projectSidebar.newProjectRequested.messageBoxShow"),MessageBoxButton.OK,MessageBoxImage.Warning);}
         }
         internal void CreateProject(string name,string workspace,string sectionId="projects")
         {
@@ -109,31 +109,32 @@ namespace Dafeiyu
     {
         readonly TextBox name=Ui.Field();
         public string ConversationName {get{return name.Text.Trim();}}
-        public ConversationRenameDialog(string initial,string title="重命名聊天",string label="对话标题")
+        public ConversationRenameDialog(string initial,string title=null,string label=null,bool section=false)
         {
+            title=title??TextResources.Get("projectSidebar.conversationRenameDialog.titleTitle");label=label??TextResources.Get("projectSidebar.conversationRenameDialog.labelLabel");
             Ui.Window(this,title,520,258);MinWidth=420;MinHeight=240;ResizeMode=ResizeMode.NoResize;var root=new Grid{Margin=new Thickness(26,22,26,22)};root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var heading=new StackPanel{Margin=new Thickness(0,0,36,14)};var caption=Ui.Text(title,21,Ui.Brush("#25282D"));caption.FontWeight=FontWeights.SemiBold;heading.Children.Add(caption);var hint=Ui.Text(title.Contains("分区")?"为分区设置一个易于识别的名称":"保持简短且易于识别",12,Ui.Brush("#96999E"));hint.Margin=new Thickness(0,5,0,0);heading.Children.Add(hint);root.Children.Add(heading);
+            var heading=new StackPanel{Margin=new Thickness(0,0,36,14)};var caption=Ui.Text(title,21,Ui.Brush("#25282D"));caption.FontWeight=FontWeights.SemiBold;heading.Children.Add(caption);var hint=Ui.Text(section?TextResources.Get("projectSidebar.conversationRenameDialog.text"):TextResources.Get("projectSidebar.conversationRenameDialog.text.alternativeA"),12,Ui.Brush("#96999E"));hint.Margin=new Thickness(0,5,0,0);heading.Children.Add(hint);root.Children.Add(heading);
             name.Name="ConversationTitle";name.MaxLength=80;name.Text=initial??"";name.MinHeight=44;name.VerticalAlignment=VerticalAlignment.Top;Grid.SetRow(name,1);root.Children.Add(name);
-            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,16,0,0)};var cancel=Ui.Button("取消");cancel.Name="CancelConversationTitle";cancel.IsCancel=true;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};var save=Ui.Button("保存");save.Name="SaveConversationTitle";save.IsDefault=true;save.Background=ThemeManager.ActionSurface;save.Foreground=Brushes.White;save.BorderBrush=save.Background;save.Click+=delegate{if(ConversationName.Length<1){name.Focus();return;}DialogResult=true;Close();};actions.Children.Add(cancel);actions.Children.Add(save);Grid.SetRow(actions,2);root.Children.Add(actions);DialogUi.Apply(this,root);Loaded+=delegate{name.Focus();name.SelectAll();};
+            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,16,0,0)};var cancel=Ui.Button(TextResources.Get("common.cancel"));cancel.Name="CancelConversationTitle";cancel.IsCancel=true;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};var save=Ui.Button(TextResources.Get("common.save"));save.Name="SaveConversationTitle";save.IsDefault=true;save.Background=ThemeManager.ActionSurface;save.Foreground=Brushes.White;save.BorderBrush=save.Background;save.Click+=delegate{if(ConversationName.Length<1){name.Focus();return;}DialogResult=true;Close();};actions.Children.Add(cancel);actions.Children.Add(save);Grid.SetRow(actions,2);root.Children.Add(actions);DialogUi.Apply(this,root);Loaded+=delegate{name.Focus();name.SelectAll();};
         }
     }
     internal sealed class NewProjectDialog : Window
     {
         readonly TextBox name=new TextBox{MaxLength=80,BorderThickness=new Thickness(0),Background=Brushes.Transparent};
         string workspacePath="";readonly TextBlock notice=Ui.Text("",11,AgentUi.Muted);
-        readonly TextBlock folderHint=Ui.InlineText("在此电脑上添加文件夹",13,AgentUi.Muted);
+        readonly TextBlock folderHint=Ui.InlineText(TextResources.Get("projectSidebar.folderHint.inlineText"),13,AgentUi.Muted);
         readonly TextBlock folderPath=Ui.Text("",12,AgentUi.Muted);
         public string ProjectName {get{return name.Text.Trim();}}
         public string Workspace {get{return workspacePath.Trim();}}
         public bool RemoveRequested {get;private set;}public bool WorkSettingsRequested {get;private set;}
         public NewProjectDialog(ProjectDefinition initial=null)
         {
-            Ui.Window(this,initial==null?"创建项目":"编辑项目",520,420);ResizeMode=ResizeMode.NoResize;
+            Ui.Window(this,initial==null?TextResources.Get("projectSidebar.newProjectDialog.window"):TextResources.Get("projectSidebar.newProjectDialog.window.alternativeA"),520,420);ResizeMode=ResizeMode.NoResize;
             var root=new Grid{Margin=new Thickness(22,18,22,20)};
             for(int i=0;i<6;i++)root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             root.RowDefinitions[3].Height=new GridLength(1,GridUnitType.Star);
 
-            var nameLabel=Ui.Text(initial==null?"创建项目":"编辑项目",20,AgentUi.Ink);nameLabel.FontWeight=FontWeights.SemiBold;nameLabel.Margin=new Thickness(0,0,0,10);Grid.SetRow(nameLabel,0);root.Children.Add(nameLabel);
+            var nameLabel=Ui.Text(initial==null?TextResources.Get("projectSidebar.newProjectDialog.text"):TextResources.Get("projectSidebar.newProjectDialog.text.alternativeA"),20,AgentUi.Ink);nameLabel.FontWeight=FontWeights.SemiBold;nameLabel.Margin=new Thickness(0,0,0,10);Grid.SetRow(nameLabel,0);root.Children.Add(nameLabel);
 
             // Name field: folder glyph sits inside the field, the prompt fades in
             // the same way the composer placeholder does.
@@ -141,13 +142,13 @@ namespace Dafeiyu
             var nameGrid=new Grid();nameGrid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(24)});nameGrid.ColumnDefinitions.Add(new ColumnDefinition());
             var glyph=UiIcons.Image("folder",AgentUi.Muted);glyph.Width=glyph.Height=17;glyph.VerticalAlignment=VerticalAlignment.Center;nameGrid.Children.Add(glyph);
             var nameHost=new Grid();name.Name="NewProjectName";name.FontSize=13;name.VerticalContentAlignment=VerticalAlignment.Center;
-            var namePrompt=Ui.Text("项目名称",13,Ui.Brush("#B8BCC2"));namePrompt.IsHitTestVisible=false;namePrompt.VerticalAlignment=VerticalAlignment.Center;
+            var namePrompt=Ui.Text(TextResources.Get("projectSidebar.newProjectDialog.text.alternativeB"),13,Ui.Brush("#B8BCC2"));namePrompt.IsHitTestVisible=false;namePrompt.VerticalAlignment=VerticalAlignment.Center;
             nameHost.Children.Add(name);nameHost.Children.Add(namePrompt);Grid.SetColumn(nameHost,1);nameGrid.Children.Add(nameHost);
             nameField.Child=nameGrid;Grid.SetRow(nameField,1);root.Children.Add(nameField);
             Action syncPrompt=delegate{namePrompt.Visibility=String.IsNullOrEmpty(name.Text)?Visibility.Visible:Visibility.Collapsed;};
             name.TextChanged+=delegate{syncPrompt();};syncPrompt();
 
-            var sourceLabel=Ui.Text("源文件夹",12,AgentUi.Muted);sourceLabel.Margin=new Thickness(0,16,0,0);Grid.SetRow(sourceLabel,2);root.Children.Add(sourceLabel);
+            var sourceLabel=Ui.Text(TextResources.Get("projectSidebar.newProjectDialog.text.alternativeC"),12,AgentUi.Muted);sourceLabel.Margin=new Thickness(0,16,0,0);Grid.SetRow(sourceLabel,2);root.Children.Add(sourceLabel);
 
             var drop=new Border{Name="ProjectSourceFolder",BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Background=ThemeManager.Surface,Margin=new Thickness(0,7,0,0),Padding=new Thickness(12)};
             var dropBody=new StackPanel{VerticalAlignment=VerticalAlignment.Center,HorizontalAlignment=HorizontalAlignment.Center};
@@ -158,8 +159,8 @@ namespace Dafeiyu
             folderPath.TextWrapping=TextWrapping.Wrap;folderPath.HorizontalAlignment=HorizontalAlignment.Center;folderPath.Margin=new Thickness(0,2,0,0);folderPath.Visibility=Visibility.Collapsed;dropBody.Children.Add(folderPath);
             var add=Ui.Button("");add.Name="AddProjectSourceFolder";add.Background=Ui.Brush("#F1F4F9");add.BorderBrush=Ui.Brush("#D8DEE7");add.Padding=new Thickness(13,5,13,5);add.Margin=new Thickness(0,10,0,0);add.Cursor=System.Windows.Input.Cursors.Hand;
             var addRow=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-            var addIcon=UiIcons.Image("folder",Ui.Ink);addIcon.Width=addIcon.Height=15;addIcon.Margin=new Thickness(0,0,6,0);addIcon.VerticalAlignment=VerticalAlignment.Center;addRow.Children.Add(addIcon);addRow.Children.Add(Ui.InlineText("添加",13,Ui.Ink));add.Content=addRow;
-            add.Click+=delegate{Browse();};dropBody.Children.Add(add);if(initial!=null){var removeSource=Ui.Button("移除源文件夹");removeSource.Name="RemoveProjectSourceFolder";removeSource.Background=Brushes.Transparent;removeSource.BorderBrush=Brushes.Transparent;removeSource.FontSize=11;removeSource.Click+=delegate{workspacePath="";RefreshFolder();};dropBody.Children.Add(removeSource);}
+            var addIcon=UiIcons.Image("folder",Ui.Ink);addIcon.Width=addIcon.Height=15;addIcon.Margin=new Thickness(0,0,6,0);addIcon.VerticalAlignment=VerticalAlignment.Center;addRow.Children.Add(addIcon);addRow.Children.Add(Ui.InlineText(TextResources.Get("projectSidebar.newProjectDialog.inlineText"),13,Ui.Ink));add.Content=addRow;
+            add.Click+=delegate{Browse();};dropBody.Children.Add(add);if(initial!=null){var removeSource=Ui.Button(TextResources.Get("projectSidebar.newProjectDialog.text.alternativeD"));removeSource.Name="RemoveProjectSourceFolder";removeSource.Background=Brushes.Transparent;removeSource.BorderBrush=Brushes.Transparent;removeSource.FontSize=11;removeSource.Click+=delegate{workspacePath="";RefreshFolder();};dropBody.Children.Add(removeSource);}
             drop.Child=new ScrollViewer{Content=dropBody,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,VerticalContentAlignment=VerticalAlignment.Center};
             // Dropping a folder is the fastest way to point at a source directory.
             drop.AllowDrop=true;
@@ -174,16 +175,16 @@ namespace Dafeiyu
             notice.Name="NewProjectNotice";notice.Margin=new Thickness(0,8,0,0);notice.MaxHeight=34;notice.TextWrapping=TextWrapping.Wrap;Grid.SetRow(notice,4);root.Children.Add(notice);
 
             var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,18,0,0)};
-            var cancel=Ui.Button("取消");cancel.Name="CancelCreateProject";cancel.IsCancel=true;cancel.Background=Brushes.Transparent;cancel.BorderBrush=Brushes.Transparent;cancel.Foreground=AgentUi.Muted;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};
-            var create=Ui.Button(initial==null?"创建项目":"保存",true);create.Name="CreateProject";create.IsDefault=true;create.Background=ThemeManager.ActionSurface;create.BorderBrush=create.Background;create.Foreground=Brushes.White;create.FontWeight=FontWeights.SemiBold;
+            var cancel=Ui.Button(TextResources.Get("common.cancel"));cancel.Name="CancelCreateProject";cancel.IsCancel=true;cancel.Background=Brushes.Transparent;cancel.BorderBrush=Brushes.Transparent;cancel.Foreground=AgentUi.Muted;cancel.Margin=new Thickness(0,0,10,0);cancel.Click+=delegate{DialogResult=false;Close();};
+            var create=Ui.Button(initial==null?TextResources.Get("projectSidebar.newProjectDialog.text"):TextResources.Get("common.save"),true);create.Name="CreateProject";create.IsDefault=true;create.Background=ThemeManager.ActionSurface;create.BorderBrush=create.Background;create.Foreground=Brushes.White;create.FontWeight=FontWeights.SemiBold;
             create.Click+=delegate{
-                if(ProjectName.Length<1 || ProjectName.Length>80){notice.Text="请输入 1～80 个字符的项目名称。";return;}
-                if(!Path.IsPathRooted(Workspace) || !Directory.Exists(Workspace)){notice.Text="请选择已存在的绝对工作目录。";return;}
+                if(ProjectName.Length<1 || ProjectName.Length>80){notice.Text=TextResources.Get("projectSidebar.newProjectDialog.notice");return;}
+                if(!Path.IsPathRooted(Workspace) || !Directory.Exists(Workspace)){notice.Text=TextResources.Get("projectSidebar.newProjectDialog.notice.alternativeA");return;}
                 DialogResult=true;Close();
             };
             actions.Children.Add(cancel);actions.Children.Add(create);
             var footer=new Grid();footer.ColumnDefinitions.Add(new ColumnDefinition());footer.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});Grid.SetColumn(actions,1);footer.Children.Add(actions);
-            if(initial!=null){var extras=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Bottom};var remove=Ui.Button("移除项目");remove.Name="RemoveEditedProject";remove.Background=Ui.Brush("#FBE9E9");remove.Foreground=Ui.Brush("#D34646");remove.BorderBrush=Brushes.Transparent;remove.Click+=delegate{RemoveRequested=true;DialogResult=false;Close();};extras.Children.Add(remove);var advanced=Ui.Button("工作设置");advanced.Name="ProjectAdvancedSettings";advanced.Click+=delegate{WorkSettingsRequested=true;DialogResult=false;Close();};extras.Children.Add(advanced);footer.Children.Add(extras);}
+            if(initial!=null){var extras=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Bottom};var remove=Ui.Button(TextResources.Get("projectSidebar.newProjectDialog.text.alternativeE"));remove.Name="RemoveEditedProject";remove.Background=Ui.Brush("#FBE9E9");remove.Foreground=Ui.Brush("#D34646");remove.BorderBrush=Brushes.Transparent;remove.Click+=delegate{RemoveRequested=true;DialogResult=false;Close();};extras.Children.Add(remove);var advanced=Ui.Button(TextResources.Get("projectSidebar.newProjectDialog.text.alternativeF"));advanced.Name="ProjectAdvancedSettings";advanced.Click+=delegate{WorkSettingsRequested=true;DialogResult=false;Close();};extras.Children.Add(advanced);footer.Children.Add(extras);}
             Grid.SetRow(footer,5);root.Children.Add(footer);
             if(initial!=null){name.Text=initial.Name;workspacePath=initial.Workspace;RefreshFolder();}DialogUi.Apply(this,root);Loaded+=delegate{name.Focus();name.SelectAll();};
         }
@@ -195,7 +196,7 @@ namespace Dafeiyu
         void RefreshFolder()
         {
             bool has=!String.IsNullOrWhiteSpace(workspacePath);
-            folderHint.Text=has?"已选择源文件夹":"在此电脑上添加文件夹";
+            folderHint.Text=has?TextResources.Get("projectSidebar.refreshFolder.folderHintHas"):TextResources.Get("projectSidebar.refreshFolder.folderHintHas.alternativeA");
             folderPath.Text=has?workspacePath:"";folderPath.Visibility=has?Visibility.Visible:Visibility.Collapsed;
             notice.Text="";
         }

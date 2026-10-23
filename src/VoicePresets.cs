@@ -29,16 +29,16 @@ namespace Dafeiyu
             {
                 if(model == "mimo-v2.5-tts" && (generic || protocol == "mimo") && !openaiHost && !geminiHost)
                 {
-                    items.Add(new VoicePreset("mimo_default", "默认音色；国内冰糖，其他集群 Mia"));
-                    foreach(string id in new[] {"冰糖", "茉莉"}) items.Add(new VoicePreset(id, "中文女声；风格请试听"));
-                    foreach(string id in new[] {"苏打", "白桦"}) items.Add(new VoicePreset(id, "中文男声；风格请试听"));
-                    foreach(string id in new[] {"Mia", "Chloe"}) items.Add(new VoicePreset(id, "英文女声；风格请试听"));
-                    foreach(string id in new[] {"Milo", "Dean"}) items.Add(new VoicePreset(id, "英文男声；风格请试听"));
+                    items.Add(new VoicePreset("mimo_default", TextResources.Get("voicePresets.for.items")));
+                    foreach(string id in new[] {"冰糖", "茉莉"}) items.Add(new VoicePreset(id, TextResources.Get("voicePresets.for.items.alternativeA")));
+                    foreach(string id in new[] {"苏打", "白桦"}) items.Add(new VoicePreset(id, TextResources.Get("voicePresets.for.items.alternativeB")));
+                    foreach(string id in new[] {"Mia", "Chloe"}) items.Add(new VoicePreset(id, TextResources.Get("voicePresets.for.items.alternativeC")));
+                    foreach(string id in new[] {"Milo", "Dean"}) items.Add(new VoicePreset(id, TextResources.Get("voicePresets.for.items.alternativeD")));
                 }
                 else if(generic && !mimoHost && !geminiHost && (model == "tts-1" || model == "tts-1-hd" || model == "gpt-4o-mini-tts"))
                 {
                     string[] voices = model == "gpt-4o-mini-tts" ? new[] {"alloy","ash","ballad","coral","echo","fable","nova","onyx","sage","shimmer","verse","marin","cedar"} : new[] {"alloy","ash","coral","echo","fable","onyx","nova","sage","shimmer"};
-                    foreach(string id in voices) items.Add(new VoicePreset(id, "英语优化；声线与风格请试听"));
+                    foreach(string id in voices) items.Add(new VoicePreset(id, TextResources.Get("voicePresets.for.items.alternativeE")));
                 }
             }
             else if(kind == "live" && (protocol == "gemini-live" || protocol == "auto" || protocol == "") && !mimoHost && !openaiHost && NativeLiveModel(model))

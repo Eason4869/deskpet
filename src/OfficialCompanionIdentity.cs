@@ -75,7 +75,7 @@ namespace Dafeiyu
             return CompanionPackStorage.ValidId(id) && id.IndexOfAny(new[] {'\r', '\n', '\0'}) < 0;
         }
         static bool ValidPersona(string value, string id) { return value == id || (value != null && Alias.IsMatch(value)); }
-        static InvalidDataException Invalid() { return new InvalidDataException("伙伴身份映射无效，请保留现有数据后重试。"); }
+        static InvalidDataException Invalid() { return new InvalidDataException(TextResources.Get("officialCompanionIdentity.invalid.text")); }
         static HashSet<string> Reserved(IEnumerable<string> values)
         {
             var result = new HashSet<string>(StringComparer.Ordinal);
@@ -132,7 +132,7 @@ namespace Dafeiyu
             var timeout = Stopwatch.StartNew();
             while (true) {
                 try { return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-                catch (IOException) { if (timeout.ElapsedMilliseconds >= 5000) throw new IOException("伙伴身份正在更新，请稍后重试。"); Thread.Sleep(20); }
+                catch (IOException) { if (timeout.ElapsedMilliseconds >= 5000) throw new IOException(TextResources.Get("officialCompanionIdentity.acquire.text")); Thread.Sleep(20); }
             }
         }
         static void Publish(string path, string value)

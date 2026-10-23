@@ -90,7 +90,7 @@ namespace Dafeiyu
                 OriginalTitle = target.OriginalTitle, WindowClass = target.WindowClass
             };
             if (Interlocked.CompareExchange(ref busy, 1, 0) != 0)
-                throw new InvalidOperationException("上一次应用快照仍在等待窗口响应，请稍后重试或关闭该应用窗口。");
+                throw new InvalidOperationException(TextResources.Get("applicationSnapshots.captureAsync.text"));
             Task<byte[]> capture;
             try
             {
@@ -121,7 +121,7 @@ namespace Dafeiyu
                 // Observe late errors without retaining the captured image or reporting a second result.
                 ObserveFailure(capture);
                 token.ThrowIfCancellationRequested();
-                throw new TimeoutException("应用窗口超过 2 秒未完成快照；该窗口可能不支持快照，请稍后重试。");
+                throw new TimeoutException(TextResources.Get("applicationSnapshots.waitForCaptureAsync.text"));
             }
         }
         private static void ObserveFailure(Task<byte[]> capture)
@@ -143,7 +143,7 @@ namespace Dafeiyu
                 if (!GetWindowRect(target.Handle, out bounds)) throw Unsupported();
                 long width = (long)bounds.Right - bounds.Left, height = (long)bounds.Bottom - bounds.Top;
                 if (width < 100 || height < 60 || width > 8192 || height > 8192 || width * height > 16000000)
-                    throw new InvalidOperationException("应用窗口尺寸不适合生成快照，请缩小窗口后重试（最多 1600 万像素）。");
+                    throw new InvalidOperationException(TextResources.Get("applicationSnapshots.capture.text"));
                 using (var bitmap = new Bitmap((int)width, (int)height, PixelFormat.Format24bppRgb))
                 {
                     using (Graphics graphics = Graphics.FromImage(bitmap))
@@ -160,7 +160,7 @@ namespace Dafeiyu
                     token.ThrowIfCancellationRequested(); ValidateIdentity(target);
                     Rect after;
                     if (!GetWindowRect(target.Handle, out after) || after.Right - after.Left != width || after.Bottom - after.Top != height)
-                        throw new InvalidOperationException("应用窗口在快照期间改变了尺寸，请重新选择后重试。");
+                        throw new InvalidOperationException(TextResources.Get("applicationSnapshots.capture.text.alternativeA"));
                     RejectEmpty(bitmap);
                     return Encode(bitmap, token);
                 }
@@ -194,7 +194,7 @@ namespace Dafeiyu
                 }
                 width = Math.Max(1, width * 3 / 4); height = Math.Max(1, height * 3 / 4);
             }
-            throw new InvalidOperationException("应用快照超过 4 MB 附件上限，请缩小窗口后重试。");
+            throw new InvalidOperationException(TextResources.Get("applicationSnapshots.encode.text"));
         }
 
         private static void RejectEmpty(Bitmap bitmap)
@@ -213,18 +213,18 @@ namespace Dafeiyu
         private static void ValidateIdentity(ApplicationSnapshotTarget target)
         {
             if (target.Handle == IntPtr.Zero || target.ProcessId == Process.GetCurrentProcess().Id || target.ProcessStartTicks == 0 || !IsWindow(target.Handle))
-                throw new InvalidOperationException("选中的应用窗口已关闭或发生变化，请重新选择。");
+                throw new InvalidOperationException(TextResources.Get("applicationSnapshots.validateIdentity.text"));
             uint pid; uint thread = GetWindowThreadProcessId(target.Handle, out pid);
             if (pid != target.ProcessId || thread != target.WindowThread || !Eligible(target.Handle) ||
                 !String.Equals(Title(target.Handle), target.OriginalTitle, StringComparison.Ordinal) || !String.Equals(ClassName(target.Handle), target.WindowClass, StringComparison.Ordinal))
-                throw new InvalidOperationException("选中的应用窗口已关闭或发生变化，请重新选择。");
+                throw new InvalidOperationException(TextResources.Get("applicationSnapshots.validateIdentity.text"));
             try
             {
                 using (Process process = Process.GetProcessById(target.ProcessId))
-                    if (process.StartTime.ToUniversalTime().Ticks != target.ProcessStartTicks) throw new InvalidOperationException("选中的应用进程已变化，请重新选择。");
+                    if (process.StartTime.ToUniversalTime().Ticks != target.ProcessStartTicks) throw new InvalidOperationException(TextResources.Get("applicationSnapshots.validateIdentity.text.alternativeA"));
             }
-            catch (ArgumentException) { throw new InvalidOperationException("选中的应用窗口已关闭，请重新选择。"); }
-            catch (System.ComponentModel.Win32Exception) { throw new InvalidOperationException("无法验证此应用窗口，请重新选择其他应用。"); }
+            catch (ArgumentException) { throw new InvalidOperationException(TextResources.Get("applicationSnapshots.validateIdentity.text.alternativeB")); }
+            catch (System.ComponentModel.Win32Exception) { throw new InvalidOperationException(TextResources.Get("applicationSnapshots.validateIdentity.text.alternativeC")); }
         }
 
         private static bool Eligible(IntPtr handle)
@@ -288,12 +288,12 @@ namespace Dafeiyu
         }
         private static byte[] EncodeIcon(Icon icon)
         {
-            if (icon.Width < 1 || icon.Height < 1 || icon.Width > 256 || icon.Height > 256) throw new ArgumentException("应用图标尺寸无效。");
+            if (icon.Width < 1 || icon.Height < 1 || icon.Width > 256 || icon.Height > 256) throw new ArgumentException(TextResources.Get("applicationSnapshots.encodeIcon.text"));
             using (Bitmap bitmap = icon.ToBitmap()) using (var stream = new MemoryStream()) { bitmap.Save(stream, ImageFormat.Png); return stream.ToArray(); }
         }
         private static IntPtr ClassIcon(IntPtr window, int index) { return IntPtr.Size == 8 ? GetClassLongPtr(window, index) : new IntPtr(unchecked((int)GetClassLong(window, index))); }
-        private static InvalidOperationException Unsupported() { return new InvalidOperationException("此应用窗口不支持快照，或阻止了窗口捕获，请选择其他应用。"); }
-        private static void EnsureWindows() { if (Environment.OSVersion.Platform != PlatformID.Win32NT) throw new PlatformNotSupportedException("附加应用快照目前仅支持 Windows。"); }
+        private static InvalidOperationException Unsupported() { return new InvalidOperationException(TextResources.Get("applicationSnapshots.unsupported.text")); }
+        private static void EnsureWindows() { if (Environment.OSVersion.Platform != PlatformID.Win32NT) throw new PlatformNotSupportedException(TextResources.Get("applicationSnapshots.ensureWindows.text")); }
         [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
         private delegate bool EnumWindowsCallback(IntPtr window, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsCallback callback, IntPtr parameter);

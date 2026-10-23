@@ -35,8 +35,8 @@ namespace Dafeiyu
         }
         internal string ReadText()
         {
-            if(!TextFile)throw new InvalidOperationException("此文件为二进制格式，不支持复制文字内容。");
-            using(var stream=new FileStream(Path,FileMode.Open,FileAccess.Read,FileShare.Read)){if(stream.Length>ChatAttachment.MaximumBytes)throw new InvalidOperationException("文件过大，请使用打开文件或另存为。");using(var reader=new StreamReader(stream,new UTF8Encoding(false,true),true)){string text=reader.ReadToEnd();if(text.IndexOf('\0')>=0)throw new InvalidOperationException("此文件包含二进制内容。");return text;}}
+            if(!TextFile)throw new InvalidOperationException(TextResources.Get("replyFileReference.readText.text"));
+            using(var stream=new FileStream(Path,FileMode.Open,FileAccess.Read,FileShare.Read)){if(stream.Length>ChatAttachment.MaximumBytes)throw new InvalidOperationException(TextResources.Get("replyFileReference.readText.text.alternativeA"));using(var reader=new StreamReader(stream,new UTF8Encoding(false,true),true)){string text=reader.ReadToEnd();if(text.IndexOf('\0')>=0)throw new InvalidOperationException(TextResources.Get("replyFileReference.readText.text.alternativeB"));return text;}}
         }
         internal void SaveTo(string destination){if(String.Equals(System.IO.Path.GetFullPath(destination),Path,StringComparison.OrdinalIgnoreCase))return;File.Copy(Path,destination,true);}
     }

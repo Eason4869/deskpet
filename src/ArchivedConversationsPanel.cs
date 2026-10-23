@@ -19,13 +19,13 @@ namespace Dafeiyu
         internal void RefreshState()
         {
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshState));return;}
-            rows.Children.Clear();rows.Children.Add(Ui.Text("已归档对话",18,AgentUi.Ink));
-            rows.Children.Add(Ui.Text("集中管理所有伙伴的归档对话。恢复后回到原位置；永久删除仍会要求确认。",12,AgentUi.Muted));
+            rows.Children.Clear();rows.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text"),18,AgentUi.Ink));
+            rows.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeA"),12,AgentUi.Muted));
             int count=0;
             foreach(var project in pet.Projects.Projects.Where(p=>p.Archived).OrderByDescending(p=>p.LastOpenedUtcTicks))
             {
-                count++;var body=new StackPanel();body.Children.Add(ActionRow(project.Name,"已归档项目 · "+project.Conversations.Count+" 个对话","ArchivedProject_"+project.Id,
-                    "恢复项目",()=>{pet.RestoreProject(project);RefreshState();},"移除项目",()=>{pet.DeleteProject(project);RefreshState();}));
+                count++;var body=new StackPanel();body.Children.Add(ActionRow(project.Name,TextResources.Format("archivedConversationsPanel.refreshState.actionRow",project.Conversations.Count),"ArchivedProject_"+project.Id,
+                    TextResources.Get("archivedConversationsPanel.refreshState.actionRow.alternativeA"),()=>{pet.RestoreProject(project);RefreshState();},TextResources.Get("archivedConversationsPanel.refreshState.actionRow.alternativeB"),()=>{pet.DeleteProject(project);RefreshState();}));
                 foreach(var conversation in project.Conversations.OrderByDescending(c=>c.LastOpenedUtcTicks))AddConversation(body,project,conversation,true);
                 rows.Children.Add(GlassSurface.Card(body));
             }
@@ -35,16 +35,16 @@ namespace Dafeiyu
             foreach(var conversation in unassigned.Conversations.Where(c=>c.Archived).OrderByDescending(c=>c.LastOpenedUtcTicks)){AddConversation(ordinary,unassigned,conversation,false);count++;}
             foreach(var conversation in quick.Conversations.Where(c=>c.Archived).OrderByDescending(c=>c.LastOpenedUtcTicks)){AddConversation(ordinary,quick,conversation,false);count++;}
             if(ordinary.Children.Count>0)rows.Children.Add(GlassSurface.Card(ordinary));
-            if(count==0){var empty=new StackPanel{Margin=new Thickness(0,46,0,36)};var title=Ui.Text("还没有已归档对话",16,AgentUi.Ink);title.Name="ArchivedConversationsEmpty";empty.Children.Add(title);empty.Children.Add(Ui.Text("在侧边栏对话菜单中选择“归档”，之后可在这里恢复或删除。",12,AgentUi.Muted));rows.Children.Add(empty);}
+            if(count==0){var empty=new StackPanel{Margin=new Thickness(0,46,0,36)};var title=Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeB"),16,AgentUi.Ink);title.Name="ArchivedConversationsEmpty";empty.Children.Add(title);empty.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeC"),12,AgentUi.Muted));rows.Children.Add(empty);}
         }
         void AddConversation(Panel host,ProjectDefinition project,ConversationDefinition conversation,bool ownerArchived)
         {
-            string source=project.Id==ProjectCatalogStore.QuickProjectId?"快速对话":project.Id==ProjectCatalogStore.UnassignedProjectId?(conversation.Mode=="chat"?"普通聊天":"无项目工作对话"):project.Name;
+            string source=project.Id==ProjectCatalogStore.QuickProjectId?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId"):project.Id==ProjectCatalogStore.UnassignedProjectId?(conversation.Mode=="chat"?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeA"):TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeB")):project.Name;
             var skin=pet.Catalog.Skins.FirstOrDefault(s=>s.Id==conversation.PetId);if(skin!=null)source+=" · "+skin.Name;
-            if(ownerArchived)source+=" · 随项目归档";
-            host.Children.Add(ActionRow(conversation.Name,source,"ArchivedConversation_"+conversation.Id,ownerArchived?"恢复项目及对话":"恢复对话",delegate{
+            if(ownerArchived)source+=TextResources.Get("archivedConversationsPanel.addConversation.source");
+            host.Children.Add(ActionRow(conversation.Name,source,"ArchivedConversation_"+conversation.Id,ownerArchived?TextResources.Get("archivedConversationsPanel.addConversation.actionRow"):TextResources.Get("archivedConversationsPanel.addConversation.actionRow.alternativeA"),delegate{
                 if(project.Archived)pet.RestoreProject(project);if(conversation.Archived)pet.RestoreConversation(project,conversation);RefreshState();
-            },"永久删除",()=>{pet.DeleteConversation(project,conversation);RefreshState();}));
+            },TextResources.Get("archivedConversationsPanel.addConversation.actionRow.alternativeB"),()=>{pet.DeleteConversation(project,conversation);RefreshState();}));
         }
         static FrameworkElement ActionRow(string title,string description,string name,string restoreLabel,Action restore,string deleteLabel,Action delete)
         {

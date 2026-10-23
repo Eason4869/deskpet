@@ -72,10 +72,10 @@ namespace Dafeiyu
                     Uri uri; if (MarkdownContent.TryLink(node.Url, out uri))
                     {
                         var linkInk=ThemeManager.Brush("#456DE6","#91B5FF");
-                        var link = new Hyperlink { Tag=node.AutoLink?"autolink":node.Kind, NavigateUri = uri, Foreground = linkInk, TextDecorations = null, ToolTip = editable?"Ctrl + 单击打开链接\n"+uri.AbsoluteUri:uri.AbsoluteUri };
+                        var link = new Hyperlink { Tag=node.AutoLink?"autolink":node.Kind, NavigateUri = uri, Foreground = linkInk, TextDecorations = null, ToolTip = editable?TextResources.Format("markdownDocument.inline.absoluteUriUriAbsoluteUri",uri.AbsoluteUri):uri.AbsoluteUri };
                         if(!editable)link.ContextMenu=MarkdownLinkMenu.Create(link);
                         bool previewImage=node.Kind=="image"&&!editable&&(uri.Scheme=="http"||uri.Scheme=="https");
-                        if(previewImage)link.ToolTip="点击预览图片（仅点击时加载）\n"+uri.AbsoluteUri;
+                        if(previewImage)link.ToolTip=TextResources.Format("markdownDocument.inline.toolTipUriAbsoluteUri",uri.AbsoluteUri);
                         link.RequestNavigate += delegate (object sender, System.Windows.Navigation.RequestNavigateEventArgs e) { if(previewImage){var host=Window.GetWindow(link);if(host!=null)ChatImagePreview.OpenRemote(host,e.Uri,new System.Windows.Documents.TextRange(link.ContentStart,link.ContentEnd).Text);}else if(!editable || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control)!=0)OpenLink(e.Uri); e.Handled = true; };
                         string iconName = uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase) ? "github" : "globe";
                         var icon = UiIcons.Image(iconName, linkInk); icon.Name = iconName == "github" ? "MarkdownGitHubIcon" : "MarkdownGlobeIcon"; icon.Width = icon.Height = 14; icon.Margin = new Thickness(0, 0, 5, 0); icon.IsHitTestVisible=false;icon.Focusable=false;link.Inlines.Add(new InlineUIContainer(icon) { BaselineAlignment = BaselineAlignment.Center,Focusable=false });

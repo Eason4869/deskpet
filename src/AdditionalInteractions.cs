@@ -47,7 +47,7 @@ namespace Dafeiyu
         public static string SpecialName(SkinDefinition skin)
         {
             if(skin.Illustrated && !String.IsNullOrWhiteSpace(skin.Manifest.SpecialAction2))return skin.Manifest.SpecialAction2;
-            switch (skin.BuiltinCharacterId??skin.Id) { case "e-bao": return "比心鼓励"; case "dafeiyu": return "泡泡环游"; case "marfu": return "荧光咒语"; case "xiaobei": return "全息键盘"; default: return "第二招牌"; }
+            switch (skin.BuiltinCharacterId??skin.Id) { case "e-bao": return TextResources.Get("additionalInteractions.specialName.text"); case "dafeiyu": return TextResources.Get("additionalInteractions.specialName.text.alternativeA"); case "marfu": return TextResources.Get("additionalInteractions.specialName.text.alternativeB"); case "xiaobei": return TextResources.Get("additionalInteractions.specialName.text.alternativeC"); default: return TextResources.Get("additionalInteractions.specialName.text.alternativeD"); }
         }
         public MotionClip Get(SkinDefinition skin, string action)
         {
@@ -70,7 +70,7 @@ namespace Dafeiyu
             else using (Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(Resource(skin, action)))
             {
                 var image = BitmapDecoder.Create(input, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
-                if (image.PixelWidth != 3840 || image.PixelHeight != 520) throw new InvalidDataException("伙伴动作需要 8 列 × 1 行、480 × 520 单帧。");
+                if (image.PixelWidth != 3840 || image.PixelHeight != 520) throw new InvalidDataException(TextResources.Get("additionalInteractions.get.text"));
                 clip = new MotionClip(image, 8, 1.0, action == "lifted" || action == "sleeping", 480, 520, 8);
             }
             // Each clip owns full-size pixels and hit masks. Keep the current
@@ -92,7 +92,7 @@ namespace Dafeiyu
             }
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
             {
-                if (stream == null) throw new InvalidDataException("旧版互动素材缺失：" + skin.Id + " / " + action);
+                if (stream == null) throw new InvalidDataException(TextResources.Format("additionalInteractions.loadOriginal.template",skin.Id,action));
                 var image = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
                 var crop = new CroppedBitmap(image, new Int32Rect(0, top, columns * 480, height));
                 return new MotionClip(crop, count, count / 8.0, action == "lifted" || action == "sleeping", 480, 520, columns);

@@ -33,7 +33,7 @@ namespace Dafeiyu
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
-                if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException("会话正在保存并关闭，请稍后重试。");
+                if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.createWorkspace.text"));
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
                 var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);
@@ -87,7 +87,7 @@ namespace Dafeiyu
                     if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
                     // Re-resolve membership and project after every awaited close handoff.
                     var definition=ProjectCatalogStore.AllConversations(catalog).SingleOrDefault(c=>c.Id==id);
-                    if(definition==null)throw new InvalidOperationException("原会话已不可用，请在图库查看图片。");
+                    if(definition==null)throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.getCatalogWorkspaceAsync.text"));
                     if(!closing.TryGetValue(id,out pending))
                     {
                         var existing=workspaces.SingleOrDefault(w=>w.Id==id);
@@ -97,7 +97,7 @@ namespace Dafeiyu
                         if(requiredPersona!=null)
                         {
                             string directory=ConversationWorkspace.ResolveDataDirectory(dataRoot,id);
-                            if(!new HistoryStore(Path.Combine(directory,"history")).HasSavedHistory(requiredPersona))throw new InvalidOperationException("原会话记录不存在，请在图库查看图片。");
+                            if(!new HistoryStore(Path.Combine(directory,"history")).HasSavedHistory(requiredPersona))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.getCatalogWorkspaceAsync.text.alternativeA"));
                         }
                         return CreateWorkspace(project,definition);
                     }

@@ -36,7 +36,7 @@ namespace Dafeiyu
         {
             string value=(address??"").Trim().TrimEnd('/');Uri uri;
             if(!Uri.TryCreate(value,UriKind.Absolute,out uri) || uri.Scheme!="https" || String.IsNullOrEmpty(uri.Host) || uri.UserInfo.Length>0 || uri.Query.Length>0 || uri.Fragment.Length>0 || value.IndexOfAny(new[]{'\r','\n','\t',' '})>=0 || uri.AbsolutePath.IndexOf(":",StringComparison.Ordinal)>=0)
-                throw new InvalidOperationException("请填写 HTTPS 镜像地址，例如 https://gh-proxy.org；不要附带 GitHub 下载链接、账号或参数。");
+                throw new InvalidOperationException(TextResources.Get("gitHubUpdates.mirrorPrefix.text"));
             return value;
         }
         public void ConfigureMirror(bool enabled,string address,IProgress<string> reporter){string prefix=enabled?MirrorPrefix(address):null;lock(routingGate){mirrorAddress=prefix;useMirror=enabled;route=reporter;}}
@@ -54,9 +54,9 @@ namespace Dafeiyu
         static HttpClient Create(bool useProxy,string address){var client=useProxy?ProxyConfiguration.CreateHttpClient(address,true):new HttpClient(new HttpClientHandler{UseProxy=false,AllowAutoRedirect=true}){Timeout=Timeout.InfiniteTimeSpan};client.DefaultRequestHeaders.UserAgent.ParseAdd("DafeiyuDeskPet/"+ReleaseInfo.DisplayVersion);return client;}
         public static string Repository(string address)
         {
-            Uri uri;if(!Uri.TryCreate((address??"").Trim(),UriKind.Absolute,out uri) || uri.Scheme!="https" || uri.Host!="github.com" || !uri.IsDefaultPort || uri.UserInfo.Length>0 || uri.Query.Length>0 || uri.Fragment.Length>0)throw new ApiException("请填写 https://github.com/作者/仓库 格式的地址。");
+            Uri uri;if(!Uri.TryCreate((address??"").Trim(),UriKind.Absolute,out uri) || uri.Scheme!="https" || uri.Host!="github.com" || !uri.IsDefaultPort || uri.UserInfo.Length>0 || uri.Query.Length>0 || uri.Fragment.Length>0)throw new ApiException(TextResources.Get("gitHubUpdates.repository.text"));
             string path=uri.AbsolutePath.Trim('/');if(path.EndsWith(".git",StringComparison.OrdinalIgnoreCase))path=path.Substring(0,path.Length-4);
-            if(!Regex.IsMatch(path,@"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$") || path.Equals("OWNER/REPO",StringComparison.OrdinalIgnoreCase))throw new ApiException("仓库地址目前是占位符。建立 GitHub 仓库并发布 Release 后，在这里填写实际地址。");return path;
+            if(!Regex.IsMatch(path,@"^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$") || path.Equals("OWNER/REPO",StringComparison.OrdinalIgnoreCase))throw new ApiException(TextResources.Get("gitHubUpdates.repository.text.alternativeA"));return path;
         }
         public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,CancellationToken cancel){return CheckAsync(repository,useProxy,ProxyConfiguration.DefaultAddress,cancel);}
         public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string proxyAddress,CancellationToken cancel){return CheckAsync(repository,useProxy,proxyAddress,false,cancel);}
@@ -71,12 +71,12 @@ namespace Dafeiyu
                 {
                     using(var response=await (useProxy?proxy:direct).SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))using(token.Register(response.Dispose))
                     {
-                        if(response.StatusCode==HttpStatusCode.NotFound)throw new ApiException("未找到公开的正式 Release。请检查仓库地址，并发布版本及安装包附件。");
-                        if(response.StatusCode==HttpStatusCode.Forbidden || (int)response.StatusCode==429)throw new ApiException("GitHub 检查更新受到频率限制，请稍后再试。");
-                        if(!response.IsSuccessStatusCode)throw new ApiException("GitHub 暂时无法查询更新（HTTP "+(int)response.StatusCode+"）。");
+                        if(response.StatusCode==HttpStatusCode.NotFound)throw new ApiException(TextResources.Get("gitHubUpdates.checkAsync.text"));
+                        if(response.StatusCode==HttpStatusCode.Forbidden || (int)response.StatusCode==429)throw new ApiException(TextResources.Get("gitHubUpdates.checkAsync.text.alternativeA"));
+                        if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubUpdates.checkAsync.template",(int)response.StatusCode));
                         using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))using(var memory=new MemoryStream())
                         {
-                            byte[] block=new byte[8192];int count;while((count=await stream.ReadAsync(block,0,block.Length,token).ConfigureAwait(false))>0){if(memory.Length+count>1024*1024)throw new ApiException("GitHub 版本信息过大。");memory.Write(block,0,count);}
+                            byte[] block=new byte[8192];int count;while((count=await stream.ReadAsync(block,0,block.Length,token).ConfigureAwait(false))>0){if(memory.Length+count>1024*1024)throw new ApiException(TextResources.Get("gitHubUpdates.checkAsync.text.alternativeB"));memory.Write(block,0,count);}
                             var json=new JavaScriptSerializer{MaxJsonLength=1024*1024}.DeserializeObject(Encoding.UTF8.GetString(memory.ToArray())) as Dictionary<string,object>;if(json==null)throw new FormatException();
                             var release=new UpdateRelease{VersionTag=(string)json["tag_name"],PageUrl=(string)json["html_url"]};Uri page;if(!Uri.TryCreate(release.PageUrl,UriKind.Absolute,out page) || page.Host!="github.com" || page.Scheme!="https")throw new FormatException();int best=-1;
                             foreach(object raw in (object[])json["assets"])
@@ -88,7 +88,7 @@ namespace Dafeiyu
                         }
                     }
                 }
-                catch(Exception e){throw SafeError(e,cancel,token,"检查更新");}
+                catch(Exception e){throw SafeError(e,cancel,token,TextResources.Get("gitHubUpdates.checkAsync.safeError"));}
             }
         }
         static int Score(string name)
@@ -101,7 +101,7 @@ namespace Dafeiyu
         public Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,IProgress<double> progress,CancellationToken cancel){return DownloadAsync(release,folder,useProxy,ProxyConfiguration.DefaultAddress,progress,cancel);}
         public Task<string> DownloadAsync(UpdateRelease release,string folder,bool useProxy,string proxyAddress,IProgress<double> progress,CancellationToken cancel)
         {
-            if(release==null || !SafeAsset(release.AssetUrl) || Score(release.AssetName)<0 || release.AssetName!=Path.GetFileName(release.AssetName) || release.AssetName.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || release.AssetName.Length>150)throw new ApiException("没有可下载的 Windows EXE、MSI 或 ZIP 附件。");
+            if(release==null || !SafeAsset(release.AssetUrl) || Score(release.AssetName)<0 || release.AssetName!=Path.GetFileName(release.AssetName) || release.AssetName.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || release.AssetName.Length>150)throw new ApiException(TextResources.Get("gitHubUpdates.downloadAsync.text"));
             OfficialDownloadRouting routing;IProgress<string> reporter;
             lock(routingGate){routing=new OfficialDownloadRouting(useMirror,mirrorAddress,useProxy,proxyAddress);reporter=route;}
             return TransferAssetAsync(release.AssetUrl,release.AssetName,release.Size,release.Digest,300L*1024*1024,folder,routing,progress,reporter,cancel);
@@ -115,24 +115,24 @@ namespace Dafeiyu
         internal async Task TestMirrorAsync(string address,UpdateRelease release,CancellationToken cancel)
         {
             string prefix=MirrorPrefix(address);
-            if(release==null || !SafeAsset(release.AssetUrl))throw new ApiException("未找到可测试的 GitHub 更新附件。");
+            if(release==null || !SafeAsset(release.AssetUrl))throw new ApiException(TextResources.Get("gitHubUpdates.testMirrorAsync.text"));
             using(var bounded=CancellationTokenSource.CreateLinkedTokenSource(cancel))using(var request=new HttpRequestMessage(HttpMethod.Get,prefix+"/"+release.AssetUrl))
             {
                 bounded.CancelAfter(TimeSpan.FromSeconds(15));request.Headers.Range=new System.Net.Http.Headers.RangeHeaderValue(0,1023);
                 try{using(var response=await direct.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,bounded.Token).ConfigureAwait(false))using(bounded.Token.Register(response.Dispose))
                 {
-                    if(!response.IsSuccessStatusCode)throw new ApiException("镜像连通测试失败（HTTP "+(int)response.StatusCode+"）。");
-                    if(response.Content.Headers.ContentType!=null && response.Content.Headers.ContentType.MediaType=="text/html")throw new ApiException("镜像返回了网页，请检查镜像地址。");
+                    if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubUpdates.testMirrorAsync.template",(int)response.StatusCode));
+                    if(response.Content.Headers.ContentType!=null && response.Content.Headers.ContentType.MediaType=="text/html")throw new ApiException(TextResources.Get("gitHubUpdates.testMirrorAsync.text.alternativeA"));
                     using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                     {
                         byte[] sample=new byte[2];int count=0;while(count<sample.Length){int read=await stream.ReadAsync(sample,count,sample.Length-count,bounded.Token).ConfigureAwait(false);if(read==0)break;count+=read;}
                         string extension=Path.GetExtension(release.AssetName).ToLowerInvariant();bool binary=count==2 && (extension==".exe"?sample[0]==77 && sample[1]==90:extension==".zip"?sample[0]==80 && sample[1]==75:sample[0]==208 && sample[1]==207);
-                        if(!binary)throw new ApiException("镜像未返回有效的更新包，请检查镜像地址。");
+                        if(!binary)throw new ApiException(TextResources.Get("gitHubUpdates.testMirrorAsync.text.alternativeB"));
                     }
-                }}catch(Exception e){throw SafeError(e,cancel,bounded.Token,"镜像连通测试");}
+                }}catch(Exception e){throw SafeError(e,cancel,bounded.Token,TextResources.Get("gitHubUpdates.testMirrorAsync.safeError"));}
             }
         }
-        static Exception SafeError(Exception e,CancellationToken cancel,CancellationToken timeout,string action){if(cancel.IsCancellationRequested)return new OperationCanceledException(cancel);if(timeout.IsCancellationRequested)return new ApiException(action+"超时，请重试或检查代理。");if(e is ApiException)return e;return new ApiException(action+"未完成，请检查 GitHub 地址、网络、代理及下载目录权限。");}
+        static Exception SafeError(Exception e,CancellationToken cancel,CancellationToken timeout,string action){if(cancel.IsCancellationRequested)return new OperationCanceledException(cancel);if(timeout.IsCancellationRequested)return new ApiException(TextResources.Format("gitHubUpdates.safeError.template",action));if(e is ApiException)return e;return new ApiException(TextResources.Format("gitHubUpdates.safeError.template.alternativeA",action));}
         public void Dispose(){direct.Dispose();}
     }
 }

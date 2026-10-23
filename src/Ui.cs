@@ -85,8 +85,8 @@ namespace Dafeiyu
         }
         public static CheckBox ReplySpeechToggle(PetWindow pet)
         {
-            var toggle=Toggle("TTS 输出",pet.Settings.ReadReplies,pet.SetReplySpeech);toggle.Name="TtsOutput";
-            toggle.ToolTip="自动朗读文字回复和 ASR 对话回复。关闭会停止当前朗读。Live 音频由实时语音模式输出。";
+            var toggle=Toggle(TextResources.Get("ui.replySpeechToggle.toggle"),pet.Settings.ReadReplies,pet.SetReplySpeech);toggle.Name="TtsOutput";
+            toggle.ToolTip=TextResources.Get("ui.replySpeechToggle.toggleToolTip");
             Action sync=()=>toggle.IsChecked=pet.Settings.ReadReplies;
             toggle.Loaded+=delegate {sync();pet.ReplySpeechChanged+=sync;};
             toggle.Unloaded+=delegate {pet.ReplySpeechChanged-=sync;};return toggle;

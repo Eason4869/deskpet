@@ -33,7 +33,7 @@ namespace Dafeiyu
             {
                 cancellation=cancel;
                 if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("Windows workspace sandbox unavailable.");
-                root=Path.GetFullPath(root);if(!Directory.Exists(root)||root.TrimEnd('\\')==Path.GetPathRoot(root).TrimEnd('\\'))throw new ArgumentException("沙箱需要项目文件夹，不能授权整个磁盘。");
+                root=Path.GetFullPath(root);if(!Directory.Exists(root)||root.TrimEnd('\\')==Path.GetPathRoot(root).TrimEnd('\\'))throw new ArgumentException(TextResources.Get("windowsWorkspaceSandbox.windowsSandboxLease.text"));
                 ValidateGrantPath(root);ValidateTree(root);
                 try{
                     CheckHResult(CreateAppContainerProfile(name,name,"DeskPet workspace command",IntPtr.Zero,0,out sid));identity=new SecurityIdentifier(sid);
@@ -62,12 +62,12 @@ namespace Dafeiyu
             static void ValidateGrantPath(string path)
             {
                 AgentSandboxDirectories.Validate(path);
-                for(var info=new DirectoryInfo(Path.GetFullPath(path));info!=null;info=info.Parent){if(info.Name.Equals(".deskpet-agent-kernel",StringComparison.OrdinalIgnoreCase)||info.Name.Equals(".deskpet-agent-backups",StringComparison.OrdinalIgnoreCase))throw new UnauthorizedAccessException("宿主执行记录与备份目录不能授权给终端。");if((info.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("沙箱目录不能经过重解析点。");}
+                for(var info=new DirectoryInfo(Path.GetFullPath(path));info!=null;info=info.Parent){if(info.Name.Equals(".deskpet-agent-kernel",StringComparison.OrdinalIgnoreCase)||info.Name.Equals(".deskpet-agent-backups",StringComparison.OrdinalIgnoreCase))throw new UnauthorizedAccessException(TextResources.Get("windowsWorkspaceSandbox.validateGrantPath.text"));if((info.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("windowsWorkspaceSandbox.validateGrantPath.text.alternativeA"));}
             }
             void ValidateTree(string root)
             {
                 var pending=new Stack<string>();pending.Push(root);int count=0;
-                while(pending.Count>0){cancellation.ThrowIfCancellationRequested();string path=pending.Pop();foreach(var item in new DirectoryInfo(path).EnumerateFileSystemInfos()){cancellation.ThrowIfCancellationRequested();if(++count>100000)throw new IOException("沙箱目录超过 100000 项，请选择更小的项目或工具目录。");if((item.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("沙箱目录含符号链接或重解析点，请选择不含链接的目录。");if((item.Attributes&FileAttributes.Directory)!=0)pending.Push(item.FullName);else AgentSandboxDirectories.ValidateFile(item.FullName);}}
+                while(pending.Count>0){cancellation.ThrowIfCancellationRequested();string path=pending.Pop();foreach(var item in new DirectoryInfo(path).EnumerateFileSystemInfos()){cancellation.ThrowIfCancellationRequested();if(++count>100000)throw new IOException(TextResources.Get("windowsWorkspaceSandbox.validateTree.text"));if((item.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("windowsWorkspaceSandbox.validateTree.text.alternativeA"));if((item.Attributes&FileAttributes.Directory)!=0)pending.Push(item.FullName);else AgentSandboxDirectories.ValidateFile(item.FullName);}}
             }
             void Protect(string path)
             {
@@ -77,7 +77,7 @@ namespace Dafeiyu
             }
             static void Seal(FileSystemInfo item,bool root)
             {
-                if((item.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("沙箱记录目录不能是重解析点。");
+                if((item.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("windowsWorkspaceSandbox.seal.text"));
                 var directory=item as DirectoryInfo;FileSystemSecurity acl=directory==null?(FileSystemSecurity)((FileInfo)item).GetAccessControl():directory.GetAccessControl();
                 var packages=new List<FileSystemAccessRule>();foreach(FileSystemAccessRule rule in acl.GetAccessRules(true,true,typeof(SecurityIdentifier)))if(rule.AccessControlType==AccessControlType.Allow&&rule.IdentityReference.Value.StartsWith("S-1-15-2-",StringComparison.Ordinal))packages.Add(rule);
                 if(!root&&packages.Count==0)return;acl.SetAccessRuleProtection(true,true);foreach(var rule in packages)acl.RemoveAccessRuleSpecific(new FileSystemAccessRule((SecurityIdentifier)rule.IdentityReference,rule.FileSystemRights,rule.InheritanceFlags,rule.PropagationFlags,AccessControlType.Allow));
@@ -89,7 +89,7 @@ namespace Dafeiyu
             sealed class AclMutationLock:IDisposable
             {
                 readonly Mutex mutex;bool entered;
-                internal AclMutationLock(){mutex=new Mutex(false,"Local\\DeskPet.SandboxAcl."+WindowsIdentity.GetCurrent().User.Value);try{try{entered=mutex.WaitOne(10000);}catch(AbandonedMutexException){entered=true;}if(!entered)throw new IOException("沙箱目录权限正在更新，请稍后重试。");}catch{mutex.Dispose();throw;}}
+                internal AclMutationLock(){mutex=new Mutex(false,"Local\\DeskPet.SandboxAcl."+WindowsIdentity.GetCurrent().User.Value);try{try{entered=mutex.WaitOne(10000);}catch(AbandonedMutexException){entered=true;}if(!entered)throw new IOException(TextResources.Get("windowsWorkspaceSandbox.aclMutationLock.text"));}catch{mutex.Dispose();throw;}}
                 public void Dispose(){if(entered){entered=false;mutex.ReleaseMutex();}mutex.Dispose();}
             }
             internal void CreateProcess(string executable,StringBuilder command,IntPtr environment,string directory,ref StartupInfo startup,out ProcessInfo process)
@@ -131,7 +131,7 @@ namespace Dafeiyu
                 granted.Clear();
                 if(sid!=IntPtr.Zero){FreeSid(sid);sid=IntPtr.Zero;int hr=DeleteAppContainerProfile(name);if(hr<0)failure=new Win32Exception(hr);}
                 if(TemporaryDirectory!=null){try{Directory.Delete(TemporaryDirectory,true);}catch(IOException){}catch(UnauthorizedAccessException){}}
-                if(failure!=null)throw new IOException("沙箱授权撤回失败，请检查目录权限。",failure);
+                if(failure!=null)throw new IOException(TextResources.Get("windowsWorkspaceSandbox.dispose.text"),failure);
             }
             [StructLayout(LayoutKind.Sequential)]struct SecurityCapabilities{internal IntPtr AppContainerSid,Capabilities;internal uint CapabilityCount,Reserved;}
             [StructLayout(LayoutKind.Sequential)]struct StartupInfoEx{internal StartupInfo Startup;internal IntPtr Attributes;}

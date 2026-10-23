@@ -24,7 +24,7 @@ internal sealed partial class DesktopController
     internal bool ExplainGuideCompanions()
     {
         if (!GuideLocked) return false;
-        var notice = Ui.Window("选择桌面伙伴", Ui.Text("完成使用引导后可选择伙伴并下载完整角色包。引导期间只演示设置，不切换伙伴。"), 400, 180);
+        var notice = Ui.Window(TextResources.Get("desktopCompanions.explainGuideCompanions.window"), Ui.Text(TextResources.Get("desktopCompanions.explainGuideCompanions.text")), 400, 180);
         notice.Name = "GuideCompanionNotice"; notice.ShowActivated = false; notice.ShowInTaskbar = false; notice.Show();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => { timer.Stop(); notice.Close(); }; notice.Closed += (_, _) => timer.Stop(); timer.Start();

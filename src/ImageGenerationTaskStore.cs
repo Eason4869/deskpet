@@ -20,7 +20,7 @@ namespace Dafeiyu
         [DataContract] sealed class TaskFile {[DataMember] public List<ImageGenerationTaskRecord> Tasks {get;set;}}
         public ImageGenerationTaskStore(string dataDirectory)
         {
-            if(String.IsNullOrWhiteSpace(dataDirectory))throw new ArgumentException("请指定任务存储目录。","dataDirectory");
+            if(String.IsNullOrWhiteSpace(dataDirectory))throw new ArgumentException(TextResources.Get("imageGenerationTaskStore.imageGenerationTaskStore.text"),"dataDirectory");
             directory=Path.Combine(Path.GetFullPath(dataDirectory),"generated-images");path=Path.Combine(directory,"tasks.dat");Warning="";
         }
         public IList<ImageGenerationTaskRecord> Load()
@@ -28,13 +28,13 @@ namespace Dafeiyu
             lock(gate){
                 if(!File.Exists(path))return new List<ImageGenerationTaskRecord>();
                 try{
-                    CheckPath();long length=new FileInfo(path).Length;if(length<=0 || length>MaximumBytes)throw new InvalidDataException("任务记录大小无效。");
-                    byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));if(plain.Length<=0 || plain.Length>MaximumBytes)throw new InvalidDataException("任务记录大小无效。");
+                    CheckPath();long length=new FileInfo(path).Length;if(length<=0 || length>MaximumBytes)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.load.text"));
+                    byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));if(plain.Length<=0 || plain.Length>MaximumBytes)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.load.text"));
                     TaskFile file;using(var stream=new MemoryStream(plain))file=(TaskFile)new DataContractJsonSerializer(typeof(TaskFile)).ReadObject(stream);
                     if(file==null || file.Tasks==null)throw new SerializationException();Validate(file.Tasks);
                     recoveryRequired=false;Warning="";return Retain(file.Tasks);
                 }catch(Exception e){
-                    if(!StorageError(e))throw;recoveryRequired=true;Warning="图片任务记录无法读取，原文件已保留；请备份后恢复任务记录，未自动重新请求图片。";
+                    if(!StorageError(e))throw;recoveryRequired=true;Warning=TextResources.Get("imageGenerationTaskStore.load.warning");
                     return new List<ImageGenerationTaskRecord>();
                 }
             }
@@ -50,9 +50,9 @@ namespace Dafeiyu
                 Validate(records);var retained=Retain(records);byte[] plain;
                 using(var stream=new MemoryStream()){
                     new DataContractJsonSerializer(typeof(TaskFile)).WriteObject(stream,new TaskFile{Tasks=retained});
-                    if(stream.Length>MaximumBytes)throw new InvalidDataException("图片任务记录超过 64 MB。");plain=stream.ToArray();
+                    if(stream.Length>MaximumBytes)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.save.text"));plain=stream.ToArray();
                 }
-                byte[] encrypted=SecretProtection.Protect(plain);if(encrypted.Length>MaximumBytes)throw new InvalidDataException("图片任务记录超过 64 MB。");
+                byte[] encrypted=SecretProtection.Protect(plain);if(encrypted.Length>MaximumBytes)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.save.text"));
                 Directory.CreateDirectory(directory);CheckPath();
                 string temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");
                 try{using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(encrypted,0,encrypted.Length);stream.Flush(true);}AtomicFile.Commit(temporary,path);Warning="";}
@@ -69,14 +69,14 @@ namespace Dafeiyu
         {
             var ids=new HashSet<string>(StringComparer.Ordinal);
             foreach(var record in records){
-                if(record==null || String.IsNullOrWhiteSpace(record.Id) || record.Id.Length>128 || !ids.Add(record.Id) || !Enum.IsDefined(typeof(ImageGenerationTaskState),record.State) || !Enum.IsDefined(typeof(ImageTaskDeliveryState),record.DeliveryState) || (record.Origin!=null && (!Enum.IsDefined(typeof(ImageGenerationSource),record.Origin.Source) || record.Origin.Sequence<0)))throw new InvalidDataException("图片任务记录无效。");
-                if((record.Prompt??"").Length>16000 || (record.Error??"").Length>2000 || (record.DeliveryError??"").Length>2000 || (record.ReferenceImageIds!=null && (record.ReferenceImageIds.Count>20 || record.ReferenceImageIds.Any(id=>String.IsNullOrWhiteSpace(id) || id.Length>128))))throw new InvalidDataException("图片任务字段超出限制。");
+                if(record==null || String.IsNullOrWhiteSpace(record.Id) || record.Id.Length>128 || !ids.Add(record.Id) || !Enum.IsDefined(typeof(ImageGenerationTaskState),record.State) || !Enum.IsDefined(typeof(ImageTaskDeliveryState),record.DeliveryState) || (record.Origin!=null && (!Enum.IsDefined(typeof(ImageGenerationSource),record.Origin.Source) || record.Origin.Sequence<0)))throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.validate.text"));
+                if((record.Prompt??"").Length>16000 || (record.Error??"").Length>2000 || (record.DeliveryError??"").Length>2000 || (record.ReferenceImageIds!=null && (record.ReferenceImageIds.Count>20 || record.ReferenceImageIds.Any(id=>String.IsNullOrWhiteSpace(id) || id.Length>128))))throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.validate.text.alternativeA"));
             }
         }
         void CheckPath()
         {
-            string current=directory;while(!String.IsNullOrEmpty(current)){if(Directory.Exists(current) && (File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("图片任务目录链接不可用。");current=Path.GetDirectoryName(current);}
-            if(File.Exists(path) && (File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("图片任务文件链接不可用。");
+            string current=directory;while(!String.IsNullOrEmpty(current)){if(Directory.Exists(current) && (File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.checkPath.text"));current=Path.GetDirectoryName(current);}
+            if(File.Exists(path) && (File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException(TextResources.Get("imageGenerationTaskStore.checkPath.text.alternativeA"));
         }
         static bool StorageError(Exception e){return e is IOException || e is UnauthorizedAccessException || e is CryptographicException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
     }

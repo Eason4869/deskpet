@@ -52,8 +52,8 @@ namespace Dafeiyu
 
             internal void Start(string workspace,bool isolated,string[] readDirectories,string executable,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null)
             {
-                if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("内置终端需要支持 ConPTY 的 Windows 10 或更新系统。");
-                workspace=Path.GetFullPath(workspace);if(!Directory.Exists(workspace))throw new DirectoryNotFoundException("终端项目目录不存在。");
+                if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException(TextResources.Get("windowsTerminalSession.start.text"));
+                workspace=Path.GetFullPath(workspace);if(!Directory.Exists(workspace))throw new DirectoryNotFoundException(TextResources.Get("windowsTerminalSession.start.text.alternativeA"));
                 SafeFileHandle inputRead=null,outputWrite=null;IntPtr environment=IntPtr.Zero;ProcessInfo child=new ProcessInfo();
                 try
                 {
@@ -127,12 +127,12 @@ namespace Dafeiyu
             internal void Input(string data)
             {
                 if(data==null)throw new ArgumentNullException("data");if(data.Length==0)return;
-                byte[] bytes=Encoding.UTF8.GetBytes(data);if(bytes.Length>1024*1024)throw new ArgumentException("单次终端输入不能超过 1 MiB。");
-                lock(gate){if(!IsRunning||input.IsAddingCompleted)throw new ObjectDisposedException("WindowsTerminalSession");if(!input.TryAdd(bytes))throw new IOException("终端输入队列已满，请稍后重试。");}
+                byte[] bytes=Encoding.UTF8.GetBytes(data);if(bytes.Length>1024*1024)throw new ArgumentException(TextResources.Get("windowsTerminalSession.input.text"));
+                lock(gate){if(!IsRunning||input.IsAddingCompleted)throw new ObjectDisposedException("WindowsTerminalSession");if(!input.TryAdd(bytes))throw new IOException(TextResources.Get("windowsTerminalSession.input.text.alternativeA"));}
             }
             internal void Resize(short cols,short rows)
             {
-                if(cols<2||rows<1||cols>4096||rows>4096)throw new ArgumentOutOfRangeException("cols","终端尺寸需要在 2–4096 列、1–4096 行以内。");
+                if(cols<2||rows<1||cols>4096||rows>4096)throw new ArgumentOutOfRangeException("cols",TextResources.Get("windowsTerminalSession.resize.text"));
                 lock(gate){if(!IsRunning||console==IntPtr.Zero)throw new ObjectDisposedException("WindowsTerminalSession");HResult(ResizePseudoConsole(console,new TerminalSize{Columns=cols,Rows=rows}));}
             }
             void ReadOutput()
@@ -166,7 +166,7 @@ namespace Dafeiyu
             {
                 int code=130;
                 try{uint state=WaitForSingleObject(process,UInt32.MaxValue);if(state!=0)throw new Win32Exception(Marshal.GetLastWin32Error());uint nativeCode;Check(GetExitCodeProcess(process,out nativeCode));code=unchecked((int)nativeCode);}
-                catch(Exception e){Emit("\r\n终端已停止："+e.Message+"\r\n");}
+                catch(Exception e){Emit(TextResources.Format("windowsTerminalSession.watchExit.emit",e.Message));}
                 Cleanup(code);
             }
             void Cleanup(int code)
@@ -180,10 +180,10 @@ namespace Dafeiyu
                     ownedConsole=console;console=IntPtr.Zero;
                 }
                 try{if(ownedConsole!=IntPtr.Zero)ClosePseudoConsole(ownedConsole);}catch(Exception e){failure=e;}
-                foreach(var task in new[]{reader,writer})if(task!=null)try{if(!task.Wait(5000))failure=new IOException("终端 I/O 尚未退出。");}catch(AggregateException e){failure=e;}
+                foreach(var task in new[]{reader,writer})if(task!=null)try{if(!task.Wait(5000))failure=new IOException(TextResources.Get("windowsTerminalSession.cleanup.failureIOException"));}catch(AggregateException e){failure=e;}
                 if(outputRead!=null)outputRead.Dispose();if(inputWrite!=null)inputWrite.Dispose();
                 if(sandbox!=null)try{sandbox.Dispose();}catch(Exception e){failure=e;}finally{sandbox=null;}
-                if(failure==null)completion.TrySetResult(true);else{Emit("\r\n终端清理失败："+failure.Message+"\r\n");completion.TrySetException(failure);}
+                if(failure==null)completion.TrySetResult(true);else{Emit(TextResources.Format("windowsTerminalSession.cleanup.emit",failure.Message));completion.TrySetException(failure);}
                 var exited=Exited;if(exited!=null)foreach(Action<int> callback in exited.GetInvocationList())try{callback(code);}catch(Exception e){System.Diagnostics.Trace.WriteLine("Terminal exit subscriber: "+e.GetType().Name);}
             }
             public void Dispose()

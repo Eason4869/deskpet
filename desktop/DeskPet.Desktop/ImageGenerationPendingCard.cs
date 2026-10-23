@@ -18,7 +18,7 @@ internal sealed class ImageGenerationPendingCard : Grid
     internal ImageGenerationPendingCard(DesktopController controller,Window window,string taskId,Action<GeneratedImage>? repeat=null)
     {
         regenerate=repeat;owner=controller;host=window;id=taskId;Name="ImageGenerationPendingCard";HorizontalAlignment=HorizontalAlignment.Left;MaxWidth=224;
-        cancel=Ui.Button("取消生成",()=>{_=owner.ImageTasks.CancelAsync(id);});Children.Add(Ui.Column(dots,label,elapsed,cancel));
+        cancel=Ui.Button(TextResources.Get("imageGenerationPendingCard.imageGenerationPendingCard.text"),()=>{_=owner.ImageTasks.CancelAsync(id);});Children.Add(Ui.Column(dots,label,elapsed,cancel));
         frames.Tick+=(_,_)=>Draw();seconds.Tick+=(_,_)=>UpdateClock();AttachedToVisualTree+=(_,_)=>Attach();DetachedFromVisualTree+=(_,_)=>Detach();PropertyChanged+=(_,e)=>{if(e.Property==IsVisibleProperty)UpdateClock();};
     }
     void Attach(){if(attached)return;attached=true;foreach(var parent in this.GetVisualAncestors()){ancestors.Add(parent);parent.PropertyChanged+=HostChanged;}owner.ImageTasks.Changed+=Changed;host.PropertyChanged+=HostChanged;snapshot=owner.ImageTasks.Get(id);Update();}
@@ -27,8 +27,8 @@ internal sealed class ImageGenerationPendingCard : Grid
     void Changed(ImageGenerationTaskSnapshot value){if(value.Id==id||snapshot?.State==ImageGenerationTaskState.Queued)Dispatcher.UIThread.Post(()=>{if(!attached)return;snapshot=value.Id==id?value:owner.ImageTasks.Get(id);Update();});}
     void Update()
     {
-        label.Text=ImageGenerationMotion.Label(snapshot);if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Queued){int position=1;foreach(var task in owner.ImageTasks.List())if(task.State==ImageGenerationTaskState.Queued&&task.QueuedUtc<snapshot.QueuedUtc)position++;label.Text+=" · 第 "+position+" 项";}cancel.IsVisible=snapshot!=null&&!snapshot.IsTerminal;
-        if(snapshot?.State==ImageGenerationTaskState.Succeeded&&!replaced&&!string.IsNullOrEmpty(snapshot.ResultImageId))try{result=new GeneratedImageCard(owner,host,owner.ImageStore.Get(snapshot.ResultImageId)??throw new FileNotFoundException(),regenerate);Children.Clear();Children.Add(result);if(MotionEnabled&&owner.Settings.ImageGenerationMotionEnabled&&!ReducedMotion&&!ImageGenerationMotion.SystemReducedMotion){result.Opacity=0;result.Transitions=new Avalonia.Animation.Transitions{new Avalonia.Animation.DoubleTransition{Property=OpacityProperty,Duration=TimeSpan.FromMilliseconds(180)}};var view=result;Dispatcher.UIThread.Post(()=>{if(attached)view.Opacity=1;});}replaced=true;frames.Stop();seconds.Stop();return;}catch(IOException){label.Text="图片文件缺失";}catch(ArgumentException){label.Text="图片文件无法读取";}
+        label.Text=ImageGenerationMotion.Label(snapshot);if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Queued){int position=1;foreach(var task in owner.ImageTasks.List())if(task.State==ImageGenerationTaskState.Queued&&task.QueuedUtc<snapshot.QueuedUtc)position++;label.Text+=TextResources.Format("imageGenerationPendingCard.update.labelPosition",position);}cancel.IsVisible=snapshot!=null&&!snapshot.IsTerminal;
+        if(snapshot?.State==ImageGenerationTaskState.Succeeded&&!replaced&&!string.IsNullOrEmpty(snapshot.ResultImageId))try{result=new GeneratedImageCard(owner,host,owner.ImageStore.Get(snapshot.ResultImageId)??throw new FileNotFoundException(),regenerate);Children.Clear();Children.Add(result);if(MotionEnabled&&owner.Settings.ImageGenerationMotionEnabled&&!ReducedMotion&&!ImageGenerationMotion.SystemReducedMotion){result.Opacity=0;result.Transitions=new Avalonia.Animation.Transitions{new Avalonia.Animation.DoubleTransition{Property=OpacityProperty,Duration=TimeSpan.FromMilliseconds(180)}};var view=result;Dispatcher.UIThread.Post(()=>{if(attached)view.Opacity=1;});}replaced=true;frames.Stop();seconds.Stop();return;}catch(IOException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label");}catch(ArgumentException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label.alternativeA");}
         UpdateClock();Draw();
     }
     void UpdateClock(bool updateElapsed=true)
@@ -36,7 +36,7 @@ internal sealed class ImageGenerationPendingCard : Grid
         if(replaced)return;bool visible=attached&&IsEffectivelyVisible&&host.IsVisible&&host.WindowState!=WindowState.Minimized;
         if(visible&&snapshot?.IsTerminal!=true)seconds.Start();else seconds.Stop();
         if(snapshot!=null&&ImageGenerationMotion.ShouldAnimate(snapshot.State,MotionEnabled&&owner.Settings.ImageGenerationMotionEnabled,visible,false,ReducedMotion||ImageGenerationMotion.SystemReducedMotion))frames.Start();else frames.Stop();
-        if(updateElapsed&&snapshot!=null)elapsed.Text=ImageGenerationMotion.ElapsedSeconds(snapshot,DateTime.UtcNow)+" 秒";
+        if(updateElapsed&&snapshot!=null)elapsed.Text=TextResources.Format("imageGenerationPendingCard.updateClock.elapsedImageGenerationMotionElapsedSeconds",ImageGenerationMotion.ElapsedSeconds(snapshot,DateTime.UtcNow));
     }
     void Draw(){UpdateClock(false);dots.Phase=frames.IsEnabled&&snapshot!=null?(DateTime.UtcNow-(snapshot.StartedUtc??snapshot.QueuedUtc)).TotalSeconds/5:0;dots.InvalidateVisual();}
 }

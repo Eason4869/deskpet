@@ -21,7 +21,7 @@ namespace Dafeiyu
         public AgentTaskRunner(IAgentConversationApi api){if(api==null)throw new ArgumentNullException("api");this.api=api;}
         public async Task<AgentRunResult> RunAsync(AgentRunRequest request,CancellationToken cancel)
         {
-            if(request==null||request.Model==null||request.Messages==null||request.Workspace==null)throw new ArgumentException("Agent 运行请求不完整。");
+            if(request==null||request.Model==null||request.Messages==null||request.Workspace==null)throw new ArgumentException(TextResources.Get("agentTaskRunner.runAsync.text"));
             var model=request.Model.Copy();var messages=request.Messages.Select(m=>m.Copy()).ToArray();var workspace=request.Workspace;var text=request.Text;var reasoning=request.Reasoning;var tool=request.Tool;bool stream=request.Stream;int count=0;
             AgentRunResult outcome;int closed=0;
             Action<string> safeText=delta=>{if(!cancel.IsCancellationRequested&&Interlocked.CompareExchange(ref closed,0,0)==0&&text!=null)text(delta);};
@@ -31,9 +31,9 @@ namespace Dafeiyu
                 cancel.ThrowIfCancellationRequested();string result=await api.ChatAgentAsync(model,messages,workspace,safeText,safeReasoning,safeTool,stream,cancel).ConfigureAwait(false);cancel.ThrowIfCancellationRequested();
                 outcome=new AgentRunResult{Status="completed",Text=result??"",ToolCalls=count};
             }catch(OperationCanceledException e){outcome=new AgentRunResult{Status="cancelled",Text="",ToolCalls=count,Exception=e};}
-            catch(Exception e){outcome=new AgentRunResult{Status="failed",Text="",Error=e is ApiException?e.Message:"任务执行失败，请核对已完成操作。",ToolCalls=count,Exception=e};}
+            catch(Exception e){outcome=new AgentRunResult{Status="failed",Text="",Error=e is ApiException?e.Message:TextResources.Get("agentTaskRunner.runAsync.apiExceptionEMessage"),ToolCalls=count,Exception=e};}
             Interlocked.Exchange(ref closed,1);
-            try{await workspace.StopChildWorkersAsync().ConfigureAwait(false);}catch(Exception e){outcome.Status="failed";outcome.Error=e is ApiException?e.Message:"独立 worker 未能结束，请核对任务状态。";}
+            try{await workspace.StopChildWorkersAsync().ConfigureAwait(false);}catch(Exception e){outcome.Status="failed";outcome.Error=e is ApiException?e.Message:TextResources.Get("agentTaskRunner.runAsync.apiExceptionEMessage.alternativeA");}
             workspace.FinishTask(workspace.NeedsReconciliation?"needs_reconciliation":outcome.Status=="completed"?"complete":outcome.Status=="cancelled"?"cancelled":"error",outcome.Error??"");return outcome;
         }
         internal static async Task<string> RunConversationAsync(IAgentConversationApi api,AgentRunRequest request,CancellationToken cancel)

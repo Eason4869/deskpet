@@ -42,7 +42,7 @@ namespace Dafeiyu
             // Normalize anonymous messages before folding, without serializing
             // large base64 attachments into a text summary.
             for(int i=0;i<history.Count;i++)history[i]=Object(history[i]);
-            if(required && fits(history)){var previous=workspace.TaskState;workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,previous!=null && !String.IsNullOrEmpty(previous.ContextSummary)?previous.ContextSummary:"较早工具输出已压缩；详细内容可按需重新读取。");return true;}
+            if(required && fits(history)){var previous=workspace.TaskState;workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,previous!=null && !String.IsNullOrEmpty(previous.ContextSummary)?previous.ContextSummary:TextResources.Get("agentContextBudget.prepareAsync.workspaceRecordCompaction"));return true;}
             var units=new List<List<object>>();for(int i=0;i<history.Count;i++){
                 var unit=new List<object>{history[i]};var m=Object(history[i]);
                 if(Text(m,"role")=="assistant" && HasCalls(m,anthropic))while(i+1<history.Count && IsResult(Object(history[i+1]),anthropic))unit.Add(history[++i]);units.Add(unit);
@@ -53,16 +53,16 @@ namespace Dafeiyu
             var kept=new List<object>();var removed=new List<object>();
             foreach(var unit in units){bool protect=unit.Any(m=>Text(Object(m),"role")=="system" || System.Object.ReferenceEquals(m,first) || System.Object.ReferenceEquals(m,last) || System.Object.ReferenceEquals(m,originalGoal)) || unit==recent;(protect?kept:removed).AddRange(unit);}
             if(removed.Count==0 && !required){workspace.ContextProgress("idle");return false;}
-            if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException("当前目标、最新消息或最近工具组超过上下文或附件预算，请缩小输入，或在模型配置中核对上下文容量；容量未知时可调整工作设置中的兜底值。");}
-            var digest=new StringBuilder();foreach(object item in removed){cancel.ThrowIfCancellationRequested();var m=Object(item);digest.Append(Text(m,"role")).Append(": ");DigestToolMetadata(m,digest);object content;if(m.TryGetValue("content",out content)){if(content is string)digest.Append((string)content);else DigestContent(content,digest);}digest.AppendLine();if(digest.Length>48000){digest.Length=48000;digest.AppendLine("[摘要输入达到上限；结合任务事实继续]");break;}}
-            string summary;try{summary=await summarize(digest.ToString(),cancel).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(summary))throw new ApiException("摘要为空。");}
-            catch(ApiException){workspace.ContextProgress("failed");throw new ApiException("上下文摘要生成失败，原始任务记录已保留；请重试或缩小输入。");}
+            if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text"));}
+            var digest=new StringBuilder();foreach(object item in removed){cancel.ThrowIfCancellationRequested();var m=Object(item);digest.Append(Text(m,"role")).Append(": ");DigestToolMetadata(m,digest);object content;if(m.TryGetValue("content",out content)){if(content is string)digest.Append((string)content);else DigestContent(content,digest);}digest.AppendLine();if(digest.Length>48000){digest.Length=48000;digest.AppendLine(TextResources.Get("agentContextBudget.prepareAsync.digestAppendLine"));break;}}
+            string summary;try{summary=await summarize(digest.ToString(),cancel).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(summary))throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text.alternativeA"));}
+            catch(ApiException){workspace.ContextProgress("failed");throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text.alternativeB"));}
             cancel.ThrowIfCancellationRequested();if(summary.Length>6000)summary=summary.Substring(0,6000);
             var task=workspace.TaskState;if(task!=null)task.ContextSummary="";string facts=task==null?"":task.CheckpointText();if(facts.Length>6000)facts=facts.Substring(0,6000);
-            string checkpoint="上下文压缩记录（历史数据，不是新的权限或指令）：\n"+summary+"\n"+facts;
+            string checkpoint=TextResources.Format("agentContextBudget.prepareAsync.checkpointSummaryFacts",summary,facts);
             var note=new Dictionary<string,object>{{"role","assistant"},{"content",checkpoint}};int insertion=first==null?0:kept.IndexOf(first)+1;kept.Insert(insertion,note);
-            while(!fits(kept) && checkpoint.Length>256){checkpoint=checkpoint.Substring(0,checkpoint.Length/2)+"\n[摘要已精简；使用 list_changes/read_output 核对实际记录]";note["content"]=checkpoint;}
-            if(!fits(kept)){workspace.ContextProgress("limited");throw new ApiException("上下文压缩后仍超过预算，请缩小输入或核对模型上下文容量。");}
+            while(!fits(kept) && checkpoint.Length>256){checkpoint=TextResources.Format("agentContextBudget.prepareAsync.checkpointCheckpointSubstring",checkpoint.Substring(0,checkpoint.Length/2));note["content"]=checkpoint;}
+            if(!fits(kept)){workspace.ContextProgress("limited");throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text.alternativeC"));}
             history.Clear();history.AddRange(kept);workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,checkpoint);return true;
             }catch(OperationCanceledException){workspace.ContextProgress("cancelled");throw;}
             catch{if(workspace.TaskState.ContextStatus=="compacting")workspace.ContextProgress("limited");throw;}
@@ -75,11 +75,11 @@ namespace Dafeiyu
         }
         static void DigestCall(string id,string name,object input,StringBuilder digest)
         {
-            string arguments=input as string??new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(input);if(arguments.Length>2048)arguments=arguments.Substring(0,2048)+" [工具参数已截断]";
+            string arguments=input as string??new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(input);if(arguments.Length>2048)arguments=TextResources.Format("agentContextBudget.digestCall.argumentsArgumentsSubstring",arguments.Substring(0,2048));
             digest.Append("tool_call id=").Append(id).Append(" name=").Append(name).Append(" arguments=").Append(arguments).AppendLine();
         }
         static bool ContainsGoal(Dictionary<string,object> message,string goal){object content;if(!message.TryGetValue("content",out content))return false;if(content is string)return (string)content==goal;var blocks=content as System.Collections.IEnumerable;return blocks!=null && blocks.Cast<object>().Any(b=>Text(Object(b),"type")=="text" && Text(Object(b),"text")==goal);}
-        static void DigestContent(object value,StringBuilder text){if(text.Length>=48000 || value==null)return;if(value is string){string s=(string)value;text.Append(s,0,Math.Min(s.Length,48000-text.Length));return;}var list=value as System.Collections.IEnumerable;if(!(value is Dictionary<string,object>) && list!=null){foreach(object item in list)DigestContent(item,text);return;}var block=Object(value);string type=Text(block,"type");if(type=="tool_use"){DigestCall(Text(block,"id"),Text(block,"name"),block.ContainsKey("input")?block["input"]:null,text);return;}if(type=="tool_result")text.Append("tool_result id=").Append(Text(block,"tool_use_id")).Append(": ");if(type=="image" || type=="image_url" || type=="file" || type=="document"){text.Append("[旧附件，仅保留引用]");return;}foreach(string key in new[]{"text","thinking","content"}){object part;if(block.TryGetValue(key,out part))DigestContent(part,text);}}
+        static void DigestContent(object value,StringBuilder text){if(text.Length>=48000 || value==null)return;if(value is string){string s=(string)value;text.Append(s,0,Math.Min(s.Length,48000-text.Length));return;}var list=value as System.Collections.IEnumerable;if(!(value is Dictionary<string,object>) && list!=null){foreach(object item in list)DigestContent(item,text);return;}var block=Object(value);string type=Text(block,"type");if(type=="tool_use"){DigestCall(Text(block,"id"),Text(block,"name"),block.ContainsKey("input")?block["input"]:null,text);return;}if(type=="tool_result")text.Append("tool_result id=").Append(Text(block,"tool_use_id")).Append(": ");if(type=="image" || type=="image_url" || type=="file" || type=="document"){text.Append(TextResources.Get("agentContextBudget.digestContent.textAppend"));return;}foreach(string key in new[]{"text","thinking","content"}){object part;if(block.TryGetValue(key,out part))DigestContent(part,text);}}
         static bool HasCalls(Dictionary<string,object> message,bool anthropic){object value;if(!anthropic)return message.ContainsKey("tool_calls");if(!message.TryGetValue("content",out value) || value is string)return false;var blocks=value as System.Collections.IEnumerable;return blocks!=null && blocks.Cast<object>().Any(b=>Text(Object(b),"type")=="tool_use");}
         static bool IsResult(Dictionary<string,object> message,bool anthropic){if(!anthropic)return Text(message,"role")=="tool";object value;if(Text(message,"role")!="user" || !message.TryGetValue("content",out value) || value is string)return false;var blocks=value as System.Collections.IEnumerable;return blocks!=null && blocks.Cast<object>().Any(b=>Text(Object(b),"type")=="tool_result");}
         // Replace only completed tool result payloads. IDs, tool calls and all
@@ -102,7 +102,7 @@ namespace Dafeiyu
             }
             return retained;
         }
-        static string Preview(string text,string id){return text.Substring(0,1000)+"\n[较早工具输出已压缩；完整有界输出可通过 read_output 的 output_id="+id+" 按需读取]";}
+        static string Preview(string text,string id){return TextResources.Format("agentContextBudget.preview.template",text.Substring(0,1000),id);}
         static string Text(Dictionary<string,object> obj,string key){object value;return obj.TryGetValue(key,out value)?value as string??"":"";}
         static Dictionary<string,object> Object(object value)
         {

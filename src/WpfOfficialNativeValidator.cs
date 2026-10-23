@@ -87,6 +87,6 @@ namespace Dafeiyu
                 if(!visible||!transparent)throw Invalid();
             }
         }
-        static InvalidDataException Invalid(){return new InvalidDataException("角色素材无法完整读取，请重新下载后重试。");}
+        static InvalidDataException Invalid(){return new InvalidDataException(TextResources.Get("wpfOfficialNativeValidator.invalid.text"));}
     }
 }

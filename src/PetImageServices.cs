@@ -23,7 +23,7 @@ namespace Dafeiyu
         public ImageGenerationTaskManager ImageTasks {get{if(imageTasks==null){imageTasks=new ImageGenerationTaskManager(new ImageGenerationTaskStore(Store.DirectoryPath),ImageStore,ImageClient,ImageUsage);imageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();imageTasks.Concurrency=Settings.ImageGenerationConcurrency;}EnsureImageTaskNotifications();return imageTasks;}}
         ImageGenerationTaskManager notificationTasks;ImageTaskCompletionTracker completionTracker;string imageNotificationId;
         void EnsureImageTaskNotifications(){if(ReferenceEquals(notificationTasks,imageTasks))return;if(notificationTasks!=null)notificationTasks.Changed-=ImageTaskCompleted;notificationTasks=imageTasks;completionTracker=new ImageTaskCompletionTracker(imageTasks.List());imageTasks.Changed+=ImageTaskCompleted;}
-        void ImageTaskCompleted(ImageGenerationTaskSnapshot task){if(completionTracker==null||!completionTracker.Observe(task))return;Dispatcher.BeginInvoke(new System.Action(delegate{if(closing||tray==null)return;imageNotificationId=task.Id;tray.BalloonTipTitle=task.State==ImageGenerationTaskState.Succeeded?"图片已生成":"图片任务已结束";tray.BalloonTipText=ImageGenerationMotion.Label(task)+"，点击查看任务。";tray.ShowBalloonTip(6000);}));}
+        void ImageTaskCompleted(ImageGenerationTaskSnapshot task){if(completionTracker==null||!completionTracker.Observe(task))return;Dispatcher.BeginInvoke(new System.Action(delegate{if(closing||tray==null)return;imageNotificationId=task.Id;tray.BalloonTipTitle=task.State==ImageGenerationTaskState.Succeeded?TextResources.Get("petImageServices.imageTaskCompleted.stateImageGenerationTaskStateSucceeded"):TextResources.Get("petImageServices.imageTaskCompleted.stateImageGenerationTaskStateSucceeded.alternativeA");tray.BalloonTipText=TextResources.Format("petImageServices.imageTaskCompleted.trayBalloonTipTextImageGenerationMotion",ImageGenerationMotion.Label(task));tray.ShowBalloonTip(6000);}));}
         void OpenImageTaskNotification(object sender,System.EventArgs args){if(String.IsNullOrEmpty(imageNotificationId))return;ShowChat();if(chat!=null)chat.ShowImageTask(imageNotificationId);}
         GeneratedImageStore imageStore;ImageGenerationClient imageClient;AgentQuestionController questionController;
         public GeneratedImageStore ImageStore {get{return imageStore??(imageStore=new GeneratedImageStore(Store.DirectoryPath,ImageUsage));}}
@@ -36,7 +36,7 @@ namespace Dafeiyu
             var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock(imageRepairAdmissionGate)
             {
-                if(imageRepairAdmissionClosed||closing)throw new OperationCanceledException("应用正在退出。");
+                if(imageRepairAdmissionClosed||closing)throw new OperationCanceledException(TextResources.Get("petImageServices.repairImageDeliveryAsync.text"));
                 pendingImageRepairs.Add(completion.Task);
             }
             // Owner resolution may wait for a close, or perform synchronous work.

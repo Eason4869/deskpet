@@ -18,13 +18,13 @@ namespace Dafeiyu
         {var leases=new List<IDisposable>();try{foreach(string id in ReferenceKeys(messages))leases.Add(Acquire(id,"history-save"));}catch{foreach(var lease in leases)lease.Dispose();throw;}return new Lease(delegate{foreach(var lease in leases)lease.Dispose();});}
         public IDisposable Acquire(string assetId,string ownerKey)
         {
-            if(String.IsNullOrWhiteSpace(assetId) || String.IsNullOrWhiteSpace(ownerKey))throw new ArgumentException("请指定资产和使用者。");
-            lock(gate){if(deleting.Contains(assetId)||deleted.Contains(assetId))throw new InvalidOperationException("图片正在删除。");int count;uses.TryGetValue(assetId,out count);uses[assetId]=count+1;}
+            if(String.IsNullOrWhiteSpace(assetId) || String.IsNullOrWhiteSpace(ownerKey))throw new ArgumentException(TextResources.Get("imageAssetUsageRegistry.acquire.text"));
+            lock(gate){if(deleting.Contains(assetId)||deleted.Contains(assetId))throw new InvalidOperationException(TextResources.Get("imageAssetUsageRegistry.acquire.text.alternativeA"));int count;uses.TryGetValue(assetId,out count);uses[assetId]=count+1;}
             return new Lease(delegate{lock(gate){if(--uses[assetId]==0)uses.Remove(assetId);}});
         }
         public IDisposable TryAcquireDeletion(string assetId)
         {
-            if(String.IsNullOrWhiteSpace(assetId))throw new ArgumentException("请指定资产。");
+            if(String.IsNullOrWhiteSpace(assetId))throw new ArgumentException(TextResources.Get("imageAssetUsageRegistry.tryAcquireDeletion.text"));
             lock(gate){if(uses.ContainsKey(assetId) || !deleting.Add(assetId))return null;}
             return new Lease(delegate{lock(gate)deleting.Remove(assetId);});
         }

@@ -48,18 +48,18 @@ namespace Dafeiyu
             if(submission==null)throw new ArgumentNullException("submission");
             var request=submission.Request;var origin=submission.Origin;var beforeStart=submission.BeforeStart;Job job;
             lock(gate){
-                if(!restored)throw new InvalidOperationException("请先恢复图片任务记录。");
-                if(recoveryRequired)throw new IOException("图片任务记录需要恢复，未请求图片服务。");
+                if(!restored)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text"));
+                if(recoveryRequired)throw new IOException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeA"));
                 var existing=jobs.Find(j=>j.Record.RequestId==submission.RequestId || (retryOf==null && SameCall(j.Record.Origin,origin)));
                 if(existing!=null)return existing.Handle;
                 ownerToken.ThrowIfCancellationRequested();
-                if(stopping)throw new InvalidOperationException("图片任务正在停止。");
-                if(jobs.Count(j=>j.Record.State==ImageGenerationTaskState.Queued)>=50)throw new InvalidOperationException("图片任务队列已满（50 项）。");
-                if(request.Provider==null || String.IsNullOrWhiteSpace(request.Provider.Id))throw new InvalidOperationException("请选择图片服务。");
+                if(stopping)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeB"));
+                if(jobs.Count(j=>j.Record.State==ImageGenerationTaskState.Queued)>=50)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeC"));
+                if(request.Provider==null || String.IsNullOrWhiteSpace(request.Provider.Id))throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeD"));
                 request.Provider.Normalize();
                 var now=DateTime.UtcNow;string id=Guid.NewGuid().ToString("N");request.ImageJobId=id;request.Source=origin.Source;
                 job=new Job{Request=request,Record=new ImageGenerationTaskRecord{Id=id,RequestId=submission.RequestId,RetryOfTaskId=retryOf,Persistent=request.Persistent,Origin=origin,State=ImageGenerationTaskState.Queued,QueuedUtc=now,UpdatedUtc=now,ProviderId=request.Provider.Id,ProviderName=request.Provider.Name,Protocol=request.Provider.Protocol,Model=request.Provider.Connection.Model,Prompt=request.Prompt,Size=request.Size??request.Provider.Size,Quality=request.Quality??request.Provider.Quality,ReferenceImageIds=new List<string>(),DeliveryState=origin.Source==ImageGenerationSource.Conversation?(retryOf==null?ImageTaskDeliveryState.Pending:ImageTaskDeliveryState.Detached):ImageTaskDeliveryState.NotRequired}};
-                jobs.Add(job);try{Save();}catch{jobs.Remove(job);throw new IOException("图片任务记录保存失败，未请求图片服务。");}Notify(job);
+                jobs.Add(job);try{Save();}catch{jobs.Remove(job);throw new IOException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeE"));}Notify(job);
             }
             var inputNotifications=new List<Action>();
             job.Owner=ownerToken.Register(delegate{CancelAsync(job.Record.Id);});
@@ -86,12 +86,12 @@ namespace Dafeiyu
             }catch(Exception failure){
                 bool canceled=failure is OperationCanceledException || ownerToken.IsCancellationRequested;
                 job.AssetsReady.TrySetResult(false);
-                lock(gate){if(!job.Record.IsTerminal){Terminal(job,canceled?ImageGenerationTaskState.Canceled:ImageGenerationTaskState.Failed,canceled?"图片生成已取消。":"图片任务准备失败，请检查存储和会话状态。");TrySave();Notify(job);}}
-                Release(job);if(canceled)job.Completion.TrySetCanceled();else job.Completion.TrySetException(new IOException("图片任务准备失败，请检查存储和会话状态。"));throw;
+                lock(gate){if(!job.Record.IsTerminal){Terminal(job,canceled?ImageGenerationTaskState.Canceled:ImageGenerationTaskState.Failed,canceled?TextResources.Get("imageGenerationTaskManager.enqueueCore.terminal"):TextResources.Get("imageGenerationTaskManager.enqueueCore.terminal.alternativeA"));TrySave();Notify(job);}}
+                Release(job);if(canceled)job.Completion.TrySetCanceled();else job.Completion.TrySetException(new IOException(TextResources.Get("imageGenerationTaskManager.enqueueCore.jobCompletionTrySetException")));throw;
             }finally{foreach(var notify in inputNotifications)notify();}
         }
         void Save(){var records=jobs.Select(j=>j.Record).ToList();if(records.Any(r=>r.Persistent))log.Save(records);}
-        void TrySave(){try{Save();}catch(Exception){Warning="图片任务记录保存失败；已提交的图片不会重新请求，请检查存储。";}}
+        void TrySave(){try{Save();}catch(Exception){Warning=TextResources.Get("imageGenerationTaskManager.trySave.warning");}}
         void Terminal(Job j,ImageGenerationTaskState state,string error){j.Record.State=state;j.Record.Error=error;j.Record.CompletedUtc=DateTime.UtcNow;j.Record.UpdatedUtc=j.Record.CompletedUtc;}
         void Schedule(){Task.Run((Action)Pump);}
         void Pump()
@@ -103,7 +103,7 @@ namespace Dafeiyu
                     if(running>=concurrency)break;
                     if(!j.Ready || j.Record.State!=ImageGenerationTaskState.Queued || jobs.Any(x=>x.Running && x.Record.ProviderId==j.Record.ProviderId))continue;
                     j.Record.State=ImageGenerationTaskState.Generating;j.Record.StartedUtc=DateTime.UtcNow;j.Record.UpdatedUtc=j.Record.StartedUtc;
-                    try{Save();}catch(Exception){Terminal(j,ImageGenerationTaskState.Failed,"图片任务记录保存失败，未请求图片服务。");failed.Add(j);Notify(j);continue;}
+                    try{Save();}catch(Exception){Terminal(j,ImageGenerationTaskState.Failed,TextResources.Get("imageGenerationTaskManager.pump.terminal"));failed.Add(j);Notify(j);continue;}
                     j.Running=true;running++;Notify(j);start.Add(j);
                 }
             }
@@ -129,13 +129,13 @@ namespace Dafeiyu
                 await j.Commit.WaitAsync().ConfigureAwait(false);
                 try{
                 bool persistent;lock(gate)persistent=j.Record.Persistent;
-                if(result!=null && persistent && result.Temporary)try{result=assets.PromoteDeferred(result.Id,assetNotifications);}catch(Exception){Warning="图片已生成，但永久保存失败；请恢复存储后重新保存，勿重复生成。";}
+                if(result!=null && persistent && result.Temporary)try{result=assets.PromoteDeferred(result.Id,assetNotifications);}catch(Exception){Warning=TextResources.Get("imageGenerationTaskManager.run.warning");}
                 lock(gate){
                     j.Running=false;running--;
                     if(result!=null){j.Record.ResultImageId=result.Id;Terminal(j,ImageGenerationTaskState.Succeeded,"");}
-                    else if(j.Cancel.IsCancellationRequested)Terminal(j,ImageGenerationTaskState.Canceled,"图片生成已取消。");
-                    else if(error is TimeoutException || timeout.IsCancellationRequested)Terminal(j,ImageGenerationTaskState.Failed,"图片生成超时，请手动重试。");
-                    else Terminal(j,ImageGenerationTaskState.Failed,"图片生成失败，请检查服务配置、网络和存储后手动重试。");
+                    else if(j.Cancel.IsCancellationRequested)Terminal(j,ImageGenerationTaskState.Canceled,TextResources.Get("imageGenerationTaskManager.run.terminal"));
+                    else if(error is TimeoutException || timeout.IsCancellationRequested)Terminal(j,ImageGenerationTaskState.Failed,TextResources.Get("imageGenerationTaskManager.run.terminal.alternativeA"));
+                    else Terminal(j,ImageGenerationTaskState.Failed,TextResources.Get("imageGenerationTaskManager.run.terminal.alternativeB"));
                     TrySave();Notify(j);
                 }
                 }finally{j.Commit.Release();foreach(var notify in assetNotifications)notify();}
@@ -152,7 +152,7 @@ namespace Dafeiyu
         public Task<bool> CancelAsync(string id)
         {
             Job j;bool queued;
-            lock(gate){j=Find(id);if(j==null || j.Record.IsTerminal)return Task.FromResult(false);queued=!j.Running;if(queued){Terminal(j,ImageGenerationTaskState.Canceled,"图片生成已取消。");TrySave();Notify(j);}}
+            lock(gate){j=Find(id);if(j==null || j.Record.IsTerminal)return Task.FromResult(false);queued=!j.Running;if(queued){Terminal(j,ImageGenerationTaskState.Canceled,TextResources.Get("imageGenerationTaskManager.cancelAsync.terminal"));TrySave();Notify(j);}}
             // Cancellation callbacks may execute arbitrary executor code.
             try{j.Cancel.Cancel();}catch(AggregateException){}
             if(queued){if(j.Prepared)Release(j);j.Completion.TrySetCanceled();Schedule();}return Task.FromResult(true);
@@ -160,7 +160,7 @@ namespace Dafeiyu
         public async Task CancelProviderAsync(string providerId){List<string> ids;lock(gate)ids=jobs.Where(j=>j.Record.ProviderId==providerId && !j.Record.IsTerminal).Select(j=>j.Record.Id).ToList();foreach(var id in ids)await CancelAsync(id).ConfigureAwait(false);}
         public async Task<ImageGenerationTaskHandle> RetryAsync(string id,ImageGenerationProvider currentProvider,CancellationToken token)
         {
-            ImageGenerationTaskRecord record;lock(gate){var j=Find(id);if(j==null || !j.Record.IsTerminal || j.Record.State==ImageGenerationTaskState.Succeeded)throw new InvalidOperationException("仅可重试未成功的已结束任务。");record=j.Record.Copy();}
+            ImageGenerationTaskRecord record;lock(gate){var j=Find(id);if(j==null || !j.Record.IsTerminal || j.Record.State==ImageGenerationTaskState.Succeeded)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.retryAsync.text"));record=j.Record.Copy();}
             var request=new ImageGenerationRequest{Provider=currentProvider,Prompt=record.Prompt,Size=record.Size,Quality=record.Quality,Persistent=record.Persistent,SessionId=record.Origin==null?null:record.Origin.KernelSessionId,TaskId=record.Origin==null?null:record.Origin.AgentTaskId,MessageId=record.Origin==null?null:record.Origin.MessageId,ReferenceImageId=record.ReferenceImageIds==null?null:record.ReferenceImageIds.FirstOrDefault()};
             return await EnqueueCore(new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),request,record.Origin),token,id).ConfigureAwait(false);
         }
@@ -170,13 +170,13 @@ namespace Dafeiyu
                 foreach(var record in records){var j=new Job{Record=record};j.AssetsReady.TrySetResult(true);var image=assets.FindByJobId(record.Id);if(image!=null){record.ResultImageId=image.Id;if(record.State!=ImageGenerationTaskState.Succeeded)Terminal(j,ImageGenerationTaskState.Succeeded,"");
                     // Only restoration can establish that the original delivery writer is gone.
                     if(record.Source==ImageGenerationSource.Conversation&&record.DeliveryState==ImageTaskDeliveryState.Pending){record.DeliveryState=ImageTaskDeliveryState.AwaitingSync;record.UpdatedUtc=DateTime.UtcNow;}
-                    j.Completion.TrySetResult(image);}else{if(!record.IsTerminal)Terminal(j,ImageGenerationTaskState.Interrupted,"上次图片任务已中断，未自动重新请求。");j.Completion.TrySetCanceled();}jobs.Add(j);Notify(j);}
+                    j.Completion.TrySetResult(image);}else{if(!record.IsTerminal)Terminal(j,ImageGenerationTaskState.Interrupted,TextResources.Get("imageGenerationTaskManager.restoreAsync.terminal"));j.Completion.TrySetCanceled();}jobs.Add(j);Notify(j);}
                 restored=true;if(String.IsNullOrEmpty(Warning))TrySave();
             }return Task.FromResult(0);
         }
         public async Task PromoteAsync(string id,CancellationToken token)
         {
-            Job job;lock(gate){job=Find(id);if(job==null)throw new InvalidOperationException("图片任务不存在。");}
+            Job job;lock(gate){job=Find(id);if(job==null)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.promoteAsync.text"));}
             await job.AssetsReady.Task.ConfigureAwait(false);
             var assetNotifications=new List<Action>();
             await job.Commit.WaitAsync(token).ConfigureAwait(false);
@@ -188,7 +188,7 @@ namespace Dafeiyu
             }finally{job.Commit.Release();foreach(var notify in assetNotifications)notify();}
         }
         public Task SetDeliveryStateAsync(string id,ImageTaskDeliveryState state)
-        {lock(gate){var j=Find(id);if(j==null)throw new InvalidOperationException("图片任务不存在。");j.Record.DeliveryState=state;j.Record.DeliveryError=state==ImageTaskDeliveryState.Failed?"图片已生成，但会话同步失败。":"";j.Record.UpdatedUtc=DateTime.UtcNow;Save();Notify(j);}return Task.FromResult(0);}
+        {lock(gate){var j=Find(id);if(j==null)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.text"));j.Record.DeliveryState=state;j.Record.DeliveryError=state==ImageTaskDeliveryState.Failed?TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.stateImageTaskDeliveryStateFailed"):"";j.Record.UpdatedUtc=DateTime.UtcNow;Save();Notify(j);}return Task.FromResult(0);}
         public async Task StopAsync(CancellationToken token)
         {
             List<Job> pending;lock(gate){stopping=true;pending=jobs.Where(j=>!j.Record.IsTerminal).ToList();}

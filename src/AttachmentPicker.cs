@@ -19,16 +19,16 @@ namespace Dafeiyu
         internal static string[] Show(IntPtr owner, string initialDirectory)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-                throw new PlatformNotSupportedException("原生附件选择器目前仅支持 Windows。");
+                throw new PlatformNotSupportedException(TextResources.Get("attachmentPicker.show.text"));
             if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
-                throw new InvalidOperationException("请在 STA 界面线程打开附件选择器。");
+                throw new InvalidOperationException(TextResources.Get("attachmentPicker.show.text.alternativeA"));
             IFileOpenDialog dialog = null; DialogEvents events = null; uint cookie = 0; bool advised = false;
             try
             {
                 dialog = (IFileOpenDialog)new FileOpenDialog();
                 dialog.SetOptions(0x40 | 0x200 | 0x800 | 0x1000 | 0x8 | 0x02000000);
-                dialog.SetTitle("添加文件、图片或文件夹");
-                dialog.SetOkButtonLabel("添加所选文件");
+                dialog.SetTitle(TextResources.Get("attachmentPicker.show.dialogSetTitle"));
+                dialog.SetOkButtonLabel(TextResources.Get("attachmentPicker.show.dialogSetOkButtonLabel"));
                 if (!String.IsNullOrEmpty(initialDirectory))
                 {
                     IShellItem initial = null;
@@ -36,19 +36,19 @@ namespace Dafeiyu
                     finally { Release(initial); }
                 }
                 var customize = (IFileDialogCustomize)dialog;
-                customize.AddPushButton(AddFolderButton, "添加当前文件夹");
+                customize.AddPushButton(AddFolderButton, TextResources.Get("attachmentPicker.show.customizeAddPushButton"));
                 events = new DialogEvents(dialog);
                 dialog.Advise(events, out cookie); advised = true;
                 int status = dialog.Show(owner);
                 if (status == unchecked((int)0x800704C7)) return new string[0];
                 if (events.Error != null) throw new InvalidOperationException(events.Error);
-                if (status < 0) throw new InvalidOperationException("无法打开附件选择器，请重试。");
+                if (status < 0) throw new InvalidOperationException(TextResources.Get("attachmentPicker.show.text.alternativeB"));
                 if (events.SelectedFolder != null) return new[] { events.SelectedFolder };
                 IShellItemArray items = null;
                 try
                 {
                     dialog.GetResults(out items); uint count; items.GetCount(out count);
-                    if (count > 1000) throw new InvalidOperationException("一次最多选择 1000 个项目，请减少所选文件。");
+                    if (count > 1000) throw new InvalidOperationException(TextResources.Get("attachmentPicker.show.text.alternativeC"));
                     var result = new List<string>();
                     for (uint i = 0; i < count; i++)
                     {
@@ -60,7 +60,7 @@ namespace Dafeiyu
                 }
                 finally { Release(items); }
             }
-            catch (COMException) { throw new InvalidOperationException("无法读取所选文件或目录；请选择本机文件系统中的项目。"); }
+            catch (COMException) { throw new InvalidOperationException(TextResources.Get("attachmentPicker.show.text.alternativeD")); }
             finally
             {
                 if (advised) { try { dialog.Unadvise(cookie); } catch (COMException) { } }
@@ -76,7 +76,7 @@ namespace Dafeiyu
             {
                 item.GetDisplayName(0x80058000, out text);
                 string result = Marshal.PtrToStringUni(text);
-                if (String.IsNullOrEmpty(result)) throw new InvalidOperationException("请选择本机文件系统中的文件或目录。");
+                if (String.IsNullOrEmpty(result)) throw new InvalidOperationException(TextResources.Get("attachmentPicker.fileSystemPath.text"));
                 return result;
             }
             finally { if (text != IntPtr.Zero) Marshal.FreeCoTaskMem(text); }
@@ -96,7 +96,7 @@ namespace Dafeiyu
                 if (id != AddFolderButton) return;
                 IShellItem folder = null;
                 try { dialog.GetFolder(out folder); SelectedFolder = FileSystemPath(folder); dialog.Close(0); }
-                catch (Exception) { Error = "无法添加当前文件夹，请导航到本机文件夹后重试。"; dialog.Close(unchecked((int)0x80004005)); }
+                catch (Exception) { Error = TextResources.Get("attachmentPicker.onButtonClicked.error"); dialog.Close(unchecked((int)0x80004005)); }
                 finally { Release(folder); }
             }
             public int OnFileOk(IntPtr dialog) { return 0; }

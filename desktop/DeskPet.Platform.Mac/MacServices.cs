@@ -11,7 +11,7 @@ public struct MacDisplay { public double X, Y, Width, Height, WorkX, WorkY, Work
 public static class MacServices
 {
     public static bool IsSupported => OperatingSystem.IsMacOSVersionAtLeast(14);
-    internal static void EnsureMac() { if (!IsSupported) throw new PlatformNotSupportedException("此服务需要 macOS 14 或更新版本。"); }
+    internal static void EnsureMac() { if (!IsSupported) throw new PlatformNotSupportedException(TextResources.Get("macServices.ensureMac.text")); }
     private static string DirectoryPath(string variable, params string[] parts)
     {
         var configured = Environment.GetEnvironmentVariable(variable);
@@ -48,7 +48,7 @@ public static class MacServices
     public static (double X, double Y) GetPointerRelativeToWindow(IntPtr handle)
     {
         EnsureMac();
-        if (handle == IntPtr.Zero || Native.PointerRelative(handle, out var x, out var y) == 0) throw new ArgumentException("需要已连接到窗口的 NSView 或 NSWindow 句柄。", nameof(handle));
+        if (handle == IntPtr.Zero || Native.PointerRelative(handle, out var x, out var y) == 0) throw new ArgumentException(TextResources.Get("macServices.getPointerRelativeToWindow.text"), nameof(handle));
         return (x, y);
     }
     public static MacDisplay[] GetDisplays()
@@ -59,8 +59,8 @@ public static class MacServices
     }
     public static void ConfigureWindow(IntPtr nsWindow, bool topmost, bool ignoreMouse, bool joinAllSpaces = true)
     {
-        EnsureMac(); if (nsWindow == IntPtr.Zero) throw new ArgumentException("需要 NSWindow 句柄。", nameof(nsWindow));
-        if (Native.Window(nsWindow, topmost ? 1 : 0, ignoreMouse ? 1 : 0, joinAllSpaces ? 1 : 0) == 0) throw new InvalidOperationException("窗口策略设置失败。");
+        EnsureMac(); if (nsWindow == IntPtr.Zero) throw new ArgumentException(TextResources.Get("macServices.configureWindow.text"), nameof(nsWindow));
+        if (Native.Window(nsWindow, topmost ? 1 : 0, ignoreMouse ? 1 : 0, joinAllSpaces ? 1 : 0) == 0) throw new InvalidOperationException(TextResources.Get("macServices.configureWindow.text.alternativeA"));
     }
     // Best-effort public CGWindow query; macOS may redact cross-app window data. No screen recording permission is requested.
     public static bool IsFrontApplicationFullscreen() { EnsureMac(); return Native.FullscreenFront() != 0; }
@@ -73,8 +73,8 @@ public static class MacServices
     public static void SetLoginAtStartup(bool enabled)
     {
         EnsureMac(); var status = Native.LoginSet(enabled ? 1 : 0);
-        if (status == -10002) throw new InvalidOperationException("登录项需要批准，请在系统设置 > 通用 > 登录项中允许 DeskPet。");
-        if (status != 0) throw new InvalidOperationException($"无法修改登录项（状态 {status}），请在系统设置 > 通用 > 登录项中检查；应用必须从 .app 包运行。");
+        if (status == -10002) throw new InvalidOperationException(TextResources.Get("macServices.setLoginAtStartup.text"));
+        if (status != 0) throw new InvalidOperationException(TextResources.Format("macServices.setLoginAtStartup.template",status));
     }
     private sealed class HotKeyRegistration : IDisposable
     {
@@ -84,7 +84,7 @@ public static class MacServices
         {
             callback = () => { try { action(); } catch { /* Never unwind a managed exception through Carbon. */ } };
             handle = Native.HotKeyRegister(key, (uint)mods, callback, out var error);
-            if (handle == IntPtr.Zero) throw new InvalidOperationException($"全局快捷键注册失败或与其他应用冲突（状态 {error}）。");
+            if (handle == IntPtr.Zero) throw new InvalidOperationException(TextResources.Format("macServices.hotKeyRegistration.template",error));
         }
         public void Dispose() { var previous = Interlocked.Exchange(ref handle, IntPtr.Zero); if (previous == IntPtr.Zero) return; Native.HotKeyUnregister(previous); GC.KeepAlive(callback); }
     }

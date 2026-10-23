@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Security.Principal;
@@ -38,7 +38,7 @@ namespace Dafeiyu
                         app.DispatcherUnhandledException += delegate(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs args)
                         {
                             RuntimeDiagnostics.Record(args.Exception);
-                            MessageBox.Show("桌宠遇到了一个运行问题。可以退出后重新打开，设置仍保存在 data 文件夹。", "桌面伙伴", MessageBoxButton.OK, MessageBoxImage.Information);
+                            MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow"), "桌面伙伴", MessageBoxButton.OK, MessageBoxImage.Information);
                             args.Handled = true; app.Shutdown(1);
                         };
                         var store = new SettingsStore(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "settings.json"));
@@ -52,7 +52,7 @@ namespace Dafeiyu
                     catch (Exception error)
                     {
                         RuntimeDiagnostics.Record(error);
-                        MessageBox.Show("桌面伙伴无法启动。请将完整文件夹解压到可写入的位置，并确认 Windows 已安装 .NET Framework 4.8。", ReleaseInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(TextResources.StartupMessage("program.main.messageBoxShow.alternativeA"), ReleaseInfo.ProductName, MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                     finally { mutex.ReleaseMutex(); }
                 }

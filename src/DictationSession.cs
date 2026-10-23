@@ -25,7 +25,7 @@ namespace Dafeiyu
             Operation op;
             lock(gate)
             {
-                if(disposed)throw new ObjectDisposedException("DictationSession");if(active!=null)throw new InvalidOperationException("另一处正在听写，请先结束或取消。");
+                if(disposed)throw new ObjectDisposedException("DictationSession");if(active!=null)throw new InvalidOperationException(TextResources.Get("dictationSession.start.text"));
                 var connection=settings().Copy().TranscriptionConnection();ApiClient.ValidateConnection(connection,ApiClient.AsrPath(connection));
                 op=new Operation{Owner=owner,Connection=connection,Recorder=factory()};active=op;LastNotice="";
             }
@@ -44,13 +44,13 @@ namespace Dafeiyu
         {
             lock(gate) {
                 if(disposed || active!=op || op.Finishing)return;
-                op.Finishing=true;LastNotice=String.IsNullOrWhiteSpace(message)?"麦克风录音中断，请检查设备及权限。":message;op.Cancel.Cancel();
+                op.Finishing=true;LastNotice=String.IsNullOrWhiteSpace(message)?TextResources.Get("dictationSession.recordingFailed.lastNoticeStringIsNullOrWhiteSpace"):message;op.Cancel.Cancel();
             }
             Task.Run(delegate {try{Release(op);}finally{op.Cancel.Dispose();}});
         }
         public async Task<string> FinishAsync(object owner)
         {
-            Operation op;lock(gate){op=active;if(op==null || !ReferenceEquals(op.Owner,owner) || op.Finishing)throw new InvalidOperationException("当前没有可结束的听写。");op.Finishing=true;}
+            Operation op;lock(gate){op=active;if(op==null || !ReferenceEquals(op.Owner,owner) || op.Finishing)throw new InvalidOperationException(TextResources.Get("dictationSession.finishAsync.text"));op.Finishing=true;}
             Stage=DictationStage.Recognizing;Notify();
             try{byte[] wav=await op.Recorder.FinishAsync();op.Cancel.Token.ThrowIfCancellationRequested();string result=await api.TranscribeAsync(op.Connection,wav,op.Cancel.Token);op.Cancel.Token.ThrowIfCancellationRequested();if(!String.IsNullOrWhiteSpace(result))Interlocked.Increment(ref successfulRecognitions);return result;}
             finally{Release(op);op.Cancel.Dispose();}

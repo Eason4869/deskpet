@@ -60,7 +60,7 @@ namespace Dafeiyu
             lock(gate)
             {
                 EnsureOpen();
-                if(recoveryRequired)throw new IOException("图片索引需要恢复。");
+                if(recoveryRequired)throw new IOException(TextResources.Get("generatedImageStoreManagement.updateMetadata.text"));
                 var next=images.Select(i=>i.Copy()).ToList();
                 foreach(var item in next)if(selected.Contains(item.Id))update(item);
                 SaveIndex(next);
@@ -76,7 +76,7 @@ namespace Dafeiyu
         }
         void WriteJournal(string path,PurgeJournal journal)
         {
-            if(journal.ReferenceJobKeys!=null&&journal.ReferenceJobKeys.Count>MaximumItems)throw new IOException("图片清理任务引用过多，请分批清理。");
+            if(journal.ReferenceJobKeys!=null&&journal.ReferenceJobKeys.Count>MaximumItems)throw new IOException(TextResources.Get("generatedImageStoreManagement.writeJournal.text"));
             using(var stream=new MemoryStream())
             {
                 new DataContractJsonSerializer(typeof(PurgeJournal)).WriteObject(stream,journal);
@@ -89,10 +89,10 @@ namespace Dafeiyu
             lock(gate)
             {
                 EnsureOpen();
-                if(recoveryRequired)throw new IOException("图片索引需要恢复。");
+                if(recoveryRequired)throw new IOException(TextResources.Get("generatedImageStoreManagement.purgeChecked.text"));
                 if(purgeRecoveryPending)RecoverPurgeTransactions();
                 var selected=images.Where(i=>ids.Contains(i.Id)).ToList();
-                if(selected.Any(i=>privateReferences?!i.IsReference:!i.TrashedUtc.HasValue))throw new InvalidOperationException("请先移入回收站。");
+                if(selected.Any(i=>privateReferences?!i.IsReference:!i.TrashedUtc.HasValue))throw new InvalidOperationException(TextResources.Get("generatedImageStoreManagement.purgeChecked.text.alternativeA"));
                 if(selected.Count==0)return;
                 if(!File.Exists(indexPath))SaveIndex(images);
                 string quarantine=Path.Combine(directory,"purge-"+Guid.NewGuid().ToString("N"));
@@ -161,7 +161,7 @@ namespace Dafeiyu
                     string destination=item.Temporary?Path.Combine(directory,journal.TemporaryFolder,item.Id+Extension(item.MediaType)):FilePath(item);
                     Directory.CreateDirectory(Path.GetDirectoryName(destination));
                     CheckDirectory(Path.GetDirectoryName(destination));
-                    if(File.Exists(destination))throw new IOException("图片回滚目标已存在。");
+                    if(File.Exists(destination))throw new IOException(TextResources.Get("generatedImageStoreManagement.rollbackQuarantine.text"));
                     File.Move(held,destination);
                 }
             }
@@ -179,7 +179,7 @@ namespace Dafeiyu
                 string held=Path.Combine(folder,item.Id+Extension(item.MediaType));
                 if(File.Exists(held))
                 {
-                    if((File.GetAttributes(held)&FileAttributes.ReparsePoint)!=0)throw new IOException("隔离图片不能是链接。");
+                    if((File.GetAttributes(held)&FileAttributes.ReparsePoint)!=0)throw new IOException(TextResources.Get("generatedImageStoreManagement.cleanQuarantine.text"));
                     File.Delete(held);
                 }
             }
@@ -195,17 +195,17 @@ namespace Dafeiyu
                 if(!File.Exists(manifest))
                 {
                     if(Directory.GetFileSystemEntries(folder).Length==0)Directory.Delete(folder,false);
-                    else throw new IOException("图片清理日志缺失。");
+                    else throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text"));
                     continue;
                 }
-                if(new FileInfo(manifest).Length>MaximumIndexBytes||(File.GetAttributes(manifest)&FileAttributes.ReparsePoint)!=0)throw new IOException("图片清理日志无效。");
+                if(new FileInfo(manifest).Length>MaximumIndexBytes||(File.GetAttributes(manifest)&FileAttributes.ReparsePoint)!=0)throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text.alternativeA"));
                 PurgeJournal journal;
                 byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(manifest));
-                if(plain.Length>MaximumIndexBytes)throw new IOException("图片清理日志过大。");
+                if(plain.Length>MaximumIndexBytes)throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text.alternativeB"));
                 using(var stream=new MemoryStream(plain))journal=(PurgeJournal)new DataContractJsonSerializer(typeof(PurgeJournal)).ReadObject(stream);
-                if(journal==null||journal.TemporaryFolder==null||!journal.TemporaryFolder.StartsWith("temporary-",StringComparison.Ordinal)||!ValidId(journal.TemporaryFolder.Substring(10))||journal.Images==null||journal.Images.Count>MaximumItems||journal.Images.Any(i=>i==null||!ValidId(i.Id)||Extension(i.MediaType)==null))throw new IOException("图片清理日志无效。");
-                if(journal.ReferenceJobKeys!=null&&(journal.ReferenceJobKeys.Count>MaximumItems||journal.ReferenceJobKeys.Any(key=>String.IsNullOrEmpty(key)||!key.StartsWith("job:",StringComparison.Ordinal)||key.Length>132)))throw new IOException("图片清理任务引用无效。");
-                if((recoveryRequired||!File.Exists(indexPath))&&!journal.Committed)throw new IOException("索引与图片清理日志需要人工恢复，文件已保留。");
+                if(journal==null||journal.TemporaryFolder==null||!journal.TemporaryFolder.StartsWith("temporary-",StringComparison.Ordinal)||!ValidId(journal.TemporaryFolder.Substring(10))||journal.Images==null||journal.Images.Count>MaximumItems||journal.Images.Any(i=>i==null||!ValidId(i.Id)||Extension(i.MediaType)==null))throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text.alternativeA"));
+                if(journal.ReferenceJobKeys!=null&&(journal.ReferenceJobKeys.Count>MaximumItems||journal.ReferenceJobKeys.Any(key=>String.IsNullOrEmpty(key)||!key.StartsWith("job:",StringComparison.Ordinal)||key.Length>132)))throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text.alternativeC"));
+                if((recoveryRequired||!File.Exists(indexPath))&&!journal.Committed)throw new IOException(TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.text.alternativeD"));
                 bool committed=journal.Committed||lastPurgeId==Path.GetFileName(folder);
                 if(committed)
                 {
@@ -215,8 +215,8 @@ namespace Dafeiyu
                         WriteJournal(manifest,journal);
                     }
                     try{CleanQuarantine(folder,journal);}
-                    catch(IOException){cleanupPending=true;Warning="图片已永久删除，部分隔离文件将在下次恢复时清理。";}
-                    catch(UnauthorizedAccessException){cleanupPending=true;Warning="图片已永久删除，部分隔离文件需要存储权限恢复后清理。";}
+                    catch(IOException){cleanupPending=true;Warning=TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.warning");}
+                    catch(UnauthorizedAccessException){cleanupPending=true;Warning=TextResources.Get("generatedImageStoreManagement.recoverPurgeTransactions.warning.alternativeA");}
                 }
                 else
                 {

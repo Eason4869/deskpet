@@ -21,10 +21,10 @@ namespace Dafeiyu
         {
             task=working&&snapshot!=null&&snapshot.Status=="running"?AgentChangeSummaryData.CopyTask(snapshot):null;Summary=AgentChangeSummaryData.FromTask(task);label.Inlines.Clear();
             if(task==null||Summary.FileCount==0){task=null;Visibility=Visibility.Collapsed;ToolTip=null;IsEnabled=false;return;}
-            label.Inlines.Add(new Run(Summary.FileCount+" 个文件已更改"){Foreground=AgentUi.Ink});
+            label.Inlines.Add(new Run(TextResources.Format("liveChangeSummary.refresh.labelInlines",Summary.FileCount)){Foreground=AgentUi.Ink});
             if(Summary.AddedLines.HasValue&&Summary.RemovedLines.HasValue){label.Inlines.Add(new Run("   +"+Summary.AddedLines.Value){Foreground=Ui.Brush("#159A5A")});label.Inlines.Add(new Run("  −"+Summary.RemovedLines.Value){Foreground=Ui.Brush("#D65151")});}
-            else label.Inlines.Add(new Run(" · 行数待核对"){Foreground=AgentUi.Muted});
-            ToolTip="查看当前任务的文件变更";IsEnabled=open!=null;Visibility=Visibility.Visible;
+            else label.Inlines.Add(new Run(TextResources.Get("liveChangeSummary.refresh.labelInlines.alternativeA")){Foreground=AgentUi.Muted});
+            ToolTip=TextResources.Get("liveChangeSummary.refresh.toolTip");IsEnabled=open!=null;Visibility=Visibility.Visible;
         }
     }
 }

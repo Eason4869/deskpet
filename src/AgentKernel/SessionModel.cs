@@ -31,7 +31,7 @@ namespace Dafeiyu
         public AgentSessionProjection Projection {get{return new AgentSessionProjection{SessionId=SessionId,RecoveryState=RecoveryState,PendingCount=Pending.Count,DeliveredCount=Delivered.Count,Step=Step};}}
         public AgentSessionInput Enqueue(AgentSessionInput input)
         {
-            if(input==null || String.IsNullOrWhiteSpace(input.IdempotencyId) || input.IdempotencyId.Length>200)throw new ArgumentException("会话输入必须具有稳定幂等 ID。");
+            if(input==null || String.IsNullOrWhiteSpace(input.IdempotencyId) || input.IdempotencyId.Length>200)throw new ArgumentException(TextResources.Get("sessionModel.enqueue.text"));
             var existing=Pending.Concat(Delivered).FirstOrDefault(i=>i.IdempotencyId==input.IdempotencyId);if(existing!=null)return existing;
             var copy=input.Copy();Pending.Add(copy);Append("input.enqueued",copy.IdempotencyId,"");return copy;
         }

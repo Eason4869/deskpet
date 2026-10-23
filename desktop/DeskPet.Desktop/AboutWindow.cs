@@ -49,12 +49,12 @@ internal sealed class AboutWindow : Window
     private readonly Button download;
     public AboutWindow(DesktopController controller)
     {
-        owner = controller; Title = "DeskPet · 关于与更新"; Width = 570; Height = 490;
+        owner = controller; Title = TextResources.Get("aboutWindow.aboutWindow.title"); Width = 570; Height = 490;
         var version = typeof(App).Assembly.GetName().Version;
         repository = Ui.Input(owner.Settings.RepositoryUrl);
-        download = Ui.AsyncButton("下载本机 macOS 安装包", async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
+        download = Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton"), async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
         repository.TextChanged += (_, _) => { releaseDownload = null; download.IsEnabled = false; };
-        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text("DeskPet " + ReleaseInfo.DisplayVersion, 24), Ui.Text("macOS 客户端 · Avalonia / .NET\n桌面伙伴、文字聊天、语音与实时对话"), Ui.Field("更新仓库（HTTPS GitHub 仓库地址）", repository), Ui.AsyncButton("检查更新", CheckAsync, owner.Error), download, notice, Ui.Text("下载后使用新应用替换 Applications 中的旧版本。设置和历史保存在用户数据目录，替换应用不会清除。此界面不静默安装或绕过 Gatekeeper。"), Ui.Button("关闭", Close)) };
+        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion), 24), Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text")), Ui.Field(TextResources.Get("aboutWindow.aboutWindow.field"), repository), Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA"), CheckAsync, owner.Error), download, notice, Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA")), Ui.Button(TextResources.Get("common.close"), Close)) };
         Closed += (_, _) => { cancel.Cancel(); cancel.Dispose(); };
     }
     private async Task CheckAsync()
@@ -63,23 +63,23 @@ internal sealed class AboutWindow : Window
         var requestedRepository = repository.Text?.Trim() ?? "";
         var repo = GitHubUpdates.Repository(repository.Text ?? "");
         owner.Settings.RepositoryUrl = repository.Text!.Trim(); owner.Save();
-        notice.Text = "正在查询最新正式版本…"; releaseDownload = null; download.IsEnabled = false;
+        notice.Text = TextResources.Get("aboutWindow.checkAsync.notice"); releaseDownload = null; download.IsEnabled = false;
         using var client = owner.Settings.UpdateUseProxy ? ProxyConfiguration.CreateHttpClient(owner.Settings.UpdateProxyAddress, true) : new HttpClient(new HttpClientHandler { UseProxy = false });
         client.Timeout = TimeSpan.FromSeconds(30); client.DefaultRequestHeaders.UserAgent.ParseAdd("DeskPet/" + typeof(App).Assembly.GetName().Version?.ToString(3));
         using var response = await client.GetAsync("https://api.github.com/repos/" + repo + "/releases/latest", token);
-        if (!response.IsSuccessStatusCode) throw new ApiException("检查更新失败（HTTP " + (int)response.StatusCode + "）。请检查仓库、代理或稍后重试。");
+        if (!response.IsSuccessStatusCode) throw new ApiException(TextResources.Format("aboutWindow.checkAsync.template",(int)response.StatusCode));
         var data = await response.Content.ReadAsByteArrayAsync(token);
-        if (data.Length > 1024 * 1024) throw new ApiException("版本信息过大。");
+        if (data.Length > 1024 * 1024) throw new ApiException(TextResources.Get("aboutWindow.checkAsync.text"));
         using var json = JsonDocument.Parse(data); var root = json.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
         token.ThrowIfCancellationRequested();
-        if (repository.Text?.Trim() != requestedRepository) { notice.Text = "仓库地址已更改，请重新检查。"; return; }
+        if (repository.Text?.Trim() != requestedRepository) { notice.Text = TextResources.Get("aboutWindow.checkAsync.notice.alternativeA"); return; }
         var next = Version.TryParse(tag.TrimStart('v', 'V'), out var v) ? v : null;
         var current = typeof(App).Assembly.GetName().Version!;
         var newer = next != null && new Version(next.Major, next.Minor, Math.Max(0, next.Build)) > new Version(current.Major, current.Minor, current.Build);
         var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString();
         var selected = SelectMacAsset(root, repo, arch);
         releaseDownload = selected?.DownloadUrl; download.IsEnabled = selected != null;
-        notice.Text = (newer ? "发现新版本 " : "最新发布版本 ") + tag + "。\n" + (selected != null ? "本机架构附件：" + selected.Name + (selected.Preview ? "\n此附件是未签名预览，尚未经 Apple Developer ID 签名或公证。" : "") : "该版本没有适合本机 CPU 的规范 macOS 安装包，下载按钮已禁用。");
+        notice.Text = (newer ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeB") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeC")) + tag + "。\n" + (selected != null ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeD") + selected.Name + (selected.Preview ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeE") : "") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeF"));
     }
 }

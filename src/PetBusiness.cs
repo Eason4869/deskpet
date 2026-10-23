@@ -34,7 +34,7 @@ namespace Dafeiyu
     public sealed class AnimationPlayer
     {
         public static readonly string[] States = { "idle", "running-right", "running-left", "waving", "jumping", "failed", "waiting", "running", "review" };
-        public static readonly string[] Labels = { "待机", "向右跑", "向左跑", "招呼", "跳跃", "委屈", "等待", "思考", "检查成果" };
+        public static readonly string[] Labels = { TextResources.Get("petBusiness.labels.labels"), TextResources.Get("petBusiness.labels.labels.alternativeA"), TextResources.Get("petBusiness.labels.labels.alternativeB"), TextResources.Get("petBusiness.labels.labels.alternativeC"), TextResources.Get("petBusiness.labels.labels.alternativeD"), TextResources.Get("petBusiness.labels.labels.alternativeE"), TextResources.Get("petBusiness.labels.labels.alternativeF"), TextResources.Get("petBusiness.labels.labels.alternativeG"), TextResources.Get("petBusiness.labels.labels.alternativeH") };
         public static readonly int[] Counts = { 6, 8, 8, 4, 5, 8, 6, 6, 6 };
         private static readonly double[] Periods = { .17, .11, .11, .16, .13, .16, .19, .18, .18 };
         private double elapsed;
@@ -125,8 +125,8 @@ namespace Dafeiyu
         {
             long milliseconds=Status=="pending" && ProcessingStartedAt.HasValue?Math.Max(ProcessingMilliseconds,(long)(now.ToUniversalTime()-ProcessingStartedAt.Value).TotalMilliseconds):ProcessingMilliseconds;
             long seconds=Math.Max(0,milliseconds/1000);
-            string duration=seconds>=3600?(seconds/3600)+"小时 "+(seconds%3600/60)+"分 "+(seconds%60)+"秒":seconds>=60?(seconds/60)+"分 "+(seconds%60)+"秒":seconds+"秒";
-            return (WorkMode?"处理时间 ":"思考时间 ")+duration;
+            string duration=seconds>=3600?TextResources.Format("petBusiness.processingLabel.durationSeconds",(seconds/3600),(seconds%3600/60),(seconds%60)):seconds>=60?TextResources.Format("petBusiness.processingLabel.durationSeconds.alternativeA",(seconds/60),(seconds%60)):TextResources.Format("petBusiness.processingLabel.durationSeconds.alternativeB",seconds);
+            return (WorkMode?TextResources.Get("petBusiness.processingLabel.text"):TextResources.Get("petBusiness.processingLabel.text.alternativeA"))+duration;
         }
         internal void Update(string content,string status) { Content=content??"";Status=status; }
         internal void Normalize()
@@ -134,7 +134,7 @@ namespace Dafeiyu
             Id=String.IsNullOrEmpty(Id)?Guid.NewGuid().ToString("N"):Id;
             TurnId=String.IsNullOrEmpty(TurnId)?Id:TurnId;Content=Content??"";Source=Source??"text";
             if(Status=="pending")Status="interrupted";
-            if(ToolEvents!=null)foreach(var item in ToolEvents.Where(t=>t!=null && t.Status=="running")){item.Status="error";item.Summary+=" · 已中断";}
+            if(ToolEvents!=null)foreach(var item in ToolEvents.Where(t=>t!=null && t.Status=="running")){item.Status="error";item.Summary+=TextResources.Get("petBusiness.normalize.itemSummary");}
             if(Status!="complete" && Status!="interrupted" && Status!="cancelled" && Status!="error")Status="interrupted";
         }
     }
@@ -145,7 +145,7 @@ namespace Dafeiyu
         private readonly object gate=new object();
         ImageAssetUsageRegistry imageUsage;
         readonly Dictionary<string,IDisposable> imageLeases=new Dictionary<string,IDisposable>(StringComparer.Ordinal);
-        public void ConfigureImageUsage(ImageAssetUsageRegistry usage){lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,usage))throw new InvalidOperationException("图片引用协调器不一致。");imageUsage=usage;LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(messages));}}
+        public void ConfigureImageUsage(ImageAssetUsageRegistry usage){lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,usage))throw new InvalidOperationException(TextResources.Get("petBusiness.configureImageUsage.text"));imageUsage=usage;LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(messages));}}
         void LeaseImageKeys(IEnumerable<string> keys){if(imageUsage==null)return;foreach(string key in keys)if(!imageLeases.ContainsKey(key))imageLeases.Add(key,imageUsage.Acquire(key,"memory-history"));}
         internal void ReconcileImageUsage(){lock(gate){var current=new HashSet<string>(ImageAssetUsageRegistry.ReferenceKeys(messages),StringComparer.Ordinal);foreach(string key in imageLeases.Keys.Where(k=>!current.Contains(k)).ToArray()){imageLeases[key].Dispose();imageLeases.Remove(key);}}}
         public void ReleaseImageUsage(){lock(gate){foreach(var lease in imageLeases.Values)lease.Dispose();imageLeases.Clear();}}
@@ -178,7 +178,7 @@ namespace Dafeiyu
         internal void PersistGeneratedImages(GeneratedImageStore assets)
         {
             lock(gate)foreach(var message in messages.Where(m=>m.GeneratedImages!=null&&m.GeneratedImages.Any(i=>i.Temporary)))
-            {if(assets==null)throw new System.IO.IOException("图片资产存储不可用。");message.SetGeneratedImages(message.GeneratedImages.Select(i=>i.Temporary?assets.Promote(i.Id):i));}
+            {if(assets==null)throw new System.IO.IOException(TextResources.Get("petBusiness.persistGeneratedImages.text"));message.SetGeneratedImages(message.GeneratedImages.Select(i=>i.Temporary?assets.Promote(i.Id):i));}
         }
         internal void LinkAgentTask(string id,string taskId){lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null){if(message.AgentTaskId!=taskId)message.ChangeSummary=null;message.AgentTaskId=taskId;}}}
         internal void UpdateAgentTaskSummary(AgentTaskState task)
@@ -196,7 +196,7 @@ namespace Dafeiyu
         public ChatMessage AttachGeneratedImage(string id,GeneratedImage image)
         {
             if(image==null)throw new ArgumentNullException("image");
-            lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException("一条回复最多保留 20 张生成图片。");LeaseImageKeys(String.IsNullOrEmpty(image.ReferenceImageId)?new[]{image.Id}:new[]{image.Id,image.ReferenceImageId});message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
+            lock(gate){var message=messages.Find(m=>m.Id==id&&m.Role=="assistant");if(message==null)return null;var images=message.GeneratedImages??new List<GeneratedImage>();if(images.Any(i=>i.Id==image.Id))return message.Copy();if(images.Count>=20)throw new InvalidOperationException(TextResources.Get("petBusiness.attachGeneratedImage.text"));LeaseImageKeys(String.IsNullOrEmpty(image.ReferenceImageId)?new[]{image.Id}:new[]{image.Id,image.ReferenceImageId});message.SetGeneratedImages(images.Concat(new[]{image}));return message.Copy();}
         }
         public void Replace(IList<ChatMessage> restored)
         { lock(gate) { if(restored!=null)LeaseImageKeys(ImageAssetUsageRegistry.ReferenceKeys(restored));messages.Clear();if(restored!=null)foreach(var m in restored){if(m==null || (m.Role!="user" && m.Role!="assistant"))continue;var copy=m.Copy();copy.Normalize();messages.Add(copy);}Trim(); } }
@@ -220,8 +220,8 @@ namespace Dafeiyu
         {
             lock(gate)
             {
-                int index=messages.FindIndex(m=>m.Id==replyId && m.Role=="assistant");if(index<1)throw new InvalidOperationException("找不到这条回复。");
-                var user=messages[index-1];if(user.Role!="user" || user.TurnId!=messages[index].TurnId)throw new InvalidOperationException("这条回复没有对应的用户消息。");
+                int index=messages.FindIndex(m=>m.Id==replyId && m.Role=="assistant");if(index<1)throw new InvalidOperationException(TextResources.Get("petBusiness.forRegeneration.text"));
+                var user=messages[index-1];if(user.Role!="user" || user.TurnId!=messages[index].TurnId)throw new InvalidOperationException(TextResources.Get("petBusiness.forRegeneration.text.alternativeA"));
                 var previous=new ConversationLog();previous.Replace(messages.Take(index-1).ToList());var request=previous.ForRequest(persona,user.Content);request.Last().SetAttachments(user.Attachments);return request;
             }
         }
@@ -231,7 +231,7 @@ namespace Dafeiyu
         {
             Func<ChatMessage,long> size=m=>Encoding.UTF8.GetByteCount(m.Content??"")+ChatAttachment.StoredSize(m.Attachments)+1024;
             var current=request.LastOrDefault(m=>m.Role=="user");
-            if(request.Where(m=>m.Role=="system"||Object.ReferenceEquals(m,current)).Sum(size)>7L*1024*1024)throw new ApiException("当前消息与附件超过请求预算，请减少附件后重试。");
+            if(request.Where(m=>m.Role=="system"||Object.ReferenceEquals(m,current)).Sum(size)>7L*1024*1024)throw new ApiException(TextResources.Get("petBusiness.budgetRequest.text"));
         }
         public void Clear() { lock(gate)messages.Clear(); }
     }

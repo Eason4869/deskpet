@@ -23,11 +23,11 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
     {
         controller = holidays; currentSkin = skin ?? (() => null); avatars = assets ?? new SpriteAssets(); ownsAvatars = assets == null;
         Name = "HolidayOutfitPanel"; Spacing = 6;
-        enabled = new CheckBox { Name = "HolidayOutfitsEnabled", Content = "启用特殊服饰", FontSize = 12, Foreground = DesktopTheme.Brush("#61738B"), MinHeight = 24 };
+        enabled = new CheckBox { Name = "HolidayOutfitsEnabled", Content = TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"), FontSize = 12, Foreground = DesktopTheme.Brush("#61738B"), MinHeight = 24 };
         choices = new ComboBox { Name = "HolidayOutfitPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.ItemTemplate = new FuncDataTemplate<Choice>((choice, _) => ItemRow(choice));
         status = Ui.Text(""); status.Name = "HolidayOutfitStatus"; status.FontSize = 12; status.Foreground = DesktopTheme.Brush("#61738B");
-        Children.Add(Ui.Text("衣柜")); Children.Add(choices); Children.Add(enabled); Children.Add(status);
+        Children.Add(Ui.Text(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.text"))); Children.Add(choices); Children.Add(enabled); Children.Add(status);
         enabled.IsCheckedChanged += (_, _) => { if (!refreshing) controller.SetEnabled(enabled.IsChecked == true); };
         choices.SelectionChanged += (_, _) => { if (!refreshing && choices.SelectedItem is Choice { Available: true } choice) controller.SelectOwnedOutfit(choice.Id); };
         choices.ContainerPrepared += ItemPrepared;
@@ -57,15 +57,15 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
             IsVisible = controller.WardrobeVisible; enabled.IsChecked = controller.Enabled;
             var skin = currentSkin(); var owned = controller.OwnedOutfits;
             enabled.IsEnabled = skin == null || skin.BuiltinCharacterId != null;
-            var options = new List<Choice> { new(null, "默认", true, skin, null) };
-            options.AddRange(owned.Select(x => new Choice(x.OutfitId, x.Name + (x.Ready ? "" : "（暂不可用）"), x.Ready, skin, x)));
+            var options = new List<Choice> { new(null, TextResources.Get("holidayOutfitPanel.refresh.optionsListChoice"), true, skin, null) };
+            options.AddRange(owned.Select(x => new Choice(x.OutfitId, x.Name + (x.Ready ? "" : TextResources.Get("holidayOutfitPanel.refresh.ownedSelect")), x.Ready, skin, x)));
             choices.ItemsSource = options;
             var current = controller.EffectiveOutfit;
             choices.SelectedItem = options.FirstOrDefault(x => x.Id == (controller.Enabled ? current?.OutfitId : controller.PreferredOutfitId));
             choices.IsEnabled = controller.Enabled || skin is { BuiltinCharacterId: null };
-            choices.PlaceholderText = "当前体验尚未解锁";
+            choices.PlaceholderText = TextResources.Get("holidayOutfitPanel.refresh.choicesPlaceholderText");
             status.Text = !string.IsNullOrEmpty(controller.PersistenceWarning) ? controller.PersistenceWarning :
-                current != null && !owned.Any(x => x.OutfitId == current.OutfitId) ? "当前体验尚未解锁" : "";
+                current != null && !owned.Any(x => x.OutfitId == current.OutfitId) ? TextResources.Get("holidayOutfitPanel.refresh.statusIsNullOrEmpty") : "";
             status.IsVisible = !string.IsNullOrEmpty(status.Text);
         }
         finally { refreshing = false; }

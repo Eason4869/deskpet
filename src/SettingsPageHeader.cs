@@ -16,7 +16,7 @@ namespace Dafeiyu
         internal event Action<int> SelectionChanged;
         internal SettingsPageHeader(string title,string description,string[] labels,string[] names)
         {
-            if(labels==null||names==null||labels.Length==0||labels.Length!=names.Length)throw new ArgumentException("设置标签不完整。");
+            if(labels==null||names==null||labels.Length==0||labels.Length!=names.Length)throw new ArgumentException(TextResources.Get("settingsPageHeader.settingsPageHeader.text"));
             Name="SettingsPageHeader";Title=Ui.PageHeading(title);Title.Name="SettingsPageTitle";Children.Add(Title);
             Description=Ui.Text(description??"",12,Ui.Muted);Description.Name="SettingsPageDescription";Description.MinHeight=20;Description.Margin=new Thickness(0,4,0,18);Children.Add(Description);
             Tabs=new Button[labels.Length];var strip=new UniformGrid{Rows=1,Columns=labels.Length};
@@ -33,7 +33,7 @@ namespace Dafeiyu
             for(int i=0;i<Tabs.Length;i++)
             {
                 bool selected=i==index;Tabs[i].Background=selected?ThemeManager.Surface:Brushes.Transparent;Tabs[i].BorderBrush=selected?Ui.Line:Brushes.Transparent;Tabs[i].Foreground=selected?ThemeManager.Brush("#456DE6","#91B5FF"):Ui.Muted;Tabs[i].FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;
-                System.Windows.Automation.AutomationProperties.SetHelpText(Tabs[i],selected?"当前配置页":"切换配置页");
+                System.Windows.Automation.AutomationProperties.SetHelpText(Tabs[i],selected?TextResources.Get("settingsPageHeader.select.automationAutomationPropertiesSetHelpText"):TextResources.Get("settingsPageHeader.select.automationAutomationPropertiesSetHelpText.alternativeA"));
             }
             if(SelectionChanged!=null)SelectionChanged(index);
         }

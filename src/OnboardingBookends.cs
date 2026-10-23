@@ -19,12 +19,12 @@ namespace Dafeiyu {
   }
   void StyleBookend(){
    bool complete=Current.Action=="complete";directory.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;locate.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;exitActions.Visibility=complete?Visibility.Collapsed:Visibility.Visible;
-   guideHeading.Text=Bookend?"桌面伙伴 · 配置引导":"和"+pet.Skin.Name+"一起开始";guideHeading.FontSize=Bookend?12:18;guideHeading.Foreground=Bookend?Ui.Muted:Ui.Ink;guideHeading.FontWeight=Bookend?FontWeights.Normal:FontWeights.SemiBold;
+   guideHeading.Text=Bookend?TextResources.Get("onboardingBookends.styleBookend.petSkinName.alternativeA"):TextResources.Format("onboardingBookends.styleBookend.petSkinName",pet.Skin.Name);guideHeading.FontSize=Bookend?12:18;guideHeading.Foreground=Bookend?Ui.Muted:Ui.Ink;guideHeading.FontWeight=Bookend?FontWeights.Normal:FontWeights.SemiBold;
    title.FontSize=complete?26:21;title.FontWeight=complete?FontWeights.Bold:FontWeights.SemiBold;title.TextAlignment=complete?TextAlignment.Center:TextAlignment.Left;title.Margin=new Thickness(0,0,0,complete?22:10);
    instruction.FontSize=complete?15:13;instruction.LineHeight=complete?27:23;instruction.TextAlignment=complete?TextAlignment.Center:TextAlignment.Left;instruction.Foreground=complete?Ui.Ink:Ui.Muted;
    bodyScroll.VerticalContentAlignment=complete?VerticalAlignment.Center:VerticalAlignment.Top;celebration.Visibility=complete?Visibility.Visible:Visibility.Collapsed;status.Visibility=Bookend?Visibility.Collapsed:Visibility.Visible;
    if(Bookend){focusScope=new GuideFocusScope((UIElement)settings.Content);petScope=new GuideFocusScope((UIElement)pet.Content);}
-   if(complete){var hint=Ui.Text("随时可以回到设置，继续调整。",12,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.Margin=new Thickness(0,16,0,12);actions.Children.Add(hint);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(PlayCelebration));}
+   if(complete){var hint=Ui.Text(TextResources.Get("onboardingBookends.styleBookend.text"),12,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.Margin=new Thickness(0,16,0,12);actions.Children.Add(hint);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(PlayCelebration));}
   }
   void PlayCelebration(){
    if(finished||Current.Action!="complete"||celebrationPlayed)return;celebrationPlayed=true;if(!SystemParameters.ClientAreaAnimation)return;

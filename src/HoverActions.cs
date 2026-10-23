@@ -9,7 +9,7 @@ namespace Dafeiyu
         public string Name {get;private set;}
         readonly Action<PetWindow> play;
         public CompanionAction(string id,string name,Action<PetWindow> playback)
-        {if(String.IsNullOrWhiteSpace(id) || String.IsNullOrWhiteSpace(name) || playback==null)throw new ArgumentException("动作需要 ID、名称和播放方法。");Id=id;Name=name;play=playback;}
+        {if(String.IsNullOrWhiteSpace(id) || String.IsNullOrWhiteSpace(name) || playback==null)throw new ArgumentException(TextResources.Get("hoverActions.companionAction.text"));Id=id;Name=name;play=playback;}
         public void Play(PetWindow pet){play(pet);}
     }
     // A future holiday module supplies one active action for the local date.
@@ -23,8 +23,8 @@ namespace Dafeiyu
         public static IList<CompanionAction> Choices(SkinDefinition skin,IHolidayHoverActionProvider holidays,DateTime localDate)
         {
             var actions=new List<CompanionAction>{
-                new CompanionAction("jumping","跳跃",p=>p.PlayAction("jumping",.7)),
-                new CompanionAction("waving","打招呼",p=>p.PlayAction("waving",1.2)),
+                new CompanionAction("jumping",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction"),p=>p.PlayAction("jumping",.7)),
+                new CompanionAction("waving",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction.alternativeA"),p=>p.PlayAction("waving",1.2)),
                 new CompanionAction("special",skin.SpecialAction,p=>p.PlayInteraction("special"))};
             if(AdditionalInteractions.Has(skin,"special2"))actions.Add(new CompanionAction("special2",AdditionalInteractions.SpecialName(skin),p=>p.PlayInteraction("special2")));
             var holiday=holidays==null?null:holidays.GetAction(skin,localDate.Date);

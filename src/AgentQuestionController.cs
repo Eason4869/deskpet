@@ -24,9 +24,9 @@ namespace Dafeiyu
         void Announce(){var changed=Changed;if(changed!=null)changed();}
         public async Task<AgentQuestionAnswer> AskAsync(AgentQuestionRequest request,CancellationToken cancel)
         {
-            if(request==null||String.IsNullOrWhiteSpace(request.CallId)||String.IsNullOrWhiteSpace(request.SessionId)||String.IsNullOrWhiteSpace(request.TaskId))throw new ArgumentException("问题缺少会话、任务或调用归属。");
+            if(request==null||String.IsNullOrWhiteSpace(request.CallId)||String.IsNullOrWhiteSpace(request.SessionId)||String.IsNullOrWhiteSpace(request.TaskId))throw new ArgumentException(TextResources.Get("agentQuestionController.askAsync.text"));
             cancel.ThrowIfCancellationRequested();var item=new Pending{Request=request.Copy(),Cancel=cancel};
-            lock(gate){if(disposed)throw new OperationCanceledException();if(pending.Any(p=>p.Request.SessionId==request.SessionId&&p.Request.TaskId==request.TaskId&&p.Request.CallId==request.CallId))throw new InvalidOperationException("问题调用已在等待回答。");pending.Add(item);}
+            lock(gate){if(disposed)throw new OperationCanceledException();if(pending.Any(p=>p.Request.SessionId==request.SessionId&&p.Request.TaskId==request.TaskId&&p.Request.CallId==request.CallId))throw new InvalidOperationException(TextResources.Get("agentQuestionController.askAsync.text.alternativeA"));pending.Add(item);}
             try{using(cancel.Register(()=>item.Result.TrySetCanceled())){Announce();return await item.Result.Task.ConfigureAwait(false);}}
             finally{lock(gate)pending.Remove(item);Announce();}
         }

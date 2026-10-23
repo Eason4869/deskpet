@@ -10,7 +10,7 @@ namespace Dafeiyu
     {
         bool fullTabView,tabsHidden,unifiedLayout,resumeConversation;
         double previewOverdrag;StackPanel previewViewActions;
-        readonly Button fullTabToggle=ShellIcons.Button("expand-tabs","进入完整标签视图 · Ctrl+Shift+F",null),sideTabsToggle=ShellIcons.Button("collapse-tools","隐藏工具区",null);
+        readonly Button fullTabToggle=ShellIcons.Button("expand-tabs",TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons"),null),sideTabsToggle=ShellIcons.Button("collapse-tools",TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons.alternativeA"),null);
         void InitializeTabViewTools()
         {
             var tools=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,18,16,0)};previewViewActions=tools;Grid.SetColumn(tools,6);Panel.SetZIndex(tools,10);workspaceShell.Children.Add(tools);
@@ -64,12 +64,12 @@ namespace Dafeiyu
             bool canSwitch=ActualWidth>=1200,returnToSplit=canSwitch&&(fullTabView||unifiedLayout);
             fullTabToggle.IsEnabled=canSwitch;
             fullTabToggle.Content=ShellIcons.Image(returnToSplit?"split-panels":"expand-tabs",Ui.Ink);
-            string layoutAction=!canSwitch?"窗口较窄；拉宽窗口后可切换分屏／完整标签布局":returnToSplit?"返回分屏视图 · Ctrl+Shift+F":"进入完整标签视图 · Ctrl+Shift+F";
+            string layoutAction=!canSwitch?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit"):returnToSplit?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeA"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeB");
             fullTabToggle.ToolTip=layoutAction;System.Windows.Automation.AutomationProperties.SetName(fullTabToggle,layoutAction);
-            System.Windows.Automation.AutomationProperties.SetHelpText(fullTabToggle,(fullTabView||unifiedLayout?"完整标签布局":"分屏布局")+(shown?"，工具区已显示":"，工具区已隐藏"));
+            System.Windows.Automation.AutomationProperties.SetHelpText(fullTabToggle,(fullTabView||unifiedLayout?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeA"))+(shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeB"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeC")));
             var visibilityIcon=ShellIcons.Image("collapse-tools",Ui.Ink);if(!shown){visibilityIcon.RenderTransformOrigin=new Point(.5,.5);visibilityIcon.RenderTransform=new ScaleTransform(-1,1);}sideTabsToggle.Content=visibilityIcon;
-            string visibilityAction=shown?"隐藏工具区（保留标签与运行状态）":"显示工具区（恢复原布局）";
-            sideTabsToggle.ToolTip=visibilityAction;System.Windows.Automation.AutomationProperties.SetName(sideTabsToggle,visibilityAction);System.Windows.Automation.AutomationProperties.SetHelpText(sideTabsToggle,shown?"工具区已显示":"工具区已隐藏");sideTabsToggle.Background=shown?AgentUi.Soft:Brushes.Transparent;
+            string visibilityAction=shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown.alternativeA");
+            sideTabsToggle.ToolTip=visibilityAction;System.Windows.Automation.AutomationProperties.SetName(sideTabsToggle,visibilityAction);System.Windows.Automation.AutomationProperties.SetHelpText(sideTabsToggle,shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeD"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeE"));sideTabsToggle.Background=shown?AgentUi.Soft:Brushes.Transparent;
         }
     }
 }

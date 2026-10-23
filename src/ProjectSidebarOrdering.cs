@@ -61,7 +61,7 @@ namespace Dafeiyu
             var marker=new Border{Name="ConversationDropIndicator",Height=2,Background=Ui.Brush("#AEB4BD"),Margin=new Thickness(2,0,2,0),VerticalAlignment=VerticalAlignment.Top,Visibility=Visibility.Collapsed,IsHitTestVisible=false};Grid.SetColumnSpan(marker,2);row.Children.Add(marker);row.AllowDrop=true;
             row.DragOver+=delegate(object sender,DragEventArgs e){if(!e.Data.GetDataPresent(DragFormat))return;bool allowed=CanReorderConversation(e.Data,project,conversation,group);marker.Visibility=allowed?Visibility.Visible:Visibility.Collapsed;marker.VerticalAlignment=e.GetPosition(row).Y<row.ActualHeight/2?VerticalAlignment.Top:VerticalAlignment.Bottom;e.Effects=allowed?DragDropEffects.Move:DragDropEffects.None;e.Handled=true;};
             row.DragLeave+=delegate{marker.Visibility=Visibility.Collapsed;};
-            row.Drop+=delegate(object sender,DragEventArgs e){marker.Visibility=Visibility.Collapsed;if(!e.Data.GetDataPresent(DragFormat))return;e.Handled=true;if(!CanReorderConversation(e.Data,project,conversation,group))return;var drag=ParseDrag(e.Data);try{ReorderConversation(group,drag[1],conversation.Id,e.GetPosition(row).Y>=row.ActualHeight/2);}catch(Exception error){MessageBox.Show(error.Message,"排序未保存");}};
+            row.Drop+=delegate(object sender,DragEventArgs e){marker.Visibility=Visibility.Collapsed;if(!e.Data.GetDataPresent(DragFormat))return;e.Handled=true;if(!CanReorderConversation(e.Data,project,conversation,group))return;var drag=ParseDrag(e.Data);try{ReorderConversation(group,drag[1],conversation.Id,e.GetPosition(row).Y>=row.ActualHeight/2);}catch(Exception error){MessageBox.Show(error.Message,TextResources.Get("projectSidebarOrdering.hookConversationOrder.messageBoxShow"));}};
         }
     }
 }

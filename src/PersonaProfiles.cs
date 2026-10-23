@@ -45,7 +45,7 @@ namespace Dafeiyu
         }
         public static void Save(PetSettings settings,string skinId,string defaultPrompt,string prompt,VoiceRecommendations voices=null)
         {
-            prompt=(prompt ?? "").Trim(); if(prompt.Length==0 || prompt.Length>8000) throw new InvalidOperationException("人格应为 1～8000 个字符。");
+            prompt=(prompt ?? "").Trim(); if(prompt.Length==0 || prompt.Length>8000) throw new InvalidOperationException(TextResources.Get("personaProfiles.save.text"));
             Activate(settings,skinId,defaultPrompt,voices); settings.PersonaOverrides[skinId]=prompt; settings.SystemPrompt=prompt;
         }
         public static void Reset(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null) { Activate(settings,skinId,defaultPrompt,voices); settings.PersonaOverrides.Remove(skinId); settings.SystemPrompt=defaultPrompt; }
