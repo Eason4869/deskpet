@@ -14,6 +14,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Check background job acceptance registration
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path work/agent-jobs-validation/ci | Out-Null
+          python tests/AgentJobRegistrationTests.py | Tee-Object -FilePath work/agent-jobs-validation/ci/registration.log
+          if ($LASTEXITCODE) { throw 'Background job registration checks failed' }
       - name: Audit Chinese resources
         shell: powershell
         run: |
@@ -39,12 +45,15 @@ jobs:
       - name: Verify native background jobs and AppContainer ownership
         shell: powershell
         run: |
-          foreach ($target in @('AgentJobToolTests', 'AgentJobIntegrationTests', 'AgentJobSessionTests', 'AgentJobProcessTests', 'AgentJobSandboxTests')) {
-            & ./Build.ps1 -Target $target
-            if ($LASTEXITCODE) { throw ('Native background job checks failed: ' + $target) }
-          }
-          & ./Build.ps1 -Target AgentJobProcessTests -TestArguments '--resources-only'
-          if ($LASTEXITCODE) { throw 'Framework native resource checks failed (P1)' }
+          Start-Transcript -Path work/agent-jobs-validation/ci/framework.log
+          try {
+            foreach ($target in @('AgentJobToolTests', 'AgentJobIntegrationTests', 'AgentJobSessionTests', 'AgentJobProcessTests', 'AgentJobSandboxTests')) {
+              & ./Build.ps1 -Target $target
+              if ($LASTEXITCODE) { throw ('Native background job checks failed: ' + $target) }
+            }
+            & ./Build.ps1 -Target AgentJobProcessTests -TestArguments '--resources-only'
+            if ($LASTEXITCODE) { throw 'Framework native resource checks failed (P1)' }
+          } catch { Write-Host ($_ | Out-String); throw } finally { Stop-Transcript }
       - name: Verify thin WPF companion download and restoration integration
         shell: powershell
         run: |
@@ -103,20 +112,26 @@ jobs:
             if ($arguments) { dotnet $testDll $arguments } else { dotnet $testDll }
             if ($LASTEXITCODE) { throw ('Desktop acceptance failed: ' + $arguments) }
           }
-          dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1
-          if ($LASTEXITCODE) { throw 'Shared business build failed' }
-          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json work/localization-core-report.json
-          if ($LASTEXITCODE) { throw 'Shared business regression failed' }
-          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-job-tools-only
-          if ($LASTEXITCODE) { throw '.NET background job tool integration failed' }
-          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-job-session-only
-          if ($LASTEXITCODE) { throw '.NET scripted native conversation checks failed' }
-          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-native-only
-          if ($LASTEXITCODE) { throw '.NET native background job checks failed' }
-          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-resources-only
-          if ($LASTEXITCODE) { throw '.NET native resource checks failed (P1)' }
-          dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- ((Get-FileHash assets/locales/zh_CN.json).Hash.ToLowerInvariant()) desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Core.dll
-          if ($LASTEXITCODE) { throw 'Core locale artifact verification failed' }
+      - name: Verify shared background job entry points and native conversations
+        shell: powershell
+        run: |
+          Start-Transcript -Path work/agent-jobs-validation/ci/shared.log
+          try {
+            dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1
+            if ($LASTEXITCODE) { throw 'Shared business build failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json work/localization-core-report.json
+            if ($LASTEXITCODE) { throw 'Shared business regression failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only
+            if ($LASTEXITCODE) { throw '.NET background job logic aggregate failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-job-integration-only
+            if ($LASTEXITCODE) { throw '.NET background job workspace integration failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-native-only
+            if ($LASTEXITCODE) { throw '.NET native background job and conversation checks failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-resources-only
+            if ($LASTEXITCODE) { throw '.NET native resource checks failed (P1)' }
+            dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- ((Get-FileHash assets/locales/zh_CN.json).Hash.ToLowerInvariant()) desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Core.dll
+            if ($LASTEXITCODE) { throw 'Core locale artifact verification failed' }
+          } catch { Write-Host ($_ | Out-String); throw } finally { Stop-Transcript }
       - name: Verify actual thin Avalonia companion resources and restoration
         shell: powershell
         run: |
@@ -152,6 +167,13 @@ jobs:
             work/localization-audit.json
             work/localization-core-report.json
             work/localization-installed.log
+      - name: Preserve background job acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-jobs-acceptance-windows-${{ github.sha }}
+          if-no-files-found: warn
+          path: work/agent-jobs-validation/ci/
       - name: Preserve failed native link test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

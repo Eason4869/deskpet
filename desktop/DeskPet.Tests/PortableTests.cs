@@ -35,14 +35,16 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--localization-only")return LocalizationTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-tools-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobToolTests.Main() | AgentJobIntegrationTests.Main();}
             if(args.Length==1 && args[0]=="--agent-job-session-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobSessionTests.Main();}
+            if(args.Length==1 && args[0]=="--agent-jobs-only")return RunAgentJobLogic();
+            if(args.Length==1 && args[0]=="--agent-job-integration-only")return RunAgentJobIntegration();
             if(args.Length==1 && args[0]=="--agent-job-contract-only")return AgentJobContractTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-store-only")return AgentJobStoreTests.Main();
-            if(args.Length==1 && args[0]=="--agent-jobs-native-only")return AgentJobProcessTests.RunAll() | AgentJobSandboxTests.Main();
+            if(args.Length==1 && args[0]=="--agent-jobs-native-only")return RunAgentJobNative();
             if(args.Length==1 && args[0]=="--agent-job-manager-only")return AgentJobManagerTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-log-only")return AgentJobLogTests.RunAll();
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --agent-jobs-only | --agent-job-integration-only | --agent-jobs-native-only | --agent-job-tools-only | --agent-job-session-only | --agent-job-contract-only | --agent-job-store-only | --agent-job-manager-only | --agent-job-log-only | --agent-jobs-resources-only | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -69,6 +71,33 @@ namespace Dafeiyu.Tests
                 return result;
             }
         }
+        static int RunAgentJobLogic()
+        {
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobContractTests.Main() | AgentJobStoreTests.Main() | AgentJobLogTests.RunAll() | AgentJobManagerTests.Main() | AgentJobToolTests.Main();
+            }
+        }
+        static int RunAgentJobIntegration()
+        {
+            // The fake process suite still validates real Windows directory identities.
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows workspace background job integration is unsupported on this platform");return 2;}
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobIntegrationTests.Main();
+            }
+        }
+        static int RunAgentJobNative()
+        {
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows native background jobs are unsupported on this platform");return 2;}
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobProcessTests.RunAll() | AgentJobSandboxTests.Main() | AgentJobSessionTests.Main();
+            }
+        }
         static int Run()
         {
             contractChecks=0;
@@ -90,6 +119,10 @@ namespace Dafeiyu.Tests
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
                         AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
+                    // Windows identity checks belong in the Windows default regression;
+                    // macOS uses AgentJobToolTests to verify the unsupported-platform gate.
+                    SecretProtection.Configure(protector);
+                    if(Environment.OSVersion.Platform==PlatformID.Win32NT)result |= AgentJobIntegrationTests.Main();
                     return result;
                 }
             }

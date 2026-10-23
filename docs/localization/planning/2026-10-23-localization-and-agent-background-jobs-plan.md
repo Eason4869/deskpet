@@ -262,11 +262,11 @@ Owner 为宿主注入且不可变的 `projectId + conversationId + agentId`；�
 
 - [x] 宿主 `ConfigureJobs(manager, owner)` 冻结可信身份；拒绝普通聊天/Unassigned/Quick/Draft，忽略或拒绝伪造 Owner，子 worker 不继承启动能力。
 - [x] schema 与直调都验权限：Plan/关闭终端不启动，Auto 沙箱 shell 仍人工审批，Full 沿用规则；冻结 payload，审批后再验参数/策略/目录身份，启动只审批一次。
-- [x] start_job 按写/执行策略，get_job 为 ReadOnly 且新调用读实时状态；最大 64 KiB 日志页不被 24000 字符写 journal 截断，始终返回完整 JSON。
+- [x] start_job 按 shell 写/执行策略，stop_job 使用独立 job_stop 权限且服从显式拒绝；get/stop 审批后重验当前能力、归属和授权对象。get_job 为 ReadOnly 且新调用读实时状态；最大 64 KiB 日志页不被 24000 字符写 journal 截断，始终返回完整 JSON。
 - [x] get/stop 跨项目/会话/agent 与未知 ID 返回相同错误；关闭终端后仍保留可信任务停止路径。
 - [x] 脚本模型驱动真实会话工具路径验证跨轮 Dispose 后继续、丢响应不重跑、build→plan 后仍能 get、完成零新增模型调用；假 Manager 测试不冒充集成。
 
-S12 本地验收：Framework/.NET 10 管理器 48、工具协议 21、工作区集成 27、脚本模型及真实进程会话 17 项各通过；完整共享回归 8,416 项通过，资源门禁通过。新阶段远端 CI 与后续应用级双端验收仍待完成，详见后台任务实施记录。
+S12 本地验收（2026-10-24 复核）：Framework/.NET 10 管理器 48、工具协议 25、工作区集成 40、脚本模型及真实进程会话 18 项各通过；完整共享回归 8,460 项通过，登记检查 9 项及资源门禁通过。工作区集成使用假进程及真实 Windows 目录身份，真实进程会话独立验证；新增 `--agent-job-integration-only`，原生聚合包含会话检查。用户已授权将该轮独立修正提交至草稿 PR #29 并验证 Windows/macOS CI，当前提交的远端结果以 PR Checks 和描述中记录的 SHA 为准；后续应用级双端验收仍待完成，详见后台任务实施记录。
 
 ### S12a：接入用户提供的四种语言包（新增）
 

@@ -95,6 +95,11 @@ namespace Dafeiyu
             }
             var decision=await authorization.AuthorizeAsync(invocation,token).ConfigureAwait(false);
             if(decision==null||decision.Effect!=AgentPermissionEffect.Allow)return AgentJobTools.Error("permission_denied");
+            // Consent may outlive a profile, terminal, provider or session change.
+            // Recheck before reading output or stopping the manager's owned tree.
+            if(!JobsAvailable(invocation.ToolName)||(providerCapabilities!=null&&!providerCapabilities.CanUseTool(invocation.ToolName)))return AgentJobTools.Error("permission_denied");
+            if(!Object.ReferenceEquals(permissions,kernelPermissions)||!Object.ReferenceEquals(approval,kernelApproval))return AgentJobTools.Error("policy_changed");
+            token.ThrowIfCancellationRequested();
             if(invocation.ToolName=="get_job")return AgentJobTools.Page(await jobsManager.GetAsync(jobsOwner,(string)args["id"],(string)args["cursor"],(int)args["limit_bytes"],token).ConfigureAwait(false));
             token.ThrowIfCancellationRequested();if(beforeEffect==null)return AgentJobTools.Error("execution_reconciliation_required");beforeEffect();
             return AgentJobTools.Success(await jobsManager.StopAsync(jobsOwner,(string)args["id"],AgentJobStopReason.User,token).ConfigureAwait(false),false);

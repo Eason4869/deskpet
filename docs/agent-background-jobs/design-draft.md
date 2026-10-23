@@ -29,6 +29,8 @@
 
 Plan/只读或关闭终端时拒绝启动，包括伪造 JSON 直调；原 Owner 进入 Plan 后仍可 get。get 为 ReadOnly，新 call_id 查询实时状态。停止不执行 shell，关闭终端后仍保留可信 UI 停止路径。
 
+start_job 的权限动作保持 shell，stop_job 使用独立 job_stop 动作；默认工作区与可写主助手 Build 允许停止自己的任务，显式拒绝仍优先。模型 stop 仍受 Plan/终端/子 worker 能力门禁约束。get/stop 若经过异步审批，执行前再次核对当前能力、归属和授权对象，不能复用已经失效的同意。
+
 start 采用现有 shell 权限与审批：Auto 沙箱 shell 仍人工审批、Full 沿用既有规则，不自行增加权限。冻结实际命令、规范化 cwd、有效时限、Owner、payload hash、权限版本和目录身份；审批后、创建前再次检查。一次 start 仅审批一次，容量在审批后再次检查。
 
 ## 3. 三个工具的精确参数（本提案补齐）

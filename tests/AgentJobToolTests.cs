@@ -42,6 +42,14 @@ namespace Dafeiyu.Tests
             bool reasonDenied=false;try{Normalize("stop_job",new Dictionary<string,object>{{"id",id},{"reason","timeout"}},"unused");}catch(ArgumentException){reasonDenied=true;}
             Check(reasonDenied,"stop cannot accept a model-selected stop reason");
         }
+        static void StartIsShellStopIsJobStop()
+        {
+            Check(AgentPermissionRuntime.ActionForTool("start_job")=="shell"&&AgentPermissionRuntime.ActionForTool("get_job")=="read","start retains shell authorization and get remains read-only");
+            Check(AgentPermissionRuntime.ActionForTool("stop_job")=="job_stop","stop uses its own job_stop action instead of shell execution permission");
+            Check(AgentPermissionRuntime.DefaultWorkspacePolicy().Decide("job_stop","stop_job").Effect==AgentPermissionEffect.Allow,"default workspace permits owned-job cleanup");
+            var profiles=new AgentProfileRegistry();
+            Check(profiles.PermissionRuntime("build").Decide("job_stop","stop_job").Effect==AgentPermissionEffect.Allow&&profiles.PermissionRuntime("plan").Decide("job_stop","stop_job").Effect==AgentPermissionEffect.Deny,"Build can stop owned jobs while Plan retains its read-only boundary");
+        }
         static void CompleteWireJsonAndResourceErrors()
         {
             using(var temporary=new AgentJobTestSupport.TemporaryDirectory())
@@ -74,7 +82,7 @@ namespace Dafeiyu.Tests
         }
         public static int Main()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{StrictStartArguments,StrictReadAndStopArguments,CompleteWireJsonAndResourceErrors,UnsupportedPlatformNeverExposesJobTools})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{StrictStartArguments,StrictReadAndStopArguments,StartIsShellStopIsJobStop,CompleteWireJsonAndResourceErrors,UnsupportedPlatformNeverExposesJobTools})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobToolTests: "+checks+" passed");return failures==0?0:1;
         }
     }

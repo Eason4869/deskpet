@@ -34,7 +34,8 @@ namespace Dafeiyu.Tests
         sealed class Approval : IAgentApprovalProvider
         {
             internal int Calls;internal AgentApprovalRequest Last;internal Action BeforeAllow;
-            public Task<bool> ApproveAsync(AgentApprovalRequest request){Interlocked.Increment(ref Calls);Last=request;if(BeforeAllow!=null)BeforeAllow();return Task.FromResult(true);}
+            internal Task<bool> Pending;
+            public Task<bool> ApproveAsync(AgentApprovalRequest request){Interlocked.Increment(ref Calls);Last=request;if(BeforeAllow!=null)BeforeAllow();return Pending??Task.FromResult(true);}
         }
         sealed class Fixture : IDisposable
         {
@@ -44,9 +45,9 @@ namespace Dafeiyu.Tests
             internal readonly AgentJobStore Store;internal readonly AgentJobManager Manager;
             internal readonly AgentJobOwner Owner=new AgentJobOwner("persistent-project","persistent-conversation","primary");
             internal Fixture(){Store=new AgentJobStore(Path.Combine(Root.Path,"data"),Clock);Manager=new AgentJobManager(Store,Factory,Clock);Manager.RecoverAsync(CancellationToken.None).GetAwaiter().GetResult();}
-            internal AgentWorkspace Workspace(bool bind=true,AgentJobOwner owner=null,Approval approval=null,AgentApprovalMode mode=AgentApprovalMode.Full)
+            internal AgentWorkspace Workspace(bool bind=true,AgentJobOwner owner=null,Approval approval=null,AgentApprovalMode mode=AgentApprovalMode.Full,AgentPermissionRuntime permissions=null)
             {
-                owner=owner??Owner;var workspace=new AgentWorkspace(Root.Path);workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),null,approval,null,"persisted-task",new AgentSessionModel(Guid.NewGuid().ToString("N"),owner.ProjectId,owner.ConversationId));
+                owner=owner??Owner;var workspace=new AgentWorkspace(Root.Path);workspace.ConfigureKernel(permissions??AgentPermissionRuntime.DefaultWorkspacePolicy(),null,approval,null,"persisted-task",new AgentSessionModel(Guid.NewGuid().ToString("N"),owner.ProjectId,owner.ConversationId));
                 var settings=new PetSettings{AgentWorkspace=Root.Path,AgentApprovalMode=mode,AgentSandboxEnabled=mode==AgentApprovalMode.Auto};
                 workspace.ConfigureAccessPolicy(settings);workspace.ConfigureTerminal(AgentTerminalPolicy.ConfirmEach);workspace.ConfigureDesktopSession();workspace.BeginTask(new AgentTaskState{Id="persisted-task",Workspace=Root.Path});
                 if(bind)
@@ -111,10 +112,14 @@ namespace Dafeiyu.Tests
                 Check((bool)page["ok"]&&((object[])page["records"]).Sum(record=>((string)((Dictionary<string,object>)record)["text"]).Length)==65536,"workspace returns a complete untruncated 64-KiB escaped log page larger than the old journal ceiling");
                 f.Factory.Processes[0].Status=new AgentJobProcessExit(true,7,false,false,1);
                 var fresh=Execute(workspace,"get_job","{\"id\":\""+id+"\"}","fresh-read");Check((bool)((Dictionary<string,object>)fresh["job"])["root_exited"],"a new read call observes live root status rather than a cached previous page");
-                using(var foreign=f.Workspace(true,new AgentJobOwner("other-project","other-conversation","primary")))
+                foreach(var owner in new[]{new AgentJobOwner("other-project",f.Owner.ConversationId,"primary"),new AgentJobOwner(f.Owner.ProjectId,"other-conversation","primary")})
+                using(var foreign=f.Workspace(true,owner))
                 {
-                    var hidden=Execute(foreign,"get_job","{\"id\":\""+id+"\"}","foreign-read");var missing=Execute(foreign,"get_job","{\"id\":\""+new string('0',32)+"\"}","missing-read");
-                    Check(Error(hidden)=="job_not_found"&&new JavaScriptSerializer().Serialize(hidden)==new JavaScriptSerializer().Serialize(missing),"foreign and unknown jobs return indistinguishable protocol errors");
+                    foreach(string tool in new[]{"get_job","stop_job"})
+                    {
+                        var hidden=Execute(foreign,tool,"{\"id\":\""+id+"\"}","foreign-"+tool);var missing=Execute(foreign,tool,"{\"id\":\""+new string('0',32)+"\"}","missing-"+tool);
+                        Check(Error(hidden)=="job_not_found"&&new JavaScriptSerializer().Serialize(hidden)==new JavaScriptSerializer().Serialize(missing)&&f.Factory.Processes[0].Stops==0,"cross-owner "+tool+" hides job existence and cannot stop another owner: "+owner.ProjectId+"/"+owner.ConversationId);
+                    }
                 }
                 var stop=Execute(workspace,"stop_job","{\"id\":\""+id+"\"}","user-stop");Check((bool)stop["ok"]&&(string)((Dictionary<string,object>)stop["job"])["stop_reason"]=="user"&&f.Factory.Processes[0].Stops==1,"tool stop fixes its reason to user and cleans only the owned process");
             }
@@ -131,6 +136,95 @@ namespace Dafeiyu.Tests
                     Check(approval.Last.Action=="shell"&&shown.Count==4&&(string)shown["working_directory"]==f.Root.Path&&(int)shown["timeout_seconds"]==1800&&approval.Last.ProjectId==f.Owner.ProjectId,"manual approval contains the exact normalized command, directory, timeout and trusted project");
                     var conflict=Execute(workspace,"start_job","{\"command\":\"echo changed\"}","one-approved-call");
                     Check(Error(conflict)=="idempotency_conflict"&&approval.Calls==1&&f.Factory.Processes.Count==1,"a changed payload cannot reuse an approved tool call");
+                }
+            }
+        }
+        static void AutoStopDoesNotExecuteShellOrRequestShellConsent()
+        {
+            using(var f=new Fixture())
+            {
+                var approval=new Approval();var permissions=AgentPermissionRuntime.DefaultWorkspacePolicy();
+                using(var workspace=f.Workspace(true,null,approval,AgentApprovalMode.Auto,permissions))
+                {
+                    var start=Execute(workspace,"start_job","{\"command\":\"echo fixture\"}","auto-stop-start");
+                    string id=(string)((Dictionary<string,object>)start["job"])["id"];
+                    permissions.Add(new AgentPermissionRule{Action="shell",Resource="**",Effect=AgentPermissionEffect.Deny});
+                    var stop=Execute(workspace,"stop_job","{\"id\":\""+id+"\"}","auto-stop");
+                    Check((bool)stop["ok"]&&approval.Calls==1&&f.Factory.Processes[0].Stops==1,"owned Auto stop uses job_stop without shell permission or a second shell approval");
+                }
+            }
+        }
+        static void ExplicitJobStopDenialWins()
+        {
+            using(var f=new Fixture())
+            {
+                var permissions=AgentPermissionRuntime.DefaultWorkspacePolicy();
+                using(var workspace=f.Workspace(permissions:permissions))
+                {
+                    var start=Execute(workspace,"start_job","{\"command\":\"echo fixture\"}","denied-stop-start");
+                    string id=(string)((Dictionary<string,object>)start["job"])["id"];
+                    permissions.Add(new AgentPermissionRule{Action="job_stop",Resource="**",Effect=AgentPermissionEffect.Deny});
+                    var stop=Execute(workspace,"stop_job","{\"id\":\""+id+"\"}","denied-stop");
+                    Check(!(bool)stop["ok"]&&Error(stop)=="permission_denied"&&f.Factory.Processes[0].Stops==0,"explicit job_stop denial is respected even in Full mode");
+                }
+            }
+        }
+        static void PendingApprovalCannotChangeItsCapability(string tool,string change)
+        {
+            using(var f=new Fixture())
+            {
+                var approval=new Approval();var permissions=AgentPermissionRuntime.DefaultWorkspacePolicy();
+                using(var workspace=f.Workspace(true,null,approval,AgentApprovalMode.Auto,permissions))
+                {
+                    var start=Execute(workspace,"start_job","{\"command\":\"echo fixture\"}","pending-start");
+                    string id=(string)((Dictionary<string,object>)start["job"])["id"];
+                    permissions.Add(new AgentPermissionRule{Action=tool=="get_job"?"read":"job_stop",Resource="**",Effect=AgentPermissionEffect.Ask});
+                    approval.BeforeAllow=()=>{
+                        if(change=="plan")workspace.PlanMode=true;
+                        else if(change=="terminal")workspace.ConfigureTerminal(AgentTerminalPolicy.Disabled);
+                        else if(change=="provider"){var settings=new PetSettings();settings.Text.ToolSupport=CapabilitySupport.Unsupported;workspace.ConfigureCapabilities(AgentCapabilityResolver.Resolve(settings,null));}
+                        else workspace.ConfigureKernel(AgentPermissionRuntime.DefaultWorkspacePolicy(),null,approval,null,"persisted-task",new AgentSessionModel("replacement",change=="owner"?"foreign-project":f.Owner.ProjectId,f.Owner.ConversationId));
+                    };
+                    var response=Execute(workspace,tool,"{\"id\":\""+id+"\"}","pending-"+tool+"-"+change);
+                    Check(!(bool)response["ok"]&&(Error(response)=="permission_denied"||Error(response)=="policy_changed")&&approval.Calls==2&&f.Factory.Processes[0].Stops==0,"pending "+tool+" approval cannot survive a "+change+" capability change");
+                }
+            }
+        }
+        static void StopApprovalRechecksPlan(){PendingApprovalCannotChangeItsCapability("stop_job","plan");}
+        static void StopApprovalRechecksTerminal(){PendingApprovalCannotChangeItsCapability("stop_job","terminal");}
+        static void StopApprovalRechecksPermissions(){PendingApprovalCannotChangeItsCapability("stop_job","permissions");}
+        static void ReadApprovalRechecksPermissions(){PendingApprovalCannotChangeItsCapability("get_job","permissions");}
+        static void ReadApprovalRechecksOwner(){PendingApprovalCannotChangeItsCapability("get_job","owner");}
+        static void ReadApprovalRechecksProvider(){PendingApprovalCannotChangeItsCapability("get_job","provider");}
+        static void ToolCancellationRespectsTheOwnershipHandoff()
+        {
+            using(var f=new Fixture())using(var cancel=new CancellationTokenSource())using(var entered=new ManualResetEventSlim(false))
+            {
+                var pending=new TaskCompletionSource<bool>();var approval=new Approval{Pending=pending.Task,BeforeAllow=()=>entered.Set()};
+                using(var workspace=f.Workspace(true,null,approval,AgentApprovalMode.Auto))
+                {
+                    var start=workspace.ExecuteAsync("start_job","{\"command\":\"echo cancelled\"}","cancel-before-handoff",cancel.Token);
+                    try
+                    {
+                        if(!entered.Wait(5000))throw new Exception("Approval barrier was not reached");
+                        cancel.Cancel();bool cancelled=false;try{start.GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                        Check(cancelled&&f.Factory.Processes.Count==0,"cancelling a journaled tool during approval launches no process");
+                    }
+                    finally{pending.TrySetResult(true);}
+                }
+            }
+            using(var f=new Fixture())using(var cancel=new CancellationTokenSource())
+            {
+                string id;
+                using(var workspace=f.Workspace())
+                {
+                    var start=Json(workspace.ExecuteAsync("start_job","{\"command\":\"echo committed\"}","cancel-after-handoff",cancel.Token).GetAwaiter().GetResult());
+                    id=(string)((Dictionary<string,object>)start["job"])["id"];cancel.Cancel();
+                }
+                using(var next=f.Workspace())
+                {
+                    var page=Execute(next,"get_job","{\"id\":\""+id+"\"}","read-after-cancellation");
+                    Check((bool)page["ok"]&&f.Factory.Processes[0].Stops==0,"cancelling the completed tool request and disposing its workspace leaves the job owned across turns");
                 }
             }
         }
@@ -199,7 +293,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             if(Environment.OSVersion.Platform!=PlatformID.Win32NT)return 0;
-            checks=0;int failures=0;foreach(var test in new Action[]{UnboundAndMalformedCallsReturnProtocolErrors,CommittedJobSurvivesWorkspaceDisposeAndStableOwnerReplay,LargeLivePageAndForeignOwner,AutoShellApprovalIsExactAndOnce,OversizedEscapedStartAndStopStayValidInTheJournal,RetiredMetadataCannotBeResurrectedByStartReplay,DirectoryReplacementDuringApprovalCannotUseTheOldConsent,ReplacingPermissionsAtTheSameVersionInvalidatesApproval})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{UnboundAndMalformedCallsReturnProtocolErrors,CommittedJobSurvivesWorkspaceDisposeAndStableOwnerReplay,LargeLivePageAndForeignOwner,AutoShellApprovalIsExactAndOnce,AutoStopDoesNotExecuteShellOrRequestShellConsent,ExplicitJobStopDenialWins,StopApprovalRechecksPlan,StopApprovalRechecksTerminal,StopApprovalRechecksPermissions,ReadApprovalRechecksPermissions,ReadApprovalRechecksOwner,ReadApprovalRechecksProvider,ToolCancellationRespectsTheOwnershipHandoff,OversizedEscapedStartAndStopStayValidInTheJournal,RetiredMetadataCannotBeResurrectedByStartReplay,DirectoryReplacementDuringApprovalCannotUseTheOldConsent,ReplacingPermissionsAtTheSameVersionInvalidatesApproval})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobIntegrationTests: "+checks+" passed");return failures==0?0:1;
         }
     }

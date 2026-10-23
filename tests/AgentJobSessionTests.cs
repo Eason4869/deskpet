@@ -22,13 +22,13 @@ namespace Dafeiyu.Tests
         sealed class Model : IConversationApi,IAgentConversationApi
         {
             internal string Command,JobId;internal int Calls;internal long StartMilliseconds;
-            internal bool LoseFirstResponse;internal string LastResult;internal AgentWorkspace FirstWorkspace;
+            internal bool LoseFirstResponse,StopNext;internal string LastResult;internal AgentWorkspace FirstWorkspace;
             public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> delta,Action<string> reasoning,Action<AgentToolEvent> tool,bool stream,CancellationToken token)
             {
                 Calls++;string name,args,call;
                 if(Calls==1||LoseFirstResponse&&Calls==2)
                 {name="start_job";args=new JavaScriptSerializer().Serialize(new{command=Command,title="session-fixture"});call="persisted-start-call";if(FirstWorkspace==null)FirstWorkspace=workspace;}
-                else{name="get_job";args=new JavaScriptSerializer().Serialize(new{id=JobId});call="fresh-read-"+Calls;}
+                else{name=StopNext?"stop_job":"get_job";args=new JavaScriptSerializer().Serialize(new{id=JobId});call="fresh-"+name+"-"+Calls;}
                 var elapsed=Stopwatch.StartNew();LastResult=await workspace.ExecuteAsync(name,args,call,token).ConfigureAwait(false);if(Calls==1)StartMilliseconds=elapsed.ElapsedMilliseconds;
                 var response=Json(LastResult);if(!(bool)response["ok"])throw new Exception("scripted tool failed: "+LastResult);
                 if(name=="start_job")JobId=(string)((Dictionary<string,object>)response["job"])["id"];
@@ -115,6 +115,29 @@ namespace Dafeiyu.Tests
                 }
             }
         }
+        static void BuildConversationStopsItsOwnedRealJob()
+        {
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())
+            {
+                var clock=new Clock();using(var store=new AgentJobStore(Path.Combine(root.Path,"jobs"),clock))
+                {
+                    var manager=new AgentJobManager(store,new WindowsAgentJobProcessFactory(clock),clock);manager.RecoverAsync(CancellationToken.None).GetAwaiter().GetResult();
+                    var model=new Model{Command="Start-Sleep -Seconds 30"};var settings=Settings(root.Path);
+                    var project=new ProjectDefinition{Id="stop-project",Workspace=root.Path,ApprovalMode=AgentApprovalMode.Full,SandboxEnabled=false,TerminalPolicy=AgentTerminalPolicy.ConfirmEach};
+                    try
+                    {
+                        using(var workspace=ConversationWorkspace.Create(project,new ConversationDefinition{Id="stop-conversation",Mode="work"},root.Path,"pet",()=>model,()=>new Speech(),()=>null,()=>settings,()=>true))
+                        {
+                            Configure(workspace,manager);workspace.Session.SendTextAsync("start the fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
+                            model.StopNext=true;workspace.Session.SendTextAsync("stop the owned fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
+                            var response=Json(model.LastResult);var job=(Dictionary<string,object>)response["job"];
+                            Check(model.Calls==2&&(bool)response["ok"]&&(string)job["id"]==model.JobId&&(string)job["state"]=="stopped"&&(bool)job["cleanup_confirmed"],"second real Build conversation turn stops only its owned native job using job_stop permission");
+                        }
+                    }
+                    finally{manager.StopAllForExitAsync(CancellationToken.None).GetAwaiter().GetResult();}
+                }
+            }
+        }
         static void OnlyPersistentProjectWorkConversationsCanReceiveJobs()
         {
             using(var root=new AgentJobTestSupport.TemporaryDirectory())
@@ -140,7 +163,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             if(Environment.OSVersion.Platform!=PlatformID.Win32NT)return 2;
-            checks=0;int failed=0;foreach(var test in new Action[]{RealConversationCrossesTurnsWithoutOwningTheProcess,LostResponseResumeDoesNotRerunTheRealCommand,OnlyPersistentProjectWorkConversationsCanReceiveJobs})try{test();}catch(Exception error){failed++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failed=0;foreach(var test in new Action[]{RealConversationCrossesTurnsWithoutOwningTheProcess,LostResponseResumeDoesNotRerunTheRealCommand,BuildConversationStopsItsOwnedRealJob,OnlyPersistentProjectWorkConversationsCanReceiveJobs})try{test();}catch(Exception error){failed++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobSessionTests: "+checks+" passed");return failed==0?0:1;
         }
     }

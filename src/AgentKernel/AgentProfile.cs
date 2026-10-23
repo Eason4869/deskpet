@@ -28,6 +28,7 @@ namespace Dafeiyu
             {
                 runtime.Add(new AgentPermissionRule{Action="write",Resource="**",Effect=AgentPermissionEffect.Allow});
                 runtime.Add(new AgentPermissionRule{Action="shell",Resource="**",Effect=AgentPermissionEffect.Allow});
+                if(profile.Mode=="primary")runtime.Add(new AgentPermissionRule{Action="job_stop",Resource="**",Effect=AgentPermissionEffect.Allow});
                 runtime.Add(new AgentPermissionRule{Action="github_write",Resource="**",Effect=AgentPermissionEffect.Ask});runtime.Add(new AgentPermissionRule{Action="subagent",Resource="**",Effect=AgentPermissionEffect.Allow});
             }
             return runtime;
