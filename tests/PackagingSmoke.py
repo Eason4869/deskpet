@@ -1,6 +1,7 @@
 """Build release archives from a fresh source tree with no local work directory."""
 from pathlib import Path
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -125,8 +126,14 @@ with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
     guide = bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
-    lesson_titles = re.findall(r'add\(\d+,\s*"[^"]+",\s*"([^"]+)"', (checkout/'src/OnboardingLessons.cs').read_text(encoding='utf-8-sig'))
-    assert lesson_titles, 'application lesson titles must be extracted from the current source'
+    # Read the actual compiled titles, including embedded resource resolution.
+    # Source-literal regexes cannot follow TextResources.Get and miss dynamic values.
+    probe=root/'GuideTitles.exe'
+    compiler=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+    subprocess.run([str(compiler),'/nologo','/codepage:65001','/target:exe','/out:'+str(probe),str(checkout/'tools/localization/VerifyArtifacts.cs')],capture_output=True,check=True,timeout=30)
+    result=subprocess.run([str(probe),'--onboarding-titles',str(runtime/'桌面伙伴.exe')],capture_output=True,check=True,timeout=30)
+    lesson_titles=base64.b64decode(result.stdout).decode('utf8').split('\n')
+    assert lesson_titles and all(lesson_titles), 'application lesson titles must be extracted from the actual compiled application'
     assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'
     guide_titles = re.findall(r'^### \d+\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
     assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'

@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Text;
 
 internal static class VerifyArtifacts
 {
@@ -11,6 +13,15 @@ internal static class VerifyArtifacts
     {
         try
         {
+            if(args.Length==2&&args[0]=="--onboarding-titles")
+            {
+                var source=Assembly.LoadFrom(Path.GetFullPath(args[1]));
+                var lessons=source.GetType("Dafeiyu.OnboardingLessons",true).GetField("All",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
+                var titles=new List<string>();
+                foreach(object lesson in (Array)lessons.GetValue(null))titles.Add((string)lesson.GetType().GetField("Title").GetValue(lesson));
+                Console.Write(Convert.ToBase64String(Encoding.UTF8.GetBytes(String.Join("\n",titles.ToArray()))));
+                return 0;
+            }
             if(args.Length<2)throw new ArgumentException("Expected catalog SHA256 and assembly paths.");
             foreach(string path in args.Length==2?new[]{args[1]}:Slice(args))
             {

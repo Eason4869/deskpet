@@ -4,7 +4,7 @@
 
 资源为 4,344 个扁平字符串；清单有 4,999 条记录，其中 4,646 条 migrate、353 条 exclude（包括有解释的已移除文字比较点），包含七个从旧菜单身份派生的显示词条。直接从原始 dev 提交扫描得到 4,937 个中文候选，未分类为 0。清单和资源词条不是一对一关系，因此不以其比值冒充迁移完成率。
 
-本机为 Windows x64，Framework 4.8 编译器及隔离 .NET SDK 10.0.402 / Runtime 10.0.13。证据位于忽略目录 `work/localization-validation/`，共享默认报告 `portable-report.json`：success=true、8,203 passed、0 failures。Avalonia 默认：3,006 UI/resource/animation assertions。资源专用 Framework：4,367 项；缺资源真实宿主：2 项；UI 解耦：7 项；角色启动恢复：11 项；主题：32 项；Python 审计：12 项。所有测试使用隔离数据；未调用付费模型。
+本机为 Windows x64，Framework 4.8 编译器及隔离 .NET SDK 10.0.402 / Runtime 10.0.13。证据位于忽略目录 `work/localization-validation/`，共享默认报告 `portable-report.json`：success=true、8,200 passed、0 failures。Avalonia 默认：3,006 UI/resource/animation assertions。资源专用 Framework：4,367 项；缺资源真实宿主：2 项；UI 解耦：7 项；角色启动恢复：11 项；主题：32 项；Python 审计：12 项。所有测试使用隔离数据；未调用付费模型。
 
 | 验收 | 状态和证据 |
 | --- | --- |
@@ -30,3 +30,7 @@
 草稿 [PR #28](https://github.com/Eason4869/deskpet/pull/28) 用于开发验收，当前不合并或发布。跨平台 CI、安装器成品和最终提交的证据会在本记录收口后更新。真实麦克风、付费模型及外部语音服务不属于本次离线文案重构的验收请求。
 
 打包检查发现并纠正三条历史清理路径的误迁移：`src/RetiredRuntimeFiles.cs` 已逐字恢复为 0.10.4，三条清单改为历史路径身份排除，并移除三个错误的 UI 资源/基线项。既有 RuntimePackageTests 的精确生成断言先失败后通过（3 tests）；ReleaseAssetTests、WindowsReleaseTests 和 MacPackagingTests 通过。源修正后的完整核心和 Avalonia 正在重跑，最终数值以随后验收记录为准。WebView2 原生 BrowserPaneTests 29 项通过。
+
+最新本地收口：共享 8,200、Avalonia 3,006、Framework 4,367、精简 WPF 角色集成 89、WebView2 原生 29、更新应用 25 项通过。便携候选包全部清单 SHA256、完整源码逐文件、ZIP CRC、无外置语言 JSON、主程序/更新器独立读取通过。真实发布的 0.10.3 更新器与当前更新器均应用新包，备份/设置/历史/个人外观保留。
+
+Windows CI 在应用/WPF 全量与独立资源检查通过后，发现旧 PackagingSmoke 使用 C# 标题字面量正则，无法读取资源引用。已将检查升级为从实际编译程序集读取全部引导标题，继续逐项按顺序对照打包文档；动态计算标题负例 RED→GREEN，RuntimePackageTests 4/4，完整 fresh-source PackagingSmoke（含真实 0.10.3 更新器）通过。此修复只涉及测试和开发验收工具，应用代码与已通过双架构 macOS 的 2bf5dc3 完全相同。最终远端 Windows CI 待该修复提交重新运行。
