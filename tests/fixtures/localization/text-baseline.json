@@ -26599,6 +26599,12 @@
       "expected": "Español (España)",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "agentJobs.exitBlocked",
+      "expected": "后台任务尚未确认停止，窗口已保留。请稍后再次退出。",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

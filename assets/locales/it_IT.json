@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "L’arresto delle attività in background non è ancora confermato. La finestra resta aperta. Riprova a uscire tra poco."
 }

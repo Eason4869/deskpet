@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "Ainda não foi confirmado que as tarefas em segundo plano pararam. A janela permanece aberta. Tente sair novamente daqui a pouco."
 }

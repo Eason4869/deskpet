@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "背景工作尚未確認停止，視窗已保留。請稍後再次結束應用程式。"
 }

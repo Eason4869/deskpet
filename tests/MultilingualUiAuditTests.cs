@@ -58,6 +58,7 @@ namespace Dafeiyu.Tests
         }
         static void Capture(FrameworkElement root,string name,bool templateRendered=false)
         {
+            File.AppendAllText(Path.Combine(output,"trace.log"),DateTime.UtcNow.ToString("O")+" capture begin "+name+Environment.NewLine);
             root.UpdateLayout();
             Check((templateRendered?root.Visibility==Visibility.Visible:root.IsVisible)&&root.IsArrangeValid&&root.IsMeasureValid&&root.ActualWidth>40&&root.ActualHeight>30,"arranged capture "+name+"; visibility="+root.Visibility+" arrange="+root.IsArrangeValid+" measure="+root.IsMeasureValid+" actual="+root.ActualWidth+"x"+root.ActualHeight);
             int width=(int)Math.Ceiling(root.ActualWidth),height=(int)Math.Ceiling(root.ActualHeight);
@@ -71,6 +72,7 @@ namespace Dafeiyu.Tests
                 Check(painted>width*height/4&&varied>100,"template surface has painted and varied pixels "+name);
             }
             var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(Path.Combine(output,name+".png")))encoder.Save(file);
+            File.AppendAllText(Path.Combine(output,"trace.log"),DateTime.UtcNow.ToString("O")+" bitmap saved "+name+Environment.NewLine);
             var lines=new List<string>{"type\tname\tbounds\thasHan\ttext"};
             var window=root as Window;if(window!=null)lines.Add("WindowTitle\t\t\t"+Regex.IsMatch(window.Title??"",@"[\u3400-\u9fff]")+"\t"+Plain(window.Title));
             foreach(var element in All<FrameworkElement>(root))
@@ -207,6 +209,7 @@ namespace Dafeiyu.Tests
             var chatSession=(ConversationSession)typeof(ChatWindow).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat);
             foreach(string theme in new[]{"light","dark"})
             {
+                File.AppendAllText(Path.Combine(output,"trace.log"),DateTime.UtcNow.ToString("O")+" theme begin "+theme+Environment.NewLine);
                 chatSession.Clear();if(!ReferenceEquals(chatSession,pet.Conversation))pet.Conversation.Clear();
                 ThemeManager.Apply(theme);chat.Width=1000;await Settle();
                 foreach(int width in new[]{1000,520}){chat.Width=width;await Settle();Inside(chat,"ShellAvatar");Inside(chat,"MessageInput");Capture(chat,"chat-empty-"+theme+"-"+width);}

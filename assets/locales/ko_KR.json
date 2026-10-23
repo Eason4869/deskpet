@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "백그라운드 작업이 중지되었는지 아직 확인되지 않아 창을 열어 두었습니다. 잠시 후 다시 종료해 주세요."
 }

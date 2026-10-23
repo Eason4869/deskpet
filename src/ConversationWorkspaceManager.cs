@@ -16,6 +16,12 @@ namespace Dafeiyu
         }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}
         public event Action StateChanged;
+        AgentJobApplicationService jobServices;
+        public AgentJobApplicationService JobServices
+        {
+            get{lock(gate)return jobServices;}
+            set{lock(gate){if(workspaces.Count>0&&!Object.ReferenceEquals(value,jobServices))throw new InvalidOperationException("workspaces_open");jobServices=value;}}
+        }
         public IAgentApprovalProvider ApprovalProvider {get;set;}
         public IAgentQuestionProvider QuestionProvider {get;set;}
         public GeneratedImageStore ImageStore {get;set;}
@@ -44,6 +50,7 @@ namespace Dafeiyu
                 workspace.Session.ImageTasks=ImageTasks;
                 workspace.Session.ImageUsage=ImageUsage;
                 workspace.Session.McpConnections=McpConnections;
+                workspace.ConfigureJobServices(jobServices);
                 workspace.Session.StateChanged+=NotifyState;
                 workspace.Queue.Changed+=NotifyState;
                 workspaces.Add(workspace);

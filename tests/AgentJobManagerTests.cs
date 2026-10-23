@@ -107,6 +107,32 @@ namespace Dafeiyu.Tests
                 f.IO.FailCommit=false;
             }
         }
+        static void ExitReportsCleanupWhenMetadataCannotBeSaved()
+        {
+            using(var f=new Fixture())
+            {
+                f.Start("exit-metadata-failure").GetAwaiter().GetResult();
+                f.IO.FailCommit=true;
+                try
+                {
+                    var report=f.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult();
+                    Check(report.CleanupConfirmed&&f.Factory.Processes[0].Stops==1,"exit reports confirmed process cleanup even when final metadata persistence fails");
+                    Check(report.Jobs.Count==1&&report.Jobs[0].LogWarning=="metadata_storage_failed","exit preserves the metadata failure warning in its final snapshot");
+                }
+                finally{f.IO.FailCommit=false;}
+            }
+            using(var f=new Fixture())
+            {
+                f.Start("exit-held-metadata-failure").GetAwaiter().GetResult();
+                f.Factory.Processes[0].ConfirmCleanup=false;f.IO.FailCommit=true;
+                try
+                {
+                    var report=f.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult();
+                    Check(!report.CleanupConfirmed&&report.Jobs[0].State==AgentJobState.CleanupFailed,"metadata failure cannot hide unconfirmed process cleanup at exit");
+                }
+                finally{f.IO.FailCommit=false;f.Factory.Processes[0].ConfirmCleanup=true;}
+            }
+        }
         static void RootExitAndCancellationAfterHandoff()
         {
             using(var f=new Fixture())using(var request=new CancellationTokenSource())
@@ -363,7 +389,7 @@ namespace Dafeiyu.Tests
         }
         public static int Main()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,WallClockAdjustmentsDoNotChangeTheTimeoutBudget,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog,StopDuringPreparationCancelsThePendingStart,StopIsNotHeldBehindAnUnrelatedStatusWrite,CancellationAtTheRemainingLaunchBarriers})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,ExitReportsCleanupWhenMetadataCannotBeSaved,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,WallClockAdjustmentsDoNotChangeTheTimeoutBudget,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog,StopDuringPreparationCancelsThePendingStart,StopIsNotHeldBehindAnUnrelatedStatusWrite,CancellationAtTheRemainingLaunchBarriers})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobManagerTests: "+checks+" passed");return failures==0?0:1;
         }
     }

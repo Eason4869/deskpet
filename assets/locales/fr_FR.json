@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "L’arrêt des tâches en arrière-plan n’est pas encore confirmé. La fenêtre reste ouverte. Réessayez de quitter dans un instant."
 }

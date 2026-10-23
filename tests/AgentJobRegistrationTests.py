@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGIC = ('AgentJobContractTests', 'AgentJobStoreTests', 'AgentJobLogTests',
-         'AgentJobManagerTests', 'AgentJobToolTests')
+         'AgentJobManagerTests', 'AgentJobLifecycleTests', 'AgentJobToolTests')
 WINDOWS = ('AgentJobIntegrationTests', 'AgentJobSessionTests',
            'AgentJobProcessTests', 'AgentJobSandboxTests')
 
@@ -30,6 +30,17 @@ def method_body(text, name):
 
 
 class RegistrationTests(unittest.TestCase):
+    def test_wpf_lifecycle_route_keeps_independent_host_fixtures(self):
+        build=source('Build.ps1')
+        self.assertIn("'AgentJobLifecycleUiTests'",build)
+        self.assertIn('tests/AgentJobExitHost.cs',build)
+        self.assertIn("'AgentJobLifecycleUiTests'",source('.github/workflows/check.yml'))
+        fixture=source('tests/AgentJobLifecycleUiTests.cs')
+        self.assertLess(fixture.index('AgentJobExitHost.Run(args[1],args[2])'),fixture.index('app=new Application'))
+        for mode in ('normal','tray','update','kill','held'):
+            self.assertIn('"'+mode+'"',fixture)
+        self.assertNotIn('AgentJobLifecycleUiTests.cs',source('desktop/DeskPet.Tests/DeskPet.Tests.csproj'))
+
     def assertRegex(self, text, pattern, msg=None):
         # Keep a registration failure readable instead of dumping whole workflows.
         self.assertIsNotNone(re.search(pattern, text), msg or pattern)
@@ -85,7 +96,7 @@ class RegistrationTests(unittest.TestCase):
     def test_existing_focused_aliases_remain_available(self):
         for flag in ('--agent-job-tools-only', '--agent-job-session-only',
                      '--agent-job-contract-only', '--agent-job-store-only',
-                     '--agent-job-manager-only', '--agent-job-log-only',
+                     '--agent-job-manager-only', '--agent-job-lifecycle-only', '--agent-job-log-only',
                      '--agent-jobs-resources-only'):
             self.assertRegex(self.runner, r'args\[0\]=="' + flag + '"')
 

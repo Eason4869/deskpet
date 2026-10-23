@@ -16,6 +16,18 @@ namespace Dafeiyu
         internal bool UiObserved;
         internal bool IsDisposed {get{return disposed;}}
         internal bool IsDraft;internal ConversationDefinition Definition;
+        AgentJobApplicationService jobServices;
+        internal void ConfigureJobServices(AgentJobApplicationService services)
+        {
+            jobServices=services;
+            Session.ConfigureJobServices(GetJobManagerAsync,()=>new AgentJobOwner(ProjectId,Id,"primary"));
+        }
+        internal Task<AgentJobManager> GetJobManagerAsync(System.Threading.CancellationToken token)
+        {
+            if(jobServices==null||IsDraft||disposed||Definition.Mode!="work"||ProjectId==ProjectCatalogStore.UnassignedProjectId||ProjectId==ProjectCatalogStore.QuickProjectId)
+                return Task.FromResult<AgentJobManager>(null);
+            return jobServices.GetManagerAsync(token);
+        }
         internal void ConfigureJobs(AgentJobManager manager)
         {
             if(IsDraft||disposed||Definition.Mode!="work"||ProjectId==ProjectCatalogStore.UnassignedProjectId||ProjectId==ProjectCatalogStore.QuickProjectId)throw new InvalidOperationException("job_workspace_required");

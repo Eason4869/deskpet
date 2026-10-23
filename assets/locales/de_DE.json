@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "Es ist noch nicht bestätigt, dass die Hintergrundaufgaben beendet sind. Das Fenster bleibt geöffnet. Versuche in Kürze erneut, die App zu beenden."
 }

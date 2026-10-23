@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "बैकग्राउंड कार्यों के रुकने की अभी पुष्टि नहीं हुई है, इसलिए विंडो खुली रखी गई है। थोड़ी देर बाद फिर से ऐप बंद करने की कोशिश करें।"
 }

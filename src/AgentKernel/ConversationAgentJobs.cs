@@ -131,16 +131,30 @@ namespace Dafeiyu
     {
         AgentJobManager conversationJobs;
         AgentJobOwner conversationJobsOwner;
+        Func<CancellationToken,Task<AgentJobManager>> conversationJobManagerProvider;
+        Func<AgentJobOwner> conversationJobOwnerProvider;
+        internal void ConfigureJobServices(Func<CancellationToken,Task<AgentJobManager>> provider,Func<AgentJobOwner> owner)
+        {
+            if(provider==null||owner==null)throw new ArgumentNullException("provider");
+            lock(gate){if(active!=null)throw new InvalidOperationException("conversation_busy");conversationJobManagerProvider=provider;conversationJobOwnerProvider=owner;}
+        }
         internal void ConfigureJobs(AgentJobManager manager,AgentJobOwner owner)
         {
             if(manager==null||owner==null||owner.AgentId!="primary"||owner.ProjectId==ProjectCatalogStore.UnassignedProjectId||owner.ProjectId==ProjectCatalogStore.QuickProjectId||kernelSession==null||owner.ProjectId!=kernelSession.ProjectId||owner.ConversationId!=kernelSession.ConversationId)throw new ArgumentException("persistent_owner");
-            lock(gate){if(active!=null)throw new InvalidOperationException("conversation_busy");conversationJobs=manager;conversationJobsOwner=owner;}
+            lock(gate){if(active!=null)throw new InvalidOperationException("conversation_busy");conversationJobs=manager;conversationJobsOwner=owner;conversationJobManagerProvider=null;conversationJobOwnerProvider=null;}
         }
-        void ConfigureJobTools(Operation op)
+        async Task ConfigureJobToolsAsync(Operation op,CancellationToken token)
         {
-            if(conversationJobs==null||op.Workspace==null||!op.Snapshot.AgentEnabled)return;
-            if(kernelSession==null||conversationJobsOwner.ProjectId!=kernelSession.ProjectId||conversationJobsOwner.ConversationId!=kernelSession.ConversationId)throw new InvalidOperationException("job_owner_changed");
-            op.Workspace.ConfigureJobs(conversationJobs,conversationJobsOwner,op.Snapshot.AgentBackgroundJobTimeoutSeconds);
+            if(op.Workspace==null||!op.Snapshot.AgentEnabled)return;
+            var manager=conversationJobs;var owner=conversationJobsOwner;
+            if(conversationJobManagerProvider!=null)
+            {
+                manager=await conversationJobManagerProvider(token).ConfigureAwait(false);
+                owner=manager==null?null:conversationJobOwnerProvider();
+            }
+            if(manager==null||owner==null)return;
+            if(kernelSession==null||owner.ProjectId!=kernelSession.ProjectId||owner.ConversationId!=kernelSession.ConversationId)throw new InvalidOperationException("job_owner_changed");
+            op.Workspace.ConfigureJobs(manager,owner,op.Snapshot.AgentBackgroundJobTimeoutSeconds);
         }
     }
 }

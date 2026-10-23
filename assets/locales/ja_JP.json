@@ -4427,5 +4427,6 @@
   "languages.itIT": "Italiano (Italia)",
   "languages.ptBR": "Português (Brasil)",
   "languages.es419": "Español (Latinoamérica)",
-  "languages.esES": "Español (España)"
+  "languages.esES": "Español (España)",
+  "agentJobs.exitBlocked": "バックグラウンドタスクの停止をまだ確認できないため、ウィンドウを開いたままにしています。しばらくしてからもう一度終了してください。"
 }

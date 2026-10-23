@@ -13,8 +13,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "075e2e2129e5cc5ce01d8b8ddf595d6d8edc118e6fbe6ffb7d19ed4cbb1a48ec",
+    "keys": 4430,
+    "sha256": "2ec19462d41da7877d57d7bff29791314bae0bddfa15e4dcd7a3b299d5d73039",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -25,7 +25,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -42,8 +43,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "0656d77a2d4a2e39f92c32877016de843282e1d8dbb1904c84066a220096b246",
+    "keys": 4430,
+    "sha256": "ccd61db5ce8153e699ada564c6342152cb88f1038f48713faad8a23a608d804e",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -54,7 +55,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -71,8 +73,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "ead35061f7117b240362f53c00965caad4b8af6b4dd61e4ef24f9fc5d4112647",
+    "keys": 4430,
+    "sha256": "1de4bd33f4e25f95482b4230e98bb00b4ae97b4690be3d9ed55b47d233e9c8bd",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -83,7 +85,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -100,8 +103,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "b5b1a206ae61df0a0f830be65d242e1c1f622fb9848378d43053a00a8bcefca3",
+    "keys": 4430,
+    "sha256": "da18736ff736d7b160d2ab912bbcd8a03e37fe9963baa32560e01f7ef84c319b",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -112,7 +115,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -129,8 +133,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "2a355bc5f4e6c6d03fb4890f5ef5266675956a4fb68b8e95533ebcf98c31e015",
+    "keys": 4430,
+    "sha256": "9af390c12340767fab2bae2c794bd8788b5780190df43b8e23cee3fd98a9981a",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -141,7 +145,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -158,8 +163,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "108d5786ecab2135634691937f4dbc1e8a96cd9c7dc9e763786ca72f50831724",
+    "keys": 4430,
+    "sha256": "5d16b297da15ebcee18f1156b8a3e55b1105b66eb965cff3e6c65d7c8ab05a5d",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -170,7 +175,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -187,8 +193,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "7ae76492469118631c3a95f4e2d43602f84fb44b4687c57c7b953a9abf41c957",
+    "keys": 4430,
+    "sha256": "437847f4cab2e2fdb71262fff860a147bf0a250682abf5b75c0c382505762956",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -199,7 +205,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   },
   {
@@ -216,8 +223,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4429,
-    "sha256": "24910f6bc587b9cda66200abf48b11527c8bd536c7413882b8855a02c8b83cd0",
+    "keys": 4430,
+    "sha256": "0733a59dd172ec4ecc98e7bd80bd53feaa6523389801506208559f676bffca28",
     "supplements": [
       "languages.deDE",
       "languages.es419",
@@ -228,7 +235,8 @@
       "languages.itIT",
       "languages.ptBR",
       "languages.system",
-      "speechOutput.speakSystem.languageUnavailable"
+      "speechOutput.speakSystem.languageUnavailable",
+      "agentJobs.exitBlocked"
     ]
   }
 ]

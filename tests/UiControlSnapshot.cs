@@ -11,6 +11,12 @@ namespace Dafeiyu.Tests
     {
         internal static RenderTargetBitmap Capture(FrameworkElement view,bool templateRendered=false)
         {
+            var snapshot=CreateSnapshot(view,templateRendered);
+            var visual=new DrawingVisual();using(var draw=visual.RenderOpen())draw.DrawDrawing(snapshot);
+            var bitmap=new RenderTargetBitmap((int)Math.Ceiling(view.ActualWidth),(int)Math.Ceiling(view.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(visual);bitmap.Freeze();return bitmap;
+        }
+        internal static DrawingGroup CreateSnapshot(FrameworkElement view,bool templateRendered)
+        {
             view.UpdateLayout();
             if(templateRendered)
             {
@@ -18,8 +24,10 @@ namespace Dafeiyu.Tests
                 var primer=new DrawingVisual();using(var draw=primer.RenderOpen())draw.DrawRectangle(new VisualBrush(view),null,new Rect(0,0,1,1));
                 new RenderTargetBitmap(1,1,96,96,PixelFormats.Pbgra32).Render(primer);
             }
-            var visual=new DrawingVisual();using(var draw=visual.RenderOpen())Draw(draw,view,true,templateRendered);
-            var bitmap=new RenderTargetBitmap((int)Math.Ceiling(view.ActualWidth),(int)Math.Ceiling(view.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(visual);return bitmap;
+            // A screenshot has no future theme changes. Detach the entire cloned
+            // resource graph before submitting it to the native render channel.
+            var snapshot=new DrawingGroup();using(var draw=snapshot.Open())Draw(draw,view,true,templateRendered);
+            snapshot.Freeze();return snapshot;
         }
         static void Draw(DrawingContext draw,Visual view,bool root,bool templateRendered)
         {
@@ -29,9 +37,9 @@ namespace Dafeiyu.Tests
             if(!root)
             {
                 var offset=VisualTreeHelper.GetOffset(view);draw.PushTransform(new TranslateTransform(offset.X,offset.Y));pushed++;
-                var transform=VisualTreeHelper.GetTransform(view);if(transform!=null){draw.PushTransform(transform);pushed++;}
+                var transform=VisualTreeHelper.GetTransform(view);if(transform!=null){draw.PushTransform(transform.CloneCurrentValue());pushed++;}
             }
-            var clip=VisualTreeHelper.GetClip(view);if(clip!=null){draw.PushClip(clip);pushed++;}
+            var clip=VisualTreeHelper.GetClip(view);if(clip!=null){draw.PushClip(clip.CloneCurrentValue());pushed++;}
             draw.PushOpacity(VisualTreeHelper.GetOpacity(view));pushed++;
             var mask=VisualTreeHelper.GetOpacityMask(view);if(mask!=null){draw.PushOpacityMask(mask.CloneCurrentValue());pushed++;}
             var drawing=VisualTreeHelper.GetDrawing(view);if(drawing!=null)draw.DrawDrawing(drawing.CloneCurrentValue());

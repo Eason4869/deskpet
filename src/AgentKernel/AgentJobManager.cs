@@ -347,6 +347,7 @@ namespace Dafeiyu
                     await AgentAuthorizationService.AwaitCancellation(Task.WhenAll(stops),deadline.Token).ConfigureAwait(false);
                 }
                 catch(OperationCanceledException){}
+                catch(Exception error){Debug.WriteLine(error);}
                 AgentJobSnapshot[] snapshots;lock(gate)snapshots=jobs.Values.Select(Snapshot).ToArray();
                 return new AgentJobExitReport(snapshots.All(job=>AgentJobStore.IsTerminal(job.State)),snapshots,elapsed.ElapsedMilliseconds);
             }

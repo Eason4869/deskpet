@@ -2,7 +2,7 @@
   {
     "locale": "zh_TW",
     "original_sha256": "60ecdcb51903e56efd03c2f806e7473760285a273d2b3451713c11bf9612d09a",
-    "supplemented_sha256": "39819d361d6317a0c1e39f8aab92768a9ed157c5ce6d96bda40a27fe822b548d",
+    "supplemented_sha256": "4aca67e3c58e5c08dd86073210bb6f17b64dae09f31d5fd33961d83fe509bf3b",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -89,7 +89,8 @@
       "voicePresets.gemini.umbriel.description",
       "voicePresets.gemini.vindemiatrix.description",
       "voicePresets.gemini.zephyr.description",
-      "voicePresets.gemini.zubenelgenubi.description"
+      "voicePresets.gemini.zubenelgenubi.description",
+      "agentJobs.exitBlocked"
     ],
     "authorization": "2026-10-24: translate language menu and companion subtitle; audit all interfaces and complete the four language packs.",
     "modified_original_keys": [
@@ -101,7 +102,7 @@
   {
     "locale": "en_US",
     "original_sha256": "ceb9e8e78bc144667623dfc76ec155a60c97b9770c50ce0d962fbcae940965a8",
-    "supplemented_sha256": "bf959061f4082bcd38af457e93b0cf94968ca99150efccbc7c58406d74f69cc8",
+    "supplemented_sha256": "39cb71366f931a5383323f010d0157f64b2c7d93d683dcb74dcd4ef2b44a05a4",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -188,7 +189,8 @@
       "voicePresets.gemini.umbriel.description",
       "voicePresets.gemini.vindemiatrix.description",
       "voicePresets.gemini.zephyr.description",
-      "voicePresets.gemini.zubenelgenubi.description"
+      "voicePresets.gemini.zubenelgenubi.description",
+      "agentJobs.exitBlocked"
     ],
     "authorization": "2026-10-24: translate language menu and companion subtitle; audit all interfaces and complete the four language packs.",
     "modified_original_keys": [
@@ -212,7 +214,7 @@
   {
     "locale": "ja_JP",
     "original_sha256": "f6effd66260bee0688fbb663801bb1175d0414df59c79531069ea34e2f1231dc",
-    "supplemented_sha256": "fc3f67e8d8f3706eb76bd5f7544453517b8626abaf9244c6accb85a4af2c1135",
+    "supplemented_sha256": "86713202498b6926fda451234c32fdb174e67627e661ee09004c81dfeda5cf6a",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -299,7 +301,8 @@
       "voicePresets.gemini.umbriel.description",
       "voicePresets.gemini.vindemiatrix.description",
       "voicePresets.gemini.zephyr.description",
-      "voicePresets.gemini.zubenelgenubi.description"
+      "voicePresets.gemini.zubenelgenubi.description",
+      "agentJobs.exitBlocked"
     ],
     "authorization": "2026-10-24: translate language menu and companion subtitle; audit all interfaces and complete the four language packs.",
     "modified_original_keys": [
@@ -319,7 +322,7 @@
   {
     "locale": "ko_KR",
     "original_sha256": "6bc8f1a57b6c62d9387fab195dc752cba8d0773c25e7ce15a21da6495ebadf18",
-    "supplemented_sha256": "661b851bac8ecaa970532289c2ba440ab5f2e953c5a053d8708e6213fe80cfce",
+    "supplemented_sha256": "08b7cd3e160c8ddb36bfd5b991e16ce391eaaa73f0a15e472b35af1dd191be34",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -406,7 +409,8 @@
       "voicePresets.gemini.umbriel.description",
       "voicePresets.gemini.vindemiatrix.description",
       "voicePresets.gemini.zephyr.description",
-      "voicePresets.gemini.zubenelgenubi.description"
+      "voicePresets.gemini.zubenelgenubi.description",
+      "agentJobs.exitBlocked"
     ],
     "authorization": "2026-10-24: translate language menu and companion subtitle; audit all interfaces and complete the four language packs.",
     "modified_original_keys": [
