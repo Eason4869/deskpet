@@ -42,7 +42,7 @@ namespace Dafeiyu.Tests
         {readonly System.Diagnostics.Stopwatch elapsed=System.Diagnostics.Stopwatch.StartNew();public DateTime UtcNow{get{return DateTime.UtcNow;}}public long ElapsedMilliseconds{get{return elapsed.ElapsedMilliseconds;}}}
         static async Task IndependentExitHosts()
         {
-            foreach(string mode in new[]{"normal","tray","update","kill","held"})
+            foreach(string mode in new[]{"normal","tray","update","kill","held","direct"})
             using(var root=new AgentJobTestSupport.TemporaryDirectory())
             using(var host=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Assembly.GetExecutingAssembly().Location,"--exit-fixture "+mode+" \""+root.Path+"\""){UseShellExecute=false,CreateNoWindow=true}))
             {

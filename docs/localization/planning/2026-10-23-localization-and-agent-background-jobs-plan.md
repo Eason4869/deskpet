@@ -287,11 +287,13 @@ S12 本地验收（2026-10-24 复核）：Framework/.NET 10 管理器 48、工�
 
 **文件：** PetAgentJobServices、AgentJobCatalogGuard、PetWindow/PetImageServices、项目/会话操作、LifecycleTests/ProjectTests、JSON。**接口：** `RunOwnerMutationAsync(projectId, conversationId, mutation, token)`。**对应：** 原后台任务 6；A21–A24/F01/F02。
 
-- [ ] 唯一应用管理器异步恢复，租约失败仅限制任务与关联绑定写入，普通聊天继续；退出屏障拒绝新启动和待审批。
-- [ ] 删除前同一门禁作用域内阻止启动并确认清理，失败不改目录/模型；移动/改根有活动任务则拒绝，覆盖未打开会话和并发启动。
-- [ ] 隐藏窗口、归档与关面板不取消任务；UI 不同步等待清理。
-- [ ] 独立宿主分别验证 normal/tray/update/kill/cleanup-timeout，≤10 秒正常退出；清理未确认保留窗口和重试，强杀后树回收、恢复 Interrupted 不重跑。
-- [ ] 回归图像任务退出、更新、项目/会话归档删除，不绕过已有清理服务。
+- [x] 唯一应用管理器异步恢复，租约失败仅限制任务与关联绑定写入，普通聊天继续；退出屏障拒绝新启动和待审批。
+- [x] 删除前同一门禁作用域内阻止启动并确认清理，失败不改目录/模型；移动/改根有活动任务则拒绝，覆盖未打开会话和并发启动。
+- [x] 隐藏窗口、归档与关面板不取消任务；UI 不同步等待清理。
+- [x] 独立宿主分别验证 normal/tray/update/kill/cleanup-timeout，≤10 秒正常退出；清理未确认保留窗口和重试，强杀后树回收、恢复 Interrupted 不重跑。
+- [x] 回归图像任务退出、更新、项目/会话归档删除，不绕过已有清理服务。
+
+本地 S13 门禁已通过；具体范围和早期失败保留在 implementation-progress.md，最终双平台远端验收仍待 S17。
 
 ### S14：WPF 卡片、项目任务面板与阶段验收
 

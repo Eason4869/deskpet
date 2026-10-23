@@ -90,6 +90,14 @@ namespace Dafeiyu.Tests
                 try{return (Task)guardType.GetMethod("RunAsync").Invoke(guard,new object[]{projects,conversationId,stopActive,mutation,CancellationToken.None});}
                 catch(TargetInvocationException error){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
             }
+            internal bool TryMutate(string[] projects,Action mutation,string conversationId=null)
+            {
+                var guardType=type.Assembly.GetType("Dafeiyu.AgentJobCatalogGuard");
+                var method=guardType.GetMethod("TryRun");
+                if(method==null)throw new Exception("Nonblocking catalog gate is missing");
+                try{return (bool)method.Invoke(Activator.CreateInstance(guardType,instance),new object[]{projects,conversationId,mutation});}
+                catch(TargetInvocationException error){System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
+            }
             internal Task<bool> Initialize(){return Invoke<Task<bool>>("InitializeAsync");}
             public void Dispose()
             {
@@ -294,6 +302,32 @@ namespace Dafeiyu.Tests
                 }
             }
         }
+        static void SynchronousCatalogMutationNeverQueuesOrWaits()
+        {
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var service=new Service(root.Path,new AgentJobTestSupport.Clock()))
+            using(var entered=new ManualResetEventSlim(false))
+            {
+                service.Initialize().GetAwaiter().GetResult();int changes=0;
+                Check(service.TryMutate(new[]{"b","a"},()=>changes++),"idle multi-project synchronous binding mutation runs immediately");
+                var release=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var held=service.Mutate(new[]{"b"},async delegate{entered.Set();await release.Task;});
+                try
+                {
+                    Check(entered.Wait(3000),"async catalog fixture owns the same project gate");
+                    var elapsed=System.Diagnostics.Stopwatch.StartNew();
+                    Check(!service.TryMutate(new[]{"a","b"},()=>changes++)&&elapsed.ElapsedMilliseconds<500,"synchronous move rejects a busy gate without blocking or queueing");
+                    Check(service.TryMutate(new[]{"a"},()=>changes++),"failed multi-project entry releases its earlier gates");
+                }
+                finally{release.TrySetResult(true);held.GetAwaiter().GetResult();}
+                Check(changes==2,"rejected synchronous writes never execute later");
+                bool failed=false;try{service.TryMutate(new[]{"a"},()=>{throw new IOException("fixture");});}catch(IOException){failed=true;}
+                Check(failed&&service.TryMutate(new[]{"a"},()=>changes++),"exceptional synchronous mutation releases its owner gate");
+                Start(service,root.Path).GetAwaiter().GetResult();
+                Check(!service.TryMutate(new[]{"project"},()=>changes++),"synchronous root change refuses an unopened owner's active job");
+                using(var second=new Service(root.Path,new AgentJobTestSupport.Clock()))
+                {second.Initialize().GetAwaiter().GetResult();bool denied=false;try{second.TryMutate(new[]{"a"},()=>changes++);}catch(IOException){denied=true;}Check(denied,"synchronous binding writes require the application lease");}
+            }
+        }
         static void StalledStorageKeepsTheExitAsyncAndRetainsTheLease()
         {
             using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var io=new AgentJobTestSupport.ControlledIO())
@@ -316,7 +350,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             checks=0;int failures=0;
-            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease})
+            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease,SynchronousCatalogMutationNeverQueuesOrWaits})
                 try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobLifecycleTests: "+checks+" passed");return failures==0?0:1;
         }

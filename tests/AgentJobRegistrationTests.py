@@ -41,6 +41,11 @@ class RegistrationTests(unittest.TestCase):
             self.assertIn('"'+mode+'"',fixture)
         self.assertNotIn('AgentJobLifecycleUiTests.cs',source('desktop/DeskPet.Tests/DeskPet.Tests.csproj'))
 
+    def test_wpf_project_gates_are_registered_without_portable_ui_claims(self):
+        self.assertIn("'AgentJobProjectTests'",source('Build.ps1'))
+        self.assertIn("'AgentJobProjectTests'",self.windows_ci)
+        self.assertNotIn('AgentJobProjectTests.cs',source('desktop/DeskPet.Tests/DeskPet.Tests.csproj'))
+
     def assertRegex(self, text, pattern, msg=None):
         # Keep a registration failure readable instead of dumping whole workflows.
         self.assertIsNotNone(re.search(pattern, text), msg or pattern)

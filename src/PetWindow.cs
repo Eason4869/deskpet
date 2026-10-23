@@ -161,13 +161,34 @@ namespace Dafeiyu
                 if(projectCatalog==null)
                 {
                     projectCatalogStore=new ProjectCatalogStore(Path.Combine(Store.DirectoryPath,"projects.json"));
-                    try{
-                        projectCatalog=projectCatalogStore.Load();var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
-                        if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);projectCatalog=upgraded;}
-                    }catch(Exception){projectCatalogStore.PreserveAfterReadFailure();if(projectCatalog==null)projectCatalog=new ProjectCatalog();Notice=TextResources.Get("petWindow.projects.notice");}
+                    try{projectCatalog=projectCatalogStore.Load();ConfigureCatalogBindingGuard();if(AgentJobs.InitializeAsync().IsCompleted&&AgentJobs.Manager!=null)CompleteProjectOwnership();}
+                    catch(Exception){projectCatalogStore.PreserveAfterReadFailure();if(projectCatalog==null)projectCatalog=new ProjectCatalog();Notice=TextResources.Get("petWindow.projects.notice");}
                 }
                 return projectCatalog;
             }
+        }
+        void CompleteProjectOwnership()
+        {
+            if(projectCatalog==null||closing)return;
+            try
+            {
+                AgentJobs.EnsureWritable();
+                var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
+                if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);projectCatalog=upgraded;}
+            }
+            catch(Exception){projectCatalogStore.PreserveAfterReadFailure();Notice=TextResources.Get("petWindow.projects.notice");}
+        }
+        void ConfigureCatalogBindingGuard()
+        {
+            string baseline=ProjectCatalogStore.WorkBindingSignature(projectCatalog);
+            projectCatalogStore.BeforeSave=catalog=>
+            {
+                string path=Path.Combine(Store.DirectoryPath,"projects.json");
+                var persisted=File.Exists(path)?new ProjectCatalogStore(path).Load():new ProjectCatalog();
+                if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException("job_catalog_changed");
+                if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)AgentJobs.EnsureWritable();
+            };
+            projectCatalogStore.AfterSave=catalog=>baseline=ProjectCatalogStore.WorkBindingSignature(catalog);
         }
         public ProjectCatalogStore ProjectStore {get{if(projectCatalogStore==null){var ignored=Projects;}return projectCatalogStore;}}
         public ConversationWorkspaceManager Workspaces
@@ -719,7 +740,14 @@ namespace Dafeiyu
         {
             if(project==null)return;var dialog=new NewProjectDialog(project);bool accepted=dialog.ShowDialog()==true;if(dialog.RemoveRequested){DeleteProject(project);return;}if(dialog.WorkSettingsRequested){if(preferences!=null&&!preferences.CanChangeWorkSettingsProject(project)){ShowSettings();preferences.SelectWorkSettings();return;}editingProject=project;ShowWorkSettingsCore();return;}if(!accepted)return;
             if(Workspaces.OpenWorkspaces.Any(w=>w.ProjectId==project.Id&&(w.Session.IsBusy||w.Queue.HasPending))){MessageBox.Show(TextResources.Get("petWindow.editProject.messageBoxShow"),TextResources.Get("petWindow.editProject.messageBoxShow.alternativeA"));return;}
-            string name=project.Name,path=project.Workspace;try{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
+            string name=project.Name,path=project.Workspace;
+            try
+            {
+                if(!TryChangeWorkBindings(new[]{project.Id},null,delegate{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}))
+                {Notice=TextResources.Get("petWindow.moveConversation.notice");return;}
+            }
+            catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}
+            foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
         }
         public void ArchiveProject(ProjectDefinition project)
         {
@@ -737,23 +765,47 @@ namespace Dafeiyu
         {
             if(project==null || conversation==null)return;conversation.Archived=false;SaveProjectsAfterChange(null);if(chat!=null)chat.RefreshAppearance();
         }
-        public void DeleteProject(ProjectDefinition project)
+        public async void DeleteProject(ProjectDefinition project)
         {
             if(project==null || MessageBox.Show(TextResources.Format("petWindow.deleteProject.messageBoxShow",project.Name),TextResources.Get("petWindow.deleteProject.messageBoxShow.alternativeA"),MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
-            bool wasCurrent=chat!=null && project.Conversations.Any(c=>c.Id==chat.ConversationId);CloseProjectWorkspaces(project.Id);Projects.Projects.Remove(project);if(editingProject!=null && editingProject.Id==project.Id)editingProject=null;SaveProjectsAfterChange(project.Id);DeleteProjectData(project);if(wasCurrent)SwitchToAvailableConversation(null);
+            try{await DeleteProjectAsync(project);}catch(Exception error){ShowProjectSaveError(error);}
+        }
+        internal Task DeleteProjectAsync(ProjectDefinition project)
+        {
+            if(project==null)return Task.FromResult(0);
+            return ChangeWorkBindingsAsync(new[]{project.Id},null,async delegate
+            {
+                if(!Projects.Projects.Contains(project))return;
+                bool wasCurrent=chat!=null&&project.Conversations.Any(c=>c.Id==chat.ConversationId);
+                foreach(var workspace in Workspaces.AllOwnedWorkspaces.Where(w=>w.ProjectId==project.Id).ToArray())await Workspaces.CloseWorkspaceAsync(workspace.Id);
+                int index=Projects.Projects.IndexOf(project);string active=Projects.ActiveProjectId;Projects.Projects.RemoveAt(index);
+                if(active==project.Id){var next=Projects.Projects.FirstOrDefault(p=>!p.Archived);Projects.ActiveProjectId=next==null?"":next.Id;}
+                try{ProjectStore.Save(Projects);}catch{Projects.Projects.Insert(index,project);Projects.ActiveProjectId=active;throw;}
+                if(editingProject!=null&&editingProject.Id==project.Id)editingProject=null;
+                await Task.Run(()=>DeleteProjectData(project));if(wasCurrent)SwitchToAvailableConversation(null);NotifyProjectsChanged();
+            });
         }
         public async void DeleteConversation(ProjectDefinition project,ConversationDefinition conversation)
         {
-            if(project==null || conversation==null)return;
+            if(project==null||conversation==null)return;
             var dialog=new DeleteConversationDialog(conversation.Name);if(dialog.ShowDialog()!=true)return;
-            int index=project.Conversations.IndexOf(conversation);if(index<0)return;
-            bool wasCurrent=chat!=null && chat.ConversationId==conversation.Id;project.Conversations.RemoveAt(index);
-            try{ProjectStore.Save(Projects);}catch(Exception error){project.Conversations.Insert(index,conversation);new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog",error.Message)).ShowDialog();return;}
-            if(wasCurrent)SwitchToAvailableConversation(null);
-            try{await Workspaces.CloseWorkspaceAsync(conversation.Id);}
-            catch(Exception error){project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);try{ProjectStore.Save(Projects);}catch(Exception){}new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog.alternativeA",error.Message)).ShowDialog();return;}
-            if(quickWorkspace!=null && quickWorkspace.Id==conversation.Id && quick!=null)quick.Close();
-            DeleteConversationData(project.Id,conversation.Id);NotifyProjectsChanged();
+            try{await DeleteConversationAsync(project,conversation);}
+            catch(Exception error){new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog",error.Message)).ShowDialog();}
+        }
+        internal Task DeleteConversationAsync(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null||conversation==null)return Task.FromResult(0);
+            return ChangeWorkBindingsAsync(new[]{project.Id},conversation.Id,async delegate
+            {
+                int index=project.Conversations.IndexOf(conversation);if(index<0)return;
+                bool wasCurrent=chat!=null&&chat.ConversationId==conversation.Id;
+                await Workspaces.CloseWorkspaceAsync(conversation.Id);
+                project.Conversations.RemoveAt(index);
+                try{ProjectStore.Save(Projects);}catch{project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);throw;}
+                if(quickWorkspace!=null&&quickWorkspace.Id==conversation.Id&&quick!=null)quick.Close();
+                await Task.Run(()=>DeleteConversationData(project.Id,conversation.Id));
+                if(wasCurrent)SwitchToAvailableConversation(null);NotifyProjectsChanged();
+            });
         }
         void SaveProjectsAfterChange(string removedProjectId)
         {
@@ -898,7 +950,11 @@ namespace Dafeiyu
         public bool MoveConversation(ProjectDefinition from,ProjectDefinition to,ConversationDefinition conversation)
         {
             if(from==null || to==null || conversation==null)return false;var open=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversation.Id);if(open!=null && (open.Session.IsBusy || open.Queue.IsRunning)){Notice=TextResources.Get("petWindow.moveConversation.notice");return false;}var previous=Projects.Copy();
-            try{ConversationWorkspace.ResolveDataDirectory(Store.DirectoryPath,conversation.Id);ProjectCatalogStore.MoveConversation(Projects,from.Id,to.Id,conversation.Id);ProjectStore.Save(Projects);}
+            try
+            {
+                if(!TryChangeWorkBindings(new[]{from.Id,to.Id},null,delegate{ConversationWorkspace.ResolveDataDirectory(Store.DirectoryPath,conversation.Id);ProjectCatalogStore.MoveConversation(Projects,from.Id,to.Id,conversation.Id);ProjectStore.Save(Projects);}))
+                {Notice=TextResources.Get("petWindow.moveConversation.notice");return false;}
+            }
             catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return false;}
             // An open workspace keeps the conversation Id but must follow the new
             // project so its agent tools and task records use the new directory.
@@ -1080,20 +1136,28 @@ namespace Dafeiyu
         }
         private void SavePosition()
         { if(handle==IntPtr.Zero) return; Rect bounds=DesktopInterop.Bounds(handle); Settings.X=bounds.Left; Settings.Y=bounds.Top; SaveSettings(); }
-        private async void OnClosing(object sender,System.ComponentModel.CancelEventArgs args)
+        private void OnClosing(object sender,System.ComponentModel.CancelEventArgs args)
         {
             if(!exitPrepared)
             {
-                args.Cancel=true;if(closing)return;closing=true;if(!await StopAgentJobsForExitAsync()){closing=false;return;}DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
-                timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
-                var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
-                try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
-                catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
+                args.Cancel=true;if(closing)return;closing=true;
+                // Close can be requested before Application.Run or from a host with
+                // no SynchronizationContext. Enter the dispatcher before any await.
+                Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
             }
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
             DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
+        }        async void PrepareCloseOnDispatcherAsync()
+        {
+            if(!await StopAgentJobsForExitAsync()){closing=false;return;}
+            DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
+            timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
+            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
+            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
+            catch(OperationCanceledException){}finally{exitPrepared=true;Dispatcher.BeginInvoke(new Action(Close));}
         }
+
     }
 }

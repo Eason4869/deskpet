@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -129,7 +129,12 @@ namespace Dafeiyu
             var previous=pet.Settings.Copy();var previousProject=project==null?null:project.Copy();
             try
             {
-                if(project!=null){project.Name=projectNameValue;ApplyProjectFields(candidate,project);pet.ProjectStore.Save(pet.Projects);}else{ApplyWorkFields(candidate,pet.Settings);pet.SaveSettings();}
+                if(project!=null)
+                {
+                    Action apply=delegate{project.Name=projectNameValue;ApplyProjectFields(candidate,project);pet.ProjectStore.Save(pet.Projects);};
+                    if(!pet.TryChangeWorkBindings(new[]{project.Id},null,apply)){notice.Text=TextResources.Get("workSettingsPanel.save.notice");return false;}
+                    foreach(var workspaceOwner in pet.Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspaceOwner.FollowProject(project);
+                }else{ApplyWorkFields(candidate,pet.Settings);pet.SaveSettings();}
                 if(project==null && !String.IsNullOrEmpty(pet.Notice)){ApplyWorkFields(previous,pet.Settings);notice.Text=pet.Notice;return false;}
                 // Establish the clean baseline before refreshing other views, which may re-enter this panel.
                 string promptDraft=workPrompt.Text;bool promptDirty=promptDraft!=promptBaseline;baseline=null;RefreshState();if(promptDirty)workPrompt.Text=promptDraft;pet.RefreshChatAppearance();notice.Text=TextResources.Get("workSettingsPanel.save.notice.alternativeA");return true;

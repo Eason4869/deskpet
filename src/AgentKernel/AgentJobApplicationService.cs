@@ -97,6 +97,23 @@ namespace Dafeiyu
             });
             return completion.Task;
         }
+        internal void EnsureWritable()
+        {
+            lock(gate)
+            {
+                if(exiting||disposed)throw new InvalidOperationException("jobs_exiting");
+                if(initialization==null||!initialization.IsCompleted)throw new InvalidOperationException("jobs_recovering");
+                if(manager==null)throw new IOException("job_storage_unavailable");
+            }
+        }
+        internal bool TryRunMutation(Func<AgentJobManager,bool> mutation)
+        {
+            var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            AgentJobManager owned;
+            lock(gate){EnsureWritable();owned=manager;mutations.Add(completion.Task);}
+            try{return mutation(owned);}
+            finally{completion.TrySetResult(true);lock(gate)mutations.Remove(completion.Task);}
+        }
         public async Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token)
         {
             var elapsed=Stopwatch.StartNew();Task<bool> pending;Task[] admitted;

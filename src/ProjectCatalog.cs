@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -76,16 +76,34 @@ namespace Dafeiyu
                 NormalizeDefaults(catalog);Validate(catalog);foreach(var conversation in catalog.Projects.SelectMany(p=>p.Conversations).Concat(catalog.UnassignedConversations).Concat(catalog.QuickConversations))if(conversation.Status=="running")conversation.Status="idle";readFailed=false;return catalog;}catch{readFailed=true;throw;}
             }
         }
+        internal Action<ProjectCatalog> BeforeSave,AfterSave;
+        internal static string WorkBindingSignature(ProjectCatalog catalog)
+        {
+            var parts=new List<string>();
+            foreach(var project in catalog.Projects.OrderBy(p=>p.Id,StringComparer.Ordinal))
+            {parts.Add(project.Id);parts.Add(project.Workspace);foreach(var conversation in project.Conversations.OrderBy(c=>c.Id,StringComparer.Ordinal)){parts.Add(conversation.Id);parts.Add(conversation.Mode);}}
+            foreach(var conversation in catalog.UnassignedConversations.Where(c=>c.Mode=="work"||String.IsNullOrEmpty(c.Mode)).OrderBy(c=>c.Id,StringComparer.Ordinal))parts.Add(conversation.Id);
+            parts.Add(catalog.OwnershipVersion.ToString());parts.Add(catalog.LegacyRootImported.ToString());
+            // Length-prefix each field so untrusted names cannot collide with separators.
+            return String.Concat(parts.Select(value=>(value??"").Length+":"+(value??"")));
+        }
         public void Save(ProjectCatalog catalog)
         {
             if(catalog==null)throw new ArgumentNullException("catalog");NormalizeDefaults(catalog);Validate(catalog);var copy=catalog.Copy();string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";
             lock(gate)
             {
                 if(readFailed)throw new IOException(TextResources.Get("projectCatalog.save.text"));Directory.CreateDirectory(Path.GetDirectoryName(path));
-                using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(ProjectCatalog)).WriteObject(stream,copy);}
-                AtomicFile.Commit(temp,path);
+                // Do not wait on another UI host. Recheck its binding snapshot while
+                // holding the same short writer lease used through atomic replace.
+                using(var writeLease=new FileStream(path+".write.lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
+                {
+                    if(BeforeSave!=null)BeforeSave(copy);
+                    using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(ProjectCatalog)).WriteObject(stream,copy);}
+                    AtomicFile.Commit(temp,path);if(AfterSave!=null)AfterSave(copy);
+                }
             }
         }
+
         public static ProjectDefinition CreateProject(ProjectCatalog catalog,string name,string workspace,string sectionId="projects")
         {
             if(catalog==null)throw new ArgumentNullException("catalog");name=(name??"").Trim();if(name.Length<1 || name.Length>80)throw new ArgumentException(TextResources.Get("projectCatalog.createProject.text"));

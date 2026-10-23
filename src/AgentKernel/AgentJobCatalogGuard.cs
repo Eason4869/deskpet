@@ -17,6 +17,19 @@ namespace Dafeiyu
             if(projects.Length==0||projects.Any(String.IsNullOrWhiteSpace))throw new ArgumentException("projectIds");
             return services.RunMutationAsync(manager=>EnterAsync(manager,projects,0,conversationId,stopActive,mutation,token),token);
         }
+        public bool TryRun(IEnumerable<string> projectIds,string conversationId,Action mutation)
+        {
+            if(projectIds==null||mutation==null)throw new ArgumentNullException("mutation");
+            var projects=projectIds.Distinct(StringComparer.Ordinal).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
+            if(projects.Length==0||projects.Any(String.IsNullOrWhiteSpace))throw new ArgumentException("projectIds");
+            return services.TryRunMutation(manager=>TryEnter(manager,projects,0,conversationId,mutation));
+        }
+        static bool TryEnter(AgentJobManager manager,string[] projects,int index,string conversationId,Action mutation)
+        {
+            if(index==projects.Length){mutation();return true;}
+            bool entered=false;
+            return manager.TryRunOwnerMutation(projects[index],conversationId,()=>entered=TryEnter(manager,projects,index+1,conversationId,mutation))&&entered;
+        }
         static Task EnterAsync(AgentJobManager manager,string[] projects,int index,string conversationId,bool stopActive,Func<Task> mutation,CancellationToken token)
         {
             if(index==projects.Length){token.ThrowIfCancellationRequested();return mutation();}

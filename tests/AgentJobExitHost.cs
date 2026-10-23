@@ -73,6 +73,11 @@ namespace Dafeiyu.Tests
                 var menu=(TrayContextMenu)typeof(PetWindow).GetField("trayMenu",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);
                 menu.Items.OfType<MenuItem>().Single(item=>item.Name=="TrayExit").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             }
+            else if(mode=="direct")
+            {
+                var previous=SynchronizationContext.Current;SynchronizationContext.SetSynchronizationContext(null);
+                try{pet.Close();}finally{SynchronizationContext.SetSynchronizationContext(previous);}
+            }
             else pet.Close();
             if(mode=="held")
             {

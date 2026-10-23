@@ -332,6 +332,21 @@ namespace Dafeiyu
             }
             finally{ownerGate.Release();}
         }
+        internal bool TryRunOwnerMutation(string projectId,string conversationId,Action mutation)
+        {
+            var ownerGate=OwnerGate(projectId);if(!ownerGate.Wait(0))return false;
+            try
+            {
+                lock(gate)
+                {
+                    if(!recovered)throw new InvalidOperationException("jobs_recovering");
+                    if(exitRequested)throw new InvalidOperationException("jobs_exiting");
+                    if(jobs.Values.Any(entry=>entry.Record.Owner.ProjectId==projectId&&(conversationId==null||entry.Record.Owner.ConversationId==conversationId)&&!AgentJobStore.IsTerminal(entry.Record.State)))return false;
+                }
+                mutation();return true;
+            }
+            finally{ownerGate.Release();}
+        }
         public async Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token)
         {
             var elapsed=Stopwatch.StartNew();Entry[] pending;

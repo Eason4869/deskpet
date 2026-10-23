@@ -16,7 +16,7 @@ namespace Dafeiyu.Tests
         static string root;static int passed,failed;
         static readonly BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
         static void Check(bool ok,string reason){if(!ok)throw new Exception(reason);}
-        static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
+        static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e);}}
         static PetSettings Config(){var s=new PetSettings{AgentEnabled=false,ReadReplies=false,AutoUpdate=false,GreetingEnabled=false,OnboardingState="completed"};s.Text.BaseUrl="http://127.0.0.1:1";s.Text.Model="fixture";foreach(var key in s.Hotkeys.Keys.ToArray())s.Hotkeys[key]="";return s;}
         static ConversationWorkspace Open(ProjectDefinition p,ConversationDefinition c,bool save=true){return ConversationWorkspace.Create(p,c,root,"pet",()=>new Api(),()=>new Silent(),()=>null,Config,()=>save);}
         static ProjectDefinition Project(string id){string path=Path.Combine(root,id);Directory.CreateDirectory(path);return new ProjectDefinition{Id=id,Name=id,Workspace=path};}

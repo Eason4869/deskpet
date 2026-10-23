@@ -18,7 +18,21 @@ namespace Dafeiyu
                     return agentJobServices??(agentJobServices=new AgentJobApplicationService(Store.DirectoryPath,clock=>new WindowsAgentJobProcessFactory(clock),new ApplicationJobClock()));
             }
         }
-        void InitializeAgentJobs(){var ignored=AgentJobs.InitializeAsync();}
+        async void InitializeAgentJobs()
+        {
+            if(!await AgentJobs.InitializeAsync()||Dispatcher.HasShutdownStarted)return;
+            try{await Dispatcher.InvokeAsync(delegate{if(!closing&&projectCatalog!=null)CompleteProjectOwnership();});}
+            catch(OperationCanceledException){}
+        }
+        internal bool TryChangeWorkBindings(string[] projects,string conversationId,Action change)
+        {
+            return new AgentJobCatalogGuard(AgentJobs).TryRun(projects,conversationId,change);
+        }
+        Task OnCatalogUiAsync(Func<Task> mutation)
+        {return Dispatcher.CheckAccess()?mutation():Dispatcher.InvokeAsync(mutation).Task.Unwrap();}
+        internal Task ChangeWorkBindingsAsync(string[] projects,string conversationId,Func<Task> change)
+        {return new AgentJobCatalogGuard(AgentJobs).RunAsync(projects,conversationId,true,()=>OnCatalogUiAsync(change),CancellationToken.None);}
+
         async Task<bool> StopAgentJobsForExitAsync()
         {
             AgentJobApplicationService services;lock(agentJobServicesGate)services=agentJobServices;
