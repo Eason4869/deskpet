@@ -6,24 +6,27 @@ namespace DeskPet.Desktop;
 internal sealed partial class ChatWindow
 {
     private ConversationWorkspace? binding;
+    private ConversationSession? boundSession;private ConversationQueue? boundQueue;
     private int bindingEpoch;
-    private Button? workBindingButton;
+    private Button? workBindingButton,workJobsButton;
     private string DraftKey=>binding==null?persona:"work:"+binding.Id;
-    internal ConversationSession BoundSession=>binding?.Session??owner.Session;
-    internal ConversationQueue BoundQueue=>binding?.Queue??owner.Queue;
+    internal ConversationSession BoundSession=>boundSession??owner.Session;
+    internal ConversationQueue BoundQueue=>boundQueue??owner.Queue;
     internal PetSettings EffectiveSettings()=>binding?.EffectiveSettings()??owner.Settings;
     private Func<PetSettings> CaptureSettings(){var source=binding;return source==null?()=>owner.Settings:source.EffectiveSettings;}
+    internal void FreezeForExit(){chatPage.IsEnabled=false;imageWorkspace.IsEnabled=false;}
     private async Task StopBoundAsync(){var queue=BoundQueue;var session=BoundSession;await owner.Dictation.CancelAsync(this);await queue.PauseAsync();await session.StopAsync();}
     internal async Task BindWorkAsync(string? projectId,string? conversationId)
     {
         if(closed)return;
+        if(owner.WorkBindings.IsDraining)throw new InvalidOperationException(TextResources.Get("agentJobs.exitBlocked"));
         int request=++bindingEpoch;
         var next=projectId==null||conversationId==null?null:await owner.WorkBindings.OpenAsync(projectId,conversationId,CancellationToken.None);
         if(closed||request!=bindingEpoch)return;
         await owner.Dictation.CancelAsync(this);
         if(closed||request!=bindingEpoch)return;
         owner.Drafts[DraftKey]=draft.Text??"";
-        string oldSession=QuestionSessionId;binding=next;uploadEpoch++;
+        string oldSession=QuestionSessionId;binding=next;boundSession=next?.Session;boundQueue=next?.Queue;uploadEpoch++;
         owner.WorkViewChanged(this,oldSession);
         foreach(var view in rendered.Values)view.DisposeImages();rendered.Clear();messages.Children.Clear();queuedEdits.Clear();questionSignature="";
         draft.Text=owner.Drafts.GetValueOrDefault(DraftKey,"");RefreshAttachments();Refresh();
@@ -36,7 +39,7 @@ internal sealed partial class ChatWindow
         {
             if(binding==null){owner.ShowSettingsSection("work");return;}
             var dialog=Ui.Window(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),new Border(),600,650);dialog.Content=new ScrollViewer{Content=new WorkSettingsView(owner,dialog,binding.ProjectId)};dialog.Show(this);
-        });settings.Name="BoundWorkSettings";var actions=new WrapPanel();actions.Children.Add(workBindingButton);actions.Children.Add(settings);return actions;
+        });settings.Name="BoundWorkSettings";workJobsButton=Ui.Button(TextResources.Get("agent.jobs.ui.title"),()=>{if(binding!=null)owner.ShowAgentJobs(binding.ProjectId);});workJobsButton.Name="BoundAgentJobs";workJobsButton.IsEnabled=binding!=null;var actions=new WrapPanel();actions.Children.Add(workBindingButton);actions.Children.Add(settings);actions.Children.Add(workJobsButton);return actions;
     }
     private async Task ShowWorkPickerAsync()
     {

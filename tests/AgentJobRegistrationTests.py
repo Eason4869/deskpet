@@ -40,6 +40,25 @@ class RegistrationTests(unittest.TestCase):
         self.assertIn('ordinary encrypted history',fixture)
         self.assertIn('second host cannot bind',fixture)
 
+    def test_avalonia_task_routes_are_registered_on_supported_platforms(self):
+        runner=source('desktop/DeskPet.Desktop.Tests/Program.cs')
+        self.assertIn('assertions+=AgentJobUiChecks.Run',runner)
+        self.assertIn('--agent-job-ui=',runner)
+        for ci in (source('.github/workflows/check.yml'),source('.github/workflows/macos.yml')):
+            self.assertIn('--agent-job-ui=',ci)
+        windows=source('.github/workflows/check.yml')
+        self.assertIn('--agent-job-native-ui-only',windows)
+        self.assertIn('--agent-job-exit-ui-only',windows)
+        self.assertNotIn('--agent-job-native-ui-only',source('.github/workflows/macos.yml'))
+        self.assertLess(runner.index('AgentJobExitUiChecks.RunNativeHost'),runner.index('SetupWithoutStarting'))
+
+    def test_first_run_preparation_has_default_and_language_routes(self):
+        runner=source('desktop/DeskPet.Desktop.Tests/Program.cs')
+        self.assertIn('assertions+=OnboardingPreparationUiChecks.Run',runner)
+        for ci in (source('.github/workflows/check.yml'),source('.github/workflows/macos.yml')):
+            self.assertIn('--onboarding-preparation-ui=',ci)
+        self.assertIn('GuideBookendTests',source('.github/workflows/check.yml'))
+
     def test_wpf_lifecycle_route_keeps_independent_host_fixtures(self):
         build=source('Build.ps1')
         self.assertIn("'AgentJobLifecycleUiTests'",build)

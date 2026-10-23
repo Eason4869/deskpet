@@ -4483,5 +4483,19 @@
   "agent.work.allow": "이번만 허용",
   "agent.work.deny": "거부",
   "agent.work.rename": "이름 변경",
-  "agent.work.restore": "보관 해제"
+  "agent.work.restore": "보관 해제",
+  "agent.jobs.ui.backgroundLimit": "백그라운드 작업 제한 시간 상한(초)",
+  "agent.jobs.ui.syncLimit": "동기 명령 제한 시간(초)",
+  "onboarding.prepare.network": "먼저 GitHub 다운로드 가속 설정",
+  "onboarding.prepare.networkDetail": "사용 가능한 직접 연결 또는 GitHub 가속 방식을 선택해 저장한 다음 캐릭터를 선택하세요.",
+  "onboarding.prepare.packs": "모든 공식 캐릭터 팩의 다운로드 및 업데이트를 강력히 권장합니다",
+  "onboarding.prepare.packsDetail": "전체 리소스를 사용하면 모든 동작과 캐릭터 외형을 이용할 수 있습니다. 버튼을 직접 누른 후에 백그라운드에서 확인, 다운로드 및 업데이트가 진행됩니다. 그동안 다음 안내를 계속할 수 있습니다. 기존 캐릭터는 업데이트 중에도 계속 표시되며, 앱을 종료하면 다운로드가 중지됩니다.",
+  "onboarding.prepare.start": "모든 캐릭터 팩 다운로드 및 업데이트",
+  "onboarding.prepare.running": "백그라운드에서 캐릭터 팩 준비 중: {0}%",
+  "onboarding.prepare.complete": "모든 공식 캐릭터 팩의 준비가 완료되었습니다.",
+  "onboarding.prepare.failed": "일부 캐릭터 팩의 준비가 완료되지 않았습니다. 설치된 캐릭터는 계속 사용할 수 있습니다. 네트워크를 확인한 후 다시 시도하세요.",
+  "onboarding.prepare.later": "나중에 다운로드",
+  "onboarding.prepare.progress": "캐릭터 팩 다운로드 진행 상황 보기",
+  "onboarding.prepare.cancel": "캐릭터 팩 다운로드 중지",
+  "onboarding.prepare.cancelled": "캐릭터 팩 다운로드가 중지되었습니다. 나중에 다시 시도할 수 있습니다."
 }

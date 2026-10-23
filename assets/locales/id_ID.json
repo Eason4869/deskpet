@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Izinkan Sekali",
   "agent.work.deny": "Tolak",
   "agent.work.rename": "Ubah Nama",
-  "agent.work.restore": "Batalkan Arsip"
+  "agent.work.restore": "Batalkan Arsip",
+  "agent.jobs.ui.backgroundLimit": "Batas Waktu Maksimum Tugas Latar Belakang (detik)",
+  "agent.jobs.ui.syncLimit": "Batas Waktu Perintah Sinkron (detik)",
+  "onboarding.prepare.network": "Atur akselerasi unduhan GitHub terlebih dahulu",
+  "onboarding.prepare.networkDetail": "Pilih opsi koneksi langsung atau akselerasi GitHub yang tersedia, lalu simpan sebelum memilih karakter.",
+  "onboarding.prepare.packs": "Sangat disarankan untuk mengunduh dan memperbarui semua paket karakter resmi",
+  "onboarding.prepare.packsDetail": "Aset lengkap menyediakan seluruh aksi dan tampilan karakter. Pemeriksaan, pengunduhan, dan pembaruan di latar belakang hanya dimulai setelah Anda mengeklik tombol secara eksplisit. Anda dapat melanjutkan panduan. Karakter yang ada tetap ditampilkan selama pembaruan. Keluar dari aplikasi akan menghentikan unduhan.",
+  "onboarding.prepare.start": "Unduh dan Perbarui Semua Paket Karakter",
+  "onboarding.prepare.running": "Menyiapkan paket karakter di latar belakang: {0}%",
+  "onboarding.prepare.complete": "Semua paket karakter resmi telah siap.",
+  "onboarding.prepare.failed": "Sebagian paket karakter belum siap. Karakter yang terinstal tetap dapat digunakan. Periksa jaringan, lalu coba lagi.",
+  "onboarding.prepare.later": "Unduh Nanti",
+  "onboarding.prepare.progress": "Lihat Progres Unduhan Paket Karakter",
+  "onboarding.prepare.cancel": "Hentikan Unduhan Paket Karakter",
+  "onboarding.prepare.cancelled": "Unduhan paket karakter telah dihentikan. Anda dapat mencoba lagi nanti."
 }

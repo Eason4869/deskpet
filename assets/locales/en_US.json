@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Allow Once",
   "agent.work.deny": "Deny",
   "agent.work.rename": "Rename",
-  "agent.work.restore": "Unarchive"
+  "agent.work.restore": "Unarchive",
+  "agent.jobs.ui.backgroundLimit": "Maximum Background Task Time Limit (seconds)",
+  "agent.jobs.ui.syncLimit": "Synchronous Command Time Limit (seconds)",
+  "onboarding.prepare.network": "Configure GitHub download acceleration first",
+  "onboarding.prepare.networkDetail": "Choose an available direct connection or GitHub acceleration option and save it before selecting a character.",
+  "onboarding.prepare.packs": "Strongly recommended: download and update all official character packs",
+  "onboarding.prepare.packsDetail": "The full assets provide complete animations and character appearances. Checking, downloading, and updating begin in the background only after you explicitly click the button. You can continue setup. Existing characters remain visible during updates. Exiting the app stops downloads.",
+  "onboarding.prepare.start": "Download and Update All Character Packs",
+  "onboarding.prepare.running": "Preparing character packs in the background: {0}%",
+  "onboarding.prepare.complete": "All official character packs are ready.",
+  "onboarding.prepare.failed": "Some character packs are not ready. Installed characters remain usable. Check your network and try again.",
+  "onboarding.prepare.later": "Download Later",
+  "onboarding.prepare.progress": "View Character Pack Download Progress",
+  "onboarding.prepare.cancel": "Stop Character Pack Downloads",
+  "onboarding.prepare.cancelled": "Character pack downloads have stopped. You can try again later."
 }

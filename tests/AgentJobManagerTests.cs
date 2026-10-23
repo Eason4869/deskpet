@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -40,7 +40,7 @@ namespace Dafeiyu.Tests
             public async Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
             {Preparing.Set();if(Preparation!=null)await AgentAuthorizationService.AwaitCancellation(Preparation.Task,token);var process=new Process{Output=output};lock(Processes)Processes.Add(process);if(BeforeReturn!=null)BeforeReturn(process);return process;}
         }
-        sealed class Lease : IDisposable {public void Dispose(){}}
+        sealed class Lease : IDisposable {internal bool Disposed;public void Dispose(){Disposed=true;}}
         sealed class Fixture : IDisposable
         {
             internal readonly AgentJobTestSupport.TemporaryDirectory Temporary=new AgentJobTestSupport.TemporaryDirectory();
@@ -391,9 +391,37 @@ namespace Dafeiyu.Tests
                 finally{f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,changed);}
             }
         }
+        static void NaturalFinalizationCannotBeOwnedByTheLogViewer()
+        {
+            foreach(bool diskFailure in new[]{true,false})using(var f=new Fixture())using(var request=new CancellationTokenSource()){
+                var basis=f.Context("terminal-finalization-"+diskFailure);var lease=new Lease();
+                var context=new AgentJobStartContext(basis.Owner,basis.Invocation,basis.Authorization,basis.RecheckPolicy,()=>lease,()=>{});
+                var job=f.Invoke<Task<AgentJobSnapshot>>("StartAsync",context,new AgentJobSpec("echo fixture",null,f.Temporary.Path,1800),CancellationToken.None).GetAwaiter().GetResult();
+                var process=f.Factory.Processes[0];if(diskFailure)f.IO.FailCommit=true;else process.OnStop=()=>request.Cancel();
+                process.Status=new AgentJobProcessExit(true,0,true,true,0);
+                try{f.Invoke<Task<AgentJobPage>>("GetAsync",job.Owner,job.Id,"",1024,request.Token).GetAwaiter().GetResult();}catch(System.IO.IOException){}catch(OperationCanceledException){}
+                f.IO.FailCommit=false;var published=f.Invoke<IList<AgentJobSnapshot>>("ListForProject","project").Single();
+                Check(published.State==AgentJobState.Succeeded&&published.CleanupConfirmed&&lease.Disposed,"natural EOF "+(diskFailure?"disk failure":"viewer cancellation")+" still publishes the terminal state and releases directory ownership");
+                var stopped=f.Invoke<Task<AgentJobSnapshot>>("StopAsync",job.Owner,job.Id,AgentJobStopReason.User,CancellationToken.None).GetAwaiter().GetResult();
+                Check(stopped.State==AgentJobState.Succeeded&&stopped.CleanupConfirmed,"finalization failure never strands a later stop retry on a stale Running snapshot");
+                Check(f.Store.LoadAsync(CancellationToken.None).GetAwaiter().GetResult().Single(value=>value.Id==job.Id).State==AgentJobState.Succeeded,"terminal recovery retains natural completion after "+(diskFailure?"disk repair and stop retry":"viewer cancellation"));
+            }
+        }
+        static void ExitJoinsNaturalCompletionMetadata()
+        {
+            using(var f=new Fixture()){
+                var job=f.Start("exit-final-metadata").GetAwaiter().GetResult();Task<AgentJobExitReport> exit=null;bool joined=false;
+                Action completed=()=>{if(exit!=null||!f.Invoke<IList<AgentJobSnapshot>>("ListForProject","project").Any(value=>value.State==AgentJobState.Succeeded))return;exit=f.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None);joined=!exit.IsCompleted;};
+                f.ManagerType.GetEvent("Changed").AddEventHandler(f.Manager,completed);
+                try{f.Factory.Processes[0].Status=new AgentJobProcessExit(true,0,true,true,0);f.Invoke<Task<AgentJobPage>>("GetAsync",job.Owner,job.Id,"",1024,CancellationToken.None).GetAwaiter().GetResult();
+                    Check(exit!=null&&joined,"exit joins natural completion even after the terminal notification but before final metadata commit");
+                    Check(exit.GetAwaiter().GetResult().CleanupConfirmed&&f.Store.LoadAsync(CancellationToken.None).GetAwaiter().GetResult().Single(value=>value.Id==job.Id).State==AgentJobState.Succeeded,"exit completion follows the joined durable terminal state");}
+                finally{f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,completed);}
+            }
+        }
         public static int Main()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,ExitReportsCleanupWhenMetadataCannotBeSaved,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,WallClockAdjustmentsDoNotChangeTheTimeoutBudget,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog,StopDuringPreparationCancelsThePendingStart,StopIsNotHeldBehindAnUnrelatedStatusWrite,CancellationAtTheRemainingLaunchBarriers})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{ExitJoinsNaturalCompletionMetadata,NaturalFinalizationCannotBeOwnedByTheLogViewer,TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,ExitReportsCleanupWhenMetadataCannotBeSaved,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,WallClockAdjustmentsDoNotChangeTheTimeoutBudget,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog,StopDuringPreparationCancelsThePendingStart,StopIsNotHeldBehindAnUnrelatedStatusWrite,CancellationAtTheRemainingLaunchBarriers})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobManagerTests: "+checks+" passed");return failures==0?0:1;
         }
     }

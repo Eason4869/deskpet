@@ -76,6 +76,17 @@ internal static class WorkBindingUiChecks
                 Check(details.Contains(project.Id)&&details.Contains(first.QuestionSessionId)&&details.Contains("approval-call")&&details.Contains("timeout_seconds=60")&&details.Contains(directory)&&details.Contains("sandbox fixture")&&details.Contains("fixture-hash"),"approval exposes the immutable source, complete payload, directory, isolation, timeout and hash");
                 cancelApproval.Cancel();Complete(pending);Check(!pending.Result,"cancelled approval cannot authorize a different or hidden window");
             }
+            var settingsHost=new Window();var settingsView=new WorkSettingsView(owner,settingsHost,project.Id);settingsHost.Content=settingsView;settingsHost.Show();
+            var terminal=settingsView.GetLogicalDescendants().OfType<ComboBox>().Single(value=>value.Name=="AgentTerminalPolicy");
+            var syncLimit=settingsView.GetLogicalDescendants().OfType<NumericUpDown>().Single(value=>value.Name=="AgentCommandTimeoutSeconds");
+            var jobLimit=settingsView.GetLogicalDescendants().OfType<NumericUpDown>().Single(value=>value.Name=="AgentBackgroundJobTimeoutSeconds");
+            if(OperatingSystem.IsWindows()){
+                terminal.SelectedIndex=1;syncLimit.Value=43;jobLimit.Value=2200;
+                var configured=owner.WorkBindings.ProjectSettings(project.Id);
+                Check(configured.AgentTerminalPolicy==AgentTerminalPolicy.ConfirmEach&&configured.AgentCommandTimeoutSeconds==43&&configured.AgentBackgroundJobTimeoutSeconds==2200,"project terminal authorization and independent task limits persist through the actual settings controls");
+                Check(independentStore.Load().Projects.Single(value=>value.Id==project.Id).BackgroundJobTimeoutSeconds==2200,"project task limits survive a separate catalog reload");
+            }else Check(!terminal.IsEnabled&&!syncLimit.IsEnabled&&!jobLimit.IsEnabled&&!owner.WorkBindings.Manager.OpenWorkspaces.Single(value=>value.Id==conversation.Id).EffectiveSettings().AgentEnabled,"macOS settings and bound runtime deny local execution");
+            settingsHost.Close();
             string captures=Path.GetFullPath(Path.Combine("work","agent-jobs-ui","avalonia-binding",TextResources.CurrentLanguage));Directory.CreateDirectory(captures);
             foreach(string theme in new[]{"light","dark"})
             {

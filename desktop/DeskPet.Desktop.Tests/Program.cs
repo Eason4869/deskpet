@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -21,6 +21,8 @@ using Avalonia.Threading;
 using Dafeiyu;
 using DeskPet.Desktop;
 
+if(args.Length==3&&args[0]=="--agent-job-exit-fixture"){Environment.ExitCode=AgentJobExitUiChecks.RunNativeHost(args[1],args[2]);return;}
+
 // Legacy UI fixtures assert Chinese copy. Pin their test UI culture so the new
 // system-language default does not depend on the CI runner's OS language.
 var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
@@ -39,7 +41,15 @@ Directory.CreateDirectory(directory);
 try
 {
     if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
-    if(args.Contains("--work-binding-ui-only")){Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"))+" passed");return;}
+    if(args.Contains("--agent-job-native-ui-only")){Console.WriteLine("AgentJobNativeUiChecks: "+AgentJobExitUiChecks.RunPreview(Path.Combine(directory,"agent-job-native-ui"))+" passed");return;}
+    if(args.Contains("--agent-job-held-exit-ui-only")){Console.WriteLine("AgentJobExitUiChecks held: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit-held"),"held")+" passed");return;}
+    if(args.Contains("--agent-job-kill-host-ui-only")){Console.WriteLine("AgentJobExitUiChecks kill: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit-kill"),"kill")+" passed");return;}
+    if(args.Contains("--agent-job-exit-ui-only")){Console.WriteLine("AgentJobExitUiChecks: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit"))+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--agent-job-ui="))){string language=args.Single(arg=>arg.StartsWith("--agent-job-ui=")).Substring("--agent-job-ui=".Length);Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"),language)+" passed");return;}
+    if(args.Contains("--agent-job-ui-only")){Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"))+" passed");return;}
+    if(args.Contains("--onboarding-preparation-ui-only")){Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"))+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--onboarding-preparation-ui="))){string language=args.Single(arg=>arg.StartsWith("--onboarding-preparation-ui=")).Substring("--onboarding-preparation-ui=".Length);Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"),language)+" passed");return;}
+    if(args.Contains("--work-binding-ui-only")||args.Contains("--agent-job-binding-ui-only")){Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"))+" passed");return;}
     if(systemLanguageFixture!=null){Console.WriteLine("SystemLanguageUiChecks: "+LanguageUiChecks.RunSystemStartup(Path.Combine(directory,"system-language-ui"),System.Globalization.CultureInfo.CurrentUICulture.Name)+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--language-picker="))){string language=args.Single(arg=>arg.StartsWith("--language-picker=")).Substring("--language-picker=".Length);Console.WriteLine("LanguagePickerChecks: "+LanguagePickerChecks.Run(language)+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--full-language-ui="))){string language=args.Single(arg=>arg.StartsWith("--full-language-ui=")).Substring("--full-language-ui=".Length);Console.WriteLine("MultilingualUiAuditChecks: "+MultilingualUiAuditChecks.Run(Path.Combine(directory,"multilingual-audit"),language)+" passed");return;}
@@ -64,6 +74,10 @@ try
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    Console.WriteLine("START OnboardingPreparationUiChecks");
+    assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));
+    Console.WriteLine("START AgentJobUiChecks");
+    assertions+=AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui-default"));
     Console.WriteLine("START WorkBindingUiChecks");
     assertions+=WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding-default"));
     Console.WriteLine("START LocalizationUiChecks");
@@ -689,14 +703,14 @@ try
     Check(controller.Settings.OnboardingState == "skipped", "guide skip releases window");
     controller.Settings.OnboardingState = "new"; controller.Settings.OnboardingStep = 14;
     var workGuide = new GuideWindow(controller); workGuide.Show(); Dispatcher.UIThread.RunJobs();
-    Check(workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "15 / 17 · 对话模式与附件"), "work guide revision starts at new conversation and attachment lesson");
+    Check(workGuide.CurrentLessonId=="ava.legacy.14"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 对话模式与附件",StringComparison.Ordinal)==true), "work guide revision starts at new conversation and attachment lesson");
     var guideNext = workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "下一步");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
     Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
-    Check(guideNext.Content as string == "完成引导" && workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "17 / 17 · 更新与开始使用"), "seventeenth lesson exposes reachable completion button");
+    Check(guideNext.Content as string == "完成引导" && workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "final lesson exposes reachable completion button after preparation steps are inserted");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(controller.Settings.OnboardingState == "completed" && !workGuide.IsVisible, "completing new guide persists completion and closes guide");
     editor.Dispose(); editorHost.Close();

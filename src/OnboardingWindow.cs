@@ -22,6 +22,8 @@ namespace Dafeiyu
         public string CurrentLessonId { get { return Current.Id; } }
         public string TargetName { get; private set; }
         public bool HighlightVisible { get { return highlight != null && target != null && target.IsVisible; } }
+        internal bool AllowsCompanionPreparation {get;private set;}
+        internal void AllowCompanionPreparation(){AllowsCompanionPreparation=true;}
         bool Bookend {get{return Current.Action=="intro"||Current.Action=="complete";}}
         bool PetLesson { get { return Step >= 3 && Step <= 7; } }
         bool Completed { get { return pet.Settings.OnboardingCompletedLessons.Contains(CurrentLessonId); } }
@@ -62,7 +64,7 @@ namespace Dafeiyu
             catch(OperationCanceledException){}finally{actions.Children.Remove(surface);surface.Dispose();if(ReferenceEquals(approvalDemo,cancel))approvalDemo=null;cancel.Dispose();}
         }
         void CancelApprovalDemo(){var cancel=approvalDemo;if(cancel!=null)cancel.Cancel();}
-        void ActionButton(string caption, string name, Action action) { var b = Ui.Button(caption); b.Name = name; b.Margin = new Thickness(0, 0, 0, 7); b.HorizontalAlignment = HorizontalAlignment.Left; b.Click += delegate { try { action(); } catch (Exception e) { status.Text = TextResources.Format("onboardingWindow.actionButton.statusEMessage",e.Message); } }; actions.Children.Add(b); }
+        void ActionButton(string caption, string name, Action action) { var b = Ui.Button(caption,name=="GuidePreparePacks"); b.Name = name;if(name=="GuidePreparePacks"||name=="GuidePackProgress"){b.Content=new TextBlock{Text=caption,TextWrapping=TextWrapping.Wrap,MaxWidth=250};} b.Margin = new Thickness(0, 0, 0, 7); b.HorizontalAlignment = HorizontalAlignment.Left; b.Click += delegate { try { action(); } catch (Exception e) { status.Text = TextResources.Format("onboardingWindow.actionButton.statusEMessage",e.Message); } }; actions.Children.Add(b); }
         bool Applies(OnboardingLesson lesson) { if (lesson.Branch == "cloud" || lesson.Branch == "system") { var toggle = settings.FindControl("UseCloudVoice") as CheckBox; return (toggle != null ? toggle.IsChecked == true : pet.Settings.UseCloudVoice) == (lesson.Branch == "cloud"); } if (lesson.Branch == "unknown-context") { return pet.Settings.Text == null || pet.Settings.Text.ContextWindowTokens <= 0; } return true; }
         bool CanLeave() { if (pet.LiveActive || pet.DictationActive) { status.Text = TextResources.Get("onboardingWindow.canLeave.status"); return false; } return true; }
         void Move(int direction) { if (!CanLeave()) return; int candidate = index + direction; while (candidate >= 0 && candidate < OnboardingLessons.All.Length && !Applies(OnboardingLessons.All[candidate])) candidate += direction; if (candidate >= 0 && candidate < OnboardingLessons.All.Length) { index = candidate; Navigate(); } }
@@ -87,6 +89,7 @@ namespace Dafeiyu
         void RefreshReadiness()
         {
             if (finished || navigating) return; bool ready = true; string reason = ""; string a = Current.Action; var control = a == "nonempty" || a == "url" ? FindTarget(Current.Target) : null;
+            if(a=="prepare-packs"){status.Text=pet.OfficialPreparation.StatusText;next.Content=pet.OfficialPreparation.State==OfficialCompanionPreparationState.Running?TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeC"):TextResources.Get("onboarding.prepare.later");}
             if(a=="approval-demo"){ready=approvalDemoReviewed;reason=TextResources.Get("onboardingWindow.refreshReadiness.reason");}
             if (a == "gesture") { ready = gestureDone; reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeA"); }
             if (a == "nonempty") { var t = control as TextBox; var c = control as ComboBox; ready = t != null ? !String.IsNullOrWhiteSpace(t.Text) : c != null && !String.IsNullOrWhiteSpace(c.Text); reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeB"); }
@@ -120,14 +123,19 @@ namespace Dafeiyu
                 if (Current.Action == "speech-test") { speechRevision = settings.GuideSpeechTestRevision; heard = new CheckBox { Foreground=Ui.Ink, Name = "GuideHeardSpeech", Content = TextResources.Get("onboardingWindow.navigate.content"), Margin = new Thickness(0, 8, 0, 6) }; heard.Checked += delegate { RefreshReadiness(); }; heard.Unchecked += delegate { RefreshReadiness(); }; actions.Children.Add(heard); }
                 if (Current.Action == "live-test") { heard = new CheckBox { Foreground=Ui.Ink, Name = "GuideConfirmedLive", Content = TextResources.Get("onboardingWindow.navigate.content.alternativeA"), Margin = new Thickness(0, 8, 0, 6) }; heard.Checked += delegate { RefreshReadiness(); }; actions.Children.Add(heard); }
                 if(Current.Action=="approval-demo")ActionButton(TextResources.Get("onboardingWindow.navigate.actionButton.alternativeB"),"GuideApprovalDemo",ShowApprovalDemo);if (Current.Action == "text-test") ActionButton(TextResources.Get("onboardingWindow.navigate.actionButton.alternativeC"), "GuideTestText", TestText); if (Current.Action == "summary") foreach (var group in OnboardingLessons.All.GroupBy(l => l.Chapter)) { var text = Ui.Text(TextResources.Format("onboardingWindow.navigate.template",OnboardingLessons.Chapters[group.Key],group.Count(l => pet.Settings.OnboardingCompletedLessons.Contains(l.Id)),group.Count(l => pet.Settings.OnboardingSkippedLessons.Contains(l.Id)),group.Count(l => pet.Settings.OnboardingVerifiedLessons.Contains(l.Id))), 11, Ui.Muted); text.Margin = new Thickness(0, 0, 0, 5); actions.Children.Add(text); }
+                if(Current.Action=="prepare-packs"){
+                    ActionButton(TextResources.Get("onboarding.prepare.start"),"GuidePreparePacks",delegate{AllowCompanionPreparation();var ignored=pet.OfficialPreparation.StartAsync();});
+                    ActionButton(TextResources.Get("onboarding.prepare.progress"),"GuidePackProgress",pet.ShowOfficialPreparation);
+                }
                 StyleBookend();if(Bookend){PositionNearTarget();}else Locate(); if (Current.Action != "speech-test") { var preview = settings.FindControl("PreviewSpeech"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
                 if (Current.Action != "live-test") { var preview = settings.FindControl("PreviewLive"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
-                foreach (Window w in Application.Current.Windows.Cast<Window>().ToArray()) if (w != this && w != settingsHost && w != pet && !(Step == 14 && w is ChatWindow) && w.Content is UIElement) otherScopes.Add(new GuideFocusScope((UIElement)w.Content)); Persist();
+                foreach (Window w in Application.Current.Windows.Cast<Window>().ToArray()) if (w != this && w != settingsHost && w != pet && w.Name!="OfficialPreparationProgress" && !(Step == 14 && w is ChatWindow) && w.Content is UIElement) otherScopes.Add(new GuideFocusScope((UIElement)w.Content)); Persist();
             }
             finally { navigating = false; RefreshReadiness(); }
         }
         void SelectSettingsPage()
         {
+            if(Current.Id.StartsWith("network.",StringComparison.Ordinal)){settings.SelectPage(6);networkPreview=settings.FindControl("UpdateNetwork") as Expander;if(networkPreview!=null){networkWasExpanded=networkPreview.IsExpanded;networkPreview.IsExpanded=true;}return;}
             switch (Step)
             {
                 case 0: case 1: settings.SelectCompanionSection(0); break;
@@ -152,6 +160,7 @@ namespace Dafeiyu
         }
         string CurrentScope()
         {
+            if(Current.Id.StartsWith("network.",StringComparison.Ordinal))return "UpdateNetwork";
             switch (Step)
             {
                 case 0: return "SkinPicker";

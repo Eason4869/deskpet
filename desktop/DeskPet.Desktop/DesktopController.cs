@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -30,6 +30,7 @@ internal sealed partial class DesktopController : IDisposable
     private readonly DispatcherTimer imageNoticeTimer=new(){Interval=TimeSpan.FromSeconds(8)};
     private readonly bool showAutomaticGuide;
     internal bool ShouldShowAutomaticGuide => showAutomaticGuide;
+    internal bool IsExiting=>exiting;
     public Dictionary<string, string> Drafts { get; } = new();
     public PetSettings Settings { get; }
     public List<PetSkin> Skins { get; }
@@ -56,7 +57,7 @@ internal sealed partial class DesktopController : IDisposable
     public bool GuideLocked => guide != null || openingGuide;
     public bool HasOpenPanel => GuideLocked || quickChat?.IsVisible == true || fullChat?.IsVisible == true || settingsWindow?.IsVisible == true || liveWindow?.IsVisible == true;
     public event Action? Changed;
-    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null, HolidayController? holidays = null, Func<SpriteAssets>? spriteAssetsFactory = null, Func<Func<OfficialCompanionInstallation, CancellationToken, Task>, IOfficialCompanionSource>? officialSourceFactory = null)
+    public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null, HolidayController? holidays = null, Func<SpriteAssets>? spriteAssetsFactory = null, Func<Func<OfficialCompanionInstallation, CancellationToken, Task>, IOfficialCompanionSource>? officialSourceFactory = null,Func<string,AgentJobApplicationService>? jobsFactory=null)
     {
         lifetime = desktop;
         runtime ??= new MacRuntime();
@@ -106,7 +107,7 @@ internal sealed partial class DesktopController : IDisposable
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
         Questions.Changed += Notify;
         Session.AgentTaskChanged += Notify;
-        WorkBindings=new DesktopWorkspaces(this,runtime);
+        WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
         Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
@@ -242,23 +243,22 @@ internal sealed partial class DesktopController : IDisposable
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()
     {
-        if (exiting) return; exiting = true;
-        try { await ImageTaskCenterState.BeginExitDrain(DrainApplicationForExitAsync,out applicationExitDrain); exitPrepared=true;lifetime.Shutdown(); }
+        if (exiting) return; exiting = true;foreach(var host in chatHosts)host.FreezeForExit();
+        try
+        {
+            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var ordinary=ImageTaskCenterState.BeginExitDrain(DrainApplicationForExitAsync,out applicationExitDrain);
+            await WorkBindings.StopForExitAsync(deadline.Token).WaitAsync(deadline.Token);
+            await ordinary;
+            await Dispatcher.UIThread.InvokeAsync(()=>{exitPrepared=true;lifetime.Shutdown();});
+        }
+        catch(OperationCanceledException error){exiting=false;throw new InvalidOperationException(TextResources.Get("agentJobs.exitBlocked"),error);}
         catch { exiting = false; throw; }
     }
     private async Task DrainApplicationForExitAsync()
     {
-        try
-        {
-            await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync(),WorkBindings.StopForExitAsync());
-            Save();
-            Holidays.RetrySave();
-            await Session.FlushHistoryAsync();
-        }
-        finally
-        {
-            FinalizeConversationServices();
-        }
+        await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
+        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();
     }
     private void FinalizeConversationServices()
     {
@@ -273,9 +273,9 @@ internal sealed partial class DesktopController : IDisposable
     {
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
-        companionLifetime.Cancel(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
+        companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
-        imageNoticeTimer.Stop();
+        CloseAgentJobViews();imageNoticeTimer.Stop();
         imageNotification?.Close();
         ImageTasks.Changed-=ImageTaskCompleted;
         Session.AgentTaskChanged -= Notify;

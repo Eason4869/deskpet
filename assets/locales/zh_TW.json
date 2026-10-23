@@ -4483,5 +4483,19 @@
   "agent.work.allow": "允許這一次",
   "agent.work.deny": "拒絕",
   "agent.work.rename": "重新命名",
-  "agent.work.restore": "取消封存"
+  "agent.work.restore": "取消封存",
+  "agent.jobs.ui.backgroundLimit": "背景工作時限上限（秒）",
+  "agent.jobs.ui.syncLimit": "同步命令時限（秒）",
+  "onboarding.prepare.network": "先設定 GitHub 下載加速",
+  "onboarding.prepare.networkDetail": "請選擇現有的直接連線或 GitHub 加速方案並儲存，再選擇角色。",
+  "onboarding.prepare.packs": "強烈建議下載並更新所有官方角色包",
+  "onboarding.prepare.packsDetail": "完整素材可提供完整動作與角色外觀。明確點擊後，會在背景檢查、下載並更新；您可以繼續後續引導。現有角色在更新時會繼續顯示，結束應用程式會停止下載。",
+  "onboarding.prepare.start": "下載並更新全部角色包",
+  "onboarding.prepare.running": "正在背景準備角色包：{0}%",
+  "onboarding.prepare.complete": "所有官方角色包皆已準備完成。",
+  "onboarding.prepare.failed": "部分角色包尚未準備完成。已安裝的角色仍可使用，請檢查網路後重試。",
+  "onboarding.prepare.later": "稍後下載",
+  "onboarding.prepare.progress": "查看角色包下載進度",
+  "onboarding.prepare.cancel": "停止角色包下載",
+  "onboarding.prepare.cancelled": "角色包下載已停止，可稍後重試。"
 }

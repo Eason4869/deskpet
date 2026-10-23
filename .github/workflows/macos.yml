@@ -136,6 +136,8 @@ jobs:
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-picker="$locale" | tee "$REPORT_ROOT/language-picker-$locale.log"
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-ui="$locale" | tee "$REPORT_ROOT/language-dialog-$locale.log"
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --full-language-ui="$locale" | tee "$REPORT_ROOT/ui-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --onboarding-preparation-ui="$locale" | tee "$REPORT_ROOT/onboarding-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --agent-job-ui="$locale" | tee "$REPORT_ROOT/agent-job-ui-$locale.log"
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --work-binding-ui="$locale" | tee "$REPORT_ROOT/work-binding-$locale.log"
           done
           cp -R work/language-ui "$REPORT_ROOT/language-ui"

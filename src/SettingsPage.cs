@@ -73,7 +73,7 @@ namespace Dafeiyu
                 var selected=(SkinDefinition)skins.SelectedItem;
                 if(HasUnsavedEdits){refreshing=true;skins.SelectedItem=pet.Skin;refreshing=false;ShowNotice(TextResources.Get("settingsPage.settingsPage.showNotice"));return;}
                 refreshing=true;skins.SelectedItem=pet.Skin;refreshing=false;
-                await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.Settings,HostWindow);RefreshSkinChoices();ShowNotice(pet.Notice);
+                await pet.RequestSkinAsync(selected,pet.GuideCompanionSelection?CompanionSelectionOrigin.Onboarding:CompanionSelectionOrigin.Settings,HostWindow);RefreshSkinChoices();ShowNotice(pet.Notice);
             };
             skins.AddHandler(UIElement.PreviewMouseLeftButtonUpEvent,new System.Windows.Input.MouseButtonEventHandler(delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){var item=FindParentItem(e.OriginalSource as DependencyObject);if(item!=null&&item.IsSelected&&ReferenceEquals(item.DataContext,pet.Skin)){pet.SelectSkin(pet.Skin);ShowNotice(pet.Notice);}}),true);
             Grid.SetRow(skins,1);appearanceRow.Children.Add(skins);

@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Consenti una volta",
   "agent.work.deny": "Nega",
   "agent.work.rename": "Rinomina",
-  "agent.work.restore": "Rimuovi dall’archivio"
+  "agent.work.restore": "Rimuovi dall’archivio",
+  "agent.jobs.ui.backgroundLimit": "Limite massimo di tempo per le attività in background (secondi)",
+  "agent.jobs.ui.syncLimit": "Limite di tempo per i comandi sincroni (secondi)",
+  "onboarding.prepare.network": "Configura prima l’accelerazione dei download GitHub",
+  "onboarding.prepare.networkDetail": "Scegli un’opzione disponibile di connessione diretta o accelerazione GitHub e salvala prima di scegliere un personaggio.",
+  "onboarding.prepare.packs": "Si consiglia vivamente di scaricare e aggiornare tutti i pacchetti ufficiali",
+  "onboarding.prepare.packsDetail": "Le risorse complete offrono tutte le azioni e gli aspetti dei personaggi. Verifica, download e aggiornamento in background iniziano solo dopo un tuo clic esplicito. Puoi continuare la guida. I personaggi esistenti restano visibili durante l’aggiornamento. Uscire dall’app interrompe i download.",
+  "onboarding.prepare.start": "Scarica e aggiorna tutti i pacchetti personaggio",
+  "onboarding.prepare.running": "Preparazione dei pacchetti in background: {0}%",
+  "onboarding.prepare.complete": "Tutti i pacchetti personaggio ufficiali sono pronti.",
+  "onboarding.prepare.failed": "Alcuni pacchetti non sono pronti. I personaggi installati restano utilizzabili. Verifica la rete e riprova.",
+  "onboarding.prepare.later": "Scarica più tardi",
+  "onboarding.prepare.progress": "Mostra avanzamento dei download dei pacchetti",
+  "onboarding.prepare.cancel": "Interrompi download dei pacchetti",
+  "onboarding.prepare.cancelled": "I download dei pacchetti sono stati interrotti. Puoi riprovare più tardi."
 }

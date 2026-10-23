@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -141,7 +141,9 @@ namespace Dafeiyu
             try{return mutation(owned);}
             finally{completion.TrySetResult(true);lock(gate)mutations.Remove(completion.Task);}
         }
-        public async Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token)
+        public Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token){return StopForExitAsync(token,true);}
+        public Task<AgentJobExitReport> PrepareForExitAsync(CancellationToken token){return StopForExitAsync(token,false);}
+        async Task<AgentJobExitReport> StopForExitAsync(CancellationToken token,bool releaseStore)
         {
             var elapsed=Stopwatch.StartNew();Task<bool> pending;Task[] admitted;
             AgentJobExitReport completed=null;
@@ -159,6 +161,7 @@ namespace Dafeiyu
                     catch(OperationCanceledException){deadline.Token.ThrowIfCancellationRequested();}
                     catch(Exception error){Debug.WriteLine(error);}
                     if(!report.CleanupConfirmed)return new AgentJobExitReport(false,report.Jobs,elapsed.ElapsedMilliseconds);
+                    if(!releaseStore)return new AgentJobExitReport(true,report.Jobs,elapsed.ElapsedMilliseconds);
                     Task closing;
                     lock(gate)
                     {

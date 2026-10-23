@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Dafeiyu
@@ -17,7 +17,12 @@ namespace Dafeiyu
             var items = new List<OnboardingLesson>();
             Action<int, string, string, string, string, string, string> add = (chapter, id, title, text, target, action, branch) => items.Add(new OnboardingLesson { Chapter = chapter, Id = id, Title = title, Text = text, Target = target, Action = action, Branch = branch });
             add(0, "welcome", TextResources.Get("onboardingLessons.build.add"), TextResources.Get("onboardingLessons.build.add.alternativeA"), "", "intro", "");
+            add(0, "network.intro", TextResources.Get("onboardingLessons.build.add.alternativeIP"), TextResources.Get("onboardingLessons.build.add.alternativeIQ"), "UpdateNetwork", "read", "");
+            add(0, "network.route", TextResources.Get("onboardingLessons.build.add.alternativeIR"), TextResources.Get("onboardingLessons.build.add.alternativeIS"), "UpdateNetwork", "read", "");
+            add(0, "network.test", TextResources.Get("onboardingLessons.build.add.alternativeIT"), TextResources.Get("onboardingLessons.build.add.alternativeIU"), "TestUpdateMirror", "read", "");
+            add(0, "network.save", TextResources.Get("onboardingLessons.build.add.alternativeIV"), TextResources.Get("onboardingLessons.build.add.alternativeIW"), "UpdateNetwork", "network", "");
             add(0, "pet.select", TextResources.Get("onboardingLessons.build.add.alternativeB"), TextResources.Get("onboardingLessons.build.add.alternativeC"), "SkinPicker", "read", "");
+            add(0,"pet.packages",TextResources.Get("onboarding.prepare.packs"),TextResources.Get("onboarding.prepare.packsDetail"),"SkinPicker","prepare-packs","");
             add(0, "pet.reopen", TextResources.Get("onboardingLessons.build.add.alternativeD"), TextResources.Get("onboardingLessons.build.add.alternativeE"), "SkinPicker", "read", "");
             add(1, "persona.read", TextResources.Get("onboardingLessons.build.add.alternativeF"), TextResources.Get("onboardingLessons.build.add.alternativeG"), "PersonaPrompt", "read", "");
             add(1, "persona.edit", TextResources.Get("onboardingLessons.build.add.alternativeH"), TextResources.Get("onboardingLessons.build.add.alternativeI"), "PersonaPrompt", "nonempty", "");
@@ -141,10 +146,6 @@ namespace Dafeiyu
             add(15, "mcp.transport", TextResources.Get("onboardingLessons.build.add.alternativeIJ"), TextResources.Get("onboardingLessons.build.add.alternativeIK"), "McpServerTransport", "read", "");
             add(15, "mcp.credentials", TextResources.Get("onboardingLessons.build.add.alternativeIL"), TextResources.Get("onboardingLessons.build.add.alternativeIM"), "McpServerKey", "read", "");
             add(15, "mcp.connect", TextResources.Get("onboardingLessons.build.add.alternativeIN"), TextResources.Get("onboardingLessons.build.add.alternativeIO"), "ConnectMcpServer", "read", "");
-            add(16, "network.intro", TextResources.Get("onboardingLessons.build.add.alternativeIP"), TextResources.Get("onboardingLessons.build.add.alternativeIQ"), "UpdateNetwork", "read", "");
-            add(16, "network.route", TextResources.Get("onboardingLessons.build.add.alternativeIR"), TextResources.Get("onboardingLessons.build.add.alternativeIS"), "UpdateNetwork", "read", "");
-            add(16, "network.test", TextResources.Get("onboardingLessons.build.add.alternativeIT"), TextResources.Get("onboardingLessons.build.add.alternativeIU"), "TestUpdateMirror", "read", "");
-            add(16, "network.save", TextResources.Get("onboardingLessons.build.add.alternativeIV"), TextResources.Get("onboardingLessons.build.add.alternativeIW"), "UpdateNetwork", "network", "");
             add(16, "finish.summary", TextResources.Get("onboardingLessons.build.add.alternativeIX"), TextResources.Get("onboardingLessons.build.add.alternativeIY"), "UpdateNetwork", "summary", "");
             add(16, "finish.congratulations", TextResources.Get("onboardingLessons.build.add.alternativeIZ"), TextResources.Get("onboardingLessons.build.add.alternativeJA"), "", "complete", "");
             return items.ToArray();

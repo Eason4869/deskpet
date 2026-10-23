@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -22,6 +22,7 @@ namespace Dafeiyu.Tests
         static PetWindow pet;
         static string output;
         static int checks,captures;
+        static string[] themes=new[]{"light","dark"};
         static readonly List<string> manifest=new List<string>();
         static readonly Regex Missing=new Regex(@"^\[[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z0-9_.]+\]$");
         static void Check(bool value,string label){if(!value)throw new Exception("Multilingual WPF audit: "+label);checks++;}
@@ -201,13 +202,13 @@ namespace Dafeiyu.Tests
         static async Task Run(string language)
         {
             Directory.CreateDirectory(output);string data=Path.Combine(output,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(data);
-            var cfg=new PetSettings{UiLanguage=language,AutoUpdate=false,GreetingEnabled=false,AiGreetingEnabled=false,ReadReplies=false,Wander=false,FollowCursor=false,HideOnFullscreen=false,OnboardingState="completed",ShowPredictedMessages=false,AgentWorkspace=Path.Combine(data,"workspace")};
+            var cfg=new PetSettings{ThemeMode=themes[0],UiLanguage=language,AutoUpdate=false,GreetingEnabled=false,AiGreetingEnabled=false,ReadReplies=false,Wander=false,FollowCursor=false,HideOnFullscreen=false,OnboardingState="completed",ShowPredictedMessages=false,AgentWorkspace=Path.Combine(data,"workspace")};
             Directory.CreateDirectory(cfg.AgentWorkspace);foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
             var store=new SettingsStore(Path.Combine(data,"settings.json"));store.Save(cfg);cfg=store.Load();TextResources.ConfigureStartupLanguage(cfg.UiLanguage);
             Check(TextResources.CurrentLanguage==language,"saved startup locale");
             pet=new PetWindow(null,cfg,store,null);pet.ShowChat();await Settle();var chat=app.Windows.OfType<ChatWindow>().Single(w=>w.IsVisible);chat.Width=1000;chat.Height=780;
             var chatSession=(ConversationSession)typeof(ChatWindow).GetField("session",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat);
-            foreach(string theme in new[]{"light","dark"})
+            foreach(string theme in themes)
             {
                 File.AppendAllText(Path.Combine(output,"trace.log"),DateTime.UtcNow.ToString("O")+" theme begin "+theme+Environment.NewLine);
                 chatSession.Clear();if(!ReferenceEquals(chatSession,pet.Conversation))pet.Conversation.Clear();
@@ -259,7 +260,7 @@ namespace Dafeiyu.Tests
                 await Dialog(new ShortcutHelpDialog(chat,commands),chat,"dialog-shortcuts-"+theme);
                 Click(chat,"ShellSettings");await Settle();
                 // Direct saved-lesson fixtures show instructional text without pressing action/test controls.
-                foreach(string lesson in new[]{"welcome","pet.select","persona.read","behavior.size","text.provider","asr.intro","finish.summary","finish.congratulations"})
+                foreach(string lesson in new[]{"welcome","network.intro","pet.select","pet.packages","persona.read","behavior.size","text.provider","asr.intro","finish.summary","finish.congratulations"})
                 {
                     cfg.OnboardingState="deferred";cfg.OnboardingLessonId=lesson;
                     var guide=new OnboardingWindow(pet,settings,chat);guide.Show();try{await Settle();Check(guide.CurrentLessonId==lesson,"requested guide lesson "+lesson);await ScrollCaptures(guide,"guide-"+lesson+"-"+theme);}finally{guide.Close();}await Settle();
@@ -273,7 +274,7 @@ namespace Dafeiyu.Tests
                 "Fixtures do not activate network, microphone, speech playback, downloads, browser, file/folder pickers or destructive actions.",
                 "Not captured: live audio/recording, API responses/errors/model discovery, update/download/install/uninstall dialogs, OS permission dialogs, native file pickers, WebView/browser pages; running-task/approval/question fixture states and project-hover details.",
                 "Image workspace covers empty generation/gallery/task states; populated image/error/queue/reference/editor dynamic states require separate injected fixtures.",
-                "Onboarding captures the eight named safe lessons only; gesture verification, remaining lesson cards and live test execution are excluded.",
+                "Onboarding captures the ten named safe lessons only; gesture verification, remaining lesson cards and live test execution are excluded.",
                 "hasHan in text dumps is a review hint, not a failure: Japanese, Chinese native names, user data and brand names may legitimately contain Han characters.",
                 "Capture and layout assertions establish visibility and resource resolution; human screenshot/text review is still required for translation quality and truncation."
             },Encoding.UTF8);
@@ -281,8 +282,9 @@ namespace Dafeiyu.Tests
         }
         [STAThread]public static int Main(string[] args)
         {
-            if(args.Length<1||args.Length>2||!UiLanguages.Choices.Any(c=>c.Code==args[0]))return 2;
-            output=Path.GetFullPath(args.Length==2?args[1]:Path.Combine("work","language-ui","full","wpf",args[0]));
+            if(args.Length<1||args.Length>3||!UiLanguages.Choices.Any(c=>c.Code==args[0]))return 2;
+            if(args.Length==3){if(args[2]!="light"&&args[2]!="dark")return 2;themes=new[]{args[2]};}
+            output=Path.GetFullPath(args.Length>=2?args[1]:Path.Combine("work","language-ui","full","wpf",args[0]));
             app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;
             app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(args[0]);result=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return result;
         }

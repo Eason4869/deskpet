@@ -116,7 +116,7 @@ jobs:
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 --no-restore
           if ($LASTEXITCODE) { throw 'Desktop build failed' }
           $testDll = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
-          foreach ($arguments in @('', '--image-writer-exit-ui-only', '--image-held-exit-ui-only', '--image-exit-ui-only')) {
+          foreach ($arguments in @('', '--agent-job-native-ui-only', '--agent-job-exit-ui-only', '--image-writer-exit-ui-only', '--image-held-exit-ui-only', '--image-exit-ui-only')) {
             if ($arguments) { dotnet $testDll $arguments } else { dotnet $testDll }
             if ($LASTEXITCODE) { throw ('Desktop acceptance failed: ' + $arguments) }
           }
@@ -171,15 +171,19 @@ jobs:
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--language-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia language dialog integration failed: '+$locale) }
           }
-          ./Build.ps1 -Target MultilingualUiAuditTests -TestArguments zh_CN
+          ./Build.ps1 -Target MultilingualUiAuditTests -TestArguments @('zh_CN','work/language-ui/wpf-build-smoke','light')
           if ($LASTEXITCODE) { throw 'WPF Chinese UI audit failed' }
-          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             ./tools/run_wpf_language_audit.ps1 -Executable work/MultilingualUiAuditTests.exe -Locale $locale -OutputDirectory ('work/language-ui/full/wpf/'+$locale)
             if ($LASTEXITCODE) { throw ('WPF translated UI audit failed: '+$locale) }
           }
           foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--full-language-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia translated UI audit failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--onboarding-preparation-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Onboarding preparation UI failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--agent-job-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Agent task UI failed: '+$locale) }
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--work-binding-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia work binding UI failed: '+$locale) }
           }
@@ -222,6 +226,17 @@ jobs:
             work/language-ui/
             work/language-picker/
             work/agent-jobs-ui/
+      - name: Preserve compact WPF language diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpf-language-diagnostics-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/language-ui/full/wpf/**/process.json
+            work/language-ui/full/wpf/**/process.log
+            work/language-ui/full/wpf/**/trace.log
+            work/language-ui/full/wpf/**/native-events.json
       - name: Preserve background job acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4

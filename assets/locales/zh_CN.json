@@ -4483,5 +4483,19 @@
   "agent.work.allow": "允许本次",
   "agent.work.deny": "拒绝",
   "agent.work.rename": "重命名",
-  "agent.work.restore": "取消归档"
+  "agent.work.restore": "取消归档",
+  "agent.jobs.ui.backgroundLimit": "后台任务时限上限（秒）",
+  "agent.jobs.ui.syncLimit": "同步命令时限（秒）",
+  "onboarding.prepare.network": "先配置 GitHub 下载加速",
+  "onboarding.prepare.networkDetail": "请选择已有的直连或 GitHub 加速方案并保存，再选择角色。",
+  "onboarding.prepare.packs": "强烈建议下载并更新全量官方角色包",
+  "onboarding.prepare.packsDetail": "全量素材可提供完整动作和角色外观。明确点击后在后台检查、下载并更新；您可以继续后续引导。已有角色在更新时继续显示，退出应用会停止下载。",
+  "onboarding.prepare.start": "下载并更新全部角色包",
+  "onboarding.prepare.running": "正在后台准备角色包：{0}%",
+  "onboarding.prepare.complete": "所有官方角色包已准备完成。",
+  "onboarding.prepare.failed": "部分角色包未准备完成。已安装的角色仍可使用，请检查网络后重试。",
+  "onboarding.prepare.later": "稍后下载",
+  "onboarding.prepare.progress": "查看角色包下载进度",
+  "onboarding.prepare.cancel": "停止角色包下载",
+  "onboarding.prepare.cancelled": "角色包下载已停止，可稍后重试。"
 }

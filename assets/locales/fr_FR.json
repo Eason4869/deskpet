@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Autoriser une fois",
   "agent.work.deny": "Refuser",
   "agent.work.rename": "Renommer",
-  "agent.work.restore": "Désarchiver"
+  "agent.work.restore": "Désarchiver",
+  "agent.jobs.ui.backgroundLimit": "Durée limite maximale des tâches en arrière-plan (secondes)",
+  "agent.jobs.ui.syncLimit": "Durée limite des commandes synchrones (secondes)",
+  "onboarding.prepare.network": "Configurer d’abord l’accélération des téléchargements GitHub",
+  "onboarding.prepare.networkDetail": "Choisissez une connexion directe ou une option d’accélération GitHub disponible et enregistrez-la avant de choisir un personnage.",
+  "onboarding.prepare.packs": "Le téléchargement et la mise à jour de tous les packs officiels sont fortement recommandés",
+  "onboarding.prepare.packsDetail": "Les ressources complètes donnent accès à toutes les actions et apparences des personnages. La vérification, le téléchargement et la mise à jour en arrière-plan ne commencent qu’après un clic explicite. Vous pouvez poursuivre le guide. Les personnages existants restent affichés pendant la mise à jour. Quitter l’application arrête les téléchargements.",
+  "onboarding.prepare.start": "Télécharger et mettre à jour tous les packs de personnages",
+  "onboarding.prepare.running": "Préparation des packs en arrière-plan : {0}%",
+  "onboarding.prepare.complete": "Tous les packs de personnages officiels sont prêts.",
+  "onboarding.prepare.failed": "Certains packs ne sont pas prêts. Les personnages installés restent utilisables. Vérifiez le réseau et réessayez.",
+  "onboarding.prepare.later": "Télécharger plus tard",
+  "onboarding.prepare.progress": "Voir la progression du téléchargement des packs",
+  "onboarding.prepare.cancel": "Arrêter le téléchargement des packs",
+  "onboarding.prepare.cancelled": "Le téléchargement des packs est arrêté. Vous pourrez réessayer plus tard."
 }

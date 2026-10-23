@@ -1,4 +1,4 @@
-# DeskPet
+﻿# DeskPet
 
 [简体中文](../README.md) | [English](readme.en.md)
 
@@ -17,3 +17,5 @@ Keep the updater helper and configuration files alongside the application in bot
 - See the [skin format guide](skin-format.md) and [third-party notices](third-party-notices.md).
 
 Ebao's complete artwork is bundled for offline use. Other official companions download when first selected; you can also download or update all packs in Settings. Complete packs include the default outfit and published holiday outfits. Using a character does not require downloading a creation template.
+
+- First-run setup places GitHub routing before character selection and an optional full official-pack download/update. Preparation continues while you proceed through or close the guide.

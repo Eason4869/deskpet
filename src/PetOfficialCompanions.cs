@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +8,7 @@ using System.Windows;
 
 namespace Dafeiyu
 {
-    internal enum CompanionSelectionOrigin { PassiveMenu, Settings, MainWindow, StartupRestore }
+    internal enum CompanionSelectionOrigin { PassiveMenu, Settings, MainWindow, StartupRestore, Onboarding }
     public sealed partial class PetWindow
     {
         readonly WpfOfficialNativeValidator officialNative=new WpfOfficialNativeValidator();
@@ -62,9 +62,10 @@ namespace Dafeiyu
             Notice=TextResources.Get("petOfficialCompanions.noticeOnlyCompanionGuide.notice");
             if(preferences!=null)preferences.ShowNotice(Notice);return true;
         }
-        bool CanRequestCompanion()
+        internal bool GuideCompanionSelection {get{return GuideActive&&guide.TargetName=="SkinPicker";}}
+        bool CanRequestCompanion(bool onboarding=false)
         {
-            if(NoticeOnlyCompanionGuide())return false;
+            if(onboarding&&GuideCompanionSelection)guide.AllowCompanionPreparation();else if(NoticeOnlyCompanionGuide())return false;
             if(closing||IsUpdating)return false;
             if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
             if(DialogueBusy||DictationActive||LiveActive){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
@@ -87,7 +88,7 @@ namespace Dafeiyu
         }
         internal async Task<bool> RequestSkinAsync(SkinDefinition skin,CompanionSelectionOrigin origin,Window owner)
         {
-            if(skin==null||!CanRequestCompanion())return false;
+            if(skin==null||!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding))return false;
             if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.requestSkinAsync.notice");return false;}
             RecordPetInteraction();long token=BeginCompanionSelection(skin);
             if(skin.Embedded&&ShouldRefreshOfficial(skin))return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
@@ -194,7 +195,7 @@ namespace Dafeiyu
                 }
             }catch(Exception error){if(!OfficialError(error))throw;return "!unavailable";}
         }
-        bool OfficialSafe {get{return !closing&&!IsUpdating&&!GuideActive&&!HolidayBusinessBusy&&!interaction.Active&&!dragging&&!dropMotion.Active&&!walking&&!holidayPlayback.Active&&!holidayTransition.Active&&Animation!=null&&Animation.State=="idle"&&!clickTimer.IsEnabled&&(preferences==null||!preferences.HasUnsavedEdits);}}
+        bool OfficialSafe {get{return !closing&&!IsUpdating&&(!GuideActive||guide.AllowsCompanionPreparation)&&!HolidayBusinessBusy&&!interaction.Active&&!dragging&&!dropMotion.Active&&!walking&&!holidayPlayback.Active&&!holidayTransition.Active&&Animation!=null&&Animation.State=="idle"&&!clickTimer.IsEnabled&&(preferences==null||!preferences.HasUnsavedEdits);}}
         void TryApplyDeferredOfficial()
         {
             var pending=deferredOfficial;if(pending==null||!OfficialSafe)return;
@@ -249,20 +250,31 @@ namespace Dafeiyu
             }
             Holidays.ReplaceCatalog(merged);
         }
-        internal async Task DownloadAllOfficialAsync(Window owner)
+        OfficialCompanionPreparation preparation;
+        internal Func<IProgress<OfficialCompanionProgress>,CancellationToken,Task> PreparationDownloadOverride;
+        internal OfficialCompanionPreparation OfficialPreparation {get{return preparation??(preparation=new OfficialCompanionPreparation((progress,token)=>PreparationDownloadOverride==null?PrepareAllOfficialAsync(progress,token):PreparationDownloadOverride(progress,token),officialLifetime.Token));}}
+        async Task PrepareAllOfficialAsync(IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
         {
-            if(NoticeOnlyCompanionGuide()||closing||IsUpdating)return;
-            var captured=Skin;long token=officialRequest;var dialog=new OfficialCompanionProgressWindow(owner,true);dialog.Show();
-            IList<OfficialCompanionResult> results=null;Exception failure=null;
-            try {results=await OfficialDownloads.EnsureAllAsync(OfficialRouting(),new Progress<OfficialCompanionProgress>(dialog.Report),dialog.Token);}
-            catch(OperationCanceledException error){failure=error;}
-            catch(Exception error){if(!OfficialError(error))throw;failure=error;}
+            var captured=Skin;long token=officialRequest;IList<OfficialCompanionResult> results=null;Exception failure=null;
+            try{results=await OfficialDownloads.EnsureAllAsync(OfficialRouting(),progress,cancel);}
+            catch(Exception error){failure=error;}
             if(!closing)await RefreshBulkInstallations(captured,token,results);
-            if(failure==null){dialog.Complete();return;}
-            if(failure is OperationCanceledException){dialog.Failure(TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeA"),()=>{var ignored=DownloadAllOfficialAsync(owner);});return;}
-            var aggregate=failure as AggregateException;
-            var failures=aggregate==null?new string[0]:OfficialCompanionProfiles.All.Where(p=>aggregate.Flatten().InnerExceptions.Any(e=>e.Message.StartsWith(p.Id+"：",StringComparison.Ordinal)||e.Message.StartsWith(p.Id+":",StringComparison.Ordinal))).Select(p=>p.DisplayName).ToArray();
-            dialog.Failure((failures.Length==0?TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeB"):TextResources.Format("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure",String.Join("、",failures)))+TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC"),()=>{var ignored=DownloadAllOfficialAsync(owner);});
+            if(failure!=null)throw failure;
+        }
+        internal Task DownloadAllOfficialAsync(Window owner)
+        {
+            if(NoticeOnlyCompanionGuide()||closing||IsUpdating)return Task.FromResult(0);
+            ShowOfficialPreparation();return OfficialPreparation.StartAsync();
+        }
+        internal void ShowOfficialPreparation()
+        {
+            var state=OfficialPreparation;var window=new Window();Ui.Window(window,TextResources.Get("onboarding.prepare.progress"),520,330);window.Name="OfficialPreparationProgress";
+            var label=Ui.Text(state.StatusText,13,Ui.Ink);label.TextWrapping=System.Windows.TextWrapping.Wrap;
+            var body=new System.Windows.Controls.StackPanel{Margin=new Thickness(22)};body.Children.Add(label);
+            var start=Ui.Button(TextResources.Get("onboarding.prepare.start"),true);start.Name="StartOfficialPreparation";start.Click+=delegate{var ignored=state.StartAsync();};body.Children.Add(start);
+            var cancel=Ui.Button(TextResources.Get("onboarding.prepare.cancel"));cancel.Click+=delegate{state.Cancel();};body.Children.Add(cancel);window.Content=new System.Windows.Controls.ScrollViewer{Content=body,VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Disabled};
+            Action refresh=()=>window.Dispatcher.BeginInvoke(new Action(()=>{label.Text=state.StatusText;start.IsEnabled=state.State!=OfficialCompanionPreparationState.Running;cancel.IsEnabled=state.State==OfficialCompanionPreparationState.Running;}));
+            state.Changed+=refresh;window.Closed+=delegate{state.Changed-=refresh;};refresh();window.Show();
         }
         async Task RefreshBulkInstallations(SkinDefinition captured,long token,IList<OfficialCompanionResult> results)
         {
@@ -273,7 +285,7 @@ namespace Dafeiyu
                     await officialNative.ValidateAsync(installed,officialLifetime.Token);
                     var result=results==null?null:results.FirstOrDefault(r=>r.Installation.Asset.Id==profile.Id);
                     var ready=await PrepareOfficialAsync(installed,result==null||result.InstalledNow);
-                    if(captured.PickerKey==ready.PickerKey&&ReferenceEquals(captured,Skin)&&OwnsOfficial(token)&&String.IsNullOrEmpty(Settings.PendingOfficialCompanionId)&&(deferredOfficial==null||!deferredOfficial.Select)){QueueOfficial(ready,token,false);TryApplyDeferredOfficial();}else PublishInactiveOfficial(ready);
+                    if(Skin.PickerKey==ready.PickerKey&&String.IsNullOrEmpty(Settings.PendingOfficialCompanionId)&&(deferredOfficial==null||!deferredOfficial.Select)){QueueOfficial(ready,officialRequest,false);TryApplyDeferredOfficial();}else PublishInactiveOfficial(ready);
                 }catch(OperationCanceledException){return;}catch(Exception error){if(!OfficialError(error))throw;}
             }
         }
@@ -292,6 +304,6 @@ namespace Dafeiyu
             if(!skin.IsOfficial||Settings.PendingOfficialCompanionId!=skin.BuiltinCharacterId&&(deferredOfficial==null||!deferredOfficial.Select||deferredOfficial.Skin.PickerKey!=skin.PickerKey))return;
             officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;Settings.PendingOfficialCompanionId="";SaveSettings();
         }
-        void DisposeOfficialCompanions(){officialLifetime.Cancel();if(officialDownloads!=null)officialDownloads.Dispose();if(officialTransport!=null)officialTransport.Dispose();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
+        void DisposeOfficialCompanions(){officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();if(officialDownloads!=null)officialDownloads.Dispose();if(officialTransport!=null)officialTransport.Dispose();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
     }
 }

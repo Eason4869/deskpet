@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +16,8 @@ namespace Dafeiyu.Tests
         }
         static void Run()
         {
+            var completedCurrentSeries=new PetSettings{LastOnboardingSeries="0.10",OnboardingState="completed",OnboardingVersion=2};
+            Check(!Prepare(completedCurrentSeries,"0.10.5-dev.2").ShowGuide&&completedCurrentSeries.OnboardingState=="completed","O08 preparation content does not force current-series users to repeat completed guidance");
             Check(typeof(PetSettings).GetProperty("LastOnboardingSeries")!=null,"settings expose persisted onboarding series");
             var fresh=new PetSettings();var result=Prepare(fresh,"0.5.5");
             Check(result.ShowGuide && result.Changed && Series(fresh)=="0.5" && fresh.OnboardingStep==0,"fresh installation records current series before its only automatic guide");

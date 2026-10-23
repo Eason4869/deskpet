@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Permitir una vez",
   "agent.work.deny": "Denegar",
   "agent.work.rename": "Cambiar nombre",
-  "agent.work.restore": "Desarchivar"
+  "agent.work.restore": "Desarchivar",
+  "agent.jobs.ui.backgroundLimit": "Límite máximo de tiempo de tareas en segundo plano (segundos)",
+  "agent.jobs.ui.syncLimit": "Límite de tiempo de comandos síncronos (segundos)",
+  "onboarding.prepare.network": "Configura primero la aceleración de descargas de GitHub",
+  "onboarding.prepare.networkDetail": "Elige una opción disponible de conexión directa o aceleración de GitHub y guárdala antes de seleccionar un personaje.",
+  "onboarding.prepare.packs": "Se recomienda especialmente descargar y actualizar todos los paquetes oficiales de personajes",
+  "onboarding.prepare.packsDetail": "Los recursos completos incluyen todas las acciones y apariencias de los personajes. La revisión, la descarga y la actualización en segundo plano solo comienzan después de hacer clic explícitamente. Puedes continuar la guía. Los personajes existentes siguen visibles durante la actualización. Salir de la aplicación detiene las descargas.",
+  "onboarding.prepare.start": "Descargar y actualizar todos los paquetes de personajes",
+  "onboarding.prepare.running": "Preparando paquetes de personajes en segundo plano: {0}%",
+  "onboarding.prepare.complete": "Todos los paquetes oficiales de personajes están listos.",
+  "onboarding.prepare.failed": "Algunos paquetes no están listos. Los personajes instalados se pueden seguir usando. Revisa la red e inténtalo de nuevo.",
+  "onboarding.prepare.later": "Descargar más tarde",
+  "onboarding.prepare.progress": "Ver progreso de descarga de paquetes",
+  "onboarding.prepare.cancel": "Detener descargas de paquetes",
+  "onboarding.prepare.cancelled": "Las descargas de paquetes se detuvieron. Puedes volver a intentarlo más tarde."
 }

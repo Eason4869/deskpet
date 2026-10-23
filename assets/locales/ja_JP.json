@@ -4483,5 +4483,19 @@
   "agent.work.allow": "今回のみ許可",
   "agent.work.deny": "拒否",
   "agent.work.rename": "名前を変更",
-  "agent.work.restore": "アーカイブを解除"
+  "agent.work.restore": "アーカイブを解除",
+  "agent.jobs.ui.backgroundLimit": "バックグラウンドタスクの制限時間上限（秒）",
+  "agent.jobs.ui.syncLimit": "同期コマンドの制限時間（秒）",
+  "onboarding.prepare.network": "先に GitHub ダウンロードの高速化を設定",
+  "onboarding.prepare.networkDetail": "利用可能な直接接続または GitHub 高速化の設定を選んで保存してから、キャラクターを選択してください。",
+  "onboarding.prepare.packs": "すべての公式キャラクターパックのダウンロードと更新を強くおすすめします",
+  "onboarding.prepare.packsDetail": "完全な素材を使用すると、すべてのアクションとキャラクターの外観を利用できます。ボタンを明示的にクリックした後、バックグラウンドで確認、ダウンロード、更新を行います。その間もガイドを続けられます。既存のキャラクターは更新中も表示され、アプリを終了するとダウンロードは停止します。",
+  "onboarding.prepare.start": "すべてのキャラクターパックをダウンロード・更新",
+  "onboarding.prepare.running": "バックグラウンドでキャラクターパックを準備中：{0}%",
+  "onboarding.prepare.complete": "すべての公式キャラクターパックの準備が完了しました。",
+  "onboarding.prepare.failed": "一部のキャラクターパックの準備が完了していません。インストール済みのキャラクターは引き続き利用できます。ネットワークを確認して再試行してください。",
+  "onboarding.prepare.later": "後でダウンロード",
+  "onboarding.prepare.progress": "キャラクターパックのダウンロード状況を表示",
+  "onboarding.prepare.cancel": "キャラクターパックのダウンロードを停止",
+  "onboarding.prepare.cancelled": "キャラクターパックのダウンロードを停止しました。後で再試行できます。"
 }

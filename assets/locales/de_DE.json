@@ -4483,5 +4483,19 @@
   "agent.work.allow": "Einmal erlauben",
   "agent.work.deny": "Ablehnen",
   "agent.work.rename": "Umbenennen",
-  "agent.work.restore": "Archivierung aufheben"
+  "agent.work.restore": "Archivierung aufheben",
+  "agent.jobs.ui.backgroundLimit": "Maximales Zeitlimit für Hintergrundaufgaben (Sekunden)",
+  "agent.jobs.ui.syncLimit": "Zeitlimit für synchrone Befehle (Sekunden)",
+  "onboarding.prepare.network": "Zuerst die GitHub-Downloadbeschleunigung einrichten",
+  "onboarding.prepare.networkDetail": "Wähle eine verfügbare Direktverbindung oder GitHub-Beschleunigung und speichere sie, bevor du einen Charakter auswählst.",
+  "onboarding.prepare.packs": "Es wird dringend empfohlen, alle offiziellen Charakterpakete herunterzuladen und zu aktualisieren",
+  "onboarding.prepare.packsDetail": "Die vollständigen Ressourcen bieten alle Aktionen und Charakterdarstellungen. Erst nach deinem ausdrücklichen Klick werden die Pakete im Hintergrund geprüft, heruntergeladen und aktualisiert. Du kannst die Anleitung fortsetzen. Vorhandene Charaktere bleiben während der Aktualisierung sichtbar. Beim Beenden der App werden die Downloads gestoppt.",
+  "onboarding.prepare.start": "Alle Charakterpakete herunterladen und aktualisieren",
+  "onboarding.prepare.running": "Charakterpakete werden im Hintergrund vorbereitet: {0}%",
+  "onboarding.prepare.complete": "Alle offiziellen Charakterpakete sind bereit.",
+  "onboarding.prepare.failed": "Einige Charakterpakete sind noch nicht bereit. Installierte Charaktere bleiben nutzbar. Prüfe die Netzwerkverbindung und versuche es erneut.",
+  "onboarding.prepare.later": "Später herunterladen",
+  "onboarding.prepare.progress": "Downloadfortschritt der Charakterpakete anzeigen",
+  "onboarding.prepare.cancel": "Downloads der Charakterpakete stoppen",
+  "onboarding.prepare.cancelled": "Die Downloads der Charakterpakete wurden gestoppt. Du kannst es später erneut versuchen."
 }

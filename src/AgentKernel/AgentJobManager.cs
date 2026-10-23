@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -20,6 +20,7 @@ namespace Dafeiyu
             internal IAgentJobProcess Process;
             internal volatile AgentJobLogStore Log;
             internal IDisposable DirectoryLease;
+            internal bool FinalPersistencePending;
             internal readonly SemaphoreSlim Mutation=new SemaphoreSlim(1,1);
             internal readonly CancellationTokenSource Lifetime=new CancellationTokenSource();
             internal readonly CancellationTokenSource PendingStart=new CancellationTokenSource(),RefreshCancellation=new CancellationTokenSource();
@@ -226,17 +227,37 @@ namespace Dafeiyu
             {
             try
             {
-                if(entry.Process==null||AgentJobStore.IsTerminal(entry.Record.State)||entry.Record.State!=AgentJobState.Running)return;
+                if(AgentJobStore.IsTerminal(entry.Record.State)){if(entry.FinalPersistencePending)await PersistTerminalAsync(entry).ConfigureAwait(false);return;}
+                if(entry.Process==null||entry.Record.State!=AgentJobState.Running)return;
                 var status=entry.Process.Status;bool changed=ObserveExit(entry,status);
                 if(status.TreeExited&&status.StreamsDrained)
                 {
                     bool clean=await CleanupAsync(entry).ConfigureAwait(false);entry.Record.CleanupConfirmed=clean;
-                    entry.Record.State=clean?(status.RootExitCode==0?AgentJobState.Succeeded:AgentJobState.Failed):AgentJobState.CleanupFailed;
-                    if(clean){entry.Record.FinishedUtc=clock.UtcNow;LogFor(entry).Complete();await LogFor(entry).FlushAsync(token).ConfigureAwait(false);Release(entry);}
-                    else entry.Record.LogWarning="cleanup_unconfirmed";
+                    if(clean)
+                    {
+                        // EOF belongs to the application, even when a log-view read is cancelled.
+                        // A log failure cannot retain a directory after its native tree is gone.
+                        try
+                        {
+                            LogFor(entry).Complete();
+                            using(var flush=CancellationTokenSource.CreateLinkedTokenSource(entry.RefreshCancellation.Token))
+                            {
+                                flush.CancelAfter(4500);
+                                var writing=LogFor(entry).FlushAsync(flush.Token).ContinueWith(task=>{task.GetAwaiter().GetResult();return true;},TaskScheduler.Default);
+                                await AgentAuthorizationService.AwaitCancellation(writing,flush.Token).ConfigureAwait(false);
+                            }
+                        }
+                        catch(Exception error){Debug.WriteLine(error);entry.Record.LogWarning="log_storage_failed";}
+                        finally
+                        {
+                            entry.Record.State=status.RootExitCode==0?AgentJobState.Succeeded:AgentJobState.Failed;entry.Record.FinishedUtc=clock.UtcNow;entry.FinalPersistencePending=true;
+                            Release(entry);entry.Published=new AgentJobSnapshot(entry.Record);Notify();
+                        }
+                    }
+                    else {entry.Record.State=AgentJobState.CleanupFailed;entry.Record.LogWarning="cleanup_unconfirmed";}
                     changed=true;
                 }
-                if(changed){entry.Published=new AgentJobSnapshot(entry.Record);await PersistAsync(entry,cancellation.Token).ConfigureAwait(false);Notify();}
+                if(changed){entry.Published=new AgentJobSnapshot(entry.Record);if(AgentJobStore.IsTerminal(entry.Record.State))await PersistTerminalAsync(entry).ConfigureAwait(false);else await PersistAsync(entry,cancellation.Token).ConfigureAwait(false);Notify();}
             }
             catch(OperationCanceledException){if(!entry.RefreshCancellation.IsCancellationRequested)throw;}
             finally{entry.Mutation.Release();}
@@ -248,9 +269,17 @@ namespace Dafeiyu
         AgentJobLogStore LogFor(Entry entry){return entry.Log??(entry.Log=store.OpenLog(entry.Record.Id));}
         async Task PersistAsync(Entry entry,CancellationToken token)
         {
-            var snapshot=new AgentJobSnapshot(entry.Record);
+            var snapshot=new AgentJobSnapshot(entry.Record);if(AgentJobStore.IsTerminal(snapshot.State))entry.FinalPersistencePending=true;
             await AgentAuthorizationService.AwaitCancellation(store.SaveAsync(snapshot,token).ContinueWith(task=>{task.GetAwaiter().GetResult();return true;},TaskScheduler.Default),token).ConfigureAwait(false);
-            token.ThrowIfCancellationRequested();entry.Published=snapshot;
+            token.ThrowIfCancellationRequested();entry.Published=snapshot;if(AgentJobStore.IsTerminal(snapshot.State))entry.FinalPersistencePending=false;
+        }
+        async Task PersistTerminalAsync(Entry entry)
+        {
+            using(var deadline=new CancellationTokenSource(4500))
+            {
+                try{await PersistAsync(entry,deadline.Token).ConfigureAwait(false);}
+                catch(Exception){entry.Record.LogWarning=entry.Record.LogWarning??"metadata_storage_failed";entry.Published=new AgentJobSnapshot(entry.Record);Notify();throw;}
+            }
         }
         Entry Find(AgentJobOwner owner,string id)
         {
@@ -294,7 +323,7 @@ namespace Dafeiyu
             catch(OperationCanceledException){token.ThrowIfCancellationRequested();throw new IOException("job_cleanup_unconfirmed");}
             try
             {
-                if(AgentJobStore.IsTerminal(entry.Record.State))return Snapshot(entry);
+                if(AgentJobStore.IsTerminal(entry.Record.State)){if(entry.FinalPersistencePending)await PersistAsync(entry,deadline.Token).ConfigureAwait(false);return Snapshot(entry);}
                 // Pending starts are owned by their request until handoff; exit cancels those first.
                 if(entry.Process==null)throw new InvalidOperationException("job_starting");
                 entry.Record.StopReason=entry.Record.StopReason??reason;entry.Record.State=AgentJobState.Stopping;
@@ -362,18 +391,20 @@ namespace Dafeiyu
             lock(gate){exitRequested=true;pending=invocations.Values.ToArray();}exiting.Cancel();
             using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(token))
             {
-                deadline.CancelAfter(10000);
+                deadline.CancelAfter(10000);Task<AgentJobSnapshot>[] stops=null;bool joined=false;
                 try
                 {
                     foreach(var entry in pending)if(entry.Start!=null)try{await AgentAuthorizationService.AwaitCancellation(entry.Start,deadline.Token).ConfigureAwait(false);}catch(OperationCanceledException){deadline.Token.ThrowIfCancellationRequested();}catch(Exception error){Debug.WriteLine(error);}
-                    Entry[] active;lock(gate)active=jobs.Values.Where(entry=>!AgentJobStore.IsTerminal(entry.Record.State)).ToArray();
-                    var stops=active.Select(entry=>StopEntryAsync(entry,AgentJobStopReason.ApplicationExit,deadline.Token)).ToArray();
-                    await AgentAuthorizationService.AwaitCancellation(Task.WhenAll(stops),deadline.Token).ConfigureAwait(false);
+                    // Terminal publication may precede the final metadata commit: join every entry mutation.
+                    Entry[] owned;lock(gate)owned=jobs.Values.ToArray();
+                    stops=owned.Select(entry=>StopEntryAsync(entry,AgentJobStopReason.ApplicationExit,deadline.Token)).ToArray();
+                    await AgentAuthorizationService.AwaitCancellation(Task.WhenAll(stops),deadline.Token).ConfigureAwait(false);joined=true;
                 }
                 catch(OperationCanceledException){}
                 catch(Exception error){Debug.WriteLine(error);}
+                if(stops!=null&&stops.All(task=>task.IsCompleted))joined=true;
                 AgentJobSnapshot[] snapshots;lock(gate)snapshots=jobs.Values.Select(Snapshot).ToArray();
-                return new AgentJobExitReport(snapshots.All(job=>AgentJobStore.IsTerminal(job.State)),snapshots,elapsed.ElapsedMilliseconds);
+                return new AgentJobExitReport(joined&&snapshots.All(job=>AgentJobStore.IsTerminal(job.State)),snapshots,elapsed.ElapsedMilliseconds);
             }
         }
         void Notify(){var changed=Changed;if(changed!=null)foreach(Action callback in changed.GetInvocationList())try{callback();}catch(Exception error){Debug.WriteLine(error);}}

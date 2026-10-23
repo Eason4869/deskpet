@@ -1,4 +1,4 @@
-[简体中文](README.md) | [English](README.en.md)
+﻿[简体中文](README.md) | [English](README.en.md)
 
 <div align="center">
   <picture>
@@ -16,7 +16,7 @@ DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标
 
 语言名称使用本名：简体中文、繁體中文、English、日本語、한국어、Français (France)、Deutsch (Deutschland)、हिन्दी (भारत)、Bahasa Indonesia、Italiano (Italia)、Português (Brasil)、Español (Latinoamérica)、Español (España)。
 
-后台任务已完成核心、原生进程和工具/会话阶段；Windows WPF 已接入应用级任务服务、项目操作保护、退出清理、原回复任务卡片、任务列表与纯文本日志。预览地址只来自本地回环日志，点击后才在浏览器打开。Avalonia 已加入最小持久工作会话选择、双窗口复用与来源隔离；后台任务界面、退出验收、首次引导和总验收仍在开发，尚未整体交付。进度见 [实施记录](docs/agent-background-jobs/implementation-progress.md)，文案维护见 [资源指南](docs/localization/zh-CN-resource-guide.md)。完成验收后合入 `dev` 并打源码标签，暂不发布 Release；下方下载链接仍指向已发布的正式版本。
+Windows WPF 与 Avalonia 的持久工作会话支持应用级后台任务：原回复任务卡片、项目任务列表、筛选排序、只读分页日志、停止和重试。本地回环预览地址只从日志提取，明确点击后才打开浏览器；关闭对话或归档不会结束任务。修改活动项目设置、删除和退出均受任务归属与清理保护。macOS 保留会话与任务记录界面，不提供本地进程执行。首次引导先配置 GitHub 加速，再选择角色，并强烈建议明确点击下载和更新全量官方角色包；下载期间可以继续或关闭引导，有效旧角色继续显示，更新后热加载最后选择的角色。完整验收记录见 [实施记录](docs/agent-background-jobs/implementation-progress.md)，文案维护见 [资源指南](docs/localization/zh-CN-resource-guide.md)。本开发版本完成验收后合入 `dev` 并打源码标签，暂不发布 Release；下方下载链接仍指向已发布的正式版本。
 
 **当前正式版本：[0.10.4](https://github.com/Eason4869/deskpet/releases/tag/v0.10.4)**。提供 Windows 安装／便携包、macOS Apple Silicon／Intel 双架构预览、完整源码、五位官方伙伴的完整高清角色包和创作模板。macOS 的界面与能力范围见 [平台与升级](#平台与升级)，本页应用截图以 Windows 为准。
 

@@ -1,4 +1,8 @@
 {
   "petOfficialCompanions.refreshOfficialAsync.notice": "0.10.4 removed the metadata-time notice in favor of progress-triggered companions.package.updating. Retained to preserve the independent pre-hotfix text baseline.",
-  "speechOutput.speakSystem.text": "0.10.5-dev.2 selects system voices using the active UI language and uses speechOutput.speakSystem.languageUnavailable instead of recommending Chinese voices. Retained to preserve the original independent text baseline."
+  "speechOutput.speakSystem.text": "0.10.5-dev.2 selects system voices using the active UI language and uses speechOutput.speakSystem.languageUnavailable instead of recommending Chinese voices. Retained to preserve the original independent text baseline.",
+  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
+  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeA": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
+  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeB": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
+  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history."
 }

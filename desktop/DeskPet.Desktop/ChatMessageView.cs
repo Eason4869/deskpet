@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -39,6 +39,7 @@ internal sealed class ChatMessageView : Border
     private readonly List<Bitmap> sentImages = new();
     private List<ChatAttachment> displayedAttachments = new();
     private readonly StackPanel generatedImages = Ui.Column();
+    private readonly ContentControl jobHost=new();private DesktopAgentJobsPanel? jobs;
     private GeneratedImageGroupCard? imageGroup;
     private ChatMessage current;
     private bool reading, showHistory;
@@ -65,7 +66,7 @@ internal sealed class ChatMessageView : Border
         clock.Tick += (_, _) => RefreshElapsed(); AttachedToVisualTree += (_, _) => RefreshElapsed(); DetachedFromVisualTree += (_, _) => clock.Stop();
         panel.Children.Add(sentAttachments); RefreshSentAttachments(message.Attachments);
         if (IsUser) { userBubble = new Border { Name = "UserBubble", Background = DesktopTheme.Brush("#E8F2FF"), CornerRadius = new CornerRadius(18), Padding = new Thickness(15, 10), HorizontalAlignment = HorizontalAlignment.Right, Child = body }; panel.Children.Add(userBubble); }
-        else panel.Children.Add(body); if (!IsUser) { generatedImages.Name = "MessageGeneratedImages"; panel.Children.Add(generatedImages); panel.Children.Add(status); }
+        else panel.Children.Add(body); if (!IsUser) { generatedImages.Name = "MessageGeneratedImages"; panel.Children.Add(generatedImages); panel.Children.Add(jobHost); panel.Children.Add(status); }
         Ui.ReadOnlyMenu(reasoning);
         var copy = IconButton("CopyReply", TextResources.Get("chatMessageView.chatMessageView.iconButton"), "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false)));
         readReply = IconButton("ReadReply", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeA"), "M 3,7 L 6,7 L 10,3 L 10,15 L 6,11 L 3,11 Z M 13,5 Q 18,9 13,13", ReadReply);
@@ -101,7 +102,7 @@ internal sealed class ChatMessageView : Border
     }
     private bool CanStart() => !session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
     private void DisposeSentImages() { foreach (var image in sentImages) image.Dispose(); sentImages.Clear(); }
-    internal void DisposeImages() { imageGroup?.Dispose(); DisposeSentImages(); }
+    internal void DisposeImages() { jobs?.Dispose();jobs=null;jobHost.Content=null; imageGroup?.Dispose(); DisposeSentImages(); }
     private void RefreshGeneratedImages(ChatMessage message)
     {
         if(imageGroup==null){imageGroup=new GeneratedImageGroupCard(owner,window);generatedImages.Children.Add(imageGroup);}imageGroup.Update(message);
@@ -170,6 +171,9 @@ internal sealed class ChatMessageView : Border
         if (userBubble != null) userBubble.IsVisible = body.IsVisible;
         RefreshSentAttachments(message.Attachments);
         RefreshGeneratedImages(message);
+        if(!IsUser&&session.KernelSession!=null&&message.ToolEvents?.Any(tool=>tool.Name=="start_job")==true)
+        {if(jobs==null){jobs=new DesktopAgentJobsPanel(owner.WorkBindings.Jobs,session.KernelSession.ProjectId,session.KernelSession.ConversationId,message.Id,true);jobHost.Content=jobs;}}
+        else if(jobs!=null){jobs.Dispose();jobs=null;jobHost.Content=null;}
         reasoning.Text = message.Reasoning ?? "";
         bool active = message.Status == "pending" && string.IsNullOrEmpty(message.Content);
         bool detailChanged = detailedSetting != detailedProcess;

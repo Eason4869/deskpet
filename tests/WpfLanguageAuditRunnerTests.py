@@ -22,6 +22,7 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(result.returncode==0,code==0)
                 metadata=json.loads((output/'process.json').read_text(encoding='utf-8-sig'))
                 self.assertEqual(metadata['exit_code'],code)
+                self.assertEqual([run['theme'] for run in metadata['runs']],['light','dark'] if code==0 else ['light'])
                 self.assertEqual(metadata['exit_hex'],f'{code:08X}')
                 self.assertIn('fixture diagnostic',(output/'process.log').read_text(encoding='utf-16'))
 

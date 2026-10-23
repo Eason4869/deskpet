@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -350,10 +350,24 @@ namespace Dafeiyu.Tests
                 Check(service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"retry joins completed storage cleanup before releasing the application");
             }
         }
+        static void PreparedExitRetainsLeaseUntilViewsDrain()
+        {
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var service=new Service(root.Path,new AgentJobTestSupport.Clock()))
+            {
+                service.Initialize().GetAwaiter().GetResult();
+                var prepared=service.Invoke<Task<AgentJobExitReport>>("PrepareForExitAsync",CancellationToken.None).GetAwaiter().GetResult();
+                Check(prepared.CleanupConfirmed,"exit preparation confirms tasks before view cleanup");
+                using(var second=new Service(root.Path,new AgentJobTestSupport.Clock()))Check(!second.Initialize().GetAwaiter().GetResult(),"prepared exit retains the lease while persistent views drain");
+                bool rejected=false;try{service.Invoke<object>("Dispose");}catch(InvalidOperationException){rejected=true;}catch(TargetInvocationException error){rejected=error.InnerException is InvalidOperationException;}
+                Check(rejected,"prepared service cannot discard the lease before final drain confirmation");
+                Check(service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"final confirmed exit joins storage and releases the prepared lease");
+                using(var successor=new Service(root.Path,new AgentJobTestSupport.Clock()))Check(successor.Initialize().GetAwaiter().GetResult(),"the next application acquires the lease after final view drain");
+            }
+        }
         public static int Main()
         {
             checks=0;int failures=0;
-            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease,SynchronousCatalogMutationNeverQueuesOrWaits})
+            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease,SynchronousCatalogMutationNeverQueuesOrWaits,PreparedExitRetainsLeaseUntilViewsDrain})
                 try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobLifecycleTests: "+checks+" passed");return failures==0?0:1;
         }

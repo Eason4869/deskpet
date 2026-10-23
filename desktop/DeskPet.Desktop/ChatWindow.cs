@@ -272,6 +272,7 @@ internal sealed partial class ChatWindow : Window
     }
     private void Send()
     {
+        if(owner.IsExiting||owner.WorkBindings.IsDraining)return;
         if (owner.Live.IsActive) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError"))); return; }
         if (owner.Dictation.IsBusy) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError.alternativeA"))); return; }
         var text = (draft.Text ?? "").Trim(); if (text.Length == 0 && Files.Count == 0) return;
@@ -357,7 +358,10 @@ internal sealed partial class ChatWindow : Window
     }
     private void Refresh()
     {
+        if(owner.WorkBindings.IsDraining)return;
         RefreshQuestions();
+        if(workJobsButton!=null)workJobsButton.IsEnabled=binding!=null&&!owner.IsExiting;
+        draft.IsEnabled=!owner.IsExiting;models.IsEnabled=!owner.IsExiting;
         partnerAvatar.Skin = owner.Skin; partnerName.Text = owner.Skin.DisplayName;
         if (binding==null && persona != owner.Skin.Id) { uploadEpoch++; owner.Drafts[DraftKey] = draft.Text ?? ""; persona = owner.Skin.Id; draft.Text = owner.Drafts.GetValueOrDefault(DraftKey, ""); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         status.Text = BoundSession.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + BoundSession.LastNotice + " " + owner.Dictation.LastNotice + " " + BoundQueue.Notice + " " + BoundSession.HistoryWarning;

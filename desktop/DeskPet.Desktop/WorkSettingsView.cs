@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -13,7 +13,7 @@ internal sealed class WorkSettingsView : StackPanel
     private readonly Window host;
     private readonly TextBlock notice = Ui.Text(TextResources.Get("workSettingsView.notice.text"), 12);
     private readonly TextBox directory;
-    private readonly PetSettings settings;
+    private PetSettings settings;
     private readonly string? projectId;
     public WorkSettingsView(DesktopController controller, Window window,string? projectId=null)
     {
@@ -31,6 +31,13 @@ internal sealed class WorkSettingsView : StackPanel
         var apply = Ui.Button(TextResources.Get("workSettingsView.workSettingsView.text.alternativeD"), ApplyDirectory); apply.Name = "SaveAgentWorkspace"; apply.IsEnabled = supported;
         var reset = Ui.Button(TextResources.Get("workSettingsView.workSettingsView.text.alternativeE"), () => { var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "agent-workspace"); directory.Text = path; if (settings.AgentWorkspace != path) { settings.AgentWorkspace = path; Save(); } notice.Text = TextResources.Get("workSettingsView.workSettingsView.notice"); }); reset.Name = "ResetAgentWorkspace"; reset.IsEnabled = supported;
         Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field.alternativeA"), directory)); Children.Add(Ui.Row(browse, apply, reset));
+        var terminal=new ComboBox{Name="AgentTerminalPolicy",ItemsSource=new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")},SelectedIndex=settings.AgentTerminalPolicy==AgentTerminalPolicy.ConfirmEach?1:0,IsEnabled=supported,HorizontalAlignment=HorizontalAlignment.Stretch};
+        terminal.SelectionChanged+=(_,_)=>{if(terminal.SelectedIndex<0)return;var value=terminal.SelectedIndex==1?AgentTerminalPolicy.ConfirmEach:AgentTerminalPolicy.Disabled;if(settings.AgentTerminalPolicy==value)return;settings.AgentTerminalPolicy=value;Save();};
+        Children.Add(Ui.Field(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeM"),terminal));Children.Add(Ui.Text(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeN"),12));
+        var syncLimit=new NumericUpDown{Name="AgentCommandTimeoutSeconds",Minimum=1,Maximum=600,Value=settings.AgentCommandTimeoutSeconds,IsEnabled=supported};
+        syncLimit.ValueChanged+=(_,_)=>{if(syncLimit.Value is not {} value||settings.AgentCommandTimeoutSeconds==(int)value)return;settings.AgentCommandTimeoutSeconds=(int)value;Save();};Children.Add(Ui.Field(TextResources.Get("agent.jobs.ui.syncLimit"),syncLimit));
+        var backgroundLimit=new NumericUpDown{Name="AgentBackgroundJobTimeoutSeconds",Minimum=1,Maximum=28800,Value=settings.AgentBackgroundJobTimeoutSeconds,IsEnabled=supported};
+        backgroundLimit.ValueChanged+=(_,_)=>{if(backgroundLimit.Value is not {} value||settings.AgentBackgroundJobTimeoutSeconds==(int)value)return;settings.AgentBackgroundJobTimeoutSeconds=(int)value;Save();};Children.Add(Ui.Field(TextResources.Get("agent.jobs.ui.backgroundLimit"),backgroundLimit));
         var plan = Ui.Check(TextResources.Get("workSettingsView.workSettingsView.check"), settings.AgentPlanMode, value => { if (settings.AgentPlanMode == value) return; settings.AgentPlanMode = value; Save(); }); plan.Name = "WorkPlanMode"; plan.IsEnabled = supported; Children.Add(plan);
         var goal = Ui.Input(settings.AgentGoal ?? "", TextResources.Get("workSettingsView.workSettingsView.input")); goal.Name = "WorkGoal"; goal.AcceptsReturn = true; goal.MinHeight = 70; goal.TextWrapping = TextWrapping.Wrap; goal.MaxLength = 4000; goal.IsEnabled = supported;
         goal.TextChanged += (_, _) => { var value = (goal.Text ?? "").Trim(); if (settings.AgentGoal == value) return; settings.AgentGoal = value; Save(); }; Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field.alternativeB"), goal));
@@ -48,10 +55,10 @@ internal sealed class WorkSettingsView : StackPanel
         try
         {
             if(projectId==null)owner.Save();
-            else if(!owner.WorkBindings.TryChangeProject(projectId,project=>{project.FullAccess=settings.AgentFullAccess;project.ApprovalMode=settings.AgentApprovalMode;project.SandboxEnabled=settings.AgentSandboxEnabled;project.Workspace=settings.AgentWorkspace;project.PlanMode=settings.AgentPlanMode;project.Goal=settings.AgentGoal;project.BackupFiles=settings.AgentBackupFiles;project.ContextTokenLimit=settings.AgentContextTokenLimit;}))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));
+            else if(!owner.WorkBindings.TryChangeProject(projectId,project=>{project.FullAccess=settings.AgentFullAccess;project.ApprovalMode=settings.AgentApprovalMode;project.SandboxEnabled=settings.AgentSandboxEnabled;project.Workspace=settings.AgentWorkspace;project.PlanMode=settings.AgentPlanMode;project.Goal=settings.AgentGoal;project.BackupFiles=settings.AgentBackupFiles;project.ContextTokenLimit=settings.AgentContextTokenLimit;project.TerminalPolicy=settings.AgentTerminalPolicy;project.CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds;project.BackgroundJobTimeoutSeconds=settings.AgentBackgroundJobTimeoutSeconds;}))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));
             notice.Text=TextResources.Get("workSettingsView.save.notice");notice.Foreground=DesktopTheme.Brush("#687282");
         }
-        catch(Exception error){notice.Text=AgentJobUiText.Error(error);notice.Foreground=DesktopTheme.Brush("#A54A37");}
+        catch(Exception error){if(projectId!=null)settings=owner.WorkBindings.ProjectSettings(projectId);notice.Text=AgentJobUiText.Error(error);notice.Foreground=DesktopTheme.Brush("#A54A37");}
     }
     private void ApplyDirectory()
     {

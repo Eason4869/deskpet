@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
@@ -29,6 +29,24 @@ namespace Dafeiyu.Tests
                 Check((bool)property.GetValue(progress,null)==(stage!="metadata"),"notice stage "+stage);
             }
             Check(!(bool)property.GetValue(new OfficialCompanionProgress("dafeiyu","install","",100,100,100),null),"unchanged cached installation makes no update notice");
+        }
+        static async Task PreparationLifecycle()
+        {
+            int starts=0;var pending=new TaskCompletionSource<bool>();IProgress<OfficialCompanionProgress> report=null;CancellationToken operation=CancellationToken.None;
+            using(var lifetime=new CancellationTokenSource())using(var preparation=new OfficialCompanionPreparation((progress,token)=>{starts++;report=progress;operation=token;return pending.Task;},lifetime.Token)){
+                Check(starts==0&&preparation.State==OfficialCompanionPreparationState.Idle,"O01 preparation never downloads merely because guidance opens");
+                var first=preparation.StartAsync();var duplicate=preparation.StartAsync();
+                Check(starts==1&&Object.ReferenceEquals(first,duplicate)&&!first.IsCompleted,"O02 explicit start is nonblocking and deduplicates active full-pack batches");
+                report.Report(new OfficialCompanionProgress("e-bao","download","fixture",10,100,10));
+                Check(preparation.Progress.TotalBytes==100&&preparation.Progress.Percent==10,"O03 application-owned progress retains known download size");
+                pending.SetResult(true);await first;
+                Check(preparation.State==OfficialCompanionPreparationState.Completed,"O04 complete state remains observable after the original view has closed");
+                pending=new TaskCompletionSource<bool>();var retry=preparation.StartAsync();pending.SetException(new AggregateException(new IOException("fixture partial failure")));await retry;
+                Check(preparation.State==OfficialCompanionPreparationState.Failed,"O05 partial failures remain retryable without deleting installed packages");
+                pending=new TaskCompletionSource<bool>();retry=preparation.StartAsync();preparation.Cancel();Check(operation.IsCancellationRequested,"O06 explicit cancellation reaches the actual application download operation");pending.SetCanceled();await retry;
+                Check(preparation.State==OfficialCompanionPreparationState.Cancelled,"cancelled full-pack preparation offers a retry");
+                pending=new TaskCompletionSource<bool>();retry=preparation.StartAsync();lifetime.Cancel();Check(operation.IsCancellationRequested,"O07 application exit cancels remaining preparation");pending.SetCanceled();await retry;
+            }
         }
         static async Task Run()
         {
