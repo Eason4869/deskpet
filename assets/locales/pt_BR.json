@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Tentar novamente",
   "agent.jobs.ui.close": "Fechar",
   "agent.jobs.ui.bindingBusy": "Este projeto ainda tem tarefas em segundo plano ou está processando outra operação. Tente novamente mais tarde.",
-  "agent.jobs.ui.bindingChanged": "O registro do projeto foi atualizado em outra janela. Reabra o aplicativo e tente novamente."
+  "agent.jobs.ui.bindingChanged": "O registro do projeto foi atualizado em outra janela. Reabra o aplicativo e tente novamente.",
+  "agent.work.choose": "Escolher sessão de trabalho",
+  "agent.work.current": "Sessão de trabalho: {0} / {1}",
+  "agent.work.normal": "Chat normal",
+  "agent.work.newProject": "Novo projeto",
+  "agent.work.newConversation": "Nova sessão",
+  "agent.work.projectName": "Nome do projeto",
+  "agent.work.directory": "Diretório de trabalho",
+  "agent.work.archive": "Arquivar sessão",
+  "agent.work.notAvailable": "O vínculo da sessão de trabalho está indisponível. A sessão atual permanece inalterada.",
+  "agent.work.approvalTitle": "Permitir esta operação?",
+  "agent.work.approvalSource": "Projeto: {0}\nSessão: {1}\nTarefa: {2}\nChamada: {3}\nFerramenta: {4}",
+  "agent.work.approvalPayload": "Argumentos: {0}\nDestino: {1}\nIsolamento: {2}\nVerificação: {3}",
+  "agent.work.allow": "Permitir uma vez",
+  "agent.work.deny": "Negar",
+  "agent.work.rename": "Renomear",
+  "agent.work.restore": "Desarquivar"
 }

@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Coba Lagi",
   "agent.jobs.ui.close": "Tutup",
   "agent.jobs.ui.bindingBusy": "Proyek ini masih memiliki tugas latar belakang atau sedang memproses operasi lain. Coba lagi nanti.",
-  "agent.jobs.ui.bindingChanged": "Catatan proyek telah diperbarui di jendela lain. Buka ulang aplikasi, lalu coba lagi."
+  "agent.jobs.ui.bindingChanged": "Catatan proyek telah diperbarui di jendela lain. Buka ulang aplikasi, lalu coba lagi.",
+  "agent.work.choose": "Pilih Sesi Kerja",
+  "agent.work.current": "Sesi kerja: {0} / {1}",
+  "agent.work.normal": "Chat Biasa",
+  "agent.work.newProject": "Proyek Baru",
+  "agent.work.newConversation": "Sesi Baru",
+  "agent.work.projectName": "Nama Proyek",
+  "agent.work.directory": "Direktori Kerja",
+  "agent.work.archive": "Arsipkan Sesi",
+  "agent.work.notAvailable": "Pengaitan sesi kerja tidak tersedia. Sesi saat ini tidak berubah.",
+  "agent.work.approvalTitle": "Izinkan operasi ini?",
+  "agent.work.approvalSource": "Proyek: {0}\nSesi: {1}\nTugas: {2}\nPanggilan: {3}\nAlat: {4}",
+  "agent.work.approvalPayload": "Argumen: {0}\nTarget: {1}\nIsolasi: {2}\nVerifikasi: {3}",
+  "agent.work.allow": "Izinkan Sekali",
+  "agent.work.deny": "Tolak",
+  "agent.work.rename": "Ubah Nama",
+  "agent.work.restore": "Batalkan Arsip"
 }

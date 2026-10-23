@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -38,6 +38,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
+    if(args.Contains("--work-binding-ui-only")){Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"))+" passed");return;}
     if(systemLanguageFixture!=null){Console.WriteLine("SystemLanguageUiChecks: "+LanguageUiChecks.RunSystemStartup(Path.Combine(directory,"system-language-ui"),System.Globalization.CultureInfo.CurrentUICulture.Name)+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--language-picker="))){string language=args.Single(arg=>arg.StartsWith("--language-picker=")).Substring("--language-picker=".Length);Console.WriteLine("LanguagePickerChecks: "+LanguagePickerChecks.Run(language)+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--full-language-ui="))){string language=args.Single(arg=>arg.StartsWith("--full-language-ui=")).Substring("--full-language-ui=".Length);Console.WriteLine("MultilingualUiAuditChecks: "+MultilingualUiAuditChecks.Run(Path.Combine(directory,"multilingual-audit"),language)+" passed");return;}
@@ -62,6 +64,8 @@ try
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    Console.WriteLine("START WorkBindingUiChecks");
+    assertions+=WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding-default"));
     Console.WriteLine("START LocalizationUiChecks");
     assertions += LocalizationUiChecks.Run(Path.Combine(directory,"localization"));
     Console.WriteLine("START OfficialCompanion.Timing");

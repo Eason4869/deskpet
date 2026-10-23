@@ -30,6 +30,16 @@ def method_body(text, name):
 
 
 class RegistrationTests(unittest.TestCase):
+    def test_avalonia_persistent_bindings_run_in_default_and_focused_routes(self):
+        runner=source('desktop/DeskPet.Desktop.Tests/Program.cs')
+        self.assertIn('--work-binding-ui-only',runner)
+        self.assertIn('assertions+=WorkBindingUiChecks.Run',runner)
+        self.assertIn('--work-binding-ui=',runner)
+        fixture=source('desktop/DeskPet.Desktop.Tests/WorkBindingUiChecks.cs')
+        self.assertIn('application restart restores the exact persisted',fixture)
+        self.assertIn('ordinary encrypted history',fixture)
+        self.assertIn('second host cannot bind',fixture)
+
     def test_wpf_lifecycle_route_keeps_independent_host_fixtures(self):
         build=source('Build.ps1')
         self.assertIn("'AgentJobLifecycleUiTests'",build)

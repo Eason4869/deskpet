@@ -136,8 +136,10 @@ jobs:
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-picker="$locale" | tee "$REPORT_ROOT/language-picker-$locale.log"
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-ui="$locale" | tee "$REPORT_ROOT/language-dialog-$locale.log"
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --full-language-ui="$locale" | tee "$REPORT_ROOT/ui-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --work-binding-ui="$locale" | tee "$REPORT_ROOT/work-binding-$locale.log"
           done
           cp -R work/language-ui "$REPORT_ROOT/language-ui"
+          cp -R work/agent-jobs-ui "$REPORT_ROOT/agent-jobs-ui"
       - name: Verify actual thin companion resources and restoration
         shell: bash
         run: |

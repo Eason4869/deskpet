@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -13,15 +13,17 @@ internal sealed class WorkSettingsView : StackPanel
     private readonly Window host;
     private readonly TextBlock notice = Ui.Text(TextResources.Get("workSettingsView.notice.text"), 12);
     private readonly TextBox directory;
-    public WorkSettingsView(DesktopController controller, Window window)
+    private readonly PetSettings settings;
+    private readonly string? projectId;
+    public WorkSettingsView(DesktopController controller, Window window,string? projectId=null)
     {
         owner = controller; host = window; Name = "WorkSettings"; Spacing = 14;
-        var settings = owner.Settings; bool supported = OperatingSystem.IsWindows();
+        this.projectId=projectId;settings=projectId==null?owner.Settings:owner.WorkBindings.ProjectSettings(projectId); bool supported = OperatingSystem.IsWindows();
         Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text"), 20)); Children.Add(notice);
         Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeA"), 12));
         if (!supported) Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeB"), 12));
         var permission = new ComboBox { Name = "AgentAccess", ItemsSource = new[] { TextResources.Get("workSettingsView.workSettingsView.itemsSource"), TextResources.Get("workSettingsView.workSettingsView.itemsSource.alternativeA") }, SelectedIndex = settings.AgentFullAccess ? 0 : 1, IsEnabled = supported, HorizontalAlignment = HorizontalAlignment.Stretch };
-        permission.SelectionChanged += (_, _) => { if (permission.SelectedIndex < 0) return; bool full = permission.SelectedIndex == 0; if (settings.AgentFullAccess == full) return; settings.AgentFullAccess = full; Save(); };
+        permission.SelectionChanged += (_, _) => { if (permission.SelectedIndex < 0) return; bool full = permission.SelectedIndex == 0; if (settings.AgentFullAccess == full) return; settings.AgentFullAccess = full;settings.AgentApprovalMode=full?AgentApprovalMode.Full:AgentApprovalMode.Auto;settings.AgentSandboxEnabled=!full; Save(); };
         Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field"), permission)); Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeC"), 12));
         directory = Ui.Input(settings.AgentWorkspace); directory.Name = "AgentWorkspaceInput"; directory.IsEnabled = supported;
         directory.LostFocus += (_, _) => { if ((directory.Text ?? "").Trim() != settings.AgentWorkspace) ApplyDirectory(); };
@@ -41,13 +43,22 @@ internal sealed class WorkSettingsView : StackPanel
         Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeG"), 12));
         var detail = Ui.Check(TextResources.Get("workSettingsView.workSettingsView.check.alternativeB"), settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
     }
-    private void Save() { owner.Save(); notice.Text = TextResources.Get("workSettingsView.save.notice"); notice.Foreground = DesktopTheme.Brush("#687282"); }
+    private void Save()
+    {
+        try
+        {
+            if(projectId==null)owner.Save();
+            else if(!owner.WorkBindings.TryChangeProject(projectId,project=>{project.FullAccess=settings.AgentFullAccess;project.ApprovalMode=settings.AgentApprovalMode;project.SandboxEnabled=settings.AgentSandboxEnabled;project.Workspace=settings.AgentWorkspace;project.PlanMode=settings.AgentPlanMode;project.Goal=settings.AgentGoal;project.BackupFiles=settings.AgentBackupFiles;project.ContextTokenLimit=settings.AgentContextTokenLimit;}))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));
+            notice.Text=TextResources.Get("workSettingsView.save.notice");notice.Foreground=DesktopTheme.Brush("#687282");
+        }
+        catch(Exception error){notice.Text=AgentJobUiText.Error(error);notice.Foreground=DesktopTheme.Brush("#A54A37");}
+    }
     private void ApplyDirectory()
     {
         try
         {
-            var value = (directory.Text ?? "").Trim(); if (owner.Settings.AgentWorkspace == value) return; if (!Path.IsPathRooted(value) || !Directory.Exists(value)) throw new InvalidOperationException(TextResources.Get("workSettingsView.applyDirectory.text"));
-            value = Path.GetFullPath(value); if (owner.Settings.AgentWorkspace == value) return; owner.Settings.AgentWorkspace = value; directory.Text = value; Save();
+            var value = (directory.Text ?? "").Trim(); if (settings.AgentWorkspace == value) return; if (!Path.IsPathRooted(value) || !Directory.Exists(value)) throw new InvalidOperationException(TextResources.Get("workSettingsView.applyDirectory.text"));
+            value = Path.GetFullPath(value); if (settings.AgentWorkspace == value) return; settings.AgentWorkspace = value; directory.Text = value; Save();
         }
         catch (Exception e) when (e is ArgumentException or IOException or InvalidOperationException or UnauthorizedAccessException) { notice.Text = e.Message; notice.Foreground = DesktopTheme.Brush("#A54A37"); }
     }
@@ -58,8 +69,8 @@ internal sealed class WorkSettingsView : StackPanel
     }
     private async Task OpenBackupAsync()
     {
-        var root = owner.Settings.AgentWorkspace;
-        if (owner.Settings.AgentFullAccess)
+        var root = settings.AgentWorkspace;
+        if (settings.AgentFullAccess)
         {
             var picked = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = TextResources.Get("workSettingsView.openBackupAsync.title"), AllowMultiple = false });
             if (!host.IsVisible || picked.Count == 0) return; root = picked[0].TryGetLocalPath() ?? throw new InvalidOperationException(TextResources.Get("workSettingsView.openBackupAsync.rootPickedTryGetLocalPath"));

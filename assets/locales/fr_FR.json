@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Réessayer",
   "agent.jobs.ui.close": "Fermer",
   "agent.jobs.ui.bindingBusy": "Ce projet a encore des tâches en arrière-plan ou une autre opération en cours. Réessayez plus tard.",
-  "agent.jobs.ui.bindingChanged": "La trace du projet a été mise à jour dans une autre fenêtre. Rouvrez l’application, puis réessayez."
+  "agent.jobs.ui.bindingChanged": "La trace du projet a été mise à jour dans une autre fenêtre. Rouvrez l’application, puis réessayez.",
+  "agent.work.choose": "Choisir une session de travail",
+  "agent.work.current": "Session de travail : {0} / {1}",
+  "agent.work.normal": "Discussion classique",
+  "agent.work.newProject": "Nouveau projet",
+  "agent.work.newConversation": "Nouvelle session",
+  "agent.work.projectName": "Nom du projet",
+  "agent.work.directory": "Dossier de travail",
+  "agent.work.archive": "Archiver la session",
+  "agent.work.notAvailable": "La liaison à une session de travail est indisponible. La session actuelle reste inchangée.",
+  "agent.work.approvalTitle": "Autoriser cette opération ?",
+  "agent.work.approvalSource": "Projet : {0}\nSession : {1}\nTâche : {2}\nAppel : {3}\nOutil : {4}",
+  "agent.work.approvalPayload": "Arguments : {0}\nCible : {1}\nIsolation : {2}\nVérification : {3}",
+  "agent.work.allow": "Autoriser une fois",
+  "agent.work.deny": "Refuser",
+  "agent.work.rename": "Renommer",
+  "agent.work.restore": "Désarchiver"
 }

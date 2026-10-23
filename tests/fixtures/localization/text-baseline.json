@@ -26839,6 +26839,102 @@
       "expected": "项目记录已在其他窗口更新，请重新打开应用后重试。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "agent.work.choose",
+      "expected": "选择工作会话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.current",
+      "expected": "工作会话：{0} / {1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "agent.work.normal",
+      "expected": "普通聊天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.newProject",
+      "expected": "新建项目",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.newConversation",
+      "expected": "新建会话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.projectName",
+      "expected": "项目名称",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.directory",
+      "expected": "工作目录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.archive",
+      "expected": "归档会话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.notAvailable",
+      "expected": "工作会话绑定不可用，当前会话保持不变。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.approvalTitle",
+      "expected": "允许此操作？",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.approvalSource",
+      "expected": "项目：{0}\n会话：{1}\n任务：{2}\n调用：{3}\n工具：{4}",
+      "format": true,
+      "argument_count": 5
+    },
+    {
+      "key": "agent.work.approvalPayload",
+      "expected": "参数：{0}\n目标：{1}\n隔离：{2}\n校验：{3}",
+      "format": true,
+      "argument_count": 4
+    },
+    {
+      "key": "agent.work.allow",
+      "expected": "允许本次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.deny",
+      "expected": "拒绝",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.rename",
+      "expected": "重命名",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "agent.work.restore",
+      "expected": "取消归档",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

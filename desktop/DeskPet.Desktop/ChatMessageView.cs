@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -43,10 +43,11 @@ internal sealed class ChatMessageView : Border
     private ChatMessage current;
     private bool reading, showHistory;
     private bool? detailedSetting;
+    private readonly ConversationSession session;private readonly ConversationQueue queue;private readonly Func<PetSettings> settings;
     public bool IsUser { get; }
-    public ChatMessageView(ChatMessage message, DesktopController controller, Window host)
+    public ChatMessageView(ChatMessage message, DesktopController controller, Window host,ConversationSession? boundSession=null,ConversationQueue? boundQueue=null,Func<PetSettings>? boundSettings=null)
     {
-        owner = controller; window = host; current = message;
+        owner = controller; window = host; current = message;session=boundSession??owner.Session;queue=boundQueue??owner.Queue;settings=boundSettings??(()=>owner.Settings);
         IsUser = message.Role == "user"; Name = IsUser ? "UserMessage" : "AssistantMessage";
         Background = Brushes.Transparent;
         BorderThickness = new Thickness(0); CornerRadius = new CornerRadius(18);
@@ -70,7 +71,7 @@ internal sealed class ChatMessageView : Border
         readReply = IconButton("ReadReply", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeA"), "M 3,7 L 6,7 L 10,3 L 10,15 L 6,11 L 3,11 Z M 13,5 Q 18,9 13,13", ReadReply);
         var more = IconButton("MoreReply", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeB"), "M 3,9 L 4,9 M 8,9 L 9,9 M 13,9 L 14,9", () => { });
         regenerate = new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header") };
-        regenerate.Click += (_, _) => owner.Run(async () => { EnsureIdle(); owner.Queue.Hold(); await owner.Session.RegenerateAsync(current.Id, owner.Settings, owner.Skin.Name); });
+        regenerate.Click += (_, _) => owner.Run(async () => { EnsureIdle(); queue.Hold(); await session.RegenerateAsync(current.Id, settings(), owner.Skin.Name); });
         var copyPlain = new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeA") }; copyPlain.Click += (_, _) => owner.Run(() => CopyAsync(true));
         var export = new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeB") }; export.Click += (_, _) => owner.Run(ExportAsync);
         showReasoning = new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeC") };
@@ -98,7 +99,7 @@ internal sealed class ChatMessageView : Border
         var button = new Button { Name = name, Width = 28, Height = 28, Padding = new Thickness(3), Background = Brushes.Transparent, BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(5), Foreground = DesktopTheme.Brush("#939BA7"), Content = new ShapePath { Data = Geometry.Parse(geometry), Stroke = DesktopTheme.Brush("#939BA7"), StrokeThickness = 1.5, Stretch = Stretch.Uniform, Width = 18, Height = 18 } };
         AutomationProperties.SetName(button, tip); ToolTip.SetTip(button, tip); button.Click += (_, _) => action(); return button;
     }
-    private bool CanStart() => !owner.Session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
+    private bool CanStart() => !session.IsBusy && !owner.Live.IsActive && !owner.Dictation.IsBusy;
     private void DisposeSentImages() { foreach (var image in sentImages) image.Dispose(); sentImages.Clear(); }
     internal void DisposeImages() { imageGroup?.Dispose(); DisposeSentImages(); }
     private void RefreshGeneratedImages(ChatMessage message)
@@ -139,11 +140,11 @@ internal sealed class ChatMessageView : Border
     }
     private void ReadReply()
     {
-        if (reading) { owner.Session.StopSpeech(); return; }
+        if (reading) { session.StopSpeech(); return; }
         owner.Run(async () =>
         {
-            EnsureIdle(); owner.Queue.Hold(); reading = true; Update(current);
-            try { await owner.Session.SpeakReplyAsync(current.Id, owner.Settings); }
+            EnsureIdle(); queue.Hold(); reading = true; Update(current);
+            try { await session.SpeakReplyAsync(current.Id, settings()); }
             finally { reading = false; Update(current); }
         });
     }

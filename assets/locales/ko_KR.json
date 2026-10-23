@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "재시도",
   "agent.jobs.ui.close": "닫기",
   "agent.jobs.ui.bindingBusy": "이 프로젝트에 아직 백그라운드 작업이 있거나 다른 작업을 처리 중입니다. 잠시 후 다시 시도하세요.",
-  "agent.jobs.ui.bindingChanged": "다른 창에서 프로젝트 기록이 업데이트되었습니다. 앱을 다시 연 후 시도하세요."
+  "agent.jobs.ui.bindingChanged": "다른 창에서 프로젝트 기록이 업데이트되었습니다. 앱을 다시 연 후 시도하세요.",
+  "agent.work.choose": "작업 세션 선택",
+  "agent.work.current": "작업 세션: {0} / {1}",
+  "agent.work.normal": "일반 채팅",
+  "agent.work.newProject": "새 프로젝트",
+  "agent.work.newConversation": "새 세션",
+  "agent.work.projectName": "프로젝트 이름",
+  "agent.work.directory": "작업 디렉터리",
+  "agent.work.archive": "세션 보관",
+  "agent.work.notAvailable": "작업 세션을 연결할 수 없습니다. 현재 세션은 그대로 유지됩니다.",
+  "agent.work.approvalTitle": "이 작업을 허용할까요?",
+  "agent.work.approvalSource": "프로젝트: {0}\n세션: {1}\n작업: {2}\n호출: {3}\n도구: {4}",
+  "agent.work.approvalPayload": "인수: {0}\n대상: {1}\n격리: {2}\n검증: {3}",
+  "agent.work.allow": "이번만 허용",
+  "agent.work.deny": "거부",
+  "agent.work.rename": "이름 변경",
+  "agent.work.restore": "보관 해제"
 }

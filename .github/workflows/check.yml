@@ -180,6 +180,8 @@ jobs:
           foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--full-language-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia translated UI audit failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--work-binding-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia work binding UI failed: '+$locale) }
           }
       - name: Verify actual thin Avalonia companion resources and restoration
         shell: powershell

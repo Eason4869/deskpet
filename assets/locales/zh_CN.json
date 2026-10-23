@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "重试",
   "agent.jobs.ui.close": "关闭",
   "agent.jobs.ui.bindingBusy": "该项目仍有后台任务或正在处理其他操作，请稍后重试。",
-  "agent.jobs.ui.bindingChanged": "项目记录已在其他窗口更新，请重新打开应用后重试。"
+  "agent.jobs.ui.bindingChanged": "项目记录已在其他窗口更新，请重新打开应用后重试。",
+  "agent.work.choose": "选择工作会话",
+  "agent.work.current": "工作会话：{0} / {1}",
+  "agent.work.normal": "普通聊天",
+  "agent.work.newProject": "新建项目",
+  "agent.work.newConversation": "新建会话",
+  "agent.work.projectName": "项目名称",
+  "agent.work.directory": "工作目录",
+  "agent.work.archive": "归档会话",
+  "agent.work.notAvailable": "工作会话绑定不可用，当前会话保持不变。",
+  "agent.work.approvalTitle": "允许此操作？",
+  "agent.work.approvalSource": "项目：{0}\n会话：{1}\n任务：{2}\n调用：{3}\n工具：{4}",
+  "agent.work.approvalPayload": "参数：{0}\n目标：{1}\n隔离：{2}\n校验：{3}",
+  "agent.work.allow": "允许本次",
+  "agent.work.deny": "拒绝",
+  "agent.work.rename": "重命名",
+  "agent.work.restore": "取消归档"
 }

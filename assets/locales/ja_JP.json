@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "再試行",
   "agent.jobs.ui.close": "閉じる",
   "agent.jobs.ui.bindingBusy": "このプロジェクトにはまだバックグラウンドタスクがあるか、別の操作を処理中です。しばらくしてから再試行してください。",
-  "agent.jobs.ui.bindingChanged": "別のウィンドウでプロジェクトの記録が更新されました。アプリを開き直してから再試行してください。"
+  "agent.jobs.ui.bindingChanged": "別のウィンドウでプロジェクトの記録が更新されました。アプリを開き直してから再試行してください。",
+  "agent.work.choose": "作業セッションを選択",
+  "agent.work.current": "作業セッション：{0} / {1}",
+  "agent.work.normal": "通常のチャット",
+  "agent.work.newProject": "新規プロジェクト",
+  "agent.work.newConversation": "新規セッション",
+  "agent.work.projectName": "プロジェクト名",
+  "agent.work.directory": "作業ディレクトリ",
+  "agent.work.archive": "セッションをアーカイブ",
+  "agent.work.notAvailable": "作業セッションの関連付けを利用できません。現在のセッションは変更されません。",
+  "agent.work.approvalTitle": "この操作を許可しますか？",
+  "agent.work.approvalSource": "プロジェクト：{0}\nセッション：{1}\nタスク：{2}\n呼び出し：{3}\nツール：{4}",
+  "agent.work.approvalPayload": "引数：{0}\n対象：{1}\n隔離：{2}\n検証：{3}",
+  "agent.work.allow": "今回のみ許可",
+  "agent.work.deny": "拒否",
+  "agent.work.rename": "名前を変更",
+  "agent.work.restore": "アーカイブを解除"
 }

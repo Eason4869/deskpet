@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -36,6 +36,7 @@ internal sealed partial class DesktopController : IDisposable
     public PetSkin Skin { get; private set; }
     public ConversationSession Session { get; }
     public ConversationQueue Queue { get; }
+    internal DesktopWorkspaces WorkBindings { get; }
     public DictationSession Dictation { get; }
     public GeminiLiveSession Live { get; }
     public ApiClient Api { get; }
@@ -105,6 +106,7 @@ internal sealed partial class DesktopController : IDisposable
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
         Questions.Changed += Notify;
         Session.AgentTaskChanged += Notify;
+        WorkBindings=new DesktopWorkspaces(this,runtime);
         Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
@@ -142,6 +144,8 @@ internal sealed partial class DesktopController : IDisposable
             imageNotification.Show();imageNoticeTimer.Stop();imageNoticeTimer.Start();
         });
     }
+    internal void NotifyWorkChanged()=>Notify();
+    internal ChatWindow? WorkApprovalHost(string session)=>chatHosts.FirstOrDefault(host=>host.IsVisible&&host.QuestionSessionId==session);
     private void Notify() => Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });
     public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     public void SetUiLanguage(string code)
@@ -170,7 +174,14 @@ internal sealed partial class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
-    internal Task RepairImageDeliveryAsync(string id) { if(exiting)throw new OperationCanceledException(TextResources.Get("desktopController.repairImageDeliveryAsync.text"));return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None); }
+    internal async Task RepairImageDeliveryAsync(string id)
+    {
+        if(exiting)throw new OperationCanceledException(TextResources.Get("desktopController.repairImageDeliveryAsync.text"));
+        var task=ImageTasks.Get(id);bool persistent=task!=null&&task.Origin.ConversationId!=Session.ImageConversationId;
+        if(persistent)await WorkBindings.Jobs.EnsureWritableAsync(CancellationToken.None);
+        var sessions=new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(workspace=>workspace.Session));
+        await ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,sessions,persistent?WorkBindings.Snapshot:null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None,persistent?WorkBindings.Manager:null);
+    }
     public void ShowImages(GeneratedImage? image = null) { ShowChat(false); fullChat!.ShowImages(image); }
     internal void RegisterChatHost(ChatWindow host) => chatHosts.Add(host);
     internal void ChatHostClosed(ChatWindow host)
@@ -182,6 +193,8 @@ internal sealed partial class DesktopController : IDisposable
         var session = host.QuestionSessionId;
         if (!chatHosts.Any(other => other.IsVisible && other.QuestionSessionId == session)) Questions.CancelSession(session);
     }
+    internal void WorkViewChanged(ChatWindow host,string oldSession)
+    {if(!chatHosts.Any(other=>other!=host&&other.IsVisible&&other.QuestionSessionId==oldSession))Questions.CancelSession(oldSession);Notify();}
     public void ShowLive()
     {
         if (liveWindow == null) { liveWindow = new LiveWindow(this); liveWindow.Closed += (_, _) => liveWindow = null; }
@@ -223,7 +236,7 @@ internal sealed partial class DesktopController : IDisposable
     public void Error(Exception e)
     {
         if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(() => Error(e)); return; }
-        var text = e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : TextResources.Format("desktopController.error.messageEGetType",e.GetType().Name);
+        var localized=AgentJobUiText.Error(e);var text=localized!=e.Message?localized:e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : TextResources.Format("desktopController.error.messageEGetType",e.GetType().Name);
         var window = Ui.Window(TextResources.Get("desktopController.error.window"), Ui.Text(text), 460, 250); window.Show();
     }
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
@@ -237,7 +250,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         try
         {
-            await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
+            await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync(),WorkBindings.StopForExitAsync());
             Save();
             Holidays.RetrySave();
             await Session.FlushHistoryAsync();
@@ -273,6 +286,7 @@ internal sealed partial class DesktopController : IDisposable
         {
             try{await applicationExitDrain;}catch(Exception){}
             await ImageTasks.StopAsync(CancellationToken.None);
+            await WorkBindings.StopForExitAsync();
             FinalizeConversationServices();
             await Session.WaitForIdleAsync();
             await Session.FlushHistoryAsync();

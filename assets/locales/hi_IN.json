@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "फिर प्रयास करें",
   "agent.jobs.ui.close": "बंद करें",
   "agent.jobs.ui.bindingBusy": "इस प्रोजेक्ट में अभी बैकग्राउंड कार्य हैं या कोई अन्य कार्रवाई चल रही है। थोड़ी देर बाद फिर प्रयास करें।",
-  "agent.jobs.ui.bindingChanged": "प्रोजेक्ट का रिकॉर्ड किसी दूसरी विंडो में अपडेट किया गया है। ऐप दोबारा खोलकर फिर प्रयास करें।"
+  "agent.jobs.ui.bindingChanged": "प्रोजेक्ट का रिकॉर्ड किसी दूसरी विंडो में अपडेट किया गया है। ऐप दोबारा खोलकर फिर प्रयास करें।",
+  "agent.work.choose": "कार्य सत्र चुनें",
+  "agent.work.current": "कार्य सत्र: {0} / {1}",
+  "agent.work.normal": "सामान्य चैट",
+  "agent.work.newProject": "नया प्रोजेक्ट",
+  "agent.work.newConversation": "नया सत्र",
+  "agent.work.projectName": "प्रोजेक्ट का नाम",
+  "agent.work.directory": "कार्य निर्देशिका",
+  "agent.work.archive": "सत्र संग्रहित करें",
+  "agent.work.notAvailable": "कार्य सत्र से जोड़ना उपलब्ध नहीं है। मौजूदा सत्र में कोई बदलाव नहीं होगा।",
+  "agent.work.approvalTitle": "इस कार्रवाई की अनुमति दें?",
+  "agent.work.approvalSource": "प्रोजेक्ट: {0}\nसत्र: {1}\nकार्य: {2}\nकॉल: {3}\nटूल: {4}",
+  "agent.work.approvalPayload": "आर्ग्युमेंट: {0}\nलक्ष्य: {1}\nअलगाव: {2}\nसत्यापन: {3}",
+  "agent.work.allow": "इस बार अनुमति दें",
+  "agent.work.deny": "अस्वीकार करें",
+  "agent.work.rename": "नाम बदलें",
+  "agent.work.restore": "संग्रह से निकालें"
 }

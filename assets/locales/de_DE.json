@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Erneut versuchen",
   "agent.jobs.ui.close": "Schließen",
   "agent.jobs.ui.bindingBusy": "Dieses Projekt hat noch Hintergrundaufgaben oder verarbeitet einen anderen Vorgang. Versuche es später erneut.",
-  "agent.jobs.ui.bindingChanged": "Die Projektaufzeichnung wurde in einem anderen Fenster aktualisiert. Öffne die App erneut und versuche es dann noch einmal."
+  "agent.jobs.ui.bindingChanged": "Die Projektaufzeichnung wurde in einem anderen Fenster aktualisiert. Öffne die App erneut und versuche es dann noch einmal.",
+  "agent.work.choose": "Arbeitssitzung auswählen",
+  "agent.work.current": "Arbeitssitzung: {0} / {1}",
+  "agent.work.normal": "Normaler Chat",
+  "agent.work.newProject": "Neues Projekt",
+  "agent.work.newConversation": "Neue Sitzung",
+  "agent.work.projectName": "Projektname",
+  "agent.work.directory": "Arbeitsverzeichnis",
+  "agent.work.archive": "Sitzung archivieren",
+  "agent.work.notAvailable": "Die Zuordnung einer Arbeitssitzung ist nicht verfügbar. Die aktuelle Sitzung bleibt unverändert.",
+  "agent.work.approvalTitle": "Diesen Vorgang erlauben?",
+  "agent.work.approvalSource": "Projekt: {0}\nSitzung: {1}\nAufgabe: {2}\nAufruf: {3}\nWerkzeug: {4}",
+  "agent.work.approvalPayload": "Argumente: {0}\nZiel: {1}\nIsolation: {2}\nPrüfung: {3}",
+  "agent.work.allow": "Einmal erlauben",
+  "agent.work.deny": "Ablehnen",
+  "agent.work.rename": "Umbenennen",
+  "agent.work.restore": "Archivierung aufheben"
 }

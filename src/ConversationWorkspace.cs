@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -33,6 +33,8 @@ namespace Dafeiyu
             if(IsDraft||disposed||Definition.Mode!="work"||ProjectId==ProjectCatalogStore.UnassignedProjectId||ProjectId==ProjectCatalogStore.QuickProjectId)throw new InvalidOperationException("job_workspace_required");
             Session.ConfigureJobs(manager,new AgentJobOwner(ProjectId,Id,"primary"));
         }
+        bool localAgentSupported=true;
+        public bool LocalAgentSupported {get{return localAgentSupported;}set{localAgentSupported=value;}}
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
         public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null)
@@ -70,6 +72,7 @@ namespace Dafeiyu
             }
             if(!String.IsNullOrEmpty(Definition.Mode))cfg.AgentEnabled=Definition.Mode=="work";
             if(Definition.HasPermissionOverride){cfg.AgentApprovalMode=Definition.ApprovalMode;cfg.AgentSandboxEnabled=Definition.SandboxEnabled;}
+            if(!localAgentSupported)cfg.AgentEnabled=false;
             ProjectWorkspace=cfg.AgentWorkspace;return cfg;
         }
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)

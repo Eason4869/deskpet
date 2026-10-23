@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Riprova",
   "agent.jobs.ui.close": "Chiudi",
   "agent.jobs.ui.bindingBusy": "Questo progetto ha ancora attività in background o sta elaborando un’altra operazione. Riprova più tardi.",
-  "agent.jobs.ui.bindingChanged": "Il registro del progetto è stato aggiornato in un’altra finestra. Riapri l’app e riprova."
+  "agent.jobs.ui.bindingChanged": "Il registro del progetto è stato aggiornato in un’altra finestra. Riapri l’app e riprova.",
+  "agent.work.choose": "Scegli sessione di lavoro",
+  "agent.work.current": "Sessione di lavoro: {0} / {1}",
+  "agent.work.normal": "Chat normale",
+  "agent.work.newProject": "Nuovo progetto",
+  "agent.work.newConversation": "Nuova sessione",
+  "agent.work.projectName": "Nome del progetto",
+  "agent.work.directory": "Cartella di lavoro",
+  "agent.work.archive": "Archivia sessione",
+  "agent.work.notAvailable": "Il collegamento alla sessione di lavoro non è disponibile. La sessione attuale resta invariata.",
+  "agent.work.approvalTitle": "Consentire questa operazione?",
+  "agent.work.approvalSource": "Progetto: {0}\nSessione: {1}\nAttività: {2}\nChiamata: {3}\nStrumento: {4}",
+  "agent.work.approvalPayload": "Argomenti: {0}\nDestinazione: {1}\nIsolamento: {2}\nVerifica: {3}",
+  "agent.work.allow": "Consenti una volta",
+  "agent.work.deny": "Nega",
+  "agent.work.rename": "Rinomina",
+  "agent.work.restore": "Rimuovi dall’archivio"
 }

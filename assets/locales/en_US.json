@@ -4467,5 +4467,21 @@
   "agent.jobs.ui.retry": "Retry",
   "agent.jobs.ui.close": "Close",
   "agent.jobs.ui.bindingBusy": "This project still has background tasks or is processing another operation. Try again later.",
-  "agent.jobs.ui.bindingChanged": "The project record was updated in another window. Reopen the app and try again."
+  "agent.jobs.ui.bindingChanged": "The project record was updated in another window. Reopen the app and try again.",
+  "agent.work.choose": "Choose Work Session",
+  "agent.work.current": "Work session: {0} / {1}",
+  "agent.work.normal": "Regular Chat",
+  "agent.work.newProject": "New Project",
+  "agent.work.newConversation": "New Conversation",
+  "agent.work.projectName": "Project Name",
+  "agent.work.directory": "Working Directory",
+  "agent.work.archive": "Archive Conversation",
+  "agent.work.notAvailable": "Work session binding is unavailable. The current session remains unchanged.",
+  "agent.work.approvalTitle": "Allow this operation?",
+  "agent.work.approvalSource": "Project: {0}\nSession: {1}\nTask: {2}\nCall: {3}\nTool: {4}",
+  "agent.work.approvalPayload": "Arguments: {0}\nTarget: {1}\nIsolation: {2}\nVerification: {3}",
+  "agent.work.allow": "Allow Once",
+  "agent.work.deny": "Deny",
+  "agent.work.rename": "Rename",
+  "agent.work.restore": "Unarchive"
 }
