@@ -26079,6 +26079,125 @@
       "format": false,
       "argument_count": 0,
       "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.invalidArguments",
+      "expected": "后台任务参数无效，请检查参数类型、目录和大小限制。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.unsupportedPlatform",
+      "expected": "当前平台不支持后台任务。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.workspaceRequired",
+      "expected": "后台任务仅适用于已绑定项目的持久工作会话。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.permissionDenied",
+      "expected": "当前会话没有执行此后台任务操作的权限。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.policyChanged",
+      "expected": "审批后的权限设置已变化，本次任务未获执行授权。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.directoryChanged",
+      "expected": "审批后的工作目录已变化，请重新确认目录。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.jobNotFound",
+      "expected": "找不到可供当前工作会话访问的后台任务。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.invalidCursor",
+      "expected": "日志游标无效，请从最早可读位置重新查询。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.idempotencyConflict",
+      "expected": "同一次工具调用的参数发生变化，已阻止重复执行。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.executionReconciliationRequired",
+      "expected": "此调用可能已经执行，请先核对已有任务，不会自动重新运行。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.capacityExceeded",
+      "expected": "后台任务数量已达上限，请先停止或等待已有任务完成。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.storageUnavailable",
+      "expected": "后台任务存储不可用，请检查本地存储后重试。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.recoveryInProgress",
+      "expected": "正在恢复后台任务记录，请稍后重试。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.applicationExiting",
+      "expected": "应用正在退出，不能启动新的后台任务。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.startFailed",
+      "expected": "后台任务未能启动，请核对任务记录和本地诊断。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.cleanupFailed",
+      "expected": "尚未确认后台任务已完全清理，请保留应用并重试停止。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
+    },
+    {
+      "key": "agent.jobs.error.logStorageFailed",
+      "expected": "后台任务日志无法保存，已请求停止任务。",
+      "format": false,
+      "argument_count": 0,
+      "feature_added": "0.10.5-dev.2"
     }
   ]
 }

@@ -28,6 +28,7 @@ namespace Dafeiyu
         static readonly Regex hash=new Regex("\\A[a-f0-9]{64}\\z",RegexOptions.CultureInvariant);
         volatile bool disposed;
         bool loading;
+        internal event Action<string> Retired;
         public string DirectoryPath {get;private set;}
         public IList<AgentJobStorageWarning> Warnings {get{lock(ioGate)return warnings.ToArray();}}
         public AgentJobStore(string dataDirectory,IAgentJobClock clock):this(dataDirectory,clock,new AgentJobStorageIO()){}
@@ -110,7 +111,7 @@ namespace Dafeiyu
                 {
                     string path=Path.Combine(DirectoryPath,id+suffix);AgentInstructions.RejectLinks(path);if(File.Exists(path))File.Delete(path);
                 }
-                records.Remove(id);return true;
+                records.Remove(id);var retired=Retired;if(retired!=null)retired(id);return true;
             }
             catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException))throw;Warn(id,"retention_cleanup_failed");return false;}
         }

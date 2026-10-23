@@ -260,11 +260,13 @@ Owner 为宿主注入且不可变的 `projectId + conversationId + agentId`；�
 
 **文件：** AgentJobTools、ConversationAgentJobs、Workspace/Catalog/Permission/AccessPolicy、会话绑定、ToolTests/IntegrationTests。**对应：** 原后台任务 5；A03/A05–A08/A13/A29/F03。
 
-- [ ] 宿主 `ConfigureJobs(manager, owner)` 冻结可信身份；拒绝普通聊天/Unassigned/Quick/Draft，忽略或拒绝伪造 Owner，子 worker 不继承启动能力。
-- [ ] schema 与直调都验权限：Plan/关闭终端不启动，Auto 沙箱 shell 仍人工审批，Full 沿用规则；冻结 payload，审批后再验参数/策略/目录身份，启动只审批一次。
-- [ ] start_job 按写/执行策略，get_job 为 ReadOnly 且新调用读实时状态；最大 64 KiB 日志页不被 24000 字符写 journal 截断，始终返回完整 JSON。
-- [ ] get/stop 跨项目/会话/agent 与未知 ID 返回相同错误；关闭终端后仍保留可信任务停止路径。
-- [ ] 脚本模型驱动真实会话工具路径验证跨轮 Dispose 后继续、丢响应不重跑、build→plan 后仍能 get、完成零新增模型调用；假 Manager 测试不冒充集成。
+- [x] 宿主 `ConfigureJobs(manager, owner)` 冻结可信身份；拒绝普通聊天/Unassigned/Quick/Draft，忽略或拒绝伪造 Owner，子 worker 不继承启动能力。
+- [x] schema 与直调都验权限：Plan/关闭终端不启动，Auto 沙箱 shell 仍人工审批，Full 沿用规则；冻结 payload，审批后再验参数/策略/目录身份，启动只审批一次。
+- [x] start_job 按写/执行策略，get_job 为 ReadOnly 且新调用读实时状态；最大 64 KiB 日志页不被 24000 字符写 journal 截断，始终返回完整 JSON。
+- [x] get/stop 跨项目/会话/agent 与未知 ID 返回相同错误；关闭终端后仍保留可信任务停止路径。
+- [x] 脚本模型驱动真实会话工具路径验证跨轮 Dispose 后继续、丢响应不重跑、build→plan 后仍能 get、完成零新增模型调用；假 Manager 测试不冒充集成。
+
+S12 本地验收：Framework/.NET 10 管理器 48、工具协议 21、工作区集成 27、脚本模型及真实进程会话 17 项各通过；完整共享回归 8,416 项通过，资源门禁通过。新阶段远端 CI 与后续应用级双端验收仍待完成，详见后台任务实施记录。
 
 ### S12a：接入用户提供的四种语言包（新增）
 
@@ -275,6 +277,7 @@ Owner 为宿主注入且不可变的 `projectId + conversationId + agentId`；�
 - [ ] 在 S12 通过后将四份用户译文作为内嵌资源接入，保留原译文；记录源文件 SHA256、键集合和输入检查，不将占位符一致误报为人工翻译质量验收。
 - [ ] 逐包检查 UTF-8/JSON、重复键、字符串类型和复合格式占位符。已知初查：每包 4,344 键，缺 `menus.language`、`languages.zhCN` 两项，无多余键、重复键、非字符串或格式占位符差异；以接入时复查为准。
 - [ ] 简体中文作为完整回退目录；四包缺失词条及后续 Agent/引导新增文案逐项回退，不显示空白或资源键，不自行补译整包。新增可见文案仍首先登记到中文目录。
+- [ ] 多语言工具回归：既有工具的错误、journal 和事件状态不能只识别中文显示前缀；兼容已有历史以及日文半角/全角冒号，新 Agent 工具继续按 JSON ok 判定，译文不改变权限、机器字段或模型指令。
 - [ ] 双端头像“语言”入口支持简体中文、繁體中文、English、日本語、한국어，可靠保存选择并在后续启动应用；旧设置默认简体中文，无效语言代码回退。根据现有静态控件生命周期确定一致的应用时机，若需重启须在选择时明确说明并验证。
 - [ ] 验证全部包被实际内嵌到 Framework/.NET 成品和发布产物，框架与 .NET 读取/格式化/回退合同一致；不依赖桌面源文件、当前目录或网络下载。
 - [ ] WPF 与 Avalonia 分别验证五种选择、勾选状态、持久化/重启恢复、回退、常用菜单/设置/长文本显示、窄窗与主题；保留截图和检查结果，记录无法人工核实的翻译质量限制。

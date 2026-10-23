@@ -16,6 +16,11 @@ namespace Dafeiyu
         internal bool UiObserved;
         internal bool IsDisposed {get{return disposed;}}
         internal bool IsDraft;internal ConversationDefinition Definition;
+        internal void ConfigureJobs(AgentJobManager manager)
+        {
+            if(IsDraft||disposed||Definition.Mode!="work"||ProjectId==ProjectCatalogStore.UnassignedProjectId||ProjectId==ProjectCatalogStore.QuickProjectId)throw new InvalidOperationException("job_workspace_required");
+            Session.ConfigureJobs(manager,new AgentJobOwner(ProjectId,Id,"primary"));
+        }
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
         public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null)

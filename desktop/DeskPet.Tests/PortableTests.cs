@@ -33,6 +33,8 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-motion-only")return ImageGenerationMotionTests.Main();
             if(args.Length==1 && args[0]=="--image-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskManagerTests.Main();}
             if(args.Length==1 && args[0]=="--localization-only")return LocalizationTests.Main();
+            if(args.Length==1 && args[0]=="--agent-job-tools-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobToolTests.Main() | AgentJobIntegrationTests.Main();}
+            if(args.Length==1 && args[0]=="--agent-job-session-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobSessionTests.Main();}
             if(args.Length==1 && args[0]=="--agent-job-contract-only")return AgentJobContractTests.Main();
             if(args.Length==1 && args[0]=="--agent-job-store-only")return AgentJobStoreTests.Main();
             if(args.Length==1 && args[0]=="--agent-jobs-native-only")return AgentJobProcessTests.RunAll() | AgentJobSandboxTests.Main();
@@ -82,7 +84,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { AgentJobManagerTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,

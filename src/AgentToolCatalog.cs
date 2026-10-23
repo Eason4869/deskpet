@@ -47,7 +47,7 @@ namespace Dafeiyu
             D("complete_subagent","完成子 Agent 并记录结果。",false,Fields("id",P("string","子 Agent ID"),"result",P("string","结果")),"id","result"),
             D("interrupt_subagent","中断正在运行的子 Agent。",false,Fields("id",P("string","子 Agent ID")),"id")
         };
-        internal static bool IsReadOnly(string name){var tool=Definitions.FirstOrDefault(d=>d.Name==name);return tool!=null && tool.ReadOnly;}
+        internal static bool IsReadOnly(string name){if(name=="get_job")return true;var tool=Definitions.FirstOrDefault(d=>d.Name==name);return tool!=null && tool.ReadOnly;}
         internal static void Schemas(bool plan,out object[] openai,out object[] anthropic){Schemas(plan,null,null,out openai,out anthropic);}
         internal static void Schemas(bool plan,AgentModelCapabilities capabilities,IEnumerable<AgentToolDefinition> extra,out object[] openai,out object[] anthropic,Func<string,bool> enabled=null)
         {

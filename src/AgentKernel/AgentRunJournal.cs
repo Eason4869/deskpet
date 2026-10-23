@@ -33,16 +33,17 @@ namespace Dafeiyu
         public async Task<string> ExecuteAsync(AgentToolInvocation invocation,Func<Action,Task<string>> execute,Func<Dictionary<string,string>> hashes=null)
         {
             string path=FilePath(invocation.Key);if(File.Exists(path)){
-                var old=Read(path);if(old.PayloadHash!=invocation.PayloadHash)throw new InvalidOperationException(TextResources.Get("agentRunJournal.executeAsync.text"));
-                if(old.State=="completed"||old.State=="failed"||old.State=="cancelled")return old.Result??TextResources.Get("agentRunJournal.executeAsync.text.alternativeA");
-                if(old.State=="reconciled")return TextResources.Get("agentRunJournal.executeAsync.text.alternativeB");
+                var old=Read(path);if(old.PayloadHash!=invocation.PayloadHash)throw new InvalidOperationException(AgentJobTools.IsJobTool(invocation.ToolName)?"job_idempotency_conflict":TextResources.Get("agentRunJournal.executeAsync.text"));
+                if(old.State=="completed"||old.State=="failed"||old.State=="cancelled")return AgentJobTools.IsJobTool(invocation.ToolName)?(old.State=="cancelled"?AgentJobTools.Error("start_failed"):AgentJobTools.Replay(old.Result)):old.Result??TextResources.Get("agentRunJournal.executeAsync.text.alternativeA");
+                if(old.State=="reconciled")return AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.Error("execution_reconciliation_required"):TextResources.Get("agentRunJournal.executeAsync.text.alternativeB");
+                if(AgentJobTools.IsJobTool(invocation.ToolName)){ReconciliationRequired=true;return AgentJobTools.Error("execution_reconciliation_required");}
                 ReconciliationRequired=true;throw new ApiException(TextResources.Get("agentRunJournal.executeAsync.text.alternativeC"));
             }
             var record=new AgentRunRecord{ExecutionId=Guid.NewGuid().ToString("N"),SessionId=invocation.SessionId,ProjectId=invocation.ProjectId,TaskId=invocation.TaskId,CallId=invocation.CallId,ToolName=invocation.ToolName,PayloadHash=invocation.PayloadHash,State="prepared",BeforeHashes=hashes==null?new Dictionary<string,string>():hashes()};
             Save(path,record);bool started=false;
             try{
                 string result=await execute(delegate{record.State="started";Save(path,record);started=true;}).ConfigureAwait(false);
-                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000)record.Result=TextResources.Format("agentRunJournal.executeAsync.recordResultSubstring",record.Result.Substring(0,24000));record.State=record.Result.StartsWith("错误：")?"failed":"completed";
+                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000&&!AgentJobTools.IsJobTool(invocation.ToolName))record.Result=TextResources.Format("agentRunJournal.executeAsync.recordResultSubstring",record.Result.Substring(0,24000));record.State=(AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.IsFailure(record.Result):record.Result.StartsWith("错误："))?"failed":"completed";
                 try{Save(path,record);}catch(Exception){ReconciliationRequired=started;throw;}return result;
             }catch(OperationCanceledException){if(!started){record.State="cancelled";record.Result=TextResources.Get("agentRunJournal.executeAsync.recordResult");Save(path,record);}else ReconciliationRequired=true;throw;}
             catch(Exception){if(started)ReconciliationRequired=true;throw;}
@@ -55,7 +56,7 @@ namespace Dafeiyu
     public sealed partial class AgentWorkspace
     {
         AgentRunJournal runJournal;
-        public bool NeedsReconciliation {get{return runJournal!=null&&runJournal.ReconciliationRequired;}}
+        public bool NeedsReconciliation {get{return runJournal!=null&&runJournal.ReconciliationRequired||jobsJournal!=null&&jobsJournal.ReconciliationRequired;}}
         Task<string> ExecuteRecordedAsync(AgentToolInvocation invocation,CancellationToken token)
         {
             bool effect=AgentToolCatalog.Definitions.Concat(dynamicTools).Any(t=>t.Name==invocation.ToolName&&!t.ReadOnly);

@@ -39,6 +39,7 @@ namespace Dafeiyu.Tests
             public long ElapsedMilliseconds {get;private set;}
             internal Clock(){UtcNow=new DateTime(2026,10,23,0,0,0,DateTimeKind.Utc);}
             internal void Advance(TimeSpan elapsed){UtcNow+=elapsed;ElapsedMilliseconds+=(long)elapsed.TotalMilliseconds;}
+            internal void AdjustUtc(TimeSpan change){UtcNow+=change;}
         }
         internal static AgentJobSnapshot Snapshot(string directory,string id,AgentJobState state,IAgentJobClock clock)
         {
@@ -77,11 +78,12 @@ namespace Dafeiyu.Tests
             internal string FailAppendFor;
             internal long AppendedBytes;
             internal int IndexCommits;
+            internal Action AfterMetadataCommit;
             internal readonly ManualResetEventSlim Entered=new ManualResetEventSlim(false),Release=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim IndexSaved=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim CommitEntered=new ManualResetEventSlim(false),CommitRelease=new ManualResetEventSlim(false);
             internal readonly Dictionary<string,long> ReportedLengths=new Dictionary<string,long>(StringComparer.Ordinal);
-            internal override void Commit(string temporary,string destination){if(FailCommit)throw new IOException("Controlled commit failure");if(HoldMetadataCommit&&destination.EndsWith(".json",StringComparison.Ordinal)){CommitEntered.Set();CommitRelease.Wait();}base.Commit(temporary,destination);if(destination.EndsWith(".log-index",StringComparison.Ordinal)){Interlocked.Increment(ref IndexCommits);IndexSaved.Set();}}
+            internal override void Commit(string temporary,string destination){if(FailCommit)throw new IOException("Controlled commit failure");if(HoldMetadataCommit&&destination.EndsWith(".json",StringComparison.Ordinal)){CommitEntered.Set();CommitRelease.Wait();}base.Commit(temporary,destination);if(destination.EndsWith(".json",StringComparison.Ordinal)&&AfterMetadataCommit!=null)AfterMetadataCommit();if(destination.EndsWith(".log-index",StringComparison.Ordinal)){Interlocked.Increment(ref IndexCommits);IndexSaved.Set();}}
             internal override void Append(Stream stream,byte[] bytes)
             {
                 if(HoldWrites){Entered.Set();Release.Wait();}

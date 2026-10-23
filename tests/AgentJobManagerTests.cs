@@ -21,13 +21,13 @@ namespace Dafeiyu.Tests
         {
             internal int Resumes,Stops;
             internal bool ConfirmCleanup=true;
-            internal Action OnStop;
+            internal Action OnStop,OnResume;
             internal Action<AgentJobOutputChunk> Output;
             internal readonly TaskCompletionSource<AgentJobProcessExit> Done=new TaskCompletionSource<AgentJobProcessExit>(TaskCreationOptions.RunContinuationsAsynchronously);
             public AgentJobProcessExit Status {get;internal set;}
             public Task<AgentJobProcessExit> Completion {get{return Done.Task;}}
             internal Process(){Status=new AgentJobProcessExit(false,null,false,false,1);}
-            public void Resume(){if(Stops>0)throw new Exception("Process resumed after cleanup");Interlocked.Increment(ref Resumes);}
+            public void Resume(){if(Stops>0)throw new Exception("Process resumed after cleanup");Interlocked.Increment(ref Resumes);if(OnResume!=null)OnResume();}
             public Task<AgentJobCleanupResult> StopAsync(CancellationToken token){Interlocked.Increment(ref Stops);if(OnStop!=null)OnStop();if(ConfirmCleanup){Status=new AgentJobProcessExit(true,null,true,true,0);Done.TrySetResult(Status);}return Task.FromResult(new AgentJobCleanupResult(ConfirmCleanup,ConfirmCleanup?null:"held"));}
             public void Dispose(){}
         }
@@ -35,8 +35,10 @@ namespace Dafeiyu.Tests
         {
             internal readonly List<Process> Processes=new List<Process>();
             internal Action<Process> BeforeReturn;
-            public Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
-            {var process=new Process{Output=output};lock(Processes)Processes.Add(process);if(BeforeReturn!=null)BeforeReturn(process);return Task.FromResult<IAgentJobProcess>(process);}
+            internal TaskCompletionSource<bool> Preparation;
+            internal readonly ManualResetEventSlim Preparing=new ManualResetEventSlim(false);
+            public async Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
+            {Preparing.Set();if(Preparation!=null)await AgentAuthorizationService.AwaitCancellation(Preparation.Task,token);var process=new Process{Output=output};lock(Processes)Processes.Add(process);if(BeforeReturn!=null)BeforeReturn(process);return process;}
         }
         sealed class Lease : IDisposable {public void Dispose(){}}
         sealed class Fixture : IDisposable
@@ -191,6 +193,21 @@ namespace Dafeiyu.Tests
                 f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,handler);
             }
         }
+        static void WallClockAdjustmentsDoNotChangeTheTimeoutBudget()
+        {
+            using(var f=new Fixture())using(var timedOut=new ManualResetEventSlim(false))
+            {
+                var job=f.Start("monotonic-timeout").Result;
+                Action changed=()=>{if(f.Invoke<IList<AgentJobSnapshot>>("ListForProject",job.Owner.ProjectId).Any(item=>item.Id==job.Id&&item.State==AgentJobState.TimedOut))timedOut.Set();};
+                f.ManagerType.GetEvent("Changed").AddEventHandler(f.Manager,changed);
+                try
+                {
+                    f.Clock.AdjustUtc(TimeSpan.FromDays(1));Check(!timedOut.Wait(300),"a forward wall-clock adjustment does not consume a running job's timeout budget");
+                    f.Clock.AdjustUtc(TimeSpan.FromDays(-2));f.Clock.Advance(TimeSpan.FromSeconds(1801));Check(timedOut.Wait(3000),"monotonic expiry still stops the job after the wall clock moves backwards");
+                }
+                finally{f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,changed);}
+            }
+        }
         static void StartArgumentsMustMatchApprovedPayload()
         {
             using(var f=new Fixture())
@@ -270,9 +287,83 @@ namespace Dafeiyu.Tests
                 finally{f.IO.HoldMetadataCommit=false;f.IO.CommitRelease.Set();try{stop.GetAwaiter().GetResult();}catch(System.IO.IOException){}if(read!=null)read.GetAwaiter().GetResult();}
             }
         }
+        static void StopDuringPreparationCancelsThePendingStart()
+        {
+            using(var f=new Fixture())
+            {
+                f.Factory.Preparation=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);var start=f.Start("held-preparation");
+                try
+                {
+                    Check(f.Factory.Preparing.Wait(3000),"pending-start fixture is suspended in process preparation");
+                    var pending=f.Invoke<IList<AgentJobSnapshot>>("ListForProject","project").Single();
+                    var stop=f.Invoke<Task<AgentJobSnapshot>>("StopAsync",pending.Owner,pending.Id,AgentJobStopReason.User,CancellationToken.None);
+                    Check(Task.WhenAny(stop,Task.Delay(1500)).GetAwaiter().GetResult()==stop,"Stop cancels a pending preparation without waiting for the original request");
+                    var stopped=stop.GetAwaiter().GetResult();bool cancelled=false;try{start.GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                    Check(cancelled&&stopped.State==AgentJobState.Stopped&&stopped.CleanupConfirmed&&f.Factory.Processes.Count==0,"preparation cancellation releases the reservation without resuming a command");
+                }
+                finally{f.Factory.Preparation.TrySetResult(true);try{start.GetAwaiter().GetResult();}catch(OperationCanceledException){}}
+            }
+        }
+        static void StopIsNotHeldBehindAnUnrelatedStatusWrite()
+        {
+            using(var f=new Fixture())using(var cleaned=new ManualResetEventSlim(false))
+            {
+                var job=f.Start("held-refresh").Result;var process=f.Factory.Processes[0];process.OnStop=()=>cleaned.Set();f.IO.HoldMetadataCommit=true;
+                process.Status=new AgentJobProcessExit(true,0,false,false,1);
+                var read=Task.Run(()=>f.Invoke<Task<AgentJobPage>>("GetAsync",job.Owner,job.Id,"",1024,CancellationToken.None).GetAwaiter().GetResult());
+                Task<AgentJobSnapshot> stop=null;
+                try
+                {
+                    Check(f.IO.CommitEntered.Wait(3000),"status fixture holds a real metadata write while a descendant remains alive");
+                    stop=f.Invoke<Task<AgentJobSnapshot>>("StopAsync",job.Owner,job.Id,AgentJobStopReason.User,CancellationToken.None);
+                    Check(cleaned.Wait(1500),"an in-flight status write cannot hold Stop behind its mutation semaphore");
+                    Check(Task.WhenAny(stop,Task.Delay(5500)).GetAwaiter().GetResult()==stop,"Stop's whole deadline includes waiting for an earlier mutation");
+                }
+                finally{f.IO.HoldMetadataCommit=false;f.IO.CommitRelease.Set();read.GetAwaiter().GetResult();if(stop!=null)try{stop.GetAwaiter().GetResult();}catch(System.IO.IOException){}}
+            }
+        }
+        static void CancellationAtTheRemainingLaunchBarriers()
+        {
+            using(var f=new Fixture())using(var request=new CancellationTokenSource())
+            {
+                f.Authorization.Barrier=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);var pending=f.Invoke<Task<AgentJobSnapshot>>("StartAsync",f.Context("approval-cancel"),new AgentJobSpec("echo fixture",null,f.Temporary.Path,1800),request.Token);
+                request.Cancel();bool cancelled=false;try{pending.GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                Check(cancelled&&f.Factory.Processes.Count==0,"cancellation during approval creates no process or active reservation");
+            }
+            using(var f=new Fixture())
+            {
+                f.IO.FailCommit=true;bool failed=false;try{f.Start("starting-save-fails").GetAwaiter().GetResult();}catch(System.IO.IOException){failed=true;}
+                Check(failed&&f.Factory.Processes.Count==0,"failed Starting metadata commit creates no suspended process");f.IO.FailCommit=false;
+            }
+            using(var f=new Fixture())using(var request=new CancellationTokenSource())
+            {
+                var basis=f.Context("before-effect-cancel");var context=new AgentJobStartContext(basis.Owner,basis.Invocation,basis.Authorization,basis.RecheckPolicy,basis.AcquireDirectory,()=>request.Cancel());bool cancelled=false;
+                try{f.Invoke<Task<AgentJobSnapshot>>("StartAsync",context,new AgentJobSpec("echo fixture",null,f.Temporary.Path,1800),request.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                Check(cancelled&&f.Factory.Processes[0].Resumes==0&&f.Factory.Processes[0].Stops==1,"cancellation immediately after the durable side-effect marker still cannot resume the process");
+            }
+            foreach(bool afterCommit in new[]{false,true})using(var f=new Fixture())using(var request=new CancellationTokenSource())
+            {
+                int commits=0;
+                if(afterCommit)f.IO.AfterMetadataCommit=()=>{if(Interlocked.Increment(ref commits)==2)request.Cancel();};
+                else f.Factory.BeforeReturn=process=>process.OnResume=()=>request.Cancel();
+                bool cancelled=false;try{f.Invoke<Task<AgentJobSnapshot>>("StartAsync",f.Context("late-cancel"),new AgentJobSpec("echo fixture",null,f.Temporary.Path,1800),request.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}
+                var snapshot=f.Invoke<IList<AgentJobSnapshot>>("ListForProject","project").Single();
+                Check(cancelled&&f.Factory.Processes[0].Resumes==1&&f.Factory.Processes[0].Stops==1&&snapshot.MayHaveExecuted&&snapshot.CleanupConfirmed,"cancellation at "+(afterCommit?"Running commit":"Resume")+" cleans the possibly executed tree before ownership handoff");
+            }
+            using(var f=new Fixture())using(var request=new CancellationTokenSource())
+            {
+                Action changed=()=>{if(f.Invoke<IList<AgentJobSnapshot>>("ListForProject","project").Any(job=>job.State==AgentJobState.Running))request.Cancel();};f.ManagerType.GetEvent("Changed").AddEventHandler(f.Manager,changed);
+                try
+                {
+                    var job=f.Invoke<Task<AgentJobSnapshot>>("StartAsync",f.Context("response-cancel"),new AgentJobSpec("echo fixture",null,f.Temporary.Path,1800),request.Token).GetAwaiter().GetResult();
+                    Check(request.IsCancellationRequested&&job.State==AgentJobState.Running&&f.Factory.Processes[0].Stops==0,"cancellation after atomic handoff but before the response is delivered leaves the committed task owned by the application");
+                }
+                finally{f.ManagerType.GetEvent("Changed").RemoveEventHandler(f.Manager,changed);}
+            }
+        }
         public static int Main()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{TenConcurrentStartsLaunchOnce,OwnershipAndCleanupFailure,MetadataFailureCannotPreventStopping,RootExitAndCancellationAfterHandoff,CancellationBeforeResumeAndRunningSaveFailure,ApplicationCapacityAndExitBarrier,CapacityAndPolicyAreRecheckedAfterApproval,StopExitRaceProducesOneTerminalNotification,TimeoutUsesApplicationLifetime,WallClockAdjustmentsDoNotChangeTheTimeoutBudget,StartArgumentsMustMatchApprovedPayload,OwnerMutationRequiresConfirmedCleanup,FaultedProcessCompletionIsObservedAndCleaned,NaturalCompletionKeepsSlotUntilResourceCleanupIsConfirmed,StalledMetadataCannotDelayProcessCleanup,StalledMetadataDoesNotBlockAnotherJobLog,StopDuringPreparationCancelsThePendingStart,StopIsNotHeldBehindAnUnrelatedStatusWrite,CancellationAtTheRemainingLaunchBarriers})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobManagerTests: "+checks+" passed");return failures==0?0:1;
         }
     }

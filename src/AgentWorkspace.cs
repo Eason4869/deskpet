@@ -108,6 +108,7 @@ namespace Dafeiyu
         readonly AgentExecutionGuard executionGuard=new AgentExecutionGuard();
         public Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
         {
+            if(AgentJobTools.IsJobTool(name))return ExecuteJobAsync(name,argumentsJson,callId,token);
             token.ThrowIfCancellationRequested();if(name=="complete_subagent")return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeA"));if(ChildToolBudget>0 && Interlocked.Increment(ref childToolCalls)>ChildToolBudget)throw new ApiException(TextResources.Get("agentWorkspace.executeAsync.text"));Dictionary<string,object> args;
             try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeB"));}
             if(args==null)return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeB"));
@@ -615,7 +616,7 @@ namespace Dafeiyu
         {
             object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
-        bool RuntimeToolAvailable(string name){if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        bool RuntimeToolAvailable(string name){if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
         public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }

@@ -22,6 +22,10 @@ namespace Dafeiyu
             internal IDisposable DirectoryLease;
             internal readonly SemaphoreSlim Mutation=new SemaphoreSlim(1,1);
             internal readonly CancellationTokenSource Lifetime=new CancellationTokenSource();
+            internal readonly CancellationTokenSource PendingStart=new CancellationTokenSource(),RefreshCancellation=new CancellationTokenSource();
+            internal bool HandedOff;
+            internal AgentJobStopReason? RequestedStop;
+            internal long StartedMilliseconds;
             internal Task<AgentJobSnapshot> Start;
         }
         readonly object gate=new object();
@@ -34,7 +38,15 @@ namespace Dafeiyu
         bool recovered,recovering,exitRequested;
         public event Action Changed;
         public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock)
-        {if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;}
+        {if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;store.Retired+=Retire;}
+        void Retire(string id)
+        {
+            lock(gate)
+            {
+                Entry entry;if(!jobs.TryGetValue(id,out entry)||!AgentJobStore.IsTerminal(entry.Record.State))return;
+                jobs.Remove(id);Entry invocation;if(invocations.TryGetValue(entry.Record.InvocationKey,out invocation)&&Object.ReferenceEquals(invocation,entry))invocations.Remove(entry.Record.InvocationKey);
+            }
+        }
         public async Task RecoverAsync(CancellationToken token)
         {
             lock(gate){if(recovered)return;if(recovering)throw new InvalidOperationException("jobs_recovering");recovering=true;}
@@ -65,6 +77,12 @@ namespace Dafeiyu
         }
         static bool SamePolicy(AgentJobPolicySnapshot a,AgentJobPolicySnapshot b)
         {return a.Root==b.Root&&a.DirectoryIdentity==b.DirectoryIdentity&&a.PermissionVersion==b.PermissionVersion&&a.TimeoutCeiling==b.TimeoutCeiling&&a.TerminalAllowed==b.TerminalAllowed&&a.ReadOnly==b.ReadOnly&&a.Sandbox==b.Sandbox&&a.ApprovalMode==b.ApprovalMode&&a.ReadDirectories.SequenceEqual(b.ReadDirectories);}
+        static void RecheckPolicy(AgentJobPolicySnapshot original,AgentJobPolicySnapshot current,AgentJobSpec spec)
+        {
+            ValidatePolicy(current,spec);
+            if(original.Root!=current.Root||original.DirectoryIdentity!=current.DirectoryIdentity)throw new InvalidOperationException("job_directory_changed");
+            if(!SamePolicy(original,current))throw new InvalidOperationException("job_policy_changed");
+        }
         static void ValidateInvocation(AgentJobStartContext context,AgentJobSpec spec)
         {
             var invocation=context.Invocation;var args=invocation.ReadArguments();object command,title,directory,timeout;
@@ -72,7 +90,10 @@ namespace Dafeiyu
                 throw new InvalidOperationException("job_invocation_mismatch");
         }
         public Task<AgentJobSnapshot> StartAsync(AgentJobStartContext context,AgentJobSpec spec,CancellationToken requestToken)
+        {bool replayed;return StartForToolAsync(context,spec,requestToken,out replayed);}
+        internal Task<AgentJobSnapshot> StartForToolAsync(AgentJobStartContext context,AgentJobSpec spec,CancellationToken requestToken,out bool replayed)
         {
+            replayed=false;
             if(context==null||spec==null)throw new ArgumentNullException("context");
             if(context.Owner.AgentId!="primary")throw new InvalidOperationException("job_owner_denied");
             var key=AgentJobPolicy.IdempotencyKey(context.Owner,context.Invocation);var payload=Payload(spec);Entry entry;
@@ -82,6 +103,7 @@ namespace Dafeiyu
                 if(!recovered)throw new InvalidOperationException("jobs_recovering");
                 if(invocations.TryGetValue(key,out entry))
                 {
+                    replayed=true;
                     if(entry.Record.PayloadHash!=payload)throw new InvalidOperationException("job_idempotency_conflict");
                     return entry.Start??Task.FromResult(Snapshot(entry));
                 }
@@ -108,7 +130,7 @@ namespace Dafeiyu
             var elapsed=Stopwatch.StartNew();bool reserved=false,saved=false,ownerHeld=false;var ownerGate=OwnerGate(context.Owner.ProjectId);
             try
             {
-            using(var cancellation=CancellationTokenSource.CreateLinkedTokenSource(requestToken,exiting.Token))
+            using(var cancellation=CancellationTokenSource.CreateLinkedTokenSource(requestToken,exiting.Token,entry.PendingStart.Token))
             {
                 var token=cancellation.Token;Exception failure=null;
                 try
@@ -119,7 +141,7 @@ namespace Dafeiyu
                     if(decision==null||decision.Effect!=AgentPermissionEffect.Allow)throw new InvalidOperationException("job_permission_denied");
                     await ownerGate.WaitAsync(token).ConfigureAwait(false);ownerHeld=true;
                     token.ThrowIfCancellationRequested();entry.DirectoryLease=context.AcquireDirectory();
-                    var current=context.RecheckPolicy();ValidatePolicy(current,entry.Record.Spec);if(!SamePolicy(original,current))throw new InvalidOperationException("job_policy_changed");
+                    var current=context.RecheckPolicy();RecheckPolicy(original,current,entry.Record.Spec);
                     lock(gate)
                     {
                         if(exitRequested)throw new InvalidOperationException("jobs_exiting");
@@ -137,13 +159,13 @@ namespace Dafeiyu
                     var metrics=entry.Process as IAgentJobPreparationMetrics;
                     entry.Record.TimingsMs["sandbox_prepare"]=metrics==null?0:Math.Max(0,Math.Min(preparationMs,metrics.SandboxPreparationMilliseconds));
                     entry.Record.TimingsMs["process_prepare"]=preparationMs-entry.Record.TimingsMs["sandbox_prepare"].Value;
-                    token.ThrowIfCancellationRequested();var final=context.RecheckPolicy();ValidatePolicy(final,entry.Record.Spec);if(!SamePolicy(current,final))throw new InvalidOperationException("job_policy_changed");
+                    token.ThrowIfCancellationRequested();var final=context.RecheckPolicy();RecheckPolicy(current,final,entry.Record.Spec);
                     if(context.BeforeEffect==null)throw new InvalidOperationException("execution_reconciliation_required");context.BeforeEffect();
                     token.ThrowIfCancellationRequested();entry.Record.MayHaveExecuted=true;var resume=Stopwatch.StartNew();entry.Process.Resume();entry.Record.TimingsMs["resume"]=resume.ElapsedMilliseconds;
-                    entry.Record.State=AgentJobState.Running;entry.Record.StartedUtc=clock.UtcNow;
+                    entry.Record.State=AgentJobState.Running;entry.Record.StartedUtc=clock.UtcNow;entry.StartedMilliseconds=clock.ElapsedMilliseconds;
                     var handoff=Stopwatch.StartNew();
                     await PersistAsync(entry,token).ConfigureAwait(false);
-                    lock(gate){token.ThrowIfCancellationRequested();if(exitRequested)throw new OperationCanceledException(token);}
+                    lock(gate){token.ThrowIfCancellationRequested();if(exitRequested||entry.RequestedStop.HasValue)throw new OperationCanceledException(token);entry.HandedOff=true;}
                     entry.Record.TimingsMs["handoff"]=handoff.ElapsedMilliseconds;
                     entry.Record.TimingsMs["start_total"]=elapsed.ElapsedMilliseconds;
                     entry.Record.TimingsMs["start_excluding_authorization_and_sandbox"]=Math.Max(0,elapsed.ElapsedMilliseconds-entry.Record.TimingsMs["approval"].Value-entry.Record.TimingsMs["sandbox_prepare"].Value);
@@ -153,9 +175,10 @@ namespace Dafeiyu
                     if(entry.Process!=null)
                     {
                         bool clean=await CleanupAsync(entry).ConfigureAwait(false);
-                        entry.Record.CleanupConfirmed=clean;entry.Record.State=clean?AgentJobState.StartFailed:AgentJobState.CleanupFailed;
+                        entry.Record.CleanupConfirmed=clean;entry.Record.State=clean?(entry.RequestedStop.HasValue?AgentJobState.Stopped:AgentJobState.StartFailed):AgentJobState.CleanupFailed;
                     }
-                    else{entry.Record.State=AgentJobState.StartFailed;entry.Record.CleanupConfirmed=true;}
+                    else{entry.Record.State=entry.RequestedStop.HasValue?AgentJobState.Stopped:AgentJobState.StartFailed;entry.Record.CleanupConfirmed=true;}
+                    entry.Record.StopReason=entry.RequestedStop;
                     if(AgentJobStore.IsTerminal(entry.Record.State)){entry.Record.FinishedUtc=clock.UtcNow;Release(entry);}
                     if(saved)try{await PersistAsync(entry,CancellationToken.None).ConfigureAwait(false);}catch(Exception error){Debug.WriteLine(error);}
                     if(!reserved)Release(entry);entry.Published=new AgentJobSnapshot(entry.Record);Notify();System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();throw new InvalidOperationException();
@@ -174,7 +197,7 @@ namespace Dafeiyu
                 {
                     await RefreshAsync(entry,CancellationToken.None).ConfigureAwait(false);
                     if(entry.Lifetime.IsCancellationRequested||entry.Record.State!=AgentJobState.Running)return;
-                    if(entry.Record.StartedUtc.HasValue&&(clock.UtcNow-entry.Record.StartedUtc.Value).TotalSeconds>=entry.Record.Spec.TimeoutSeconds)
+                    if(clock.ElapsedMilliseconds-entry.StartedMilliseconds>=entry.Record.Spec.TimeoutSeconds*1000L)
                     {await StopEntryAsync(entry,AgentJobStopReason.Timeout,CancellationToken.None).ConfigureAwait(false);return;}
                     await Task.WhenAny(entry.Process.Completion,Task.Delay(100,entry.Lifetime.Token)).ConfigureAwait(false);
                     if(entry.Process.Completion.IsCompleted)
@@ -191,6 +214,8 @@ namespace Dafeiyu
         async Task RefreshAsync(Entry entry,CancellationToken token)
         {
             await entry.Mutation.WaitAsync(token).ConfigureAwait(false);
+            using(var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token,entry.RefreshCancellation.Token))
+            {
             try
             {
                 if(entry.Process==null||AgentJobStore.IsTerminal(entry.Record.State)||entry.Record.State!=AgentJobState.Running)return;
@@ -204,13 +229,22 @@ namespace Dafeiyu
                     else entry.Record.LogWarning="cleanup_unconfirmed";
                     changed=true;
                 }
-                if(changed){await PersistAsync(entry,token).ConfigureAwait(false);Notify();}
+                if(changed){entry.Published=new AgentJobSnapshot(entry.Record);await PersistAsync(entry,cancellation.Token).ConfigureAwait(false);Notify();}
             }
+            catch(OperationCanceledException){if(!entry.RefreshCancellation.IsCancellationRequested)throw;}
             finally{entry.Mutation.Release();}
+            }
         }
         static AgentJobSnapshot Snapshot(Entry entry){return entry.Published;}
+        internal bool TrySnapshot(AgentJobOwner owner,string id,out AgentJobSnapshot snapshot)
+        {lock(gate){Entry entry;if(owner!=null&&jobs.TryGetValue(id??"",out entry)&&owner.Matches(entry.Record.Owner)){snapshot=Snapshot(entry);return true;}snapshot=null;return false;}}
         AgentJobLogStore LogFor(Entry entry){return entry.Log??(entry.Log=store.OpenLog(entry.Record.Id));}
-        async Task PersistAsync(Entry entry,CancellationToken token){var snapshot=new AgentJobSnapshot(entry.Record);await store.SaveAsync(snapshot,token).ConfigureAwait(false);entry.Published=snapshot;}
+        async Task PersistAsync(Entry entry,CancellationToken token)
+        {
+            var snapshot=new AgentJobSnapshot(entry.Record);
+            await AgentAuthorizationService.AwaitCancellation(store.SaveAsync(snapshot,token).ContinueWith(task=>{task.GetAwaiter().GetResult();return true;},TaskScheduler.Default),token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();entry.Published=snapshot;
+        }
         Entry Find(AgentJobOwner owner,string id)
         {
             lock(gate){Entry entry;if(!jobs.TryGetValue(id??"",out entry)||owner==null||!owner.Matches(entry.Record.Owner))throw new KeyNotFoundException("job_not_found");return entry;}
@@ -243,9 +277,14 @@ namespace Dafeiyu
         }
         async Task<AgentJobSnapshot> StopEntryAsync(Entry entry,AgentJobStopReason reason,CancellationToken token,string warning=null)
         {
-            await entry.Mutation.WaitAsync(token).ConfigureAwait(false);var elapsed=Stopwatch.StartNew();
-            using(var deadline=new CancellationTokenSource(4500))
+            var elapsed=Stopwatch.StartNew();bool pending;
+            lock(gate){pending=!entry.HandedOff;if(pending)entry.RequestedStop=entry.RequestedStop??reason;}
+            if(pending)entry.PendingStart.Cancel();entry.RefreshCancellation.Cancel();
+            using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(token))
             {
+            deadline.CancelAfter(4500);
+            try{await entry.Mutation.WaitAsync(deadline.Token).ConfigureAwait(false);}
+            catch(OperationCanceledException){token.ThrowIfCancellationRequested();throw new IOException("job_cleanup_unconfirmed");}
             try
             {
                 if(AgentJobStore.IsTerminal(entry.Record.State))return Snapshot(entry);

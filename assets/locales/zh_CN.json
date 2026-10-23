@@ -4344,5 +4344,22 @@
   "browser.tab.title": "网页浏览器",
   "images.recoveredPrompt": "恢复的图片（原元数据不可用）",
   "menus.language": "语言",
-  "languages.zhCN": "简体中文"
+  "languages.zhCN": "简体中文",
+  "agent.jobs.error.invalidArguments": "后台任务参数无效，请检查参数类型、目录和大小限制。",
+  "agent.jobs.error.unsupportedPlatform": "当前平台不支持后台任务。",
+  "agent.jobs.error.workspaceRequired": "后台任务仅适用于已绑定项目的持久工作会话。",
+  "agent.jobs.error.permissionDenied": "当前会话没有执行此后台任务操作的权限。",
+  "agent.jobs.error.policyChanged": "审批后的权限设置已变化，本次任务未获执行授权。",
+  "agent.jobs.error.directoryChanged": "审批后的工作目录已变化，请重新确认目录。",
+  "agent.jobs.error.jobNotFound": "找不到可供当前工作会话访问的后台任务。",
+  "agent.jobs.error.invalidCursor": "日志游标无效，请从最早可读位置重新查询。",
+  "agent.jobs.error.idempotencyConflict": "同一次工具调用的参数发生变化，已阻止重复执行。",
+  "agent.jobs.error.executionReconciliationRequired": "此调用可能已经执行，请先核对已有任务，不会自动重新运行。",
+  "agent.jobs.error.capacityExceeded": "后台任务数量已达上限，请先停止或等待已有任务完成。",
+  "agent.jobs.error.storageUnavailable": "后台任务存储不可用，请检查本地存储后重试。",
+  "agent.jobs.error.recoveryInProgress": "正在恢复后台任务记录，请稍后重试。",
+  "agent.jobs.error.applicationExiting": "应用正在退出，不能启动新的后台任务。",
+  "agent.jobs.error.startFailed": "后台任务未能启动，请核对任务记录和本地诊断。",
+  "agent.jobs.error.cleanupFailed": "尚未确认后台任务已完全清理，请保留应用并重试停止。",
+  "agent.jobs.error.logStorageFailed": "后台任务日志无法保存，已请求停止任务。"
 }

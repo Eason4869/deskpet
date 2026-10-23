@@ -150,7 +150,7 @@ namespace Dafeiyu
                                     result=TextResources.Get("nativeAgentClient.chatAgentAsync.result");
                                 }
                                 result=result??"";
-                                bool error=result.StartsWith("错误：",StringComparison.Ordinal);
+                                bool error=AgentJobTools.IsJobTool(call.Name)?AgentJobTools.IsFailure(result):result.StartsWith("错误：",StringComparison.Ordinal);
                                 item.Status=error?"error":"complete";item.Summary=AgentToolSummary(call,item.Status);item.ElapsedMilliseconds=watch.ElapsedMilliseconds;
                                 workspace.RecordTool(item,result);if(onToolEvent!=null)onToolEvent(item.Copy());
                                 if(error){string failureKey=call.Name+"\n"+call.Arguments.ToString()+"\n"+result;consecutiveFailures=failureKey==lastFailure?consecutiveFailures+1:1;lastFailure=failureKey;if(consecutiveFailures>=3)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeE"));}else{lastFailure=null;consecutiveFailures=0;}
