@@ -50,7 +50,7 @@ namespace Dafeiyu
             internal int ProcessId{get;private set;}
             internal int? ExitCode{get{lock(gate)return exitCode;}}
 
-            internal void Start(string workspace,bool isolated,string[] readDirectories,string executable)
+            internal void Start(string workspace,bool isolated,string[] readDirectories,string executable,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null)
             {
                 if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("内置终端需要支持 ConPTY 的 Windows 10 或更新系统。");
                 workspace=Path.GetFullPath(workspace);if(!Directory.Exists(workspace))throw new DirectoryNotFoundException("终端项目目录不存在。");
@@ -63,8 +63,16 @@ namespace Dafeiyu
                     HResult(CreatePseudoConsole(new TerminalSize{Columns=100,Rows=28},inputRead.DangerousGetHandle(),outputWrite.DangerousGetHandle(),0,out console));
                     reader=Task.Factory.StartNew(ReadOutput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);
                     job=CreateJobObject(IntPtr.Zero,null);if(job==IntPtr.Zero)throw new Win32Exception(Marshal.GetLastWin32Error());var limits=new JobLimits();limits.Basic.LimitFlags=0x2000;Check(SetInformationJobObject(job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))));
-                    environment=BuildEnvironment(sandbox);
-                    string setup=(isolated?AgentCommandExecutor.SandboxBootstrap(workspace):"")+"$ProgressPreference='SilentlyContinue'; $OutputEncoding=[Console]::InputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false); if(Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue){Set-PSReadLineOption -HistorySaveStyle SaveNothing}; ";
+                    var shellEnvironment=environmentOverrides==null?new System.Collections.Generic.Dictionary<string,string>(StringComparer.OrdinalIgnoreCase):new System.Collections.Generic.Dictionary<string,string>(environmentOverrides,StringComparer.OrdinalIgnoreCase);
+                    string modulePath;if(!shellEnvironment.TryGetValue("PSModulePath",out modulePath))modulePath=DefaultModulePath(executable,isolated);
+                    // ConsoleHost imports PSReadLine before -EncodedCommand. An absent, private
+                    // search root bypasses that discovery; restore normal lookup after explicit initialization.
+                    shellEnvironment["PSModulePath"]=Path.Combine(Path.GetDirectoryName(executable),"DeskPet-Startup-"+Guid.NewGuid().ToString("N"));
+                    environment=BuildEnvironment(sandbox,shellEnvironment);
+                    string setup=AgentCommandExecutor.PowerShellBootstrap(isolated,workspace)+"[Console]::InputEncoding=[Console]::OutputEncoding; ";
+                    string readLine=ReadLineManifest(executable);
+                    if(readLine!=null)setup+="Import-Module -Name "+PowerShellLiteral(readLine)+" -ErrorAction Stop; PSReadLine\\Set-PSReadLineOption -HistorySaveStyle SaveNothing; ";
+                    setup+="$env:PSModulePath="+PowerShellLiteral(modulePath??"")+"; ";
                     if(!isolated)setup+="Set-Location -LiteralPath "+PowerShellLiteral(workspace)+";";
                     var command=new StringBuilder(Quote(executable)).Append(" -NoLogo -NoProfile -NoExit -OutputFormat Text -EncodedCommand ").Append(Convert.ToBase64String(Encoding.Unicode.GetBytes(setup)));
                     if(sandbox==null)WindowsSandboxLease.CreateWithPseudoConsole(executable,command,environment,workspace,console,out child);
@@ -96,6 +104,25 @@ namespace Dafeiyu
             }
 
             static string PowerShellLiteral(string text){return "'"+text.Replace("'","''")+"'";}
+            static string DefaultModulePath(string executable,bool isolated)
+            {
+                string system=Path.Combine(Path.GetDirectoryName(executable),"Modules");if(isolated)return system;
+                string user=Environment.GetEnvironmentVariable("PSModulePath",EnvironmentVariableTarget.User),machine=Environment.GetEnvironmentVariable("PSModulePath",EnvironmentVariableTarget.Machine);
+                if(user==null){string documents=Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);user=String.IsNullOrEmpty(documents)?"":Path.Combine(documents,"WindowsPowerShell","Modules");}
+                if(machine==null)machine=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"WindowsPowerShell","Modules");
+                return Environment.ExpandEnvironmentVariables(user+Path.PathSeparator+machine+Path.PathSeparator+system);
+            }
+            static string ReadLineManifest(string executable)
+            {
+                foreach(string root in new[]{Path.Combine(Path.GetDirectoryName(executable),"Modules","PSReadLine"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"WindowsPowerShell","Modules","PSReadLine")})
+                {
+                    string direct=Path.Combine(root,"PSReadLine.psd1");if(File.Exists(direct))return direct;if(!Directory.Exists(root))continue;
+                    string selected=null;Version newest=null;
+                    foreach(string directory in Directory.GetDirectories(root)){Version version;if(!Version.TryParse(Path.GetFileName(directory),out version))continue;string manifest=Path.Combine(directory,"PSReadLine.psd1");if(File.Exists(manifest)&&(newest==null||version>newest)){selected=manifest;newest=version;}}
+                    if(selected!=null)return selected;
+                }
+                return null;
+            }
             static void HResult(int code){if(code<0)Marshal.ThrowExceptionForHR(code);}
             internal void Input(string data)
             {
