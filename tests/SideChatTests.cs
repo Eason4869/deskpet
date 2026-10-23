@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -38,7 +38,13 @@ namespace Dafeiyu.Tests
         static Task Send(object pane,string text){return (Task)PaneType.GetMethod("SendAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pane,new object[]{text});}
         static IEnumerable<T> All<T>(DependencyObject parent)where T:DependencyObject
         {if(parent is T)yield return (T)parent;for(int i=0;i<VisualTreeHelper.GetChildrenCount(parent);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(parent,i)))yield return item;}
-        static string DiskSnapshot(string root){return String.Join("|",Directory.GetFiles(root,"*",SearchOption.AllDirectories).OrderBy(p=>p).Select(p=>p+":"+Convert.ToBase64String(File.ReadAllBytes(p))));}
+        static string DiskSnapshot(string root)
+        {
+            string lease=Path.Combine(root,".deskpet-agent-kernel","jobs","writer.lock");
+            // Keep the process lease in the snapshot without opening its exclusive
+            // handle; every other file retains the exact content comparison.
+            return String.Join("|",Directory.GetFiles(root,"*",SearchOption.AllDirectories).OrderBy(p=>p).Select(p=>p+":"+(String.Equals(p,lease,StringComparison.OrdinalIgnoreCase)?"lease-length="+new FileInfo(p).Length:Convert.ToBase64String(File.ReadAllBytes(p)))));
+        }
         static async Task Run()
         {
             PaneType=typeof(PetWindow).Assembly.GetType("Dafeiyu.SideChatPane");Check(PaneType!=null,"temporary project chat pane exists");
@@ -48,6 +54,7 @@ namespace Dafeiyu.Tests
             var pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);var host=new Window();object first=null,second=null,blocked=null;
             try
             {
+                Check(await pet.AgentJobs.InitializeAsync(),"snapshot baseline starts after the application task-store lease is ready");
                 pet.Conversation.AddLiveTurn("","main-private-input","main-private-reply");await pet.Conversation.FlushHistoryAsync();string main=pet.Conversation.ExportHistory();int workspaceCount=pet.Workspaces.OpenCount;string disk=DiskSnapshot(root);
                 var apiA=new FakeApi();var apiB=new FakeApi();first=Create(pet,host,cfg,"测试项目",apiA);second=Create(pet,host,cfg,"另一个项目",apiB);
                 Check(!Object.ReferenceEquals(Session(first),Session(second))&&!Object.ReferenceEquals(Session(first),pet.Conversation),"panes own sessions separate from each other and main chat");
