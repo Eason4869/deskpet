@@ -15,6 +15,7 @@ from zipfile import ZipFile
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(PROJECT))
 from tools.release_assets import installer_asset_name
+from tools.localization.helper_resources import expected_locale_resources, validate_helper_resources
 version = re.search(r'DisplayVersion="([^"]+)"', (PROJECT / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')).group(1)
 arguments = argparse.ArgumentParser()
 arguments.add_argument('--compiler', help='Optional Inno ISCC.exe for full fresh installer verification')
@@ -163,8 +164,22 @@ result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',
     env=dict(os.environ, DESKPET_TEST_HELPER=str(runtime / 'DeskPet.Update.exe')),
     capture_output=True, check=True)
 assert result.stdout.decode('ascii').strip() == version.split('-')[0] + '.0'
-assert (runtime / 'DeskPet.Update.exe').stat().st_size < 1024 * 1024, 'helper should not embed pet sprite assets'
-print('PASS update helper has the declared version and excludes sprite resources')
+helper_manifest_script = '''
+$ErrorActionPreference='Stop'
+$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_HELPER)
+$manifest=@(foreach($name in $a.GetManifestResourceNames()) {
+    $stream=$a.GetManifestResourceStream($name);$sha=[Security.Cryptography.SHA256]::Create()
+    try { [pscustomobject]@{name=$name;length=$stream.Length;sha256=([BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','').ToLowerInvariant())} }
+    finally { $sha.Dispose();$stream.Dispose() }
+})
+ConvertTo-Json -InputObject $manifest -Compress
+'''
+result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', helper_manifest_script],
+    env=dict(os.environ, DESKPET_TEST_HELPER=str(runtime / 'DeskPet.Update.exe')),
+    capture_output=True, check=True)
+validate_helper_resources((runtime / 'DeskPet.Update.exe').stat().st_size,
+    json.loads(result.stdout.decode('utf-8-sig')), expected_locale_resources(checkout / 'assets/locales'))
+print('PASS update helper has the declared version, exact locale hashes, no sprite resources and less than 1 MiB non-locale overhead')
 result=subprocess.run(['powershell.exe','-NoProfile','-Command',
     '$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_APP); $a.GetManifestResourceNames()'],
     env=dict(os.environ,DESKPET_TEST_APP=str(runtime/'桌面伙伴.exe')),capture_output=True,check=True)

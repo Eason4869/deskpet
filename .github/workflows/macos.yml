@@ -103,6 +103,7 @@ jobs:
           set -euo pipefail
           python3 tests/AgentJobRegistrationTests.py | tee "$REPORT_ROOT/agent-jobs-registration.log"
           python3 tests/LocalizationAuditTests.py
+          python3 tests/HelperResourceTests.py
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
           python3 tools/verify_language_packs.py --report "$REPORT_ROOT/language-pack-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false

@@ -25,6 +25,8 @@ jobs:
         run: |
           python tests/LocalizationAuditTests.py
           if ($LASTEXITCODE) { throw 'Localization audit regression failed' }
+          python tests/HelperResourceTests.py
+          if ($LASTEXITCODE) { throw 'Standalone helper resource contract failed' }
           python tools/verify_localization.py check --phase complete --report work/localization-audit.json
           if ($LASTEXITCODE) { throw 'Localization completeness failed' }
           python tools/verify_language_packs.py --report work/language-pack-audit.json
