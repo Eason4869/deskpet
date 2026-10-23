@@ -18,6 +18,7 @@ namespace Dafeiyu
     }
     public static class ImageGalleryLayout
     {
+        public const string FavoriteHeartPath="M 12,21 C 10,19 2,13 2,8 C 2,2 9,1 12,6 C 15,1 22,2 22,8 C 22,13 14,19 12,21 Z";
         public const double Gap=16;
         public const double TargetColumnWidth=220;
         public static ImageGalleryLayoutResult Calculate(IList<GeneratedImage> images,double availableWidth,string mode)

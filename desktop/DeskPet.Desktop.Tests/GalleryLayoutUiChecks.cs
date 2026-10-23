@@ -86,7 +86,7 @@ internal static class GalleryLayoutUiChecks
         Click("GalleryGridLayout"); Render();
         Check(ReferenceEquals(tiles[0], page.GalleryPanel.Children[0]) && tiles.All(t => Math.Abs(t.Bounds.Width - t.Bounds.Height) < 1 && t.GetLogicalDescendants().OfType<Image>().Single().Stretch == Stretch.UniformToFill), "grid reuses images and uses square cover cropping");
         Check(new SettingsStore(Path.Combine(owner.DataDirectory, "settings.json")).Load().ImageGalleryLayout == "grid" && owner.Settings.Copy().ImageGalleryLayout == "grid", "grid preference persists and copies");
-        Check(tiles.All(t => t.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryTileSelect" && b.Content as string == "√" && Avalonia.Automation.AutomationProperties.GetName(b) == "选择图片") && t.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryTileFavorite" && b.Content as string == "♥" && ToolTip.GetTip(b) != null)), "selection and favorite overlays use accessible check and heart icons");
+        Check(tiles.All(t => t.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryTileSelect" && b.Content as string == "√" && Avalonia.Automation.AutomationProperties.GetName(b) == "选择图片") && t.GetLogicalDescendants().OfType<Button>().Any(b => b.Name == "GalleryTileFavorite" && b.Content is Avalonia.Controls.Shapes.Path heart && heart.Width == 16 && heart.Height == 16 && ToolTip.GetTip(b) != null)), "selection and favorite overlays use accessible check and heart icons");
         var first = tiles[0]; var more = first.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileActions");
         window.MouseMove(new Point(2, 2)); Render(); Check(more.Opacity == 0, "ellipsis is unobtrusive while tile is idle");
         var point = first.TranslatePoint(new Point(10, 10), window)!.Value; window.MouseMove(point); Render(); Check(more.Opacity == 1, "hover reveals image operations");
@@ -157,7 +157,21 @@ internal static class GalleryLayoutUiChecks
         var pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); var overlayClock = System.Diagnostics.Stopwatch.StartNew(); while (overlayClock.ElapsedMilliseconds < 5000 && pick.Opacity != 1) { Thread.Sleep(10); Render(); selectable = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single(); pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); } Check(pick.Focusable && pick.Opacity == 1, "multi-select exposes keyboard focusable selection overlay");
         int windowsBefore = window.OwnedWindows.Count; pick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); var selectedClock = System.Diagnostics.Stopwatch.StartNew(); while (selectedClock.ElapsedMilliseconds < 5000 && page.GallerySelectedCount != 1) { Thread.Sleep(10); Render(); } Check(window.OwnedWindows.Count == windowsBefore && page.GallerySelectedCount == 1, "selection click changes stable ID without opening details");
         Render(); using (var selectedShot = window.CaptureRenderedFrame()) selectedShot!.Save(Path.Combine(artifacts, "image-gallery-selected-dark.png"));
-        var star = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single().GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileFavorite"); star.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); AwaitTiles(1); Check(owner.ImageStore.Get(selectedId).IsFavorite && window.OwnedWindows.Count == windowsBefore, "favorite overlay updates asset without opening details");
+        var star = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single().GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileFavorite");
+        var emptyHeart = (Avalonia.Controls.Shapes.Path)star.Content!; var heartSize = emptyHeart.Bounds.Size;
+        Check(((ISolidColorBrush)emptyHeart.Fill!).Color.A == 0, "uncollected image uses an outline heart");
+        star.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        // A same-count refresh can leave the old decoded tile visible until publication.
+        // Wait for the changed visual state, rather than accepting that previous tile.
+        var favoriteClock = System.Diagnostics.Stopwatch.StartNew(); Avalonia.Controls.Shapes.Path? filledHeart = null;
+        while (favoriteClock.ElapsedMilliseconds < 5000)
+        {
+            Render();
+            filledHeart = page.GalleryPanel.Children.OfType<GeneratedImageCard>().SingleOrDefault()?.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileFavorite").Content as Avalonia.Controls.Shapes.Path;
+            if (filledHeart?.Fill is ISolidColorBrush fill && fill.Color.A > 0 && filledHeart.Bounds.Size == heartSize) break;
+            Thread.Sleep(10);
+        }
+        Check(owner.ImageStore.Get(selectedId).IsFavorite && window.OwnedWindows.Count == windowsBefore && filledHeart?.Fill is ISolidColorBrush filled && filled.Color.A > 0 && filledHeart.Bounds.Size == heartSize, "favorite fills the heart without changing its rendered size or opening details");
         owner.ImageStore.MoveToTrash(new[] { selectedId }); var trashView = Menu("GalleryTrashView"); trashView.IsChecked = true; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); var trashClock = System.Diagnostics.Stopwatch.StartNew(); while (trashClock.ElapsedMilliseconds < 5000 && !Menu("GalleryClearTrash").IsVisible) { Thread.Sleep(10); Render(); } Check(Menu("GalleryClearTrash").IsVisible, "trash exposes reference-protected clear action"); using (var trashShot = window.CaptureRenderedFrame()) trashShot!.Save(Path.Combine(artifacts, "image-gallery-trash-dark.png")); owner.ImageStore.Restore(new[] { selectedId }); trashView.IsChecked = false; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         page.Search.Text = "no image matches"; Render(); Check(page.GallerySelectedCount == 0, "filter clears loaded selection");
         page.Search.Text = ""; DesktopTheme.Apply(owner.Settings.ThemeMode); window.Width = 880; Render(); return checks;
