@@ -47,7 +47,7 @@ jobs:
       - name: Verify standalone application and helper locale
         shell: powershell
         run: |
-          ./tools/check_localization_artifacts.ps1 -AppRoot ../outputs/DafeiyuDeskPet
+          ./tools/check_localization_artifacts.ps1 -AppRoot work/dev3-ci-package/DafeiyuDeskPet
           if ($LASTEXITCODE) { throw 'WPF locale artifact verification failed' }
       - name: Verify release archive can be applied by the updater
         shell: powershell

@@ -1,6 +1,9 @@
 """Independent scanner/catalog negative cases; standard library only."""
 import importlib.util
 import unittest
+import re
+import json
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +54,30 @@ class LocalizationAuditTests(unittest.TestCase):
 
     def test_exclusion_cannot_move_to_unrelated_context(self):
         self.assertNotEqual(self.audit.context_at('void Model(){Run("提示");}',17), self.audit.context_at('void UI(){Show("提示");}',15))
+
+    def test_windows_artifact_probe_uses_the_built_application(self):
+        workflow=(ROOT/'.github/workflows/check.yml').read_text(encoding='utf8')
+        build=re.search(r'Build.ps1 -Target App -OutputDirectory (\S+)',workflow).group(1)
+        probe=re.search(r'check_localization_artifacts.ps1 -AppRoot (\S+)',workflow).group(1)
+        self.assertEqual(build,probe,'standalone probe must inspect the actual build output on a clean runner')
+
+    def test_referenced_new_resource_requires_independent_provenance(self):
+        scratch=ROOT/'work';scratch.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch,prefix='localization-audit-') as folder:
+            root=Path(folder)
+            self.assertTrue(root.resolve().is_relative_to(scratch.resolve()))
+            files={'src/App.cs':'class App { object label = TextResources.Get("ui.newLabel"); }',
+                   'assets/locales/zh_CN.json':json.dumps({'ui.newLabel':'新增文案'}),
+                   'docs/localization/migration-inventory.jsonl':'',
+                   'tests/fixtures/localization/text-baseline.json':'{"resources":[]}'}
+            for name,contents in files.items():
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(contents,encoding='utf8')
+            previous=self.audit.ROOT
+            try:
+                self.audit.ROOT=root
+                result=self.audit.check()
+            finally:self.audit.ROOT=previous
+            self.assertFalse(result['success'],'a referenced new catalog value must not bypass baseline and review')
 
 
 if __name__ == "__main__": unittest.main()

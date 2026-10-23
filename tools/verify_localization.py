@@ -198,6 +198,11 @@ def check(phase="complete"):
         for (file, hashed, context), count in (residual - expected).items(): errors.append(file + ": new/unclassified C# text " + hashed[:12] + " x" + str(count))
         for (file, hashed, context), count in (expected - residual).items(): errors.append(file + ": excluded text/context changed " + hashed[:12] + " x" + str(count))
         baseline = json.loads((ROOT / "tests/fixtures/localization/text-baseline.json").read_text(encoding="utf-8"))
+        baseline_keys={item['key'] for item in baseline['resources']}
+        migrated_keys={item['resource_key'] for item in inventory if item['decision']=='migrate' and item.get('reviewed')}
+        for key in catalog:
+            if key not in baseline_keys:errors.append('Resource lacks independent text baseline: '+key)
+            if key not in migrated_keys:errors.append('Resource lacks reviewed inventory provenance: '+key)
         for item in baseline["resources"]:
             key = item["key"]
             if catalog.get(key) != item["expected"]: errors.append("Original text drift: " + key)
