@@ -21,9 +21,13 @@ def collect_runtime_files(project_root, app_root):
     project_root, app_root = Path(project_root), Path(app_root)
     plan = [dict(source=str(app_root/name), destination=name) for name in BINARIES]
     plan += [dict(source=str(project_root/'templates/runtime-readme.md'), destination='README.md'),
-             dict(source=str(project_root/'CHANGELOG.md'), destination='CHANGELOG.md')]
+             dict(source=str(project_root/'CHANGELOG.md'), destination='CHANGELOG.md'),
+             dict(source=str(project_root/'templates/runtime-readme.en.md'), destination='docs/readme.en.md'),
+             dict(source=str(project_root/'CHANGELOG.en.md'), destination='docs/changelog.en.md', link_base='')]
     plan += [dict(source=str(project_root/'docs'/name), destination='docs/'+name) for name in USER_DOCS]
     destinations={item['destination'] for item in plan}
+    document_destinations={Path(item['source']).relative_to(project_root).as_posix():item['destination']
+                           for item in plan if item['destination'].endswith('.md')}
     source=(project_root/'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
     version=re.search(r'DisplayVersion="([^"]+)"',source)[1]
     for item in plan:
@@ -33,8 +37,11 @@ def collect_runtime_files(project_root, app_root):
             label,target=match.group(1),match.group(2)
             if re.match(r'[a-zA-Z][a-zA-Z0-9+.-]*:',target) or target.startswith('#'):return match[0]
             location,separator,anchor=target.partition('#')
-            relative=posixpath.normpath(posixpath.join(posixpath.dirname(item['destination']),location))
-            if relative in destinations:return match[0]
+            relative=posixpath.normpath(posixpath.join(item.get('link_base',posixpath.dirname(item['destination'])),location))
+            runtime_target=relative if relative in destinations else document_destinations.get(relative)
+            if runtime_target:
+                path=posixpath.relpath(runtime_target,posixpath.dirname(item['destination']) or '.')
+                return label+'('+path+(separator+anchor if separator else '')+')'
             if relative.startswith('../') or not (project_root/relative).is_file():return match[0]
             prefix='https://raw.githubusercontent.com/Eason4869/deskpet/v' if label.startswith('!') else 'https://github.com/Eason4869/deskpet/blob/v'
             return label+'('+prefix+version+'/'+relative+(separator+anchor if separator else '')+')'

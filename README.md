@@ -1,3 +1,5 @@
+[简体中文](README.md) | [English](README.en.md)
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">
@@ -10,7 +12,11 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-当前开发目标为 **0.10.5-dev.2**：在已验收的语言 JSON 重构基础上开发 Agent 后台任务，进度见 [实施记录](docs/agent-background-jobs/implementation-progress.md)，文案维护见 [中文资源指南](docs/localization/zh-CN-resource-guide.md)。下方下载链接指向已发布的正式版本。
+当前开发目标为 **0.10.5-dev.2**：在已验收的语言 JSON 重构基础上，补齐多语言并开发 Agent 后台任务。语言分支支持 13 种语言和“跟随系统”，头像菜单的“语言”入口位于“设置”上方；保存后在下次启动生效，保留手动选择，未适配的系统语言使用 English。默认人格和请求的回复语言随实际生效语言调整，自定义内容保留。
+
+语言名称使用本名：简体中文、繁體中文、English、日本語、한국어、Français (France)、Deutsch (Deutschland)、हिन्दी (भारत)、Bahasa Indonesia、Italiano (Italia)、Português (Brasil)、Español (Latinoamérica)、Español (España)。
+
+后台任务已完成核心、原生进程和工具/会话阶段；应用服务、双端任务界面、退出与首次引导仍在开发，尚未整体交付。进度见 [实施记录](docs/agent-background-jobs/implementation-progress.md)，文案维护见 [资源指南](docs/localization/zh-CN-resource-guide.md)。完成验收后合入 `dev` 并打源码标签，暂不发布 Release；下方下载链接仍指向已发布的正式版本。
 
 **当前正式版本：[0.10.4](https://github.com/Eason4869/deskpet/releases/tag/v0.10.4)**。提供 Windows 安装／便携包、macOS Apple Silicon／Intel 双架构预览、完整源码、五位官方伙伴的完整高清角色包和创作模板。macOS 的界面与能力范围见 [平台与升级](#平台与升级)，本页应用截图以 Windows 为准。
 

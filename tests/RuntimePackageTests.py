@@ -11,6 +11,35 @@ import base64
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 class RuntimePackageTests(unittest.TestCase):
+    def test_bilingual_documents_keep_offline_links_and_legacy_update_paths(self):
+        from tools.runtime_package import BINARIES, collect_runtime_files, stage_runtime
+        project=Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory(dir=project/'work') as folder:
+            root=Path(folder);app=root/'app';app.mkdir()
+            for name in BINARIES:
+                (app/name).write_bytes(b'fixture')
+            plan=collect_runtime_files(project,app)
+            destinations={item['destination'] for item in plan}
+            self.assertIn('docs/readme.en.md',destinations)
+            self.assertIn('docs/changelog.en.md',destinations)
+            # The 0.10.4 updater only accepts the original root filenames and docs/*.md.
+            self.assertNotIn('README.en.md',destinations)
+            self.assertNotIn('CHANGELOG.en.md',destinations)
+            stage=root/'runtime'
+            stage_runtime(plan,stage)
+            expected={
+                'README.md':['docs/readme.en.md'],
+                'docs/readme.en.md':['../README.md','changelog.en.md','configuration-guide.md'],
+                'CHANGELOG.md':['docs/changelog.en.md'],
+                'docs/changelog.en.md':['../CHANGELOG.md','changelog.en.md','image-generation.md'],
+            }
+            for document,targets in expected.items():
+                content=(stage/document).read_text(encoding='utf-8')
+                for target in targets:
+                    self.assertIn(']('+target+')',content,document)
+                    self.assertTrue((stage/document).parent.joinpath(target).is_file(),(document,target))
+            self.assertEqual({p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()},destinations)
+
     @unittest.skipUnless(os.name=='nt','Framework artifact probe uses the Windows compiler')
     def test_onboarding_title_probe_uses_compiled_values(self):
         project=Path(__file__).resolve().parents[1]
