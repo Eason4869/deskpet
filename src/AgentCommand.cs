@@ -30,7 +30,7 @@ namespace Dafeiyu
         public IList<CommandResult> CommandResults{get{lock(commandResults)return commandResults.Select(r=>r.Copy()).ToList().AsReadOnly();}}
         string ReadOutput(string id,int offset,int limit)
         {
-            CommandResult result;lock(commandResults)result=commandResults.LastOrDefault(r=>r.CommandId==id);if(result==null)throw new ArgumentException("本任务尚无此命令的输出。");
+            CommandResult result;lock(commandResults)result=commandResults.LastOrDefault(r=>r.CommandId==id);if(result==null)throw new ArgumentException(TextResources.Get("agentCommand.readOutput.text"));
             string output=result.Output??"";offset=Math.Min(offset,output.Length);int count=Math.Min(limit,output.Length-offset);
             return new JavaScriptSerializer().Serialize(new{result.CommandId,result.ExitCode,result.TimedOut,result.Truncated,Output=output.Substring(offset,count),next_offset=offset+count<output.Length?(int?)(offset+count):null});
         }

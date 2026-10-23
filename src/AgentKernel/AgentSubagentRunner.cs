@@ -24,7 +24,7 @@ namespace Dafeiyu
         void Ensure(AgentSubagentState child){lock(gate)if(!results.ContainsKey(child.Id)){results.Add(child.Id,new AgentChildResult{Id=child.Id,Input=child.Input,Status=child.Status});done.Add(child.Id,new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));}}
         public AgentChildResult Spawn(string parentId,string input)
         {
-            if(disposed)throw new ObjectDisposedException("AgentSubagentRunner");if(String.IsNullOrWhiteSpace(input)||input.Length>12000)throw new ArgumentException("只读子任务输入应为 1–12000 字符。");lock(gate)if(results.Count>=64)throw new InvalidOperationException("子任务记录已达到容量。");
+            if(disposed)throw new ObjectDisposedException("AgentSubagentRunner");if(String.IsNullOrWhiteSpace(input)||input.Length>12000)throw new ArgumentException(TextResources.Get("agentSubagentRunner.spawn.text"));lock(gate)if(results.Count>=64)throw new InvalidOperationException(TextResources.Get("agentSubagentRunner.spawn.text.alternativeA"));
             var child=scheduler.Schedule(parentId,new AgentProfileRegistry().Get("explore"),input);Ensure(child);Notify();lock(gate)return results[child.Id].Copy();
         }
         void Start(AgentSubagentState child)
@@ -39,38 +39,38 @@ namespace Dafeiyu
             {
             Notify();IAgentConversationApi api=null;
             try{
-                cancel.Token.ThrowIfCancellationRequested();api=factory();if(api==null)throw new InvalidOperationException("子任务 worker 不可用。");
+                cancel.Token.ThrowIfCancellationRequested();api=factory();if(api==null)throw new InvalidOperationException(TextResources.Get("agentSubagentRunner.runAsync.text"));
                 using(var workspace=new AgentWorkspace(parent.Root,parent.RestrictToRoot){ReadOnly=true,ContextTokenLimit=parent.ContextTokenLimit,ChildToolBudget=32,CumulativeTokenLimit=Math.Min(262144,Math.Max(4096,parent.ContextTokenLimit)*4)}){
                     workspace.ConfigureKernel(permissions.Copy(),null,null,null,child.Id);workspace.InheritInstructions(parent);
                     workspace.ConfigureCapabilities(new AgentCapabilitySnapshot(CapabilitySupport.Supported,model.ImageSupport,true,false,parent.ContextTokenLimit,"inherited","parent-subset"));workspace.ConfigureDesktopSession();
                     workspace.TaskChanged=snapshot=>{lock(gate){var state=results[child.Id];state.EstimatedTokens=snapshot.EstimatedContextTokens;state.EstimatedTotalTokens=snapshot.EstimatedTotalTokens;state.ModelRequests=snapshot.ModelRequests;}Notify();};
                     workspace.BeginTask(new AgentTaskState{Id=child.Id,Workspace=parent.Root,Goal=child.Input,PersonaId="explore"});
                     var result=await new AgentTaskRunner(api).RunAsync(new AgentRunRequest{Model=model,Workspace=workspace,Messages=new[]{new ChatMessage("system","你是独立只读探索 worker。仅探索和验证资料，禁止写入、终端、扩权和递归委派。结果列出实际读取来源及未验证部分。"),new ChatMessage("user",child.Input)},Stream=false},cancel.Token).ConfigureAwait(false);
-                    cancel.Token.ThrowIfCancellationRequested();lock(gate){var state=results[child.Id];if(state.Status=="cancelled")throw new OperationCanceledException();state.Status=result.Status;state.Result=(result.Status=="completed"?result.Text:result.Error)??"已停止";if(state.Result.Length>12000)state.Result=state.Result.Substring(0,12000)+"\n[已截断]";state.ToolCalls=result.ToolCalls;state.EstimatedTokens=workspace.TaskState.EstimatedContextTokens;state.EstimatedTotalTokens=workspace.TaskState.EstimatedTotalTokens;state.ModelRequests=workspace.TaskState.ModelRequests;}
+                    cancel.Token.ThrowIfCancellationRequested();lock(gate){var state=results[child.Id];if(state.Status=="cancelled")throw new OperationCanceledException();state.Status=result.Status;state.Result=(result.Status=="completed"?result.Text:result.Error)??TextResources.Get("agentSubagentRunner.runAsync.stateResult");if(state.Result.Length>12000)state.Result=TextResources.Format("agentSubagentRunner.runAsync.stateResultSubstring",state.Result.Substring(0,12000));state.ToolCalls=result.ToolCalls;state.EstimatedTokens=workspace.TaskState.EstimatedContextTokens;state.EstimatedTotalTokens=workspace.TaskState.EstimatedTotalTokens;state.ModelRequests=workspace.TaskState.ModelRequests;}
                     if(result.Status=="completed")scheduler.Complete(child.Id,result.Text);else if(result.Status=="cancelled")scheduler.Interrupt(child.Id);else scheduler.Fail(child.Id,result.Error);
                 }
-            }catch(OperationCanceledException){lock(gate){results[child.Id].Status="cancelled";results[child.Id].Result="已停止";}scheduler.Interrupt(child.Id);}
-            catch(Exception){bool cancelled=cancel.IsCancellationRequested;lock(gate){results[child.Id].Status=cancelled?"cancelled":"failed";results[child.Id].Result=cancelled?"已停止":"独立 worker 执行失败，未验证。";}if(cancelled)scheduler.Interrupt(child.Id);else scheduler.Fail(child.Id,"worker failed");}
+            }catch(OperationCanceledException){lock(gate){results[child.Id].Status="cancelled";results[child.Id].Result=TextResources.Get("agentSubagentRunner.runAsync.childIdResult");}scheduler.Interrupt(child.Id);}
+            catch(Exception){bool cancelled=cancel.IsCancellationRequested;lock(gate){results[child.Id].Status=cancelled?"cancelled":"failed";results[child.Id].Result=cancelled?TextResources.Get("agentSubagentRunner.runAsync.idResultCancelled"):TextResources.Get("agentSubagentRunner.runAsync.idResultCancelled.alternativeA");}if(cancelled)scheduler.Interrupt(child.Id);else scheduler.Fail(child.Id,"worker failed");}
             finally{var disposable=api as IDisposable;if(disposable!=null)disposable.Dispose();lock(gate){cancellations.Remove(child.Id);done[child.Id].TrySetResult(true);}cancel.Dispose();Notify();}
 
             }
         }
         public async Task<AgentChildResult[]> WaitAsync(string[] ids,int seconds,CancellationToken cancel)
         {
-            if(ids==null||ids.Length<1||ids.Length>64||seconds<0||seconds>30)throw new ArgumentException("等待参数无效。");Task[] tasks;lock(gate){if(ids.Any(id=>!done.ContainsKey(id)))throw new UnauthorizedAccessException("子任务不属于当前父任务。");tasks=ids.Select(id=>(Task)done[id].Task).ToArray();}
+            if(ids==null||ids.Length<1||ids.Length>64||seconds<0||seconds>30)throw new ArgumentException(TextResources.Get("agentSubagentRunner.waitAsync.text"));Task[] tasks;lock(gate){if(ids.Any(id=>!done.ContainsKey(id)))throw new UnauthorizedAccessException(TextResources.Get("agentSubagentRunner.waitAsync.text.alternativeA"));tasks=ids.Select(id=>(Task)done[id].Task).ToArray();}
             await Task.WhenAny(Task.WhenAll(tasks),Task.Delay(seconds*1000,cancel)).ConfigureAwait(false);cancel.ThrowIfCancellationRequested();lock(gate)return ids.Select(id=>results[id].Copy()).ToArray();
         }
         public bool Interrupt(string id)
         {
             CancellationTokenSource cancel;bool queued;
-            lock(gate){AgentChildResult child;if(!results.TryGetValue(id,out child))return false;if(child.Status!="running"&&child.Status!="queued")return false;queued=!cancellations.TryGetValue(id,out cancel);child.Status="cancelled";child.Result="已停止";if(queued)done[id].TrySetResult(true);}
+            lock(gate){AgentChildResult child;if(!results.TryGetValue(id,out child))return false;if(child.Status!="running"&&child.Status!="queued")return false;queued=!cancellations.TryGetValue(id,out cancel);child.Status="cancelled";child.Result=TextResources.Get("agentSubagentRunner.interrupt.childResult");if(queued)done[id].TrySetResult(true);}
             if(cancel!=null)try{cancel.Cancel();}catch(ObjectDisposedException){}
             if(queued)scheduler.Interrupt(id);return true;
         }
         internal async Task StopAsync()
         {
             lifetime.Cancel();foreach(var child in List())Interrupt(child.Id);Task[] tasks;lock(gate)tasks=done.Values.Select(v=>(Task)v.Task).ToArray();
-            if(tasks.Length>0){var all=Task.WhenAll(tasks);if(await Task.WhenAny(all,Task.Delay(3000)).ConfigureAwait(false)!=all)throw new ApiException("部分独立 worker 仍在停止中，请核对网络状态。");await all.ConfigureAwait(false);}
+            if(tasks.Length>0){var all=Task.WhenAll(tasks);if(await Task.WhenAny(all,Task.Delay(3000)).ConfigureAwait(false)!=all)throw new ApiException(TextResources.Get("agentSubagentRunner.stopAsync.text"));await all.ConfigureAwait(false);}
         }
         void Notify(){var changed=Changed;if(!disposed&&changed!=null)changed();}
         public void Dispose(){if(disposed)return;disposed=true;scheduler.Started-=Start;lifetime.Cancel();foreach(var child in List())Interrupt(child.Id);}

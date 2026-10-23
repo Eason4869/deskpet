@@ -11,7 +11,7 @@ namespace Dafeiyu
         public Version AssemblyBase {get;private set;}
         public int PreviewNumber {get;private set;}
         public static ReleaseVersion Parse(string text)
-        {ReleaseVersion value;if(!TryParse(text,out value))throw new ArgumentException("无效的发行版本号。");return value;}
+        {ReleaseVersion value;if(!TryParse(text,out value))throw new ArgumentException(TextResources.Get("releaseVersion.parse.text"));return value;}
         public static bool TryParse(string text,out ReleaseVersion value)
         {
             value=null;if(String.IsNullOrEmpty(text)||text.Length>64)return false;

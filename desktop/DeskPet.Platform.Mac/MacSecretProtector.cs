@@ -16,7 +16,7 @@ public sealed class MacSecretProtector : ISecretProtector, IDisposable
     public MacSecretProtector(Func<byte[]> keyProvider) => key = new Lazy<byte[]>(() =>
     {
         var value = keyProvider();
-        if (value.Length != 32) { CryptographicOperations.ZeroMemory(value); throw new CryptographicException("Keychain 数据密钥长度错误。"); }
+        if (value.Length != 32) { CryptographicOperations.ZeroMemory(value); throw new CryptographicException(TextResources.Get("macSecretProtector.macSecretProtector.keyLazyByte")); }
         return value;
     });
 
@@ -25,7 +25,7 @@ public sealed class MacSecretProtector : ISecretProtector, IDisposable
         MacServices.EnsureMac();
         var bytes = new byte[32];
         var status = Native.KeychainKey(bytes, bytes.Length);
-        if (status != 0) { CryptographicOperations.ZeroMemory(bytes); throw new CryptographicException($"无法读取 macOS Keychain 数据密钥（状态 {status}），请解锁登录钥匙串后重试。"); }
+        if (status != 0) { CryptographicOperations.ZeroMemory(bytes); throw new CryptographicException(TextResources.Format("macSecretProtector.readKeychainKey.template",status)); }
         return bytes;
     }
 
@@ -51,7 +51,7 @@ public sealed class MacSecretProtector : ISecretProtector, IDisposable
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             if (envelope.Length < 32 || !envelope.AsSpan(0, 4).SequenceEqual(Header))
-                throw new CryptographicException("无法解密此数据。Windows DPAPI 数据不能直接迁移到 Mac；请重新输入密钥或从源设备导出。");
+                throw new CryptographicException(TextResources.Get("macSecretProtector.unprotect.text"));
             var plain = new byte[envelope.Length - 32];
             using var aes = new AesGcm(key.Value, 16);
             try { aes.Decrypt(envelope.AsSpan(4, 12), envelope.AsSpan(32), envelope.AsSpan(16, 16), plain, Header); }

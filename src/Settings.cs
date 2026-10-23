@@ -80,7 +80,7 @@ namespace Dafeiyu
         public static string Name(ConnectionSettings settings)
         {
             string known=NameForBrand(Brand(settings.BaseUrl));if(known.Length>0)return known;
-            Uri uri;return Uri.TryCreate(settings.BaseUrl,UriKind.Absolute,out uri)?(uri.IsLoopback?"本地服务":uri.Host):"自定义服务";
+            Uri uri;return Uri.TryCreate(settings.BaseUrl,UriKind.Absolute,out uri)?(uri.IsLoopback?TextResources.Get("settings.name.text"):uri.Host):TextResources.Get("settings.name.text.alternativeA");
         }
         public static string NameForBrand(string brand)
         {
@@ -460,19 +460,19 @@ namespace Dafeiyu
                         (!String.IsNullOrEmpty(settings.Transcription.EncryptedKey) && settings.Transcription.ApiKey.Length == 0) ||
                         (!String.IsNullOrEmpty(settings.Speech.EncryptedKey) && settings.Speech.ApiKey.Length == 0) ||
                         (!String.IsNullOrEmpty(settings.Live.EncryptedKey) && settings.Live.ApiKey.Length == 0))
-                        Warning = "已保存的密钥无法在当前系统账户下解密，请重新填写。";
-                    foreach(var provider in settings.TextProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的密钥无法在当前系统账户下解密，请重新填写。";
-                    foreach(var provider in settings.ImageProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的图片服务密钥无法在当前系统账户下解密，请重新填写。";
+                        Warning = TextResources.Get("settings.load.warning");
+                    foreach(var provider in settings.TextProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning=TextResources.Get("settings.load.warning");
+                    foreach(var provider in settings.ImageProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning=TextResources.Get("settings.load.warning.alternativeA");
                     return settings;
                 }
             }
             catch (Exception e)
             {
                 if (!(e is SerializationException || e is IOException || e is UnauthorizedAccessException || e is ArgumentException)) throw;
-                Warning = "设置文件无法读取，已恢复默认设置。";
+                Warning = TextResources.Get("settings.load.warning.alternativeB");
                 try { File.Copy(path, path + ".invalid-" + DateTime.Now.ToString("yyyyMMddHHmmssfff"), false); }
-                catch (IOException) { Warning += " 原文件未改动。"; }
-                catch (UnauthorizedAccessException) { Warning += " 原文件未改动。"; }
+                catch (IOException) { Warning += TextResources.Get("settings.load.warning.alternativeC"); }
+                catch (UnauthorizedAccessException) { Warning += TextResources.Get("settings.load.warning.alternativeC"); }
                 return new PetSettings();
             }
         }

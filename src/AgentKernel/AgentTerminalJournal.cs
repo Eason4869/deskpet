@@ -12,7 +12,7 @@ namespace Dafeiyu
         internal AgentTerminalJournal(string directory){this.directory=directory;}
         string PathFor(AgentToolInvocation invocation){using(var hash=SHA256.Create())return Path.Combine(directory,BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(invocation.Key))).Replace("-","")+".bin");}
         internal AgentTerminalRecord Read(AgentToolInvocation invocation)
-        {string path=PathFor(invocation);if(!File.Exists(path))return null;var bytes=File.ReadAllBytes(path);if(bytes.Length>2*1024*1024)throw new IOException("命令执行记录超出容量，需核对。");return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.Deserialize<AgentTerminalRecord>(Encoding.UTF8.GetString(SecretProtection.Unprotect(bytes)));}
+        {string path=PathFor(invocation);if(!File.Exists(path))return null;var bytes=File.ReadAllBytes(path);if(bytes.Length>2*1024*1024)throw new IOException(TextResources.Get("agentTerminalJournal.read.text"));return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.Deserialize<AgentTerminalRecord>(Encoding.UTF8.GetString(SecretProtection.Unprotect(bytes)));}
         internal void Save(AgentToolInvocation invocation,AgentTerminalRecord record)
         {
             Directory.CreateDirectory(directory);string path=PathFor(invocation),temporary=Path.Combine(directory,Guid.NewGuid().ToString("N")+".tmp");

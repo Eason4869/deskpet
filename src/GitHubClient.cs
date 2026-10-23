@@ -32,10 +32,10 @@ namespace Dafeiyu
             // A remote failure is an observation for the agent, not a failed
             // conversation submission that should be returned to the input queue.
             try{return await ExecuteCoreAsync(name,args,token).ConfigureAwait(false);}
-            catch(OperationCanceledException){if(token.IsCancellationRequested)throw;return "错误：网络工具请求超时，请稍后重试或改用其他来源。";}
-            catch(ApiException e){return "错误："+e.Message;}
-            catch(HttpRequestException){return "错误：网络工具连接失败，请检查网络或改用其他来源。";}
-            catch(IOException){return "错误：网络工具响应读取失败，请稍后重试。";}
+            catch(OperationCanceledException){if(token.IsCancellationRequested)throw;return TextResources.Get("gitHubClient.executeAsync.text");}
+            catch(ApiException e){return TextResources.Format("gitHubClient.executeAsync.template",e.Message);}
+            catch(HttpRequestException){return TextResources.Get("gitHubClient.executeAsync.text.alternativeA");}
+            catch(IOException){return TextResources.Get("gitHubClient.executeAsync.text.alternativeB");}
         }
         async Task<string> ExecuteCoreAsync(string name,Dictionary<string,object> args,CancellationToken token)
         {
@@ -51,16 +51,16 @@ namespace Dafeiyu
             if(name=="github_comment")return await SendJsonAsync(HttpMethod.Post,"/repos/"+repo.Owner+"/"+repo.Name+"/issues/"+GetInt(args,"number",0,1,1000000)+"/comments",new Dictionary<string,object>{{"body",GetString(args,"body",null)}},token).ConfigureAwait(false);
             if(name=="github_list_pull_requests")return await SendJsonAsync(HttpMethod.Get,"/repos/"+repo.Owner+"/"+repo.Name+"/pulls?state="+Uri.EscapeDataString(GetString(args,"state","open")),null,token).ConfigureAwait(false);
             if(name=="github_create_pull_request")return await SendJsonAsync(HttpMethod.Post,"/repos/"+repo.Owner+"/"+repo.Name+"/pulls",new Dictionary<string,object>{{"title",GetString(args,"title",null)},{"body",GetString(args,"body","")},{"head",GetString(args,"head",null)},{"base",GetString(args,"base",null)}},token).ConfigureAwait(false);
-            throw new ArgumentException("未知 GitHub 工具。");
+            throw new ArgumentException(TextResources.Get("gitHubClient.executeCoreAsync.text"));
         }
         async Task<string> ReadFileAsync(Repo repo,string path,string reference,CancellationToken token)
         {
-            if(String.IsNullOrWhiteSpace(path))throw new ArgumentException("path 不能为空。");
+            if(String.IsNullOrWhiteSpace(path))throw new ArgumentException(TextResources.Get("gitHubClient.readFileAsync.text"));
             string url="/repos/"+repo.Owner+"/"+repo.Name+"/contents/"+EscapePath(path)+(String.IsNullOrWhiteSpace(reference)?"":"?ref="+Uri.EscapeDataString(reference));
             string json=await SendJsonAsync(HttpMethod.Get,url,null,token).ConfigureAwait(false);var value=new JavaScriptSerializer{MaxJsonLength=MaximumResponseBytes}.DeserializeObject(json) as Dictionary<string,object>;
-            if(value==null)throw new ApiException("GitHub 返回了无法解析的文件数据。");
+            if(value==null)throw new ApiException(TextResources.Get("gitHubClient.readFileAsync.text.alternativeA"));
             object raw;if(!value.TryGetValue("content",out raw) || !(raw is string))return json;
-            try{return Encoding.UTF8.GetString(Convert.FromBase64String((string)raw));}catch(FormatException){throw new ApiException("GitHub 文件内容无法解码。");}
+            try{return Encoding.UTF8.GetString(Convert.FromBase64String((string)raw));}catch(FormatException){throw new ApiException(TextResources.Get("gitHubClient.readFileAsync.text.alternativeB"));}
         }
         async Task<string> ListFilesAsync(Repo repo,string path,string reference,CancellationToken token)
         {
@@ -68,14 +68,14 @@ namespace Dafeiyu
         }
         Task<string> SearchCodeAsync(Repo repo,string query,CancellationToken token)
         {
-            if(String.IsNullOrWhiteSpace(query))throw new ArgumentException("query 不能为空。");
+            if(String.IsNullOrWhiteSpace(query))throw new ArgumentException(TextResources.Get("gitHubClient.searchCodeAsync.text"));
             return SendJsonAsync(HttpMethod.Get,"/search/code?q="+Uri.EscapeDataString(query+" repo:"+repo.Owner+"/"+repo.Name),null,token);
         }
         async Task<string> FetchUrlAsync(string url,CancellationToken token)
         {
-            Uri uri;if(!Uri.TryCreate(url,UriKind.Absolute,out uri) || (uri.Scheme!="https" && uri.Scheme!="http"))throw new ArgumentException("url 必须是 http 或 https 地址。");
-            if(uri.Host.Equals("localhost",StringComparison.OrdinalIgnoreCase) || uri.Host=="127.0.0.1" || uri.Host=="::1")throw new ArgumentException("不允许读取本机地址。");
-            using(var request=new HttpRequestMessage(HttpMethod.Get,uri)){using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException("网页读取失败。");using(var memory=new MemoryStream()){await response.Content.CopyToAsync(memory).ConfigureAwait(false);if(memory.Length>MaximumResponseBytes)throw new ApiException("网页内容过大。");string text=Encoding.UTF8.GetString(memory.ToArray());text=Regex.Replace(text,"(?is)<script.*?</script>|<style.*?</style>"," ");text=Regex.Replace(text,"<[^>]+>"," ");text=Regex.Replace(text,"\\s+"," ").Trim();return text.Length>MaximumTextChars?text.Substring(0,MaximumTextChars)+"\n[网页内容已截断]":text;}}}
+            Uri uri;if(!Uri.TryCreate(url,UriKind.Absolute,out uri) || (uri.Scheme!="https" && uri.Scheme!="http"))throw new ArgumentException(TextResources.Get("gitHubClient.fetchUrlAsync.text"));
+            if(uri.Host.Equals("localhost",StringComparison.OrdinalIgnoreCase) || uri.Host=="127.0.0.1" || uri.Host=="::1")throw new ArgumentException(TextResources.Get("gitHubClient.fetchUrlAsync.text.alternativeA"));
+            using(var request=new HttpRequestMessage(HttpMethod.Get,uri)){using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false)){if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Get("gitHubClient.fetchUrlAsync.text.alternativeB"));using(var memory=new MemoryStream()){await response.Content.CopyToAsync(memory).ConfigureAwait(false);if(memory.Length>MaximumResponseBytes)throw new ApiException(TextResources.Get("gitHubClient.fetchUrlAsync.text.alternativeC"));string text=Encoding.UTF8.GetString(memory.ToArray());text=Regex.Replace(text,"(?is)<script.*?</script>|<style.*?</style>"," ");text=Regex.Replace(text,"<[^>]+>"," ");text=Regex.Replace(text,"\\s+"," ").Trim();return text.Length>MaximumTextChars?TextResources.Format("gitHubClient.fetchUrlAsync.template",text.Substring(0,MaximumTextChars)):text;}}}
         }
         async Task<string> SendJsonAsync(HttpMethod method,string path,object payload,CancellationToken token)
         {
@@ -86,13 +86,13 @@ namespace Dafeiyu
                 if(payload!=null)request.Content=new StringContent(new JavaScriptSerializer{MaxJsonLength=MaximumResponseBytes}.Serialize(payload),Encoding.UTF8,"application/json");
                 using(var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))
                 {
-                    using(var memory=new MemoryStream()){await response.Content.CopyToAsync(memory).ConfigureAwait(false);if(memory.Length>MaximumResponseBytes)throw new ApiException("GitHub 响应过大。");string body=Encoding.UTF8.GetString(memory.ToArray());if(!response.IsSuccessStatusCode)throw new ApiException("GitHub 操作失败（HTTP "+(int)response.StatusCode+"）。");return body;}
+                    using(var memory=new MemoryStream()){await response.Content.CopyToAsync(memory).ConfigureAwait(false);if(memory.Length>MaximumResponseBytes)throw new ApiException(TextResources.Get("gitHubClient.sendJsonAsync.text"));string body=Encoding.UTF8.GetString(memory.ToArray());if(!response.IsSuccessStatusCode)throw new ApiException(TextResources.Format("gitHubClient.sendJsonAsync.template",(int)response.StatusCode));return body;}
                 }
             }
         }
         static Repo ParseRepository(string value)
         {
-            var match=Regex.Match(value??"", "^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)$");if(!match.Success)throw new ArgumentException("GitHub 仓库应为 owner/repo 格式。");return new Repo{Owner=match.Groups[1].Value,Name=match.Groups[2].Value};
+            var match=Regex.Match(value??"", "^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)$");if(!match.Success)throw new ArgumentException(TextResources.Get("gitHubClient.parseRepository.text"));return new Repo{Owner=match.Groups[1].Value,Name=match.Groups[2].Value};
         }
         static string EscapePath(string path){return String.Join("/",path.Replace('\\','/').Split('/').Select(Uri.EscapeDataString));}
         static string GetString(Dictionary<string,object> args,string key,string fallback){object value;return args.TryGetValue(key,out value)&&value is string?(string)value:fallback;}

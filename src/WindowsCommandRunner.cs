@@ -15,7 +15,7 @@ namespace Dafeiyu
         // until it belongs to a kill-on-close Job, including all descendants.
         internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false,WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null,bool labelOutput=true)
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("项目命令目前仅支持 Windows。");
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException(TextResources.Get("windowsCommandRunner.run.text"));
             token.ThrowIfCancellationRequested();IntPtr job=IntPtr.Zero,input=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
             SafeFileHandle readOut=null,writeOut=null,readError=null,writeError=null;Task stdout=null,stderr=null;
             var captured=new BoundedOutput();var watch=Stopwatch.StartNew();bool timedOut=false,cancelled=false;
@@ -29,7 +29,7 @@ namespace Dafeiyu
                 var limits=new JobLimits();limits.Basic.LimitFlags=0x2000;Check(SetInformationJobObject(job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))));
                 var start=new StartupInfo{Size=Marshal.SizeOf(typeof(StartupInfo)),Flags=0x100,Input=input,Output=writeOut.DangerousGetHandle(),Error=writeError.DangerousGetHandle()};
                 var line=new StringBuilder(Quote(command.Executable));foreach(string arg in command.Arguments)line.Append(' ').Append(Quote(arg));
-                if(line.Length>30000)throw new ArgumentException("命令参数超过 Windows 长度限制。");
+                if(line.Length>30000)throw new ArgumentException(TextResources.Get("windowsCommandRunner.run.text.alternativeA"));
                 if(cleanEnvironment)environment=BuildEnvironment(sandbox,environmentOverrides);
                 if(sandbox==null)WindowsSandboxLease.CreateWithHandles(command.Executable,line,environment,command.Workspace,ref start,out process,IntPtr.Zero);
                 else sandbox.CreateProcess(command.Executable,line,environment,command.Workspace,ref start,out process);
@@ -97,7 +97,7 @@ namespace Dafeiyu
                 Check(CreatePipe(out inputRead,out inputWrite,ref security,0));Check(CreatePipe(out outputRead,out outputWrite,ref security,0));Check(CreatePipe(out errorRead,out errorWrite,ref security,0));
                 Check(SetHandleInformation(inputWrite,1,0));Check(SetHandleInformation(outputRead,1,0));Check(SetHandleInformation(errorRead,1,0));
                 result.Job=CreateJobObject(IntPtr.Zero,null);if(result.Job==IntPtr.Zero)throw new Win32Exception(Marshal.GetLastWin32Error());var limits=new JobLimits();limits.Basic.LimitFlags=0x2000;Check(SetInformationJobObject(result.Job,9,ref limits,(uint)Marshal.SizeOf(typeof(JobLimits))));
-                var start=new StartupInfo{Size=Marshal.SizeOf(typeof(StartupInfo)),Flags=0x100,Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()};var line=new StringBuilder(Quote(command.Executable));foreach(string arg in command.Arguments)line.Append(' ').Append(Quote(arg));if(line.Length>30000)throw new ArgumentException("MCP 参数超过 Windows 限制。");
+                var start=new StartupInfo{Size=Marshal.SizeOf(typeof(StartupInfo)),Flags=0x100,Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()};var line=new StringBuilder(Quote(command.Executable));foreach(string arg in command.Arguments)line.Append(' ').Append(Quote(arg));if(line.Length>30000)throw new ArgumentException(TextResources.Get("windowsCommandRunner.startStdio.text"));
                 environment=BuildEnvironment();WindowsSandboxLease.CreateWithHandles(command.Executable,line,environment,command.Workspace,ref start,out process,IntPtr.Zero);result.Process=process.Process;Check(AssignProcessToJobObject(result.Job,process.Process));
                 inputRead.Dispose();inputRead=null;outputWrite.Dispose();outputWrite=null;errorWrite.Dispose();errorWrite=null;
                 result.Input=new StreamWriter(new FileStream(inputWrite,FileAccess.Write),new UTF8Encoding(false)){AutoFlush=true};inputWrite=null;result.Output=new StreamReader(new FileStream(outputRead,FileAccess.Read),new UTF8Encoding(false));outputRead=null;
@@ -122,7 +122,7 @@ namespace Dafeiyu
         }
         internal static string Quote(string value)
         {
-            if(value==null || value.IndexOf('\0')>=0)throw new ArgumentException("命令参数无效。");
+            if(value==null || value.IndexOf('\0')>=0)throw new ArgumentException(TextResources.Get("windowsCommandRunner.quote.text"));
             var text=new StringBuilder("\"");int slashes=0;
             foreach(char c in value){if(c=='\\'){slashes++;continue;}if(c=='"')text.Append('\\',slashes*2+1).Append(c);else text.Append('\\',slashes).Append(c);slashes=0;}
             return text.Append('\\',slashes*2).Append('"').ToString();

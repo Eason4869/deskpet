@@ -16,11 +16,11 @@ namespace Dafeiyu
         [DataMember] public string Protocol {get;set;}
         public ImageGenerationProvider(){Defaults();}
         [OnDeserializing] void BeforeDeserialize(StreamingContext context){Defaults();}
-        void Defaults(){Id=Guid.NewGuid().ToString("N");Name="图片服务";Connection=new ConnectionSettings();TimeoutSeconds=300;Size="";Quality="";Protocol="openai";}
+        void Defaults(){Id=Guid.NewGuid().ToString("N");Name=TextResources.Get("imageGenerationProvider.defaults.name");Connection=new ConnectionSettings();TimeoutSeconds=300;Size="";Quality="";Protocol="openai";}
         public void Normalize()
         {
             if(String.IsNullOrWhiteSpace(Id) || Id.Length>80)Id=Guid.NewGuid().ToString("N");
-            Name=String.IsNullOrWhiteSpace(Name)?"图片服务":Name.Trim();if(Name.Length>128)Name=Name.Substring(0,128);
+            Name=String.IsNullOrWhiteSpace(Name)?TextResources.Get("imageGenerationProvider.normalize.nameStringIsNullOrWhiteSpace"):Name.Trim();if(Name.Length>128)Name=Name.Substring(0,128);
             Connection=Connection??new ConnectionSettings();Connection.Normalize();
             TimeoutSeconds=TimeoutSeconds<=0?300:Math.Min(3600,TimeoutSeconds);
             Size=(Size??"").Trim();Quality=(Quality??"").Trim();

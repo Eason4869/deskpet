@@ -34,10 +34,10 @@ namespace Dafeiyu
         }
         private async Task SpeakOnUiAsync(string reply,PetSettings settings,CancellationToken cancel)
         {
-            if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException("正在朗读，请先停止。");
+            if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException(TextResources.Get("speechOutput.speakOnUiAsync.text"));
             currentVolume=Math.Max(0,Math.Min(100,settings.Volume));
-            string text=Regex.Replace(reply??"","```[\\s\\S]*?```","（代码内容请看聊天窗口）");text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
-            if(text.Length>1800)text=text.Substring(0,1800)+"。剩下内容请看聊天窗口。";if(text.Length==0 || settings.Volume==0)return;
+            string text=Regex.Replace(reply??"","```[\\s\\S]*?```",TextResources.Get("speech.codeOmitted"));text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
+            if(text.Length>1800)text=TextResources.Format("speechOutput.speakOnUiAsync.textTextSubstring",text.Substring(0,1800));if(text.Length==0 || settings.Volume==0)return;
             using(var reading=CancellationTokenSource.CreateLinkedTokenSource(cancel))
             {
                 active=reading;reading.CancelAfter(TimeSpan.FromMinutes(4));
@@ -58,9 +58,9 @@ namespace Dafeiyu
         {
             token.ThrowIfCancellationRequested();SpeechSynthesizer voice;
             try{voice=new SpeechSynthesizer();}
-            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException("系统语音无法启动，请安装中文语音或选择兼容语音服务。");}
+            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.text"));}
             activeVoice=voice;var completion=new TaskCompletionSource<bool>();
-            EventHandler<SpeakCompletedEventArgs> done=delegate(object sender,SpeakCompletedEventArgs e){if(e.Cancelled)completion.TrySetCanceled();else if(e.Error!=null)completion.TrySetException(new InvalidOperationException("系统朗读失败，请检查音频输出。"));else completion.TrySetResult(true);};
+            EventHandler<SpeakCompletedEventArgs> done=delegate(object sender,SpeakCompletedEventArgs e){if(e.Cancelled)completion.TrySetCanceled();else if(e.Error!=null)completion.TrySetException(new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.completionTrySetException")));else completion.TrySetResult(true);};
             voice.SpeakCompleted+=done;
             try
             {
@@ -77,7 +77,7 @@ namespace Dafeiyu
             token.ThrowIfCancellationRequested();Directory.CreateDirectory(cacheDirectory);string file=Path.Combine(cacheDirectory,"reply-"+Guid.NewGuid().ToString("N")+".wav");File.WriteAllBytes(file,bytes);
             var player=new MediaPlayer();activePlayer=player;player.Volume=Math.Max(0,Math.Min(100,volume))/100.0;var completion=new TaskCompletionSource<bool>();
             player.MediaOpened+=delegate {if(!token.IsCancellationRequested && Object.ReferenceEquals(activePlayer,player))player.Play();};
-            player.MediaEnded+=delegate {completion.TrySetResult(true);};player.MediaFailed+=delegate {completion.TrySetException(new InvalidOperationException("无法播放模型语音，请检查返回音频。"));};
+            player.MediaEnded+=delegate {completion.TrySetResult(true);};player.MediaFailed+=delegate {completion.TrySetException(new InvalidOperationException(TextResources.Get("speechOutput.playWave.completionTrySetException")));};
             try
             {
                 using(token.Register(delegate {CancelOnUi(token,completion,delegate {if(Object.ReferenceEquals(activePlayer,player))player.Stop();});}))

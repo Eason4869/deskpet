@@ -28,8 +28,8 @@ namespace Dafeiyu
         public static int ElapsedSeconds(ImageGenerationTaskRecord task,DateTime now){return task==null||!task.StartedUtc.HasValue?0:Math.Max(0,(int)((task.CompletedUtc??now)-task.StartedUtc.Value).TotalSeconds);}
         public static string Label(ImageGenerationTaskRecord task)
         {
-            if(task==null)return "等待任务";
-            switch(task.State){case ImageGenerationTaskState.Queued:return "排队中";case ImageGenerationTaskState.Generating:return "正在生成图片";case ImageGenerationTaskState.Downloading:return "正在下载图片";case ImageGenerationTaskState.Saving:return "正在保存图片";case ImageGenerationTaskState.Succeeded:return "图片已生成";case ImageGenerationTaskState.Canceled:return "已取消";case ImageGenerationTaskState.Interrupted:return "生成已中断";default:return "生成失败";}
+            if(task==null)return TextResources.Get("imageGenerationMotion.label.text");
+            switch(task.State){case ImageGenerationTaskState.Queued:return TextResources.Get("imageGenerationMotion.label.text.alternativeA");case ImageGenerationTaskState.Generating:return TextResources.Get("imageGenerationMotion.label.text.alternativeB");case ImageGenerationTaskState.Downloading:return TextResources.Get("imageGenerationMotion.label.text.alternativeC");case ImageGenerationTaskState.Saving:return TextResources.Get("imageGenerationMotion.label.text.alternativeD");case ImageGenerationTaskState.Succeeded:return TextResources.Get("imageGenerationMotion.label.text.alternativeE");case ImageGenerationTaskState.Canceled:return TextResources.Get("imageGenerationMotion.label.text.alternativeF");case ImageGenerationTaskState.Interrupted:return TextResources.Get("imageGenerationMotion.label.text.alternativeG");default:return TextResources.Get("imageGenerationMotion.label.text.alternativeH");}
         }
     }
 }

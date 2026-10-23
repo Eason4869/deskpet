@@ -12,6 +12,7 @@ internal sealed partial class DesktopController
     private readonly OfficialCompanionNativeValidator companionNative = new();
     private IOfficialCompanionSource officialCompanions = null!;
     private CancellationTokenSource? companionSelection;
+    private OfficialCompanionProgressView? companionRefreshProgress;
     private string? companionRequestKey;
     private PetSkin embeddedEbao = null!;
     private readonly Dictionary<string, HolidayCatalog> companionCatalogs = new(StringComparer.Ordinal);
@@ -24,7 +25,7 @@ internal sealed partial class DesktopController
     internal bool ExplainGuideCompanions()
     {
         if (!GuideLocked) return false;
-        var notice = Ui.Window("选择桌面伙伴", Ui.Text("完成使用引导后可选择伙伴并下载完整角色包。引导期间只演示设置，不切换伙伴。"), 400, 180);
+        var notice = Ui.Window(TextResources.Get("desktopCompanions.explainGuideCompanions.window"), Ui.Text(TextResources.Get("desktopCompanions.explainGuideCompanions.text")), 400, 180);
         notice.Name = "GuideCompanionNotice"; notice.ShowActivated = false; notice.ShowInTaskbar = false; notice.Show();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => { timer.Stop(); notice.Close(); }; notice.Closed += (_, _) => timer.Stop(); timer.Start();
@@ -40,6 +41,23 @@ internal sealed partial class DesktopController
         // Old untrusted custom data keeps its identity when a manifest ID is ambiguous.
         return Skins.FirstOrDefault(s => s.OfficialCharacterId == null && s.Id == Settings.SkinId)
             ?? Skins.FirstOrDefault(s => s.Id == Settings.SkinId || s.OfficialCharacterId == Settings.SkinId);
+    }
+    private PetSkin RestoreCachedStartupCompanion(PetSkin requested)
+    {
+        if(requested.OfficialCharacterId == null||!requested.IsPlaceholder)return requested;
+        try
+        {
+            var installed=Task.Run(()=>InstalledCompanionAsync(requested,companionLifetime.Token)).GetAwaiter().GetResult();
+            if(installed == null)return requested;
+            var restored=installed.Value.Skin;
+            int index=Skins.FindIndex(s=>s.PickerKey==requested.PickerKey);
+            if(index>=0)Skins[index]=restored;
+            MergeCompanionCatalog(restored.OfficialCharacterId!,installed.Value.Catalog);
+            if(Settings.PendingOfficialCompanionId==restored.OfficialCharacterId)Settings.PendingOfficialCompanionId="";
+            return restored;
+        }
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException or ApiException or AggregateException)
+        {return requested;}
     }
     private (PetSkin Skin, HolidayCatalog Catalog) ReadPublished(OfficialCompanionInstallation installation, string persona)
     {
@@ -76,7 +94,7 @@ internal sealed partial class DesktopController
         if (ExplainGuideCompanions() || exiting) return;
         long token = officialCompanions.BeginSelection();
         latestCompanionToken = token; companionSelectionGeneration++;
-        companionSelection?.Cancel();
+        companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); companionRefreshProgress=null;
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(companionLifetime.Token);
         companionSelection = cancellation;
         companionRequestKey = requested.PickerKey;
@@ -93,7 +111,7 @@ internal sealed partial class DesktopController
                 if (installed != null) { next = installed.Value.Skin; nextCatalog = installed.Value.Catalog; }
                 else if (requested.IsPlaceholder)
                 {
-                    using var progress = new OfficialCompanionProgressView(origin != CompanionSelectionOrigin.Settings, settingsWindow ?? (Window)Pet, Settings.Topmost, cancellation);
+                    using var progress = new OfficialCompanionProgressView(origin!=CompanionSelectionOrigin.Settings, settingsWindow ?? (Window)Pet, Settings.Topmost, cancellation,lazy:true);
                     while (true)
                     {
                         try
@@ -131,7 +149,7 @@ internal sealed partial class DesktopController
             ReplaceCompanionEntry(next); if (nextCatalog != null) MergeCompanionCatalog(next.OfficialCharacterId!, nextCatalog);
             Pet.SelectSkin(); Save(); if (tray != null) tray.ToolTipText = "DeskPet · " + next.Name;
             if (next.OfficialCharacterId != null && !next.BuiltIn)
-                Run(() => RefreshOfficialAsync(next, token, origin == CompanionSelectionOrigin.StartupRestore ? OfficialCompanionCheckMode.AfterApplicationUpdate : OfficialCompanionCheckMode.Cached));
+                Run(() => RefreshOfficialAsync(next, token, origin == CompanionSelectionOrigin.StartupRestore ? OfficialCompanionCheckMode.AfterApplicationUpdate : OfficialCompanionCheckMode.Cached,origin));
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested || !officialCompanions.OwnsSelection(token)) { }
         finally { if (ReferenceEquals(companionSelection, cancellation)) { companionSelection = null; companionRequestKey = null; } cancellation.Dispose(); }
@@ -141,7 +159,7 @@ internal sealed partial class DesktopController
         if (companionRequestKey == hidden.PickerKey || hidden.OfficialCharacterId != null && Settings.PendingOfficialCompanionId == hidden.OfficialCharacterId)
         {
             latestCompanionToken = officialCompanions.BeginSelection(); companionSelectionGeneration++;
-            companionSelection?.Cancel(); Settings.PendingOfficialCompanionId = ""; Save();
+            companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); companionRefreshProgress=null; Settings.PendingOfficialCompanionId = ""; Save();
         }
     }
     private void ReplaceCompanionEntry(PetSkin next)
@@ -151,12 +169,15 @@ internal sealed partial class DesktopController
     }
     private bool CanPublishOfficial(PetSkin next) => Skins.Any(s => s.PickerKey == next.PickerKey)
         && (next.OfficialCharacterId == "e-bao" || !CompanionPackStorage.Hidden(DataDirectory).Contains(next.PickerKey));
-    private async Task RefreshOfficialAsync(PetSkin previous, long token, OfficialCompanionCheckMode mode)
+    private async Task RefreshOfficialAsync(PetSkin previous, long token, OfficialCompanionCheckMode mode,CompanionSelectionOrigin origin=CompanionSelectionOrigin.StartupRestore)
     {
         long order = ++appearanceOperation;
         try
         {
-            var result = await officialCompanions.EnsureAsync(previous.OfficialCharacterId!, CompanionRouting(), mode, null, companionLifetime.Token);
+            using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(companionLifetime.Token);
+            using var progress=origin==CompanionSelectionOrigin.Settings?new OfficialCompanionProgressView(false,settingsWindow??(Window)Pet,Settings.Topmost,cancellation,lazy:true,isCurrent:()=>!exiting&&officialCompanions.OwnsSelection(token)&&ReferenceEquals(Skin,previous)):null;
+            companionRefreshProgress=progress;
+            var result = await officialCompanions.EnsureAsync(previous.OfficialCharacterId!, CompanionRouting(), mode, progress, cancellation.Token);
             if (exiting || !officialCompanions.OwnsSelection(token) || !ReferenceEquals(Skin, previous)) return;
             var next = await Task.Run(() => ReadPublished(result.Installation, previous.Id), companionLifetime.Token);
             if (next.Skin.SourceKey == previous.SourceKey) return;
@@ -270,8 +291,7 @@ internal sealed partial class DesktopController
                 if (installed != null && installed.Value.Skin.SourceKey != current.SourceKey)
                     QueueAppearance(installed.Value.Skin, installed.Value.Catalog, current, token, order);
                 var active = Skin;
-                if (installed != null || !active.BuiltIn)
-                    await RefreshOfficialAsync(active, token, OfficialCompanionCheckMode.AfterApplicationUpdate);
+                await RefreshOfficialAsync(active, token, OfficialCompanionCheckMode.AfterApplicationUpdate);
             }
             catch (OperationCanceledException) { }
             catch (Exception) { /* Embedded/legacy source remains usable offline. */ }

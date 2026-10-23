@@ -11,8 +11,8 @@ namespace Dafeiyu
         internal AgentDiffView(IEnumerable<AgentDiffLine> lines,bool unknown,bool truncated)
         {
             Name="AgentDiffView";var body=new StackPanel();
-            if(unknown)body.Children.Add(Ui.Text("无法可靠计算行级差异；请查看原文对照。",11,AgentUi.Muted));
-            if(truncated)body.Children.Add(Ui.Text("差异预览已截断，增删统计仍按完整备份与当前文件计算。",11,AgentUi.Muted));
+            if(unknown)body.Children.Add(Ui.Text(TextResources.Get("agentDiffView.agentDiffView.text"),11,AgentUi.Muted));
+            if(truncated)body.Children.Add(Ui.Text(TextResources.Get("agentDiffView.agentDiffView.text.alternativeA"),11,AgentUi.Muted));
             foreach(var line in (lines??new List<AgentDiffLine>()))
             {
                 var row=new Grid{Name=line.Kind=="added"?"AgentDiffAdded":line.Kind=="removed"?"AgentDiffRemoved":"AgentDiffContext",Margin=new Thickness(0,1,0,1)};

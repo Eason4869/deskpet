@@ -7,6 +7,8 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/TextResources.cs" Link="Shared/TextResources.cs" />
+    <EmbeddedResource Include="../../assets/locales/zh_CN.json" LogicalName="Dafeiyu.Locales.zh_CN.json" />
     <EmbeddedResource Include="../../assets/official/holiday-catalog.json" LogicalName="Dafeiyu.Holidays.catalog.json" />
     <Compile Include="../../src/Holidays/*.cs" Link="Shared/Holidays/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/holidays/calendar/solar-terms.json" LogicalName="Dafeiyu.Holidays.SolarTerms" />

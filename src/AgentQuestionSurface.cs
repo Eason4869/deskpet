@@ -20,9 +20,9 @@ namespace Dafeiyu
         internal AgentQuestionCard(AgentQuestionController controller,AgentQuestionRequest request)
         {
             Name="AgentQuestionCard";Tag=request.CallId;CornerRadius=new CornerRadius(14);Padding=new Thickness(14);BorderThickness=new Thickness(1);BorderBrush=Ui.Line;Background=ThemeManager.Brush("#FAFBFD","#151D2A");Margin=new Thickness(0,0,0,6);
-            var body=new StackPanel();Child=body;body.Children.Add(Ui.Text(request.Question,14,Ui.Ink));body.Children.Add(Ui.Text("请补充任务信息",11,Ui.Muted));
+            var body=new StackPanel();Child=body;body.Children.Add(Ui.Text(request.Question,14,Ui.Ink));body.Children.Add(Ui.Text(TextResources.Get("agentQuestionSurface.agentQuestionCard.text"),11,Ui.Muted));
             for(int i=0;i<request.Options.Length;i++){int index=i;var option=Ui.Button(request.Options[i]);option.Name="AgentQuestionOption"+i;option.Content=new TextBlock{Text=request.Options[i],TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center};option.HorizontalAlignment=HorizontalAlignment.Stretch;option.Click+=delegate{if(controller.Submit(request.SessionId,request.TaskId,request.CallId,new AgentQuestionAnswer{OptionIndex=index}))IsEnabled=false;};body.Children.Add(option);}
-            if(request.AllowFreeInput){var input=Ui.Field("",true);input.Name="AgentQuestionAnswer";input.MaxLength=8000;input.MaxHeight=100;body.Children.Add(input);var send=Ui.Button("提交回答",true);send.Name="SubmitAgentQuestion";send.Click+=delegate{if(controller.Submit(request.SessionId,request.TaskId,request.CallId,new AgentQuestionAnswer{Text=input.Text}))IsEnabled=false;};body.Children.Add(send);}
+            if(request.AllowFreeInput){var input=Ui.Field("",true);input.Name="AgentQuestionAnswer";input.MaxLength=8000;input.MaxHeight=100;body.Children.Add(input);var send=Ui.Button(TextResources.Get("agentQuestionSurface.agentQuestionCard.text.alternativeA"),true);send.Name="SubmitAgentQuestion";send.Click+=delegate{if(controller.Submit(request.SessionId,request.TaskId,request.CallId,new AgentQuestionAnswer{Text=input.Text}))IsEnabled=false;};body.Children.Add(send);}
         }
     }
 }

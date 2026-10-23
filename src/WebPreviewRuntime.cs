@@ -20,12 +20,12 @@ namespace Dafeiyu
         {
             lock(gate){if(loaded)return;
                 AppDomain.CurrentDomain.AssemblyResolve+=delegate(object sender,ResolveEventArgs args){Assembly assembly;return assemblies.TryGetValue(new AssemblyName(args.Name).Name,out assembly)?assembly:null;};
-                foreach(string name in new[]{"Microsoft.Web.WebView2.Core","Microsoft.Web.WebView2.Wpf"})using(var input=typeof(WebPreviewRuntime).Assembly.GetManifestResourceStream("Dafeiyu.WebView2."+name+".dll"))using(var data=new MemoryStream()){if(input==null)throw new FileNotFoundException("缺少网页预览组件。");input.CopyTo(data);assemblies[name]=Assembly.Load(data.ToArray());}
+                foreach(string name in new[]{"Microsoft.Web.WebView2.Core","Microsoft.Web.WebView2.Wpf"})using(var input=typeof(WebPreviewRuntime).Assembly.GetManifestResourceStream("Dafeiyu.WebView2."+name+".dll"))using(var data=new MemoryStream()){if(input==null)throw new FileNotFoundException(TextResources.Get("webPreviewRuntime.ensure.text"));input.CopyTo(data);assemblies[name]=Assembly.Load(data.ToArray());}
                 DirectoryPath=Path.Combine(Path.GetTempPath(),"DeskPet-Preview-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(DirectoryPath);
                 string marker=Path.Combine(DirectoryPath,OwnerFile);File.WriteAllText(marker,Owner,new UTF8Encoding(false));runtimeLease=new FileStream(marker,FileMode.Open,FileAccess.Read,FileShare.Read);
                 // One bounded startup sweep; abandoned profiles must never delay navigation.
                 Task.Run(()=>CleanupStaleDirectories(Path.GetTempPath(),DateTime.UtcNow.AddDays(-1),BrowsersRunning()));
-                using(var input=typeof(WebPreviewRuntime).Assembly.GetManifestResourceStream("Dafeiyu.WebView2.WebView2Loader."+(IntPtr.Size==8?"x64":"x86")+".dll"))using(var output=new FileStream(Path.Combine(DirectoryPath,"WebView2Loader.dll"),FileMode.CreateNew,FileAccess.Write)){if(input==null)throw new FileNotFoundException("缺少网页预览组件。");input.CopyTo(output);}
+                using(var input=typeof(WebPreviewRuntime).Assembly.GetManifestResourceStream("Dafeiyu.WebView2.WebView2Loader."+(IntPtr.Size==8?"x64":"x86")+".dll"))using(var output=new FileStream(Path.Combine(DirectoryPath,"WebView2Loader.dll"),FileMode.CreateNew,FileAccess.Write)){if(input==null)throw new FileNotFoundException(TextResources.Get("webPreviewRuntime.ensure.text"));input.CopyTo(output);}
                 loaded=true;
             }
         }

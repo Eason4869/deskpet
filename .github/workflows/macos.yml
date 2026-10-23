@@ -101,6 +101,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/LocalizationAuditTests.py
+          python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json "$REPORT_ROOT/core-tests.json" | tee "$REPORT_ROOT/core-tests.log"
       - name: Build and execute real native bridge tests
@@ -146,6 +148,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          locale_sha="$(shasum -a 256 assets/locales/zh_CN.json | cut -d ' ' -f 1)"
+          dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- "$locale_sha" 'work/macos-${{ matrix.arch }}/artifacts/DeskPet.app/Contents/MacOS/DeskPet.Core.dll' | tee "$REPORT_ROOT/localization-artifact.log"
           python3 - <<'PY'
           import json, os, pathlib, subprocess
           root=pathlib.Path.cwd()

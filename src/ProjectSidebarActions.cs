@@ -12,12 +12,12 @@ namespace Dafeiyu
         string SectionLabel(string id,string fallback){string label;return catalog.SidebarSectionLabels.TryGetValue(FixedSectionKey(id),out label)&&!String.IsNullOrWhiteSpace(label)?label:fallback;}
         internal void RenameFixedSection(string id,string name)
         {
-            if(id!="quick"&&id!="recent"&&id!="pinned")throw new ArgumentException("分区不存在。");name=(name??"").Trim();if(name.Length<1||name.Length>40)throw new ArgumentException("分区名称应为 1～40 个字符。");
+            if(id!="quick"&&id!="recent"&&id!="pinned")throw new ArgumentException(TextResources.Get("projectSidebarActions.renameFixedSection.text"));name=(name??"").Trim();if(name.Length<1||name.Length>40)throw new ArgumentException(TextResources.Get("projectSidebarActions.renameFixedSection.text.alternativeA"));
             string key=FixedSectionKey(id),previous;bool existed=catalog.SidebarSectionLabels.TryGetValue(key,out previous);catalog.SidebarSectionLabels[key]=name;try{store.Save(catalog);}catch{if(existed)catalog.SidebarSectionLabels[key]=previous;else catalog.SidebarSectionLabels.Remove(key);throw;}Refresh();
         }
         void FixedSectionMenu(Button title,string id,string name)
         {
-            var menu=ChatUi.Menu();var rename=new MenuItem{Header="重命名分区"};rename.Click+=delegate{var dialog=new ConversationRenameDialog(SectionLabel(id,name),"重命名分区","分区名称");if(dialog.ShowDialog()==true)try{RenameFixedSection(id,dialog.ConversationName);}catch(Exception error){MessageBox.Show(error.Message,"分区未保存");}};menu.Items.Add(rename);menu.Items.Add(new Separator());menu.Items.Add(NewSectionMenuItem());title.ContextMenu=menu;
+            var menu=ChatUi.Menu();var rename=new MenuItem{Header=TextResources.Get("projectSidebarActions.fixedSectionMenu.header")};rename.Click+=delegate{var dialog=new ConversationRenameDialog(SectionLabel(id,name),TextResources.Get("projectSidebarActions.fixedSectionMenu.dialogConversationRenameDialog"),TextResources.Get("projectSidebarActions.fixedSectionMenu.dialogConversationRenameDialog.alternativeA"),true);if(dialog.ShowDialog()==true)try{RenameFixedSection(id,dialog.ConversationName);}catch(Exception error){MessageBox.Show(error.Message,TextResources.Get("projectSidebarActions.fixedSectionMenu.messageBoxShow"));}};menu.Items.Add(rename);menu.Items.Add(new Separator());menu.Items.Add(NewSectionMenuItem());title.ContextMenu=menu;
         }
         Button SectionToggle(string id,string name)
         {
@@ -29,7 +29,7 @@ namespace Dafeiyu
         void AddPinned()
         {
             var projects=catalog.Projects.Where(p=>!p.Archived&&p.Pinned&&workEntry!=false).ToArray();var unassigned=ProjectCatalogStore.UnassignedProject(catalog);var conversations=catalog.Projects.Where(p=>!p.Archived).SelectMany(p=>p.Conversations.Where(c=>c.Pinned&&!c.Archived&&Visible(c)).Select(c=>new{Project=p,Conversation=c})).Concat(catalog.UnassignedConversations.Where(c=>c.Pinned&&!c.Archived&&Visible(c)).Select(c=>new{Project=unassigned,Conversation=c})).Concat(catalog.QuickConversations.Where(c=>c.Pinned&&!c.Archived&&Visible(c)).Select(c=>new{Project=ProjectCatalogStore.QuickProject(catalog),Conversation=c})).ToArray();if(projects.Length==0&&conversations.Length==0)return;
-            var header=SectionToggle("pinned","置顶");header.Margin=new Thickness(12,18,12,6);Children.Add(header);if(!SectionIsExpanded("pinned"))return;foreach(var project in projects)AddProject(project);foreach(var pair in OrderedRows(conversations,x=>x.Conversation,"pinned"))AddConversation(pair.Project,pair.Conversation,true,true);
+            var header=SectionToggle("pinned",TextResources.Get("projectSidebarActions.addPinned.sectionToggle"));header.Margin=new Thickness(12,18,12,6);Children.Add(header);if(!SectionIsExpanded("pinned"))return;foreach(var project in projects)AddProject(project);foreach(var pair in OrderedRows(conversations,x=>x.Conversation,"pinned"))AddConversation(pair.Project,pair.Conversation,true,true);
         }
         static Button SidebarAction(string icon,string hint,string name)
         {

@@ -7,6 +7,8 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../tests/fixtures/localization/text-baseline.json" LogicalName="Dafeiyu.Tests.LocalizationBaseline" />
+    <Compile Include="../../tests/LocalizationTests.cs" Link="Tests/LocalizationTests.cs" />
     <Compile Include="../../tests/OfficialCompanionLegacyTests.cs;../../tests/OfficialCompanionIdentityTests.cs;../../tests/HolidaySourceBindingTests.cs" Link="Tests/%(Filename)%(Extension)" />
     <Compile Include="../../tests/HolidayStateTests.cs;../../tests/HolidayCalendarTests.cs;../../tests/HolidayRuntimeTests.cs;../../tests/HolidayHoverTests.cs;../../tests/HolidayAssetTests.cs;../../tests/HolidayGreetingTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/holidays/calendar-golden.json" LogicalName="Dafeiyu.Tests.HolidayGolden" />

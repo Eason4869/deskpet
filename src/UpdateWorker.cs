@@ -25,22 +25,22 @@ namespace Dafeiyu
                 if(!String.Equals(Path.GetFullPath(args[0]),Path.Combine(job.WorkDirectory,"job.json"),StringComparison.OrdinalIgnoreCase))return 2;
                 if(!String.Equals(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName),Path.GetFullPath(job.WorkDirectory),StringComparison.OrdinalIgnoreCase))return 2;
                 CheckVersion(job);CheckAbort(job);
-                if(job.ParentPid<=0)throw new InvalidOperationException("原进程信息无效。");
+                if(job.ParentPid<=0)throw new InvalidOperationException(TextResources.Get("updateWorker.main.text"));
                 Process parent=null;try{parent=Process.GetProcessById(job.ParentPid);}catch(ArgumentException){parentExited=true;}
                 using(parent)
                 {
                     if(parent!=null)
                     {
-                        if(parent.StartTime.ToUniversalTime().Ticks!=job.ParentStartedUtcTicks || !String.Equals(parent.MainModule.FileName,Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("原进程与安装目录不符。");
+                        if(parent.StartTime.ToUniversalTime().Ticks!=job.ParentStartedUtcTicks || !String.Equals(parent.MainModule.FileName,Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("updateWorker.main.text.alternativeA"));
                         trusted=true;File.WriteAllText(Path.Combine(job.WorkDirectory,"ready"),"ready");
                         var deadline=DateTime.UtcNow.AddMinutes(2);
-                        while(!parent.WaitForExit(100)){CheckAbort(job);if(DateTime.UtcNow>=deadline)throw new InvalidOperationException("伙伴尚未退出，本次更新已停止。");}parentExited=true;
+                        while(!parent.WaitForExit(100)){CheckAbort(job);if(DateTime.UtcNow>=deadline)throw new InvalidOperationException(TextResources.Get("updateWorker.main.text.alternativeB"));}parentExited=true;
                     }
                 }
                 if(parentExited && !trusted){trusted=true;File.WriteAllText(Path.Combine(job.WorkDirectory,"ready"),"ready");}
                 CheckAbort(job);UpdateInstall.Validate(job);CheckVersion(job);
                 if(job.Mode=="installed")UpdateInstall.ApplyInstaller(job);else UpdateInstall.ApplyPortable(job,null);
-                Result(job,true,"已更新至 "+job.TargetVersion+"，设置与外观已保留。");Restart(job);return 0;
+                Result(job,true,TextResources.Format("updateWorker.main.result",job.TargetVersion));Restart(job);return 0;
             }
             catch(Exception e)
             {
@@ -48,7 +48,7 @@ namespace Dafeiyu
                 if(trusted)
                 {
                     try{File.WriteAllText(Path.Combine(job.WorkDirectory,"error.log"),e.ToString());}catch(Exception){ }
-                    Result(job,false,e is InvalidOperationException?e.Message:"更新未完成，原版和配置已保留。请重新检查更新。");
+                    Result(job,false,e is InvalidOperationException?e.Message:TextResources.Get("updateWorker.main.result.alternativeA"));
                     if(parentExited)try{Restart(job);}catch(Exception){ }
                 }
                 return 1;
@@ -62,7 +62,7 @@ namespace Dafeiyu
             try{UpdateInstall.Write(Path.Combine(job.WorkDirectory,"result.json"),result);}catch(Exception){ }
         }
         static void CheckAbort(UpdateJob job)
-        {if(File.Exists(Path.Combine(job.WorkDirectory,"abort")))throw new InvalidOperationException("更新交接已取消，当前版本继续运行。");}
+        {if(File.Exists(Path.Combine(job.WorkDirectory,"abort")))throw new InvalidOperationException(TextResources.Get("updateWorker.checkAbort.text"));}
         static void CheckVersion(UpdateJob job)
         {
             UpdateInstall.CheckWorker(job,System.Reflection.Assembly.GetExecutingAssembly().Location);

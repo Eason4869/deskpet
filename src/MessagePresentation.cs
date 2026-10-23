@@ -7,7 +7,7 @@ namespace Dafeiyu
     public static class MessagePresentation
     {
         public static string Status(string value)
-        { return value == "pending" ? "正在生成…" : value == "cancelled" ? "已停止" : value == "interrupted" ? "已中断" : value == "error" ? "回复未完成" : ""; }
+        { return value == "pending" ? TextResources.Get("messagePresentation.status.text") : value == "cancelled" ? TextResources.Get("messagePresentation.status.text.alternativeA") : value == "interrupted" ? TextResources.Get("messagePresentation.status.text.alternativeB") : value == "error" ? TextResources.Get("messagePresentation.status.text.alternativeC") : ""; }
     }
     // Network callbacks replace snapshots; only the latest snapshot per message reaches WPF.
     public sealed class MessageUpdatePump : IDisposable

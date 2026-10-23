@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,18 +34,40 @@ namespace Dafeiyu
         OfficialDownloadRouting OfficialRouting(){return new OfficialDownloadRouting(Settings.UpdateUseMirror,Settings.UpdateMirrorAddress,Settings.UpdateUseProxy,Settings.UpdateProxyAddress);}
         bool HasOfficialPointer(SkinDefinition skin){return skin.IsOfficial&&File.Exists(Path.Combine(Store.DirectoryPath,"official-companions",skin.BuiltinCharacterId,"current.txt"));}
         bool ShouldRefreshOfficial(SkinDefinition skin){return skin.IsOfficial&&!skin.FixtureEmbedded&&(!skin.Embedded||HasOfficialPointer(skin));}
+        // A downloaded role is a placeholder in the initial catalog. Rehydrate its
+        // verified local installation before choosing the visible startup role.
+        // This path is deliberately offline; refresh remains a separate operation.
+        SkinDefinition RestoreCachedStartupCompanion(SkinDefinition requested)
+        {
+            if(!requested.IsOfficial||!requested.IsPlaceholder||!HasOfficialPointer(requested))return requested;
+            try {
+                var restored=Task.Run(()=>{
+                    var installed=OfficialDownloads.Installed(requested.BuiltinCharacterId);
+                    if(installed==null)return null;
+                    officialNative.ValidateAsync(installed,officialLifetime.Token).GetAwaiter().GetResult();
+                    var skin=Catalog.FromOfficial(installed);
+                    skin.PreparedOfficialAtlas=skin.Load();
+                    return skin;
+                }).GetAwaiter().GetResult();
+                if(restored==null)return requested;
+                Catalog.ReplaceOfficial(restored);officialSources[restored.BuiltinCharacterId]=restored;
+                officialCatalogs[restored.Source]=new HolidayCatalog(restored.OfficialInstallation.HolidayRootDirectory);
+                if(Settings.PendingOfficialCompanionId==restored.BuiltinCharacterId)Settings.PendingOfficialCompanionId="";
+                return restored;
+            }catch(Exception error){if(!OfficialError(error))throw;return requested;}
+        }
         internal bool NoticeOnlyCompanionGuide()
         {
             if(!GuideActive)return false;
-            Notice="引导期间仅演示角色列表。完成引导后，可下载完整角色包并切换伙伴。";
+            Notice=TextResources.Get("petOfficialCompanions.noticeOnlyCompanionGuide.notice");
             if(preferences!=null)preferences.ShowNotice(Notice);return true;
         }
         bool CanRequestCompanion()
         {
             if(NoticeOnlyCompanionGuide())return false;
             if(closing||IsUpdating)return false;
-            if(preferences!=null&&preferences.HasUnsavedEdits){Notice="请先保存当前设置，再切换伙伴。";preferences.ShowNotice(Notice);return false;}
-            if(DialogueBusy||DictationActive||LiveActive){Notice="请先停止对话、听写或结束 Live，再切换伙伴。";return false;}
+            if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
+            if(DialogueBusy||DictationActive||LiveActive){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
             return true;
         }
         long BeginCompanionSelection(SkinDefinition target)
@@ -57,7 +79,7 @@ namespace Dafeiyu
         public bool SelectSkin(SkinDefinition skin)
         {
             if(skin==null||!CanRequestCompanion())return false;
-            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice="请先恢复已隐藏的伙伴，再选择。";return false;}
+            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.selectSkin.notice");return false;}
             if(skin.IsPlaceholder||skin.Embedded&&ShouldRefreshOfficial(skin)){var ignored=RequestSkinAsync(skin,CompanionSelectionOrigin.PassiveMenu,null);return false;}
             BeginCompanionSelection(skin);
             bool changed=ActivateSkin(skin);if(changed){Catalog.PreserveActive(skin);if(skin.IsOfficial)MergeOfficialHoliday(skin);}if(changed&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}
@@ -66,12 +88,12 @@ namespace Dafeiyu
         internal async Task<bool> RequestSkinAsync(SkinDefinition skin,CompanionSelectionOrigin origin,Window owner)
         {
             if(skin==null||!CanRequestCompanion())return false;
-            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice="请先恢复已隐藏的伙伴，再选择。";return false;}
+            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.requestSkinAsync.notice");return false;}
             RecordPetInteraction();long token=BeginCompanionSelection(skin);
             if(skin.Embedded&&ShouldRefreshOfficial(skin))return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
             if(!skin.IsPlaceholder) {
                 bool selected=ActivateSkin(skin);
-                if(selected){Catalog.PreserveActive(skin);if(skin.IsOfficial)MergeOfficialHoliday(skin);}if(selected&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,token,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}
+                if(selected){Catalog.PreserveActive(skin);if(skin.IsOfficial)MergeOfficialHoliday(skin);}if(selected&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,token,false,origin,owner,OfficialCompanionCheckMode.Cached);}
                 return selected;
             }
             return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
@@ -79,7 +101,7 @@ namespace Dafeiyu
         bool OwnsOfficial(long token){return !closing&&officialDownloads!=null&&officialDownloads.OwnsSelection(token);}
         async Task<bool> RefreshOfficialAsync(string id,long token,bool selecting,CompanionSelectionOrigin origin,Window owner,OfficialCompanionCheckMode mode)
         {
-            OfficialCompanionProgressWindow dialog=null;var requestedSource=Skin;
+            OfficialCompanionProgressWindow dialog=null;var requestedSource=Skin;bool finishedWork=false;CancellationTokenRegistration dialogCancellation=default(CancellationTokenRegistration);
             using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(officialLifetime.Token)) {
                 try {
                     if(selecting||Skin.IsOfficial&&Skin.BuiltinCharacterId==id) {
@@ -89,28 +111,36 @@ namespace Dafeiyu
                         else if(selecting&&id=="e-bao"&&OwnsOfficial(token)){QueueOfficial(Catalog.EmbeddedFallback(),token,true);TryApplyDeferredOfficial();requestedSource=Skin;}
                     }
                     if(!OwnsOfficial(token))return false;
-                    if(selecting&&Skin.BuiltinCharacterId!=id) {
-                        if(origin==CompanionSelectionOrigin.PassiveMenu){Notice="正在下载角色包，请稍后…";ShowHolidayNotice(Notice);}
-                        else if(origin!=CompanionSelectionOrigin.StartupRestore){dialog=new OfficialCompanionProgressWindow(owner,false);dialog.Show();}
+                    if(selecting&&Skin.IsOfficial&&Skin.BuiltinCharacterId==id&&!Skin.IsPlaceholder) {
+                        // Selection is complete as soon as a usable cached role is active.
+                        // Metadata/download completion only refreshes that same role later.
+                        var ignored=RefreshOfficialAsync(id,token,false,origin,owner,mode);
+                        return true;
                     }
                     using(var lease=dialog==null?CancellationTokenSource.CreateLinkedTokenSource(cancel.Token):CancellationTokenSource.CreateLinkedTokenSource(cancel.Token,dialog.Token)) {
-                        var progress=new Progress<OfficialCompanionProgress>(p=>{if(dialog!=null)dialog.Report(p);});
+                        var progress=new Progress<OfficialCompanionProgress>(p=>{
+                            if(finishedWork||!OwnsOfficial(token))return;
+                            bool mainEntry=origin==CompanionSelectionOrigin.Settings||origin==CompanionSelectionOrigin.MainWindow;
+                            if(dialog==null&&(selecting||mainEntry)&&origin!=CompanionSelectionOrigin.StartupRestore&&p.RequiresUpdateNotice){dialog=new OfficialCompanionProgressWindow(owner,false,!mainEntry);dialogCancellation=dialog.Token.Register(()=>cancel.Cancel());dialog.Show();}
+                            if(dialog!=null)dialog.Report(p);
+                        });
                         var result=await OfficialDownloads.EnsureAsync(id,OfficialRouting(),mode,progress,lease.Token);
                         if(closing)return false;
                         var ready=await PrepareOfficialAsync(result.Installation,result.InstalledNow);
                         if(OwnsOfficial(token)) {
                             if(selecting||Skin.PickerKey==ready.PickerKey&&ReferenceEquals(Skin,requestedSource)){QueueOfficial(ready,token,selecting);TryApplyDeferredOfficial();}
                             else PublishInactiveOfficial(ready);
-                            if(result.UsedOfflineFallback){Notice="暂时无法检查最新角色包，已保留可用素材。";if(preferences!=null)preferences.ShowNotice(Notice);}
+                            if(result.UsedOfflineFallback){Notice=TextResources.Get("petOfficialCompanions.refreshOfficialAsync.notice.alternativeA");if(preferences!=null)preferences.ShowNotice(Notice);}
                         }else PublishInactiveOfficial(ready);
                         if(dialog!=null)dialog.Complete();return OwnsOfficial(token);
                     }
-                }catch(OperationCanceledException){if(dialog!=null&&dialog.Token.IsCancellationRequested&&OwnsOfficial(token)){officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;Settings.PendingOfficialCompanionId="";SaveSettings();}if(dialog!=null)dialog.Failure("下载已取消，已安装的角色包会保留。",()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;}
+                }catch(OperationCanceledException){if(dialog!=null&&dialog.Token.IsCancellationRequested&&OwnsOfficial(token)){officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;Settings.PendingOfficialCompanionId="";SaveSettings();}if(dialog!=null)dialog.Failure(TextResources.Get("petOfficialCompanions.refreshOfficialAsync.dialogFailure"),()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;}
                 catch(Exception error) {
                     if(!OfficialError(error))throw;
-                    if(OwnsOfficial(token)){Notice="角色包暂时无法下载或读取，已保留当前伙伴。请稍后重试。";if(preferences!=null)preferences.ShowNotice(Notice);if(origin==CompanionSelectionOrigin.PassiveMenu)ShowHolidayNotice(Notice);}
-                    if(dialog!=null)dialog.Failure("角色包暂时无法下载或读取，请重试。",()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;
+                    if(OwnsOfficial(token)){Notice=TextResources.Get("petOfficialCompanions.refreshOfficialAsync.notice.alternativeB");if(preferences!=null)preferences.ShowNotice(Notice);if(origin==CompanionSelectionOrigin.PassiveMenu)ShowHolidayNotice(Notice);}
+                    if(dialog!=null)dialog.Failure(TextResources.Get("petOfficialCompanions.refreshOfficialAsync.dialogFailure.alternativeA"),()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;
                 }
+                finally{finishedWork=true;dialogCancellation.Dispose();if(dialog!=null&&dialog.IsPassive)dialog.Complete();}
             }
         }
         static bool OfficialError(Exception error){return error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is ApiException||error is AggregateException||error is System.Runtime.Serialization.SerializationException;}
@@ -120,11 +150,11 @@ namespace Dafeiyu
             // completion must also agree with the latest verified disk receipt.
             for(int attempt=0;attempt<3;attempt++) {
                 var latest=await Task.Run(()=>OfficialDownloads.Installed(installation.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException("角色素材需要重新检查，请重试。");
+                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
                 if(latest.RootDirectory!=installation.RootDirectory){installation=latest;installedNow=false;}
                 await officialNative.ValidateAsync(installation,officialLifetime.Token);
                 latest=await Task.Run(()=>OfficialDownloads.Installed(installation.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException("角色素材需要重新检查，请重试。");
+                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
                 if(latest.RootDirectory!=installation.RootDirectory){installation=latest;installedNow=false;continue;}
                 SkinDefinition existing;
                 if(!installedNow&&officialSources.TryGetValue(installation.Asset.Id,out existing)&&existing.Source==installation.RootDirectory)return existing;
@@ -137,7 +167,7 @@ namespace Dafeiyu
                     return Tuple.Create(source,new HolidayCatalog(selected.HolidayRootDirectory));
                 },officialLifetime.Token);
                 latest=await Task.Run(()=>OfficialDownloads.Installed(selected.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException("角色素材需要重新检查，请重试。");
+                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
                 if(latest.RootDirectory!=selected.RootDirectory){installation=latest;installedNow=false;continue;}
                 var skin=prepared.Item1;officialSources[selected.Asset.Id]=skin;
                 if(installedNow)officialCatalogs.Remove(selected.RootDirectory);
@@ -145,7 +175,7 @@ namespace Dafeiyu
                 foreach(string retired in officialCatalogs.Keys.Where(root=>!officialSources.Values.Any(s=>s.Source==root)&&Skin.Source!=root).ToArray())officialCatalogs.Remove(retired);
                 return skin;
             }
-            throw new IOException("角色素材正在更新，请稍后重试。");
+            throw new IOException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text.alternativeA"));
         }
         void PublishInactiveOfficial(SkinDefinition skin)
         {if(Skin.PickerKey==skin.PickerKey)return;Catalog.ReplaceOfficial(skin);MergeOfficialHoliday(skin);if(preferences!=null)preferences.RefreshSkinChoices();}
@@ -187,7 +217,7 @@ namespace Dafeiyu
                 if(!ReferenceEquals(deferredOfficial,pending)||!OwnsOfficial(pending.Request))return;
                 if(latest==null) {
                     if(pending.Skin.Embedded){pending.Pointer=CurrentOfficialPointer(pending.Skin.BuiltinCharacterId);}
-                    else{deferredOfficial=null;Notice="角色素材需要重新检查，已保留当前伙伴。";return;}
+                    else{deferredOfficial=null;Notice=TextResources.Get("petOfficialCompanions.refreshDeferredReceiptAsync.notice");return;}
                 }else {
                     var ready=await PrepareOfficialAsync(latest,false);
                     if(!ReferenceEquals(deferredOfficial,pending)||!OwnsOfficial(pending.Request))return;
@@ -229,10 +259,10 @@ namespace Dafeiyu
             catch(Exception error){if(!OfficialError(error))throw;failure=error;}
             if(!closing)await RefreshBulkInstallations(captured,token,results);
             if(failure==null){dialog.Complete();return;}
-            if(failure is OperationCanceledException){dialog.Failure("下载已取消，已安装的角色包会保留。",()=>{var ignored=DownloadAllOfficialAsync(owner);});return;}
+            if(failure is OperationCanceledException){dialog.Failure(TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeA"),()=>{var ignored=DownloadAllOfficialAsync(owner);});return;}
             var aggregate=failure as AggregateException;
             var failures=aggregate==null?new string[0]:OfficialCompanionProfiles.All.Where(p=>aggregate.Flatten().InnerExceptions.Any(e=>e.Message.StartsWith(p.Id+"：",StringComparison.Ordinal)||e.Message.StartsWith(p.Id+":",StringComparison.Ordinal))).Select(p=>p.Name).ToArray();
-            dialog.Failure((failures.Length==0?"部分角色包未完成":"未完成："+String.Join("、",failures))+"。已安装的素材会保留，请重试补齐。",()=>{var ignored=DownloadAllOfficialAsync(owner);});
+            dialog.Failure((failures.Length==0?TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeB"):TextResources.Format("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure",String.Join("、",failures)))+TextResources.Get("petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC"),()=>{var ignored=DownloadAllOfficialAsync(owner);});
         }
         async Task RefreshBulkInstallations(SkinDefinition captured,long token,IList<OfficialCompanionResult> results)
         {
@@ -252,7 +282,7 @@ namespace Dafeiyu
             if(officialStartupStarted||GuideActive||closing)return;officialStartupStarted=true;
             string id=Settings.PendingOfficialCompanionId;
             if(!String.IsNullOrEmpty(id)&&!Catalog.Skins.Any(s=>s.BuiltinCharacterId==id)){Settings.PendingOfficialCompanionId="";SaveSettings();id="";}
-            if(String.IsNullOrEmpty(id)&&Skin.IsOfficial&&!Skin.FixtureEmbedded&&(!Skin.Embedded||File.Exists(Path.Combine(Store.DirectoryPath,"official-companions",Skin.BuiltinCharacterId,"current.txt"))))id=Skin.BuiltinCharacterId;
+            if(String.IsNullOrEmpty(id)&&Skin.IsOfficial&&!Skin.FixtureEmbedded)id=Skin.BuiltinCharacterId;
             if(String.IsNullOrEmpty(id))return;
             officialRequest=OfficialDownloads.BeginSelection();
             var ignored=RefreshOfficialAsync(id,officialRequest,!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId),CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate);

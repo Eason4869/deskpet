@@ -22,7 +22,7 @@ namespace Dafeiyu
             BitmapSource image;
             using (Stream stream = embedded ? Assembly.GetExecutingAssembly().GetManifestResourceStream(source) : File.OpenRead(source))
             {
-                if (stream == null) throw new InvalidOperationException("找不到内嵌桌宠素材。");
+                if (stream == null) throw new InvalidOperationException(TextResources.Get("spriteAtlas.spriteAtlas.text"));
                 image = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
             }
             ValidateDimensions(image.PixelWidth, image.PixelHeight);
@@ -47,7 +47,7 @@ namespace Dafeiyu
                     for (int i = 0; i < alpha[row][col].Length; i++) alpha[row][col][i] = pixels[i * 4 + 3];
                     bool visible=false,transparent=false;
                     for(int i=0;i<alpha[row][col].Length;i++) { if(alpha[row][col][i]>16) visible=true; if(alpha[row][col][i]==0) transparent=true; }
-                    if(!visible || !transparent) throw new InvalidOperationException("每个动作帧应有人物和透明背景。");
+                    if(!visible || !transparent) throw new InvalidOperationException(TextResources.Get("spriteAtlas.spriteAtlas.text.alternativeA"));
                 }
             }
         }
@@ -71,7 +71,7 @@ namespace Dafeiyu
         public static void ValidateDimensions(int width, int height)
         {
             if (width % 8 != 0 || height % 11 != 0 || width / 8 < 64 || height / 11 < 64 || width / 8 > 768 || height / 11 > 832 || (long)width*height > 55000000)
-                throw new InvalidOperationException("外观需为 8 列 × 11 行透明 PNG 精灵图，单帧最大 768 × 832。");
+                throw new InvalidOperationException(TextResources.Get("spriteAtlas.validateDimensions.text"));
         }
         public BitmapSource GetFrame(int row, int col) { return frames[row][col]; }
         public byte AlphaAt(int row, int col, int x, int y)

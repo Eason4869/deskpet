@@ -16,14 +16,14 @@ namespace Dafeiyu
         }
         internal static bool Validate(PetSettings settings,string id,string value,out string error)
         {
-            error="";var definition=All.FirstOrDefault(d=>d.Id==id);if(definition==null){error="未知快捷键操作。";return false;}
+            error="";var definition=All.FirstOrDefault(d=>d.Id==id);if(definition==null){error=TextResources.Get("shortcutCatalog.validate.error");return false;}
             if(String.IsNullOrWhiteSpace(value))return true;
-            HotkeyCombination combo;if(!HotkeyCombination.TryParse(value,out combo)){error="请输入 Ctrl/Alt/Shift/Win + 一个按键；留空可停用。";return false;}
+            HotkeyCombination combo;if(!HotkeyCombination.TryParse(value,out combo)){error=TextResources.Get("shortcutCatalog.validate.error.alternativeA");return false;}
             bool functionKey=combo.Key>=112&&combo.Key<=135;
             bool textNavigation=(combo.Key>=33&&combo.Key<=40)&&(combo.Modifiers==2||combo.Modifiers==4||combo.Modifiers==6);
-            if((combo.Key==38||combo.Key==40)&&(combo.Modifiers&1)!=0){error="该组合键用于队列排序，请选择其他按键。";return false;}
-            if((combo.Modifiers==4&&!functionKey)||textNavigation||combo.Key==9||combo.Key==13||combo.Key==27||combo.Key==8||combo.Key==46||Equal(value,"Alt+F4")||Equal(value,"Ctrl+Alt+Delete")||Equal(value,"Ctrl+Tab")||Equal(value,"Ctrl+Shift+Tab")||Equal(value,"Alt+Tab")||Equal(value,"Alt+Shift+Tab")||new[]{"Ctrl+A","Ctrl+C","Ctrl+V","Ctrl+X","Ctrl+Z","Ctrl+Y","Ctrl+Shift+Z"}.Any(v=>Equal(value,v))){error="该组合键用于文字编辑、输入或系统导航，请选择其他按键。";return false;}
-            foreach(var other in All)if(other.Id!=id&&Equal(value,Value(settings,other))){error="与“"+other.Title+"”冲突，已保留原快捷键。";return false;}
+            if((combo.Key==38||combo.Key==40)&&(combo.Modifiers&1)!=0){error=TextResources.Get("shortcutCatalog.validate.error.alternativeB");return false;}
+            if((combo.Modifiers==4&&!functionKey)||textNavigation||combo.Key==9||combo.Key==13||combo.Key==27||combo.Key==8||combo.Key==46||Equal(value,"Alt+F4")||Equal(value,"Ctrl+Alt+Delete")||Equal(value,"Ctrl+Tab")||Equal(value,"Ctrl+Shift+Tab")||Equal(value,"Alt+Tab")||Equal(value,"Alt+Shift+Tab")||new[]{"Ctrl+A","Ctrl+C","Ctrl+V","Ctrl+X","Ctrl+Z","Ctrl+Y","Ctrl+Shift+Z"}.Any(v=>Equal(value,v))){error=TextResources.Get("shortcutCatalog.validate.error.alternativeC");return false;}
+            foreach(var other in All)if(other.Id!=id&&Equal(value,Value(settings,other))){error=TextResources.Format("shortcutCatalog.validate.errorOtherTitle",other.Title);return false;}
             return true;
         }
     }

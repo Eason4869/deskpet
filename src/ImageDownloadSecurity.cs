@@ -11,7 +11,7 @@ namespace Dafeiyu
     {
         internal static async Task<Uri> ValidateAddressAsync(string address,Uri service,CancellationToken token)
         {
-            Uri uri;if(String.IsNullOrWhiteSpace(address) || address.Length>8192 || !Uri.TryCreate(address,UriKind.Absolute,out uri) || (uri.Scheme!="http" && uri.Scheme!="https") || uri.UserInfo.Length>0 || uri.Fragment.Length>0)throw new InvalidDataException("图片下载地址无效；仅支持直接 HTTP 或 HTTPS 图片地址。");
+            Uri uri;if(String.IsNullOrWhiteSpace(address) || address.Length>8192 || !Uri.TryCreate(address,UriKind.Absolute,out uri) || (uri.Scheme!="http" && uri.Scheme!="https") || uri.UserInfo.Length>0 || uri.Fragment.Length>0)throw new InvalidDataException(TextResources.Get("imageDownloadSecurity.validateAddressAsync.text"));
             token.ThrowIfCancellationRequested();
             // A deliberately configured local image server may return its own images.
             // This exception is exact origin only: no other host, port or scheme inherits it.
@@ -21,10 +21,10 @@ namespace Dafeiyu
             try{
                 var resolve=Dns.GetHostAddressesAsync(uri.DnsSafeHost);var canceled=new TaskCompletionSource<bool>();
                 using(token.Register(delegate{canceled.TrySetResult(true);})){if(await Task.WhenAny(resolve,canceled.Task).ConfigureAwait(false)!=resolve)token.ThrowIfCancellationRequested();var addresses=await resolve.ConfigureAwait(false);if(addresses.Length==0)throw Unsafe();foreach(var ip in addresses)if(!Public(ip))throw Unsafe();}
-            }catch(SocketException){throw new InvalidDataException("图片下载地址无法解析。");}
+            }catch(SocketException){throw new InvalidDataException(TextResources.Get("imageDownloadSecurity.validateAddressAsync.text.alternativeA"));}
             return uri;
         }
-        static InvalidDataException Unsafe(){return new InvalidDataException("图片下载地址指向本机、内网或保留网络，已拒绝访问。");}
+        static InvalidDataException Unsafe(){return new InvalidDataException(TextResources.Get("imageDownloadSecurity.unsafe.text"));}
         internal static bool Public(IPAddress address)
         {
             if(address.IsIPv4MappedToIPv6)return Public(address.MapToIPv4());byte[] bytes=address.GetAddressBytes();

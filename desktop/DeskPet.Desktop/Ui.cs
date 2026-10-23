@@ -1,3 +1,4 @@
+using Dafeiyu;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -48,8 +49,8 @@ internal static class Ui
     public static Control Field(string label, Control input) => Column(Text(label), input);
     public static void ReadOnlyMenu(SelectableTextBlock text)
     {
-        var copy = new MenuItem { Header = "复制", InputGesture = new KeyGesture(Key.C, KeyModifiers.Control) }; copy.Click += (_, _) => text.Copy();
-        var all = new MenuItem { Header = "全选", InputGesture = new KeyGesture(Key.A, KeyModifiers.Control) }; all.Click += (_, _) => text.SelectAll();
+        var copy = new MenuItem { Header = TextResources.Get("common.copy"), InputGesture = new KeyGesture(Key.C, KeyModifiers.Control) }; copy.Click += (_, _) => text.Copy();
+        var all = new MenuItem { Header = TextResources.Get("ui.readOnlyMenu.header"), InputGesture = new KeyGesture(Key.A, KeyModifiers.Control) }; all.Click += (_, _) => text.SelectAll();
         var menu = new ContextMenu { ItemsSource = new object[] { copy, all } };
         menu.Opening += (_, _) => { copy.IsEnabled = text.CanCopy; all.IsEnabled = !string.IsNullOrEmpty(text.Text) || text.Inlines?.Count > 0; }; text.ContextMenu = menu;
     }

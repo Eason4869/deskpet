@@ -57,12 +57,12 @@ namespace Dafeiyu
                 if(document==null || document.Version!=1 || document.Messages==null || document.Messages.Count>400)throw new SerializationException();
                 var log=new ConversationLog();log.Replace(document.Messages);lock(gate)unreadableFiles.Remove(path);SetWarning(path,"");return log.Messages;
             }
-            catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning(path,"聊天记录无法读取，原文件已保留；可清空记录后重新保存。");return new List<ChatMessage>(); }
+            catch(Exception e) { if(!IsStorageError(e))throw;lock(gate)unreadableFiles.Add(path);SetWarning(path,TextResources.Get("historyStore.load.setWarning"));return new List<ChatMessage>(); }
         }
         internal ImageAssetUsageRegistry ImageUsage {get;set;}
         internal static IList<ChatMessage> InspectFileStrict(string path)
         {
-            var info=new FileInfo(path);if(!info.Exists||info.Length<=0||info.Length>MaximumBytes||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("历史文件无法安全读取。");
+            var info=new FileInfo(path);if(!info.Exists||info.Length<=0||info.Length>MaximumBytes||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new IOException(TextResources.Get("historyStore.inspectFileStrict.text"));
             byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));if(plain.Length>MaximumBytes)throw new SerializationException();Document document;
             using(var stream=new MemoryStream(plain))document=(Document)new DataContractJsonSerializer(typeof(Document)).ReadObject(stream);
             if(document==null||document.Version!=1||document.Messages==null||document.Messages.Count>400||document.Messages.Any(m=>m==null))throw new SerializationException();return document.Messages;
@@ -75,7 +75,7 @@ namespace Dafeiyu
                 string temporary=null;
                 try {
                     bool blocked;lock(gate)blocked=unreadableFiles.Contains(path);
-                    if(blocked){SetWarning(path,"聊天记录无法读取，原文件已保留；可清空记录后重新保存。当前对话仍可导出。");return;}
+                    if(blocked){SetWarning(path,TextResources.Get("historyStore.saveAsync.setWarning"));return;}
                     Directory.CreateDirectory(directory);byte[] encrypted;
                     while(true) {
                         byte[] plain;using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(Document)).WriteObject(stream,new Document {Messages=copy});plain=stream.ToArray();}
@@ -91,7 +91,7 @@ namespace Dafeiyu
                     AtomicFile.Commit(temporary,path);
                     temporary=null;ReleasePendingImages(path);SetWarning(path,"");
                 }
-                catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,"聊天记录保存失败；当前窗口中的记录仍可导出，请检查本地存储权限或空间。"); }
+                catch(Exception e) { if(!IsStorageError(e))throw;SetWarning(path,TextResources.Get("historyStore.saveAsync.setWarning.alternativeA")); }
                 finally { if(temporary!=null)try{File.Delete(temporary);}catch(IOException){}catch(UnauthorizedAccessException){} }
             });
         }
@@ -102,7 +102,7 @@ namespace Dafeiyu
                     try{File.Delete(path);}catch(DirectoryNotFoundException){}
                     lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");
                 }
-                catch(Exception e){if(!IsStorageError(e))throw;SetWarning(path,"聊天记录文件删除失败，请检查本地存储权限。");}
+                catch(Exception e){if(!IsStorageError(e))throw;SetWarning(path,TextResources.Get("historyStore.clearAsync.setWarning"));}
             });
         }
         private static bool IsStorageError(Exception e)

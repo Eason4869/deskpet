@@ -29,7 +29,7 @@ internal sealed class OfficialCompanionNativeValidator : IDisposable
         var skin = SpriteAssets.ReadOfficial(installation, installation.Asset.Id);
         SpriteAssets.ValidateNativeDefault(skin, cancel);
         var catalog = new HolidayCatalog(installation.HolidayRootDirectory);
-        if (!string.IsNullOrEmpty(catalog.Warning) || catalog.Outfits.Any(o => !o.Ready)) throw new InvalidDataException("角色服饰无法完整读取。");
+        if (!string.IsNullOrEmpty(catalog.Warning) || catalog.Outfits.Any(o => !o.Ready)) throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
         foreach (var outfit in catalog.Outfits)
         {
             foreach (var definition in outfit.Clips.Concat(new[] { outfit.Gaze, outfit.EasterEgg }))

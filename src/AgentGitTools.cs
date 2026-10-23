@@ -15,30 +15,30 @@ namespace Dafeiyu
         {
             string directory=File.Exists(path)?Path.GetDirectoryName(path):path;
             for(var current=new DirectoryInfo(directory);current!=null;current=current.Parent){cancel.ThrowIfCancellationRequested();if(restricted&&!Inside(current.FullName,authorizedRoot))break;
-                if((current.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("Git 路径不能经过链接。");
+                if((current.Attributes&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.findRoot.text"));
                 string marker=Path.Combine(current.FullName,".git");if(Directory.Exists(marker)||File.Exists(marker)){ValidateMetadata(marker,authorizedRoot,restricted,cancel);return current.FullName;}}
-            throw new ArgumentException("该路径不是已授权工作区内的 Git 仓库；请选择仓库根目录作为工作区。");
+            throw new ArgumentException(TextResources.Get("agentGitTools.findRoot.text.alternativeA"));
         }
         static bool Inside(string path,string root){return String.Equals(path.TrimEnd('\\','/'),root.TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase)||path.StartsWith(root.TrimEnd('\\','/')+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);}
         static void ValidateMetadata(string marker,string root,bool restricted,CancellationToken cancel)
         {
-            if((File.GetAttributes(marker)&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("Git 元数据不能使用链接。");
+            if((File.GetAttributes(marker)&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateMetadata.text"));
             string permittedMetadata=root;
-            if(File.Exists(marker)){string worktreeMarker=marker;string value=ReadPointer(marker);if(!value.StartsWith("gitdir: ",StringComparison.Ordinal))throw new ArgumentException("Git 工作树指针无效。");marker=Path.GetFullPath(Path.Combine(Path.GetDirectoryName(marker),value.Substring(8)));if(restricted&&!Inside(marker,root))permittedMetadata=ValidateLinkedWorktree(worktreeMarker,marker);}
-            if(!Directory.Exists(marker))throw new ArgumentException("Git 元数据目录不存在。");
+            if(File.Exists(marker)){string worktreeMarker=marker;string value=ReadPointer(marker);if(!value.StartsWith("gitdir: ",StringComparison.Ordinal))throw new ArgumentException(TextResources.Get("agentGitTools.validateMetadata.text.alternativeA"));marker=Path.GetFullPath(Path.Combine(Path.GetDirectoryName(marker),value.Substring(8)));if(restricted&&!Inside(marker,root))permittedMetadata=ValidateLinkedWorktree(worktreeMarker,marker);}
+            if(!Directory.Exists(marker))throw new ArgumentException(TextResources.Get("agentGitTools.validateMetadata.text.alternativeB"));
             AgentInstructions.RejectLinks(marker);
-            int count=0;var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var todo=new Stack<string>();todo.Push(marker);while(todo.Count>0){cancel.ThrowIfCancellationRequested();string path=todo.Pop();if(!seen.Add(path))continue;if(++count>100000)throw new ArgumentException("Git 元数据过大，请缩小仓库。");if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException("Git 元数据不能使用链接。");if(Directory.Exists(path)){foreach(string entry in Directory.EnumerateFileSystemEntries(path)){cancel.ThrowIfCancellationRequested();todo.Push(entry);}}else if(Path.GetFileName(path)=="alternates")throw new UnauthorizedAccessException("此仓库引用额外对象目录，不能作为受限只读仓库。");else if(Path.GetFileName(path)=="commondir"){string common=Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path),ReadPointer(path)));AgentInstructions.RejectLinks(common);if(restricted&&!Inside(common,permittedMetadata))throw new UnauthorizedAccessException("Git 公共元数据不属于此工作树。");todo.Push(common);}}
+            int count=0;var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var todo=new Stack<string>();todo.Push(marker);while(todo.Count>0){cancel.ThrowIfCancellationRequested();string path=todo.Pop();if(!seen.Add(path))continue;if(++count>100000)throw new ArgumentException(TextResources.Get("agentGitTools.validateMetadata.text.alternativeC"));if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateMetadata.text"));if(Directory.Exists(path)){foreach(string entry in Directory.EnumerateFileSystemEntries(path)){cancel.ThrowIfCancellationRequested();todo.Push(entry);}}else if(Path.GetFileName(path)=="alternates")throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateMetadata.text.alternativeD"));else if(Path.GetFileName(path)=="commondir"){string common=Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path),ReadPointer(path)));AgentInstructions.RejectLinks(common);if(restricted&&!Inside(common,permittedMetadata))throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateMetadata.text.alternativeE"));todo.Push(common);}}
         }
-        static string ReadPointer(string path){AgentInstructions.RejectLinks(path);if(!File.Exists(path)||new FileInfo(path).Length>4096)throw new UnauthorizedAccessException("Git 工作树指针无效。");return File.ReadAllText(path).Trim();}
+        static string ReadPointer(string path){AgentInstructions.RejectLinks(path);if(!File.Exists(path)||new FileInfo(path).Length>4096)throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.readPointer.text"));return File.ReadAllText(path).Trim();}
         static string ValidateLinkedWorktree(string worktreeMarker,string metadata)
         {
             // A standard linked worktree explicitly delegates access to its shared repository
             // metadata. Require the reciprocal pointer and Git's canonical worktrees layout;
             // an arbitrary gitdir file cannot grant access to another ordinary repository.
             AgentInstructions.RejectLinks(metadata);string backlink=Path.GetFullPath(Path.Combine(metadata,ReadPointer(Path.Combine(metadata,"gitdir"))));
-            if(!String.Equals(backlink,Path.GetFullPath(worktreeMarker),StringComparison.OrdinalIgnoreCase))throw new UnauthorizedAccessException("Git 工作树反向指针不匹配。");
+            if(!String.Equals(backlink,Path.GetFullPath(worktreeMarker),StringComparison.OrdinalIgnoreCase))throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateLinkedWorktree.text"));
             string common=Path.GetFullPath(Path.Combine(metadata,ReadPointer(Path.Combine(metadata,"commondir"))));AgentInstructions.RejectLinks(common);
-            string parent=Path.GetDirectoryName(metadata.TrimEnd('\\','/'));if(!String.Equals(parent,Path.Combine(common,"worktrees"),StringComparison.OrdinalIgnoreCase)||!Directory.Exists(Path.Combine(common,"objects"))||!File.Exists(Path.Combine(common,"config")))throw new UnauthorizedAccessException("Git 工作树公共目录结构无效。");return common;
+            string parent=Path.GetDirectoryName(metadata.TrimEnd('\\','/'));if(!String.Equals(parent,Path.Combine(common,"worktrees"),StringComparison.OrdinalIgnoreCase)||!Directory.Exists(Path.Combine(common,"objects"))||!File.Exists(Path.Combine(common,"config")))throw new UnauthorizedAccessException(TextResources.Get("agentGitTools.validateLinkedWorktree.text.alternativeA"));return common;
         }
         internal static string Read(string tool,string path,string repository,string scope,int limit,int timeout,CancellationToken cancel)
         {
@@ -47,8 +47,8 @@ namespace Dafeiyu
                 // Worktree reads can execute clean/process filters even with external diffs disabled.
                 // Ask Git to resolve includes and worktree config; only an empty no-match result is safe.
                 var filters=RunCommand(common.Concat(new[]{"config","--includes","--name-only","--get-regexp",@"^filter\..*\.(clean|process)$"}).ToArray(),repository,timeout,cancel);
-                if(filters.ExitCode==0)throw new ArgumentException("仓库配置了 Git clean/process 过滤器；只读工具已停止，避免执行过滤器。请通过获准的终端操作检查此仓库。");
-                if(filters.Truncated||filters.ExitCode!=1||!String.IsNullOrEmpty(filters.Output))throw new ArgumentException("无法安全检查 Git 过滤器配置，已停止只读操作；请检查仓库配置。");
+                if(filters.ExitCode==0)throw new ArgumentException(TextResources.Get("agentGitTools.read.text"));
+                if(filters.Truncated||filters.ExitCode!=1||!String.IsNullOrEmpty(filters.Output))throw new ArgumentException(TextResources.Get("agentGitTools.read.text.alternativeA"));
             }
             string relative=String.Equals(path,repository,StringComparison.OrdinalIgnoreCase)?".":path.Substring(repository.TrimEnd('\\','/').Length+1).Replace('\\','/');
             cancel.ThrowIfCancellationRequested();string branch=Run(common.Concat(new[]{"symbolic-ref","--short","-q","HEAD"}).ToArray(),repository,timeout,cancel,false);
@@ -56,16 +56,16 @@ namespace Dafeiyu
             string[] command;
             if(tool=="git_status")command=new[]{"status","--short","--branch","--untracked-files=normal","--ignore-submodules=all","--",relative};
             else if(tool=="git_log")command=new[]{"log","--no-show-signature","--no-decorate","--format=%h %ad %s","--date=short","-n",limit.ToString(System.Globalization.CultureInfo.InvariantCulture),"--",relative};
-            else {if(scope!="unstaged"&&scope!="staged")throw new ArgumentException("scope 仅支持 unstaged 或 staged。");command=(new[]{"diff","--no-ext-diff","--no-textconv","--no-color","--ignore-submodules=all","--no-renames"}).Concat(scope=="staged"?new[]{"--cached"}:new string[0]).Concat(new[]{"--",relative}).ToArray();}
+            else {if(scope!="unstaged"&&scope!="staged")throw new ArgumentException(TextResources.Get("agentGitTools.read.text.alternativeB"));command=(new[]{"diff","--no-ext-diff","--no-textconv","--no-color","--ignore-submodules=all","--no-renames"}).Concat(scope=="staged"?new[]{"--cached"}:new string[0]).Concat(new[]{"--",relative}).ToArray();}
             string output=Run(common.Concat(command).ToArray(),repository,timeout,cancel,true);
-            if(output.Length>MaximumOutput)output=output.Substring(0,MaximumOutput)+"\n[输出已截断]";
-            return "仓库："+repository+"\n分支："+(String.IsNullOrWhiteSpace(branch)?"HEAD 分离或尚无提交":branch.Trim())+"\n"+(tool=="git_diff"?"范围："+scope+"；未跟踪文件不包含补丁。\n":"")+output;
+            if(output.Length>MaximumOutput)output=TextResources.Format("agentGitTools.read.outputOutputSubstring",output.Substring(0,MaximumOutput));
+            return TextResources.Get("agentGitTools.read.text.alternativeC")+repository+TextResources.Get("agentGitTools.read.text.alternativeD")+(String.IsNullOrWhiteSpace(branch)?TextResources.Get("agentGitTools.read.text.alternativeE"):branch.Trim())+"\n"+(tool=="git_diff"?TextResources.Format("agentGitTools.read.template",scope):"")+output;
         }
         static string Run(string[] arguments,string directory,int timeout,CancellationToken cancel,bool requireSuccess)
         {
             var result=RunCommand(arguments,directory,timeout,cancel);
-            if(requireSuccess&&result.ExitCode!=0){string diagnostic=result.Output??"";if(diagnostic.Length>1000)diagnostic=diagnostic.Substring(0,1000);throw new ArgumentException("Git 读取失败，请检查仓库、safe.directory 或文件权限："+diagnostic);}
-            string text=result.Output??"";return text+(result.Truncated?"\n[输出已截断]":"");
+            if(requireSuccess&&result.ExitCode!=0){string diagnostic=result.Output??"";if(diagnostic.Length>1000)diagnostic=diagnostic.Substring(0,1000);throw new ArgumentException(TextResources.Format("agentGitTools.run.template",diagnostic));}
+            string text=result.Output??"";return text+(result.Truncated?TextResources.Get("agentGitTools.run.text"):"");
         }
         static CommandResult RunCommand(string[] arguments,string directory,int timeout,CancellationToken cancel)
         {
@@ -74,7 +74,7 @@ namespace Dafeiyu
             CommandResult result;
             if(Environment.OSVersion.Platform==PlatformID.Win32NT)result=WindowsCommandRunner.Run(command,timeout,cancel,true,null,environment,false);
             else result=RunPortable(command,timeout,cancel,environment);
-            cancel.ThrowIfCancellationRequested();if(result.TimedOut)throw new ArgumentException("Git 读取超时，请缩小路径范围。");
+            cancel.ThrowIfCancellationRequested();if(result.TimedOut)throw new ArgumentException(TextResources.Get("agentGitTools.runCommand.text"));
             return result;
         }
         static CommandResult RunPortable(AgentCommand command,int timeout,CancellationToken cancel,IDictionary<string,string> environment)
@@ -85,13 +85,13 @@ namespace Dafeiyu
             using(var process=new Process{StartInfo=start}){cancel.ThrowIfCancellationRequested();process.Start();var text=new StringBuilder();object gate=new object();bool truncated=false;
                 Func<StreamReader,Task> drain=async reader=>{char[] block=new char[4096];int n;while((n=await reader.ReadAsync(block,0,block.Length).ConfigureAwait(false))>0){lock(gate){int take=Math.Min(n,256*1024-text.Length);if(take<n)truncated=true;if(take>0)text.Append(block,0,take);}}};
                 var stdout=drain(process.StandardOutput);var stderr=drain(process.StandardError);var watch=Stopwatch.StartNew();bool timedOut=false;
-                try{while(!process.WaitForExit(50)){if(cancel.IsCancellationRequested||watch.Elapsed.TotalSeconds>=timeout){timedOut=!cancel.IsCancellationRequested;process.Kill(true);break;}}if(!process.WaitForExit(2000))throw new IOException("Git 进程未能停止。");if(!Task.WaitAll(new[]{stdout,stderr},2000))throw new IOException("Git 输出未能完成。");return new CommandResult{Output=text.ToString(),ExitCode=process.ExitCode,TimedOut=timedOut,Cancelled=cancel.IsCancellationRequested,Truncated=truncated};}
+                try{while(!process.WaitForExit(50)){if(cancel.IsCancellationRequested||watch.Elapsed.TotalSeconds>=timeout){timedOut=!cancel.IsCancellationRequested;process.Kill(true);break;}}if(!process.WaitForExit(2000))throw new IOException(TextResources.Get("agentGitTools.runPortable.text.alternativeA"));if(!Task.WaitAll(new[]{stdout,stderr},2000))throw new IOException(TextResources.Get("agentGitTools.runPortable.text.alternativeB"));return new CommandResult{Output=text.ToString(),ExitCode=process.ExitCode,TimedOut=timedOut,Cancelled=cancel.IsCancellationRequested,Truncated=truncated};}
                 finally{if(!process.HasExited)process.Kill(true);}
             }
 #else
-            throw new PlatformNotSupportedException("此版本的 Git 工具仅支持 Windows。");
+            throw new PlatformNotSupportedException(TextResources.Get("agentGitTools.runPortable.text"));
 #endif
         }
-        static string LocateGit(){foreach(string dir in (Environment.GetEnvironmentVariable("PATH")??"").Split(Path.PathSeparator)){if(String.IsNullOrWhiteSpace(dir))continue;try{string path=Path.Combine(dir.Trim('"'),Environment.OSVersion.Platform==PlatformID.Win32NT?"git.exe":"git");if(File.Exists(path))return Path.GetFullPath(path);}catch(ArgumentException){}}throw new ArgumentException("未找到 Git CLI，请安装 Git 并将其加入 PATH。");}
+        static string LocateGit(){foreach(string dir in (Environment.GetEnvironmentVariable("PATH")??"").Split(Path.PathSeparator)){if(String.IsNullOrWhiteSpace(dir))continue;try{string path=Path.Combine(dir.Trim('"'),Environment.OSVersion.Platform==PlatformID.Win32NT?"git.exe":"git");if(File.Exists(path))return Path.GetFullPath(path);}catch(ArgumentException){}}throw new ArgumentException(TextResources.Get("agentGitTools.locateGit.text"));}
     }
 }

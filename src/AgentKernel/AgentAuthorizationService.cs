@@ -16,7 +16,7 @@ namespace Dafeiyu
         public string Key {get{return Canonical(new[]{SessionId,ProjectId,TaskId,AgentId,CallId});}}
         public AgentToolInvocation(string tool,Dictionary<string,object> args,AgentToolExecutionContext context,string resourceOverride=null)
         {
-            if(context==null || String.IsNullOrWhiteSpace(context.CallId))throw new ArgumentException("工具调用必须具有稳定 CallId。");
+            if(context==null || String.IsNullOrWhiteSpace(context.CallId))throw new ArgumentException(TextResources.Get("agentAuthorizationService.agentToolInvocation.text"));
             SessionId=context.SessionId??"";ProjectId=context.ProjectId??"";TaskId=context.TaskId??"";AgentId=context.AgentId??"";CallId=context.CallId;
             ToolName=tool??"";Action=AgentPermissionRuntime.ActionForTool(ToolName);Arguments=Canonical(args??new Dictionary<string,object>());
             Resource=resourceOverride??AgentPermissionRuntime.ResourceForTool(ToolName,ReadArguments());
@@ -41,11 +41,11 @@ namespace Dafeiyu
         {
             cancel.ThrowIfCancellationRequested();int version=permissions.Version;
             var decision=permissions.Decide(invocation.Action,invocation.Resource);if(permissions.AccessPolicy!=null)decision=permissions.AccessPolicy.Decide(invocation,decision);if(decision.Effect!=AgentPermissionEffect.Ask)return decision;
-            if(approval==null)return Denied(invocation,"当前入口不支持确认");
+            if(approval==null)return Denied(invocation,TextResources.Get("agentAuthorizationService.authorizeAsync.denied"));
             var request=new AgentApprovalRequest{Id=Guid.NewGuid().ToString("N"),Action=invocation.Action,Resource=invocation.Resource,Risk=decision.Reason,PayloadHash=invocation.PayloadHash,SessionId=invocation.SessionId,ProjectId=invocation.ProjectId,TaskId=invocation.TaskId,CallId=invocation.CallId,ToolName=invocation.ToolName,Arguments=invocation.Arguments};
             var cancellable=approval as ICancellableAgentApprovalProvider;
             bool allowed=await AwaitCancellation(cancellable!=null?cancellable.ApproveAsync(request,cancel):approval.ApproveAsync(request),cancel).ConfigureAwait(false);
-            cancel.ThrowIfCancellationRequested();if(permissions.Version!=version)return Denied(invocation,"等待期间权限已改变，请重新发起调用");
+            cancel.ThrowIfCancellationRequested();if(permissions.Version!=version)return Denied(invocation,TextResources.Get("agentAuthorizationService.authorizeAsync.denied.alternativeA"));
             return new AgentPermissionDecision{Action=invocation.Action,Resource=invocation.Resource,Effect=allowed?AgentPermissionEffect.Allow:AgentPermissionEffect.Deny,Reason=allowed?"approved":"rejected"};
         }
         static AgentPermissionDecision Denied(AgentToolInvocation i,string why){return new AgentPermissionDecision{Action=i.Action,Resource=i.Resource,Effect=AgentPermissionEffect.Deny,Reason=why};}
@@ -61,7 +61,7 @@ namespace Dafeiyu
         readonly object gate=new object();readonly Dictionary<string,Entry> entries=new Dictionary<string,Entry>();
         internal Task<string> RunAsync(AgentToolInvocation invocation,Func<Task<string>> execute)
         {
-            Entry entry;lock(gate){if(entries.TryGetValue(invocation.Key,out entry)){if(entry.Hash!=invocation.PayloadHash)throw new InvalidOperationException("同一 CallId 的参数已改变，旧审批无效。");return entry.Completion.Task;}if(entries.Count>=4096)throw new InvalidOperationException("调用记录已达容量，请保存进度并新建任务。");entry=new Entry{Hash=invocation.PayloadHash};entries.Add(invocation.Key,entry);}
+            Entry entry;lock(gate){if(entries.TryGetValue(invocation.Key,out entry)){if(entry.Hash!=invocation.PayloadHash)throw new InvalidOperationException(TextResources.Get("agentAuthorizationService.runAsync.text"));return entry.Completion.Task;}if(entries.Count>=4096)throw new InvalidOperationException(TextResources.Get("agentAuthorizationService.runAsync.text.alternativeA"));entry=new Entry{Hash=invocation.PayloadHash};entries.Add(invocation.Key,entry);}
             Complete(entry,execute);return entry.Completion.Task;
         }
         static async void Complete(Entry entry,Func<Task<string>> execute){try{entry.Completion.TrySetResult(await execute().ConfigureAwait(false));}catch(OperationCanceledException){entry.Completion.TrySetCanceled();}catch(Exception e){entry.Completion.TrySetException(e);}}

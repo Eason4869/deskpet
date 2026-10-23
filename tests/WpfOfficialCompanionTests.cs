@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -201,7 +201,7 @@ namespace Dafeiyu.Tests
                 Field("officialDownloads").SetValue(pet,null);
             }
         }
-        static byte[] NativePackage(string id,byte color)
+        internal static byte[] NativePackage(string id,byte color)
         {
             return OfficialCompanionFixture.Package(id,files=>{
                 foreach(string path in files.Keys.Where(k=>k.EndsWith(".png",StringComparison.Ordinal)).ToArray()) {

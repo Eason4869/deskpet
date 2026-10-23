@@ -11,11 +11,11 @@ namespace Dafeiyu
         readonly byte[] bytes;
         internal readonly string Name,MediaType,Question;internal readonly int Width,Height;
         AgentImageInspection(string name,byte[] bytes,string mime,int width,int height,string question){Name=name;this.bytes=bytes;MediaType=mime;Width=width;Height=height;Question=question;}
-        internal object[] Content(string summary,bool anthropic){var parts=new List<object>();parts.Add(new{type="text",text=summary+(String.IsNullOrWhiteSpace(Question)?"":"\n图片问题："+Question)});string data=Convert.ToBase64String(bytes);if(anthropic)parts.Add(new{type="image",source=new{type="base64",media_type=MediaType,data=data}});else parts.Add(new{type="image_url",image_url=new{url="data:"+MediaType+";base64,"+data}});return parts.ToArray();}
+        internal object[] Content(string summary,bool anthropic){var parts=new List<object>();parts.Add(new{type="text",text=summary+(String.IsNullOrWhiteSpace(Question)?"":TextResources.Format("agentImageInspection.content.parts",Question))});string data=Convert.ToBase64String(bytes);if(anthropic)parts.Add(new{type="image",source=new{type="base64",media_type=MediaType,data=data}});else parts.Add(new{type="image_url",image_url=new{url="data:"+MediaType+";base64,"+data}});return parts.ToArray();}
         internal string Summary(){return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{name=Name,media_type=MediaType,width=Width,height=Height,bytes=bytes.Length,vision_input=true});}
         internal static AgentImageInspection Parse(string path,byte[] bytes,string question)
         {
-            if(bytes==null||bytes.Length<14||bytes.Length>MaximumBytes)throw new ArgumentException("图片为空、已损坏或超过 3 MiB 检查限制。");
+            if(bytes==null||bytes.Length<14||bytes.Length>MaximumBytes)throw new ArgumentException(TextResources.Get("agentImageInspection.parse.text"));
             string mime=null;int w=0,h=0;string ext=Path.GetExtension(path).ToLowerInvariant();
             if(ext==".png"&&bytes.Length>=33&&bytes[0]==137&&Encoding.ASCII.GetString(bytes,1,7)=="PNG\r\n\u001a\n"){
                 bool header=false,data=false,end=false;int p=8;
@@ -38,7 +38,7 @@ namespace Dafeiyu
 #endif
             return new AgentImageInspection(Path.GetFileName(path),bytes,mime,w,h,question);
         }
-        static ArgumentException Invalid(){return new ArgumentException("图片格式、尺寸或数据无效；支持 PNG/JPEG/GIF/WebP，最多 2000 万像素。");}
+        static ArgumentException Invalid(){return new ArgumentException(TextResources.Get("agentImageInspection.invalid.text"));}
         static uint BE(byte[] b,int p){return ((uint)b[p]<<24)|((uint)b[p+1]<<16)|((uint)b[p+2]<<8)|b[p+3];}
         static uint LE(byte[] b,int p){return (uint)(b[p]|b[p+1]<<8|b[p+2]<<16|b[p+3]<<24);}
         static int LE16(byte[] b,int p){return b[p]|b[p+1]<<8;}static int LE24(byte[] b,int p){return b[p]|b[p+1]<<8|b[p+2]<<16;}

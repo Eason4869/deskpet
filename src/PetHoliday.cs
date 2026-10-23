@@ -20,11 +20,11 @@ namespace Dafeiyu
         {open=source??(clip=>clip.OpenResource());}
         internal MotionClip Get(OutfitClipDefinition source)
         {
-            if(source==null)throw new InvalidDataException("服饰缺少当前动作。");
+            if(source==null)throw new InvalidDataException(TextResources.Get("petHoliday.get.text"));
             MotionClip clip;if(source.FrameCount==16 && source.Columns==4 && source==gazeSource)return gaze;
             if(clips.TryGetValue(source,out clip)){recent.Remove(source);recent.AddLast(source);return clip;}
             using(var stream=open(source)) {
-                if(stream==null)throw new InvalidDataException("服饰素材缺失。");
+                if(stream==null)throw new InvalidDataException(TextResources.Get("petHoliday.get.text.alternativeA"));
                 var image=BitmapDecoder.Create(stream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
                 clip=new MotionClip(image,source.FrameCount,source.FrameCount/source.Fps,source.Loop,source.FrameWidth,source.FrameHeight,source.Columns);
             }
@@ -36,7 +36,7 @@ namespace Dafeiyu
                 for(int y=0;y<clip.Height && !(visible && transparent);y++)for(int x=0;x<clip.Width && !(visible && transparent);x++) {
                     byte alpha=clip.AlphaAt(frame,x,y);if(alpha>16)visible=true;if(alpha==0)transparent=true;
                 }
-                if(!visible || !transparent)throw new InvalidDataException("服饰动作帧需要人物和透明背景。");
+                if(!visible || !transparent)throw new InvalidDataException(TextResources.Get("petHoliday.get.text.alternativeB"));
             }
             if(source.FrameCount==16 && source.Columns==4){gazeSource=source;gaze=clip;return clip;}
             if(clips.Count==3){clips.Remove(recent.First.Value);recent.RemoveFirst();}
@@ -87,7 +87,7 @@ namespace Dafeiyu
                 Holidays.Refresh(new HolidayContext{PersonaId=Skin.Id,CharacterId=Skin.BuiltinCharacterId,LocalTime=HolidayLocalTime(),MonotonicSeconds=watch.Elapsed.TotalSeconds,CanPlayEasterEgg=can && Animation.State=="idle" && !holidayTransition.Active && holidayFailedKey==null,CanAnimateTransition=can,ResourceVersion=Skin.BuiltinCharacterId+":"+Skin.NativeSourceKey});
                 if(!can || (holidayPlayback.Active && (holidayPlayback.Ticket==null || holidayPlayback.Ticket.Revision!=Holidays.Revision)))CancelHolidayPlayback();
                 RefreshHolidayAppearance(can);
-                if(!String.IsNullOrEmpty(Holidays.PersistenceWarning) && Holidays.PersistenceWarning!=holidayWarningShown){holidayWarningShown=Holidays.PersistenceWarning;Notice="服饰收藏尚未保存："+Holidays.PersistenceWarning;if(preferences!=null)preferences.ShowNotice(Notice);}
+                if(!String.IsNullOrEmpty(Holidays.PersistenceWarning) && Holidays.PersistenceWarning!=holidayWarningShown){holidayWarningShown=Holidays.PersistenceWarning;Notice=TextResources.Format("petHoliday.refreshHoliday.noticeHolidaysPersistenceWarning",Holidays.PersistenceWarning);if(preferences!=null)preferences.ShowNotice(Notice);}
                 if(can && !holidayPlayback.Active && !holidayTransition.Active) {
                     string notice=Holidays.TakeUnlockNotice();
                     if(!String.IsNullOrEmpty(notice))ShowHolidayNotice(notice);
@@ -139,7 +139,7 @@ namespace Dafeiyu
                     // outfit. Prepare that latest choice without a delayed cloud.
                     if(Holidays.EffectiveOutfit!=null){RefreshHolidayAppearance(false);UpdateFrame();}
                 }
-                Notice="节日服饰暂不可用，已恢复原装。";
+                Notice=TextResources.Get("petHoliday.rejectHolidayOutfit.notice");
             }finally{holidayRefreshing=refreshing;}
             if(image!=null)image.InvalidateVisual();
         }

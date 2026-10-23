@@ -47,7 +47,7 @@ namespace Dafeiyu
         {
             if(user)return;
             string duration=message.ProcessingStartedAt.HasValue?message.ProcessingLabel(DateTime.UtcNow):"";
-            string tools=events.Count>0?events.Count+" 项工具记录":"";
+            string tools=events.Count>0?TextResources.Format("processAvatar.refreshProcessRecordSummary.countEventsCount",events.Count):"";
             processRecordSummary.Text=duration+(duration.Length>0&&tools.Length>0?" · ":"")+tools;
             processRecordSummary.Visibility=message.Status!="pending"&&processRecordSummary.Text.Length>0?Visibility.Visible:Visibility.Collapsed;
         }

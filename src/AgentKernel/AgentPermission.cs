@@ -16,7 +16,7 @@ namespace Dafeiyu
         internal AgentAccessPolicy AccessPolicy;
         int version;public int Version {get{lock(gate)return version;}}
         public AgentPermissionRuntime Copy(){var copy=new AgentPermissionRuntime();copy.AccessPolicy=AccessPolicy;lock(gate)foreach(var rule in rules)copy.Add(rule);return copy;}
-        public void Add(AgentPermissionRule rule){if(rule==null || String.IsNullOrWhiteSpace(rule.Action) || String.IsNullOrWhiteSpace(rule.Resource))throw new ArgumentException("权限规则不完整。");lock(gate){rules.Add(new AgentPermissionRule{Action=rule.Action,Resource=rule.Resource,Effect=rule.Effect});version++;}}
+        public void Add(AgentPermissionRule rule){if(rule==null || String.IsNullOrWhiteSpace(rule.Action) || String.IsNullOrWhiteSpace(rule.Resource))throw new ArgumentException(TextResources.Get("agentPermission.add.text"));lock(gate){rules.Add(new AgentPermissionRule{Action=rule.Action,Resource=rule.Resource,Effect=rule.Effect});version++;}}
         public AgentPermissionDecision Decide(string action,string resource)
         {
             action=action??"";resource=resource??"";List<AgentPermissionRule> snapshot;lock(gate)snapshot=rules.ToList();

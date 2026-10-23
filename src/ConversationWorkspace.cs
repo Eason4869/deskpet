@@ -21,7 +21,7 @@ namespace Dafeiyu
         public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null)
         {
             if(project==null || conversation==null)throw new ArgumentNullException("project");
-            if(String.IsNullOrWhiteSpace(project.Id) || String.IsNullOrWhiteSpace(conversation.Id))throw new ArgumentException("项目和会话必须具有稳定 ID。");
+            if(String.IsNullOrWhiteSpace(project.Id) || String.IsNullOrWhiteSpace(conversation.Id))throw new ArgumentException(TextResources.Get("conversationWorkspace.create.text"));
             if(apiFactory==null || speechFactory==null || recorderFactory==null || settings==null)throw new ArgumentNullException("factories");
             var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,saveHistory=saveHistory??delegate{return true;}};
             workspace.DataDirectory=ResolveDataDirectory(dataRoot,conversation.Id);
@@ -30,7 +30,7 @@ namespace Dafeiyu
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
             try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else kernelStore.Clear();}
-            catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;workspace.Session.ReportKernelWarning("会话恢复记录无法读取，原文件已保留，请检查本地存储。");}
+            catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;workspace.Session.ReportKernelWarning(TextResources.Get("conversationWorkspace.create.workspaceSessionReportKernelWarning"));}
             if(model==null)model=new AgentSessionModel(conversation.Id,project.Id,conversation.Id);
             if(model.RecoveryState=="running")model.RecoveryState="interrupted";
             workspace.Session.ConfigureKernelSession(model,kernelStore);
@@ -40,7 +40,7 @@ namespace Dafeiyu
         // Rebinds an open workspace to another project after a drag-and-drop move.
         public void FollowProject(ProjectDefinition project)
         {
-            if(project==null)return;if(project.Id!=ProjectId && (Session.IsBusy || Queue.IsRunning))throw new InvalidOperationException("请先停止当前任务，再移动对话。");this.project=project;ProjectId=project.Id;ProjectWorkspace=project.Workspace;KernelSession.ProjectId=project.Id;
+            if(project==null)return;if(project.Id!=ProjectId && (Session.IsBusy || Queue.IsRunning))throw new InvalidOperationException(TextResources.Get("conversationWorkspace.followProject.text"));this.project=project;ProjectId=project.Id;ProjectWorkspace=project.Workspace;KernelSession.ProjectId=project.Id;
         }
         public PetSettings EffectiveSettings()
         {
@@ -57,17 +57,17 @@ namespace Dafeiyu
         }
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {
-            if(String.IsNullOrWhiteSpace(conversationId) || conversationId.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || conversationId=="." || conversationId=="..")throw new ArgumentException("会话 ID 无效。");
+            if(String.IsNullOrWhiteSpace(conversationId) || conversationId.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || conversationId=="." || conversationId=="..")throw new ArgumentException(TextResources.Get("conversationWorkspace.resolveDataDirectory.text"));
             string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));bool targetExists=Directory.Exists(target);if(targetExists&&Directory.Exists(Path.Combine(target,"history")))return target;
             string projects=Path.Combine(dataRoot,"projects");if(!Directory.Exists(projects))return target;
             var sources=new System.Collections.Generic.List<string>();
             foreach(string directory in Directory.EnumerateDirectories(projects)){string source=Path.Combine(directory,"chats",conversationId);if(Directory.Exists(source))sources.Add(source);}
             if(targetExists)
             {
-                if(!Directory.Exists(Path.Combine(target,"history"))&&sources.Any(source=>Directory.Exists(Path.Combine(source,"history"))))throw new IOException("现有会话目录与旧版历史目录冲突，原记录已保留，请先核对。");
+                if(!Directory.Exists(Path.Combine(target,"history"))&&sources.Any(source=>Directory.Exists(Path.Combine(source,"history"))))throw new IOException(TextResources.Get("conversationWorkspace.resolveDataDirectory.text.alternativeA"));
                 return target;
             }
-            if(sources.Count>1)throw new IOException("发现多个同 ID 会话目录，已保留原数据，请先核对。");
+            if(sources.Count>1)throw new IOException(TextResources.Get("conversationWorkspace.resolveDataDirectory.text.alternativeB"));
             if(sources.Count==1){Directory.CreateDirectory(Path.GetDirectoryName(target));Directory.Move(sources[0],target);}return target;
         }
         public async Task CloseAsync()
@@ -76,7 +76,7 @@ namespace Dafeiyu
             await Queue.PauseAsync().ConfigureAwait(false);
             await Session.StopAsync().ConfigureAwait(false);
             await Session.SaveHistoryForCloseAsync().ConfigureAwait(false);
-            if(saveHistory()&&(!String.IsNullOrEmpty(Session.HistoryWarning)||!String.IsNullOrEmpty(Session.AgentTaskWarning)))throw new IOException("会话记录尚未保存，已保留当前会话；请处理存储问题后重试关闭。");
+            if(saveHistory()&&(!String.IsNullOrEmpty(Session.HistoryWarning)||!String.IsNullOrEmpty(Session.AgentTaskWarning)))throw new IOException(TextResources.Get("conversationWorkspace.closeAsync.text"));
             Dispose();
         }
         public void Dispose()

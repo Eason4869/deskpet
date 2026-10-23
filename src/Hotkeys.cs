@@ -33,14 +33,14 @@ namespace Dafeiyu
         public HotkeyRegistry(IntPtr window){handle=window;}
         public bool TryBind(string action,string value,out string error)
         {
-            error="";if(disposed){error="快捷键已关闭。";return false;}
+            error="";if(disposed){error=TextResources.Get("hotkeys.tryBind.error");return false;}
             Binding old;bindings.TryGetValue(action,out old);
             if(String.IsNullOrWhiteSpace(value)){if(old!=null){UnregisterHotKey(handle,old.Id);bindings.Remove(action);}return true;}
-            HotkeyCombination combo;if(!HotkeyCombination.TryParse(value,out combo)){error="请输入 Ctrl/Alt/Shift/Win + 一个按键，留空可停用。";return false;}
+            HotkeyCombination combo;if(!HotkeyCombination.TryParse(value,out combo)){error=TextResources.Get("hotkeys.tryBind.error.alternativeA");return false;}
             if(old!=null && old.Combination.Key==combo.Key && old.Combination.Modifiers==combo.Modifiers)return true;
             // Register the replacement first. A conflict leaves the old registration intact.
             int id=System.Threading.Interlocked.Increment(ref sequence);
-            if(!RegisterHotKey(handle,id,combo.Modifiers|0x4000,combo.Key)){error="快捷键已被占用，已保留原快捷键。";return false;}
+            if(!RegisterHotKey(handle,id,combo.Modifiers|0x4000,combo.Key)){error=TextResources.Get("hotkeys.tryBind.error.alternativeB");return false;}
             if(old!=null)UnregisterHotKey(handle,old.Id);
             bindings[action]=new Binding{Id=id,Combination=combo};return true;
         }

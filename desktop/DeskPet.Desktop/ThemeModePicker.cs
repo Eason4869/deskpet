@@ -24,11 +24,11 @@ internal sealed class ThemeModePicker : UserControl
     {
         Name = "ThemeModePicker";
         var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        layout.Children.Add(new TextBlock { Text = "模式", FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        layout.Children.Add(new TextBlock { Text = TextResources.Get("themeModePicker.themeModePicker.text"), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })
         {
-            var title = mode == "system" ? "跟随系统" : mode == "light" ? "浅色" : "暗色";
+            var title = mode == "system" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode") : mode == "light" ? TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeA") : TextResources.Get("themeModePicker.themeModePicker.titleModeMode.alternativeB");
             var button = new Button { Name = "ThemeChoice" + mode, Content = Preview(mode), Width = 84, Height = 64, Padding = new Thickness(4), Background = Brushes.Transparent, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(10) };
             button.Classes.Add("theme-choice");
             ToolTip.SetTip(button, title); Avalonia.Automation.AutomationProperties.SetName(button, title);

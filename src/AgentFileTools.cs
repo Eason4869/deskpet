@@ -15,15 +15,15 @@ namespace Dafeiyu
             using(LockDirectories(path,false)){
                 var entries=Directory.EnumerateFileSystemEntries(path).Where(p=>!Path.GetFileName(p).Equals(BackupFolder,StringComparison.OrdinalIgnoreCase) && !Path.GetFileName(p).Equals(".deskpet-agent-kernel",StringComparison.OrdinalIgnoreCase) && (!RestrictToRoot || !Path.GetFileName(p).Equals(".git",StringComparison.OrdinalIgnoreCase))).OrderBy(p=>Path.GetFileName(p),StringComparer.OrdinalIgnoreCase).ToArray();
                 var output=new StringBuilder();foreach(string p in entries.Skip(offset).Take(limit)){
-                    token.ThrowIfCancellationRequested();var a=File.GetAttributes(p);output.Append((a&FileAttributes.ReparsePoint)!=0?"[跳过链接] ":(a&FileAttributes.Directory)!=0?"[目录] ":"[文件] ").AppendLine(Path.GetFileName(p));
+                    token.ThrowIfCancellationRequested();var a=File.GetAttributes(p);output.Append((a&FileAttributes.ReparsePoint)!=0?TextResources.Get("agentFileTools.listPage.outputAppend"):(a&FileAttributes.Directory)!=0?TextResources.Get("agentFileTools.listPage.outputAppend.alternativeA"):TextResources.Get("agentFileTools.listPage.outputAppend.alternativeB")).AppendLine(Path.GetFileName(p));
                 }
-                if(offset+limit<entries.Length)output.AppendLine("[已截断：next_offset="+(offset+limit)+"]");
-                return output.Length==0?"目录为空，或 offset 已超过末尾。":Clip(output.ToString());
+                if(offset+limit<entries.Length)output.AppendLine(TextResources.Format("agentFileTools.listPage.outputAppendLine",(offset+limit)));
+                return output.Length==0?TextResources.Get("agentFileTools.listPage.text"):Clip(output.ToString());
             }
         }
         static Regex FilePattern(string pattern)
         {
-            if(String.IsNullOrEmpty(pattern) || pattern.Length>200 || pattern.Any(Char.IsControl))throw new ArgumentException("pattern 应为 1～200 个字符的文件路径模式。");
+            if(String.IsNullOrEmpty(pattern) || pattern.Length>200 || pattern.Any(Char.IsControl))throw new ArgumentException(TextResources.Get("agentFileTools.filePattern.text"));
             string value=pattern.Replace('\\','/');var regex=new StringBuilder("^");
             for(int i=0;i<value.Length;i++){
                 if(value[i]=='*' && i+1<value.Length && value[i+1]=='*'){
@@ -47,15 +47,15 @@ namespace Dafeiyu
         {
             var match=FilePattern(pattern);var files=Discover(path,token).Where(p=>match.IsMatch(Relative(p))).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase).ToList();
             var output=new StringBuilder();foreach(string p in files.Skip(offset).Take(limit))output.AppendLine(Relative(p));
-            if(offset+limit<files.Count)output.AppendLine("[已截断：next_offset="+(offset+limit)+"]");
-            output.AppendLine("[匹配 "+files.Count+" 项；扫描最多 1500 项，目录深度最多 12 层]");return Clip(output.ToString());
+            if(offset+limit<files.Count)output.AppendLine(TextResources.Format("agentFileTools.findFiles.outputAppendLine",(offset+limit)));
+            output.AppendLine(TextResources.Format("agentFileTools.findFiles.outputAppendLine.alternativeA",files.Count));return Clip(output.ToString());
         }
         string ReadFiles(Dictionary<string,object> args,CancellationToken token)
         {
-            object value;if(!args.TryGetValue("paths",out value) || !(value is object[]))throw new ArgumentException("paths 必须是文件路径数组。");
-            var paths=(object[])value;if(paths.Length<1 || paths.Length>8 || paths.Any(p=>!(p is string)))throw new ArgumentException("一次读取 1～8 个文件。");
+            object value;if(!args.TryGetValue("paths",out value) || !(value is object[]))throw new ArgumentException(TextResources.Get("agentFileTools.readFiles.text"));
+            var paths=(object[])value;if(paths.Length<1 || paths.Length>8 || paths.Any(p=>!(p is string)))throw new ArgumentException(TextResources.Get("agentFileTools.readFiles.text.alternativeA"));
             var resolved=paths.Select(p=>Resolve((string)p)).ToArray();int offset=GetInt(args,"offset",0,0,1000000),limit=GetInt(args,"limit",100,1,1000);
-            var output=new StringBuilder();foreach(string p in resolved){token.ThrowIfCancellationRequested();string content=ReadFile(p,offset,limit,token);if(output.Length+content.Length>MaxResultChars-300){output.AppendLine("[批量输出已截断；请对 "+Relative(p)+" 使用 read_file 分段读取]");break;}output.AppendLine("--- "+Relative(p)+" ---").AppendLine(content);}
+            var output=new StringBuilder();foreach(string p in resolved){token.ThrowIfCancellationRequested();string content=ReadFile(p,offset,limit,token);if(output.Length+content.Length>MaxResultChars-300){output.AppendLine(TextResources.Format("agentFileTools.readFiles.outputAppendLine",Relative(p)));break;}output.AppendLine("--- "+Relative(p)+" ---").AppendLine(content);}
             return Clip(output.ToString());
         }
     }

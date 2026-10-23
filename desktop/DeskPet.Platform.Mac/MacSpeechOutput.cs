@@ -15,12 +15,12 @@ internal sealed class MacSpeechOutput(ApiClient api) : IReplySpeech
     public async Task SpeakAsync(string reply, PetSettings settings, CancellationToken cancel)
     {
         MacServices.EnsureMac();
-        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", "（代码内容请看聊天窗口）");
+        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", TextResources.Get("speech.codeOmitted"));
         text = Regex.Replace(text, "[\\*#`]|https?://\\S+", "").Trim();
-        if (text.Length > 1800) text = text[..1800] + "。剩下内容请看聊天窗口。";
+        if (text.Length > 1800) text = TextResources.Format("macSpeechOutput.speakAsync.textText",text[..1800]);
         if (text.Length == 0 || settings.Volume == 0) return;
         using var reading = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-        lock (gate) { ObjectDisposedException.ThrowIf(disposed, this); if (active != null) throw new InvalidOperationException("正在朗读，请先停止。"); active = reading; volume = Math.Clamp(settings.Volume, 0, 100); }
+        lock (gate) { ObjectDisposedException.ThrowIf(disposed, this); if (active != null) throw new InvalidOperationException(TextResources.Get("macSpeechOutput.speakAsync.text")); active = reading; volume = Math.Clamp(settings.Volume, 0, 100); }
         reading.CancelAfter(TimeSpan.FromMinutes(4));
         try
         {
@@ -28,12 +28,12 @@ internal sealed class MacSpeechOutput(ApiClient api) : IReplySpeech
             {
                 var bytes = await api.SpeechAsync(settings.SpeechConnection(), settings.VoiceName, text, reading.Token);
                 reading.Token.ThrowIfCancellationRequested();
-                lock (gate) { wave = Native.WaveStart(bytes, bytes.Length, volume / 100f); if (wave == IntPtr.Zero) throw new InvalidOperationException("无法播放模型语音，请检查返回音频和输出设备。"); }
+                lock (gate) { wave = Native.WaveStart(bytes, bytes.Length, volume / 100f); if (wave == IntPtr.Zero) throw new InvalidOperationException(TextResources.Get("macSpeechOutput.speakAsync.text.alternativeA")); }
                 while (true)
                 {
                     reading.Token.ThrowIfCancellationRequested();
                     int status; lock (gate) status = Native.WaveStatus(wave);
-                    if (status < 0) throw new InvalidOperationException("模型语音播放中断，请检查输出设备。");
+                    if (status < 0) throw new InvalidOperationException(TextResources.Get("macSpeechOutput.speakAsync.text.alternativeB"));
                     if (status == 0) break;
                     await Task.Delay(50, reading.Token);
                 }

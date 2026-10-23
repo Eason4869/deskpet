@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -79,7 +79,7 @@ internal sealed partial class DesktopController : IDisposable
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
         var requested = Settings.PendingOfficialCompanionId.Length != 0 ? Skins.FirstOrDefault(s => s.OfficialCharacterId == Settings.PendingOfficialCompanionId) : ResolveSavedCompanion();
         requested ??= embeddedEbao;
-        Skin = requested;
+        Skin = RestoreCachedStartupCompanion(requested);
         if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices);
         Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
@@ -112,8 +112,8 @@ internal sealed partial class DesktopController : IDisposable
         tray.Clicked += (_, _) => ShowPet();
         var menu = new NativeMenu();
         void Add(string text, Action action) { var item = new NativeMenuItem(text); item.Click += (_, _) => action(); menu.Items.Add(item); }
-        Add("显示伙伴", ShowPet); Add("快速对话", () => ShowChat(true)); Add("完整聊天", () => ShowChat(false));
-        Add("互动轮盘", () => Pet.ShowPalette()); Add("设置", ShowSettings); Add("使用引导", ShowGuide); Add("关于与更新", ShowAbout); Add("退出", () => Run(ExitAsync));
+        Add(TextResources.Get("desktopController.desktopController.text"), ShowPet); Add(TextResources.Get("desktopController.desktopController.text.alternativeA"), () => ShowChat(true)); Add(TextResources.Get("desktopController.desktopController.text.alternativeB"), () => ShowChat(false));
+        Add(TextResources.Get("desktopController.desktopController.text.alternativeC"), () => Pet.ShowPalette()); Add(TextResources.Get("desktopController.desktopController.text.alternativeD"), ShowSettings); Add(TextResources.Get("desktopController.desktopController.text.alternativeE"), ShowGuide); Add(TextResources.Get("desktopController.desktopController.text.alternativeF"), ShowAbout); Add(TextResources.Get("desktopController.desktopController.text.alternativeG"), () => Run(ExitAsync));
         tray.Menu = menu;
         TrayIcon.SetIcons(Application.Current!, new TrayIcons { tray });
     }
@@ -133,11 +133,11 @@ internal sealed partial class DesktopController : IDisposable
             if(imageNotification==null)
             {
                 imageNotificationText=Ui.Text("");
-                imageNotification=Ui.Window("图片任务",Ui.Column(imageNotificationText,Ui.Row(Ui.Button("查看任务",()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),Ui.Button("关闭",()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
+                imageNotification=Ui.Window(TextResources.Get("desktopController.imageTaskCompleted.window"),Ui.Column(imageNotificationText,Ui.Row(Ui.Button(TextResources.Get("desktopController.imageTaskCompleted.text"),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),Ui.Button(TextResources.Get("common.close"),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
                 imageNotification.Name="ImageTaskCompletionNotification";imageNotification.ShowActivated=false;imageNotification.ShowInTaskbar=false;
                 imageNotification.Closed+=(_,_)=>{imageNotification=null;imageNoticeTimer.Stop();};
             }
-            imageNotificationText!.Text=ImageGenerationMotion.Label(task)+"。可在任务中心查看结果和处理详情。";
+            imageNotificationText!.Text=TextResources.Format("desktopController.imageTaskCompleted.imageNotificationTextImageGenerationMotion",ImageGenerationMotion.Label(task));
             imageNotification.Show();imageNoticeTimer.Stop();imageNoticeTimer.Start();
         });
     }
@@ -161,7 +161,7 @@ internal sealed partial class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
-    internal Task RepairImageDeliveryAsync(string id) { if(exiting)throw new OperationCanceledException("应用正在退出。");return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None); }
+    internal Task RepairImageDeliveryAsync(string id) { if(exiting)throw new OperationCanceledException(TextResources.Get("desktopController.repairImageDeliveryAsync.text"));return ImageTaskCenterState.RepairExistingAsync(ImageTasks,ImageStore,ImageUsage,new[]{Session},null,DataDirectory,id,Settings.SaveChatHistory,CancellationToken.None); }
     public void ShowImages(GeneratedImage? image = null) { ShowChat(false); fullChat!.ShowImages(image); }
     internal void RegisterChatHost(ChatWindow host) => chatHosts.Add(host);
     internal void ChatHostClosed(ChatWindow host)
@@ -204,7 +204,7 @@ internal sealed partial class DesktopController : IDisposable
         {
             if (!Settings.Hotkeys.TryGetValue(binding.Id, out var value) || value != "enabled") continue;
             try { hotkeys.Add(MacServices.RegisterHotKey(binding.Key, MacHotKeyModifiers.Command | MacHotKeyModifiers.Shift, () => Dispatcher.UIThread.Post(binding.Action))); }
-            catch (Exception e) { Error(new InvalidOperationException("快捷键注册失败（" + binding.Id + "）：" + e.Message)); }
+            catch (Exception e) { Error(new InvalidOperationException(TextResources.Format("desktopController.registerHotkeys.error",binding.Id,e.Message))); }
         }
     }
     public void Run(Func<Task> action) => _ = RunSafe(action);
@@ -214,8 +214,8 @@ internal sealed partial class DesktopController : IDisposable
     public void Error(Exception e)
     {
         if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(() => Error(e)); return; }
-        var text = e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : "操作失败（" + e.GetType().Name + "）。请检查网络、权限和数据目录。";
-        var window = Ui.Window("DeskPet · 操作提示", Ui.Text(text), 460, 250); window.Show();
+        var text = e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : TextResources.Format("desktopController.error.messageEGetType",e.GetType().Name);
+        var window = Ui.Window(TextResources.Get("desktopController.error.window"), Ui.Text(text), 460, 250); window.Show();
     }
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()
@@ -251,7 +251,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
-        companionLifetime.Cancel(); companionSelection?.Cancel(); officialCompanions.Dispose(); companionNative.Dispose();
+        companionLifetime.Cancel(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         imageNoticeTimer.Stop();
         imageNotification?.Close();

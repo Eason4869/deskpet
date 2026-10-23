@@ -93,7 +93,7 @@ internal sealed class MarkdownView : StackPanel
         {
             var label = MarkdownContent.PlainText(node.Children).Trim();
             if (string.IsNullOrEmpty(label)) label = string.IsNullOrEmpty(node.Text) ? node.Url : node.Text;
-            if (node.Kind == "image") label = "图片：" + label;
+            if (node.Kind == "image") label = TextResources.Format("markdownView.inline.labelLabel",label);
             if (MarkdownContent.TryLink(node.Url, out var uri))
             {
                 var link = new Button { Name = "MarkdownLink", Content = label, Padding = new Thickness(0), Margin = new Thickness(0), MinHeight = 0, MinWidth = 0, Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = DesktopTheme.Brush("#246ED8"), Cursor = new Cursor(StandardCursorType.Hand) };

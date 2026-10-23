@@ -48,7 +48,7 @@ internal sealed partial class PetWindow : Window
         WindowDecorations = WindowDecorations.None;
         TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
-        Title = "DeskPet";
+        Title = TextResources.Get("petWindow.petWindow.title");
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
         playback = new InteractionPlayback(ResolveHolidayAction);
         InitializeHoliday();
@@ -103,25 +103,25 @@ internal sealed partial class PetWindow : Window
     {
         var menu = new ContextMenu(); var items = new List<object>();
         void Add(string label, Action command) { var item = new MenuItem { Header = label }; item.Click += (_, _) => command(); items.Add(item); }
-        Add("快速对话", () => owner.ShowChat(true)); Add("完整聊天与队列", () => owner.ShowChat(false));
-        Add("四格轮盘", ShowPalette); Add("喂零食", () => Interact("feeding")); Add("摸摸", () => Interact("petting"));
-        Add("小憩 / 唤醒", () => { if (action == "sleeping") Play("idle", false); else Interact("sleeping"); });
+        Add(TextResources.Get("petWindow.buildMenu.text"), () => owner.ShowChat(true)); Add(TextResources.Get("petWindow.buildMenu.text.alternativeA"), () => owner.ShowChat(false));
+        Add(TextResources.Get("petWindow.buildMenu.text.alternativeB"), ShowPalette); Add(TextResources.Get("petWindow.buildMenu.text.alternativeC"), () => Interact("feeding")); Add(TextResources.Get("petWindow.buildMenu.text.alternativeD"), () => Interact("petting"));
+        Add(TextResources.Get("petWindow.buildMenu.text.alternativeE"), () => { if (action == "sleeping") Play("idle", false); else Interact("sleeping"); });
         Add(owner.Skin.SpecialAction, () => Interact("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(owner.Skin.SpecialAction2, () => Interact("special2"));
-        Add("暂停 / 继续", () => Paused = !Paused); Add("隐藏伙伴", Hide);
+        Add(TextResources.Get("petWindow.buildMenu.text.alternativeF"), () => Paused = !Paused); Add(TextResources.Get("petWindow.buildMenu.text.alternativeG"), Hide);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
-            var item = new MenuItem { Header = "切换 · " + skin.Name, Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
+            var item = new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.Name), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
             item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
-        Add("设置", owner.ShowSettings); Add("使用引导", owner.ShowGuide); Add("关于与更新", owner.ShowAbout); Add("退出", () => owner.Run(owner.ExitAsync));
+        Add(TextResources.Get("petWindow.buildMenu.text.alternativeH"), owner.ShowSettings); Add(TextResources.Get("petWindow.buildMenu.text.alternativeI"), owner.ShowGuide); Add(TextResources.Get("petWindow.buildMenu.text.alternativeJ"), owner.ShowAbout); Add(TextResources.Get("petWindow.buildMenu.text.alternativeK"), () => owner.Run(owner.ExitAsync));
         menu.ItemsSource = items; return menu;
     }
     public void ShowPalette()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), RowDefinitions = new RowDefinitions("*,*") };
-        var choices = new (string, Action)[] { ("聊天", () => owner.ShowChat(true)), ("喂零食", () => Interact("feeding")), ("小憩", () => Interact("sleeping")), ("招牌动作", () => Interact(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
-        var window = Ui.Window("伙伴互动", grid, 290, 280); window.Topmost = true;
+        var choices = new (string, Action)[] { (TextResources.Get("petWindow.showPalette.choices"), () => owner.ShowChat(true)), (TextResources.Get("petWindow.showPalette.choices.alternativeA"), () => Interact("feeding")), (TextResources.Get("petWindow.showPalette.choices.alternativeB"), () => Interact("sleeping")), (TextResources.Get("petWindow.showPalette.choices.alternativeC"), () => Interact(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
+        var window = Ui.Window(TextResources.Get("petWindow.showPalette.window"), grid, 290, 280); window.Topmost = true;
         for (int i = 0; i < choices.Length; i++) { var c = choices[i]; var b = Ui.Button(c.Item1, () => { c.Item2(); window.Close(); }); b.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch; b.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch; b.Margin = new Thickness(5); Grid.SetColumn(b, i % 2); Grid.SetRow(b, i / 2); grid.Children.Add(b); }
         window.Show();
     }
@@ -316,7 +316,7 @@ internal sealed partial class PetWindow : Window
             RefreshHoliday(true);
             if (cancellation.IsCancellationRequested || owner.Skin.Id != id || !GreetingAllowed || HolidayLocalNow().Date != date || owner.Holidays.Revision != revision || owner.Settings.AiGreetingEnabled != aiEnabled || holiday != null && !owner.Holidays.IsGreetingCurrent(holiday)) return;
             recentGreetings.Add(text); if (recentGreetings.Count > 6) recentGreetings.RemoveAt(0);
-            var bubble = new Window { Width = 320, Height = 115, CanResize = false, ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = name + "的问候", Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(Ui.Text(text), Ui.Button("聊两句", () => { DismissGreeting(); owner.ShowChat(true); })) } };
+            var bubble = new Window { Width = 320, Height = 115, CanResize = false, ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = TextResources.Format("petWindow.showGreetingAsync.titleName",name), Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(Ui.Text(text), Ui.Button(TextResources.Get("petWindow.showGreetingAsync.text"), () => { DismissGreeting(); owner.ShowChat(true); })) } };
             greetingBubble = bubble;
             var area = WorkArea(); bubble.Position = new PixelPoint(Math.Clamp(Position.X - 50, area.X, Math.Max(area.X, area.Right - (int)(320 * RenderScaling))), Math.Max(area.Y, Position.Y - (int)(120 * RenderScaling)));
             bubble.Show();

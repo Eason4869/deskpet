@@ -43,8 +43,8 @@ namespace Dafeiyu
         public bool Illustrated { get { return Manifest!=null && Manifest.Version==2; } }
         public string SpecialAction { get {
             if(Illustrated && !String.IsNullOrWhiteSpace(Manifest.SpecialAction))return Manifest.SpecialAction;
-            if(Embedded){switch(BuiltinCharacterId??Id){case "e-bao":return "傲娇扭头";case "dafeiyu":return "摇尾欢呼";case "marfu":return "挥杖流光";}}
-            return "伙伴招牌";
+            if(Embedded){switch(BuiltinCharacterId??Id){case "e-bao":return TextResources.Get("skinCatalog.specialAction.text");case "dafeiyu":return TextResources.Get("skinCatalog.specialAction.text.alternativeA");case "marfu":return TextResources.Get("skinCatalog.specialAction.text.alternativeB");}}
+            return TextResources.Get("skinCatalog.specialAction.text.alternativeC");
         } }
         internal SkinDefinition(string id,string folder,SkinManifest manifest) : this(id,SkinCatalog.CleanName(manifest.Name),folder,manifest.Preview,false,manifest.SystemPrompt,manifest.Description) { Manifest=manifest; }
         public string Id { get; private set; }
@@ -71,12 +71,12 @@ namespace Dafeiyu
         {
             Id=id; Name=name; Source=source; Preview=preview; Embedded=embedded;
             SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? (id=="dafeiyu" ? PersonaProfiles.Dafeiyu : id=="e-bao" ? PersonaProfiles.Ebao : PersonaProfiles.Generic(name)) : prompt.Trim();
-            Description=description ?? (id=="e-bao" ? "傲娇毒舌 · 白发正太" : id=="dafeiyu" ? "温和俏皮 · 蓝白鲸鱼娘" : "你的专属桌面伙伴");
+            Description=description ?? (id=="e-bao" ? TextResources.Get("skinCatalog.skinDefinition.descriptionDescription") : id=="dafeiyu" ? TextResources.Get("skinCatalog.skinDefinition.descriptionDescription.alternativeA") : TextResources.Get("skinCatalog.skinDefinition.descriptionDescription.alternativeB"));
         }
         public override string ToString() { return Name; }
         public SpriteAtlas Load()
         {
-            if(IsPlaceholder)throw new InvalidOperationException("请先下载完整角色包。");
+            if(IsPlaceholder)throw new InvalidOperationException(TextResources.Get("skinCatalog.load.text"));
             if(PreparedOfficialAtlas!=null)return PreparedOfficialAtlas;
             return Illustrated ? new SpriteAtlas(Source,Manifest) : new SpriteAtlas(Source,Embedded);
         }
@@ -198,9 +198,9 @@ namespace Dafeiyu
         }
         public void Remove(SkinDefinition skin)
         {
-            if(skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao")throw new InvalidOperationException("默认伙伴用于离线启动，不能删除。");
-            if(skins.Count<=1)throw new InvalidOperationException("至少保留一位伙伴。");
-            if(!skins.Contains(skin))throw new InvalidOperationException("伙伴已不在列表中。");
+            if(skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao")throw new InvalidOperationException(TextResources.Get("skinCatalog.remove.text"));
+            if(skins.Count<=1)throw new InvalidOperationException(TextResources.Get("skinCatalog.remove.text.alternativeA"));
+            if(!skins.Contains(skin))throw new InvalidOperationException(TextResources.Get("skinCatalog.remove.text.alternativeB"));
             CompanionPackStorage.SetHidden(dataRoot,skin.PickerKey,true);skins.Remove(skin);if(CompanionRemoved!=null)CompanionRemoved(skin);
         }
         public void RestoreRemoved()
@@ -238,14 +238,14 @@ namespace Dafeiyu
             if(String.Equals(Path.GetExtension(path),".json",StringComparison.OrdinalIgnoreCase))
             { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m); atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
             else
-            { if(!String.Equals(Path.GetExtension(path),".png",StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("请选择透明 PNG 精灵图或 pet.json 外观文件。"); atlas=path; name=CleanName(Path.GetFileNameWithoutExtension(path)); }
+            { if(!String.Equals(Path.GetExtension(path),".png",StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException(TextResources.Get("skinCatalog.import.text")); atlas=path; name=CleanName(Path.GetFileNameWithoutExtension(path)); }
             ValidatePng(atlas);
             // Decode and validate every required frame before adding a saved design.
             try { new SpriteAtlas(atlas,false); }
             catch(Exception e)
             {
                 if(!(e is FileFormatException || e is NotSupportedException || e is ArgumentException)) throw;
-                throw new InvalidOperationException("PNG 图像无法解码，请重新导出完整的透明精灵图。",e);
+                throw new InvalidOperationException(TextResources.Get("skinCatalog.import.text.alternativeA"),e);
             }
             string id="skin-"+Guid.NewGuid().ToString("N");
             string destination=Path.Combine(directory,id);
@@ -270,7 +270,7 @@ namespace Dafeiyu
             string source=Path.GetDirectoryName(Path.GetFullPath(path));
             var files=IllustratedPack.Validate(source,manifest,true);
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
-                if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("完整角色包说明请命名为 pet.json。");
+                if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("skinCatalog.importIllustrated.text"));
                 bool existing=customPackageIds.Contains(manifest.PackageId);
                 string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);
                 string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,files,
@@ -302,31 +302,31 @@ namespace Dafeiyu
         }
         internal static SkinManifest ReadManifest(Stream stream)
         {
-            if(stream.Length>65536) throw new InvalidOperationException("外观说明文件过大。");
+            if(stream.Length>65536) throw new InvalidOperationException(TextResources.Get("skinCatalog.readManifest.text"));
             var result=(SkinManifest)Serializer().ReadObject(stream);
-            if(result==null || (result.Version!=1 && result.Version!=2)) throw new InvalidOperationException("外观版本应为 1 或 2。");
-            if((result.SystemPrompt ?? "").Length>8000 || (result.Description ?? "").Length>1000) throw new InvalidOperationException("人格最多 8000 字，简介最多 1000 字。");
+            if(result==null || (result.Version!=1 && result.Version!=2)) throw new InvalidOperationException(TextResources.Get("skinCatalog.readManifest.text.alternativeA"));
+            if((result.SystemPrompt ?? "").Length>8000 || (result.Description ?? "").Length>1000) throw new InvalidOperationException(TextResources.Get("skinCatalog.readManifest.text.alternativeB"));
             return result;
         }
         private static string AtlasPath(string folder,string filename)
         {
             if(String.IsNullOrWhiteSpace(filename) || filename!=Path.GetFileName(filename) || filename.IndexOfAny(new char[]{'/', '\\', ':'})>=0 || !String.Equals(Path.GetExtension(filename),".png",StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("atlas 必须是与 pet.json 同文件夹的 PNG 文件名。");
+                throw new InvalidOperationException(TextResources.Get("skinCatalog.atlasPath.text"));
             return Path.Combine(folder,filename);
         }
         internal static string CleanName(string name)
         {
             string result=new string((name??"").Where(c=>!Char.IsControl(c)).ToArray()).Trim();
-            return result.Length==0 ? "新伙伴" : result.Substring(0,Math.Min(32,result.Length));
+            return result.Length==0 ? TextResources.Get("skinCatalog.cleanName.text") : result.Substring(0,Math.Min(32,result.Length));
         }
         public static void ValidatePng(string path)
         {
             using(var stream=File.OpenRead(path))
             {
-                if(stream.Length>25*1024*1024 || stream.Length<33) throw new InvalidOperationException("PNG 文件大小应小于 25 MB。");
-                byte[] header=new byte[33]; if(stream.Read(header,0,header.Length)!=header.Length) throw new InvalidOperationException("PNG 文件不完整。");
+                if(stream.Length>25*1024*1024 || stream.Length<33) throw new InvalidOperationException(TextResources.Get("skinCatalog.validatePng.text"));
+                byte[] header=new byte[33]; if(stream.Read(header,0,header.Length)!=header.Length) throw new InvalidOperationException(TextResources.Get("skinCatalog.validatePng.text.alternativeA"));
                 byte[] signature={137,80,78,71,13,10,26,10};
-                if(!header.Take(8).SequenceEqual(signature) || Encoding.ASCII.GetString(header,12,4)!="IHDR") throw new InvalidOperationException("文件不是有效的 PNG 精灵图。");
+                if(!header.Take(8).SequenceEqual(signature) || Encoding.ASCII.GetString(header,12,4)!="IHDR") throw new InvalidOperationException(TextResources.Get("skinCatalog.validatePng.text.alternativeB"));
                 int width=BigEndian(header,16),height=BigEndian(header,20);
                 SpriteAtlas.ValidateDimensions(width,height);
             }
@@ -369,9 +369,9 @@ namespace Dafeiyu
             var row=new FrameworkElementFactory(typeof(System.Windows.Controls.DockPanel));
             row.SetValue(System.Windows.Controls.DockPanel.LastChildFillProperty,true);
             if(remove!=null) {
-                var button=new FrameworkElementFactory(typeof(System.Windows.Controls.Button));button.SetValue(FrameworkElement.NameProperty,"DeleteCompanion");button.SetValue(System.Windows.Controls.ContentControl.ContentProperty,"\uE74D");button.SetValue(System.Windows.Controls.Control.FontFamilyProperty,new System.Windows.Media.FontFamily("Segoe MDL2 Assets"));button.SetValue(FrameworkElement.WidthProperty,28.0);button.SetValue(FrameworkElement.HeightProperty,28.0);button.SetValue(FrameworkElement.MarginProperty,new Thickness(8,0,0,0));button.SetValue(System.Windows.Controls.Control.BackgroundProperty,System.Windows.Media.Brushes.Transparent);button.SetValue(System.Windows.Controls.Control.BorderThicknessProperty,new Thickness(0));button.SetValue(UIElement.FocusableProperty,false);button.SetValue(FrameworkElement.ToolTipProperty,"删除伙伴（保留聊天和配置）");button.SetValue(System.Windows.Controls.DockPanel.DockProperty,System.Windows.Controls.Dock.Right);
+                var button=new FrameworkElementFactory(typeof(System.Windows.Controls.Button));button.SetValue(FrameworkElement.NameProperty,"DeleteCompanion");button.SetValue(System.Windows.Controls.ContentControl.ContentProperty,"\uE74D");button.SetValue(System.Windows.Controls.Control.FontFamilyProperty,new System.Windows.Media.FontFamily("Segoe MDL2 Assets"));button.SetValue(FrameworkElement.WidthProperty,28.0);button.SetValue(FrameworkElement.HeightProperty,28.0);button.SetValue(FrameworkElement.MarginProperty,new Thickness(8,0,0,0));button.SetValue(System.Windows.Controls.Control.BackgroundProperty,System.Windows.Media.Brushes.Transparent);button.SetValue(System.Windows.Controls.Control.BorderThicknessProperty,new Thickness(0));button.SetValue(UIElement.FocusableProperty,false);button.SetValue(FrameworkElement.ToolTipProperty,TextResources.Get("skinCatalog.avatarTemplate.buttonSetValue"));button.SetValue(System.Windows.Controls.DockPanel.DockProperty,System.Windows.Controls.Dock.Right);
                 button.SetBinding(UIElement.VisibilityProperty,new System.Windows.Data.Binding("IsVisible"){RelativeSource=new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor,typeof(System.Windows.Controls.ComboBoxItem),1),Converter=new System.Windows.Controls.BooleanToVisibilityConverter(),FallbackValue=Visibility.Collapsed});
-                button.AddHandler(FrameworkElement.LoadedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){var control=(System.Windows.Controls.Button)sender;var skin=control.DataContext as SkinDefinition;bool reserved=skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao";control.IsEnabled=!reserved&&(canRemove==null||canRemove());if(reserved)control.ToolTip="默认伙伴用于离线启动，不能删除";}));
+                button.AddHandler(FrameworkElement.LoadedEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){var control=(System.Windows.Controls.Button)sender;var skin=control.DataContext as SkinDefinition;bool reserved=skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao";control.IsEnabled=!reserved&&(canRemove==null||canRemove());if(reserved)control.ToolTip=TextResources.Get("skinCatalog.avatarTemplate.controlToolTip");}));
                 button.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent,new RoutedEventHandler(delegate(object sender,RoutedEventArgs e){e.Handled=true;var skin=((FrameworkElement)sender).DataContext as SkinDefinition;if(skin!=null)remove(skin);}));row.AppendChild(button);
             }
             var image=new FrameworkElementFactory(typeof(System.Windows.Controls.Image));image.SetValue(FrameworkElement.WidthProperty,28.0);image.SetValue(FrameworkElement.HeightProperty,28.0);image.SetValue(UIElement.ClipProperty,new System.Windows.Media.RectangleGeometry(new Rect(0,0,28,28),5.6,5.6));image.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,9,0));image.SetBinding(System.Windows.Controls.Image.SourceProperty,new System.Windows.Data.Binding{Converter=new AvatarConverter()});row.AppendChild(image);
@@ -387,7 +387,7 @@ namespace Dafeiyu
             if(skin.Illustrated) return IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,skin.Manifest.Preview),480,520);
             using(Stream stream=skin.Embedded ? Assembly.GetExecutingAssembly().GetManifestResourceStream(skin.Preview) : File.OpenRead(skin.Source))
             {
-                if(stream==null) throw new InvalidOperationException("找不到外观预览。");
+                if(stream==null) throw new InvalidOperationException(TextResources.Get("skinCatalog.getPreview.text"));
                 var image=new BitmapImage(); image.BeginInit(); image.CacheOption=BitmapCacheOption.OnLoad;
                 image.StreamSource=stream; image.DecodePixelWidth=skin.Embedded ? 480 : 3840; image.EndInit(); image.Freeze();
                 if(skin.Embedded) return image;

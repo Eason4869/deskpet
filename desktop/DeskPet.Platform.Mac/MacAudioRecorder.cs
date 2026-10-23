@@ -22,11 +22,11 @@ internal sealed class MacAudioRecorder(bool streaming, IMacMicrophone? capture =
         lock (lifecycle)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            if (started || finished || device != IntPtr.Zero) throw new InvalidOperationException("录音器已经使用。");
+            if (started || finished || device != IntPtr.Zero) throw new InvalidOperationException(TextResources.Get("macAudioRecorder.start.text"));
             if (capture.Access != MicrophonePermission.Authorized)
-                throw new InvalidOperationException("没有麦克风权限，请在系统设置 > 隐私与安全性 > 麦克风中允许 DeskPet；文字对话仍可使用。");
+                throw new InvalidOperationException(TextResources.Get("macAudioRecorder.start.text.alternativeA"));
             device = capture.Start(out var error);
-            if (device == IntPtr.Zero) throw new InvalidOperationException($"无法启动麦克风（状态 {error}），请检查默认输入设备。");
+            if (device == IntPtr.Zero) throw new InvalidOperationException(TextResources.Format("macAudioRecorder.start.template",error));
             started = true;
             worker = new Thread(Drain) { IsBackground = true, Name = "DeskPet Mac microphone" };
             worker.Start();
@@ -41,7 +41,7 @@ internal sealed class MacAudioRecorder(bool streaming, IMacMicrophone? capture =
             while (!stopping)
             {
                 var count = capture.Read(device, buffer);
-                if (count < 0) throw new InvalidOperationException("麦克风设备已断开或录音已中断。");
+                if (count < 0) throw new InvalidOperationException(TextResources.Get("macAudioRecorder.drain.text"));
                 if (count > 0)
                 {
                     progress.Restart();
@@ -55,7 +55,7 @@ internal sealed class MacAudioRecorder(bool streaming, IMacMicrophone? capture =
                     if (stopping) break; // A consumer may dispose synchronously in PcmAvailable.
                     if (!streaming && pcm.Length >= 60 * 32000) break;
                 }
-                else if (progress.Elapsed > TimeSpan.FromSeconds(5)) throw new InvalidOperationException("麦克风连续 5 秒没有输入数据，请检查权限及输入设备。");
+                else if (progress.Elapsed > TimeSpan.FromSeconds(5)) throw new InvalidOperationException(TextResources.Get("macAudioRecorder.drain.text.alternativeA"));
                 Thread.Sleep(20);
             }
         }
@@ -63,7 +63,7 @@ internal sealed class MacAudioRecorder(bool streaming, IMacMicrophone? capture =
         {
             failure = ex;
             var handler = Failed;
-            if (handler != null) ThreadPool.QueueUserWorkItem(_ => handler("麦克风录音中断，请检查输入设备与权限。"));
+            if (handler != null) ThreadPool.QueueUserWorkItem(_ => handler(TextResources.Get("macAudioRecorder.drain.handler")));
         }
         finally
         {
@@ -79,9 +79,9 @@ internal sealed class MacAudioRecorder(bool streaming, IMacMicrophone? capture =
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             Release();
-            if (failure != null) throw new InvalidOperationException("录音中断，请检查麦克风后重试。", failure);
+            if (failure != null) throw new InvalidOperationException(TextResources.Get("macAudioRecorder.finishAsync.taskRun"), failure);
             var bytes = pcm.ToArray();
-            if (bytes.Length < 12800) throw new InvalidOperationException("录音太短，请至少说半秒后再发送。");
+            if (bytes.Length < 12800) throw new InvalidOperationException(TextResources.Get("macAudioRecorder.finishAsync.taskRun.alternativeA"));
             return WaveData.EncodePcm(bytes);
         }
     });

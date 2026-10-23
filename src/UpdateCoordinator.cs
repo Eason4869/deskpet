@@ -33,7 +33,7 @@ namespace Dafeiyu
         public UpdateCoordinator(PetWindow companion) : this(companion,new GitHubUpdates(),null,ReleaseInfo.DisplayVersion){}
         internal UpdateCoordinator(PetWindow companion,IUpdateFeed updateFeed,Func<UpdateJob,Task> applyUpdate,string version)
         {
-            pet=companion;feed=updateFeed;apply=applyUpdate ?? StartWorkerAsync;installedVersion=version;Status="启动后自动检查更新，也可手动检查。更新会保留设置、密钥和导入的外观。";
+            pet=companion;feed=updateFeed;apply=applyUpdate ?? StartWorkerAsync;installedVersion=version;Status=TextResources.Get("updateCoordinator.updateCoordinator.status");
             string resultPath=Path.Combine(pet.Store.DirectoryPath,"update-result.json");
             if(File.Exists(resultPath))try{var result=UpdateInstall.Read<UpdateResult>(resultPath);Status=result.Message??Status;}catch(Exception e){if(!(e is IOException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException))throw;}
             startup=new DispatcherTimer(DispatcherPriority.Background){Interval=TimeSpan.FromSeconds(30)};
@@ -45,7 +45,7 @@ namespace Dafeiyu
                 if(!retryAutomatic && ticks>0 && ticks<=now.Ticks)
                 {
                     var last=new DateTime(ticks,DateTimeKind.Utc);var remaining=TimeSpan.FromHours(4)-(now-last);
-                    if(remaining>TimeSpan.Zero){ScheduleAutomatic(remaining);Status="上次成功检查："+last.ToLocalTime().ToString("MM-dd HH:mm")+"，已安排下次自动检查。";Notify();return;}
+                    if(remaining>TimeSpan.Zero){ScheduleAutomatic(remaining);Status=TextResources.Format("updateCoordinator.updateCoordinator.statusLastToLocalTime",last.ToLocalTime().ToString("MM-dd HH:mm"));Notify();return;}
                 }
                 await CheckAndUpdateAsync(false);
             };
@@ -72,21 +72,21 @@ namespace Dafeiyu
                 await InstallPendingNowAsync();return;
             }
             if(IsBusy)return;checking=true;checkingManual=manual;cancel=new CancellationTokenSource();var token=cancel.Token;
-            var channel=pet.Settings.UpdateChannel;bool succeeded=false;Progress=0;Status="正在检查 GitHub "+(channel==UpdateChannel.Stable?"正式":"预览")+"通道…";Notify();
+            var channel=pet.Settings.UpdateChannel;bool succeeded=false;Progress=0;Status=TextResources.Get("updateCoordinator.checkAndUpdateAsync.status")+(channel==UpdateChannel.Stable?TextResources.Get("updateCoordinator.checkAndUpdateAsync.status.alternativeA"):TextResources.Get("updateCoordinator.checkAndUpdateAsync.status.alternativeB"))+TextResources.Get("updateCoordinator.checkAndUpdateAsync.status.alternativeC");Notify();
             try
             {
                 bool useProxy=pet.Settings.UpdateUseProxy;string proxyAddress=pet.Settings.UpdateProxyAddress;
-                NetworkStatus=useProxy?"版本检查：GitHub · 网络代理":"版本检查：GitHub 直连";
+                NetworkStatus=useProxy?TextResources.Get("updateCoordinator.checkAndUpdateAsync.networkStatusUseProxy"):TextResources.Get("updateCoordinator.checkAndUpdateAsync.networkStatusUseProxy.alternativeA");
                 var routing=feed as IUpdateDownloadRouting;if(routing!=null)routing.ConfigureMirror(pet.Settings.UpdateUseMirror,pet.Settings.UpdateMirrorAddress,new Progress<string>(value=>{if(!disposed && !token.IsCancellationRequested){NetworkStatus=value;Notify();}}));
                 Notify();
                 string directory=Path.GetDirectoryName(pet.Store.DirectoryPath);
                 bool portable=!UpdateInstall.IsInstalledDirectory(directory);
                 var release=await feed.CheckAsync(ReleaseInfo.RepositoryUrl,useProxy,proxyAddress,portable,channel,token);
-                if(!release.IsNewerThan(installedVersion)){Status=channel==UpdateChannel.Stable&&ReleaseVersion.Parse(installedVersion).IsPreview?"正式通道暂无更高版本，保留当前版本 "+installedVersion+"。":"当前已是最新版本 "+installedVersion+"。";SuccessfulCheck();succeeded=true;return;}
+                if(!release.IsNewerThan(installedVersion)){Status=channel==UpdateChannel.Stable&&ReleaseVersion.Parse(installedVersion).IsPreview?TextResources.Format("updateCoordinator.checkAndUpdateAsync.stableReleaseVersionParse",installedVersion):TextResources.Format("updateCoordinator.checkAndUpdateAsync.stableReleaseVersionParse.alternativeA",installedVersion);SuccessfulCheck();succeeded=true;return;}
                 string version=release.VersionTag.TrimStart('v','V');
-                if(!ReleaseInfo.WindowsUpdateAsset(release.AssetName,version,portable) || String.IsNullOrEmpty(release.Digest) || !release.Digest.StartsWith("sha256:",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("发现 "+release.VersionTag+"，但没有可验证的自动更新包。请到 GitHub Release 查看。");
+                if(!ReleaseInfo.WindowsUpdateAsset(release.AssetName,version,portable) || String.IsNullOrEmpty(release.Digest) || !release.Digest.StartsWith("sha256:",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Format("updateCoordinator.checkAndUpdateAsync.template",release.VersionTag));
                 string work=Path.Combine(pet.Store.DirectoryPath,"updates",Guid.NewGuid().ToString("N"));
-                IsDownloading=true;Status="正在下载 "+release.VersionTag+"…";Notify();
+                IsDownloading=true;Status=TextResources.Format("updateCoordinator.checkAndUpdateAsync.statusReleaseVersionTag",release.VersionTag);Notify();
                 var reporter=new Progress<double>(value=>{if(!disposed && !token.IsCancellationRequested){Progress=value;Notify();}});
                 string package=await feed.DownloadAsync(release,work,useProxy,proxyAddress,reporter,token);
                 token.ThrowIfCancellationRequested();if(disposed)return;if(channel!=pet.Settings.UpdateChannel)throw new OperationCanceledException();
@@ -96,18 +96,18 @@ namespace Dafeiyu
                     pending.InstalledAssemblyVersion=identity.AssemblyVersion.ToString();pending.InstalledBuildId=identity.CommitSha==null?null:identity.InformationalVersion;
                     pending.TargetAssemblyVersion=release.TargetAssemblyVersion;pending.TargetBuildId=version+"+"+release.CommitSha;
                 }
-                pendingChannel=channel;immediate=false;UpdateInstall.Validate(pending);pendingManual=manual;Status="下载与校验完成，等待空闲后自动更新。";SuccessfulCheck();succeeded=true;readyTimer.Start();
+                pendingChannel=channel;immediate=false;UpdateInstall.Validate(pending);pendingManual=manual;Status=TextResources.Get("updateCoordinator.checkAndUpdateAsync.status.alternativeD");SuccessfulCheck();succeeded=true;readyTimer.Start();
             }
             catch(Exception e)
             {
-                pending=null;Status=e is OperationCanceledException?"更新已取消，当前版本继续运行。":e is ApiException || e is InvalidOperationException?e.Message:"自动更新未完成，请检查网络、代理和目录权限。";
+                pending=null;Status=e is OperationCanceledException?TextResources.Get("updateCoordinator.checkAndUpdateAsync.invalidOperationExceptionEMessage"):e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.checkAndUpdateAsync.invalidOperationExceptionEMessage.alternativeA");
             }
             finally{checking=false;IsDownloading=false;cancel.Dispose();cancel=null;retryAutomatic=!succeeded;ScheduleAutomatic(succeeded?TimeSpan.FromHours(4):TimeSpan.FromMinutes(10));Notify();}
         }
         public void ChangeChannel(UpdateChannel channel)
         {
             if(IsBusy||!Enum.IsDefined(typeof(UpdateChannel),channel))return;
-            pet.Settings.UpdateChannel=channel;pet.Settings.LastUpdateCheckUtcTicks=0;pet.SaveSettings();Status="已选择"+(channel==UpdateChannel.Stable?"正式":"预览")+"通道。点击检查并更新以获取新版。";Notify();
+            pet.Settings.UpdateChannel=channel;pet.Settings.LastUpdateCheckUtcTicks=0;pet.SaveSettings();Status=TextResources.Get("updateCoordinator.changeChannel.status")+(channel==UpdateChannel.Stable?TextResources.Get("updateCoordinator.changeChannel.status.alternativeA"):TextResources.Get("updateCoordinator.changeChannel.status.alternativeB"))+TextResources.Get("updateCoordinator.changeChannel.status.alternativeC");Notify();
         }
         public Task InstallPendingNowAsync()
         {
@@ -119,24 +119,24 @@ namespace Dafeiyu
             if(disposed || pending==null || applying)return;
             if(pendingChannel!=pet.Settings.UpdateChannel){Cancel();return;}
             if(!pet.CanApplyUpdate(pendingManual))
-            {restartAt=null;Status=pet.HasHistorySaveWarning?pet.PendingSaveWarning:pendingManual?"新版已就绪。请保存设置草稿、发送或清空输入，并等待对话或语音结束；空闲后会自动退出、安装并重启。":"新版已就绪，等待对话、设置和桌面操作空闲后自动更新。";Notify();return;}
+            {restartAt=null;Status=pet.HasHistorySaveWarning?pet.PendingSaveWarning:pendingManual?TextResources.Get("updateCoordinator.tryApplyPendingAsync.petPendingSaveWarningPendingManual"):TextResources.Get("updateCoordinator.tryApplyPendingAsync.petPendingSaveWarningPendingManual.alternativeA");Notify();return;}
             if(!restartAt.HasValue)restartAt=DateTime.UtcNow.AddSeconds(immediate?0:5);
             int seconds=Math.Max(0,(int)Math.Ceiling((restartAt.Value-DateTime.UtcNow).TotalSeconds));
-            Status="新版已就绪，"+seconds+" 秒后自动更新并重启。可点击“取消更新”。";Notify();if(seconds>0)return;
-            applying=true;readyTimer.Stop();Status="正在退出并安装更新…";Notify();
+            Status=TextResources.Format("updateCoordinator.tryApplyPendingAsync.statusSeconds",seconds);Notify();if(seconds>0)return;
+            applying=true;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status");Notify();
             var job=pending;
             try
             {
                 await pet.PrepareUpdateAsync();
-                if(disposed || !pet.CanApplyUpdate(pendingManual))throw new InvalidOperationException("活动状态已变化，本次更新交接已停止，当前版本继续运行。");
+                if(disposed || !pet.CanApplyUpdate(pendingManual))throw new InvalidOperationException(TextResources.Get("updateCoordinator.tryApplyPendingAsync.text"));
                 await apply(job);
                 if(disposed || !pet.CanApplyUpdate(pendingManual))
                 {
-                    Abort(job);if(!disposed){applying=false;pending=null;restartAt=null;Status="活动状态已变化，本次更新交接已停止，当前版本继续运行。";Notify();}return;
+                    Abort(job);if(!disposed){applying=false;pending=null;restartAt=null;Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status.alternativeA");Notify();}return;
                 }
                 pet.Close();
             }
-            catch(Exception e){Abort(job);applying=false;pending=null;restartAt=null;Status=e is InvalidOperationException?e.Message:"更新助手无法启动，当前版本继续运行。";Notify();}
+            catch(Exception e){Abort(job);applying=false;pending=null;restartAt=null;Status=e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.tryApplyPendingAsync.invalidOperationExceptionEMessage");Notify();}
         }
         async Task StartWorkerAsync(UpdateJob job)
         {
@@ -144,7 +144,7 @@ namespace Dafeiyu
             try
             {
             UpdateInstall.Validate(job);string source=Path.Combine(job.InstallationDirectory,UpdateInstall.WorkerName);
-            if(!File.Exists(source))throw new InvalidOperationException("找不到更新助手，请完整解压运行包或重新安装伙伴。");
+            if(!File.Exists(source))throw new InvalidOperationException(TextResources.Get("updateCoordinator.startWorkerAsync.text"));
             UpdateInstall.CheckWorker(job,source);
             string helper=Path.Combine(job.WorkDirectory,UpdateInstall.WorkerName);File.Copy(source,helper,false);
             if(File.Exists(source+".config"))File.Copy(source+".config",helper+".config",false);
@@ -152,8 +152,8 @@ namespace Dafeiyu
             using(var worker=Process.Start(new ProcessStartInfo(helper,UpdateInstall.Quote(path)){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,WorkingDirectory=job.WorkDirectory}))
             {
                 var deadline=DateTime.UtcNow.AddSeconds(15);while(DateTime.UtcNow<deadline)
-                {if(File.Exists(Path.Combine(job.WorkDirectory,"ready"))){acknowledged=true;return;}if(worker.HasExited)throw new InvalidOperationException("更新助手拒绝了此任务，当前版本继续运行。");await Task.Delay(80);}
-                throw new InvalidOperationException("更新助手未能准备好，当前版本继续运行。");
+                {if(File.Exists(Path.Combine(job.WorkDirectory,"ready"))){acknowledged=true;return;}if(worker.HasExited)throw new InvalidOperationException(TextResources.Get("updateCoordinator.startWorkerAsync.text.alternativeA"));await Task.Delay(80);}
+                throw new InvalidOperationException(TextResources.Get("updateCoordinator.startWorkerAsync.text.alternativeB"));
             }
             }
             finally
@@ -163,7 +163,7 @@ namespace Dafeiyu
         }
         public void Cancel()
         {
-            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;restartAt=null;immediate=false;readyTimer.Stop();Status="更新已取消，当前版本继续运行。";Notify();
+            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;restartAt=null;immediate=false;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.cancel.status");Notify();
         }
         public void ReportValidation(string text){Status=text;Notify();}
         static void Abort(UpdateJob job){try{File.WriteAllText(Path.Combine(job.WorkDirectory,"abort"),"aborted");}catch(IOException){}catch(UnauthorizedAccessException){}}

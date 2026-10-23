@@ -13,12 +13,23 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
         static void Check(bool result,string name){if(!result)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
         static readonly OfficialDownloadRouting Direct=new OfficialDownloadRouting(false,"",false,"");
+        static void ProgressNoticeGate()
+        {
+            var property=typeof(OfficialCompanionProgress).GetProperty("RequiresUpdateNotice");
+            Check(property!=null,"progress distinguishes actual package work from metadata/cache reuse");
+            foreach(var stage in new[]{"metadata","download","validate","install"})
+            {
+                var progress=new OfficialCompanionProgress("dafeiyu",stage,"",0,100,stage=="metadata"?0:50);
+                Check((bool)property.GetValue(progress,null)==(stage!="metadata"),"notice stage "+stage);
+            }
+            Check(!(bool)property.GetValue(new OfficialCompanionProgress("dafeiyu","install","",100,100,100),null),"unchanged cached installation makes no update notice");
+        }
         static async Task Run()
         {
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))) {
@@ -60,7 +71,12 @@ namespace Dafeiyu.Tests
             using(var f=new OfficialCompanionFixture())using(var t=f.Transport())using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
                 f.CorruptMirror=true;int proxy=0;t.AssetClientFactory=(enabled,address)=>{proxy++;return new HttpClient(new OfficialDelegateHandler(f.Dispatch));};
                 var routing=new OfficialDownloadRouting(true," https://mirror.example/prefix/ ",true,"http://proxy.example");
-                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                var routeKind=typeof(OfficialCompanionProgress).GetProperty("RouteKind");
+                Check(routeKind!=null,"transport route identity must be independent of translated route text");
+                var routes=new List<string>();
+                var reporter=new OfficialProgress<OfficialCompanionProgress>(p=>{if(p.Stage=="download")routes.Add(routeKind.GetValue(p,null).ToString());});
+                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,reporter,CancellationToken.None);
+                Check(routes.Contains("Mirror")&&routes.Contains("Direct"),"mirror fallback reports explicit route identities without parsing display labels");
                 Check(result.InstalledNow&&f.Packages==2,"mirror wrong digest falls back to verified direct bytes");
                 Check(f.Requests.Any(x=>x.StartsWith("https://mirror.example/prefix/https://github.com/",StringComparison.Ordinal))&&proxy==1,"mirror address normalizes and assets bypass proxy while metadata uses it");
                 Check(!Directory.GetFiles(f.Root,"*.part",SearchOption.AllDirectories).Any(),"successful fallback removes only owned partial files");

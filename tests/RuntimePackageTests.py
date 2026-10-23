@@ -7,9 +7,26 @@ import unittest
 import os
 import re
 import subprocess
+import base64
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 class RuntimePackageTests(unittest.TestCase):
+    @unittest.skipUnless(os.name=='nt','Framework artifact probe uses the Windows compiler')
+    def test_onboarding_title_probe_uses_compiled_values(self):
+        project=Path(__file__).resolve().parents[1]
+        compiler=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+        with tempfile.TemporaryDirectory(dir=project/'work') as folder:
+            root=Path(folder)
+            self.assertTrue(root.resolve().is_relative_to((project/'work').resolve()))
+            source=root/'Titles.cs'
+            source.write_text('using System; namespace Dafeiyu { class Lesson { public string Title; } static class OnboardingLessons { internal static readonly Lesson[] All = { new Lesson { Title="中文 {标题}" }, new Lesson { Title=String.Concat("开","始") } }; } }',encoding='utf-8-sig')
+            assembly=root/'Fixture.dll';probe=root/'Probe.exe'
+            for inputs in [ ['/target:library','/out:'+str(assembly),str(source)], ['/target:exe','/out:'+str(probe),str(project/'tools/localization/VerifyArtifacts.cs')] ]:
+                subprocess.run([str(compiler),'/nologo','/codepage:65001']+inputs,check=True,capture_output=True)
+            result=subprocess.run([str(probe),'--onboarding-titles',str(assembly)],capture_output=True)
+            self.assertEqual(result.returncode,0,result.stderr.decode('utf8',errors='replace'))
+            self.assertEqual(base64.b64decode(result.stdout).decode('utf8').split('\n'),['中文 {标题}','开始'])
+
     def test_only_explicit_runtime_files_reach_zip_and_inno_staging(self):
         module_path=Path(__file__).resolve().parents[1]/'tools/runtime_package.py'
         self.assertTrue(module_path.is_file(), 'missing common runtime packaging boundary')

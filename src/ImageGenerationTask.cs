@@ -88,7 +88,7 @@ namespace Dafeiyu
         public ImageTaskOrigin Origin {get{return origin.Copy();}}
         public ImageGenerationTaskSubmission(string requestId,ImageGenerationRequest request,ImageTaskOrigin origin)
         {
-            if(String.IsNullOrWhiteSpace(requestId))throw new ArgumentException("请指定提交 ID。","requestId");
+            if(String.IsNullOrWhiteSpace(requestId))throw new ArgumentException(TextResources.Get("imageGenerationTask.imageGenerationTaskSubmission.text"),"requestId");
             if(request==null)throw new ArgumentNullException("request");
             RequestId=requestId;this.request=request.Copy();this.origin=(origin??new ImageTaskOrigin()).Copy();
         }

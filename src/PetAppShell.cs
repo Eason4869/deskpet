@@ -8,7 +8,7 @@ namespace Dafeiyu
     {
         UsageStore usageStats;
         internal UsageStore UsageStats {get{return usageStats??(usageStats=new UsageStore(Path.Combine(Store.DirectoryPath,"usage")));}}
-        void InitializeUsageTracking(){try{UsageTracking.Initialize(UsageStats);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException))throw;Notice="用量历史暂时无法读取，请检查数据目录。";}}
+        void InitializeUsageTracking(){try{UsageTracking.Initialize(UsageStats);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException))throw;Notice=TextResources.Get("petAppShell.initializeUsageTracking.notice");}}
         internal ChatWindow EnsureAppWindow()
         {
             if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.OwnsPet(this)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));var owned=chat;chat.Closed+=delegate{if(ReferenceEquals(chat,owned)){chat=null;if(preferences!=null){preferences.Dispose();preferences=null;}var ignored=CloseConversationWorkspacesAsync();}};}return chat;

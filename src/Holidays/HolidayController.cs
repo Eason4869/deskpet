@@ -163,14 +163,14 @@ namespace Dafeiyu
             if(!IsTicket(value) || !context.CanPlayEasterEgg || !value.FirstFrameRendered || !value.CooldownRecorded || !value.PlaybackCompleted)return false;
             ticket=null;
             if(!value.CanUnlock || ActiveOccurrence==null || ActiveOccurrence.InstanceKey!=value.InstanceKey || ActiveOccurrence.Id!=EffectiveOutfit.HolidayId)return false;
-            state.Unlock(value.CharacterId,value.OutfitId);pendingUnlockNotice="已解锁「"+EffectiveOutfit.Name+"」，可在设置中更换";Persist();Recompute();Notify();return true;
+            state.Unlock(value.CharacterId,value.OutfitId);pendingUnlockNotice=TextResources.Format("holidayController.completeHover.pendingUnlockNoticeEffectiveOutfitName",EffectiveOutfit.Name);Persist();Recompute();Notify();return true;
         }
         public void CancelHover(){if(ticket!=null)ticket.Cancelled=true;ticket=null;}
         public string TakeUnlockNotice(){string result=UnlockNotice;UnlockNotice=null;return result;}
         void Persist()
         {
             try {save(state);PersistencePending=false;PersistenceWarning=null;if(pendingUnlockNotice!=null){UnlockNotice=pendingUnlockNotice;pendingUnlockNotice=null;}}
-            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException))throw;PersistencePending=true;PersistenceWarning="服饰状态尚未保存，将稍后重试。 "+e.Message;}
+            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException))throw;PersistencePending=true;PersistenceWarning=TextResources.Format("holidayController.persist.persistenceWarningEMessage",e.Message);}
         }
         public bool RetrySave(){if(PersistencePending){Persist();Notify();}return !PersistencePending;}
         void Notify(){var handler=Changed;if(handler!=null)handler(this,EventArgs.Empty);}
