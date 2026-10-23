@@ -291,8 +291,7 @@ internal sealed partial class DesktopController
                 if (installed != null && installed.Value.Skin.SourceKey != current.SourceKey)
                     QueueAppearance(installed.Value.Skin, installed.Value.Catalog, current, token, order);
                 var active = Skin;
-                if (installed != null || !active.BuiltIn)
-                    await RefreshOfficialAsync(active, token, OfficialCompanionCheckMode.AfterApplicationUpdate);
+                await RefreshOfficialAsync(active, token, OfficialCompanionCheckMode.AfterApplicationUpdate);
             }
             catch (OperationCanceledException) { }
             catch (Exception) { /* Embedded/legacy source remains usable offline. */ }

@@ -330,6 +330,26 @@ internal static class OfficialCompanionUiChecks
             Check(source.Calls==0&&source.BulkCalls==0,"restoration makes no HTTP/update calls");
             owner.Save();Finish(owner);
         }
+        // Startup must also check the built-in current E role when no downloaded
+        // package exists. It stays usable while acquisition is held in the background.
+        using(var eFixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"e-holiday"),"e-bao",null,false))
+        {
+            var ePackage=CreatePackage(Path.Combine(directory,"e-installed"),"e-bao",eFixture.Root);
+            string startupData=Path.Combine(directory,"startup-ebao");Directory.CreateDirectory(startupData);
+            new SettingsStore(Path.Combine(startupData,"settings.json")).Save(new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped"});
+            var source=new FakeSource();
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(startupData),officialSourceFactory:_=>source);
+            owner.Settings.OnboardingState="completed";
+            var previous=owner.Skin;string persona=owner.Settings.SkinId,key=owner.Settings.SelectedCompanionKey;
+            var startup=(Task)typeof(DesktopController).GetMethod("StartOfficialCompanionsAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,null)!;
+            Until(()=>source.Calls>0||startup.IsCompleted);
+            Check(source.Calls==1&&!startup.IsCompleted&&ReferenceEquals(owner.Skin,previous),"startup checks built-in current role without waiting for a user switch or hiding old art");
+            Check(source.Progress==null,"startup update is silent");
+            source.InstalledValue=ePackage;source.Result.TrySetResult(new OfficialCompanionResult(ePackage,false,true,true,""));Complete(startup);
+            Until(()=>owner.Skin.Folder==ePackage.RootDirectory);
+            Check(owner.Settings.SkinId==persona&&owner.Settings.SelectedCompanionKey==key,"startup update hot loads the same role identity");
+            Finish(owner);
+        }
         // Cached manual selection must finish while the metadata response is held.
         string switchData=Path.Combine(directory,"switch-data");Directory.CreateDirectory(switchData);
         var switchSettings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped"};

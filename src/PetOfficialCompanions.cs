@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -282,7 +282,7 @@ namespace Dafeiyu
             if(officialStartupStarted||GuideActive||closing)return;officialStartupStarted=true;
             string id=Settings.PendingOfficialCompanionId;
             if(!String.IsNullOrEmpty(id)&&!Catalog.Skins.Any(s=>s.BuiltinCharacterId==id)){Settings.PendingOfficialCompanionId="";SaveSettings();id="";}
-            if(String.IsNullOrEmpty(id)&&Skin.IsOfficial&&!Skin.FixtureEmbedded&&(!Skin.Embedded||File.Exists(Path.Combine(Store.DirectoryPath,"official-companions",Skin.BuiltinCharacterId,"current.txt"))))id=Skin.BuiltinCharacterId;
+            if(String.IsNullOrEmpty(id)&&Skin.IsOfficial&&!Skin.FixtureEmbedded)id=Skin.BuiltinCharacterId;
             if(String.IsNullOrEmpty(id))return;
             officialRequest=OfficialDownloads.BeginSelection();
             var ignored=RefreshOfficialAsync(id,officialRequest,!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId),CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate);
