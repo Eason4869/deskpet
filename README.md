@@ -10,7 +10,7 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-当前开发目标为 **0.10.5-dev.1**：语言 JSON 重构与验收，维护方式见 [中文资源指南](docs/localization/zh-CN-resource-guide.md)。下方下载链接指向已发布的正式版本。
+当前开发目标为 **0.10.5-dev.2**：在已验收的语言 JSON 重构基础上开发 Agent 后台任务，进度见 [实施记录](docs/agent-background-jobs/implementation-progress.md)，文案维护见 [中文资源指南](docs/localization/zh-CN-resource-guide.md)。下方下载链接指向已发布的正式版本。
 
 **当前正式版本：[0.10.4](https://github.com/Eason4869/deskpet/releases/tag/v0.10.4)**。提供 Windows 安装／便携包、macOS Apple Silicon／Intel 双架构预览、完整源码、五位官方伙伴的完整高清角色包和创作模板。macOS 的界面与能力范围见 [平台与升级](#平台与升级)，本页应用截图以 Windows 为准。
 

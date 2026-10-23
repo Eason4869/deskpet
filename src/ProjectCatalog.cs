@@ -26,9 +26,10 @@ namespace Dafeiyu
         [DataMember] public bool TrustProjectInstructions;
         [DataMember] public string GlobalInstructions="",SkillsDirectory="";
         [DataMember] public int CommandTimeoutSeconds=120,ContextTokenLimit=32768;
+        [DataMember] public int BackgroundJobTimeoutSeconds=1800;
         [DataMember] public long LastOpenedUtcTicks;[DataMember] public bool Archived;
         [DataMember] public List<ConversationDefinition> Conversations=new List<ConversationDefinition>();
-        [OnDeserializing] void BeforeDeserialize(StreamingContext context){ApprovalMode=AgentApprovalMode.Legacy;SandboxEnabled=false;}
+        [OnDeserializing] void BeforeDeserialize(StreamingContext context){ApprovalMode=AgentApprovalMode.Legacy;SandboxEnabled=false;BackgroundJobTimeoutSeconds=1800;}
         public ProjectDefinition Copy(){var copy=(ProjectDefinition)MemberwiseClone();copy.Conversations=(Conversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();return copy;}
     }
     [DataContract] public sealed class SidebarSection
@@ -60,7 +61,7 @@ namespace Dafeiyu
         public static ProjectDefinition QuickProject(ProjectCatalog catalog,PetSettings settings=null){var result=UnassignedProject(catalog,settings);result.Id=QuickProjectId;result.Name=TextResources.Get("projectCatalog.quickProject.resultName");result.Conversations=catalog.QuickConversations;return result;}
         public static ProjectDefinition UnassignedProject(ProjectCatalog catalog,PetSettings settings=null)
         {
-            return new ProjectDefinition{Id=UnassignedProjectId,Name=TextResources.Get("projectCatalog.unassignedProject.name"),Workspace=settings==null?AppDomain.CurrentDomain.BaseDirectory:settings.AgentWorkspace,FullAccess=settings!=null&&settings.AgentFullAccess,BackupFiles=settings==null||settings.AgentBackupFiles,PlanMode=settings!=null&&settings.AgentPlanMode,Goal=settings==null?"":settings.AgentGoal,TerminalPolicy=settings==null?AgentTerminalPolicy.Disabled:settings.AgentTerminalPolicy,ApprovalMode=settings==null?AgentApprovalMode.Legacy:settings.AgentApprovalMode,SandboxEnabled=settings!=null&&settings.AgentSandboxEnabled,SandboxReadDirectories=settings==null?"":settings.AgentSandboxReadDirectories,TrustProjectInstructions=settings!=null&&settings.AgentTrustProjectInstructions,GlobalInstructions=settings==null?"":settings.AgentGlobalInstructions,SkillsDirectory=settings==null?"":settings.AgentSkillsDirectory,CommandTimeoutSeconds=settings==null?120:settings.AgentCommandTimeoutSeconds,ContextTokenLimit=settings==null?32768:settings.AgentContextTokenLimit,Conversations=catalog.UnassignedConversations};
+            return new ProjectDefinition{Id=UnassignedProjectId,Name=TextResources.Get("projectCatalog.unassignedProject.name"),Workspace=settings==null?AppDomain.CurrentDomain.BaseDirectory:settings.AgentWorkspace,FullAccess=settings!=null&&settings.AgentFullAccess,BackupFiles=settings==null||settings.AgentBackupFiles,PlanMode=settings!=null&&settings.AgentPlanMode,Goal=settings==null?"":settings.AgentGoal,TerminalPolicy=settings==null?AgentTerminalPolicy.Disabled:settings.AgentTerminalPolicy,ApprovalMode=settings==null?AgentApprovalMode.Legacy:settings.AgentApprovalMode,SandboxEnabled=settings!=null&&settings.AgentSandboxEnabled,SandboxReadDirectories=settings==null?"":settings.AgentSandboxReadDirectories,TrustProjectInstructions=settings!=null&&settings.AgentTrustProjectInstructions,GlobalInstructions=settings==null?"":settings.AgentGlobalInstructions,SkillsDirectory=settings==null?"":settings.AgentSkillsDirectory,CommandTimeoutSeconds=settings==null?120:settings.AgentCommandTimeoutSeconds,BackgroundJobTimeoutSeconds=settings==null?1800:settings.AgentBackgroundJobTimeoutSeconds,ContextTokenLimit=settings==null?32768:settings.AgentContextTokenLimit,Conversations=catalog.UnassignedConversations};
         }
         public static ProjectDefinition FindProject(ProjectCatalog catalog,string id,PetSettings settings=null){return id==QuickProjectId?QuickProject(catalog,settings):id==UnassignedProjectId?UnassignedProject(catalog,settings):catalog.Projects.SingleOrDefault(p=>p.Id==id);}
         readonly string path;readonly object gate=new object();bool readFailed;
@@ -140,6 +141,7 @@ namespace Dafeiyu
         internal static void NormalizeDefaults(ProjectCatalog catalog)
         {
             if(catalog==null || catalog.Projects==null)throw new SerializationException();
+            foreach(var project in catalog.Projects)if(project!=null)project.BackgroundJobTimeoutSeconds=Math.Max(1,Math.Min(28800,project.BackgroundJobTimeoutSeconds));
             if(catalog.Sections==null){catalog.Sections=new List<SidebarSection>();catalog.RecentIncludeProjects=true;}
             if(catalog.UnassignedConversations==null)catalog.UnassignedConversations=new List<ConversationDefinition>();
             if(catalog.QuickConversations==null)catalog.QuickConversations=new List<ConversationDefinition>();

@@ -7,6 +7,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/AgentJobContractTests.cs;../../tests/AgentJobTestSupport.cs" Link="Tests/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/localization/text-baseline.json" LogicalName="Dafeiyu.Tests.LocalizationBaseline" />
     <Compile Include="../../tests/LocalizationTests.cs" Link="Tests/LocalizationTests.cs" />
     <Compile Include="../../tests/OfficialCompanionLegacyTests.cs;../../tests/OfficialCompanionIdentityTests.cs;../../tests/HolidaySourceBindingTests.cs" Link="Tests/%(Filename)%(Extension)" />
