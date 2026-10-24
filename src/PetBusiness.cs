@@ -103,6 +103,7 @@ namespace Dafeiyu
         [DataMember(EmitDefaultValue=false)] public string RelationshipCompanionId {get;internal set;}
         [DataMember(EmitDefaultValue=false)] public string RelationshipEventId {get;internal set;}
         [DataMember] public bool RelationshipWork {get;internal set;}
+        [DataMember] public bool RelationshipSucceeded {get;internal set;}
         [DataMember] public string AgentTaskId { get; internal set; }
         [DataMember(EmitDefaultValue=false)] public AgentReplyChangeSummary ChangeSummary { get; set; }
         [DataMember] public DateTime? ProcessingStartedAt { get; private set; }
@@ -219,8 +220,12 @@ namespace Dafeiyu
             }
             result.Add(new ChatMessage("user", user)); return result;
         }
-        internal void BindRelationship(string replyId,string companionId,string eventId,bool work)
-        {lock(gate){var reply=messages.FirstOrDefault(m=>m.Id==replyId);if(reply==null)return;foreach(var message in messages.Where(m=>m.TurnId==reply.TurnId)){message.RelationshipCompanionId=companionId;message.RelationshipEventId=eventId;message.RelationshipWork=work;}}}
+        internal bool RelationshipHasSucceeded(string eventId)
+        {lock(gate)return !String.IsNullOrWhiteSpace(eventId) && messages.Any(m=>m.RelationshipEventId==eventId && m.RelationshipSucceeded);}
+        internal void MarkRelationshipSucceeded(string eventId)
+        {lock(gate){if(String.IsNullOrWhiteSpace(eventId))return;foreach(var message in messages.Where(m=>m.RelationshipEventId==eventId))message.RelationshipSucceeded=true;}}
+        internal void BindRelationship(string replyId,string companionId,string eventId,bool work,bool succeeded=false)
+        {lock(gate){var reply=messages.FirstOrDefault(m=>m.Id==replyId);if(reply==null)return;foreach(var message in messages.Where(m=>m.TurnId==reply.TurnId)){message.RelationshipCompanionId=companionId;message.RelationshipEventId=eventId;message.RelationshipWork=work;message.RelationshipSucceeded|=succeeded;}}}
         public List<ChatMessage> ForRegeneration(string replyId,string persona)
         {
             lock(gate)

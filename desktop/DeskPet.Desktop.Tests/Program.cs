@@ -23,6 +23,8 @@ using DeskPet.Desktop;
 
 if(args.Length==3&&args[0]=="--agent-job-exit-fixture"){Environment.ExitCode=AgentJobExitUiChecks.RunNativeHost(args[1],args[2]);return;}
 
+if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPackChecks: "+RelationshipPackChecks.Run()+" passed");return;}
+
 // Legacy UI fixtures assert Chinese copy. Pin their test UI culture so the new
 // system-language default does not depend on the CI runner's OS language.
 var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
@@ -74,6 +76,7 @@ try
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    assertions+=RelationshipPackChecks.Run();
     Console.WriteLine("START OnboardingPreparationUiChecks");
     assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));
     Console.WriteLine("START AgentJobUiChecks");

@@ -24,6 +24,7 @@ namespace Dafeiyu
     {
         [DataMember]public int Version=1;
         [DataMember(EmitDefaultValue=false)]public string RelationshipCompanionId,RelationshipEventId;
+        [DataMember]public bool RelationshipSucceeded;
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
         [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();
         [DataMember]public int ContextCompactions,EstimatedContextTokens,ModelContextTokens;
@@ -83,6 +84,8 @@ namespace Dafeiyu
         internal void RecordModelUsage(long tokens){EnsureTask();lock(taskGate){task.ModelRequests++;task.EstimatedTotalTokens+=Math.Max(0,tokens);}PublishTask();}
         internal void ContextProgress(string status){EnsureTask();lock(taskGate)task.ContextStatus=status;PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.progress",null,status);}
         internal void RecordCompaction(int tokens,string summary){EnsureTask();lock(taskGate){task.ContextCompactions++;task.EstimatedContextTokens=tokens;task.ContextSummary=summary??"";task.ContextStatus="ready";}PublishTask();if(kernelSessionModel!=null)kernelSessionModel.Record("context.compacted",null,"summary");}
+        internal void MarkRelationshipSucceeded()
+        {EnsureTask();lock(taskGate)task.RelationshipSucceeded=true;}
         public void FinishTask(string status,string notice)
         {
             EnsureTask();string claimId;lock(taskGate)claimId=task==null?"":task.Id;lock(taskGate){task.Status=status;task.Notice=notice??"";foreach(var item in task.Tools.Where(t=>t.Status=="running")){item.Status="error";item.Summary+=TextResources.Get("agentTaskState.finishTask.itemSummary");}}if(kernelSessionModel!=null&&!String.IsNullOrEmpty(claimId))kernelSessionModel.Record(status=="complete"?"task.completed":"task.failed",null,claimId);if(kernelClaims!=null&&!String.IsNullOrEmpty(claimId)){if(status=="complete")kernelClaims.Complete(claimId,claimId);else kernelClaims.Fail(claimId,claimId);}PublishTask();

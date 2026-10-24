@@ -310,7 +310,9 @@ namespace Dafeiyu
             using(var copy=new MemoryStream()){stream.CopyTo(copy);copy.Position=0;result=(SkinManifest)Serializer().ReadObject(copy);var raw=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=65536}.DeserializeObject(Encoding.UTF8.GetString(copy.ToArray()).TrimStart('\ufeff')) as Dictionary<string,object>;object extension;if(raw!=null && raw.TryGetValue("relationship",out extension))result.Relationship=RelationshipContent.ParseObject(extension);}
             if(result==null || (result.Version!=1 && result.Version!=2)) throw new InvalidOperationException(TextResources.Get("skinCatalog.readManifest.text.alternativeA"));
             if((result.SystemPrompt ?? "").Length>8000 || (result.Description ?? "").Length>1000) throw new InvalidOperationException(TextResources.Get("skinCatalog.readManifest.text.alternativeB"));
-            RelationshipContent.Validate(result.Relationship,IllustratedPack.Actions.Concat(new[]{"special2","stumble"}).Where(a=>a!="special2"&&a!="stumble" || result.ExtraAnimations!=null&&result.ExtraAnimations.ContainsKey(a)));
+            IEnumerable<string> relationshipActions=IllustratedPack.Actions;
+            if(result.Version==2 && result.ExtraAnimations!=null)relationshipActions=relationshipActions.Concat(result.ExtraAnimations.Keys.Where(a=>a=="special2"||a=="stumble"));
+            RelationshipContent.Validate(result.Relationship,relationshipActions);
             return result;
         }
         private static string AtlasPath(string folder,string filename)

@@ -89,7 +89,7 @@ namespace Dafeiyu.Tests
                         session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>A);await session.SendTextAsync("hello",Settings(),"pet");reply=session.History.Messages.Last().Id;await session.FlushHistoryAsync();
                     }
                     using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
-                        session.ConfigureRelationships(runtime,()=>B);session.SelectPersona("pet");await session.RegenerateAsync(reply,Settings(),"pet");Check(runtime.Service.GetSnapshot(A).State.Score==2 && runtime.Service.GetSnapshot(B).State==null,"restart regeneration duplicate/owner");
+                        session.ConfigureRelationships(runtime,()=>B);session.SelectPersona("pet");await session.RegenerateAsync(reply,Settings(),"pet");Check(runtime.Service.GetSnapshot(A).State.Score==2 && runtime.Service.GetSnapshot(B).State==null,"restart regeneration duplicate/owner");await session.FlushHistoryAsync();
                     }
                 }
             });
@@ -97,6 +97,7 @@ namespace Dafeiyu.Tests
                 using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
                     string selected=A;session.ConfigureRelationships(runtime,()=>selected);var cfg=Settings();cfg.AgentEnabled=true;cfg.AgentWorkspace=f.Root;await session.SendTextAsync("work",cfg,"pet");Check(runtime.Service.GetSnapshot(A).State.WorkPoints==4 && runtime.Service.GetSnapshot(A).State.ConversationPoints==0,"work emitted chat reward");
                     if(Environment.OSVersion.Platform==PlatformID.Win32NT){var root=session.CurrentAgentTask;Check(root!=null && root.RelationshipCompanionId==A,"root task binding missing");selected=B;await session.SendTextAsync("resume",cfg,"pet",resumeTask:root);Check(runtime.Service.GetSnapshot(A).State.Score==4 && runtime.Service.GetSnapshot(B).State==null,"root resume changed award");}
+                    await session.FlushHistoryAsync();
                 }
             });
             Run("manifest extension rejects malformed types and unsafe content",async delegate{
@@ -161,8 +162,66 @@ namespace Dafeiyu.Tests
                     await runtime.Enqueue(A,RelationshipEventType.CompletedConversation,"after-shutdown",time.AddSeconds(3));Check(f.Service.GetSnapshot(A).State.Score==4,"shutdown accepted late event");runtime.Dispose();
                 }
             });
+            foreach(string ending in new[]{"direct","error","cancelled"})Run("disabled-growth prior success survives history restart after "+ending,async delegate{
+                using(var f=new RelationshipFixture()){
+                    string reply;var api=new Api();using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(api,new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>A);Check(runtime.Service.UpdateSettings(false,true,true).Success,"disable failed");await session.SendTextAsync("complete while disabled",Settings(),"pet");reply=session.History.Messages.Last().Id;CheckNoGrowth(runtime,A,"initial disabled success");Check(runtime.Service.UpdateSettings(true,true,true).Success,"enable failed");
+                        if(ending=="direct")await session.RegenerateAsync(reply,Settings(),"pet");
+                        else if(ending=="error"){api.Fail=true;try{await session.RegenerateAsync(reply,Settings(),"pet");}catch(ApiException){}Check(session.History.Messages.Last().Status=="error","failed regeneration fixture");}
+                        else {api.Delay=1000;int calls=api.Calls;var regeneration=session.RegenerateAsync(reply,Settings(),"pet");await Wait(()=>api.Calls>calls);await session.StopAsync();try{await regeneration;}catch(OperationCanceledException){}Check(session.History.Messages.Last().Status=="cancelled","cancelled regeneration fixture");}
+                        await session.FlushHistoryAsync();
+                    }
+                    using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>B);await session.RegenerateAsync(reply,Settings(),"pet");CheckNoGrowth(runtime,A,ending+" previously successful logical input reopened after restart");CheckNoGrowth(runtime,B,"regeneration switched companion");Check(session.History.Messages.Where(m=>m.Id==reply || m.Role=="user").All(m=>m.RelationshipSucceeded),"persisted user/reply success decision lost");await session.FlushHistoryAsync();
+                    }
+                }
+            });
+            foreach(string ending in new[]{"direct","error","cancelled"})Run("disabled-growth completed root survives copy restart and resume after "+ending,async delegate{
+                if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.WriteLine("INFO local work task fixture requires Windows");return;}
+                using(var f=new RelationshipFixture()){
+                    var api=new Api();var cfg=Settings();cfg.AgentEnabled=true;cfg.AgentWorkspace=f.Root;AgentTaskState root;var taskStore=new AgentTaskStore(Path.Combine(f.Root,"saved-root"));
+                    using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(api,new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>A);Check(runtime.Service.UpdateSettings(false,true,true).Success,"disable failed");await session.SendTextAsync("complete work while disabled",cfg,"pet");root=session.CurrentAgentTask.Copy();Check(root.Status=="complete" && root.RelationshipSucceeded,"initial root success decision not complete");await taskStore.SaveAsync(root);root=taskStore.Load("pet",f.Root);Check(runtime.Service.UpdateSettings(true,true,true).Success,"enable failed");
+                        if(ending=="direct")await session.SendTextAsync("resume successful root",cfg,"pet",resumeTask:root);
+                        else if(ending=="error"){api.Fail=true;try{await session.SendTextAsync("resume then fail",cfg,"pet",resumeTask:root);}catch(ApiException){}Check(session.CurrentAgentTask.Status=="error","failed resume fixture");}
+                        else {api.Delay=1000;int calls=api.Calls;var resume=session.SendTextAsync("resume then cancel",cfg,"pet",resumeTask:root);await Wait(()=>api.Calls>calls);await session.StopAsync();try{await resume;}catch(OperationCanceledException){}Check(session.CurrentAgentTask.Status=="cancelled","cancelled resume fixture");}
+                        root=session.CurrentAgentTask.Copy();await taskStore.SaveAsync(root);await session.FlushHistoryAsync();
+                    }
+                    root=taskStore.Load("pet",f.Root);Check(root.RelationshipSucceeded,"root success decision lost through copy/store/reload");using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null)){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>B);await session.SendTextAsync("resume persisted prior success",cfg,"pet",resumeTask:root);CheckNoGrowth(runtime,A,ending+" completed root reopened after restart");CheckNoGrowth(runtime,B,"root ownership redirected");
+                    }
+                }
+            });
+            Run("first failure or cancellation while disabled remains eligible for its first actual success",async delegate{
+                foreach(bool cancel in new[]{false,true})using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
+                    var api=new Api{Fail=!cancel,Delay=cancel?1000:0};using(var session=new ConversationSession(api,new Speech(),()=>null)){
+                        session.ConfigureRelationships(runtime,()=>A);Check(runtime.Service.UpdateSettings(false,true,true).Success,"disable failed");var attempt=session.SendTextAsync("first attempt fails",Settings(),"pet");if(cancel){await Wait(()=>api.Calls>0);await session.StopAsync();}try{await attempt;}catch(ApiException){}catch(OperationCanceledException){}
+                        CheckNoGrowth(runtime,A,"unsuccessful operation gained score");Check(runtime.Service.UpdateSettings(true,true,true).Success,"enable failed");api.Fail=false;api.Delay=0;await session.RegenerateAsync(session.History.Messages.Last().Id,Settings(),"pet");var state=StateAfterExplicitRetry(runtime,A);Check(state!=null && state.Score==2 && state.Receipts.Count==1,"genuine first success suppressed");
+                    }
+                }
+            });
+            Run("disabled real Live completion cannot reopen through repeated notification or regeneration",async delegate{
+                using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
+                    var api=new Api();using(var session=new ConversationSession(api,new Speech(),()=>null)){
+                        session.ConfigureRelationships(runtime,()=>A);Check(runtime.Service.UpdateSettings(false,true,true).Success,"disable failed");session.AddLiveTurn("","real user","complete","complete","disabled-live",A,true);await runtime.FlushAsync();CheckNoGrowth(runtime,A,"disabled Live credited");Check(runtime.Service.UpdateSettings(true,true,true).Success,"enable failed");
+                        session.AddLiveTurn("","real user","duplicate","complete","disabled-live",A,true);await runtime.FlushAsync();CheckNoGrowth(runtime,A,"repeated Live notification reopened growth");var reply=session.History.Messages.Last().Id;api.Fail=true;try{await session.RegenerateAsync(reply,Settings(),"pet");}catch(ApiException){}api.Fail=false;await session.RegenerateAsync(reply,Settings(),"pet");CheckNoGrowth(runtime,A,"failed Live regeneration reopened prior success");
+                    }
+                }
+            });
+            Run("settled history preserves an original failed-save event timestamp across restart and regeneration",async delegate{
+                using(var f=new RelationshipFixture()){
+                    string reply,token,queued;long ticks;
+                    using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>A);Directory.CreateDirectory(Path.Combine(f.Root,"relationships","state.json"));await session.SendTextAsync("success with failed relationship save",Settings(),"pet");reply=session.History.Messages.Last().Id;token=session.History.Messages.Last().RelationshipEventId;Check(session.History.Messages.All(m=>m.RelationshipSucceeded),"successful pending turn decision missing");Check(runtime.PendingCount==1,"original pending event missing");queued=File.ReadAllText(Path.Combine(f.Root,"relationships","pending.json"));var entries=(object[])new System.Web.Script.Serialization.JavaScriptSerializer().DeserializeObject(queued);ticks=Convert.ToInt64(((Dictionary<string,object>)entries[0])["UtcTicks"]);await session.FlushHistoryAsync();
+                    }
+                    using(var runtime=new RelationshipRuntime(f.Root))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(Path.Combine(f.Root,"history")))){
+                        session.SelectPersona("pet");session.ConfigureRelationships(runtime,()=>B);await session.RegenerateAsync(reply,Settings(),"pet");await runtime.FlushAsync();Check(runtime.PendingCount==1 && File.ReadAllText(Path.Combine(f.Root,"relationships","pending.json"))==queued,"regeneration replaced original pending timestamp/attribution");Directory.Delete(Path.Combine(f.Root,"relationships","state.json"));await runtime.RetryPendingAsync();var state=runtime.Service.GetSnapshot(A).State;Check(state!=null && state.Score==2 && state.Receipts.Count==1 && state.Receipts[0].EventId==token && state.Receipts[0].Utc.Ticks==ticks,"pending original event failed to settle once");await session.RegenerateAsync(reply,Settings(),"pet");Check(runtime.Service.GetSnapshot(A).State.Score==2 && runtime.Service.GetSnapshot(B).State==null,"settled turn reopened after retry");await session.FlushHistoryAsync();
+                    }
+                }
+            });
             Console.WriteLine("Relationship integration: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
+        static void CheckNoGrowth(RelationshipRuntime runtime,string id,string reason){var state=runtime.Service.GetSnapshot(id).State;Check(state==null || state.Score==0 && state.Receipts.Count==0,reason);}
         static CompanionRelationshipState StateAfterExplicitRetry(RelationshipRuntime runtime,string id)
         {
             if(runtime.PendingCount>0){Check(runtime.Warning.Length>0,"pending event without persistence warning");Console.WriteLine("INFO explicit retry before asserting committed state; pending="+runtime.PendingCount+" warning="+runtime.Warning);runtime.RetryPending();}
@@ -177,8 +236,8 @@ namespace Dafeiyu.Tests
         sealed class Mic:IPcmMicrophone{public event Action<byte[]> PcmAvailable;public event Action<string> Failed;public void Start(){}public void Dispose(){}}
         sealed class Output:ILiveAudioOutput{public void Enqueue(byte[] bytes,int rate){}public void Interrupt(){}public void SetVolume(int v){}public void Dispose(){}}
         sealed class Api:IConversationApi,IAgentConversationApi{
-            public bool Fail;public int Delay;public IList<ChatMessage> Messages;
-            public async Task<string> ChatAsync(ConnectionSettings s,IList<ChatMessage> m,CancellationToken c){Messages=m;if(Delay>0)await Task.Delay(Delay,c);if(Fail)throw new ApiException("fixture");return "complete reply";}
+            public bool Fail;public int Delay,Calls;public IList<ChatMessage> Messages;
+            public async Task<string> ChatAsync(ConnectionSettings s,IList<ChatMessage> m,CancellationToken c){Messages=m;Interlocked.Increment(ref Calls);if(Delay>0)await Task.Delay(Delay,c);if(Fail)throw new ApiException("fixture");return "complete reply";}
             public Task<string> ChatAgentAsync(ConnectionSettings s,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> text,Action<string> reasoning,Action<AgentToolEvent> tools,bool stream,CancellationToken cancel){return ChatAsync(s,messages,cancel);}
             public Task<string> TranscribeAsync(ConnectionSettings s,byte[] bytes,CancellationToken c){return Task.FromResult("recognized");}
             public Task<byte[]> SpeechAsync(ConnectionSettings s,string voice,string text,CancellationToken c){return Task.FromResult(new byte[0]);}public void Dispose(){}

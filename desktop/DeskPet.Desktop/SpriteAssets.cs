@@ -180,9 +180,13 @@ internal sealed class SpriteAssets : IDisposable
         if (root.TryGetProperty("relationship",out var relation))
         {
             skin.Relationship=RelationshipContent.ParseJson(relation.GetRawText());
-            RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions).Concat(root.TryGetProperty("extra_animations",out var extras)?extras.EnumerateObject().Select(e=>e.Name):Enumerable.Empty<string>()));
         }
-        if (version == 1) return skin;
+        if (version == 1)
+        {
+            // Legacy atlases have fixed fallback actions; raw extras are not loaded.
+            RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions));
+            return skin;
+        }
         if (version != 2 || root.GetProperty("cell_width").GetInt32() != 480 || root.GetProperty("cell_height").GetInt32() != 520) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeF"));
         foreach (var property in root.GetProperty("animations").EnumerateObject())
         {
@@ -213,6 +217,8 @@ internal sealed class SpriteAssets : IDisposable
             if (!skin.Clips.TryGetValue(pair.Key, out var first) && !skin.ExtraClips.TryGetValue(pair.Key, out first)) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeK"));
             if (pair.Value.Loop != first.Loop || pair.Key == "jumping" && Math.Abs(pair.Value.Frames / pair.Value.Fps + pair.Value.HoldLastSeconds - first.Frames / first.Fps - first.HoldLastSeconds) > 1e-8) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeL"));
         }
+        // Extras can authorize content only after known-name and clip validation.
+        RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions).Where(skin.Clips.ContainsKey).Concat(skin.ExtraClips.Keys));
         return skin;
     }
     private static double ReadHold(JsonElement clip, string action, bool loop)
