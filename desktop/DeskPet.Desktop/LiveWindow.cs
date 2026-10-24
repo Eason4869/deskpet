@@ -50,7 +50,10 @@ internal sealed class LiveWindow : Window
         if (!granted) throw new InvalidOperationException(TextResources.Get("liveWindow.startAsync.text"));
         if (owner.Live.IsActive) return;
         if (owner.Dictation.IsBusy || owner.Session.IsBusy) throw new InvalidOperationException(TextResources.Get("liveWindow.startAsync.text.alternativeA"));
-        await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt);
+        var companion=owner.RelationshipCompanionId;
+        var context=await Task.Run(()=>owner.Relationships.StageContext(companion));
+        if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
+        await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt+"\n"+context);
     }
     private void Refresh() => Dispatcher.UIThread.Post(() => status.Text = owner.Live.Status);
     private void RefreshPartner()

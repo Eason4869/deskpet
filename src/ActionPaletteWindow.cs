@@ -116,8 +116,8 @@ namespace Dafeiyu
             button.Click+=delegate
             {
                 if(pet.IsUpdating){RefreshAvailability();return;}
-                if(interaction)pet.PlayInteraction(action=="sleeping" && pet.IsSleeping?"wake":action);
-                else pet.PlayAction(action,action=="jumping"?.7:2);
+                if(interaction)pet.PlayUserInteraction(action=="sleeping" && pet.IsSleeping?"wake":action);
+                else pet.PlayUserAction(action,action=="jumping"?.7:2);
                 pet.NotifyGuideInteraction("wheel");Close();
             };
             actionButtons.Add(button);actions.Children.Add(button);

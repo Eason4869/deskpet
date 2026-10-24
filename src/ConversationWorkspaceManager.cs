@@ -22,6 +22,8 @@ namespace Dafeiyu
             get{lock(gate)return jobServices;}
             set{lock(gate){if(workspaces.Count>0&&!Object.ReferenceEquals(value,jobServices))throw new InvalidOperationException("workspaces_open");jobServices=value;}}
         }
+        public RelationshipRuntime Relationships {get;set;}
+        public Func<string> RelationshipCompanion {get;set;}
         public IAgentApprovalProvider ApprovalProvider {get;set;}
         public IAgentQuestionProvider QuestionProvider {get;set;}
         public GeneratedImageStore ImageStore {get;set;}
@@ -43,6 +45,7 @@ namespace Dafeiyu
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
                 var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);
+                workspace.Session.ConfigureRelationships(Relationships,RelationshipCompanion);
                 workspace.Session.ApprovalProvider=ApprovalProvider;
                 workspace.Session.QuestionProvider=QuestionProvider;
                 workspace.Session.ImageStore=ImageStore;

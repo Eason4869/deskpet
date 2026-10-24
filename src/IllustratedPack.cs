@@ -52,6 +52,7 @@ namespace Dafeiyu
             if(manifest.Format!="illustrated-atlases-v1" || manifest.CellWidth!=480 || manifest.CellHeight!=520)throw new InvalidOperationException(TextResources.Get("illustratedPack.validate.text"));
             if((manifest.SpecialAction??"").Length>32)throw new InvalidOperationException(TextResources.Get("illustratedPack.validate.text.alternativeA"));
             if(manifest.Animations==null || manifest.Animations.Count!=Actions.Length || Actions.Any(a=>!manifest.Animations.ContainsKey(a)))throw new InvalidOperationException(TextResources.Get("illustratedPack.validate.text.alternativeB"));
+            RelationshipContent.Validate(manifest.Relationship,manifest.Animations.Keys.Concat(manifest.ExtraAnimations==null?Enumerable.Empty<string>():manifest.ExtraAnimations.Keys));
             var files=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long size=0;int frames=0;
             foreach(string action in Actions) {

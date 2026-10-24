@@ -23,7 +23,7 @@ internal sealed class DesktopWorkspaces
         Jobs.TerminalCompleted+=owner.AgentJobCompleted;
         _=Jobs.InitializeAsync();
         Manager=new ConversationWorkspaceManager(directory,owner.Skin.Id,()=>new ApiClient(),()=>runtime.CreateSpeech(new ApiClient()),runtime.CreateRecorder,()=>owner.Settings,()=>owner.Settings.SaveChatHistory)
-        {JobServices=Jobs,QuestionProvider=owner.Questions,ApprovalProvider=new DesktopWorkApproval(owner),ImageStore=owner.ImageStore,ImageClient=owner.ImageClient,ImageTasks=owner.ImageTasks,ImageUsage=owner.ImageUsage};
+        {Relationships=owner.Relationships,RelationshipCompanion=()=>owner.RelationshipCompanionId,JobServices=Jobs,QuestionProvider=owner.Questions,ApprovalProvider=new DesktopWorkApproval(owner),ImageStore=owner.ImageStore,ImageClient=owner.ImageClient,ImageTasks=owner.ImageTasks,ImageUsage=owner.ImageUsage};
         Manager.StateChanged+=owner.NotifyWorkChanged;
     }
     internal Task<ProjectDefinition> CreateProjectAsync(string name,string root) => Catalog.CreateProjectAsync(name,root,CancellationToken.None);

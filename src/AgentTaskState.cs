@@ -23,6 +23,7 @@ namespace Dafeiyu
     [DataContract]public sealed class AgentTaskState
     {
         [DataMember]public int Version=1;
+        [DataMember(EmitDefaultValue=false)]public string RelationshipCompanionId,RelationshipEventId;
         [DataMember]public string Id=Guid.NewGuid().ToString("N"),PersonaId="",Workspace="",Goal="",Status="running",Notice="";
         [DataMember]public List<AgentGuidance> Guidance=new List<AgentGuidance>();
         [DataMember]public int ContextCompactions,EstimatedContextTokens,ModelContextTokens;

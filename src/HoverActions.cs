@@ -23,10 +23,10 @@ namespace Dafeiyu
         public static IList<CompanionAction> Choices(SkinDefinition skin,IHolidayHoverActionProvider holidays,DateTime localDate)
         {
             var actions=new List<CompanionAction>{
-                new CompanionAction("jumping",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction"),p=>p.PlayAction("jumping",.7)),
-                new CompanionAction("waving",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction.alternativeA"),p=>p.PlayAction("waving",1.2)),
-                new CompanionAction("special",skin.SpecialAction,p=>p.PlayInteraction("special"))};
-            if(AdditionalInteractions.Has(skin,"special2"))actions.Add(new CompanionAction("special2",AdditionalInteractions.SpecialName(skin),p=>p.PlayInteraction("special2")));
+                new CompanionAction("jumping",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction"),p=>p.PlayUserAction("jumping",.7)),
+                new CompanionAction("waving",TextResources.Get("hoverActions.choices.listCompanionActionCompanionAction.alternativeA"),p=>p.PlayUserAction("waving",1.2)),
+                new CompanionAction("special",skin.SpecialAction,p=>p.PlayUserInteraction("special"))};
+            if(AdditionalInteractions.Has(skin,"special2"))actions.Add(new CompanionAction("special2",AdditionalInteractions.SpecialName(skin),p=>p.PlayUserInteraction("special2")));
             var holiday=holidays==null?null:holidays.GetAction(skin,localDate.Date);
             if(holiday!=null && !actions.Exists(a=>a.Id==holiday.Id))actions.Add(holiday);
             return actions.AsReadOnly();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -126,6 +126,11 @@ namespace Dafeiyu
         public bool AutoHidden {get{return visibility.AutoHidden;}}
         private bool petDisplayed=true;
         public bool IsPetVisible {get{return IsVisible && petDisplayed;}}
+        public RelationshipRuntime Relationships {get;private set;}
+        public RelationshipService RelationshipService {get{return Relationships.Service;}}
+        public string RelationshipCompanionId {get{return RelationshipIdentity.Resolve(Store.DirectoryPath,Skin.PickerKey,Skin.IsOfficial?Skin.BuiltinCharacterId:null,Skin.Id);}}
+        public RelationshipPackContent RelationshipPack {get{return Skin.Manifest==null?null:Skin.Manifest.Relationship;}}
+        public void RecordVisit(){Relationships.EnqueueVisit(RelationshipCompanionId,true);}
         private MenuItem visibilityItem;
         private IntPtr handle;
         private bool dragging,moved,closing,walking;
@@ -195,7 +200,7 @@ namespace Dafeiyu
         {
             get
             {
-                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.JobServices=AgentJobs;workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
+                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.Relationships=Relationships;workspaces.RelationshipCompanion=()=>RelationshipCompanionId;workspaces.JobServices=AgentJobs;workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
                 return workspaces;
             }
         }
@@ -206,7 +211,7 @@ namespace Dafeiyu
                 if(conversation==null)
                 {
                     var api=new ApiClient();var voice=new SpeechOutput(api,Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);
-                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;});conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
+                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;});conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
                 }
                 return conversation;
             }
@@ -220,7 +225,8 @@ namespace Dafeiyu
                 if(live==null)
                 {
                     live=new GeminiLiveSession();live.StateChanged+=delegate {if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};
-                    live.TurnCommitted+=delegate(string user,string reply,string status){string id=liveSkinId;Action commit=delegate {if(!exitPrepared)Conversation.AddLiveTurn(id,user,reply,status);};if(Dispatcher.CheckAccess())commit();else if(!Dispatcher.HasShutdownStarted)Dispatcher.Invoke(commit);};
+                    live.RelationshipCompanion=()=>RelationshipCompanionId;
+                    live.LogicalTurnCommitted+=delegate(RelationshipLiveTurn turn){string id=liveSkinId;Action commit=delegate {if(!exitPrepared)Conversation.AddLiveTurn(id,turn.User,turn.Reply,turn.Status,turn.LogicalTurnId,turn.CompanionId,true,turn.CompletedTime);};if(Dispatcher.CheckAccess())commit();else if(!Dispatcher.HasShutdownStarted)Dispatcher.Invoke(commit);};
                 }
                 return live;
             }
@@ -237,12 +243,12 @@ namespace Dafeiyu
             CancelInteraction();call=new LiveCallView(this,origin);call.Closed+=delegate {call=null;};call.Show();
         }
         public async Task StartLiveAsync()
-        {if(DialogueBusy)throw new InvalidOperationException(TextResources.Get("petWindow.startLiveAsync.text"));liveSkinId=Skin.Id;await Live.StartAsync(Settings,Settings.SystemPrompt.Replace("{pet_name}",Skin.Name));}
+        {if(DialogueBusy)throw new InvalidOperationException(TextResources.Get("petWindow.startLiveAsync.text"));liveSkinId=Skin.Id;string companion=RelationshipCompanionId,prompt=Settings.SystemPrompt.Replace("{pet_name}",Skin.Name);var snapshot=Settings.Copy();var context=await Task.Run(()=>Relationships.StageContext(companion));if(companion!=RelationshipCompanionId)return;await Live.StartAsync(snapshot,prompt+"\n"+context);}
         public async Task StopDialogueAsync(){if(inputQueue!=null)await inputQueue.PauseAsync();if(live!=null)await live.StopAsync();if(conversation!=null)await conversation.StopAsync();}
 
         public PetWindow(SpriteAtlas source,PetSettings settings,SettingsStore store,EventWaitHandle wakeSignal)
         {
-            atlas=source; Settings=settings; Store=store; wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
+            atlas=source; Settings=settings; Store=store;Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);}); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
             Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;
@@ -264,7 +270,7 @@ namespace Dafeiyu
             Width=192*Settings.Scale; Height=208*Settings.Scale;
             image=new HolidayPetImage { Stretch=Stretch.Fill,Cursor=Cursors.Hand };
             clickTimer=new DispatcherTimer(DispatcherPriority.Input) {Interval=TimeSpan.FromMilliseconds(Forms.SystemInformation.DoubleClickTime)};
-            clickTimer.Tick+=delegate {clickTimer.Stop();if(!closing && IsPetVisible && !Paused && !dragging && !IsUpdating){PlayInteraction(pendingHeadClick ? "petting" : "poked");NotifyGuideInteraction("click");}};
+            clickTimer.Tick+=delegate {clickTimer.Stop();if(!closing && IsPetVisible && !Paused && !dragging && !IsUpdating){PlayUserInteraction(pendingHeadClick ? "petting" : "poked");NotifyGuideInteraction("click");}};
             RenderOptions.SetBitmapScalingMode(image,BitmapScalingMode.HighQuality); Content=image;
             image.MouseLeftButtonDown+=BeginDrag; image.MouseMove+=Drag; image.MouseLeftButtonUp+=EndDrag;
             image.PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs args){if(args.ChangedButton==MouseButton.Middle){args.Handled=true;if(!dragging)ShowActionPalette();}};
@@ -310,7 +316,7 @@ namespace Dafeiyu
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
             InitializeHoliday();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
-            IsVisibleChanged+=delegate { RefreshRendering(); };
+            IsVisibleChanged+=delegate { RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
         }
         private void RefreshRendering()
         {
@@ -338,14 +344,14 @@ namespace Dafeiyu
             for(int i=0;i<AnimationPlayer.States.Length;i++)
             {
                 string state=AnimationPlayer.States[i]; var item=new MenuItem { Header=AnimationPlayer.Labels[i] };
-                item.Click+=delegate { PlayAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
+                item.Click+=delegate { PlayUserAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
             }
             menu.Items.Add(actions);
             var interactions=new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeB")};
             AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu"),"petting");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeA"),"poked");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeB"),"feeding");
-            var sleep=new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")};sleep.Click+=delegate {PlayInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
-            var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayInteraction("special");};interactions.Items.Add(firstSkill);
-            var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
+            var sleep=new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")};sleep.Click+=delegate {PlayUserInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
+            var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayUserInteraction("special");};interactions.Items.Add(firstSkill);
+            var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayUserInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
             menu.Opened+=delegate{RecordPetInteraction();firstSkill.Header=Skin.SpecialAction;extraSkill.Header=AdditionalInteractions.SpecialName(Skin);extraSkill.Visibility=AdditionalInteractions.Has(Skin,"special2")?Visibility.Visible:Visibility.Collapsed;};
             menu.Opened+=delegate {CancelPendingClick();sleep.Header=interaction.IsSleeping ? TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping") : TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping.alternativeA");interactions.IsEnabled=!IsUpdating;};
             var pause=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeD"),IsCheckable=true };
@@ -374,7 +380,7 @@ namespace Dafeiyu
         private static void AddMenu(ContextMenu menu,string text,Action action)
         { var item=new MenuItem { Header=text }; item.Click+=delegate { action(); }; menu.Items.Add(item); }
         private void AddInteractionMenu(MenuItem menu,string text,string action)
-        {var item=new MenuItem {Header=text};item.Click+=delegate {PlayInteraction(action);};menu.Items.Add(item);}
+        {var item=new MenuItem {Header=text};item.Click+=delegate {PlayUserInteraction(action);};menu.Items.Add(item);}
         private void Tick(object sender,EventArgs args)
         {
             if(closing) return;
@@ -609,6 +615,10 @@ namespace Dafeiyu
             if(message==0x7e || message==0x2e0) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate { if(!closing) DesktopInterop.ClampWindow(handle); }));
             return IntPtr.Zero;
         }
+        public void PlayUserAction(string state,double duration)
+        {if(closing || IsUpdating || !AnimationPlayer.States.Contains(state))return;PlayAction(state,duration);Relationships.EnqueueUserInteraction(RelationshipCompanionId,true,true);}
+        public void PlayUserInteraction(string name)
+        {if(closing || IsUpdating || name=="special2"&&!AdditionalInteractions.Has(Skin,name))return;bool waking=name=="wake"&&interaction.IsSleeping;PlayInteraction(name);Relationships.EnqueueUserInteraction(RelationshipCompanionId,true,interaction.Active || waking);}
         public void PlayAction(string state,double duration)
         { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();originalAction=AdditionalInteractions.HasOriginal(Skin,state) && random.Next(2)==0;manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void PlayInteraction(string name)
@@ -699,7 +709,7 @@ namespace Dafeiyu
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
                 if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
-                motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();
+                motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
                 if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
@@ -1101,7 +1111,7 @@ namespace Dafeiyu
                 {
                     ResetGreetingSchedule();petDisplayed=true;IsHitTestVisible=true;
                     Opacity=1;DesktopInterop.SetClickThrough(handle,Settings.ClickThrough);
-                    UpdateFrame();RefreshRendering();
+                    UpdateFrame();RefreshRendering();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 }
             }
             else if(petDisplayed)

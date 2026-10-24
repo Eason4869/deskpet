@@ -35,6 +35,11 @@ internal sealed partial class DesktopController : IDisposable
     public PetSettings Settings { get; }
     public List<PetSkin> Skins { get; }
     public PetSkin Skin { get; private set; }
+    public RelationshipRuntime Relationships {get;}
+    public RelationshipService RelationshipService=>Relationships.Service;
+    public string RelationshipCompanionId=>RelationshipIdentity.Resolve(DataDirectory,Skin.PickerKey,Skin.OfficialCharacterId,Skin.Id);
+    public RelationshipPackContent? RelationshipPack=>Skin.Relationship;
+    public void RecordVisit()=>Relationships.EnqueueVisit(RelationshipCompanionId,true);
     public ConversationSession Session { get; }
     public ConversationQueue Queue { get; }
     internal DesktopWorkspaces WorkBindings { get; }
@@ -63,6 +68,7 @@ internal sealed partial class DesktopController : IDisposable
         runtime ??= new MacRuntime();
         this.runtime = runtime;
         DataDirectory = runtime.DataDirectory;
+        Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action));
         Directory.CreateDirectory(DataDirectory);
         Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         runtime.InitializeProtection();
@@ -100,9 +106,16 @@ internal sealed partial class DesktopController : IDisposable
         Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);
+        Session.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);
         Queue = new ConversationQueue(Session, () => Settings, () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
         Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput);
-        Live.TurnCommitted += (user, reply, status) => Session.AddLiveTurn(Session.PersonaId, user, reply, status);
+        Live.RelationshipCompanion=()=>RelationshipCompanionId;
+        Live.LogicalTurnCommitted += turn =>
+        {
+            var persona=Session.PersonaId;
+            void Commit(){if(!exitPrepared)Session.AddLiveTurn(persona,turn.User,turn.Reply,turn.Status,turn.LogicalTurnId,turn.CompanionId,true,turn.CompletedTime);}
+            if(Dispatcher.UIThread.CheckAccess())Commit();else Dispatcher.UIThread.InvokeAsync(Commit).GetAwaiter().GetResult();
+        };
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
         Questions.Changed += Notify;
@@ -157,7 +170,7 @@ internal sealed partial class DesktopController : IDisposable
         else if(Session.LastNotice==restart)Session.ReportNotice("");
         Notify();
     }
-    public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp(); }
+    public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible); }
     public void ShowChat(bool quick)
     {
         var window = quick ? quickChat : fullChat;
@@ -264,7 +277,7 @@ internal sealed partial class DesktopController : IDisposable
     private async Task DrainApplicationForExitAsync()
     {
         await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
-        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();
+        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();
     }
     private void FinalizeConversationServices()
     {
@@ -274,6 +287,7 @@ internal sealed partial class DesktopController : IDisposable
         Live.Dispose();
         Session.Dispose();
         Questions.Dispose();
+        Relationships.Dispose();
     }
     public void Dispose()
     {
@@ -295,7 +309,7 @@ internal sealed partial class DesktopController : IDisposable
             await WorkBindings.StopForExitAsync();
             FinalizeConversationServices();
             await Session.WaitForIdleAsync();
-            await Session.FlushHistoryAsync();
+            await Session.FlushHistoryAsync();await Relationships.FlushAsync();
             ImageClient.Dispose();
             ImageStore.Dispose();
         });

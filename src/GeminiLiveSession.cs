@@ -57,6 +57,8 @@ namespace Dafeiyu
         public bool IsActive {get{lock(gate)return running!=null;}} public string Status {get;private set;}
         public event Action StateChanged;public event Action<string,string> PartialTranscript;public event Action<string,string> TurnCompleted;
         public event Action<string,string,string> TurnCommitted;
+        public Func<string> RelationshipCompanion {get;set;}
+        public event Action<RelationshipLiveTurn> LogicalTurnCommitted;
         double inputLevel;long inputAt;
         public double InputLevel {get{return DateTime.UtcNow.Ticks-Interlocked.Read(ref inputAt)>TimeSpan.TicksPerSecond/3?0:Volatile.Read(ref inputLevel);}}
         public double OutputLevel {get{lock(gate){var meter=speaker as IAudioLevelSource;return meter==null?0:meter.AudioLevel;}}}
@@ -82,7 +84,7 @@ namespace Dafeiyu
         static string Json(object value){return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.Serialize(value);}
         async Task Run(PetSettings settings,string persona,CancellationToken token)
         {
-            Task sending=null;var queue=new BlockingCollection<byte[]>(32);string user="",reply="";
+            Task sending=null;var queue=new BlockingCollection<byte[]>(32);string user="",reply="",logicalTurnId=null,companionId=null;
             try
             {
                 SetStatus(TextResources.Get("geminiLiveSession.run.setStatus"));socket=sockets();
@@ -110,8 +112,9 @@ namespace Dafeiyu
                     if(!ready)throw new ApiException(TextResources.Get("geminiLiveSession.run.text.alternativeB"));
                     var content=(Dictionary<string,object>)raw;
                     bool interrupted=content.ContainsKey("interrupted") && Object.Equals(content["interrupted"],true);
+                    if(logicalTurnId==null && content.ContainsKey("inputTranscription")){logicalTurnId="live-"+Guid.NewGuid().ToString("N");companionId=RelationshipCompanion==null?null:RelationshipCompanion();}
                     user=Transcript(content,"inputTranscription",user,"user");reply=Transcript(content,"outputTranscription",reply,"assistant");
-                    if(interrupted){speaker.Interrupt();Commit(user,reply,"interrupted");user=reply="";}
+                    if(interrupted){speaker.Interrupt();Commit(user,reply,"interrupted",logicalTurnId,companionId);user=reply="";logicalTurnId=companionId=null;}
                     if(!interrupted && content.TryGetValue("modelTurn",out raw))
                     {
                         var turn=(Dictionary<string,object>)raw;object parts;
@@ -127,7 +130,7 @@ namespace Dafeiyu
                             }
                         }
                     }
-                    if(!interrupted && content.ContainsKey("turnComplete") && Object.Equals(content["turnComplete"],true)){Commit(user,reply,"complete");user=reply="";SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeC"));}
+                    if(!interrupted && content.ContainsKey("turnComplete") && Object.Equals(content["turnComplete"],true)){Commit(user,reply,"complete",logicalTurnId,companionId);user=reply="";logicalTurnId=companionId=null;SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeC"));}
                 }
             }
             catch(OperationCanceledException){configured.TrySetCanceled();}
@@ -138,7 +141,7 @@ namespace Dafeiyu
             }
             finally
             {
-                Commit(user,reply,token.IsCancellationRequested?"cancelled":"error");
+                Commit(user,reply,token.IsCancellationRequested?"cancelled":"error",logicalTurnId,companionId);
                 if(cancellation!=null)cancellation.Cancel();if(socket!=null)socket.Abort();
                 // Dispose the native recorder off its callback thread before completing its queue.
                 if(microphone!=null)microphone.Dispose();queue.CompleteAdding();
@@ -159,10 +162,11 @@ namespace Dafeiyu
             object raw;if(!content.TryGetValue(field,out raw))return current;var data=(Dictionary<string,object>)raw;object text;
             if(data.TryGetValue("text",out text) && text is string){current+=(string)text;if(current.Length>50000)throw new ApiException(TextResources.Get("geminiLiveSession.transcript.text"));if(!disposed && PartialTranscript!=null)PartialTranscript(role,current);}return current;
         }
-        void Commit(string user,string reply,string status)
+        void Commit(string user,string reply,string status,string logicalTurnId,string companionId)
         {
             if(disposed || (user.Length==0 && reply.Length==0))return;
             if(TurnCommitted!=null)TurnCommitted(user,reply,status);
+            if(LogicalTurnCommitted!=null)LogicalTurnCommitted(new RelationshipLiveTurn{User=user,Reply=reply,Status=status,LogicalTurnId=logicalTurnId,CompanionId=companionId,CompletedTime=RelationshipTime.Current()});
             // Existing consumers receive only successful turns; incomplete subtitles use the status event.
             if(status=="complete" && TurnCompleted!=null)TurnCompleted(user,reply);
         }

@@ -34,6 +34,7 @@ internal sealed class PetSkin
     public string? Avatar { get; set; }
     public string? Preview { get; init; }
     public string Description { get; init; } = TextResources.Get("spriteAssets.description.text");
+    public RelationshipPackContent? Relationship {get;set;}
     public VoiceRecommendations? Voices { get; init; }
     public Dictionary<string, ClipSpec> ExtraClips { get; } = new();
     public Dictionary<string, ClipSpec> Alternates { get; } = new();
@@ -176,6 +177,11 @@ internal sealed class SpriteAssets : IDisposable
             SpecialAction = Text("special_action") ?? TextResources.Get("spriteAssets.readManifest.specialAction"), SpecialAction2 = second ?? TextResources.Get("spriteAssets.readManifest.specialAction2Second"), PackageId = packageId, PackVersion = Text("pack_version"),
             Avatar = Text("avatar") is { } avatar ? prefix + avatar : null, Preview = Text("preview") is { } preview ? prefix + preview : null,
             Description = Text("description") ?? TextResources.Get("spriteAssets.readManifest.description"), Voices = voices };
+        if (root.TryGetProperty("relationship",out var relation))
+        {
+            skin.Relationship=RelationshipContent.ParseJson(relation.GetRawText());
+            RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions).Concat(root.TryGetProperty("extra_animations",out var extras)?extras.EnumerateObject().Select(e=>e.Name):Enumerable.Empty<string>()));
+        }
         if (version == 1) return skin;
         if (version != 2 || root.GetProperty("cell_width").GetInt32() != 480 || root.GetProperty("cell_height").GetInt32() != 520) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeF"));
         foreach (var property in root.GetProperty("animations").EnumerateObject())

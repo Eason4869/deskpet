@@ -98,6 +98,7 @@ namespace Dafeiyu
                 imageExitOwners=owners;
                 if(workspaces!=null)await workspaces.SaveAllAsync().ConfigureAwait(false);
                 await Task.WhenAll(owners.Select(s=>s.FlushHistoryAsync())).ConfigureAwait(false);
+                await Relationships.FlushAsync().ConfigureAwait(false);
                 Store.Save(exitSettings);
             }
             finally
@@ -123,6 +124,7 @@ namespace Dafeiyu
             if(inputQueue!=null)inputQueue.Dispose();
             if(live!=null)live.Dispose();
             if(conversation!=null)conversation.Dispose();
+            Relationships.Dispose();
             if(mcpConnections!=null)mcpConnections.Dispose();
             if(questionController!=null)questionController.Dispose();
         }
