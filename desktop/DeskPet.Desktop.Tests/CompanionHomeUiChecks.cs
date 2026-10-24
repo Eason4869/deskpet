@@ -14,6 +14,34 @@ using DeskPet.Desktop;
 
 internal static class CompanionHomeUiChecks
 {
+    internal static int RunMaintenanceSettings(string directory)
+    {
+        int checks=0;
+        void Check(bool value,string text){if(!value)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
+        void Complete(Task task){var timer=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(timer.ElapsedMilliseconds>15000)throw new TimeoutException("Settings maintenance fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
+        T Named<T>(Control root,string name) where T:Control=>root.GetLogicalDescendants().OfType<T>().Single(x=>x.Name==name);
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{OnboardingState="completed",AutoUpdate=false});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));
+        using var page=new CompanionHomePage(owner);var window=new Window{Width=900,Height=780,Content=page};window.Show();
+        try{
+            Complete(page.RefreshAsync());Complete(owner.Relationships.FlushAsync());
+            var exclusive=owner.DataMaintenance.BeginAsync();Complete(exclusive);
+            using(exclusive.Result){
+                Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();
+                var toggle=Named<ToggleSwitch>(page,"RelationshipGrowthEnabled");toggle.IsChecked=false;toggle.RaiseEvent(new RoutedEventArgs(ToggleSwitch.ClickEvent));Complete(page.PendingSettings);
+                Check(Named<ToggleSwitch>(page,"RelationshipGrowthEnabled").IsEffectivelyEnabled,"busy settings refusal restores actual native controls");
+                var retry=Named<Button>(page,"RelationshipRetry");Check(retry.IsVisible&&retry.IsEffectivelyEnabled,"busy settings refusal shows enabled actionable native retry");
+                retry.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Complete(page.PendingRetry);
+                Check(Named<Button>(page,"RelationshipRetry").IsEffectivelyEnabled,"busy native retry remains recoverable");
+            }
+            Named<Button>(page,"RelationshipRetry").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Complete(page.PendingRetry);
+            Check(!owner.Relationships.Service.GetSnapshot(owner.RelationshipCompanionId).Settings.GrowthEnabled,"native retry persists refused exact settings intent after rollback");
+            using(owner.DataMaintenance.EnterActivity()){}owner.Session.SelectPersona(owner.Session.PersonaId);
+            Check(Named<ToggleSwitch>(page,"RelationshipGrowthEnabled").IsEffectivelyEnabled,"native rollback retains usable controls and session");
+        }finally{window.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
+        return checks;
+    }
     internal static int Run(string directory,string language="en_US")
     {
         int checks=0;

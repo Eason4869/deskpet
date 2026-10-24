@@ -156,7 +156,7 @@ Name="CompanionHomePage";
     void AddSetting(StackPanel parent,string name,string key,bool value,int kind)
     {
         var check=new ToggleSwitch{Name=name,Content=Label(key),IsChecked=value,OnContent=null,OffContent=null};AutomationProperties.SetName(check,TextResources.Get(key));
-        check.Click+=(_,_)=>{bool desired=check.IsChecked==true;check.IsChecked=value;if(View==null||View.ReadFailed||!parent.IsEnabled||!BeginSaving())return;PendingSettings=SaveAsync();async Task SaveAsync(){var current=View!.Snapshot.Settings;var result=await model.UpdateSettingsAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();}};
+        check.Click+=(_,_)=>{bool desired=check.IsChecked==true;check.IsChecked=value;if(View==null||View.ReadFailed||!parent.IsEnabled||!BeginSaving())return;var current=View.Snapshot.Settings;PendingSettings=SaveAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);};
         parent.Children.Add(check);
     }
     bool BeginSaving()
@@ -166,9 +166,19 @@ Name="CompanionHomePage";
         if(retryControl!=null)retryControl.IsEnabled=false;
         return true;
     }
+    async Task SaveAsync(bool growth,bool feedback,bool ai)
+    {
+        try{saveFailed=!(await model.UpdateSettingsAsync(growth,feedback,ai)).Success;}
+        catch(Exception){saveFailed=true;}
+        finally{saving=false;}
+        if(!disposed)await RefreshAsync();
+    }
     async Task RetryChangesAsync()
     {
-        var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
+        try{saveFailed=!(await model.RetryAsync()).Success;}
+        catch(Exception){saveFailed=true;}
+        finally{saving=false;}
+        if(!disposed)await RefreshAsync();
     }
     public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
 }

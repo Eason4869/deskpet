@@ -176,12 +176,17 @@ namespace Dafeiyu
         }
         async Task SaveAsync(bool growth,bool feedback,bool ai)
         {
-            var result=await model.UpdateSettingsAsync(growth,feedback,ai);saving=false;
-            if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
+            try{saveFailed=!(await model.UpdateSettingsAsync(growth,feedback,ai)).Success;}
+            catch(Exception){saveFailed=true;}
+            finally{saving=false;}
+            if(!disposed)await RefreshAsync();
         }
         async Task RetryChangesAsync()
         {
-            var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
+            try{saveFailed=!(await model.RetryAsync()).Success;}
+            catch(Exception){saveFailed=true;}
+            finally{saving=false;}
+            if(!disposed)await RefreshAsync();
         }
         public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
     }

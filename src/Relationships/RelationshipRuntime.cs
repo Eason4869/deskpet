@@ -52,10 +52,34 @@ namespace Dafeiyu
         static bool StorageError(Exception e){return e is IOException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
         void Publish(Action action){dispatch(delegate{if(!disposed)action();});}
         void Notify(){Publish(delegate{var changed=Changed;if(changed!=null)changed();});}
-        // HomeModel calls this only from its existing FIFO worker. Serialize the
-        // transaction and cache together across pages; UI observers read memory.
-        internal RelationshipResult SaveSettings(bool growth,bool feedback,bool aiContext)
-        {using(maintenance.EnterActivity())return SaveSettingsCore(growth,feedback,aiContext);}
+        // Admission belongs to the requested HomeModel operation, including its
+        // FIFO wait. The capability exposes only settings save/retry bodies and
+        // cannot authorize another runtime or survive disposal.
+        internal SettingsRequest TryBeginSettingsRequest(){return SettingsRequest.TryBegin(this);}
+        internal sealed class SettingsRequest:IDisposable
+        {
+            readonly RelationshipRuntime runtime;IDisposable activity;
+            SettingsRequest(RelationshipRuntime runtime,IDisposable activity){this.runtime=runtime;this.activity=activity;}
+            internal static SettingsRequest TryBegin(RelationshipRuntime runtime)
+            {
+                lock(runtime.submissionGate){
+                    IDisposable admitted;if(runtime.admissionClosed||!runtime.maintenance.TryEnterActivity(out admitted))return null;
+                    return new SettingsRequest(runtime,admitted);
+                }
+            }
+            void Require(){if(activity==null)throw new ObjectDisposedException("SettingsRequest");}
+            internal RelationshipResult Save(bool growth,bool feedback,bool aiContext)
+            {Require();return runtime.SaveSettingsCore(growth,feedback,aiContext);}
+            internal Task RetryPendingAsync()
+            {
+                lock(runtime.submissionGate){
+                    Require();if(runtime.admissionClosed)throw new ObjectDisposedException("RelationshipRuntime");
+                    runtime.worker=runtime.worker.ContinueWith(delegate{Require();runtime.RetryPendingCore();},TaskScheduler.Default);return runtime.worker;
+                }
+            }
+            public void Dispose(){var release=System.Threading.Interlocked.Exchange(ref activity,null);if(release!=null)release.Dispose();}
+        }
+        // Serialize the transaction and cache together across pages; UI observers read memory.
         RelationshipResult SaveSettingsCore(bool growth,bool feedback,bool aiContext)
         {
             RelationshipResult result;

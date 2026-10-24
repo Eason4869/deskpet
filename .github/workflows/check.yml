@@ -213,7 +213,7 @@ jobs:
         run: |
           .\Build.ps1 -Target UninstallUiTests -TestArguments '--compile-only'
           if ($LASTEXITCODE) { throw 'Uninstall UI compilation failed' }
-          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning')) {
+          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning', '--relationship-settings')) {
             & .\work\UninstallUiTests.exe $mode
             if ($LASTEXITCODE) { throw "Uninstall UI failed: $mode" }
           }

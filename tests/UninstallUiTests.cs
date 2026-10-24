@@ -68,6 +68,29 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("UninstallUiTests owner: "+passed+" passed");
         }
+        static void RelationshipSettingsChecks(PetWindow pet)
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            using(var page=new CompanionHomePage(pet)){
+                var window=new Window{Width=900,Height=780,Content=page};window.Show();
+                try{
+                    Wait(page.RefreshAsync());Wait(pet.Relationships.FlushAsync());
+                    var exclusive=pet.DataMaintenance.BeginAsync();Wait(exclusive);
+                    using(exclusive.Result){
+                        Find<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;window.UpdateLayout();Pump();
+                        var toggle=Find<CheckBox>(page,"RelationshipGrowthEnabled");toggle.IsChecked=false;toggle.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+                        Wait(page.PendingSettings);
+                        Check(!(bool)Field(page,"saving")&&Find<CheckBox>(page,"RelationshipGrowthEnabled").IsEnabled,"busy settings refusal restores actual WPF controls");
+                        var retry=Find<Button>(page,"RelationshipRetry");Check(retry.IsVisible&&retry.IsEnabled,"busy settings refusal shows enabled actionable WPF retry");
+                        Click(retry);Wait(page.PendingRetry);Check(!(bool)Field(page,"saving")&&Find<Button>(page,"RelationshipRetry").IsEnabled,"busy WPF retry remains recoverable");
+                    }
+                    Click(Find<Button>(page,"RelationshipRetry"));Wait(page.PendingRetry);
+                    Check(!pet.Relationships.Service.GetSnapshot(pet.RelationshipCompanionId).Settings.GrowthEnabled,"WPF retry persists refused exact settings intent after rollback");
+                    Usable(pet,"relationship settings rollback");
+                    Console.WriteLine("UninstallUiTests relationship settings: "+passed+" passed");
+                }finally{window.Close();}
+            }
+        }
         [STAThread]public static int Main(string[] args)
         {
             if(args.Contains("--compile-only"))return 0;
@@ -79,6 +102,7 @@ namespace Dafeiyu.Tests
                 if(args.Contains("--job-warning")){var jobs=Path.Combine(root,".deskpet-agent-kernel","jobs");Directory.CreateDirectory(jobs);File.WriteAllText(Path.Combine(jobs,new string('a',32)+".json"),"corrupt owned job metadata");}
                 Check(UpdateInstall.GetUninstallerPath(AppDomain.CurrentDomain.BaseDirectory)==null,"fixture executable directory has no matching registered uninstaller");
                 pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();Wait(pet.AgentJobs.InitializeAsync());
+                if(args.Contains("--relationship-settings")){RelationshipSettingsChecks(pet);return 0;}
                 if(args.Contains("--job-warning")){bool refused=false;try{using(Prepare(pet)){}}catch(IOException){refused=true;}Check(refused,"real corrupt job metadata warning blocks uninstall after drain");Usable(pet,"job storage warning");return 0;}
                 if(args.Contains("--closed")||args.Contains("--late")){
                     bool late=args.Contains("--late"),closed=false,committedDuringClosed=false;

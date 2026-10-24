@@ -41,6 +41,7 @@ namespace Dafeiyu.Tests
                     Check(File.ReadAllText(pending)=="{broken","blocked outbox original is preserved");
                 }
             }
+            await QueuedSettingsOwnAdmission();
             await DelayedRetryOrdersNewerEdit();
             var p=RelationshipProgress.FromScore(156);
             Check(p.StageId=="familiar"&&p.NextStageId=="close"&&p.NextThreshold==240&&p.RemainingPoints==84,"156 uses authoritative familiar/close/240/84 progress");
@@ -75,13 +76,53 @@ namespace Dafeiyu.Tests
                 Check(f.Service.GetSnapshot(id).Settings.GrowthEnabled,"retry commits the exact failed settings intent after storage recovers");
             }
         }
+        static async Task QueuedSettingsOwnAdmission()
+        {
+            using(var f=new RelationshipFixture()){
+                var maintenance=new Dafeiyu.Maintenance.DataMaintenanceGate();
+                using(var runtime=new RelationshipRuntime(f.Root,null,maintenance)){
+                    var model=new RelationshipHomeModel(runtime);
+                    foreach(bool retry in new[]{false,true}){
+                        // Hold only the existing FIFO predecessor: request admission and
+                        // persistence still execute real model/runtime/gate methods.
+                        var held=new TaskCompletionSource<bool>();
+                        typeof(RelationshipHomeModel).GetField("settingsWorker",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(model,held.Task);
+                        var requested=retry?model.RetryAsync():model.UpdateSettingsAsync(false,true,false);
+                        bool refused=false;IDisposable exclusive=null;
+                        try{try{exclusive=await maintenance.BeginAsync();}catch(InvalidOperationException){refused=true;}}
+                        finally{if(exclusive!=null)exclusive.Dispose();held.SetResult(true);}
+                        await requested;
+                        Check(refused,(retry?"queued retry":"queued settings save")+" reserves maintenance admission before its worker starts");
+                        Check(requested.Result.Success,"admitted settings operation completes without a nested admission failure");
+                        using(await maintenance.BeginAsync()){}Check(true,"completed settings operation releases its reservation");
+                    }
+                    using(await maintenance.BeginAsync()){
+                        Check(!(await model.UpdateSettingsAsync(true,false,true)).Success,"busy settings refusal is a handled failure");
+                        Check(!(await model.RetryAsync()).Success,"busy retry refusal never claims success");
+                    }
+                    Check((await model.RetryAsync()).Success,"refused settings intent can be retried after maintenance rollback");
+                    var settings=f.Service.GetSnapshot("official:e-bao").Settings;
+                    Check(settings.GrowthEnabled&&!settings.FeedbackEnabled&&settings.AiContextEnabled,"retry persists exact refused settings intent");
+                    var request=runtime.TryBeginSettingsRequest();request.Dispose();bool saveRejected=false,retryRejected=false;
+                    try{request.Save(false,false,false);}catch(ObjectDisposedException){saveRejected=true;}
+                    try{await request.RetryPendingAsync();}catch(ObjectDisposedException){retryRejected=true;}
+                    Check(saveRejected&&retryRejected,"disposed settings capability cannot save or retry");
+                    string path=Path.Combine(f.Root,"relationships","state.json");var bytes=File.ReadAllBytes(path);File.WriteAllText(path,"{broken");
+                    Check(!(await model.UpdateSettingsAsync(false,true,false)).Success,"admitted failed persistence returns handled failure");
+                    using(await maintenance.BeginAsync()){}Check(File.ReadAllText(path)=="{broken","failed persistence releases lease and preserves original bytes");
+                    File.WriteAllBytes(path,bytes);Check((await model.RetryAsync()).Success,"failed persistence retains recoverable intent");
+                    settings=f.Service.GetSnapshot("official:e-bao").Settings;Check(!settings.GrowthEnabled&&settings.FeedbackEnabled&&!settings.AiContextEnabled,"retry commits exact failed persistence intent");
+                }
+            }
+        }
         static async Task DelayedRetryOrdersNewerEdit()
         {
             using(var f=new RelationshipFixture()){
                 var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();int hold=0;
+                var maintenance=new Dafeiyu.Maintenance.DataMaintenanceGate();
                 using(var runtime=new RelationshipRuntime(f.Root,delegate(Action action){
                     if(System.Threading.Interlocked.CompareExchange(ref hold,0,1)==1){entered.TrySetResult(true);release.Task.GetAwaiter().GetResult();}action();
-                })){
+                },maintenance)){
                     var model=new RelationshipHomeModel(runtime);
                     Check((await model.UpdateSettingsAsync(true,true,true)).Success,"retry ordering fixture has saved settings");
                     string path=Path.Combine(f.Root,"relationships","state.json");byte[] original=File.ReadAllBytes(path);
@@ -90,6 +131,8 @@ namespace Dafeiyu.Tests
                     Task<RelationshipResult> newer=null;bool overtook;
                     try{
                         Check(await Task.WhenAny(entered.Task,Task.Delay(5000))==entered.Task,"runtime notification gate holds the admitted retry");
+                        bool refused=false;try{using(await maintenance.BeginAsync()){}}catch(InvalidOperationException){refused=true;}
+                        Check(refused,"retry retains admission while its actual runtime persistence completion is held");
                         newer=model.UpdateSettingsAsync(true,false,true);
                         // The gate establishes the exact pending operation; this deadline is a
                         // bounded negative assertion, not a sleep used to order worker writes.
