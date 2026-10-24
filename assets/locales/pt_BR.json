@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Não foi possível abrir os anexos. Verifique o acesso à pasta.",
   "dataManagement.close": "Fechar",
   "dataManagement.applyFailed": "Preferências salvas, mas algumas configurações não foram aplicadas. Abra as configurações correspondentes e tente novamente.",
-  "dataManagement.pendingSaveFailed": "As últimas alterações de posição ou configurações ainda aguardam salvamento. Verifique o acesso ao armazenamento e tente novamente."
+  "dataManagement.pendingSaveFailed": "As últimas alterações de posição ou configurações ainda aguardam salvamento. Verifique o acesso ao armazenamento e tente novamente.",
+  "uninstall.handoffFailed": "Não foi possível concluir a desinstalação. Verifique o registro de desinstalação e tente novamente."
 }

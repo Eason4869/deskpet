@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Anhänge konnten nicht geöffnet werden. Prüfen Sie den Ordnerzugriff.",
   "dataManagement.close": "Schließen",
   "dataManagement.applyFailed": "Einstellungen gespeichert, aber teilweise nicht angewendet. Öffnen Sie die betroffenen Einstellungen und versuchen Sie es erneut.",
-  "dataManagement.pendingSaveFailed": "Letzte Positions- oder Einstellungsänderungen warten noch auf Speicherung. Prüfen Sie den Speicherzugriff und versuchen Sie es erneut."
+  "dataManagement.pendingSaveFailed": "Letzte Positions- oder Einstellungsänderungen warten noch auf Speicherung. Prüfen Sie den Speicherzugriff und versuchen Sie es erneut.",
+  "uninstall.handoffFailed": "Die Deinstallation konnte nicht abgeschlossen werden. Prüfen Sie das Deinstallationsprotokoll und versuchen Sie es erneut."
 }

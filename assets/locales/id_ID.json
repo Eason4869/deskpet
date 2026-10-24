@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Lampiran tidak dapat dibuka. Periksa akses folder.",
   "dataManagement.close": "Tutup",
   "dataManagement.applyFailed": "Preferensi disimpan, tetapi beberapa pengaturan belum diterapkan. Buka pengaturan terkait untuk mencoba lagi.",
-  "dataManagement.pendingSaveFailed": "Perubahan posisi atau pengaturan terbaru masih menunggu disimpan. Periksa akses penyimpanan lalu coba lagi."
+  "dataManagement.pendingSaveFailed": "Perubahan posisi atau pengaturan terbaru masih menunggu disimpan. Periksa akses penyimpanan lalu coba lagi.",
+  "uninstall.handoffFailed": "Penghapusan aplikasi tidak dapat diselesaikan. Periksa log penghapusan lalu coba lagi."
 }

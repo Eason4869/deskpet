@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "첨부파일을 열지 못했습니다. 폴더 접근 권한을 확인하세요.",
   "dataManagement.close": "닫기",
   "dataManagement.applyFailed": "환경설정은 저장되었지만 일부 설정을 적용하지 못했습니다. 해당 설정을 열어 다시 시도하세요.",
-  "dataManagement.pendingSaveFailed": "최근 위치 또는 설정 변경 사항이 아직 저장 대기 중입니다. 저장소 접근 권한을 확인하고 다시 시도하세요."
+  "dataManagement.pendingSaveFailed": "최근 위치 또는 설정 변경 사항이 아직 저장 대기 중입니다. 저장소 접근 권한을 확인하고 다시 시도하세요.",
+  "uninstall.handoffFailed": "제거를 완료하지 못했습니다. 제거 로그를 확인한 후 다시 시도하세요."
 }

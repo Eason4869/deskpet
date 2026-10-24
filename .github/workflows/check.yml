@@ -208,6 +208,26 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Verify trusted uninstall handoff in a unique owned Inno installation
+        shell: powershell
+        run: |
+          $candidates = @((Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
+          $env:DESKPET_TEST_INNO = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (!$env:DESKPET_TEST_INNO) { throw 'Inno compiler required for owned uninstall acceptance' }
+          python tests/UninstallHandoffSmoke.py
+          if ($LASTEXITCODE) { throw 'Owned uninstall handoff failed' }
+          python tests/UpdateLifecycleSmoke.py --receipts-only
+          if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
+      - name: Preserve owned uninstall handoff diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uninstall-handoff-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/uninstall-handoff-*/install.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/*.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/result.json
       - name: Verify locale in the actually installed application
         shell: powershell
         run: |

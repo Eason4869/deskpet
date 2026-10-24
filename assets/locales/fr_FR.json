@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Impossible d’ouvrir les pièces jointes. Vérifiez l’accès au dossier.",
   "dataManagement.close": "Fermer",
   "dataManagement.applyFailed": "Préférences enregistrées, mais certains réglages n’ont pas été appliqués. Ouvrez les réglages concernés pour réessayer.",
-  "dataManagement.pendingSaveFailed": "Les dernières modifications de position ou de réglages restent en attente de sauvegarde. Vérifiez l’accès au stockage et réessayez."
+  "dataManagement.pendingSaveFailed": "Les dernières modifications de position ou de réglages restent en attente de sauvegarde. Vérifiez l’accès au stockage et réessayez.",
+  "uninstall.handoffFailed": "La désinstallation n’a pas pu être terminée. Consultez le journal de désinstallation et réessayez."
 }

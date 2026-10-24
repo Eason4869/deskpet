@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "添付ファイルを開けませんでした。フォルダーへのアクセスを確認してください。",
   "dataManagement.close": "閉じる",
   "dataManagement.applyFailed": "設定は保存されましたが、一部を適用できませんでした。該当する設定を開いて再試行してください。",
-  "dataManagement.pendingSaveFailed": "最近の位置や設定の変更はまだ保存待ちです。保存先へのアクセスを確認して再試行してください。"
+  "dataManagement.pendingSaveFailed": "最近の位置や設定の変更はまだ保存待ちです。保存先へのアクセスを確認して再試行してください。",
+  "uninstall.handoffFailed": "アンインストールを完了できませんでした。アンインストールログを確認してから再試行してください。"
 }

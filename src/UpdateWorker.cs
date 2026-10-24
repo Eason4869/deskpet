@@ -6,7 +6,7 @@ using System.Threading;
 #if UPDATE_WORKER
 [assembly:System.Reflection.AssemblyTitle("桌面伙伴更新助手")]
 [assembly:System.Reflection.AssemblyProduct(Dafeiyu.ReleaseInfo.ProductName)]
-[assembly:System.Reflection.AssemblyDescription("桌面伙伴更新助手：校验更新包、保留用户数据并重启应用")]
+[assembly:System.Reflection.AssemblyDescription("桌面伙伴维护助手：校验更新包与卸载交接，保留用户数据")]
 [assembly:System.Reflection.AssemblyCompany(Dafeiyu.ReleaseInfo.Author)]
 [assembly:System.Reflection.AssemblyVersion(Dafeiyu.ReleaseInfo.AssemblyVersion)]
 [assembly:System.Reflection.AssemblyFileVersion(Dafeiyu.ReleaseInfo.AssemblyVersion)]
@@ -18,6 +18,7 @@ namespace Dafeiyu
     {
         public static int Main(string[] args)
         {
+            if(args.Length==2&&args[0]=="--uninstall")return UninstallHandoff.RunWorker(args[1]);
             UpdateJob job=null;bool parentExited=false,trusted=false;IDisposable cacheLease=null;
             try
             {

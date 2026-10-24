@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "No se pudieron abrir los adjuntos. Comprueba el acceso a la carpeta.",
   "dataManagement.close": "Cerrar",
   "dataManagement.applyFailed": "Las preferencias se guardaron, pero algunos ajustes no se aplicaron. Abre los ajustes correspondientes para reintentarlo.",
-  "dataManagement.pendingSaveFailed": "Los últimos cambios de posición o ajustes siguen pendientes de guardado. Comprueba el acceso y vuelve a intentarlo."
+  "dataManagement.pendingSaveFailed": "Los últimos cambios de posición o ajustes siguen pendientes de guardado. Comprueba el acceso y vuelve a intentarlo.",
+  "uninstall.handoffFailed": "No se pudo completar la desinstalación. Revisa el registro de desinstalación y vuelve a intentarlo."
 }

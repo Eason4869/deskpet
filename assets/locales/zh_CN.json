@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "无法打开保留附件，请检查文件夹访问权限后重试。",
   "dataManagement.close": "关闭",
   "dataManagement.applyFailed": "偏好已保存，但部分运行时设置未能应用。请打开对应设置后重试。",
-  "dataManagement.pendingSaveFailed": "最近的位置或设置更改尚未保存，待写入更改仍保留。请检查存储权限后重试。"
+  "dataManagement.pendingSaveFailed": "最近的位置或设置更改尚未保存，待写入更改仍保留。请检查存储权限后重试。",
+  "uninstall.handoffFailed": "卸载未能完成。请查看卸载日志后重试。"
 }

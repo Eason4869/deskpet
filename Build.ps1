@@ -138,11 +138,7 @@ $responseLines = @($arguments | ForEach-Object { '"' + ($_ -replace '(?<!\\)"','
 if ($LASTEXITCODE -ne 0) { throw "Compilation failed ($Target)." }
 if ($Target -eq 'App') {
     $workerDestination = Join-Path $outputRoot 'DeskPet.Update.exe'
-    $workerSources = @('UpdateInstall.cs','UpdateWorker.cs','ReleaseInfo.cs','ReleaseVersion.cs','ReleaseIdentity.cs','RetiredRuntimeFiles.cs') | ForEach-Object { Join-Path $projectRoot ('src\' + $_) }
-    $workerSources += (Join-Path $projectRoot 'src/Maintenance/CacheResourceLease.cs')
-    $workerSources += (Join-Path $projectRoot 'src/Maintenance/CacheUpdateRetirement.cs')
-    $workerSources += (Join-Path $projectRoot 'src/TextResources.cs')
-    $workerSources += (Join-Path $projectRoot 'src/UiLanguages.cs')
+    $workerSources = @(Get-Content -LiteralPath (Join-Path $projectRoot 'tools/update-worker-sources.txt') | Where-Object { $_.Trim() } | ForEach-Object { Join-Path $projectRoot ('src/' + $_) })
     $workerSources += $identitySource
     & $compiler @('/nologo','/optimize+','/codepage:65001','/utf8output','/platform:anycpu','/target:winexe','/main:Dafeiyu.UpdateWorkerProgram','/define:UPDATE_WORKER',('/out:' + $workerDestination),('/win32manifest:' + (Join-Path $projectRoot 'app.manifest'))) @references @localeAssets @workerSources
     if ($LASTEXITCODE -ne 0) { throw 'Update helper compilation failed.' }

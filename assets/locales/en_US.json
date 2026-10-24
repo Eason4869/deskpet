@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Retained attachments could not be opened. Check folder access and try again.",
   "dataManagement.close": "Close",
   "dataManagement.applyFailed": "Preferences were saved, but some runtime settings could not be applied. Open their settings to retry.",
-  "dataManagement.pendingSaveFailed": "Recent position or settings changes are still pending because storage could not be written. Check access and try again."
+  "dataManagement.pendingSaveFailed": "Recent position or settings changes are still pending because storage could not be written. Check access and try again.",
+  "uninstall.handoffFailed": "Uninstall could not be completed. Check the uninstall log and try again."
 }

@@ -4591,5 +4591,6 @@
   "dataManagement.attachmentsFailed": "Impossibile aprire gli allegati. Controlla l’accesso alla cartella.",
   "dataManagement.close": "Chiudi",
   "dataManagement.applyFailed": "Preferenze salvate, ma alcune impostazioni non sono state applicate. Apri le relative impostazioni e riprova.",
-  "dataManagement.pendingSaveFailed": "Le ultime modifiche a posizione o impostazioni restano in attesa di salvataggio. Controlla l’accesso e riprova."
+  "dataManagement.pendingSaveFailed": "Le ultime modifiche a posizione o impostazioni restano in attesa di salvataggio. Controlla l’accesso e riprova.",
+  "uninstall.handoffFailed": "Impossibile completare la disinstallazione. Controlla il registro di disinstallazione e riprova."
 }
