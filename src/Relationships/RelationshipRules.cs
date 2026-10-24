@@ -26,44 +26,63 @@ namespace Dafeiyu
             bool fresh = !data.Companions.TryGetValue(id, out state);
             string date = time.LocalDate;
             if (fresh) {
-                state = new CompanionRelationshipState { CompanionId = id, FirstMetUtc = time.UtcNow, LastSeenUtc = time.UtcNow, FirstLocalDate = date, BudgetLocalDate = date, DateHighWater = date, OffsetMinutes = (int)time.LocalOffset.TotalMinutes, ActiveLocalDates = new List<string> { date }, Receipts = new List<RelationshipReceipt>(), Milestones = new List<RelationshipMilestone>() };
+                state = NewState(id, time);
                 data.Companions.Add(id, state);
             } else {
                 if (state.Receipts.Any(r => r.EventId == token) || time.UtcNow < state.LastSeenUtc) return false;
-                if ((int)time.LocalOffset.TotalMinutes != state.OffsetMinutes) {
-                    // A change of offset never creates budget or activity. Remember even future anchors.
-                    state.OffsetMinutes = (int)time.LocalOffset.TotalMinutes; state.BudgetLocalDate = date;
-                    if (String.CompareOrdinal(date, state.DateHighWater) > 0) state.DateHighWater = date;
-                } else if (String.CompareOrdinal(date, state.DateHighWater) > 0) {
-                    state.BudgetLocalDate = state.DateHighWater = date;
-                    state.DailyTotal = state.VisitPoints = state.InteractionPoints = state.ConversationPoints = state.WorkPoints = 0;
-                    state.ActiveLocalDates.Add(date);
-                }
-                // Keep the observed anchor current even while a previously claimed date blocks reset.
-                state.BudgetLocalDate = date;
-                state.LastSeenUtc = time.UtcNow;
+                AdvanceCalendar(state, time);
             }
+            awarded = Award(state, type, time.UtcNow);
+            state.Receipts.Add(new RelationshipReceipt { EventId = token, EventType = type, Utc = time.UtcNow, AwardedPoints = awarded, OffsetMinutes = (int)time.LocalOffset.TotalMinutes, BudgetEpoch = state.BudgetEpoch });
+            for (int i = state.Milestones.Count; i < Stages.Length && state.Score >= Thresholds[i]; i++)
+                state.Milestones.Add(new RelationshipMilestone { StageId = Stages[i], EarnedUtc = time.UtcNow, EarnedLocalDate = date });
+            return true;
+        }
+        static CompanionRelationshipState NewState(string id, RelationshipTime time)
+        {
+            string date = time.LocalDate;
+            return new CompanionRelationshipState { CompanionId = id, FirstMetUtc = time.UtcNow, LastSeenUtc = time.UtcNow, FirstLocalDate = date, BudgetLocalDate = date, DateHighWater = date, OffsetMinutes = (int)time.LocalOffset.TotalMinutes, ActiveLocalDates = new List<string> { date }, Receipts = new List<RelationshipReceipt>(), Milestones = new List<RelationshipMilestone>() };
+        }
+        static void AdvanceCalendar(CompanionRelationshipState state, RelationshipTime time)
+        {
+            string date = time.LocalDate;
+            string naturalDate = time.UtcNow.AddMinutes(state.OffsetMinutes).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string previousDate = state.LastSeenUtc.AddMinutes(state.OffsetMinutes).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            bool naturalDayAdvanced = String.CompareOrdinal(naturalDate, previousDate) > 0;
+            // Activity follows a naturally elapsed midnight in the previous zone. Same-instant
+            // travel cannot create activity, while a real later day still counts through DST/travel.
+            if (naturalDayAdvanced && String.CompareOrdinal(date, state.ActiveLocalDates[state.ActiveLocalDates.Count - 1]) > 0)
+                state.ActiveLocalDates.Add(date);
+            // Only a naturally elapsed midnight and a previously unclaimed date start a new
+            // budget. Offset-only shifts carry counters; real new days refresh through DST/travel.
+            if (naturalDayAdvanced && String.CompareOrdinal(date, state.DateHighWater) > 0) {
+                state.BudgetEpoch++;
+                state.DailyTotal = state.VisitPoints = state.InteractionPoints = state.ConversationPoints = state.WorkPoints = 0;
+            }
+            if (String.CompareOrdinal(date, state.DateHighWater) > 0) state.DateHighWater = date;
+            state.OffsetMinutes = (int)time.LocalOffset.TotalMinutes;
+            state.BudgetLocalDate = date; state.LastSeenUtc = time.UtcNow;
+        }
+        static int Award(CompanionRelationshipState state, RelationshipEventType type, DateTime utc)
+        {
             int points = 0;
             switch (type) {
                 case RelationshipEventType.Visit: points = state.VisitPoints == 0 ? 2 : 0; break;
                 case RelationshipEventType.UserInteraction:
-                    if (!state.LastRewardedInteractionUtc.HasValue || (time.UtcNow - state.LastRewardedInteractionUtc.Value).TotalSeconds >= 20) points = Math.Min(1, 6 - state.InteractionPoints);
+                    if (!state.LastRewardedInteractionUtc.HasValue || (utc - state.LastRewardedInteractionUtc.Value).TotalSeconds >= 20) points = Math.Min(1, 6 - state.InteractionPoints);
                     break;
                 case RelationshipEventType.CompletedConversation: points = Math.Min(2, 8 - state.ConversationPoints); break;
                 case RelationshipEventType.SuccessfulWorkTask: points = Math.Min(4, 8 - state.WorkPoints); break;
             }
-            awarded = Math.Min(points, Math.Min(20 - state.DailyTotal, 1000 - state.Score));
+            int awarded = Math.Min(points, Math.Min(20 - state.DailyTotal, 1000 - state.Score));
             state.Score += awarded; state.DailyTotal += awarded;
             switch (type) {
                 case RelationshipEventType.Visit: state.VisitPoints += awarded; break;
-                case RelationshipEventType.UserInteraction: state.InteractionPoints += awarded; if (awarded > 0) state.LastRewardedInteractionUtc = time.UtcNow; break;
+                case RelationshipEventType.UserInteraction: state.InteractionPoints += awarded; if (awarded > 0) state.LastRewardedInteractionUtc = utc; break;
                 case RelationshipEventType.CompletedConversation: state.ConversationPoints += awarded; break;
                 case RelationshipEventType.SuccessfulWorkTask: state.WorkPoints += awarded; break;
             }
-            state.Receipts.Add(new RelationshipReceipt { EventId = token, EventType = type, Utc = time.UtcNow, AwardedPoints = awarded });
-            for (int i = 0; i < Stages.Length; i++) if (state.Score >= Thresholds[i] && !state.Milestones.Any(m => m.StageId == Stages[i]))
-                state.Milestones.Add(new RelationshipMilestone { StageId = Stages[i], EarnedUtc = time.UtcNow, EarnedLocalDate = date });
-            return true;
+            return awarded;
         }
         internal static void Validate(RelationshipData data)
         {
@@ -78,22 +97,25 @@ namespace Dafeiyu
                 foreach (var date in s.ActiveLocalDates) { if (!Date(date) || String.CompareOrdinal(date, s.FirstLocalDate) < 0 || String.CompareOrdinal(date, s.DateHighWater) > 0 || previous != null && String.CompareOrdinal(date, previous) <= 0) throw Invalid(); previous = date; }
                 if (s.LastRewardedInteractionUtc.HasValue && (!Utc(s.LastRewardedInteractionUtc.Value) || s.LastRewardedInteractionUtc < s.FirstMetUtc || s.LastRewardedInteractionUtc > s.LastSeenUtc)) throw Invalid();
                 if (s.Receipts == null || s.Receipts.Count == 0 || s.Receipts.Count > 100000 || s.Milestones == null || s.Milestones.Count > Stages.Length) throw Invalid();
-                var ids = new HashSet<string>(StringComparer.Ordinal); long sum = 0; DateTime receiptUtc = s.FirstMetUtc; DateTime? lastInteraction = null;
+                // Rebuild counters in one pass. Do not call Apply here: its live-event duplicate
+                // search would turn replay into O(n squared) for a bounded but large receipt ledger.
+                var ids = new HashSet<string>(StringComparer.Ordinal); DateTime receiptUtc = s.FirstMetUtc;
+                CompanionRelationshipState replay = null;
+                var crossings = new RelationshipReceipt[Stages.Length]; int crossedCount = 0;
                 foreach (var receipt in s.Receipts) {
-                    if (receipt == null || !ValidEventId(receipt.EventId) || !ids.Add(receipt.EventId) || !ValidType(receipt.EventType) || !Utc(receipt.Utc) || receipt.Utc < receiptUtc || receipt.Utc > s.LastSeenUtc || receipt.AwardedPoints < 0 || receipt.AwardedPoints > (receipt.EventType == RelationshipEventType.Visit || receipt.EventType == RelationshipEventType.CompletedConversation ? 2 : receipt.EventType == RelationshipEventType.UserInteraction ? 1 : 4)) throw Invalid();
-                    sum += receipt.AwardedPoints; receiptUtc = receipt.Utc;
-                    if (receipt.EventType == RelationshipEventType.UserInteraction && receipt.AwardedPoints > 0) lastInteraction = receipt.Utc;
+                    if (receipt == null || !ValidEventId(receipt.EventId) || !ids.Add(receipt.EventId) || !ValidType(receipt.EventType) || !Utc(receipt.Utc) || receipt.Utc < receiptUtc || receipt.Utc > s.LastSeenUtc || Math.Abs((long)receipt.OffsetMinutes) > 840 || receipt.BudgetEpoch < 0) throw Invalid();
+                    var time = new RelationshipTime(receipt.Utc, TimeSpan.FromMinutes(receipt.OffsetMinutes));
+                    if (replay == null) replay = NewState(pair.Key, time); else AdvanceCalendar(replay, time);
+                    if (receipt.BudgetEpoch != replay.BudgetEpoch || receipt.AwardedPoints != Award(replay, receipt.EventType, receipt.Utc)) throw Invalid();
+                    while (crossedCount < Stages.Length && replay.Score >= Thresholds[crossedCount]) crossings[crossedCount++] = receipt;
+                    receiptUtc = receipt.Utc;
                 }
-                if (sum != s.Score) throw Invalid();
-                if (s.Receipts[0].Utc != s.FirstMetUtc || receiptUtc != s.LastSeenUtc) throw Invalid();
-                if (lastInteraction != s.LastRewardedInteractionUtc) throw Invalid();
-                int count = 0; DateTime earned = s.FirstMetUtc;
-                for (int i = 0; i < Stages.Length && s.Score >= Thresholds[i]; i++) {
-                    if (count >= s.Milestones.Count) throw Invalid(); var m = s.Milestones[count++];
-                    if (m == null || m.StageId != Stages[i] || !Utc(m.EarnedUtc) || m.EarnedUtc < earned || m.EarnedUtc > s.LastSeenUtc || !Date(m.EarnedLocalDate) || !LocalNearUtc(m.EarnedLocalDate, m.EarnedUtc)) throw Invalid();
-                    earned = m.EarnedUtc;
+                if (s.Receipts[0].Utc != s.FirstMetUtc || receiptUtc != s.LastSeenUtc || s.Score != replay.Score || s.FirstLocalDate != replay.FirstLocalDate || s.BudgetLocalDate != replay.BudgetLocalDate || s.DateHighWater != replay.DateHighWater || s.OffsetMinutes != replay.OffsetMinutes || s.BudgetEpoch != replay.BudgetEpoch || s.DailyTotal != replay.DailyTotal || s.VisitPoints != replay.VisitPoints || s.InteractionPoints != replay.InteractionPoints || s.ConversationPoints != replay.ConversationPoints || s.WorkPoints != replay.WorkPoints || s.LastRewardedInteractionUtc != replay.LastRewardedInteractionUtc || !s.ActiveLocalDates.SequenceEqual(replay.ActiveLocalDates)) throw Invalid();
+                if (s.Milestones.Count != crossedCount) throw Invalid();
+                for (int i = 0; i < crossedCount; i++) {
+                    var milestone = s.Milestones[i]; var crossing = crossings[i];
+                    if (milestone == null || milestone.StageId != Stages[i] || milestone.EarnedUtc != crossing.Utc || milestone.EarnedLocalDate != crossing.LocalDate) throw Invalid();
                 }
-                if (count != s.Milestones.Count) throw Invalid();
             }
         }
         static bool Utc(DateTime value) { return value.Kind == DateTimeKind.Utc && value.Year >= 1970 && value.Year <= 9998; }

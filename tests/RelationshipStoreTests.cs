@@ -7,7 +7,7 @@ namespace Dafeiyu.Tests
     {
         public static int Main()
         {
-            try { using (var f = new RelationshipFixture()) {
+            try { ReviewBudgetIntegrity(); ReviewMilestoneIntegrity(); using (var f = new RelationshipFixture()) {
                 var a = f.Service; var b = f.Service; string id = "official:e-bao"; var t = RelationshipFixture.Time("2026-10-24T12:00:00Z");
                 RelationshipFixture.Check(a.GetSnapshot(id).Settings.GrowthEnabled && a.GetSnapshot(id).Settings.FeedbackEnabled && a.GetSnapshot(id).Settings.AiContextEnabled, "settings default true");
                 a.Record(id, RelationshipEventType.Visit, "visit", t);
@@ -63,6 +63,50 @@ namespace Dafeiyu.Tests
                 RelationshipFixture.Check(f.Service.Record("custom-pack:precise", RelationshipEventType.UserInteraction, "sub-ms-cooldown", beforeTwenty).AwardedPoints == 0, "submillisecond interaction cooldown remains strict after restart");
             } Console.WriteLine("RelationshipStoreTests: all behavior scenarios passed"); return 0;
             } catch (Exception e) { Console.WriteLine("FAIL RelationshipStoreTests: " + e); return 1; }
+        }
+        static void ReviewBudgetIntegrity()
+        {
+            using (var f = new RelationshipFixture()) {
+                string id = "custom-pack:review"; var time = RelationshipFixture.Time("2026-10-24T12:00:00Z");
+                f.Service.RecordChecked(id, RelationshipEventType.Visit, "day1", time);
+                string path = f.Store.FilePath, valid = File.ReadAllText(path);
+                Corrupt(path, valid, delegate(RelationshipData data) { data.Companions[id].DailyTotal = 0; data.Companions[id].VisitPoints = 0; });
+                string invalid = File.ReadAllText(path);
+                var result = f.Service.Record(id, RelationshipEventType.Visit, "duplicate-visit", time);
+                RelationshipFixture.Check(!result.Success && result.AwardedPoints == 0 && File.ReadAllText(path) == invalid, "R2 reset in-range visit budget rejected byte-identically");
+                File.WriteAllText(path, valid);
+                f.Service.RecordChecked(id, RelationshipEventType.CompletedConversation, "travel", RelationshipFixture.Time("2026-10-24T12:00:00Z", 840));
+                valid = File.ReadAllText(path);
+                Corrupt(path, valid, delegate(RelationshipData data) { data.Companions[id].DailyTotal = 2; data.Companions[id].ConversationPoints = 0; });
+                invalid = File.ReadAllText(path);
+                result = f.Service.Record(id, RelationshipEventType.CompletedConversation, "extra-travel", RelationshipFixture.Time("2026-10-24T12:00:00Z", 840));
+                RelationshipFixture.Check(!result.Success && result.AwardedPoints == 0 && File.ReadAllText(path) == invalid, "R2 positive travel-carried counter contradiction rejected byte-identically");
+            }
+        }
+        static void ReviewMilestoneIntegrity()
+        {
+            using (var f = new RelationshipFixture()) {
+                string id = "custom-pack:review";
+                var first = RelationshipFixture.Time("2026-10-24T12:00:00Z");
+                for (int day = 0; day < 10; day++) for (int n = 0; n < 4; n++)
+                    f.Service.RecordChecked(id, RelationshipEventType.CompletedConversation, day + "chat" + n, new RelationshipTime(first.UtcNow.AddDays(day), TimeSpan.Zero));
+                var familiar = f.Service.GetSnapshot(id).State.Milestones.Single(m => m.StageId == "familiar");
+                RelationshipFixture.Check(familiar.EarnedUtc == RelationshipFixture.Time("2026-11-02T12:00:00Z").UtcNow && familiar.EarnedLocalDate == "2026-11-02", "R3 literal threshold fixture reaches80 on Nov2");
+                string path = f.Store.FilePath, valid = File.ReadAllText(path);
+                Corrupt(path, valid, delegate(RelationshipData data) { var milestone = data.Companions[id].Milestones.Single(m => m.StageId == "familiar"); milestone.EarnedUtc = first.UtcNow; milestone.EarnedLocalDate = "2026-10-24"; });
+                bool timestampRejected = RejectMilestoneFile(f, path, id);
+                Corrupt(path, valid, delegate(RelationshipData data) { data.Companions[id].Milestones.Single(m => m.StageId == "familiar").EarnedLocalDate = "2026-11-01"; });
+                bool dateRejected = RejectMilestoneFile(f, path, id);
+                Corrupt(path, valid, delegate(RelationshipData data) { data.Companions[id].Milestones[0].EarnedLocalDate = "2026-10-23"; });
+                bool firstMeetingRejected = RejectMilestoneFile(f, path, id);
+                RelationshipFixture.Check(timestampRejected && dateRejected && firstMeetingRejected, "R3 threshold provenance rejected byte-identically: timestamp=" + timestampRejected + ", localDate=" + dateRejected + ", firstMeeting=" + firstMeetingRejected);
+            }
+        }
+        static bool RejectMilestoneFile(RelationshipFixture fixture, string path, string id)
+        {
+            string invalid = File.ReadAllText(path);
+            var result = fixture.Service.Record(id, RelationshipEventType.Visit, "after-corruption", RelationshipFixture.Time("2026-11-02T12:00:00Z"));
+            return !result.Success && result.AwardedPoints == 0 && File.ReadAllText(path) == invalid;
         }
         static void Corrupt(string path, string json, Action<RelationshipData> change)
         {

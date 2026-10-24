@@ -56,12 +56,21 @@ namespace Dafeiyu.Tests
                     Check(snap.State.Milestones.Count == 6 && snap.State.Milestones.Last().StageId == "best_friend", "earned stages retained");
                     Check(snap.AcquaintanceDays(RelationshipFixture.Time("2026-03-01T00:00:00Z")) == 60 && snap.State.ActiveLocalDates.Count == 51, "away time calendar span distinct from active days");
                     Check(snap.AcquaintanceDays(RelationshipFixture.Time("2025-01-01T00:00:00Z")) == 1, "backward clock span clamp");
+                    var changedOffsetAtMaximum = f.Service.RecordChecked(id, RelationshipEventType.Visit, "max-offset-day", RelationshipFixture.Time("2026-02-21T12:00:00Z", 60));
+                    Check(changedOffsetAtMaximum.Snapshot.State.Score == 1000 && changedOffsetAtMaximum.Snapshot.State.ActiveLocalDates.Count == 52, "actual next day with offset change counts at maximum score");
                 }
                 Console.WriteLine("RelationshipRulesTests: all behavior scenarios passed"); return 0;
             } catch (Exception e) { Console.WriteLine("FAIL RelationshipRulesTests: " + e); return 1; }
         }
         static void ClockCases()
         {
+            using (var f = new RelationshipFixture()) {
+                string id = "custom-pack:review";
+                f.Service.RecordChecked(id, RelationshipEventType.Visit, "day1", RelationshipFixture.Time("2026-10-24T12:00:00Z"));
+                var next = f.Service.RecordChecked(id, RelationshipEventType.CompletedConversation, "day2", RelationshipFixture.Time("2026-10-25T12:00:00Z", 60));
+                Check(next.Snapshot.State.ActiveLocalDates.SequenceEqual(new[] { "2026-10-24", "2026-10-25" }), "R1 elapsed natural day plus offset change counts activity after restart");
+                Check(next.Snapshot.State.DailyTotal == 2 && next.Snapshot.State.VisitPoints == 0, "R1 actual next natural day refreshes budget despite changed offset");
+            }
             using (var f = new RelationshipFixture()) {
                 string id = "official:e-bao"; var s = f.Service;
                 s.RecordChecked(id, RelationshipEventType.Visit, "east", RelationshipFixture.Time("2026-10-24T23:30:00Z", 840));

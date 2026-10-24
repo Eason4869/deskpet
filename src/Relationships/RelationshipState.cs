@@ -42,6 +42,9 @@ namespace Dafeiyu
         [DataMember(Name = "Utc", IsRequired = true)] long utcTicks;
         public DateTime Utc { get { return new DateTime(utcTicks, DateTimeKind.Utc); } set { utcTicks = RelationshipTimestamp.Ticks(value); } }
         [DataMember(IsRequired = true)] public int AwardedPoints { get; set; }
+        [DataMember(IsRequired = true)] public int OffsetMinutes { get; set; }
+        [DataMember(IsRequired = true)] public int BudgetEpoch { get; set; }
+        public string LocalDate { get { return Utc.AddMinutes(OffsetMinutes).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture); } }
     }
     [DataContract] public sealed class RelationshipMilestone
     {
@@ -69,6 +72,7 @@ namespace Dafeiyu
         [DataMember(IsRequired = true)] public int InteractionPoints { get; set; }
         [DataMember(IsRequired = true)] public int ConversationPoints { get; set; }
         [DataMember(IsRequired = true)] public int WorkPoints { get; set; }
+        [DataMember(IsRequired = true)] internal int BudgetEpoch { get; set; }
         [DataMember(Name = "LastRewardedInteractionUtc", IsRequired = true)] long? lastRewardedInteractionUtcTicks;
         public DateTime? LastRewardedInteractionUtc { get { return lastRewardedInteractionUtcTicks.HasValue ? (DateTime?)new DateTime(lastRewardedInteractionUtcTicks.Value, DateTimeKind.Utc) : null; } set { lastRewardedInteractionUtcTicks = value.HasValue ? (long?)RelationshipTimestamp.Ticks(value.Value) : null; } }
         [DataMember(IsRequired = true)] public List<RelationshipReceipt> Receipts { get; set; }
