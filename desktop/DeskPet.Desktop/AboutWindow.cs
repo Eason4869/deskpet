@@ -54,7 +54,8 @@ internal sealed class AboutWindow : Window
         repository = Ui.Input(owner.Settings.RepositoryUrl);
         download = Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton"), async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
         repository.TextChanged += (_, _) => { releaseDownload = null; download.IsEnabled = false; };
-        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion), 24), Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text")), Ui.Field(TextResources.Get("aboutWindow.aboutWindow.field"), repository), Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA"), CheckAsync, owner.Error), download, notice, Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA")), Ui.Button(TextResources.Get("common.close"), Close)) };
+        var cache=Ui.Button(TextResources.Get("cache.title"),()=>{_ = new CacheMaintenanceWindow(owner.DataDirectory).ShowDialog(this);});cache.Name="ClearCache";
+        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion), 24), Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text")), Ui.Field(TextResources.Get("aboutWindow.aboutWindow.field"), repository), Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA"), CheckAsync, owner.Error), download, notice, Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA")), Ui.Row(cache,Ui.Button(TextResources.Get("common.close"), Close))) };
         Closed += (_, _) => { cancel.Cancel(); cancel.Dispose(); };
     }
     private async Task CheckAsync()

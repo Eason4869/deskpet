@@ -17,6 +17,7 @@ namespace Dafeiyu
         readonly DispatcherTimer startup,readyTimer;
         CancellationTokenSource cancel;
         UpdateJob pending;
+        IDisposable cacheLease;
         bool checking,applying,disposed,pendingManual,checkingManual,automaticStarted,retryAutomatic;
         DateTime? restartAt;bool immediate;UpdateChannel pendingChannel;
         public string Status {get;private set;}
@@ -86,6 +87,7 @@ namespace Dafeiyu
                 string version=release.VersionTag.TrimStart('v','V');
                 if(!ReleaseInfo.WindowsUpdateAsset(release.AssetName,version,portable) || String.IsNullOrEmpty(release.Digest) || !release.Digest.StartsWith("sha256:",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Format("updateCoordinator.checkAndUpdateAsync.template",release.VersionTag));
                 string work=Path.Combine(pet.Store.DirectoryPath,"updates",Guid.NewGuid().ToString("N"));
+                cacheLease=Maintenance.CacheResourceLease.Acquire(pet.Store.DirectoryPath,work);
                 IsDownloading=true;Status=TextResources.Format("updateCoordinator.checkAndUpdateAsync.statusReleaseVersionTag",release.VersionTag);Notify();
                 var reporter=new Progress<double>(value=>{if(!disposed && !token.IsCancellationRequested){Progress=value;Notify();}});
                 string package=await feed.DownloadAsync(release,work,useProxy,proxyAddress,reporter,token);
@@ -102,7 +104,7 @@ namespace Dafeiyu
             {
                 pending=null;Status=e is OperationCanceledException?TextResources.Get("updateCoordinator.checkAndUpdateAsync.invalidOperationExceptionEMessage"):e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.checkAndUpdateAsync.invalidOperationExceptionEMessage.alternativeA");
             }
-            finally{checking=false;IsDownloading=false;cancel.Dispose();cancel=null;retryAutomatic=!succeeded;ScheduleAutomatic(succeeded?TimeSpan.FromHours(4):TimeSpan.FromMinutes(10));Notify();}
+            finally{checking=false;IsDownloading=false;cancel.Dispose();cancel=null;if(pending==null)ReleaseCache();retryAutomatic=!succeeded;ScheduleAutomatic(succeeded?TimeSpan.FromHours(4):TimeSpan.FromMinutes(10));Notify();}
         }
         public void ChangeChannel(UpdateChannel channel)
         {
@@ -132,11 +134,11 @@ namespace Dafeiyu
                 await apply(job);
                 if(disposed || !pet.CanApplyUpdate(pendingManual))
                 {
-                    Abort(job);if(!disposed){applying=false;pending=null;restartAt=null;Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status.alternativeA");Notify();}return;
+                    Abort(job);if(!disposed){applying=false;pending=null;ReleaseCache();restartAt=null;Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status.alternativeA");Notify();}return;
                 }
                 pet.Close();
             }
-            catch(Exception e){Abort(job);applying=false;pending=null;restartAt=null;Status=e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.tryApplyPendingAsync.invalidOperationExceptionEMessage");Notify();}
+            catch(Exception e){Abort(job);applying=false;pending=null;ReleaseCache();restartAt=null;Status=e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.tryApplyPendingAsync.invalidOperationExceptionEMessage");Notify();}
         }
         async Task StartWorkerAsync(UpdateJob job)
         {
@@ -163,11 +165,12 @@ namespace Dafeiyu
         }
         public void Cancel()
         {
-            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;restartAt=null;immediate=false;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.cancel.status");Notify();
+            if(applying)return;if(cancel!=null)cancel.Cancel();pending=null;if(!checking)ReleaseCache();restartAt=null;immediate=false;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.cancel.status");Notify();
         }
         public void ReportValidation(string text){Status=text;Notify();}
         static void Abort(UpdateJob job){try{File.WriteAllText(Path.Combine(job.WorkDirectory,"abort"),"aborted");}catch(IOException){}catch(UnauthorizedAccessException){}}
         void Notify(){if(disposed)return;if(!pet.Dispatcher.CheckAccess()){pet.Dispatcher.BeginInvoke(new Action(Notify));return;}pet.UpdateStateChanged(this);if(Changed!=null)Changed();}
-        public void Dispose(){if(disposed)return;disposed=true;startup.Stop();readyTimer.Stop();if(cancel!=null)cancel.Cancel();feed.Dispose();Changed=null;}
+        void ReleaseCache(){var lease=cacheLease;cacheLease=null;if(lease!=null)lease.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;startup.Stop();readyTimer.Stop();if(cancel!=null)cancel.Cancel();if(!checking)ReleaseCache();feed.Dispose();Changed=null;}
     }
 }

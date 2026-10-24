@@ -4559,5 +4559,17 @@
   "relationship.card.save": "Erinnerung speichern",
   "relationship.card.pngFilter": "PNG-Bild",
   "relationship.card.saved": "Erinnerung gespeichert.",
-  "relationship.card.failed": "Die Erinnerung konnte nicht gespeichert werden. Wähle einen anderen Ort und versuche es erneut."
+  "relationship.card.failed": "Die Erinnerung konnte nicht gespeichert werden. Wähle einen anderen Ort und versuche es erneut.",
+  "cache.title": "Cache leeren",
+  "cache.scanning": "Sichere Prüfung läuft…",
+  "cache.cleaning": "Wird bereinigt…",
+  "cache.total": "Freigebbar: {0:N0} Bytes",
+  "cache.updates": "Alte Updates: {0:N0} Bytes",
+  "cache.downloads": "Abgebrochene Downloads: {0:N0} Bytes",
+  "cache.protected": "Geschützt: {0}; Prüffehler: {1}.",
+  "cache.preserved": "Einstellungen, API-Schlüssel, Chats, Figuren, alle Bilder und Anhänge, Beziehungsdaten und Projekte bleiben erhalten. Aktive oder unklare Dateien werden übersprungen. Nur eindeutig zugeordnete Caches, die älter als sieben Tage sind, werden bereinigt.",
+  "cache.clean": "Bereinigen",
+  "cache.rescan": "Erneut prüfen",
+  "cache.result": "{0:N0} Bytes freigegeben; {1} Ordner entfernt; {2} übersprungen; {3} fehlgeschlagen.",
+  "cache.failed": "Der Vorgang konnte nicht abgeschlossen werden. Erneut prüfen und versuchen."
 }

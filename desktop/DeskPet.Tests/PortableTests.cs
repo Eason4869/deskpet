@@ -13,6 +13,8 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length>0&&args[0]=="--cache-lease-fixture")return CacheMaintenanceTests.Main(args);
+            if(args.Length==1&&args[0]=="--cache-maintenance-only")return CacheMaintenanceTests.Main(new string[0]);
             if(args.Length==1 && args[0]=="--relationship-integration-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return RelationshipIntegrationTests.Main();}
             if(args.Length==1 && args[0]=="--relationship-feedback-only")return RelationshipFeedbackTests.Main();
             if(args.Length==1 && args[0]=="--relationship-presentation-only")return RelationshipPresentationTests.Main();
@@ -126,7 +128,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { ()=>CacheMaintenanceTests.Main(new string[0]), RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,

@@ -18,7 +18,7 @@ namespace Dafeiyu
     {
         public static int Main(string[] args)
         {
-            UpdateJob job=null;bool parentExited=false,trusted=false;
+            UpdateJob job=null;bool parentExited=false,trusted=false;IDisposable cacheLease=null;
             try
             {
                 if(args.Length!=1)return 2;job=UpdateInstall.Read<UpdateJob>(args[0]);UpdateInstall.Validate(job);
@@ -26,6 +26,7 @@ namespace Dafeiyu
                 if(!String.Equals(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName),Path.GetFullPath(job.WorkDirectory),StringComparison.OrdinalIgnoreCase))return 2;
                 TextResources.ConfigureStartupLanguage(UiLanguages.ReadSavedLanguage(Path.Combine(job.InstallationDirectory,"data","settings.json")));
                 CheckVersion(job);CheckAbort(job);
+                cacheLease=Maintenance.CacheResourceLease.ProtectExisting(Path.Combine(job.InstallationDirectory,"data"),job.WorkDirectory);
                 if(job.ParentPid<=0)throw new InvalidOperationException(TextResources.Get("updateWorker.main.text"));
                 Process parent=null;try{parent=Process.GetProcessById(job.ParentPid);}catch(ArgumentException){parentExited=true;}
                 using(parent)
@@ -41,7 +42,11 @@ namespace Dafeiyu
                 if(parentExited && !trusted){trusted=true;File.WriteAllText(Path.Combine(job.WorkDirectory,"ready"),"ready");}
                 CheckAbort(job);UpdateInstall.Validate(job);CheckVersion(job);
                 if(job.Mode=="installed")UpdateInstall.ApplyInstaller(job);else UpdateInstall.ApplyPortable(job,null);
-                Result(job,true,TextResources.Format("updateWorker.main.result",job.TargetVersion));Restart(job);return 0;
+                Result(job,true,TextResources.Format("updateWorker.main.result",job.TargetVersion));
+                // Cache retirement is optional, like result receipts. Failed proof persistence
+                // conservatively retains the package and rollback; it must not prevent restart.
+                try{Maintenance.CacheUpdateRetirement.RecordCompleted(Path.Combine(job.InstallationDirectory,"data"),job.WorkDirectory,job.TargetVersion);}catch(Exception){}
+                Restart(job);return 0;
             }
             catch(Exception e)
             {
@@ -54,6 +59,7 @@ namespace Dafeiyu
                 }
                 return 1;
             }
+            finally{if(cacheLease!=null)cacheLease.Dispose();}
         }
         static void Result(UpdateJob job,bool success,string text)
         {

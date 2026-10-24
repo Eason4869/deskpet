@@ -4559,5 +4559,17 @@
   "relationship.card.save": "Save keepsake",
   "relationship.card.pngFilter": "PNG image",
   "relationship.card.saved": "Keepsake saved.",
-  "relationship.card.failed": "Could not save the keepsake. Choose another location and try again."
+  "relationship.card.failed": "Could not save the keepsake. Choose another location and try again.",
+  "cache.title": "Clear cache",
+  "cache.scanning": "Scanning safely…",
+  "cache.cleaning": "Cleaning…",
+  "cache.total": "Reclaimable: {0:N0} bytes",
+  "cache.updates": "Expired updates: {0:N0} bytes",
+  "cache.downloads": "Abandoned downloads: {0:N0} bytes",
+  "cache.protected": "Protected: {0}; scan failures: {1}.",
+  "cache.preserved": "Settings, API keys, chat history, companions, all images and attachments, relationships and projects are kept. Active or uncertain files are skipped. Only known caches older than seven days are eligible.",
+  "cache.clean": "Clean",
+  "cache.rescan": "Rescan",
+  "cache.result": "Freed {0:N0} bytes; removed {1} folders; skipped {2}; failed {3}.",
+  "cache.failed": "The operation could not finish. Rescan and try again."
 }

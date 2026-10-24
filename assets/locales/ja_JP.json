@@ -4559,5 +4559,17 @@
   "relationship.card.save": "記念カードを保存",
   "relationship.card.pngFilter": "PNG 画像",
   "relationship.card.saved": "記念カードを保存しました。",
-  "relationship.card.failed": "記念カードを保存できませんでした。別の場所を選んで再試行してください。"
+  "relationship.card.failed": "記念カードを保存できませんでした。別の場所を選んで再試行してください。",
+  "cache.title": "キャッシュを削除",
+  "cache.scanning": "安全にスキャン中…",
+  "cache.cleaning": "削除中…",
+  "cache.total": "削除可能：{0:N0} バイト",
+  "cache.updates": "古い更新ファイル：{0:N0} バイト",
+  "cache.downloads": "中断されたダウンロード：{0:N0} バイト",
+  "cache.protected": "保護：{0} 件、スキャン失敗：{1} 件。",
+  "cache.preserved": "設定、API キー、会話履歴、キャラクター、すべての画像と添付ファイル、関係データ、プロジェクトは保持します。使用中または状態不明のファイルは除外し、所有元が確認できる七日以上前のキャッシュのみ削除します。",
+  "cache.clean": "削除",
+  "cache.rescan": "再スキャン",
+  "cache.result": "{0:N0} バイト解放、{1} フォルダー削除、{2} 件除外、{3} 件失敗。",
+  "cache.failed": "操作を完了できませんでした。再スキャンしてお試しください。"
 }

@@ -107,6 +107,11 @@ namespace Dafeiyu.Tests
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,async(i,c)=>{calls++;entered.TrySetResult(i);await release.Task;})) {
                     var task=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);var staging=await Timeout(entered.Task);
                     Check(staging.RootDirectory.Contains(".stage-")&&s.Installed("dafeiyu")==null&&!task.IsCompleted,"native callback observes staging and blocks pointer publication");
+                    foreach(string resource in Directory.GetDirectories(Path.GetDirectoryName(staging.RootDirectory)).Where(p=>Path.GetFileName(p).StartsWith(".stage-",StringComparison.Ordinal)||Path.GetFileName(p).StartsWith(".transfer-",StringComparison.Ordinal))){
+                        Check(Maintenance.CacheResourceLease.Registered(f.Root,resource),"actual companion transfer is registered before publication");
+                        bool protectedResource=false;try{using(Maintenance.CacheResourceLease.TryExclusive(f.Root,resource)){}}catch(IOException){protectedResource=true;}
+                        Check(protectedResource,"actual companion unpack/validation holds a cross-process cache lease");
+                    }
                     release.SetResult(true);var result=await Timeout(task);Check(!result.Installation.RootDirectory.Contains(".stage-")&&!Directory.Exists(staging.RootDirectory)&&calls==1,"returned installation binds final immutable root after asynchronous native validation");
                 }
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>{throw new FormatException("private path secret");})) {

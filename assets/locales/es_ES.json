@@ -4559,5 +4559,17 @@
   "relationship.card.save": "Guardar recuerdo",
   "relationship.card.pngFilter": "Imagen PNG",
   "relationship.card.saved": "Recuerdo guardado.",
-  "relationship.card.failed": "No se ha podido guardar el recuerdo. Elige otra ubicación e inténtalo de nuevo."
+  "relationship.card.failed": "No se ha podido guardar el recuerdo. Elige otra ubicación e inténtalo de nuevo.",
+  "cache.title": "Limpiar caché",
+  "cache.scanning": "Analizando de forma segura…",
+  "cache.cleaning": "Limpiando…",
+  "cache.total": "Espacio recuperable: {0:N0} bytes",
+  "cache.updates": "Actualizaciones antiguas: {0:N0} bytes",
+  "cache.downloads": "Descargas abandonadas: {0:N0} bytes",
+  "cache.protected": "Protegidos: {0}; errores de análisis: {1}.",
+  "cache.preserved": "Se conservan los ajustes, claves API, conversaciones, personajes, todas las imágenes y archivos adjuntos, relaciones y proyectos. Se omiten archivos activos o inciertos. Solo se limpia la caché identificada de más de siete días.",
+  "cache.clean": "Limpiar",
+  "cache.rescan": "Volver a analizar",
+  "cache.result": "{0:N0} bytes liberados; {1} carpetas eliminadas; {2} omitidos; {3} errores.",
+  "cache.failed": "No se pudo completar la operación. Vuelve a analizar e inténtalo otra vez."
 }

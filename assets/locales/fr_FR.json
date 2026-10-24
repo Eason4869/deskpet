@@ -4559,5 +4559,17 @@
   "relationship.card.save": "Enregistrer le souvenir",
   "relationship.card.pngFilter": "Image PNG",
   "relationship.card.saved": "Souvenir enregistré.",
-  "relationship.card.failed": "Impossible d’enregistrer le souvenir. Choisissez un autre emplacement et réessayez."
+  "relationship.card.failed": "Impossible d’enregistrer le souvenir. Choisissez un autre emplacement et réessayez.",
+  "cache.title": "Vider le cache",
+  "cache.scanning": "Analyse sécurisée…",
+  "cache.cleaning": "Nettoyage…",
+  "cache.total": "Espace récupérable : {0:N0} octets",
+  "cache.updates": "Anciennes mises à jour : {0:N0} octets",
+  "cache.downloads": "Téléchargements abandonnés : {0:N0} octets",
+  "cache.protected": "Éléments protégés : {0} ; échecs d’analyse : {1}.",
+  "cache.preserved": "Les paramètres, clés API, conversations, personnages, images et pièces jointes, relations et projets sont conservés. Les fichiers actifs ou incertains sont ignorés. Seuls les caches identifiés de plus de sept jours sont concernés.",
+  "cache.clean": "Nettoyer",
+  "cache.rescan": "Analyser à nouveau",
+  "cache.result": "{0:N0} octets libérés ; {1} dossiers supprimés ; {2} ignorés ; {3} échecs.",
+  "cache.failed": "L’opération n’a pas pu aboutir. Relancez l’analyse puis réessayez."
 }

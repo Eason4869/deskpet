@@ -4559,5 +4559,17 @@
   "relationship.card.save": "Simpan kartu kenangan",
   "relationship.card.pngFilter": "Gambar PNG",
   "relationship.card.saved": "Kartu kenangan disimpan.",
-  "relationship.card.failed": "Kartu kenangan tidak dapat disimpan. Pilih lokasi lain dan coba lagi."
+  "relationship.card.failed": "Kartu kenangan tidak dapat disimpan. Pilih lokasi lain dan coba lagi.",
+  "cache.title": "Bersihkan cache",
+  "cache.scanning": "Memindai dengan aman…",
+  "cache.cleaning": "Membersihkan…",
+  "cache.total": "Dapat dibersihkan: {0:N0} byte",
+  "cache.updates": "Pembaruan lama: {0:N0} byte",
+  "cache.downloads": "Unduhan terbengkalai: {0:N0} byte",
+  "cache.protected": "Dilindungi: {0}; gagal dipindai: {1}.",
+  "cache.preserved": "Pengaturan, kunci API, riwayat obrolan, karakter, semua gambar dan lampiran, data hubungan, serta proyek dipertahankan. Berkas aktif atau yang statusnya tidak pasti dilewati. Hanya cache teridentifikasi yang lebih lama dari tujuh hari yang dibersihkan.",
+  "cache.clean": "Bersihkan",
+  "cache.rescan": "Pindai ulang",
+  "cache.result": "{0:N0} byte dibebaskan; {1} folder dihapus; {2} dilewati; {3} gagal.",
+  "cache.failed": "Operasi belum selesai. Pindai ulang lalu coba lagi."
 }

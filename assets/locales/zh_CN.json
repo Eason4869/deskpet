@@ -4559,5 +4559,17 @@
   "relationship.card.save": "保存纪念卡",
   "relationship.card.pngFilter": "PNG 图片",
   "relationship.card.saved": "纪念卡已保存。",
-  "relationship.card.failed": "无法保存纪念卡，请选择其他位置后重试。"
+  "relationship.card.failed": "无法保存纪念卡，请选择其他位置后重试。",
+  "cache.title": "清理缓存",
+  "cache.scanning": "正在安全扫描…",
+  "cache.cleaning": "正在清理…",
+  "cache.total": "可清理：{0:N0} 字节",
+  "cache.updates": "过期更新包：{0:N0} 字节",
+  "cache.downloads": "遗留下载：{0:N0} 字节",
+  "cache.protected": "已保护 {0} 项；扫描失败 {1} 项。",
+  "cache.preserved": "保留设置、API 密钥、聊天记录、角色、所有图片及附件、关系数据和项目。使用中或状态不明的文件会跳过；仅清理已确认归属且超过七天的缓存。",
+  "cache.clean": "清理",
+  "cache.rescan": "重新扫描",
+  "cache.result": "已释放 {0:N0} 字节；移除 {1} 个目录；跳过 {2} 项；失败 {3} 项。",
+  "cache.failed": "操作未能完成，请重新扫描后重试。"
 }
