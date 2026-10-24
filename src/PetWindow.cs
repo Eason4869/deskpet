@@ -417,7 +417,7 @@ namespace Dafeiyu
         }
         private bool GreetingAllowed(bool fullscreen,bool preview)
         {
-            return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
+            return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && (preview || !RelationshipNoticeVisible) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
                 (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
                 !WindowInUse(quick) && (!WindowInUse(chat) || (preview && preferences!=null && Object.ReferenceEquals(preferences.HostWindow,chat))) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
         }
@@ -617,9 +617,9 @@ namespace Dafeiyu
             return IntPtr.Zero;
         }
         public void PlayUserAction(string state,double duration)
-        {if(closing || IsUpdating || !AnimationPlayer.States.Contains(state))return;PlayAction(state,duration);Relationships.EnqueueUserInteraction(RelationshipCompanionId,true,true);}
+        {if(closing || IsUpdating || !AnimationPlayer.States.Contains(state))return;PlayAction(state,duration);RecordRelationshipInteraction(true);}
         public void PlayUserInteraction(string name)
-        {if(closing || IsUpdating || name=="special2"&&!AdditionalInteractions.Has(Skin,name))return;bool waking=name=="wake"&&interaction.IsSleeping;PlayInteraction(name);Relationships.EnqueueUserInteraction(RelationshipCompanionId,true,interaction.Active || waking);}
+        {if(closing || IsUpdating || name=="special2"&&!AdditionalInteractions.Has(Skin,name))return;bool waking=name=="wake"&&interaction.IsSleeping;PlayInteraction(name);RecordRelationshipInteraction(interaction.Active || waking);}
         public void PlayAction(string state,double duration)
         { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();originalAction=AdditionalInteractions.HasOriginal(Skin,state) && random.Next(2)==0;manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void PlayInteraction(string name)
@@ -1049,7 +1049,7 @@ namespace Dafeiyu
         public void ConfigureGreetings(){Settings.Normalize();DismissGreeting(true);SaveSettings();}
         private void ResetGreetingSchedule(){greetingSchedule=new GreetingSchedule(DateTime.UtcNow,Settings.GreetingMinMinutes,Settings.GreetingMaxMinutes,random.NextDouble);}
         private void CancelPendingGreeting(bool retry=true)
-        {greetingGeneration++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
+        {greetingGeneration++;relationshipContentEpoch++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
         private void DismissGreeting(bool restartTimer=false){CancelPendingGreeting(!restartTimer);if(greeting!=null)greeting.Hide();if(restartTimer)ResetGreetingSchedule();}
         public void PreviewGreeting(){if(!closing && IsPetVisible)RunGreeting(true);}
         private void ShowGreeting(){RunGreeting(false);}
@@ -1058,21 +1058,23 @@ namespace Dafeiyu
             if(!GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview))return;
             CancelPendingGreeting();var cancellation=new CancellationTokenSource();greetingRequest=cancellation;greetingPreview=preview;int generation=greetingGeneration;
             RefreshHoliday();var holiday=Holidays==null?null:Holidays.CreateGreetingContext(random.NextDouble());long holidayRevision=Holidays==null?0:Holidays.Revision;DateTime holidayTime=HolidayLocalTime(),holidayDate=holidayTime.Date;
-            string skinId=Skin.Id;var snapshot=Settings.Copy();List<string> recent;
+            string skinId=Skin.Id,relationshipId=RelationshipCompanionId;var capturedSkin=Skin;var capturedPack=RelationshipPack;int relationshipSettingsVersion=Relationships.SettingsVersion;var snapshot=Settings.Copy();List<string> recent;
             if(!recentGreetings.TryGetValue(skinId,out recent)){recent=new List<string>();recentGreetings[skinId]=recent;}
             try {
+                RelationshipExperienceContent stage=preview?null:await new RelationshipExperience(Relationships).ReadAsync(relationshipId,capturedPack,TextResources.CurrentLanguage);
+                string stageWelcome=RelationshipWelcome(stage);
                 IList<ChatMessage> memory=null;bool memoryFailed=false;
                 if(snapshot.AiGreetingEnabled)try {if(companionMemory==null)companionMemory=new CompanionMemory(()=>Conversation);memory=companionMemory.Capture(skinId);}
                 catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException || error is InvalidOperationException || error is System.Runtime.Serialization.SerializationException))throw;memoryFailed=true;}
                 int phrase=random.Next(GreetingPhrases.Count);
-                string line=memoryFailed ? GreetingService.Fallback(skinId,Skin.Name,holidayTime,phrase,recent,holiday) : await GreetingGenerator.GenerateAsync(snapshot,skinId,Skin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday);
+                string line=memoryFailed ? GreetingService.Fallback(skinId,capturedSkin.Name,holidayTime,phrase,recent,holiday,stageWelcome) : await GreetingGenerator.GenerateAsync(snapshot,skinId,capturedSkin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday,stageWelcome,stage==null?null:stage.AiContext);
                 RefreshHoliday();if(HolidayLocalTime().Date!=holidayDate || Holidays!=null && (Holidays.Revision!=holidayRevision || holiday!=null && !Holidays.IsGreetingCurrent(holiday)))return;
-                if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId)return;
+                if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId||!ReferenceEquals(capturedSkin,Skin)||RelationshipCompanionId!=relationshipId||relationshipSettingsVersion!=Relationships.SettingsVersion)return;
                 if(snapshot.GreetingEnabled!=Settings.GreetingEnabled || snapshot.AiGreetingEnabled!=Settings.AiGreetingEnabled || snapshot.SystemPrompt!=Settings.SystemPrompt || !SameGreetingConnection(snapshot.Text,Settings.Text) || !GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview)){CancelPendingGreeting();return;}
                 greetingRequest=null;
                 recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);
                 if(greeting==null)greeting=new GreetingBubbleWindow(this);
-                greeting.ShowGreeting(line);if(!preview && greeting.IsVisible && Holidays!=null)Holidays.MarkGreetingShown(holiday);if(!Paused)PlayAction("waving",1.2);
+                greeting.ShowGreeting(line);if(!preview&&greeting.IsVisible){RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);}if(!Paused)PlayAction("waving",1.2);
             }
             catch(OperationCanceledException){}
             finally {if(Object.ReferenceEquals(greetingRequest,cancellation))greetingRequest=null;cancellation.Dispose();}

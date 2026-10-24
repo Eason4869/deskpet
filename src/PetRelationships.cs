@@ -16,8 +16,9 @@ namespace Dafeiyu
         }
         void ShowRelationshipFeedback(RelationshipFeedbackNotice notice)
         {
-            if(!RelationshipFeedbackAllowed(notice.CompanionId))return;
-            if(relationshipNotice!=null)relationshipNotice.Close();relationshipNotice=new RelationshipFeedbackWindow(this,notice);var shown=relationshipNotice;shown.Closed+=delegate{if(ReferenceEquals(relationshipNotice,shown))relationshipNotice=null;};shown.Show();
+            if(!RelationshipFeedbackAllowed(notice.CompanionId)||RelationshipNoticeDismissed(notice))return;
+            if(relationshipNotice!=null&&relationshipNotice.IsVisible&&relationshipNotice.CompanionId==notice.CompanionId)relationshipNotice.Merge(notice);
+            else OpenRelationshipNotice(notice);
             // Busy work/chat may show the passive card. Only an idle pet may animate.
             if(notice.Milestones.Count>0)CelebrateRelationship(notice.Milestones.Last().StageId);
         }

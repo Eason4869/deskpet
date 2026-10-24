@@ -24,6 +24,8 @@ namespace Dafeiyu
         readonly object submissionGate=new object();Task worker=Task.FromResult(0),shutdown;bool admissionClosed;
         readonly Dafeiyu.Maintenance.DataMaintenanceGate maintenance;
         readonly object settingsGate=new object();volatile bool feedbackEnabled=true;int feedbackSuppressionVersion;
+        int settingsVersion;
+        internal int SettingsVersion {get{return System.Threading.Volatile.Read(ref settingsVersion);}}
         public bool FeedbackEnabled {get{return feedbackEnabled;}}
         public int FeedbackSuppressionVersion {get{return System.Threading.Volatile.Read(ref feedbackSuppressionVersion);}}
         public event Action FeedbackSettingsChanged;
@@ -85,7 +87,7 @@ namespace Dafeiyu
             RelationshipResult result;
             lock(settingsGate){
                 result=Service.UpdateSettings(growth,feedback,aiContext);
-                if(result.Success){feedbackEnabled=result.Snapshot.Settings.FeedbackEnabled;if(!feedbackEnabled)System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);}
+                if(result.Success){feedbackEnabled=result.Snapshot.Settings.FeedbackEnabled;System.Threading.Interlocked.Increment(ref settingsVersion);if(!feedbackEnabled)System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);}
             }
             if(result.Success){
                 // No captured bool: delayed/reordered UI callbacks always observe
@@ -138,12 +140,15 @@ namespace Dafeiyu
         // UI producers use this ordered chain. Submission does no storage I/O;
         // timestamps, identity and logical IDs are caller-captured values.
         public Task Enqueue(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
+        {Task completion;TryEnqueue(companionId,type,eventId,time,out completion);return completion;}
+        bool TryEnqueue(string companionId,RelationshipEventType type,string eventId,RelationshipTime time,out Task completion)
         {
             lock(submissionGate){
-                if(admissionClosed)return Task.FromResult(0);
-                IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return Task.FromResult(0);
+                completion=Task.FromResult(0);
+                if(admissionClosed)return false;
+                IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return false;
                 worker=worker.ContinueWith(delegate{using(activity)RecordCore(companionId,type,eventId,time);},TaskScheduler.Default);
-                return worker;
+                completion=worker;return true;
             }
         }
         public Task EnqueueVisit(string companionId,bool actuallyVisible=true)
@@ -152,7 +157,12 @@ namespace Dafeiyu
         }
         public Task EnqueueUserInteraction(string companionId,bool userOrigin,bool started)
         {
-            return userOrigin && started?Enqueue(companionId,RelationshipEventType.UserInteraction,"interaction-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current()):Task.FromResult(0);
+            Task completion;string eventId;TryEnqueueUserInteraction(companionId,userOrigin,started,out completion,out eventId);return completion;
+        }
+        internal bool TryEnqueueUserInteraction(string companionId,bool userOrigin,bool started,out Task completion,out string eventId)
+        {
+            completion=Task.FromResult(0);eventId=null;if(!userOrigin||!started)return false;
+            eventId="interaction-"+Guid.NewGuid().ToString("N");return TryEnqueue(companionId,RelationshipEventType.UserInteraction,eventId,RelationshipTime.Current(),out completion);
         }
         public Task RetryPendingAsync()
         {

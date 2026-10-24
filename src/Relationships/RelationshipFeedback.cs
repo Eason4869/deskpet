@@ -12,6 +12,7 @@ namespace Dafeiyu
         public string CompanionId { get; internal set; }
         public int AwardedPoints { get; internal set; }
         public List<RelationshipMilestone> Milestones { get; internal set; }
+        internal readonly List<string> EventIds=new List<string>();
     }
     // Application lifetime, independent of the home page. Consumes suppressed
     // milestones as well as displayed ones so there is no deferred popup backlog.
@@ -73,6 +74,7 @@ namespace Dafeiyu
                 pendingSuppressionVersion=suppressionVersion;
                 if(pending==null||pending.CompanionId!=id)pending=new RelationshipFeedbackNotice{CompanionId=id,Milestones=new List<RelationshipMilestone>()};
                 pending.AwardedPoints+=result.AwardedPoints;pending.Milestones.AddRange(claimed);
+                var receipt=result.Snapshot.State.Receipts.LastOrDefault();if(receipt!=null)pending.EventIds.Add(receipt.EventId);
                 if(timer!=null)timer.Dispose();timer=scheduler.Schedule(TimeSpan.FromMilliseconds(400),delegate{PendingDisplay=DisplayAsync();});
             }
         }

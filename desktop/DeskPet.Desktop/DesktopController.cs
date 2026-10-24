@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -125,10 +125,7 @@ internal sealed partial class DesktopController : IDisposable
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
         Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
-        relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,notice=>{
-            relationshipNotice?.Close();relationshipNotice=new RelationshipFeedbackWindow(this,notice);var shown=relationshipNotice;shown.Closed+=(_,_)=>{if(ReferenceEquals(relationshipNotice,shown))relationshipNotice=null;};shown.Show();
-            if(notice.Milestones.Count>0)Pet.CelebrateRelationship(RelationshipContent.Action(notice.Milestones.Last().StageId,RelationshipPack)??"waving");
-        },null,action=>Dispatcher.UIThread.Post(action));
+        relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");

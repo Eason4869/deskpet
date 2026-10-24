@@ -48,6 +48,8 @@ namespace Dafeiyu
             return TextResources.Get("skinCatalog.specialAction.text.alternativeC");
         } }
         internal SkinDefinition(string id,string folder,SkinManifest manifest) : this(id,SkinCatalog.CleanName(manifest.Name),folder,manifest.Preview,false,manifest.SystemPrompt,manifest.Description) { Manifest=manifest; }
+        internal SkinDefinition(string id,string name,string atlas,string prompt,string description,SkinManifest manifest)
+            : this(id,name,atlas,null,false,prompt,description) { Manifest=manifest; }
         public string Id { get; private set; }
         public string Name { get; private set; }
         public string DisplayName { get { return OfficialCompanionProfiles.GetDisplayName(BuiltinCharacterId,Name); } }
@@ -158,7 +160,7 @@ namespace Dafeiyu
                     var manifest=ReadManifest(Path.Combine(folder,"pet.json"));
                     if(manifest.Version==2){IllustratedPack.Validate(folder,manifest,false);result.Add(new SkinDefinition(Path.GetFileName(folder),folder,manifest));continue;}
                     string atlas=AtlasPath(folder,manifest.Atlas);ValidatePng(atlas);
-                    result.Add(new SkinDefinition(Path.GetFileName(folder),CleanName(manifest.Name),atlas,null,false,manifest.SystemPrompt,manifest.Description));
+                    result.Add(new SkinDefinition(Path.GetFileName(folder),CleanName(manifest.Name),atlas,manifest.SystemPrompt,manifest.Description,manifest));
                 }catch(Exception e){if(!CatalogError(e))throw;}
             }
             foreach(var item in result.Where(s=>s.Illustrated))foreach(string id in new[]{"xiaobei","gugugaga"}) {
@@ -237,9 +239,9 @@ namespace Dafeiyu
         public SkinDefinition Import(string path)
         {
             if(String.Equals(Path.GetExtension(path),".zip",StringComparison.OrdinalIgnoreCase))return CompanionPackStorage.ReadZip(path,dataRoot,Import);
-            string atlas,name,prompt=null,description=null;
+            string atlas,name,prompt=null,description=null;SkinManifest legacy=null;
             if(String.Equals(Path.GetExtension(path),".json",StringComparison.OrdinalIgnoreCase))
-            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m); atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
+            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m); legacy=m;atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
             else
             { if(!String.Equals(Path.GetExtension(path),".png",StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException(TextResources.Get("skinCatalog.import.text")); atlas=path; name=CleanName(Path.GetFileNameWithoutExtension(path)); }
             ValidatePng(atlas);
@@ -256,9 +258,9 @@ namespace Dafeiyu
             try
             {
                 File.Copy(atlas,Path.Combine(destination,"spritesheet.png"),false);
-                var manifest=new SkinManifest { Version=1,Name=name,Atlas="spritesheet.png",SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? PersonaProfiles.Generic(name) : prompt,Description=description };
-                using(var stream=File.Create(Path.Combine(destination,"pet.json"))) new DataContractJsonSerializer(typeof(SkinManifest)).WriteObject(stream,manifest);
-                var skin=new SkinDefinition(id,name,Path.Combine(destination,"spritesheet.png"),null,false,manifest.SystemPrompt,description);
+                var manifest=new SkinManifest { Version=1,Name=name,Atlas="spritesheet.png",SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? PersonaProfiles.Generic(name) : prompt,Description=description,Relationship=legacy==null?null:legacy.Relationship };
+                using(var stream=File.Create(Path.Combine(destination,"pet.json"))) Serializer().WriteObject(stream,manifest);
+                var skin=new SkinDefinition(id,name,Path.Combine(destination,"spritesheet.png"),manifest.SystemPrompt,description,manifest);
                 skins.Add(skin); return skin;
             }
             catch

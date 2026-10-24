@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -59,6 +59,9 @@ try
     if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
     if(args.Contains("--relationship-settings-maintenance")){Console.WriteLine("Companion settings maintenance: "+CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance"))+" passed");return;}
+    if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
+    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
+    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
     if(args.Contains("--companion-home-ui-only")){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
     if(args.Contains("--agent-job-native-ui-only")){Console.WriteLine("AgentJobNativeUiChecks: "+AgentJobExitUiChecks.RunPreview(Path.Combine(directory,"agent-job-native-ui"))+" passed");return;}
@@ -104,6 +107,8 @@ try
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
     assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"));
     assertions+=RelationshipPackChecks.Run();
+    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
+    assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);
     assertions+=QuietMotionChecks.Run(Path.Combine(directory,"quiet-default"));
     Console.WriteLine("START OnboardingPreparationUiChecks");
     assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));

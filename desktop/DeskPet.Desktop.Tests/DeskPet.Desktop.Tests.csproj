@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile><DeskPetFullResourceFixtures Condition="'$(DeskPetFullResourceFixtures)' == ''">true</DeskPetFullResourceFixtures></PropertyGroup>
   <ItemGroup><ProjectReference Include="../DeskPet.Desktop/DeskPet.Desktop.csproj" AdditionalProperties="DeskPetFullResourceFixtures=$(DeskPetFullResourceFixtures)" /><PackageReference Include="Avalonia.Headless" Version="12.1.4" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipHomeFixtures.cs" Link="Tests/RelationshipHomeFixtures.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../tests/RelationshipExperienceTests.cs" Link="Tests/RelationshipExperienceTests.cs" /><Compile Include="../../tests/RelationshipTestSupport.cs" Link="Tests/RelationshipTestSupport.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipStageArtContractChecks.cs" Link="RelationshipStageArtContractChecks.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/QuietKeepsakeChecks.cs" Link="QuietKeepsakeChecks.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/HolidayKeepsakeContractChecks.cs" Link="HolidayKeepsakeContractChecks.cs" /></ItemGroup>
