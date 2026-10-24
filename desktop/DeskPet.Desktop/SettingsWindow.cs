@@ -19,6 +19,8 @@ internal sealed class SettingsWindow : Window
     private readonly TabControl tabs = new();
     private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
+    private Action? refreshVolume;
+    private bool refreshingPreferences;
     private HolidayOutfitPanel? holidayOutfits;
     public SettingsWindow(DesktopController controller, SpriteAssets? avatarSource = null)
     {
@@ -30,7 +32,7 @@ internal sealed class SettingsWindow : Window
         var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
         modelTabs.ItemsSource = new[] { new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header"), Content = textProvider }, new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"), Content = imageProvider } }; modelTabs.SelectedIndex = 0; Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeB"), modelTabs);
         foreach (var item in new[] { (TextResources.Get("settingsWindow.settingsWindow.text.alternativeC"), "asr"), (TextResources.Get("settingsWindow.settingsWindow.text.alternativeD"), "speech"), ("Live", "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1, editor); }
-        Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"), new WorkSettingsView(owner, this)); Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"), Voice()); Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeG"), Storage()); tabs.ItemsSource = pages; Content = tabs;
+        Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"), new WorkSettingsView(owner, this)); Add(TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"), Voice()); Add(TextResources.Get("dataManagement.title"), Storage()); tabs.ItemsSource = pages; Content = tabs;
         tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, tabs) && tabs.SelectedIndex == 7) refreshVoice?.Invoke(); };
         Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
     }
@@ -165,13 +167,15 @@ internal sealed class SettingsWindow : Window
         panel.Children.Add(Ui.Check(TextResources.Get("settingsWindow.behavior.check.alternativeK"), s.AiGreetingEnabled, v => { s.AiGreetingEnabled = v; owner.Save(); owner.Pet.ConfigureGreetings(); }));
         panel.Children.Add(Ui.Field(TextResources.Get("settingsWindow.behavior.field.alternativeB"), min)); panel.Children.Add(Ui.Field(TextResources.Get("settingsWindow.behavior.field.alternativeC"), max));
         panel.Children.Add(Ui.Button(TextResources.Get("settingsWindow.behavior.text.alternativeJ"), () => { s.GreetingMinMinutes = (int)(min.Value ?? 30); s.GreetingMaxMinutes = Math.Max(s.GreetingMinMinutes, (int)(max.Value ?? 60)); owner.Save(); owner.Pet.ConfigureGreetings(); }));
+        var data=Ui.Button(TextResources.Get("dataManagement.title"),()=>SelectSection("storage"));data.Name="GeneralDataManagement";panel.Children.Add(data);
         return panel;
     }
     private Control Voice()
     {
         var s = owner.Settings;
         var volume = new Slider { Minimum = 0, Maximum = 100, Value = s.Volume };
-        volume.ValueChanged += (_, _) => { s.Volume = (int)volume.Value; owner.Session.SetVolume(s.Volume); owner.Live.SetVolume(s.Volume); owner.Save(); };
+        volume.ValueChanged += (_, _) => { if(refreshingPreferences)return;s.Volume = (int)volume.Value; owner.Session.SetVolume(s.Volume); owner.Live.SetVolume(s.Volume); owner.Save(); };
+        refreshVolume=()=>volume.Value=s.Volume;
         var speech = Ui.Input(s.VoiceName); var live = Ui.Input(s.LiveVoice);
         var voices = new ComboBox { ItemsSource = VoicePresets.For("speech", s.SpeechConnection()).Select(v => v.Id).ToList() };
         var advice = Ui.Text("");
@@ -186,5 +190,22 @@ internal sealed class SettingsWindow : Window
             Ui.Button(TextResources.Get("settingsWindow.voice.text.alternativeA"), () => { s.VoiceName = speech.Text?.Trim() ?? ""; s.LiveVoice = live.Text?.Trim() ?? "Aoede"; PersonaProfiles.SaveVoices(s); owner.Save(); }),
             Ui.AsyncButton(TextResources.Get("settingsWindow.voice.asyncButton"), () => owner.Session.PreviewSpeechAsync(s, owner.Skin.Name), owner.Error), Ui.Button(TextResources.Get("settingsWindow.voice.text.alternativeB"), owner.Session.StopSpeech), Ui.Text(TextResources.Get("settingsWindow.voice.text.alternativeC")));
     }
-    private Control Storage() => Ui.Column(Ui.Button(TextResources.Get("onboarding.prepare.network"),()=>{var window=Ui.Window(TextResources.Get("onboarding.prepare.network"),new GitHubRoutingView(owner),520,340);window.Show(this);}),Ui.Button(TextResources.Get("onboarding.prepare.progress"),owner.ShowOfficialPreparation),Ui.Text(TextResources.Get("settingsWindow.storage.text"), 20), Ui.Text(owner.DataDirectory), Ui.Check(TextResources.Get("settingsWindow.storage.check"), owner.Settings.SaveChatHistory, v => { owner.Settings.SaveChatHistory = v; owner.Save(); }), Ui.Text(TextResources.Get("settingsWindow.storage.text.alternativeA")), Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeB"), () => owner.Run(async () => { await Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(owner.DataDirectory)); })), Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeC"), owner.ShowGuide), Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeD"), owner.ShowAbout));
+    private void RefreshPreferences()
+    {
+        refreshingPreferences=true;
+        try{
+            var pages=tabs.Items.OfType<TabItem>().ToArray();
+            pages[1].Content=new ScrollViewer{Content=new Border{Padding=new Thickness(20),Child=Behavior()}};
+            pages[8].Content=new ScrollViewer{Content=new Border{Padding=new Thickness(20),Child=Storage()}};
+            refreshVolume?.Invoke();
+        }finally{refreshingPreferences=false;}
+    }
+    private Control Storage() => Ui.Column(
+        new DataManagementView(owner,this,RefreshPreferences),
+        Ui.Button(TextResources.Get("onboarding.prepare.network"),()=>{var window=Ui.Window(TextResources.Get("onboarding.prepare.network"),new GitHubRoutingView(owner),520,340);window.Show(this);}),
+        Ui.Button(TextResources.Get("onboarding.prepare.progress"),owner.ShowOfficialPreparation),
+        Ui.Text(owner.DataDirectory),
+        Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeB"),()=>owner.Run(async()=>{await Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(owner.DataDirectory));})),
+        Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeC"),owner.ShowGuide),
+        Ui.Button(TextResources.Get("settingsWindow.storage.text.alternativeD"),owner.ShowAbout));
 }

@@ -454,6 +454,7 @@ namespace Dafeiyu
     public sealed class SettingsStore
     {
         private readonly string path;
+        readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
         public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
@@ -497,7 +498,53 @@ namespace Dafeiyu
         }
         public void Save(PetSettings settings)
         {
-            settings.Normalize(); Directory.CreateDirectory(DirectoryPath);
+            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{settings.Normalize();SaveSnapshot(settings);}finally{writes.Release();}
+        }
+        // Save a detached candidate before publishing preferences. Deliberately
+        // avoid Normalize here: provider migration is outside this operation.
+        public async System.Threading.Tasks.Task RestoreDefaultPreferencesAsync(PetSettings settings,Maintenance.DataMaintenanceGate gate)
+        {
+            if(settings==null)throw new ArgumentNullException("settings");
+            if(gate==null)throw new ArgumentNullException("gate");
+            using(await gate.BeginAsync()){
+                await writes.WaitAsync();
+                try{var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));CopyPreferences(candidate,settings);}
+                finally{writes.Release();}
+            }
+        }
+        // Snapshot on the caller's UI context; only durable I/O runs on a worker.
+        // Position autosaves must not migrate retained provider configuration.
+        public async System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        {
+            await writes.WaitAsync();
+            try{var candidate=Snapshot(settings);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));}
+            finally{writes.Release();}
+        }
+        static PetSettings Snapshot(PetSettings settings)
+        {
+            var serializer=new DataContractJsonSerializer(typeof(PetSettings));
+            using(var stream=new MemoryStream()){serializer.WriteObject(stream,settings);stream.Position=0;return (PetSettings)serializer.ReadObject(stream);}
+        }
+        static void CopyPreferences(PetSettings source,PetSettings target)
+        {
+            target.ThemeMode=source.ThemeMode;target.Scale=source.Scale;target.Volume=source.Volume;
+            target.Topmost=source.Topmost;target.FollowCursor=source.FollowCursor;target.Wander=source.Wander;
+            target.StumbleEnabled=source.StumbleEnabled;target.AutoSleepEnabled=source.AutoSleepEnabled;
+            target.GreetingEnabled=source.GreetingEnabled;target.AiGreetingEnabled=source.AiGreetingEnabled;
+            target.GreetingMinMinutes=source.GreetingMinMinutes;target.GreetingMaxMinutes=source.GreetingMaxMinutes;
+            target.QuietMode=source.QuietMode;target.HideOnFullscreen=source.HideOnFullscreen;
+            target.ClickThrough=source.ClickThrough;target.LockPosition=source.LockPosition;
+            target.SaveChatHistory=source.SaveChatHistory;target.ShowPredictedMessages=source.ShowPredictedMessages;
+            target.PlainTextEditor=source.PlainTextEditor;target.ShowContextUsage=source.ShowContextUsage;
+            target.SendOnEnter=source.SendOnEnter;target.FollowUpBehavior=source.FollowUpBehavior;
+            target.ImageGenerationConcurrency=source.ImageGenerationConcurrency;target.ImageGenerationMotionEnabled=source.ImageGenerationMotionEnabled;
+            target.ImageGalleryLayout=source.ImageGalleryLayout;
+            target.Hotkeys=new Dictionary<string,string>(source.Hotkeys);target.LocalShortcuts=new Dictionary<string,string>(source.LocalShortcuts);
+        }
+        void SaveSnapshot(PetSettings settings)
+        {
+            Directory.CreateDirectory(DirectoryPath);
             string temporary = path + ".tmp";
             try
             {

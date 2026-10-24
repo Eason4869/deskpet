@@ -167,7 +167,24 @@ internal sealed partial class DesktopController : IDisposable
     internal void NotifyWorkChanged()=>Notify();
     internal ChatWindow? WorkApprovalHost(string session)=>chatHosts.FirstOrDefault(host=>host.IsVisible&&host.QuestionSessionId==session);
     private void Notify() => Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });
-    public void Save() { store.Save(Settings); ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
+    bool deferredSettingsSave;
+    public void Save() { if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
+    internal async Task<string> FlushDeferredSettingsAsync()
+    {
+        if(!deferredSettingsSave)return "";
+        try{using(await DataMaintenance.BeginAsync()){do{deferredSettingsSave=false;await store.SaveExactSnapshotAsync(Settings);}while(deferredSettingsSave);}return "";}
+        catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
+    }
+    internal async Task RestoreDefaultPreferencesAsync()
+    {
+        await store.RestoreDefaultPreferencesAsync(Settings,DataMaintenance);
+    }
+    internal void ApplyRestoredPreferences()
+    {
+        DesktopTheme.Apply(Settings.ThemeMode);RegisterHotkeys();ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
+        foreach(var session in new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(w=>w.Session)).Distinct())session.SetVolume(Settings.Volume);
+        Live.SetVolume(Settings.Volume);Pet.ApplySettings();Pet.ConfigureGreetings();Notify();
+    }
     public void SetUiLanguage(string code)
     {
         store.SaveUiLanguage(Settings,code);

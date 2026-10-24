@@ -54,5 +54,10 @@ namespace Dafeiyu
             foreach(var definition in ShortcutCatalog.All){string saved=ShortcutCatalog.Label(ShortcutCatalog.Value(pet.Settings,definition));if(fields[definition.Id].Text==baselines[definition.Id]||SameValue(fields[definition.Id].Text,saved)){fields[definition.Id].Text=saved;baselines[definition.Id]=saved;}}
             notice.Text=pet.HotkeyWarning??"";
         }
+        internal void DiscardPreferenceDrafts()
+        {
+            foreach(var definition in ShortcutCatalog.All){string saved=ShortcutCatalog.Label(ShortcutCatalog.Value(pet.Settings,definition));fields[definition.Id].Text=baselines[definition.Id]=saved;}
+            notice.Text=pet.HotkeyWarning??"";
+        }
     }
 }

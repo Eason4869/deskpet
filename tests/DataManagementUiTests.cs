@@ -1,0 +1,77 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+
+namespace Dafeiyu.Tests
+{
+    public static class DataManagementUiTests
+    {
+        static int checks;static Application app;
+        static void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
+        static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(15)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
+        static void Wait(Task task){var deadline=DateTime.UtcNow.AddSeconds(20);while(!task.IsCompleted){if(DateTime.UtcNow>deadline)throw new TimeoutException("Data UI");Pump();}task.GetAwaiter().GetResult();Pump();}
+        static T Find<T>(DependencyObject root,string name)where T:FrameworkElement{var found=root as T;if(found!=null&&found.Name==name)return found;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var child=Find<T>(VisualTreeHelper.GetChild(root,i),name);if(child!=null)return child;}return null;}
+        static void Click(Button button){if(button==null)throw new Exception("Missing data management action");Wait(button.Dispatcher.InvokeAsync(delegate{button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}).Task);}
+        static void Dialog(Button action,Action<Window> run)
+        {
+            Exception failure=null;var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(30)};timer.Tick+=delegate{var dialog=app.Windows.OfType<Window>().FirstOrDefault(w=>w.Name=="DataActionConfirmation");if(dialog==null)return;timer.Stop();try{run(dialog);}catch(Exception error){failure=error;}finally{dialog.Close();}};timer.Start();Click(action);if(failure!=null)throw failure;
+        }
+        static Task Operation(Window dialog){return (Task)dialog.GetType().GetProperty("PendingOperation",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public).GetValue(dialog,null);}
+        [STAThread]public static int Main()
+        {
+            app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window host=null;
+            string root=Path.GetFullPath(Path.Combine("work","data-ui",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
+            try{
+                var cfg=new PetSettings{AutoUpdate=false,OnboardingState="completed",AgentWorkspace=Path.Combine(root,"agent-workspace"),GreetingEnabled=false,GreetingMinMinutes=90,GreetingMaxMinutes=120,PlainTextEditor=true,FollowCursor=false,Wander=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();
+                var page=new SettingsPage(pet);host=new Window{Content=page,Width=620,Height=680};host.Show();page.SelectWorkSettings();Pump();((TextBox)page.FindControl("AgentGoal")).Text="unsaved project goal";page.SelectGeneralSection(2);Pump();
+                var clear=Find<Button>(page,"ClearAllHistory");var reset=Find<Button>(page,"RestoreDefaultPreferences");var attachments=Find<Button>(page,"OpenPreservedAttachments");
+                Check(clear!=null&&reset!=null&&attachments!=null&&Find<CheckBox>(page,"SaveChatHistory")!=null,"real General Data management exposes independent actions and SaveChatHistory");
+                Dialog(clear,d=>{Check(d.Owner==host,"confirmation owned by settings host");Click(Find<Button>(d,"CancelDataAction"));});Check(pet.IsVisible,"cancel leaves pet alive");
+                Dialog(reset,d=>d.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(d),0,Key.Escape){RoutedEvent=Keyboard.KeyDownEvent}));Check(pet.IsVisible,"reset Esc leaves pet alive");
+                Dialog(clear,d=>{});Check(pet.IsVisible,"confirmation X leaves pet alive");
+                foreach(var action in new[]{clear,reset})foreach(string cancel in new[]{"cancel","escape","close"})Dialog(action,d=>{
+                    if(cancel=="cancel")Click(Find<Button>(d,"CancelDataAction"));else if(cancel=="escape")d.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(d),0,Key.Escape){RoutedEvent=Keyboard.KeyDownEvent});
+                    Check(pet.IsVisible&&cfg.Scale==1.25,"cancel without preference change "+action.Name+" "+cancel);
+                });
+                Click(attachments);var deadline=DateTime.UtcNow.AddSeconds(10);while(!attachments.IsEnabled){if(DateTime.UtcNow>deadline)throw new TimeoutException("Attachment state");Pump();}Check(Find<TextBlock>(page,"DataManagementStatus").Text==TextResources.Get("dataManagement.attachmentsEmpty"),"absent attachment archive has truthful empty state");
+                using(pet.DataMaintenance.EnterActivity())Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text==TextResources.Get("dataMaintenance.busy"),"clear rechecks busy after confirmation");});
+                using(pet.DataMaintenance.EnterActivity())Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text==TextResources.Get("dataMaintenance.busy"),"reset rechecks busy after confirmation");});
+                var held=new TaskCompletionSource<int>();using(pet.DataMaintenance.Register(()=>held.Task))Dialog(clear,d=>{
+                    Click(Find<Button>(d,"ConfirmDataAction"));Check(!Operation(d).IsCompleted&&!Find<Button>(d,"ConfirmDataAction").IsEnabled&&!Find<Button>(d,"CancelDataAction").IsEnabled,"maintenance disables repeated action and cancel while draining");
+                    d.Close();pet.Close();Check(d.IsVisible&&pet.IsVisible,"busy maintenance keeps confirmation and pet alive during close attempts");held.SetResult(0);Wait(Operation(d));
+                });
+                string history=Path.Combine(root,"history");Directory.CreateDirectory(history);File.WriteAllText(Path.Combine(history,"broken.history"),"corrupt");
+                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text.Contains(TextResources.Format("dataManagement.historyPartial",0,1)),"partial clearing reports actual retained failure");});File.Delete(Path.Combine(history,"broken.history"));
+                pet.Conversation.InputDraft="unsent draft";pet.Conversation.History.Commit("owned private text","owned reply");Wait(pet.Conversation.SaveHistoryForCloseAsync());
+                var chat=new ChatWindow(pet);chat.Show();Pump();var editor=Find<MarkdownEditor>(chat,"MessageInput");editor.Text="unsent draft";var composer=Find<ConversationComposer>(chat,"");composer.AddAttachments(new[]{ChatAttachment.CreateImage("draft.png",Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="))});
+                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text==TextResources.Format("dataManagement.historyComplete",2),"complete clearing reports actual removed files: "+Find<TextBlock>(d,"DataActionStatus").Text);Capture(d,Path.Combine(root,"clear-success.png"));});
+                Check(pet.Conversation.InputDraft=="unsent draft","clear preserves composer draft");
+                Check(editor.Text=="unsent draft"&&composer.HasEdit,"actual WPF main composer draft and draft attachment survive clearing");chat.Close();
+                Wait(pet.Conversation.SaveHistoryForCloseAsync());Check(new HistoryStore(history).Load(pet.Conversation.PersonaId).Count==0,"actual UI clear and close-save never resurrect sent history");
+                cfg.Scale=1.6;Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(cfg.Scale==1.25&&pet.Width==240,"reset applies persisted scale at runtime");});
+                page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingMinMinutes")).Text=="30"&&((TextBox)page.FindControl("GreetingMaxMinutes")).Text=="60","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
+                page.SelectWorkSettings();Pump();Check(((TextBox)page.FindControl("AgentGoal")).Text=="unsaved project goal"&&((CheckBox)page.FindControl("PlainTextEditor")).IsChecked==false,"reset refreshes chat preferences while preserving unrelated work draft");page.SelectGeneralSection(2);Pump();
+                using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{
+                    Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=444;pet.SaveSettings();Check(!Operation(d).IsCompleted,"arriving WPF position autosave does not block UI during held commit");locked.Dispose();Wait(Operation(d));
+                    Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==444&&cfg.Scale==1.25,"successful WPF reset flushes latest position after publication");
+                });
+                var reservation=pet.DataMaintenance.BeginAsync();Wait(reservation);using(reservation.Result){cfg.X=666;pet.SaveSettings();}
+                using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){var flush=pet.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.Scale==1.25&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Scale==1.25,"later WPF autosave failure never reports durable reset rolled back");}
+                Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==666,"later WPF autosave failure remains retryable");
+                cfg.Scale=1.7;using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=555;pet.SaveSettings();Wait(Operation(d));Check(cfg.Scale==1.7&&Find<TextBlock>(d,"DataActionStatus").Text.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&Find<TextBlock>(d,"DataActionStatus").Text.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately");Capture(d,Path.Combine(root,"reset-save-failure.png"));});
+                Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==555&&cfg.Scale==1.7,"failed WPF reset retains latest position for retry");
+                foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);Pump();Capture(host,Path.Combine(root,"data-"+theme+"-620.png"));Dialog(reset,d=>{d.Width=380;d.Height=340;Pump();foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+theme+" "+name);}Capture(d,Path.Combine(root,"reset-confirm-"+theme+"-380.png"));});}
+                Check(pet.IsVisible,"successful maintenance leaves pet alive");Console.WriteLine("DataManagementUiTests: "+checks+" passed; captures="+root);host.Close();page.Dispose();return 0;
+            }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{if(host!=null)host.Close();if(pet!=null){pet.Close();Wait(pet.ImageServicesShutdown);}app.Shutdown();}
+        }
+        static void Capture(FrameworkElement target,string path){target.UpdateLayout();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(target.ActualWidth),(int)Math.Ceiling(target.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(target);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(path))encoder.Save(stream);}
+    }
+}

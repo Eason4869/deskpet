@@ -103,6 +103,14 @@ namespace Dafeiyu
             trustInstructions.IsChecked=baseline.AgentTrustProjectInstructions;globalInstructions.Text=baseline.AgentGlobalInstructions??"";skillsDirectory.Text=baseline.AgentSkillsDirectory??"";terminal.SelectedIndex=baseline.AgentTerminalPolicy==AgentTerminalPolicy.ConfirmEach?1:0;plan.IsChecked=baseline.AgentPlanMode;backup.IsChecked=baseline.AgentBackupFiles;detailed.IsChecked=pet.Settings.AgentDetailedProcess;detailed.IsEnabled=project==null;predicted.IsEnabled=project==null;plainText.IsEnabled=showContext.IsEnabled=sendShortcut.IsEnabled=followUp.IsEnabled=project==null;plainText.IsChecked=pet.Settings.PlainTextEditor;showContext.IsChecked=pet.Settings.ShowContextUsage;sendShortcut.SelectedIndex=pet.Settings.SendOnEnter?0:1;followUp.SelectedIndex=pet.Settings.FollowUpBehavior=="steer"?1:0;scopeLabel.Text=project==null?TextResources.Get("workSettingsPanel.refreshState.nullProjectName.alternativeB"):TextResources.Format("workSettingsPanel.refreshState.nullProjectName",project.Name);
             syncLimit.Text=baseline.AgentCommandTimeoutSeconds.ToString(CultureInfo.InvariantCulture);backgroundLimit.Text=baseline.AgentBackgroundJobTimeoutSeconds.ToString(CultureInfo.InvariantCulture);contextBudget.Text=baseline.AgentContextTokenLimit.ToString(CultureInfo.InvariantCulture);predicted.IsChecked=pet.Settings.ShowPredictedMessages;RefreshPermissionDescription();RefreshContextInfo();
         }
+        internal void RefreshRestoredPreferences()
+        {
+            // These five preferences are global even when project settings or an
+            // unrelated work draft are currently open. Keep that draft intact.
+            predicted.IsChecked=pet.Settings.ShowPredictedMessages;plainText.IsChecked=pet.Settings.PlainTextEditor;showContext.IsChecked=pet.Settings.ShowContextUsage;
+            sendShortcut.SelectedIndex=pet.Settings.SendOnEnter?0:1;followUp.SelectedIndex=pet.Settings.FollowUpBehavior=="steer"?1:0;
+            if(baseline!=null&&project==null){baseline.ShowPredictedMessages=pet.Settings.ShowPredictedMessages;baseline.PlainTextEditor=pet.Settings.PlainTextEditor;baseline.ShowContextUsage=pet.Settings.ShowContextUsage;baseline.SendOnEnter=pet.Settings.SendOnEnter;baseline.FollowUpBehavior=pet.Settings.FollowUpBehavior;}
+        }
         bool SavePrompt()
         {
             string value=workPrompt.Text.Trim();if(value.Length<1 || value.Length>16000){notice.Text=TextResources.Get("workSettingsPanel.savePrompt.notice");return false;}string previous=pet.Settings.AgentSystemPrompt;pet.Settings.AgentSystemPrompt=value;pet.SaveSettings();if(!String.IsNullOrEmpty(pet.Notice)){pet.Settings.AgentSystemPrompt=previous;notice.Text=pet.Notice;return false;}workPrompt.Text=value;promptBaseline=value;notice.Text=TextResources.Get("workSettingsPanel.savePrompt.notice.alternativeA");return true;

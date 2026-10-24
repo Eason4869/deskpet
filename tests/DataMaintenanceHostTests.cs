@@ -4,11 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 
 namespace Dafeiyu.Tests
 {
     public static class DataMaintenanceHostTests
     {
+        [DllImport("user32.dll")]static extern IntPtr GetForegroundWindow();
         static void Wait(Task task)
         {
             var deadline=DateTime.UtcNow.AddSeconds(20);
@@ -16,7 +19,7 @@ namespace Dafeiyu.Tests
         }
         [STAThread] public static int Main()
         {
-            var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
+            var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window foreground=null;
             string root=Path.GetFullPath(Path.Combine("work","data-admission-host",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
             try
             {
@@ -24,7 +27,11 @@ namespace Dafeiyu.Tests
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();Wait(pet.AgentJobs.InitializeAsync());
                 var gate=pet.DataMaintenance;
                 if(!ReferenceEquals(gate,pet.Conversation.Maintenance)||!ReferenceEquals(gate,pet.Dictation.Maintenance)||!ReferenceEquals(gate,pet.Live.Maintenance)||!ReferenceEquals(gate,pet.Workspaces.Maintenance)||!ReferenceEquals(gate,pet.AgentJobs.Maintenance))throw new Exception("WPF producer gates differ");
-                pet.Activate();if(!pet.CanApplyUpdate(true))throw new Exception("Update admission fixture was not initially idle: fullscreen="+DesktopInterop.ForegroundIsFullScreen()+", jobs="+pet.HasActiveAgentJobs+", saveWarning="+pet.HasHistorySaveWarning+", conversation="+pet.Conversation.IsBusy+", workspace="+pet.Workspaces.Busy);
+                // The pet is a nonactivating tool window. Own the actual normal
+                // foreground fixture instead of depending on the user's desktop.
+                foreground=new Window{Width=320,Height=180,ShowInTaskbar=false,Title="DeskPet owned admission fixture"};foreground.Show();foreground.Activate();Wait(Task.Delay(20));
+                if(GetForegroundWindow()!=new WindowInteropHelper(foreground).Handle)throw new Exception("Owned admission fixture could not safely obtain foreground; environment precondition unavailable");
+                if(!pet.CanApplyUpdate(true))throw new Exception("Update admission fixture was not initially idle: fullscreen="+DesktopInterop.ForegroundIsFullScreen()+", jobs="+pet.HasActiveAgentJobs+", saveWarning="+pet.HasHistorySaveWarning+", conversation="+pet.Conversation.IsBusy+", workspace="+pet.Workspaces.Busy);
                 var acquired=gate.BeginAsync();Wait(acquired);using(acquired.Result)
                 {
                     if(pet.CanApplyUpdate(true)||pet.CanApplyUpdate(false))throw new Exception("Update can close the host during maintenance");
@@ -39,7 +46,7 @@ namespace Dafeiyu.Tests
                 Console.WriteLine("DataMaintenanceHostTests: 6 passed (shared gate, companion coherence, refusal, update exclusion, exit exclusion, normal close drain)");return 0;
             }
             catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}
-            finally{if(pet!=null)pet.Close();app.Shutdown();}
+            finally{if(foreground!=null)foreground.Close();if(pet!=null)pet.Close();app.Shutdown();}
         }
     }
 }

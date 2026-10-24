@@ -79,8 +79,10 @@ try
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
     if(args.Contains("--data-admission-host-only")){Console.WriteLine("PASS: "+DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission"))+" admission host assertions");return;}
+    if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"));
+    assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
     assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"));
     assertions+=RelationshipPackChecks.Run();
     Console.WriteLine("START OnboardingPreparationUiChecks");

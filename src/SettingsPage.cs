@@ -122,7 +122,7 @@ namespace Dafeiyu
             hello.Children.Add(Ui.Text(TextResources.Get("settingsPage.settingsPage.text.alternativeS"),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
-            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet);work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
+            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);about=new AboutPanel(pet);quiet=new QuietPanel(pet,RefreshRestoredPreferences);work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(10,0,10,0),Padding=new Thickness(0)};
             ScrollViewer.SetHorizontalScrollBarVisibility(navigation,ScrollBarVisibility.Disabled);
             string[] navigationLabels={TextResources.Get("settingsPage.settingsPage.navigationLabels"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeA"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeB"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeC"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeD")};
@@ -206,6 +206,10 @@ namespace Dafeiyu
         {while(source!=null){var item=source as ComboBoxItem;if(item!=null)return item;source=source is Visual?VisualTreeHelper.GetParent(source):LogicalTreeHelper.GetParent(source);}return null;}
         private void RefreshAvatar() { displayedSkin=pet.Skin;name.Text=pet.Skin.DisplayName; avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
         public void RefreshTextProviders(){connections.RefreshTextProviders();}
+        void RefreshRestoredPreferences()
+        {
+            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();work.RefreshRestoredPreferences();RefreshState();
+        }
         public void RefreshState()
         {
             if(holidayOutfits!=null)holidayOutfits.RefreshState();

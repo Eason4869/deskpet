@@ -684,19 +684,31 @@ namespace Dafeiyu
         public void SetPaused(bool value)
         { if(Paused!=value){RecordPetInteraction();DismissGreeting(true);}if(value)CancelInteraction();Paused=value; if(value && walking) { walking=false; Animation.Play("idle",0); SavePosition(); }UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void ApplySettings()
+        {ApplySettingsCore(true);}
+        internal string ApplyRestoredPreferences()
+        {
+            ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
+            if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
+            if(clickThroughItem!=null)clickThroughItem.IsChecked=Settings.ClickThrough;
+            string warning="";
+            if(hotkeys!=null){hotkeys.Dispose();hotkeys=new HotkeyRegistry(handle);foreach(var pair in Settings.Hotkeys.Where(p=>ShortcutCatalog.All.Any(d=>d.Global&&d.Id==p.Key))){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))warning=error;}}
+            HotkeyWarning=warning;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;UpdateVoiceVolume(Settings.Volume);
+            ApplySettingsCore(false);if(chat!=null)chat.RefreshAppearance();return warning;
+        }
+        void ApplySettingsCore(bool persist)
         {
             CancelHolidayEffects();
             StopManualRun();
             RecordPetInteraction();
-            Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
+            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
             Width=192*Settings.Scale; Height=208*Settings.Scale; Topmost=Settings.Topmost;
             if(!Settings.Wander && walking) { walking=false; Animation.Play("idle",0); }
             if(handle!=IntPtr.Zero) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate
             {
                 if(closing) return; Rect after=DesktopInterop.Bounds(handle);
-                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); SavePosition();
+                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); if(persist)SavePosition();
             }));
-            UpdateFrame(); SaveSettings(); if(preferences!=null) preferences.RefreshState();
+            UpdateFrame(); if(persist)SaveSettings(); if(preferences!=null) preferences.RefreshState();
         }
         private bool ActivateSkin(SkinDefinition skin)
         {
@@ -1143,9 +1155,17 @@ namespace Dafeiyu
             Rect bounds=DesktopInterop.Bounds(handle),area=DesktopInterop.WorkArea(handle);
             DesktopInterop.Move(handle,PetMath.ClampPosition(area.Right-bounds.Width-28,area.Bottom-bounds.Height-16,bounds.Width,bounds.Height,area)); SavePosition();
         }
+        bool deferredSettingsSave;
+        internal async Task<string> FlushDeferredSettingsAsync()
+        {
+            if(!deferredSettingsSave)return "";
+            try{using(await DataMaintenance.BeginAsync()){do{deferredSettingsSave=false;await Store.SaveExactSnapshotAsync(Settings);}while(deferredSettingsSave);}return "";}
+            catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
+        }
         public void SaveSettings()
         {
-            try { Store.Save(Settings);if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
+            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return;}
+            try { Store.Save(Settings);deferredSettingsSave=false;if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
             catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice=TextResources.Get("petWindow.saveSettings.notice"); }
             if(preferences!=null) preferences.ShowNotice(Notice);
         }
