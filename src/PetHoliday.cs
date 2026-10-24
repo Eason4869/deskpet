@@ -201,6 +201,7 @@ namespace Dafeiyu
         }
         double HolidaySourceDuration(string action,bool interacting,bool original)
         {
+            var quiet=AdditionalInteractions.Quiet(Skin,action,original);if(quiet!=null)return quiet.Duration;
             IllustratedAnimation specification;
             if(AdditionalInteractions.Specification(Skin,action,original,out specification))return specification.Frames/specification.Fps;
             if(original && AdditionalInteractions.HasOriginal(Skin,action))return AdditionalInteractions.OriginalFrameCount(Skin,action)/8.0;

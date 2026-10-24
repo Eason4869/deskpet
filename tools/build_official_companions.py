@@ -170,6 +170,17 @@ def collect_role(repository, defaults, destination, role, version):
         manifest['animations']['jumping']['hold_last_seconds'] = .35 if role == 'e-bao' else .05
     if not manifest.get('voice_presets'):
         manifest['voice_presets'] = {'speech': ['苏打', 'ash'] if role == 'e-bao' else ['茉莉', 'coral'] if role == 'marfu' else ['冰糖', 'nova'], 'live': ['Puck'] if role == 'e-bao' else ['Kore'] if role == 'marfu' else ['Aoede']}
+    # Final reviewed overlays win over legacy export counts and 8-FPS defaults.
+    # Retain each manifest's established path and all unrelated clip metadata.
+    for group, action, sheet in (('animations', 'idle', 'idle'), ('animations', 'sleeping', 'sleeping'), ('alternate_animations', 'sleeping', 'sleeping-alternate')):
+        clip = manifest[group][action]
+        original = repository / 'assets/companion-quiet' / role / (sheet + '.png')
+        target = safe_path(destination, clip['file'])
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(original, target)
+        if target.read_bytes() != original.read_bytes():
+            raise ValueError('Quiet overlay changed source bytes')
+        clip.update(columns=8, frames=8, fps=4 if action == 'idle' else 2.5, loop=True)
     write_json(destination / 'pet.json', manifest)
     identity = {'schema_version': 1, 'id': role, 'name': manifest['name'], 'version': version, 'min_app_version': version}
     write_json(destination / 'companions.json', identity)

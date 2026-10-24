@@ -26,6 +26,8 @@ internal sealed class PetSkin
     public required string Prompt { get; init; }
     public string? Folder { get; init; }
     public bool BuiltIn => Folder == null;
+    // Assigned only by the canonical embedded-resource registry, never manifests.
+    internal bool CanonicalBuiltIn { get; set; }
     public string? Atlas { get; init; }
     public string SpecialAction { get; init; } = TextResources.Get("spriteAssets.specialAction.text");
     public string SpecialAction2 { get; init; } = TextResources.Get("spriteAssets.specialAction2.text");
@@ -127,6 +129,7 @@ internal sealed class SpriteAssets : IDisposable
                     else skin = new PetSkin { Id = persona, Name = profile.Name, Prompt = profile.SystemPrompt, Description = profile.Description, Voices = profile.VoicePresets, SpecialAction = profile.SpecialAction, SpecialAction2 = profile.SpecialAction2, IsPlaceholder = true };
                 }
             }
+            skin.CanonicalBuiltIn = skin.BuiltIn && !skin.IsPlaceholder;
             skin.OfficialCharacterId = skin.BuiltinCharacterId = profile.Id; skin.PickerKey = "official:" + profile.Id;
             skin.Avatar = skin.Folder == null ? skin.Avatar ?? "avatars/" + profile.Id + ".png" : skin.Avatar;
             skins.Add(skin);
@@ -393,6 +396,8 @@ internal sealed class SpriteAssets : IDisposable
             var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException(TextResources.Get("spriteAssets.resolve.clipOutfitFindClip"));
             return MatchSourceTiming(OutfitClip(outfit, clip), Resolve(skin, action, original));
         }
+        var quiet = skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
+        if (quiet != null) return new ClipSpec(quiet.Path, quiet.Columns, quiet.Frames, quiet.Fps, quiet.Loop, quiet.Width, quiet.Height);
         if (!original && skin.Alternates.TryGetValue(action, out var alternate)) return alternate;
         if (!original && action == "jumping" && skin.BuiltIn && (skin.OfficialCharacterId ?? skin.Id) == "e-bao")
             return new ClipSpec("companion-animations/e-bao/jumping.png", 8, 8, 8, false);

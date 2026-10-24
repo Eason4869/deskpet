@@ -94,7 +94,13 @@ namespace Dafeiyu
         internal static RelationshipStageArtAsset Holiday(string companionId,string verifiedCharacterId,string holidayId,string outfitId,string outfitVersion)
         {
             if(companionId!="official:"+verifiedCharacterId)return null;
-            foreach(var item in all)if(item.CompanionId==companionId&&item.HolidayId==holidayId&&item.OutfitId==outfitId&&item.OutfitVersion==outfitVersion&&item.HolidayId!=null)return item;return null;
+            // Both reviewed costume revisions share the original scene. Bind the
+            // actual selected revision without changing old receipts or art inventory.
+            if(holidayId!="halloween" || outfitId!="halloween-2026" || outfitVersion!="1.0.0"&&outfitVersion!="1.0.3")return null;
+            foreach(var item in all)if(item.CompanionId==companionId&&item.HolidayId==holidayId&&item.OutfitId==outfitId&&item.HolidayId!=null){
+                if(item.OutfitVersion==outfitVersion)return item;
+                return new RelationshipStageArtAsset(item.CompanionId,item.HolidayId,item.OutfitId,outfitVersion,item.SceneId,item.SceneVersion,item.RelativePath,item.PixelWidth,item.PixelHeight,item.ByteLength,item.Sha256,item.StageId);
+            }return null;
         }
         // Bounded stream copy before native decoding. A trusted digest plus native full decode
         // checks the immutable selected PNG without trusting stream Length or seekability.

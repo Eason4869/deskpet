@@ -9,6 +9,11 @@ validator=importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(validator)
 
 class ValidationTests(unittest.TestCase):
+    def test_revised_quiet_source_timing_preserves_all_eight_frames(self):
+        for role in validator.CHARACTERS:
+            for action, variant in (('idle', 'default'), ('sleeping', 'default'), ('sleeping', 'alternate')):
+                with self.subTest(role=role, action=action, variant=variant):
+                    self.assertEqual((8, 4.0 if action == 'idle' else 2.5, True), validator.source_semantics(role, action, variant))
     @classmethod
     def setUpClass(cls):
         (validator.ROOT/'work').mkdir(exist_ok=True)

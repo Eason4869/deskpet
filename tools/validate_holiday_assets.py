@@ -55,6 +55,8 @@ def check_png(path,width,height,columns,count):
     return count
 
 def source_semantics(character,action,variant):
+    if character in CHARACTERS and action in ('idle','sleeping'):
+        return 8,4.0 if action=='idle' else 2.5,True
     if character in ('xiaobei','gugugaga'):
         manifest=read_json(ROOT/'assets/bundled-skins'/character/'pet.json')
         group='alternate_animations' if variant=='alternate' else ('extra_animations' if action in EXTRA else 'animations')

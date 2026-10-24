@@ -17,8 +17,20 @@ namespace Dafeiyu
         public static readonly string[] Actions = { "lifted", "landing", "feeding", "happy", "sleeping", "special", "special2", "stumble" };
         static string SourceId(SkinDefinition skin){return skin.Embedded||skin.Bundled?skin.BuiltinCharacterId??skin.Id:skin.Id;}
         static string Resource(SkinDefinition skin, string action) { return "Dafeiyu.Companion." + SourceId(skin) + "." + action; }
+        internal static CompanionQuietClip Quiet(SkinDefinition skin,string action,bool original)
+        {return skin!=null && (skin.Embedded||skin.Bundled)?CompanionQuietClips.Find(skin.BuiltinCharacterId??skin.Id,action,original):null;}
+        internal static MotionClip LoadQuiet(CompanionQuietClip spec)
+        {
+            using(var input=Assembly.GetExecutingAssembly().GetManifestResourceStream(spec.ResourceName)){
+                if(input==null)throw new InvalidDataException("Missing controlled quiet resource: "+spec.ResourceName);
+                var image=BitmapDecoder.Create(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
+                return new MotionClip(image,spec.Frames,spec.Duration,spec.Loop,spec.Width,spec.Height,spec.Columns);
+            }
+        }
         public static bool Specification(SkinDefinition skin,string action,bool original,out IllustratedAnimation clip)
         {
+            var quiet=action=="sleeping"?Quiet(skin,action,original):null;
+            if(quiet!=null){clip=new IllustratedAnimation{File=quiet.Path,Columns=quiet.Columns,Frames=quiet.Frames,Fps=quiet.Fps,Loop=quiet.Loop};return true;}
             clip=null;if(skin==null || !skin.Illustrated)return false;
             var manifest=skin.Manifest;
             if(manifest.AlternateAnimations!=null && manifest.AlternateAnimations.TryGetValue(action,out clip)) {
@@ -62,7 +74,9 @@ namespace Dafeiyu
                 return clip;
             }
             IllustratedAnimation specification;
-            if(Specification(skin,name,original,out specification)) {
+            var quiet=Quiet(skin,name,original);
+            if(quiet!=null)clip=LoadQuiet(quiet);
+            else if(Specification(skin,name,original,out specification)) {
                 var image=IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,specification.File),480*specification.Columns,520*((specification.Frames+specification.Columns-1)/specification.Columns));
                 clip=new MotionClip(image,specification.Frames,specification.Frames/specification.Fps,specification.Loop,480,520,specification.Columns);
             }

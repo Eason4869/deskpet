@@ -121,9 +121,9 @@ namespace Dafeiyu.Tests
                 foreach(string action in AdditionalInteractions.Actions)
                 {
                     var clip=art.Get(skin,action);bool loop=action=="lifted" || action=="sleeping";
-                    Check(clip!=null && clip.Count==8 && clip.Duration==1 && clip.Loop==loop,id+" eight-pose optimized clip "+action);
+                    Check(clip!=null && clip.Count==8 && clip.Duration==(action=="sleeping"?3.2:1) && clip.Loop==loop,id+" eight-pose optimized clip "+action);
                     var animation=new InteractionAnimation();animation.Configure(skin);animation.Start(action);
-                    for(int i=0;i<8;i++){Check(animation.Frame==i && clip.Sample(animation.Elapsed)==i,id+" synchronized pose "+action+i);animation.Advance(.125);}
+                    for(int i=0;i<8;i++){Check(animation.Frame==i && clip.Sample(animation.Elapsed)==i,id+" synchronized pose "+action+i);animation.Advance(clip.Duration/8);}
                     Check(loop?animation.Active && animation.Frame==0:action=="feeding"?animation.Name=="happy":!animation.Active,id+" optimized completion "+action);
                 }
                 Check(art.Get(skin,"petting")==null && art.Get(skin,"poked")==null,id+" unrelated original gestures use original artwork");
@@ -160,7 +160,7 @@ namespace Dafeiyu.Tests
                 Check(AdditionalInteractions.Has(skin,action) && AdditionalInteractions.HasOriginal(skin,action),"Guga has both variants "+action);
                 var first=art.Get(skin,action+"-original");var second=art.Get(skin,action);
                 Check(first!=null && second!=null && first.Count==8 && second.Count==8,"Guga variants decode eight poses "+action);
-                Check(first.Duration==1 && second.Duration==1,"Guga variants share eight FPS "+action);
+                Check(first.Duration==(action=="sleeping"?3.2:1) && second.Duration==first.Duration,"Guga variants retain reviewed timing "+action);
             }
             Check(!AdditionalInteractions.HasOriginal(new SkinDefinition("gugugaga","导入咕嘎","",null,false),"lifted"),"matching imported Guga cannot borrow built-in variants");
             SkinManifest manifest;using(var input=File.OpenRead(Path.Combine(skin.Source,"pet.json")))manifest=SkinCatalog.ReadManifest(input);
@@ -178,11 +178,11 @@ namespace Dafeiyu.Tests
                 {
                     var original=art.Get(skin,action+"-original");
                     Check(original!=null,"original variant remains available "+id+action);
-                    int count=id=="xiaobei" || action=="special2" || action=="stumble"?8:4;
-                    Check(original.Count==count && original.Duration==count/8.0,"original poses retain true frame count at 8 FPS "+id+action);
+                    int count=id=="xiaobei" || action=="sleeping" || action=="special2" || action=="stumble"?8:4;
+                    Check(original.Count==count && original.Duration==(action=="sleeping"?3.2:count/8.0),"original poses retain reviewed frame count and timing "+id+action);
                     Check(original.Loop==(action=="lifted" || action=="sleeping"),"original loop semantics "+id+action);
                     var clock=new InteractionAnimation();clock.Configure(skin,true);clock.Start(action);
-                    for(int i=0;i<count;i++){Check(clock.Frame==i && original.Sample(clock.Elapsed)==i,"old artwork and clock stay synchronized "+id+action+i);clock.Advance(.125);}
+                    for(int i=0;i<count;i++){Check(clock.Frame==i && original.Sample(clock.Elapsed)==i,"old artwork and clock stay synchronized "+id+action+i);clock.Advance(original.Duration/count);}
                     Check(original.Loop?clock.Frame==0 && clock.Active:action=="feeding"?clock.Name=="happy":!clock.Active,"old artwork completes or loops without switching versions "+id+action);
                 }
             }

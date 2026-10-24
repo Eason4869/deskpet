@@ -4,7 +4,7 @@
   "outfit_id": "halloween-2026",
   "holiday_id": "halloween",
   "name": "南瓜糖果怪盗",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "clips": [
     {
       "action": "failed",
@@ -246,7 +246,7 @@
       "path": "halloween/gugugaga/alternate/sleeping.png",
       "frame_count": 8,
       "columns": 8,
-      "fps": 8.0,
+      "fps": 2.5,
       "loop": true,
       "frame_width": 480,
       "frame_height": 520,
@@ -259,7 +259,7 @@
       "path": "halloween/gugugaga/animations/sleeping.png",
       "frame_count": 8,
       "columns": 8,
-      "fps": 8.0,
+      "fps": 2.5,
       "loop": true,
       "frame_width": 480,
       "frame_height": 520,

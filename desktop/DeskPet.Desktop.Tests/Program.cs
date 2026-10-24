@@ -45,6 +45,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}
+    if(args.Contains("--quiet-installed")){Console.WriteLine("QuietInstalled: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet-installed"),true)+" passed");return;}
     if(args.Contains("--holiday-keepsake-between-read-ui")){Console.WriteLine("HolidayBetweenReadUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.BetweenReadUi()+" passed");return;}
     if(args.Contains("--holiday-keepsake-between-reads")){Console.WriteLine("HolidayBetweenReads: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/native-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
     if(args.Contains("--holiday-keepsake-lifecycle")){Console.WriteLine("HolidayLifecycle: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle()+" passed");return;}
@@ -100,6 +102,7 @@ try
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
     assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"));
     assertions+=RelationshipPackChecks.Run();
+    assertions+=QuietMotionChecks.Run(Path.Combine(directory,"quiet-default"));
     Console.WriteLine("START OnboardingPreparationUiChecks");
     assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));
     Console.WriteLine("START AgentJobUiChecks");

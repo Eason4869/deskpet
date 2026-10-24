@@ -6,7 +6,7 @@
       "outfit_id": "halloween-2026",
       "holiday_id": "halloween",
       "name": "绯夜小伯爵",
-      "version": "1.0.0",
+      "version": "1.0.3",
       "ready": true,
       "greetings_ready": true,
       "definition": "halloween/e-bao/outfit.json"

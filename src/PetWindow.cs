@@ -527,9 +527,9 @@ namespace Dafeiyu
                 row=9+direction/columns; col=direction%columns;
             }
             else gazeActive=false;
-            // Built-in companions use the original v0.5.2 atlases and cadence.
-            // Imported illustrated packs retain their own manifest frame timing.
-            if(Skin.Illustrated && row<9) {
+            // Quiet sidecars follow the gaze decision above and are already aligned.
+            // Other built-in actions retain their legacy atlas offsets and cadence.
+            if(row<9 && (Skin.Illustrated || !supplemental && row==0 && AdditionalInteractions.Quiet(Skin,"idle",true)!=null)) {
                 if(motion==null || !ReferenceEquals(motionSkin,Skin)){motion=new SmoothMotion(Skin);motionSkin=Skin;}
                 var clip=motion.Get(supplemental?11+row:row);
                 if(clip!=null) {
@@ -637,7 +637,7 @@ namespace Dafeiyu
             var extra=additionalInteractions.Get(Skin,action+(isInteraction && interaction.Name==action && originalInteraction?"-original":""));
             if(extra!=null)return extra.Frame(3);
             int motionRow=Array.IndexOf(isInteraction?new[]{"lifted","landing","petting","poked","feeding","happy","sleeping","special"}:AnimationPlayer.States,action);
-            if(motionRow>=0 && Skin.Illustrated) {
+            if(motionRow>=0 && (Skin.Illustrated || !isInteraction && action=="idle" && AdditionalInteractions.Quiet(Skin,action,true)!=null)) {
                 if(motion==null || !ReferenceEquals(motionSkin,Skin)){motion=new SmoothMotion(Skin);motionSkin=Skin;}
                 var clip=motion.Get(isInteraction?11+motionRow:motionRow);
                 if(clip!=null)return clip.Frame(clip.Count/2);
