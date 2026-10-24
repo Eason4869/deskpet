@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "Spazio liberabile",
   "cache.updateCategory": "Pacchetti di aggiornamento scaduti",
   "cache.downloadCategory": "Download residui",
-  "dataManagement.historyTitle": "Cronologia chat"
+  "dataManagement.historyTitle": "Cronologia chat",
+  "relationship.home.stageMessage": "Un messaggio per questa tappa",
+  "relationship.card.memoryFirstMeeting": "Conserviamo il giorno del nostro incontro come inizio della nostra storia.",
+  "relationship.card.memoryFamiliar": "Da sconosciuti a familiari: la compagnia quotidiana acquista valore.",
+  "relationship.card.memoryClose": "La quotidianità ci ha avvicinati un po’ di più.",
+  "relationship.card.memoryTrusted": "Custodiamo la fiducia cresciuta poco alla volta.",
+  "relationship.card.memoryHeartfelt": "L’intesa nasce nei giorni comuni che condividiamo.",
+  "relationship.card.memoryBestFriend": "Dopo questo cammino insieme, conserviamo questo momento per il futuro.",
+  "relationship.card.firstDay": "Il giorno del nostro incontro",
+  "relationship.card.acquaintanceDay": "Giorno {0} dal nostro incontro"
 }

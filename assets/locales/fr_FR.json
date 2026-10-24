@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "Espace pouvant être libéré",
   "cache.updateCategory": "Paquets de mise à jour expirés",
   "cache.downloadCategory": "Téléchargements restants",
-  "dataManagement.historyTitle": "Historique des discussions"
+  "dataManagement.historyTitle": "Historique des discussions",
+  "relationship.home.stageMessage": "Un message pour cette étape",
+  "relationship.card.memoryFirstMeeting": "Gardons le jour de notre rencontre comme le début de notre histoire.",
+  "relationship.card.memoryFamiliar": "De la découverte à la familiarité, le quotidien prend du sens.",
+  "relationship.card.memoryClose": "Au fil du quotidien, nous nous sommes un peu rapprochés.",
+  "relationship.card.memoryTrusted": "Préservons la confiance qui a grandi peu à peu.",
+  "relationship.card.memoryHeartfelt": "La complicité se tisse dans les jours ordinaires partagés.",
+  "relationship.card.memoryBestFriend": "Après ce chemin ensemble, gardons cet instant pour demain.",
+  "relationship.card.firstDay": "Le jour de notre rencontre",
+  "relationship.card.acquaintanceDay": "Jour {0} depuis notre rencontre"
 }

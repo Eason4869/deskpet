@@ -10,6 +10,13 @@ namespace Dafeiyu.Tests
         public static int Main(){try{Run().GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
         static async Task Run()
         {
+            var earnedDays=typeof(RelationshipCardData).GetProperty("EarnedAcquaintanceDays");
+            Check(earnedDays!=null,"keepsake captures acquaintance span at the earned milestone, not today");
+            var cardSnapshot=new RelationshipSnapshot{State=new CompanionRelationshipState{CompanionId="custom:card",FirstLocalDate="2026-10-05",Milestones=new System.Collections.Generic.List<RelationshipMilestone>{new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-12"}}}};
+            var keepsake=RelationshipCardData.FromSnapshot(cardSnapshot,"familiar","Companion");
+            Check((int?)earnedDays.GetValue(keepsake,null)==8,"October 5 to October 12 records acquaintance day eight");
+            cardSnapshot.State.FirstLocalDate="2026-10-13";Check(earnedDays.GetValue(RelationshipCardData.FromSnapshot(cardSnapshot,"familiar","Companion"),null)==null,"reversed saved dates never manufacture acquaintance days");
+            cardSnapshot.State.FirstLocalDate="bad";Check(earnedDays.GetValue(RelationshipCardData.FromSnapshot(cardSnapshot,"familiar","Companion"),null)==null,"invalid first date omits acquaintance span");
             var restart=typeof(ApplicationRestart).GetMethod("StartInfo",new[]{typeof(string),typeof(string),typeof(bool)});
             Check(restart!=null,"safe restart supports an explicit onboarding resume reason");
             var recovery=(System.Diagnostics.ProcessStartInfo)restart.Invoke(null,new object[]{@"C:\Program Files\dotnet\dotnet.exe",@"C:\Desk Pet\DeskPet.dll",false});

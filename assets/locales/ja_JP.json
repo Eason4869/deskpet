@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "削除可能な容量",
   "cache.updateCategory": "期限切れの更新パッケージ",
   "cache.downloadCategory": "残ったダウンロード",
-  "dataManagement.historyTitle": "チャット履歴"
+  "dataManagement.historyTitle": "チャット履歴",
+  "relationship.home.stageMessage": "この節目のメッセージ",
+  "relationship.card.memoryFirstMeeting": "初めて出会ったこの日を、私たちの物語の始まりに。",
+  "relationship.card.memoryFamiliar": "少しずつ親しくなり、何気ない日々の重みが増していく。",
+  "relationship.card.memoryClose": "共に過ごす日々が、私たちの距離を少し縮めた。",
+  "relationship.card.memoryTrusted": "少しずつ育まれた信頼を、大切にしまっておこう。",
+  "relationship.card.memoryHeartfelt": "何気ない日々の積み重ねに、通じ合う気持ちが宿る。",
+  "relationship.card.memoryBestFriend": "ここまで共に歩んだ今を、未来の私たちへ残そう。",
+  "relationship.card.firstDay": "初めて出会った日",
+  "relationship.card.acquaintanceDay": "出会って {0} 日目"
 }

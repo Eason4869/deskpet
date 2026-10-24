@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "可清理空间",
   "cache.updateCategory": "过期更新包",
   "cache.downloadCategory": "遗留下载",
-  "dataManagement.historyTitle": "聊天记录"
+  "dataManagement.historyTitle": "聊天记录",
+  "relationship.home.stageMessage": "这一阶段的留言",
+  "relationship.card.memoryFirstMeeting": "把初次见面的这一天，留作我们故事的开篇。",
+  "relationship.card.memoryFamiliar": "从陌生到熟悉，日常的陪伴开始有了分量。",
+  "relationship.card.memoryClose": "相伴的日常，让我们又靠近了一点。",
+  "relationship.card.memoryTrusted": "把这份慢慢积累的信赖，认真珍藏。",
+  "relationship.card.memoryHeartfelt": "有些默契，藏在一次次平凡的相伴里。",
+  "relationship.card.memoryBestFriend": "一路相伴至此，把这一刻留给未来的我们。",
+  "relationship.card.firstDay": "相识的第一天",
+  "relationship.card.acquaintanceDay": "相识第 {0} 天"
 }

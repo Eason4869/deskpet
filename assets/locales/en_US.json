@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "Space available to clean",
   "cache.updateCategory": "Expired update packages",
   "cache.downloadCategory": "Leftover downloads",
-  "dataManagement.historyTitle": "Chat history"
+  "dataManagement.historyTitle": "Chat history",
+  "relationship.home.stageMessage": "A message for this chapter",
+  "relationship.card.memoryFirstMeeting": "Keep the day we first met as the opening of our story.",
+  "relationship.card.memoryFamiliar": "Once strangers, now familiar: everyday company begins to mean more.",
+  "relationship.card.memoryClose": "In everyday company, we have grown a little closer.",
+  "relationship.card.memoryTrusted": "Treasure the trust that has grown, little by little.",
+  "relationship.card.memoryHeartfelt": "Understanding grows quietly in the ordinary days we share.",
+  "relationship.card.memoryBestFriend": "After all this time together, keep this moment for our future selves.",
+  "relationship.card.firstDay": "The day we first met",
+  "relationship.card.acquaintanceDay": "Day {0} since we met"
 }

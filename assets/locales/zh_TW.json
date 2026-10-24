@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "可清理空間",
   "cache.updateCategory": "過期更新套件",
   "cache.downloadCategory": "殘留下載",
-  "dataManagement.historyTitle": "聊天記錄"
+  "dataManagement.historyTitle": "聊天記錄",
+  "relationship.home.stageMessage": "這一階段的留言",
+  "relationship.card.memoryFirstMeeting": "把初次見面的這一天，留作我們故事的開篇。",
+  "relationship.card.memoryFamiliar": "從陌生到熟悉，日常的陪伴開始有了分量。",
+  "relationship.card.memoryClose": "相伴的日常，讓我們又靠近了一點。",
+  "relationship.card.memoryTrusted": "把這份慢慢累積的信賴，認真珍藏。",
+  "relationship.card.memoryHeartfelt": "有些默契，藏在一次次平凡的相伴裡。",
+  "relationship.card.memoryBestFriend": "一路相伴至此，把這一刻留給未來的我們。",
+  "relationship.card.firstDay": "相識的第一天",
+  "relationship.card.acquaintanceDay": "相識第 {0} 天"
 }

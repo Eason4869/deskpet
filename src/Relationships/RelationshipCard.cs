@@ -12,6 +12,20 @@ namespace Dafeiyu
         public string Name {get;private set;}
         public string StageId {get;private set;}
         public string EarnedLocalDate {get;private set;}
+        public string FirstLocalDate {get;private set;}
+        public int? EarnedAcquaintanceDays {get;private set;}
+        public string MemoryText {get{
+            switch(StageId){
+                case "first_meeting":return TextResources.Get("relationship.card.memoryFirstMeeting");
+                case "familiar":return TextResources.Get("relationship.card.memoryFamiliar");
+                case "close":return TextResources.Get("relationship.card.memoryClose");
+                case "trusted":return TextResources.Get("relationship.card.memoryTrusted");
+                case "heartfelt":return TextResources.Get("relationship.card.memoryHeartfelt");
+                case "best_friend":return TextResources.Get("relationship.card.memoryBestFriend");
+                default:return "";
+            }
+        }}
+        public string AcquaintanceText {get{return !EarnedAcquaintanceDays.HasValue?"":EarnedAcquaintanceDays.Value==1?TextResources.Get("relationship.card.firstDay"):TextResources.Format("relationship.card.acquaintanceDay",EarnedAcquaintanceDays.Value);}}
         public string StageName {get{return RelationshipContent.StageName(StageId);}}
         public string DateText {get{return FormatDate(EarnedLocalDate);}}
         public static string FormatDate(string localDate)
@@ -21,7 +35,9 @@ namespace Dafeiyu
         {
             if(snapshot==null||snapshot.State==null)throw new ArgumentException("A saved milestone is required.");
             var milestone=snapshot.State.Milestones.Single(m=>m.StageId==stageId);
-            return new RelationshipCardData{CompanionId=snapshot.State.CompanionId,Name=name,StageId=milestone.StageId,EarnedLocalDate=milestone.EarnedLocalDate};
+            DateTime first,earned;int? days=null;
+            if(DateTime.TryParseExact(snapshot.State.FirstLocalDate,"yyyy-MM-dd",CultureInfo.InvariantCulture,DateTimeStyles.None,out first)&&DateTime.TryParseExact(milestone.EarnedLocalDate,"yyyy-MM-dd",CultureInfo.InvariantCulture,DateTimeStyles.None,out earned)&&earned>=first)days=(int)(earned-first).TotalDays+1;
+            return new RelationshipCardData{CompanionId=snapshot.State.CompanionId,Name=name,StageId=milestone.StageId,EarnedLocalDate=milestone.EarnedLocalDate,FirstLocalDate=snapshot.State.FirstLocalDate,EarnedAcquaintanceDays=days};
         }
         public static string SafeFileName(string name,string stage,string date)
         {

@@ -4,30 +4,34 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-
 namespace Dafeiyu
 {
     internal static class RelationshipCardRenderer
     {
-        internal static FrameworkElement Create(RelationshipCardData data,ImageSource avatar)
-        {return Create(data,avatar,ThemeManager.IsDark);}
-        internal static FrameworkElement Create(RelationshipCardData data,ImageSource avatar,bool dark)
+        internal static FrameworkElement Create(RelationshipCardData data,ImageSource portrait){return Create(data,portrait,ThemeManager.IsDark);}
+        internal static FrameworkElement Create(RelationshipCardData data,ImageSource portrait,bool dark)
         {
-            Func<string,double,TextBlock> text=(value,size)=>Text(value,size,dark);
-        var content=new Grid{Width=800,Height=480,Background=new SolidColorBrush(dark?Color.FromRgb(43,53,69):Color.FromRgb(244,247,252))};
-            var panel=new StackPanel{Margin=new Thickness(42,32,42,30)};
-            var title=text(TextResources.Get("relationship.card.title"),20);title.Foreground=new SolidColorBrush(dark?Color.FromRgb(157,187,255):Color.FromRgb(53,99,160));panel.Children.Add(title);
-            var row=new Grid{Margin=new Thickness(0,28,0,24)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(200)});row.ColumnDefinitions.Add(new ColumnDefinition());
-            row.Children.Add(new Image{Source=avatar,Width=168,Height=168,Stretch=Stretch.Uniform,HorizontalAlignment=HorizontalAlignment.Left});
-            var words=new StackPanel{VerticalAlignment=VerticalAlignment.Center};words.Children.Add(text(data.Name,34));words.Children.Add(text(data.StageName,27));Grid.SetColumn(words,1);row.Children.Add(words);panel.Children.Add(row);
-            panel.Children.Add(text(data.DateText,20));panel.Children.Add(text(TextResources.Get("relationship.card.footer"),16));content.Children.Add(panel);return content;
+            string title=TextResources.Get("relationship.card.title"),name=data.Name,stage=data.StageName,memory=data.MemoryText,date=data.DateText,day=data.AcquaintanceText;
+            var content=new Canvas{Width=800,Height=480,Background=new SolidColorBrush(dark?Color.FromRgb(43,53,69):Color.FromRgb(244,247,252))};
+            var source=new CompanionPortraitSource(portrait as BitmapSource);var picture=new CompanionPortraitVisual(source,dark){Width=296,Height=416};Canvas.SetLeft(picture,32);Canvas.SetTop(picture,32);content.Children.Add(picture);
+            Add(content,title,360,30,408,24,16,16,dark,true,false,"RelationshipCardTitle");
+            Add(content,name,360,62,408,40,27,24,dark,false,true,"RelationshipCardName");
+            Add(content,stage,360,108,408,100,44,40,dark,false,false,"RelationshipCardStage");
+            Add(content,memory,360,218,408,116,26,24,dark,false,false,"RelationshipCardMemory");
+            Add(content,date,360,354,408,62,22,20,dark,true,false,"RelationshipCardDate");
+            Add(content,day,360,424,408,26,19,18,dark,true,false,"RelationshipCardAcquaintance");
+            System.Windows.Automation.AutomationProperties.SetName(content,name+" "+stage+" "+memory+" "+date+" "+day);return content;
         }
-        static TextBlock Text(string value,double size,bool dark){return new TextBlock{Text=value,FontSize=size,FontFamily=new FontFamily("Global User Interface"),Foreground=new SolidColorBrush(dark?Color.FromRgb(229,234,242):Color.FromRgb(29,44,68)),TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,12)};}
-        internal static byte[] Render(RelationshipCardData data,ImageSource avatar)
-        {return Render(data,avatar,ThemeManager.IsDark);}
-        internal static byte[] Render(RelationshipCardData data,ImageSource avatar,bool dark)
+        static void Add(Canvas canvas,string value,double x,double y,double width,double height,double size,double minimum,bool dark,bool muted,bool oneLine,string name)
         {
-            var visual=Create(data,avatar,dark);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));visual.UpdateLayout();
+            var text=new TextBlock{Name=name,Text=value,Width=width,Height=height,FontSize=size,FontFamily=new FontFamily("Global User Interface"),Foreground=new SolidColorBrush(dark?(muted?Color.FromRgb(181,196,219):Color.FromRgb(229,234,242)):(muted?Color.FromRgb(100,117,142):Color.FromRgb(32,55,84))),TextWrapping=oneLine?TextWrapping.NoWrap:TextWrapping.Wrap,TextTrimming=TextTrimming.CharacterEllipsis,FontWeight=name=="RelationshipCardStage"?FontWeights.SemiBold:FontWeights.Normal,ClipToBounds=true};
+            while(text.FontSize>minimum){var probe=new TextBlock{Text=value,FontSize=text.FontSize,FontFamily=text.FontFamily,FontWeight=text.FontWeight,TextWrapping=text.TextWrapping};probe.Measure(new Size(width,Double.PositiveInfinity));if(probe.DesiredSize.Height<=height)break;text.FontSize--;}
+            text.ToolTip=value;System.Windows.Automation.AutomationProperties.SetName(text,value);Canvas.SetLeft(text,x);Canvas.SetTop(text,y);canvas.Children.Add(text);
+        }
+        internal static byte[] Render(RelationshipCardData data,ImageSource portrait){return Render(data,portrait,ThemeManager.IsDark);}
+        internal static byte[] Render(RelationshipCardData data,ImageSource portrait,bool dark)
+        {
+            var visual=Create(data,portrait,dark);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));visual.UpdateLayout();
             var bitmap=new RenderTargetBitmap(800,480,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);
             var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var memory=new MemoryStream()){png.Save(memory);return memory.ToArray();}
         }

@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "खाली की जा सकने वाली जगह",
   "cache.updateCategory": "पुराने अपडेट पैकेज",
   "cache.downloadCategory": "बचे हुए डाउनलोड",
-  "dataManagement.historyTitle": "चैट इतिहास"
+  "dataManagement.historyTitle": "चैट इतिहास",
+  "relationship.home.stageMessage": "इस पड़ाव का संदेश",
+  "relationship.card.memoryFirstMeeting": "पहली मुलाकात के इस दिन को अपनी कहानी की शुरुआत बनाकर सँजो लें।",
+  "relationship.card.memoryFamiliar": "अजनबी से परिचित बने, और रोज़ का साथ मायने रखने लगा।",
+  "relationship.card.memoryClose": "रोज़ साथ बिताए पलों ने हमें थोड़ा और करीब ला दिया।",
+  "relationship.card.memoryTrusted": "धीरे-धीरे बढ़े इस भरोसे को प्यार से सँजो लें।",
+  "relationship.card.memoryHeartfelt": "साथ बिताए साधारण दिनों में एक-दूसरे को समझने की डोर बनती है।",
+  "relationship.card.memoryBestFriend": "यहाँ तक साथ चले हैं, इस पल को अपने आने वाले कल के लिए सँजो लें।",
+  "relationship.card.firstDay": "हमारी पहली मुलाकात का दिन",
+  "relationship.card.acquaintanceDay": "मुलाकात के बाद दिन {0}"
 }

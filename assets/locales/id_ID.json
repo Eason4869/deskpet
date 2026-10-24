@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "Ruang yang dapat dibersihkan",
   "cache.updateCategory": "Paket pembaruan kedaluwarsa",
   "cache.downloadCategory": "Sisa unduhan",
-  "dataManagement.historyTitle": "Riwayat chat"
+  "dataManagement.historyTitle": "Riwayat chat",
+  "relationship.home.stageMessage": "Pesan untuk tahap ini",
+  "relationship.card.memoryFirstMeeting": "Simpan hari pertama kita bertemu sebagai awal cerita kita.",
+  "relationship.card.memoryFamiliar": "Dari asing menjadi akrab, kebersamaan sehari-hari makin berarti.",
+  "relationship.card.memoryClose": "Hari-hari bersama membuat kita sedikit lebih dekat.",
+  "relationship.card.memoryTrusted": "Jaga kepercayaan yang tumbuh sedikit demi sedikit.",
+  "relationship.card.memoryHeartfelt": "Saling memahami tumbuh dalam hari-hari biasa yang kita lalui bersama.",
+  "relationship.card.memoryBestFriend": "Setelah perjalanan bersama ini, simpan momen ini untuk masa depan.",
+  "relationship.card.firstDay": "Hari pertama kita bertemu",
+  "relationship.card.acquaintanceDay": "Hari ke-{0} sejak kita bertemu"
 }

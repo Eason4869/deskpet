@@ -4627,5 +4627,14 @@
   "cache.spaceLabel": "Bereinigbarer Speicherplatz",
   "cache.updateCategory": "Abgelaufene Update-Pakete",
   "cache.downloadCategory": "Verbleibende Downloads",
-  "dataManagement.historyTitle": "Chatverlauf"
+  "dataManagement.historyTitle": "Chatverlauf",
+  "relationship.home.stageMessage": "Eine Nachricht zu diesem Abschnitt",
+  "relationship.card.memoryFirstMeeting": "Der Tag unserer ersten Begegnung: der Anfang unserer Geschichte.",
+  "relationship.card.memoryFamiliar": "Aus Fremdheit wird Vertrautheit. Unser Alltag gewinnt an Bedeutung.",
+  "relationship.card.memoryClose": "Im gemeinsamen Alltag sind wir einander nähergekommen.",
+  "relationship.card.memoryTrusted": "Bewahren wir das Vertrauen, das langsam gewachsen ist.",
+  "relationship.card.memoryHeartfelt": "In gewöhnlichen gemeinsamen Tagen wächst stilles Verständnis.",
+  "relationship.card.memoryBestFriend": "So weit sind wir gemeinsam gekommen. Diesen Moment bewahren wir.",
+  "relationship.card.firstDay": "Der Tag unserer ersten Begegnung",
+  "relationship.card.acquaintanceDay": "Tag {0} seit unserer Begegnung"
 }
