@@ -42,6 +42,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
     if(args.Contains("--companion-home-ui-only")){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}

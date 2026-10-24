@@ -32,17 +32,32 @@ internal sealed class CompanionPortraitSource:IDisposable
     internal static Bitmap? Copy(Bitmap source,PixelRect frame)
     {
         if(frame.X<0||frame.Y<0||frame.Right>source.PixelSize.Width||frame.Bottom>source.PixelSize.Height||frame.Width<=0||frame.Height<=0)throw new InvalidDataException("Invalid static portrait frame");
-        using var normalized=new WriteableBitmap(source.PixelSize,new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Premul);
-        int left=frame.Right,top=frame.Bottom,right=-1,bottom=-1;byte[] bytes;
+        // Every temporary is frame-sized, including format conversion. A legacy atlas
+        // can contain many cells; normalizing it all here would duplicate that atlas.
+        using var normalized=new WriteableBitmap(new PixelSize(frame.Width,frame.Height),new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Premul);
+        int left=frame.Width,top=frame.Height,right=-1,bottom=-1;byte[] bytes;
         using(var buffer=normalized.Lock()){
-            source.CopyPixels(buffer);bytes=new byte[buffer.RowBytes*source.PixelSize.Height];Marshal.Copy(buffer.Address,bytes,0,bytes.Length);
-            for(int y=frame.Y;y<frame.Bottom;y++)for(int x=frame.X;x<frame.Right;x++)if(bytes[y*buffer.RowBytes+x*4+3]!=0){left=Math.Min(left,x);right=Math.Max(right,x);top=Math.Min(top,y);bottom=Math.Max(bottom,y);}
+            CopyFramePixels(source,frame,buffer);bytes=new byte[checked(buffer.RowBytes*frame.Height)];Marshal.Copy(buffer.Address,bytes,0,bytes.Length);
+            for(int y=0;y<frame.Height;y++)for(int x=0;x<frame.Width;x++)if(bytes[y*buffer.RowBytes+x*4+3]!=0){left=Math.Min(left,x);right=Math.Max(right,x);top=Math.Min(top,y);bottom=Math.Max(bottom,y);}
             if(right<left)return null;int margin=Math.Max(2,(int)Math.Ceiling(Math.Max(right-left+1,bottom-top+1)*.025));
-            left=Math.Max(frame.X,left-margin);top=Math.Max(frame.Y,top-margin);right=Math.Min(frame.Right-1,right+margin);bottom=Math.Min(frame.Bottom-1,bottom+margin);
+            left=Math.Max(0,left-margin);top=Math.Max(0,top-margin);right=Math.Min(frame.Width-1,right+margin);bottom=Math.Min(frame.Height-1,bottom+margin);
             var copy=new WriteableBitmap(new PixelSize(right-left+1,bottom-top+1),new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Premul);
             using(var target=copy.Lock())for(int y=0;y<copy.PixelSize.Height;y++)Marshal.Copy(bytes,(top+y)*buffer.RowBytes+left*4,IntPtr.Add(target.Address,y*target.RowBytes),copy.PixelSize.Width*4);
             return copy;
         }
+    }
+    static void CopyFramePixels(Bitmap source,PixelRect frame,ILockedFramebuffer target)
+    {
+        if(source.Format is {} format&&source.AlphaFormat is {} alpha){
+            try{
+                using var cropped=new WriteableBitmap(new PixelSize(frame.Width,frame.Height),new Vector(96,96),format,alpha);
+                using(var pixels=cropped.Lock())source.CopyPixels(frame,pixels.Address,checked(pixels.RowBytes*frame.Height),pixels.RowBytes);
+                cropped.CopyPixels(target);return;
+            }catch(NotSupportedException){/* Non-readable/transcoded sources use a frame-sized render below. */}
+        }
+        using var rendered=new RenderTargetBitmap(new PixelSize(frame.Width,frame.Height),new Vector(96,96));
+        using(var context=rendered.CreateDrawingContext())context.DrawImage(source,new Rect(frame.X,frame.Y,frame.Width,frame.Height),new Rect(0,0,frame.Width,frame.Height));
+        rendered.CopyPixels(target);
     }
     public void Dispose(){Image?.Dispose();Image=null;}
 }
