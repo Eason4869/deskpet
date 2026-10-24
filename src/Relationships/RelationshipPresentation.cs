@@ -45,6 +45,8 @@ namespace Dafeiyu
         readonly RelationshipRuntime runtime;
         readonly Dictionary<string, RelationshipSnapshot> saved = new Dictionary<string, RelationshipSnapshot>(StringComparer.Ordinal);
         readonly object gate = new object();
+        readonly object settingsAdmission = new object();
+        Task settingsWorker = Task.FromResult(0);
         RelationshipSettings pendingSettings;
         public RelationshipHomeModel(RelationshipRuntime runtime) { if (runtime == null) throw new ArgumentNullException("runtime"); this.runtime = runtime; }
         public Task<RelationshipHomeView> LoadAsync(string id, RelationshipTime time)
@@ -66,17 +68,29 @@ namespace Dafeiyu
         }
         public Task<RelationshipResult> UpdateSettingsAsync(bool growth, bool feedback, bool aiContext)
         {
-            return Task.Run(delegate {
-                var result=runtime.Service.UpdateSettings(growth,feedback,aiContext);
-                lock(gate)pendingSettings=result.Success?null:new RelationshipSettings{GrowthEnabled=growth,FeedbackEnabled=feedback,AiContextEnabled=aiContext};
-                return result;
-            });
+            return QueueSettings(() => Task.FromResult(SaveSettings(growth,feedback,aiContext)));
         }
-        public async Task<RelationshipResult> RetryAsync()
+        public Task<RelationshipResult> RetryAsync() { return QueueSettings(RetryCoreAsync); }
+        Task<RelationshipResult> QueueSettings(Func<Task<RelationshipResult>> operation)
+        {
+            // Admission is ordered synchronously, before any retry awaits the runtime.
+            // Work always starts on a worker; this lock never covers disk I/O.
+            lock(settingsAdmission){
+                var next=settingsWorker.ContinueWith(delegate{return operation();},TaskScheduler.Default).Unwrap();
+                settingsWorker=next;return next;
+            }
+        }
+        RelationshipResult SaveSettings(bool growth,bool feedback,bool aiContext)
+        {
+            var result=runtime.Service.UpdateSettings(growth,feedback,aiContext);
+            lock(gate)pendingSettings=result.Success?null:new RelationshipSettings{GrowthEnabled=growth,FeedbackEnabled=feedback,AiContextEnabled=aiContext};
+            return result;
+        }
+        async Task<RelationshipResult> RetryCoreAsync()
         {
             await runtime.RetryPendingAsync().ConfigureAwait(false);
             RelationshipSettings intent;lock(gate)intent=pendingSettings;
-            return intent==null?new RelationshipResult{Success=true}:await UpdateSettingsAsync(intent.GrowthEnabled,intent.FeedbackEnabled,intent.AiContextEnabled).ConfigureAwait(false);
+            return intent==null?new RelationshipResult{Success=true}:SaveSettings(intent.GrowthEnabled,intent.FeedbackEnabled,intent.AiContextEnabled);
         }
     }
 }

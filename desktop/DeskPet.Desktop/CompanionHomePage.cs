@@ -13,6 +13,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     readonly RelationshipHomeModel model;
     readonly SpriteAssets assets=new();
     readonly StackPanel body=Ui.Column();
+    StackPanel? settingsControls;Button? retryControl;
     string? identity;
     int revision;
     Action? updateLayout;
@@ -66,21 +67,28 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
         }
         bool warning=view.ReadFailed||saveFailed||!string.IsNullOrEmpty(owner.Relationships.Warning);
         var warningText=Label(view.ReadFailed?"relationship.home.readWarning":saveFailed?"relationship.home.settingsWarning":"relationship.saveWarning",14,"RelationshipWarning");warningText.IsVisible=warning;warningText.Foreground=DesktopTheme.Brush("#8A6500");body.Children.Add(warningText);
-        var retry=Ui.AsyncButton(TextResources.Get("relationship.home.retry"),()=>PendingRetry=RetryChangesAsync(),owner.Error);retry.Name="RelationshipRetry";retry.IsVisible=warning;body.Children.Add(retry);
+        var retry=Ui.Button(TextResources.Get("relationship.home.retry"),async()=>{if(!BeginSaving())return;try{await(PendingRetry=RetryChangesAsync());}catch(OperationCanceledException){}catch(Exception error){owner.Error(error);}});retry.IsEnabled=!saving;retryControl=retry;retry.Name="RelationshipRetry";retry.IsVisible=warning;body.Children.Add(retry);
         body.Children.Add(new Expander{HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionGrowthRules",Header=TextResources.Get("relationship.home.rules"),Margin=new Thickness(0,14,0,0),IsExpanded=rulesOpen,Content=Label("relationship.home.rulesBody")});
-        var settings=Ui.Column();var current=view.Snapshot?.Settings;
+        var settings=Ui.Column();settingsControls=settings;var current=view.Snapshot?.Settings;
         AddSetting(settings,"RelationshipGrowthEnabled","relationship.home.growth",current?.GrowthEnabled==true,0);AddSetting(settings,"RelationshipFeedbackEnabled","relationship.home.feedback",current?.FeedbackEnabled==true,1);AddSetting(settings,"RelationshipAiContextEnabled","relationship.home.aiContext",current?.AiContextEnabled==true,2);settings.IsEnabled=current!=null&&!view.ReadFailed&&!saving;
         body.Children.Add(new Expander{HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionRelationshipSettings",Header=TextResources.Get("relationship.home.settings"),IsExpanded=settingsOpen,Content=settings});
     }
     void AddSetting(StackPanel parent,string name,string key,bool value,int kind)
     {
         var check=new CheckBox{Name=name,Content=Label(key),IsChecked=value};AutomationProperties.SetName(check,TextResources.Get(key));
-        check.Click+=(_,_)=>{bool desired=check.IsChecked==true;check.IsChecked=value;parent.IsEnabled=false;saving=true;PendingSettings=SaveAsync();async Task SaveAsync(){var current=View!.Snapshot.Settings;var result=await model.UpdateSettingsAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();}};
+        check.Click+=(_,_)=>{bool desired=check.IsChecked==true;check.IsChecked=value;if(View==null||View.ReadFailed||!parent.IsEnabled||!BeginSaving())return;PendingSettings=SaveAsync();async Task SaveAsync(){var current=View!.Snapshot.Settings;var result=await model.UpdateSettingsAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();}};
         parent.Children.Add(check);
+    }
+    bool BeginSaving()
+    {
+        if(disposed||saving)return false;saving=true;
+        if(settingsControls!=null)settingsControls.IsEnabled=false;
+        if(retryControl!=null)retryControl.IsEnabled=false;
+        return true;
     }
     async Task RetryChangesAsync()
     {
-        saving=true;var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
+        var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
     }
     public void Dispose(){if(disposed)return;disposed=true;revision++;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;assets.Dispose();}
 }

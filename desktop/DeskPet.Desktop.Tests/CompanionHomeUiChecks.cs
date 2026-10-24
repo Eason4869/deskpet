@@ -58,7 +58,16 @@ internal static class CompanionHomeUiChecks
             string file=Path.Combine(directory,"relationships","state.json");byte[] original=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");var feedback=Named<CheckBox>(page,"RelationshipFeedbackEnabled");feedback.IsChecked=false;feedback.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));Complete(page.PendingSettings);Complete(page.RefreshAsync());Check(Named<CheckBox>(page,"RelationshipFeedbackEnabled").IsChecked==true&&File.ReadAllText(file)=="{broken","failed setting preserves checkbox and ledger bytes");
             var retained=page.View;var retainedState=retained?.Snapshot?.State;
             Check(retained?.ReadFailed==true&&retainedState!=null&&retainedState.Score==156&&Named<TextBlock>(page,"RelationshipWarning").IsVisible,"corruption retains saved score and retry warning");
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var failed=chat.CaptureRenderedFrame())failed!.Save(Path.Combine(captures,language+"-read-failure.png"),new PngBitmapEncoderOptions());File.WriteAllBytes(file,original);Click(Named<Button>(page,"RelationshipRetry"));Complete(page.PendingRetry);Complete(page.RefreshAsync());Check(!page.View!.ReadFailed&&!owner.RelationshipService.GetSnapshot(originalId).Settings.FeedbackEnabled,"retry recovers preserved ledger and failed settings intent");
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var failed=chat.CaptureRenderedFrame())failed!.Save(Path.Combine(captures,language+"-read-failure.png"),new PngBitmapEncoderOptions());File.WriteAllBytes(file,original);Complete(page.RefreshAsync());
+            var context=Named<CheckBox>(page,"RelationshipAiContextEnabled");var priorSave=page.PendingSettings;
+            using(var lease=new FileStream(Path.Combine(directory,"relationships",".transaction.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
+                Click(Named<Button>(page,"RelationshipRetry"));
+                Check(!context.IsEffectivelyEnabled,"retry immediately disables the already-rendered settings controls");
+                context.IsChecked=false;context.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
+                Check(ReferenceEquals(priorSave,page.PendingSettings)&&context.IsChecked==true,"settings handler rejects concurrent admission during retry");
+                var admittedRetry=page.PendingRetry;Click(Named<Button>(page,"RelationshipRetry"));Check(ReferenceEquals(admittedRetry,page.PendingRetry),"retry handler rejects duplicate admission while busy");
+            }
+            Complete(page.PendingRetry);Complete(page.RefreshAsync());Check(!page.View!.ReadFailed&&!owner.RelationshipService.GetSnapshot(originalId).Settings.FeedbackEnabled,"retry recovers preserved ledger and failed settings intent");
         }finally{chat.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
         return checks;
     }

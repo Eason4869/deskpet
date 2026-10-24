@@ -12,6 +12,7 @@ namespace Dafeiyu
         readonly PetWindow owner;
         readonly RelationshipHomeModel model;
         readonly StackPanel body = new StackPanel();
+        StackPanel settingsControls;Button retryControl;
         string identity;
         int revision;
         Action updateLayout;
@@ -73,9 +74,9 @@ namespace Dafeiyu
             }
             bool warning=View.ReadFailed||saveFailed||!String.IsNullOrEmpty(owner.Relationships.Warning);
             var warningText=Label(View.ReadFailed?"relationship.home.readWarning":saveFailed?"relationship.home.settingsWarning":"relationship.saveWarning",13,"RelationshipWarning");warningText.Visibility=warning?Visibility.Visible:Visibility.Collapsed;warningText.Foreground=ThemeManager.Brush("#97580C","#FFD38A");body.Children.Add(warningText);
-            var retry=Ui.Button(TextResources.Get("relationship.home.retry"));retry.Name="RelationshipRetry";retry.Visibility=warning?Visibility.Visible:Visibility.Collapsed;retry.HorizontalAlignment=HorizontalAlignment.Left;retry.Click+=delegate{retry.IsEnabled=false;saving=true;PendingRetry=RetryChangesAsync();};body.Children.Add(retry);
+            var retry=Ui.Button(TextResources.Get("relationship.home.retry"));retry.Name="RelationshipRetry";retry.Visibility=warning?Visibility.Visible:Visibility.Collapsed;retry.HorizontalAlignment=HorizontalAlignment.Left;retry.IsEnabled=!saving;retryControl=retry;retry.Click+=delegate{if(!BeginSaving())return;PendingRetry=RetryChangesAsync();};body.Children.Add(retry);
             body.Children.Add(new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionGrowthRules",Header=TextResources.Get("relationship.home.rules"),Foreground=AgentUi.Ink,Margin=new Thickness(0,18,0,8),IsExpanded=rulesOpen,Content=Label("relationship.home.rulesBody")});
-            var settings=new StackPanel();var snapshot=View.Snapshot;var current=snapshot==null?null:snapshot.Settings;
+            var settings=new StackPanel();settingsControls=settings;var snapshot=View.Snapshot;var current=snapshot==null?null:snapshot.Settings;
             AddSetting(settings,"RelationshipGrowthEnabled","relationship.home.growth",current!=null&&current.GrowthEnabled,0);
             AddSetting(settings,"RelationshipFeedbackEnabled","relationship.home.feedback",current!=null&&current.FeedbackEnabled,1);
             AddSetting(settings,"RelationshipAiContextEnabled","relationship.home.aiContext",current!=null&&current.AiContextEnabled,2);
@@ -87,9 +88,18 @@ namespace Dafeiyu
             var check=new CheckBox{Name=name,Content=Label(label),IsChecked=value,Foreground=AgentUi.Ink,Margin=new Thickness(0,8,0,8)};
             System.Windows.Automation.AutomationProperties.SetName(check,TextResources.Get(label));
             check.Click+=delegate{
-                var current=View.Snapshot.Settings;bool desired=check.IsChecked==true;check.IsChecked=value;parent.IsEnabled=false;saving=true;
+                bool desired=check.IsChecked==true;check.IsChecked=value;
+                if(View==null||View.ReadFailed||!parent.IsEnabled||!BeginSaving())return;
+                var current=View.Snapshot.Settings;
                 PendingSettings=SaveAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);
             };parent.Children.Add(check);
+        }
+        bool BeginSaving()
+        {
+            if(disposed||saving)return false;saving=true;
+            if(settingsControls!=null)settingsControls.IsEnabled=false;
+            if(retryControl!=null)retryControl.IsEnabled=false;
+            return true;
         }
         async Task SaveAsync(bool growth,bool feedback,bool ai)
         {
