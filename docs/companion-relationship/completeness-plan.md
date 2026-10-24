@@ -70,7 +70,9 @@ M5b3 必须消费 `HistoryMaintenanceService.ClearAllAsync()` 的 Complete/Busy/
 
 验证入口：`./Build.ps1 -Target RelationshipExperienceTests`；便携 `--relationship-experience-only`；两端对应的真实交互 UI 目标必须加入 CI。测试用熟悉阶段 80 分及唯一内容包文本，实际互动后验证 81 分和恰好一次文本展示；自动庆祝不改变分数或重复展示。缺少接口/展示时先失败，不能仅验证解析器返回字符串。
 
-## S2：主页预览、状态解释与恢复入口
+## S2：主页视觉重设计、预览、状态解释与恢复入口
+
+用户实际截图反馈要求增加图形化表达，具体视觉与布局约束见 `home-visual-design.md`。该修订与下列原有功能一起实现；头像右侧名字、关系环形进度与阶段节点、真实时间轴、默认可见纪念卡缩略图、主题一致的折叠分组均需实际截图审核。
 
 **Files**
 - 修改两端 `CompanionHomePage.cs`，必要时拆出小型 `RelationshipCardPreview` / `RelationshipHomeStatus` 控件。
@@ -115,4 +117,6 @@ M5b3 必须消费 `HistoryMaintenanceService.ClearAllAsync()` 的 Complete/Busy/
 - [ ] 独立测试安装、升级、确认取消、助手交接、卸载和数据保留；Windows 与 macOS 实际状态分列。
 - [ ] 更新中英文变更记录、用户说明、`acceptance.md` 和逐功能入口验收矩阵；记录远端 CI/tag/Release 是否实际执行。
 
-剩余执行顺序：M5c → S1 → S2 → S3 → M6 → 全分支独立审阅。每项以实际实现、测试和审阅结果更新状态，不因计划已写完就勾选完成。所有新增界面继续沿用现有主题、字体、按钮层级与间距。
+M5c 已按依赖分为 M5c1（可信助手及隔离安装夹具）和 M5c2（可回退关闭拥有者与实际卸载确认界面）；两项独立通过才完成 M5c。
+
+根据最新视觉反馈调整剩余顺序：M5c1 审阅 → S2 → M5c2 → S1 → S3 → M6 → 全分支独立审阅。每项以实际实现、测试和审阅结果更新状态，不因计划已写完就勾选完成。所有新增界面继续沿用现有主题、字体、按钮层级与间距。
