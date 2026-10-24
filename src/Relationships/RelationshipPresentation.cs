@@ -13,6 +13,8 @@ namespace Dafeiyu
         public string NextStageId { get; private set; }
         public int? NextThreshold { get; private set; }
         public int RemainingPoints { get; private set; }
+        public double Fraction {get{return (double)Score/(NextThreshold??1000);}}
+        public RelationshipStageNode[] Nodes {get{return Array.ConvertAll(RelationshipRules.Stages,delegate(string id){int index=Array.IndexOf(RelationshipRules.Stages,id),current=Array.IndexOf(RelationshipRules.Stages,StageId);return new RelationshipStageNode{StageId=id,Completed=index<current,Current=index==current};});}}
         public static RelationshipProgress FromScore(int score)
         {
             var stage = RelationshipRules.StageForScore(score);
@@ -26,6 +28,12 @@ namespace Dafeiyu
         public string ScoreText { get { return Score.ToString(CultureInfo.CurrentCulture) + " / " + (NextThreshold ?? 1000).ToString(CultureInfo.CurrentCulture); } }
         public string NextText { get { return NextStageId == null ? TextResources.Get("relationship.home.maximum") : TextResources.Format("relationship.home.next", RemainingPoints, RelationshipContent.StageName(NextStageId)); } }
     }
+    public sealed class RelationshipStageNode
+    {
+        public string StageId {get;internal set;}
+        public bool Completed {get;internal set;}
+        public bool Current {get;internal set;}
+    }
 
     public sealed class RelationshipHomeView
     {
@@ -36,6 +44,17 @@ namespace Dafeiyu
         public int ActiveDays { get; internal set; }
         public int AcquaintanceDays { get; internal set; }
         public int TodayPoints { get; internal set; }
+        public bool GrowthPaused {get{return Snapshot!=null&&!Snapshot.Settings.GrowthEnabled;}}
+        public bool DailyLimitReached {get{return Snapshot!=null&&TodayPoints>=20;}}
+        public bool MaximumReached {get{return Progress!=null&&Progress.NextStageId==null;}}
+        public IEnumerable<string> StatusTexts
+        {
+            get {
+                if(GrowthPaused)yield return TextResources.Get("relationship.home.growthPaused");
+                if(DailyLimitReached)yield return TextResources.Get("relationship.home.dailyLimit");
+                if(MaximumReached)yield return TextResources.Get("relationship.home.maximum");
+            }
+        }
     }
 
     // All contended store reads/writes run on workers. A failed read carries only the
@@ -89,6 +108,7 @@ namespace Dafeiyu
         async Task<RelationshipResult> RetryCoreAsync()
         {
             await runtime.RetryPendingAsync().ConfigureAwait(false);
+            if(runtime.RequiresRestart||!String.IsNullOrEmpty(runtime.Warning))return new RelationshipResult{Success=false};
             RelationshipSettings intent;lock(gate)intent=pendingSettings;
             return intent==null?new RelationshipResult{Success=true}:SaveSettings(intent.GrowthEnabled,intent.FeedbackEnabled,intent.AiContextEnabled);
         }

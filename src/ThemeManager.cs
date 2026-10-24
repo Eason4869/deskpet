@@ -42,6 +42,7 @@ namespace Dafeiyu
             DwmSetWindowAttribute(handle,20,ref dark,sizeof(int));
         }
         internal static bool IsDark {get;private set;}
+        internal static event Action Changed;
         internal static Brush Surface {get{return Brush("#FFFFFF");}}
         internal static SolidColorBrush CardSurface {get{return Brush("#FFFFFF","#2B3545");}}
         internal static SolidColorBrush CardBorder {get{return Brush("#DCE5F4","#52637C");}}
@@ -91,9 +92,10 @@ namespace Dafeiyu
         // Separated from the OS query so system changes and explicit overrides are testable.
         internal static void SetSystemTheme(bool systemDark)
         {
-            IsDark=mode=="dark"||(mode=="system"&&systemDark);
+            bool previous=IsDark;IsDark=mode=="dark"||(mode=="system"&&systemDark);
             foreach(var entry in colors.Values)entry.Refresh();
             if(Application.Current!=null)foreach(Window window in Application.Current.Windows)ApplyWindowChrome(window);
+            if(previous!=IsDark&&Changed!=null)Changed();
         }
         internal static object Parse(string xaml)
         {

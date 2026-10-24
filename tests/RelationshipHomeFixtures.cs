@@ -26,6 +26,13 @@ internal static class RelationshipHomeFixtures
             Record(service,id,RelationshipEventType.SuccessfulWorkTask,"max-work-b-"+day,time);
         }
     }
+    internal static void ReachDailyLimit(RelationshipService service,string id)
+    {
+        // Keep the owned cap fixture at local noon so simulated cooldowns cannot cross midnight.
+        var clock=RelationshipTime.Current();var now=new RelationshipTime(clock.UtcNow,TimeSpan.FromHours(12-clock.UtcNow.Hour));int index=0;
+        var types=new[]{RelationshipEventType.Visit,RelationshipEventType.SuccessfulWorkTask,RelationshipEventType.SuccessfulWorkTask,RelationshipEventType.CompletedConversation,RelationshipEventType.CompletedConversation,RelationshipEventType.CompletedConversation,RelationshipEventType.CompletedConversation,RelationshipEventType.UserInteraction,RelationshipEventType.UserInteraction,RelationshipEventType.UserInteraction,RelationshipEventType.UserInteraction,RelationshipEventType.UserInteraction,RelationshipEventType.UserInteraction};
+        foreach(var type in types){index++;Record(service,id,type,"cap-fixture-"+index,new RelationshipTime(now.UtcNow.AddSeconds(index*25),now.LocalOffset));}
+    }
     static void Record(RelationshipService service,string id,RelationshipEventType type,string token,RelationshipTime time)
     {var result=service.Record(id,type,token,time);if(!result.Success)throw new Exception("UI fixture ledger: "+result.Error);}
 }

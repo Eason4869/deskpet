@@ -10,7 +10,7 @@ internal static class DesktopTheme
     private static bool installed;
     private static readonly SolidColorBrush caret = new(Color.Parse("#203754"));
     internal static IBrush Caret => caret;
-    private static bool IsDark => Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+    internal static bool IsDark => Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
     internal static IBrush Surface => Brush("#FFFFFF");
     internal static SolidColorBrush Brush(string light)
     {

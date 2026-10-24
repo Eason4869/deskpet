@@ -212,9 +212,11 @@ internal sealed partial class DesktopController : IDisposable
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
     internal Window? GuideMainWindow => settingsWindow?.IsVisible==true&&settingsWindow.WindowState!=WindowState.Minimized?settingsWindow:fullChat?.IsVisible==true&&fullChat.WindowState!=WindowState.Minimized?fullChat:null;
-    internal async Task RestartForOnboardingAsync()
+    internal Task RestartForOnboardingAsync()=>RestartApplicationAsync(true);
+    internal Task RestartForRelationshipRecoveryAsync()=>RestartApplicationAsync(false);
+    async Task RestartApplicationAsync(bool resumeOnboarding)
     {
-        ApplicationRestart.Requested=true;
+        ApplicationRestart.Request(resumeOnboarding);
         try{await ExitAsync();}catch{ApplicationRestart.Requested=false;throw;}
     }
     internal async Task RepairImageDeliveryAsync(string id)

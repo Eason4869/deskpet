@@ -28,6 +28,8 @@ namespace Dafeiyu
         public event Action FeedbackSettingsChanged;
         public RelationshipService Service {get;private set;}
         public string Warning {get{return warning;}}
+        public bool RequiresRestart {get{return blocked;}}
+        public string DataDirectory {get{return directory;}}
         public int PendingCount {get{return pendingCount;}}
         public event Action Changed;
         public event Action<string,RelationshipResult> Committed;
