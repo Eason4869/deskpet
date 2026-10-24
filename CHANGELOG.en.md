@@ -2,7 +2,9 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 0.10.5-dev.3 — Setup guide improvements (development snapshot)
+## [0.10.5-dev.3](https://github.com/Eason4869/deskpet/releases/tag/v0.10.5-dev.3) — 2026-10-24 · Preview
+
+This preview includes the dev.1 UI resource refactor and dev.2 multilingual support, Agent background jobs and background companion preparation, with the setup improvements below. Stable latest remains 0.10.4; preview updates never downgrade the app.
 
 - Before you start offers a blue Start guide action and a gray Explore on my own action. Exploration skips formal setup and goes directly to congratulations; both paths require explicit final confirmation to mark the guide complete.
 - Explain stable (main) and preview (dev) channels after update-network setup, including stability, update eligibility and no-downgrade behavior. Windows uses the existing persisted channel selector; the manual-update frontend provides a releases-page entry.
