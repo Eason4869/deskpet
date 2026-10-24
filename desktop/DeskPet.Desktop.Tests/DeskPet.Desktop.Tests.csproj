@@ -3,4 +3,5 @@
   <ItemGroup><ProjectReference Include="../DeskPet.Desktop/DeskPet.Desktop.csproj" AdditionalProperties="DeskPetFullResourceFixtures=$(DeskPetFullResourceFixtures)" /><PackageReference Include="Avalonia.Headless" Version="12.1.4" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipHomeFixtures.cs" Link="Tests/RelationshipHomeFixtures.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipStageArtContractChecks.cs" Link="RelationshipStageArtContractChecks.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../tests/HolidayKeepsakeContractChecks.cs" Link="HolidayKeepsakeContractChecks.cs" /></ItemGroup>
 </Project>

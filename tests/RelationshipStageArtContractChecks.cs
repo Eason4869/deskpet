@@ -42,7 +42,7 @@ public static class RelationshipStageArtContractChecks
         bad=(byte[])valid.Clone();bad[bad.Length/2]^=1;reject(bad,"wrong SHA256 source rejected");
         reject(new byte[RelationshipStageArt.MaximumBytes+1],"oversized stream rejected");
         // A controlled fixture descriptor with a freshly recomputed hash still cannot accept bad ratio.
-        var ctor=typeof(RelationshipStageArtAsset).GetConstructors(System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Single();
+        var ctor=typeof(RelationshipStageArtAsset).GetConstructors(System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Single(c=>c.GetParameters().Length==7);
         bad=(byte[])valid.Clone();bad[16]=0;bad[17]=0;bad[18]=3;bad[19]=32;
         string hash;using(var sha=SHA256.Create())hash=BitConverter.ToString(sha.ComputeHash(bad)).Replace("-","").ToLowerInvariant();
         var ratio=(RelationshipStageArtAsset)ctor.Invoke(new object[]{"official:e-bao","first_meeting","test.png",800,first.PixelHeight,bad.Length,hash});

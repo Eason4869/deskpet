@@ -30,6 +30,8 @@ if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPac
 var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
 System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo(systemLanguageFixture==null?"zh-CN":systemLanguageFixture.Substring("--system-language-ui=".Length));
 AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
+if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }

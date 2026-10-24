@@ -22,6 +22,19 @@ namespace Dafeiyu
         public int PixelHeight {get;private set;}
         public int ByteLength {get;private set;}
         public string Sha256 {get;private set;}
+        // Reviewed future holiday manifests use the same immutable contract. This
+        // remains internal: no external arbitrary-file descriptor/import API.
+        internal RelationshipStageArtAsset(string companion,string holiday,string outfit,string outfitVersion,
+            string scene,string sceneVersion,string path,int width,int height,int bytes,string hash,string stage)
+        {
+            if(String.IsNullOrEmpty(companion)||!companion.StartsWith("official:",StringComparison.Ordinal)
+                ||!HolidayKeepsakeDefinition.ValidKey(holiday)||!HolidayKeepsakeDefinition.ValidKey(outfit)
+                ||!HolidayKeepsakeDefinition.ValidKey(outfitVersion)||!HolidayKeepsakeDefinition.ValidKey(scene)
+                ||!HolidayKeepsakeDefinition.ValidKey(sceneVersion))throw new ArgumentException("Invalid reviewed scene metadata.");
+            CompanionId=companion;CharacterId=companion.Substring(9);StageId=stage;RelativePath=path;
+            HolidayId=holiday;OutfitId=outfit;OutfitVersion=outfitVersion;SceneId=scene;SceneVersion=sceneVersion;
+            PixelWidth=width;PixelHeight=height;ByteLength=bytes;Sha256=hash;
+        }
         internal RelationshipStageArtAsset(string companion,string stage,string path,int width,int height,int bytes,string hash)
         {
             CompanionId=companion;CharacterId=companion.Substring(9);StageId=stage;RelativePath=path;
