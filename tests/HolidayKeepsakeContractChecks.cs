@@ -40,8 +40,39 @@ namespace Dafeiyu.Tests
         public static int Run(string directory,IHolidayKeepsakeSceneValidator validator)
         {
             root=Path.GetFullPath(directory);native=validator;assertions=0;Directory.CreateDirectory(root);
-            RegistryAndDates();TrustAndOriginals();AggregateAndPublication();ReadIndependence();QueueAndMaintenance();Corruption();StorageBoundaries();NativePixels();ProcessRace();
+            RegistryAndDates();TrustAndOriginals();AggregateAndPublication();ReadIndependence();QueueAndMaintenance();Corruption();JsonDocumentBoundary();StorageBoundaries();NativePixels();ProcessRace();
             return assertions;
+        }
+        public static int RunJsonBoundary(string directory,IHolidayKeepsakeSceneValidator validator)
+        {
+            root=Path.GetFullPath(directory);native=validator;assertions=0;Directory.CreateDirectory(root);
+            JsonDocumentBoundary();return assertions;
+        }
+        static void JsonDocumentBoundary()
+        {
+            const string document="{\"Schema\":1,\"DateHighWater\":\"\",\"Records\":[]}";
+            foreach(string suffix in new[]{"{}","[]","\r\n{}","\t[]"}){
+                string path=Fresh("extra-json"),directory=Path.Combine(path,"commemorations");Directory.CreateDirectory(directory);
+                string state=Path.Combine(directory,"holiday-state.json");byte[] original=Encoding.UTF8.GetBytes(document+suffix);File.WriteAllBytes(state,original);
+                var runtime=Runtime(path);
+                Check(runtime.LoadAsync("official:e-bao").Result.Status==HolidayKeepsakeReadStatus.StoreIncompatible,"Album rejects additional JSON root "+suffix);
+                Check(runtime.ReadSceneAsync("official:e-bao","halloween","halloween:20261031").Result.Status==HolidayKeepsakeReadStatus.StoreIncompatible,"Scene read rejects additional JSON root "+suffix);
+                var observation=Observe(runtime,"2026-10-31");
+                Check(observation.Status==HolidayKeepsakeObservationStatus.StoreIncompatible&&observation.Results.Count==0,"Observation never accepts or publishes an extra-root state "+suffix);
+                Check(File.ReadAllBytes(state).SequenceEqual(original),"Extra-root original bytes remain unchanged "+suffix);
+                Check(!Directory.Exists(Path.Combine(directory,"scenes")),"Corrupt state prevents scene publication "+suffix);
+            }
+            foreach(string suffix in new[]{""," \r\n\t "}){
+                string path=Fresh("json-whitespace"),directory=Path.Combine(path,"commemorations");Directory.CreateDirectory(directory);
+                string state=Path.Combine(directory,"holiday-state.json");byte[] original=Encoding.UTF8.GetBytes(document+suffix);File.WriteAllBytes(state,original);
+                var runtime=Runtime(path);var album=runtime.LoadAsync("official:e-bao").Result;
+                Check(album.Status==HolidayKeepsakeReadStatus.Available&&album.Records.Count==0,"One JSON document allows legal trailing whitespace");
+                Check(File.ReadAllBytes(state).SequenceEqual(original),"Read-only whitespace control preserves exact bytes");
+                const string name="伙伴 Brace } ] { [ quote \" slash \\";
+                var encounter=new HolidayKeepsakeEncounter("official:e-bao","e-bao",name,Encounter("2026-10-31").Time);
+                Check(runtime.ObserveAsync(encounter,Catalog("halloween")).Result.Results.Single().Status==HolidayKeepsakeStatus.Saved,"Valid document remains writable after EOF check");
+                Check(Runtime(path).LoadAsync("official:e-bao").Result.Records.Single().CompanionName==name,"Published names containing brackets/quotes/escapes roundtrip through strict reader");
+            }
         }
         static void RegistryAndDates()
         {

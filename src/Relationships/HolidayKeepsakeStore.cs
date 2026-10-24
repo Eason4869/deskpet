@@ -6,7 +6,9 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text.RegularExpressions;
+using System.Text;
 using System.Threading;
+using System.Xml;
 namespace Dafeiyu
 {
     internal sealed class HolidayKeepsakeIncompatibleException:IOException
@@ -30,9 +32,38 @@ namespace Dafeiyu
             try{
                 using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete)){
                     if(input.Length==0||input.Length>MaximumStateBytes)throw new InvalidDataException("State size is invalid.");
-                    var data=(HolidayKeepsakeData)new DataContractJsonSerializer(typeof(HolidayKeepsakeData)).ReadObject(input);Validate(data);return data;
+                    RequireSingleObject(input);
+                    using(var reader=JsonReaderWriterFactory.CreateJsonReader(input,XmlDictionaryReaderQuotas.Max)){
+                        var data=(HolidayKeepsakeData)new DataContractJsonSerializer(typeof(HolidayKeepsakeData)).ReadObject(reader);
+                        // Reader buffering can consume bytes beyond the first root.
+                        // Require parser EOF, not merely the underlying stream end.
+                        if(reader.MoveToContent()!=XmlNodeType.None||!reader.EOF)throw new InvalidDataException("Extra content after holiday state document.");
+                        Validate(data);return data;
+                    }
                 }
             }catch(Exception error){if(error is SerializationException||error is InvalidDataException||error is ArgumentException||error is FormatException||error is System.Xml.XmlException||error is OverflowException)throw new HolidayKeepsakeIncompatibleException(error);throw;}
+        }
+        // XmlJsonReader itself can report EOF after the first object in "{}{}".
+        // Check only the document envelope here; the JSON reader still validates
+        // the complete grammar. Quotes/escapes prevent braces in names affecting
+        // nesting. This scans actual characters, never a parser-buffer position.
+        static void RequireSingleObject(Stream input)
+        {
+            bool started=false,complete=false,inString=false,escaped=false;int depth=0;
+            using(var text=new StreamReader(input,new UTF8Encoding(false,true),true,4096,true)){
+                var buffer=new char[4096];int count;
+                while((count=text.Read(buffer,0,buffer.Length))>0)for(int i=0;i<count;i++){
+                    char c=buffer[i];bool whitespace=c==' '||c=='\t'||c=='\r'||c=='\n';
+                    if(complete){if(!whitespace)throw new InvalidDataException("Extra content after holiday state document.");continue;}
+                    if(!started){if(whitespace)continue;if(c!='{')throw new InvalidDataException("Holiday state must be one JSON object.");started=true;}
+                    if(inString){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')inString=false;continue;}
+                    if(c=='"')inString=true;
+                    else if(c=='{'||c=='[')depth++;
+                    else if(c=='}'||c==']'){depth--;if(depth==0)complete=true;}
+                }
+            }
+            if(!complete||inString)throw new InvalidDataException("Incomplete holiday state document.");
+            input.Position=0; // Rewind for grammar parsing, not an EOF assertion.
         }
         internal void Save(HolidayKeepsakeData data)
         {

@@ -10,6 +10,7 @@ namespace Dafeiyu.Tests
         public static int Main(string[] args)
         {
             try {
+                if(args.Contains("--json-boundary")){Console.WriteLine("PASS: "+HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-wpf-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return 0;}
                 if(args.Length==3&&args[0]=="--holiday-keepsake-child")return HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());
                 var type=typeof(HolidayCalendar).Assembly.GetType("Dafeiyu.HolidayKeepsakeRegistry");
                 if(type==null)throw new Exception("Holiday acquisition registry is missing.");
