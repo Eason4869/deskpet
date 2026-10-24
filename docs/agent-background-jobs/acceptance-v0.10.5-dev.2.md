@@ -1,10 +1,11 @@
 ﻿# 0.10.5-dev.2 验收记录
 
-当前状态：功能与独立代码审查已完成；本地默认回归及最终提交的 Windows / macOS CI 正在验证。本记录尚未批准合入 dev 或标记整版完成。
+当前状态：功能、独立代码审查及本地默认回归已完成；`efdc0458c88888906795021ac4518540138afafd` 的 macOS 双架构 CI 成功，Windows 仅新增管理器测试的时序断言失败，后续阶段未运行。已确定性复现并修正测试，生产代码未变化；新提交的完整 CI 仍须通过。本记录尚未批准合入 dev 或标记整版完成。
 
 ## 证据类型
 
-- Framework WPF 真实 Windows 窗口：工作设置66、引导26、完整薄资源角色集成95、任务UI24、应用退出39；最新管理器61项包含八项最终日志／元数据／退出竞态回归。引导的包传输使用受控 HttpClient 响应，完整素材通过真实原生解码和原子安装，不冒充外网下载。
+- 完整本地默认回归：共享 .NET 8,911 项、Avalonia 3,094 项，均退出码 0。报告和日志位于 `work/agent-jobs-validation/s17-final-shared.json`、`s17-desktop-default-final2.log`；以下专项说明平台和证据边界。
+- Framework WPF 真实 Windows 窗口：工作设置66、引导26、完整薄资源角色集成95、任务UI24、应用退出39；最新管理器65项包含十二项最终日志／元数据／退出竞态回归。引导的包传输使用受控 HttpClient 响应，完整素材通过真实原生解码和原子安装，不冒充外网下载。
 - Avalonia Headless：任务UI31、持久绑定36；引导原有16项再补完整结束路径为18项。控制级PNG来自实际控件，不能证明系统窗口或外网。原生素材／角色加载专项25使用实际素材解码和受控传输。
 - Avalonia Windows独立实际 HWND 宿主：原生任务／独立Edge预览9、退出30，包含 normal / held / writer / kill / direct 五种独立进程；既有图像退出3/3/2。浏览器使用测试隔离目录，未证明用户默认浏览器关联。
 - macOS：只运行共享逻辑、非执行UI、原生素材桥和成品启动。Intel、Apple Silicon 分开验收；不执行或宣称通过 Windows Job/AppContainer。
@@ -79,7 +80,7 @@ A31为P1，独立报告；它不能代替其他P0。精确命名的原始要求�
 
 ## 最终提交和交付
 
-- Windows / macOS 最终源提交及运行链接：待填写。
+- 前轮候选：`efdc0458c88888906795021ac4518540138afafd`；[Windows CI（测试时序失败）](https://github.com/Eason4869/deskpet/actions/runs/40041062448)、[macOS CI（双架构成功）](https://github.com/Eason4869/deskpet/actions/runs/40041062446)。测试修正后的完整结果见 [PR #30 检查](https://github.com/Eason4869/deskpet/pull/30/checks)，最终结果待确认。
 - dev目标提交及远端标签v0.10.5-dev.2：待创建；不覆盖同名标签。
 - 仅源码标签，不创建草稿或正式GitHub Release，不触发发布工作流。
 - 独立JSON包：work/language-packs/DeskPet-0.10.5-dev.2-locales.zip，13个文件逐字节对照仓库，manifest包含各自SHA256。
