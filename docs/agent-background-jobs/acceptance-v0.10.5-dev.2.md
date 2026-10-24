@@ -1,6 +1,6 @@
 ﻿# 0.10.5-dev.2 验收记录
 
-当前状态：功能、独立代码审查及本地默认回归已完成；`efdc0458c88888906795021ac4518540138afafd` 的 macOS 双架构 CI 成功，Windows 仅新增管理器测试的时序断言失败，后续阶段未运行。已确定性复现并修正测试，生产代码未变化；新提交的完整 CI 仍须通过。本记录尚未批准合入 dev 或标记整版完成。
+当前状态：功能、独立代码审查及本地默认回归已完成。`c3782ea739e6c2e2f787d926d23c10837b05c5f9` 的 macOS 双架构 CI 成功；Windows 广回归、原生任务、WPF角色及成品资源检查成功，打包检查发现随包引导手册未同步为132步。手册及三处相关UI说明已同步至全部13语言，本机完整打包复验成功；最终新提交仍须通过完整CI。本记录尚未批准合入 dev 或标记整版完成。
 
 ## 证据类型
 
@@ -81,6 +81,7 @@ A31为P1，独立报告；它不能代替其他P0。精确命名的原始要求�
 ## 最终提交和交付
 
 - 前轮候选：`efdc0458c88888906795021ac4518540138afafd`；[Windows CI（测试时序失败）](https://github.com/Eason4869/deskpet/actions/runs/40041062448)、[macOS CI（双架构成功）](https://github.com/Eason4869/deskpet/actions/runs/40041062446)。测试修正后的完整结果见 [PR #30 检查](https://github.com/Eason4869/deskpet/pull/30/checks)，最终结果待确认。
+- 测试修正候选：`c3782ea739e6c2e2f787d926d23c10837b05c5f9`；[Windows CI（随包手册不同步）](https://github.com/Eason4869/deskpet/actions/runs/40044125949)、[macOS CI（双架构成功）](https://github.com/Eason4869/deskpet/actions/runs/40044125963)。保留原检查；本地 `s17-guide-package-smoke.log` 复验实际更新、132步顺序和完整打包合同成功，未发布验收产物。
 - dev目标提交及远端标签v0.10.5-dev.2：待创建；不覆盖同名标签。
 - 仅源码标签，不创建草稿或正式GitHub Release，不触发发布工作流。
 - 独立JSON包：work/language-packs/DeskPet-0.10.5-dev.2-locales.zip，13个文件逐字节对照仓库，manifest包含各自SHA256。

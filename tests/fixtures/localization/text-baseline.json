@@ -18099,9 +18099,12 @@
     },
     {
       "key": "onboardingLessons.build.add.alternativeA",
-      "expected": "这份引导会带您逐步认识桌面伙伴，不必一次完成所有设置。\n\n“跳过本步”：略过当前操作。\n“跳过本章”：略过这一整章，继续后面的内容。\n“稍后继续”：保存进度，下次从这里接着看。\n“结束引导”：退出本次引导，以后可从设置重新打开。\n\n您可以随时使用这些按钮。只有主动点击测试，才会发送请求、播放声音或开启麦克风。",
+      "expected": "这份引导会带您逐步认识桌面伙伴，不必一次完成所有设置。\n\n“跳过本步”：略过当前操作。\n“跳过本章”：略过这一整章，继续后面的内容。\n“稍后继续”：保存进度，下次从这里接着看。\n“结束引导”：退出本次引导，以后可从设置重新打开。\n\n您可以随时使用这些按钮。在引导中，主动选择角色、开始下载或点击测试会发起相应网络请求；播放声音或开启麦克风需您主动操作。",
       "format": false,
-      "argument_count": 0
+      "argument_count": 0,
+      "previous_expected": "这份引导会带您逐步认识桌面伙伴，不必一次完成所有设置。\n\n“跳过本步”：略过当前操作。\n“跳过本章”：略过这一整章，继续后面的内容。\n“稍后继续”：保存进度，下次从这里接着看。\n“结束引导”：退出本次引导，以后可从设置重新打开。\n\n您可以随时使用这些按钮。只有主动点击测试，才会发送请求、播放声音或开启麦克风。",
+      "change_authorization": "2026-10-24 user-approved S16a: place GitHub routing and explicit character downloads before later guidance.",
+      "change_reason": "Describe explicit character/download requests and the routing shared by application updates and official character packs; keep AI service routing independent."
     },
     {
       "key": "onboardingLessons.build.add.alternativeB",
@@ -18111,9 +18114,12 @@
     },
     {
       "key": "onboardingLessons.build.add.alternativeC",
-      "expected": "应用已内置 E 包完整角色。其他伙伴需要下载完整角色包；引导期间点击列表只会说明下载要求，暂不切换或下载。完成引导后即可选择伙伴，或在设置中全量下载。人格与声音偏好按伙伴分别保存。",
+      "expected": "应用已内置 E 包完整角色。可在引导中选择伙伴：已安装的角色先显示，缺失或需要更新的角色包会在后台准备，完成后加载最后选择的伙伴；期间可以继续后续引导。人格与声音偏好按伙伴分别保存。",
       "format": false,
-      "argument_count": 0
+      "argument_count": 0,
+      "previous_expected": "应用已内置 E 包完整角色。其他伙伴需要下载完整角色包；引导期间点击列表只会说明下载要求，暂不切换或下载。完成引导后即可选择伙伴，或在设置中全量下载。人格与声音偏好按伙伴分别保存。",
+      "change_authorization": "2026-10-24 user-approved S16a: character selection is available during onboarding, with application-owned background preparation.",
+      "change_reason": "Replace obsolete notice-only guide wording after the explicitly authorized onboarding selection behavior change; preserve the original expected text for review."
     },
     {
       "key": "onboardingLessons.build.add.alternativeD",
@@ -19599,9 +19605,12 @@
     },
     {
       "key": "onboardingLessons.build.add.alternativeIQ",
-      "expected": "这里仅控制检查更新与下载更新包。文字、识别、TTS、Live 各自的代理需在各自服务中设置。本引导不会自动检查或安装更新。",
+      "expected": "这些 GitHub 访问设置用于检查应用更新，以及下载应用更新包和官方角色包。文字、识别、TTS、Live 的代理需在各自服务中分别设置。本引导不会自动检查或安装应用更新，也不会自动开始全量角色包下载。",
       "format": false,
-      "argument_count": 0
+      "argument_count": 0,
+      "previous_expected": "这里仅控制检查更新与下载更新包。文字、识别、TTS、Live 各自的代理需在各自服务中设置。本引导不会自动检查或安装更新。",
+      "change_authorization": "2026-10-24 user-approved S16a: place GitHub routing and explicit character downloads before later guidance.",
+      "change_reason": "Describe explicit character/download requests and the routing shared by application updates and official character packs; keep AI service routing independent."
     },
     {
       "key": "onboardingLessons.build.add.alternativeIR",
