@@ -72,18 +72,38 @@ namespace Dafeiyu
         internal static void CheckRecordPath(string path){NoLinks(path);NoLinks(path+".tmp");}
         static void Identity(UninstallJob job,string path)
         {ReleaseIdentity.Read(path).Require(job.InstalledVersion,job.InstalledAssemblyVersion,job.InstalledBuildId);}
-        static void Validate(UninstallJob job)
+        internal static Process OpenExactParent(UninstallJob job)
+        {
+            var parent=Process.GetProcessById(job.ParentPid);
+            try
+            {
+                // Framework identity properties and timed waits otherwise open
+                // temporary handles. Pin the native process BEFORE those checks;
+                // the returned Process owns this handle until its caller disposes.
+                if(parent.Handle==IntPtr.Zero)throw Failure();
+                if(parent.StartTime.ToUniversalTime().Ticks!=job.ParentStartedUtcTicks||!Same(parent.MainModule.FileName,Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName))||parent.HasExited)throw Failure();
+                return parent;
+            }
+            catch{parent.Dispose();throw;}
+        }
+        static string Validate(UninstallJob job)
         {
             if(job==null||job.ProtocolVersion!=1||job.ParentPid<=0||job.ParentStartedUtcTicks<=0)throw Failure();
             string root=Path.GetFullPath(job.InstallationDirectory),work=Path.GetFullPath(job.WorkDirectory);
             if(Same(root,Path.GetPathRoot(root))||!Same(Path.GetDirectoryName(work),Path.Combine(root,"data","uninstall"))||
                 !System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(work),"\\A[a-f0-9]{32}\\z"))throw Failure();
             NoLinks(work);NoLinks(Path.Combine(root,UpdateInstall.ExecutableName));NoLinks(Path.Combine(root,UpdateInstall.WorkerName));
+            // IsPathRooted alone accepts drive-relative C:foo and root-relative
+            // \foo on Framework. Neither is an absolute executable authority.
+            if(String.IsNullOrWhiteSpace(job.UninstallerPath)||!Path.IsPathRooted(job.UninstallerPath)||
+                !String.Equals(Path.GetPathRoot(job.UninstallerPath),Path.GetPathRoot(Path.GetFullPath(job.UninstallerPath)),StringComparison.OrdinalIgnoreCase))throw Failure();
             string registered=UpdateInstall.GetUninstallerPath(root);
             if(registered==null||!Same(registered,job.UninstallerPath))throw Failure();
+            registered=Path.GetFullPath(registered);
             NoLinks(registered);NoLinks(Path.ChangeExtension(registered,".dat"));
             if(UpdateInstall.Hash(registered)!=job.UninstallerDigest||UpdateInstall.Hash(Path.ChangeExtension(registered,".dat"))!=job.UninstallerDataDigest)throw Failure();
             Identity(job,Path.Combine(root,UpdateInstall.ExecutableName));Identity(job,Path.Combine(root,UpdateInstall.WorkerName));
+            return registered;
         }
         public static Task<UninstallTicket> PrepareAsync(string installationDirectory)
         {
@@ -146,9 +166,8 @@ namespace Dafeiyu
                 CheckAbort(job);
                 // Unlike an update recovery, an absent parent never establishes
                 // uninstall authority. Retain this exact Process handle throughout.
-                using(var parent=Process.GetProcessById(job.ParentPid))
+                using(var parent=OpenExactParent(job))
                 {
-                    if(parent.StartTime.ToUniversalTime().Ticks!=job.ParentStartedUtcTicks||!Same(parent.MainModule.FileName,Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName))||parent.HasExited)throw Failure();
                     trusted=true;string ready=Path.Combine(job.WorkDirectory,"ready");CheckRecordPath(ready);File.WriteAllText(ready,"ready");
                     var deadline=DateTime.UtcNow.AddMinutes(2);
                     while(!parent.WaitForExit(80)){CheckAbort(job);if(DateTime.UtcNow>=deadline)throw Failure();}
@@ -157,12 +176,12 @@ namespace Dafeiyu
                 string commit=Path.Combine(job.WorkDirectory,"commit");NoLinks(commit);
                 if(!File.Exists(commit)||!System.Linq.Enumerable.SequenceEqual(File.ReadAllBytes(commit),new byte[]{1}))throw Failure();
                 WaitForInstallationToDisappear(job);
-                CheckAbort(job);Validate(job);
+                CheckAbort(job);string uninstallerPath=Validate(job);
                 string uninstallLog=Path.Combine(job.WorkDirectory,"inno-uninstall.log");CheckRecordPath(uninstallLog);
                 if(File.Exists(uninstallLog)||Directory.Exists(uninstallLog))throw Failure();
                 // Inno suppresses the second startup confirmation with SILENT.
                 // Never force-close apps, request a reboot, or delete data here.
-                using(var uninstaller=Process.Start(new ProcessStartInfo(job.UninstallerPath,"/SILENT /NORESTART /LOG="+UpdateInstall.Quote(uninstallLog)){UseShellExecute=false,WorkingDirectory=job.InstallationDirectory}))
+                using(var uninstaller=Process.Start(new ProcessStartInfo(uninstallerPath,"/SILENT /NORESTART /LOG="+UpdateInstall.Quote(uninstallLog)){UseShellExecute=false,WorkingDirectory=job.InstallationDirectory}))
                 {uninstaller.WaitForExit();if(uninstaller.ExitCode!=0)throw Failure();}
                 if(UpdateInstall.GetUninstallerPath(job.InstallationDirectory)!=null||File.Exists(Path.Combine(job.InstallationDirectory,UpdateInstall.ExecutableName)))throw Failure();
                 Result(job,true,"");return 0;

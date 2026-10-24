@@ -40,13 +40,17 @@ UTC start ticks, and installed display/numeric/build identity. The helper:
 
 1. Rejects foreign paths, linked ancestors/files, missing registration, invalid
    build identity or a copied helper whose bytes differ from the installed one.
-2. Opens the exact live parent process and checks PID/start time/executable path
-   before writing `ready`. A missing initial parent never establishes trust.
+2. Opens and retains the native parent process handle before checking
+   PID/start time/executable path and writing `ready`. The same handle remains
+   owned through timed waits and exit; disposing the Process releases it.
+   A missing initial parent never establishes trust.
 3. Waits for that retained process handle to exit, checks durable authorization,
    then waits for the installation mutex **object to disappear**. Each successful
    `OpenExisting` probe is immediately disposed. Access denied fails closed.
-4. Revalidates registration, paths, hashes and identities, and runs the registered
-   Inno uninstaller with `/SILENT /NORESTART` plus an owned log path. It never
+4. Rejects basename, relative, drive-relative and root-relative job targets.
+   Revalidates registration, paths, hashes and identities, and launches the exact
+   canonical absolute registered path returned by that final validation with
+   `/SILENT /NORESTART` plus an owned log path. It never
    force-kills processes, requests reboot, or recursively deletes user data.
 5. Checks the uninstaller exit code, missing application executable and removed
    registration before recording success.

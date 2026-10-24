@@ -18,7 +18,7 @@ import winreg
 
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
-from worker_fixture import compile_sources, VERSION, COMMIT, numeric
+from worker_fixture import compile_sources, VERSION, COMMIT, numeric, CSC
 
 ROOT = PROJECT/'work'/('uninstall-handoff-'+uuid.uuid4().hex)
 ROOT.mkdir(parents=True)
@@ -66,11 +66,37 @@ def wait(predicate, seconds=15):
 
 def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 
-parent_source = r'''using System;using System.IO;using System.Threading;using System.Diagnostics;
+parent_source = r'''using System;using System.IO;using System.Threading;using System.Diagnostics;using System.Reflection;using System.Runtime.InteropServices;
 public static class Probe {
+ [DllImport("kernel32.dll",SetLastError=true)]static extern bool GetExitCodeProcess(IntPtr process,out uint code);
+ static void CheckParentHandle(string jobPath,string data) {
+  try {
+   var job=Dafeiyu.UpdateInstall.Read<Dafeiyu.UninstallJob>(jobPath);
+   var owned=Dafeiyu.UninstallHandoff.OpenExactParent(job);
+   SafeHandle retained=null;
+   using(owned) {
+    var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+    var hasHandle=typeof(Process).GetField("haveProcessHandle",flags);
+    var handleField=typeof(Process).GetField("m_processHandle",flags);
+    if(hasHandle==null||handleField==null||!(bool)hasHandle.GetValue(owned))throw new Exception("Framework Process has no retained native handle after identity validation");
+    retained=(SafeHandle)handleField.GetValue(owned);
+    if(retained==null||retained.IsInvalid||retained.IsClosed)throw new Exception("Retained native handle is invalid");
+    var native=retained.DangerousGetHandle();
+    File.WriteAllText(Path.Combine(data,"handle-opened"),"runtime="+Environment.Version+" retained=true");
+    while(!owned.WaitForExit(40)) {
+     if(!Object.ReferenceEquals(retained,handleField.GetValue(owned))||retained.IsClosed)throw new Exception("Native handle changed between timed waits");
+    }
+    uint code;if(!GetExitCodeProcess(native,out code)||code!=0)throw new Exception("Original native process handle not queryable after exit");
+    if(owned.StartTime.ToUniversalTime().Ticks!=job.ParentStartedUtcTicks)throw new Exception("Original identity changed after exit");
+   }
+   if(!retained.IsClosed)throw new Exception("Native handle was not released by Dispose");
+   File.WriteAllText(Path.Combine(data,"handle-result"),"PASS retained through timed waits and original exit; disposed afterward");
+  }catch(Exception error){File.WriteAllText(Path.Combine(data,"handle-result"),"FAIL "+error.Message);Environment.ExitCode=1;}
+ }
  public static void Main(string[] args) {
   string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data");Directory.CreateDirectory(data);
   string tag=args.Length==0?"parent":args[0];
+  if(tag=="handle-check"){CheckParentHandle(args[1],data);return;}
   using(var mutex=new Mutex(false,Dafeiyu.ReleaseInfo.InstallationMutex)) {
    bool acquired=mutex.WaitOne(0);if(acquired)mutex.ReleaseMutex();
    File.WriteAllText(Path.Combine(data,tag+"-unowned"),acquired.ToString());
@@ -105,6 +131,9 @@ runtime = ROOT/'runtime'; runtime.mkdir()
 directory = ROOT/'owned 中文 installation'
 compile_sources(runtime/'桌面伙伴.exe', VERSION, APP_ID, MUTEX, parent_source)
 compile_sources(runtime/'DeskPet.Update.exe', VERSION, APP_ID, MUTEX)
+shadow_source=ROOT/'Shadow.cs'
+shadow_source.write_text('using System;using System.IO;class Shadow {static void Main(){File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"shadow-launched"),"unexpected shadow launch");}}',encoding='utf-8')
+subprocess.run([str(CSC),'/nologo','/target:winexe','/out:'+str(ROOT/'Shadow.exe'),str(shadow_source)],check=True)
 script = ROOT/'Owned.iss'
 script.write_text('''[Setup]
 AppId={{%s}
@@ -134,7 +163,7 @@ sentinels = ['settings.json','history/keep.history','relationships/keep.json','r
 for name in sentinels:
     path=data/name; path.parent.mkdir(parents=True,exist_ok=True); path.write_bytes(('preserved '+name).encode())
 before = {name:digest(data/name) for name in sentinels}
-parent = holder = worker = api_parent = denied_holder = None
+parent = holder = worker = api_parent = denied_holder = handle_probe = None
 api_tag = None
 
 def launch_parent(tag='parent'):
@@ -163,6 +192,31 @@ try:
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key_path) as key:
         check(Path(winreg.QueryValueEx(key,'InstallLocation')[0])==directory,'real unique Inno registration belongs to owned directory')
     parent=launch_parent()
+    work,path=make_job()
+    handle_probe=start([directory/'桌面伙伴.exe','handle-check',path],directory)
+    wait(lambda:(data/'handle-opened').exists() or handle_probe.poll() is not None)
+    if (data/'handle-result').exists(): print((data/'handle-result').read_text(encoding='utf-8-sig'),flush=True)
+    check((data/'handle-opened').exists() and handle_probe.poll() is None,'actual Framework parent identity validation retains a native handle before readiness')
+    time.sleep(.15)
+    (data/'exit-parent').write_text('exit');parent.wait(timeout=10)
+    check(handle_probe.wait(timeout=10)==0,'same native handle spans timed waits and original exit, then Dispose releases it')
+    print((data/'handle-opened').read_text(encoding='utf-8-sig')+'; '+(data/'handle-result').read_text(encoding='utf-8-sig'),flush=True)
+    parent=launch_parent()
+    for relative in ('unins000.exe','.\\unins000.exe',directory.drive+'unins000.exe',str(directory/'unins000.exe')[len(directory.drive):]):
+        work,path=make_job()
+        job=json.loads(path.read_text(encoding='utf-8-sig'));job['UninstallerPath']=relative
+        path.write_text(json.dumps(job),encoding='utf-8')
+        shutil.copy2(ROOT/'Shadow.exe',work/'unins000.exe')
+        # Parent CWD makes the old normalized validation match the registration;
+        # basename CreateProcess lookup can still choose the helper-dir shadow.
+        worker=start([work/'DeskPet.Update.exe','--uninstall',path],directory)
+        wait(lambda:(work/'ready').exists() or worker.poll() is not None)
+        if (work/'ready').exists():
+            (work/'commit').write_bytes(b'\x01');(data/'exit-parent').write_text('exit');parent.wait(timeout=10)
+        worker.wait(timeout=15)
+        if (work/'shadow-launched').exists(): print('FAIL actual helper launched the unhashed harmless basename shadow',flush=True)
+        check(not (work/'shadow-launched').exists() and not (work/'ready').exists() and worker.returncode!=0 and parent.poll() is None,
+              'non-absolute job target rejected before ready; harmless shadow never launches: '+relative)
     work,path=make_job()
     worker=launch_job(work,path)
     wait(lambda:(work/'ready').exists() or worker.poll() is not None)
@@ -282,6 +336,7 @@ finally:
             (data/('exit-'+tag)).write_text('exit');process.wait(timeout=10)
     if worker is not None and worker.poll() is None:
         (work/'abort').write_text('abort');worker.wait(timeout=10)
+    if handle_probe is not None and handle_probe.poll() is None: handle_probe.wait(timeout=10)
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key_path): registered=True
     except FileNotFoundError: registered=False
