@@ -885,7 +885,11 @@ namespace Dafeiyu
             if(closing || IsUpdating)return;
             if(guide!=null && guide.IsVisible){guide.Activate();return;}
             if(DialogueBusy || DictationActive || LiveActive){ShowSettings();preferences.ShowNotice(TextResources.Get("petWindow.showOnboarding.preferencesShowNotice"));return;}
-            ShowSettings();guide=new OnboardingWindow(this,preferences);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
+            bool hadMain=chat!=null&&chat.IsVisible&&chat.WindowState!=WindowState.Minimized;
+            RecordPetInteraction();DismissGreeting();var window=EnsureAppWindow();
+            if(preferences==null){preferences=new SettingsPage(this);preferences.GuideRequested+=ShowOnboarding;}
+            preferences.RefreshState();window.ShowSettingsPage(preferences);if(hadMain)ShowAppWindow(window);
+            guide=new OnboardingWindow(this,preferences,window);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
         }
         int conversationNavigationRevision;
         public async void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
@@ -1152,7 +1156,7 @@ namespace Dafeiyu
         }
         async void PrepareCloseOnDispatcherAsync()
         {
-            if(!await StopAgentJobsForExitAsync()){closing=false;return;}
+            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;return;}
             foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();

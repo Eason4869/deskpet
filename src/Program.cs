@@ -17,9 +17,10 @@ namespace Dafeiyu
 {
     public static class Program
     {
-        [STAThread] public static void Main()
+        [STAThread] public static void Main(string[] startupArgs)
         {
             string suffix = WindowsIdentity.GetCurrent().User.Value;
+            bool normalExit=false;
             bool first;
             using (var mutex = new Mutex(true, "Local\\Dafeiyu.DeskPet." + suffix, out first))
             {
@@ -47,8 +48,9 @@ namespace Dafeiyu
                         var onboarding = OnboardingUpgrade.Prepare(settings, ReleaseInfo.DisplayVersion);
                         if(onboarding.Changed)store.Save(settings);
                         var pet = new PetWindow(null, settings, store, wake);
-                        pet.Loaded+=delegate {pet.Updates.StartAutomaticChecks();if(onboarding.ShowGuide)pet.Dispatcher.BeginInvoke(new Action(pet.ShowOnboarding));};
-                        pet.Closed += delegate { app.Shutdown(); }; app.Run(pet);
+                        bool resume=Array.IndexOf(startupArgs,ApplicationRestart.ResumeArgument)>=0;
+                        pet.Loaded+=delegate {pet.Updates.StartAutomaticChecks();if(onboarding.ShowGuide||resume)pet.Dispatcher.BeginInvoke(new Action(pet.ShowOnboarding));};
+                        pet.Closed += delegate { app.Shutdown(); }; normalExit=app.Run(pet)==0;
                     }
                     catch (Exception error)
                     {
@@ -58,6 +60,7 @@ namespace Dafeiyu
                     finally { mutex.ReleaseMutex(); }
                 }
             }
+            if(normalExit&&ApplicationRestart.Requested)ApplicationRestart.Launch();
         }
     }
 }

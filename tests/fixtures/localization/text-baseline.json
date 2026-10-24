@@ -27028,6 +27028,54 @@
       "expected": "角色包下载已停止，可稍后重试。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "onboarding.language.title",
+      "expected": "选择你的语言",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.language.detail",
+      "expected": "选择应用的界面语言。点击“重启”应用所选语言，重启后继续配置引导；保持当前语言可直接继续。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.language.restart",
+      "expected": "重启",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.timeEstimate",
+      "expected": "完成完整引导参考用时：约 15–25 分钟。角色包下载和模型服务配置可能需要额外时间；您可以随时保存进度，稍后继续。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.channel.title",
+      "expected": "选择更新渠道",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.channel.detail",
+      "expected": "正式版（main）适合日常稳定使用，仅接收正式更新。预览版（dev）适合提前体验新功能，可能存在尚未稳定的问题，也会接收更高的正式版。保留当前选择或按需切换；切换渠道不会降级，也不会立即下载或安装更新。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.channel.manual",
+      "expected": "此桌面端通过“关于”手动下载更新。请在发布页查看正式版或预览版的可用安装包；本页不会自动切换或降级。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.explore",
+      "expected": "我自己探索",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

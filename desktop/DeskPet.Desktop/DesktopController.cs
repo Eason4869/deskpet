@@ -76,7 +76,7 @@ internal sealed partial class DesktopController : IDisposable
         if (firstLaunch || !OperatingSystem.IsWindows()) Settings.AgentEnabled = false;
         var onboarding = OnboardingUpgrade.Prepare(Settings, ReleaseInfo.DisplayVersion);
         if (onboarding.Changed) store.Save(Settings);
-        showAutomaticGuide = onboarding.ShowGuide;
+        showAutomaticGuide = onboarding.ShowGuide || Environment.GetCommandLineArgs().Contains(ApplicationRestart.ResumeArgument);
         InitializeCompanions(officialSourceFactory);
         Skins = Task.Run(() => SpriteAssets.LoadSkins(DataDirectory)).GetAwaiter().GetResult();
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
@@ -175,6 +175,12 @@ internal sealed partial class DesktopController : IDisposable
         settingsWindow.Show(); settingsWindow.Activate();
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
+    internal Window? GuideMainWindow => settingsWindow?.IsVisible==true&&settingsWindow.WindowState!=WindowState.Minimized?settingsWindow:fullChat?.IsVisible==true&&fullChat.WindowState!=WindowState.Minimized?fullChat:null;
+    internal async Task RestartForOnboardingAsync()
+    {
+        ApplicationRestart.Requested=true;
+        try{await ExitAsync();}catch{ApplicationRestart.Requested=false;throw;}
+    }
     internal async Task RepairImageDeliveryAsync(string id)
     {
         if(exiting)throw new OperationCanceledException(TextResources.Get("desktopController.repairImageDeliveryAsync.text"));

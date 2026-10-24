@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.10.5-dev.3 — Setup guide improvements (development snapshot)
+
+- Before you start offers a blue Start guide action and a gray Explore on my own action. Exploration skips formal setup and goes directly to congratulations; both paths require explicit final confirmation to mark the guide complete.
+- Explain stable (main) and preview (dev) channels after update-network setup, including stability, update eligibility and no-downgrade behavior. Windows uses the existing persisted channel selector; the manual-update frontend provides a releases-page entry.
+- Add a language homepage with all thirteen languages and System default. The Restart caption immediately follows the selected language; the app saves the choice, shuts down normally, restarts and resumes at Before you start. Keeping the active language allows direct continuation.
+- Add an estimated 15–25 minutes for the full guide, with extra time possible for character downloads and model service setup.
+- Center the guide when no main window is visible and anchor it to the right of an open main window. Changing steps no longer moves the guide around highlighted controls. Keep the guide within the working screen on both WPF and Avalonia, preserving existing progress and completion policy.
+
 ## 0.10.5-dev.2 — Development snapshot (no packages)
 
 - Added a language-selection dialog above Settings in the avatar menu, with 13 languages and Follow system. The default follows the system UI language while preserving saved manual choices; unsupported languages use English. Saved changes take effect at the next startup. The dialog follows the theme and scrollbar styling, with two columns at normal widths and one in narrow windows.

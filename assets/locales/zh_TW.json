@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "稍後下載",
   "onboarding.prepare.progress": "查看角色包下載進度",
   "onboarding.prepare.cancel": "停止角色包下載",
-  "onboarding.prepare.cancelled": "角色包下載已停止，可稍後重試。"
+  "onboarding.prepare.cancelled": "角色包下載已停止，可稍後重試。",
+  "onboarding.language.title": "選擇你的語言",
+  "onboarding.language.detail": "選擇應用程式的介面語言。點擊「重新啟動」套用所選語言，重新啟動後繼續設定引導；保留目前語言可直接繼續。",
+  "onboarding.language.restart": "重新啟動",
+  "onboarding.timeEstimate": "完成完整引導的參考時間：約 15–25 分鐘。角色包下載及模型服務設定可能需要額外時間；您可以隨時儲存進度，稍後繼續。",
+  "onboarding.channel.title": "選擇更新通道",
+  "onboarding.channel.detail": "正式版（main）適合日常穩定使用，只接收正式更新。預覽版（dev）適合提早體驗新功能，可能有尚未穩定的問題，也會接收較新的正式版。可保留目前選擇或視需要切換；切換通道不會降級，也不會立即下載或安裝更新。",
+  "onboarding.channel.manual": "此桌面端透過「關於」手動下載更新。請在發布頁查看正式版或預覽版的可用安裝包；本頁不會自動切換或降級。",
+  "onboarding.explore": "我自己探索"
 }

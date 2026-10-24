@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Unduh Nanti",
   "onboarding.prepare.progress": "Lihat Progres Unduhan Paket Karakter",
   "onboarding.prepare.cancel": "Hentikan Unduhan Paket Karakter",
-  "onboarding.prepare.cancelled": "Unduhan paket karakter telah dihentikan. Anda dapat mencoba lagi nanti."
+  "onboarding.prepare.cancelled": "Unduhan paket karakter telah dihentikan. Anda dapat mencoba lagi nanti.",
+  "onboarding.language.title": "Pilih bahasa Anda",
+  "onboarding.language.detail": "Pilih bahasa aplikasi. Klik Mulai ulang untuk menerapkannya dan melanjutkan panduan pengaturan. Anda dapat langsung melanjutkan jika tetap memakai bahasa saat ini.",
+  "onboarding.language.restart": "Mulai ulang",
+  "onboarding.timeEstimate": "Sediakan sekitar 15–25 menit untuk menyelesaikan seluruh panduan. Unduhan paket karakter dan pengaturan layanan model mungkin memerlukan waktu tambahan. Anda dapat menyimpan kemajuan dan melanjutkan nanti.",
+  "onboarding.channel.title": "Pilih saluran pembaruan",
+  "onboarding.channel.detail": "Stabil (main) cocok untuk penggunaan harian yang andal dan hanya menerima pembaruan stabil. Pratinjau (dev) menawarkan fitur baru lebih awal, mungkin belum stabil, dan juga menerima rilis stabil yang lebih baru. Pertahankan pilihan atau ubah sesuai kebutuhan. Mengubah saluran tidak menurunkan versi aplikasi atau langsung mengunduh maupun memasang pembaruan.",
+  "onboarding.channel.manual": "Versi desktop ini mengunduh pembaruan secara manual melalui Tentang. Periksa halaman rilis untuk paket stabil atau pratinjau yang tersedia. Halaman ini tidak otomatis mengganti atau menurunkan versi aplikasi yang terpasang.",
+  "onboarding.explore": "Saya jelajahi sendiri"
 }

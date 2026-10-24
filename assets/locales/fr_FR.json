@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Télécharger plus tard",
   "onboarding.prepare.progress": "Voir la progression du téléchargement des packs",
   "onboarding.prepare.cancel": "Arrêter le téléchargement des packs",
-  "onboarding.prepare.cancelled": "Le téléchargement des packs est arrêté. Vous pourrez réessayer plus tard."
+  "onboarding.prepare.cancelled": "Le téléchargement des packs est arrêté. Vous pourrez réessayer plus tard.",
+  "onboarding.language.title": "Choisissez votre langue",
+  "onboarding.language.detail": "Choisissez la langue de l’application. Cliquez sur Redémarrer pour l’appliquer et reprendre le guide. Vous pouvez continuer directement si vous gardez la langue actuelle.",
+  "onboarding.language.restart": "Redémarrer",
+  "onboarding.timeEstimate": "Prévoyez environ 15–25 minutes pour suivre le guide complet. Le téléchargement des personnages et la configuration des services de modèles peuvent prendre plus de temps. Vous pouvez enregistrer votre progression et reprendre plus tard.",
+  "onboarding.channel.title": "Choisir un canal de mise à jour",
+  "onboarding.channel.detail": "Le canal Stable (main) convient à un usage quotidien fiable et ne reçoit que les versions stables. Le canal Aperçu (dev) propose les nouveautés plus tôt, peut être instable et reçoit aussi les versions stables plus récentes. Conservez votre choix ou modifiez-le selon vos besoins. Changer de canal ne rétrograde pas l’application et ne télécharge ni n’installe immédiatement de mise à jour.",
+  "onboarding.channel.manual": "Cette version de bureau télécharge les mises à jour manuellement depuis À propos. Consultez la page des versions pour les paquets stables ou en aperçu disponibles. Cette page ne change ni ne rétrograde l’application installée.",
+  "onboarding.explore": "Je préfère explorer"
 }

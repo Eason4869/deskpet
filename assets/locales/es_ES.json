@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Descargar más tarde",
   "onboarding.prepare.progress": "Ver progreso de descarga de paquetes",
   "onboarding.prepare.cancel": "Detener descargas de paquetes",
-  "onboarding.prepare.cancelled": "Las descargas de paquetes se han detenido. Puedes volver a intentarlo más tarde."
+  "onboarding.prepare.cancelled": "Las descargas de paquetes se han detenido. Puedes volver a intentarlo más tarde.",
+  "onboarding.language.title": "Elige tu idioma",
+  "onboarding.language.detail": "Elige el idioma de la aplicación. Haz clic en Reiniciar para aplicarlo y retomar la guía. Puedes continuar directamente si mantienes el idioma actual.",
+  "onboarding.language.restart": "Reiniciar",
+  "onboarding.timeEstimate": "Calcula unos 15–25 minutos para completar toda la guía. La descarga de personajes y la configuración de los servicios de modelos pueden requerir más tiempo. Puedes guardar tu progreso y continuar más tarde.",
+  "onboarding.channel.title": "Elige un canal de actualización",
+  "onboarding.channel.detail": "Estable (main) es adecuado para el uso diario y solo recibe actualizaciones estables. Vista previa (dev) ofrece novedades antes, puede ser inestable y también recibe versiones estables más recientes. Conserva tu elección o cámbiala según necesites. Cambiar de canal no reduce la versión ni descarga o instala una actualización de inmediato.",
+  "onboarding.channel.manual": "Esta versión de escritorio descarga actualizaciones manualmente desde Acerca de. Consulta los paquetes estables o de vista previa disponibles en la página de versiones. Esta página no cambia ni reduce automáticamente la versión instalada.",
+  "onboarding.explore": "Exploraré por mi cuenta"
 }

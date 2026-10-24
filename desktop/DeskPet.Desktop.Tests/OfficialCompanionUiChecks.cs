@@ -372,7 +372,7 @@ internal static class OfficialCompanionUiChecks
             owner.Settings.OnboardingState="completed";owner.ShowGuide();Until(()=>owner.GuideLocked);
             var guide=(GuideWindow)typeof(DesktopController).GetField("guide",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
             void GuideClick(string name){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name==name).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
-            GuideClick("GuideNext");GuideClick("GuideNext");switchSource.BulkResult=new TaskCompletionSource<IList<OfficialCompanionResult>>(TaskCreationOptions.RunContinuationsAsynchronously);GuideClick("GuidePreparePacks");var bulk=owner.OfficialPreparation.StartAsync();Until(()=>switchSource.BulkCalls==1);
+            GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");switchSource.BulkResult=new TaskCompletionSource<IList<OfficialCompanionResult>>(TaskCreationOptions.RunContinuationsAsynchronously);GuideClick("GuidePreparePacks");var bulk=owner.OfficialPreparation.StartAsync();Until(()=>switchSource.BulkCalls==1);
             Complete(owner.SelectSkinAsync(owner.Skins.Single(role=>role.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.Onboarding));
             Check(owner.Skin.Folder==next.RootDirectory&&guide.IsVisible&&!bulk.IsCompleted,"cached last-choice role is usable while guide-owned full metadata is pending");
             var latest=CreatePackage(Path.Combine(directory,"bulk-updated"),"dafeiyu",fixture.Root);switchSource.InstalledValue=latest;var selectedHistory=owner.Session.History;

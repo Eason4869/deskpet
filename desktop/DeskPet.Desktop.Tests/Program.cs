@@ -694,6 +694,7 @@ try
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
+    for(int intro=0;intro<2&&(guide.CurrentLessonId=="language"||guide.CurrentLessonId=="welcome");intro++){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
     var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
     Check(guideExit.FontSize >= 14 && guideExit.FontWeight == Avalonia.Media.FontWeight.SemiBold && guideExit.Foreground == DesktopTheme.Brush("#203754"), "desktop guide exit is larger semibold and theme aware");
     var later = guide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "稍后继续"); later.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -710,7 +711,8 @@ try
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
     Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
-    Check(guideNext.Content as string == "完成引导" && workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "final lesson exposes reachable completion button after preparation steps are inserted");
+    Check(workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "original final lesson remains reachable after preparation steps are inserted");
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","final lesson leads to congratulations before explicit completion");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(controller.Settings.OnboardingState == "completed" && !workGuide.IsVisible, "completing new guide persists completion and closes guide");
     editor.Dispose(); editorHost.Close();

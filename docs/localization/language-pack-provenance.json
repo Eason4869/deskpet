@@ -2,7 +2,7 @@
   {
     "locale": "zh_TW",
     "original_sha256": "60ecdcb51903e56efd03c2f806e7473760285a273d2b3451713c11bf9612d09a",
-    "supplemented_sha256": "6b02ce15644572d43868b358d874ea7850b19e8abf02bfc9a09f79f8075be73f",
+    "supplemented_sha256": "113d4335f34c511f094598bde9c7ff76c3b8922c3c91bf6c2aa02463f53b17e7",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -174,12 +174,24 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "6b02ce15644572d43868b358d874ea7850b19e8abf02bfc9a09f79f8075be73f",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "en_US",
     "original_sha256": "ceb9e8e78bc144667623dfc76ec155a60c97b9770c50ce0d962fbcae940965a8",
-    "supplemented_sha256": "7832aad1ecde9c228f3d78979e33b822143033e0e428b02b59e2f71f3d3c3d6f",
+    "supplemented_sha256": "7a35b2941fffff9a1551026cda47f91bcb201fcba412c394c32b4d27de42c758",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -362,12 +374,24 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "7832aad1ecde9c228f3d78979e33b822143033e0e428b02b59e2f71f3d3c3d6f",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "ja_JP",
     "original_sha256": "f6effd66260bee0688fbb663801bb1175d0414df59c79531069ea34e2f1231dc",
-    "supplemented_sha256": "5d7b21941f1bc94a2dcf2b6b1dee5e503d654fe5dc76056f946e6aa4937721c4",
+    "supplemented_sha256": "80964f823fbde3e3b2f1e729fba7e47fe96931e5454b5ef956b2de4788429c21",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -546,12 +570,24 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "5d7b21941f1bc94a2dcf2b6b1dee5e503d654fe5dc76056f946e6aa4937721c4",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "ko_KR",
     "original_sha256": "6bc8f1a57b6c62d9387fab195dc752cba8d0773c25e7ce15a21da6495ebadf18",
-    "supplemented_sha256": "2e8f55dd5d469e649c750cde76b6df62fbef6c23c6f7c98cc84e77c44a8d0640",
+    "supplemented_sha256": "a80d68bf55ee5e5d4f8bdbdcdf8785f4f5bc9038aa7d8f534714cc86bc754e5f",
     "original_keys": 4344,
     "added_keys": [
       "agent.jobs.error.applicationExiting",
@@ -745,6 +781,18 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "2e8f55dd5d469e649c750cde76b6df62fbef6c23c6f7c98cc84e77c44a8d0640",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   }
 ]

@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Später herunterladen",
   "onboarding.prepare.progress": "Downloadfortschritt der Charakterpakete anzeigen",
   "onboarding.prepare.cancel": "Downloads der Charakterpakete stoppen",
-  "onboarding.prepare.cancelled": "Die Downloads der Charakterpakete wurden gestoppt. Du kannst es später erneut versuchen."
+  "onboarding.prepare.cancelled": "Die Downloads der Charakterpakete wurden gestoppt. Du kannst es später erneut versuchen.",
+  "onboarding.language.title": "Wähle deine Sprache",
+  "onboarding.language.detail": "Wähle die Sprache der App. Klicke auf Neu starten, um sie anzuwenden und die Einrichtung fortzusetzen. Wenn du die aktuelle Sprache beibehältst, kannst du direkt fortfahren.",
+  "onboarding.language.restart": "Neu starten",
+  "onboarding.timeEstimate": "Plane etwa 15–25 Minuten für die vollständige Einführung ein. Downloads der Figuren und die Einrichtung der Modelldienste können zusätzliche Zeit benötigen. Du kannst deinen Fortschritt speichern und später fortfahren.",
+  "onboarding.channel.title": "Updatekanal wählen",
+  "onboarding.channel.detail": "Stabil (main) eignet sich für den zuverlässigen Alltag und erhält nur stabile Updates. Vorschau (dev) bietet neue Funktionen früher, kann instabil sein und erhält auch neuere stabile Versionen. Behalte deine Auswahl oder ändere sie bei Bedarf. Ein Kanalwechsel führt weder zu einem Downgrade noch zum sofortigen Download oder zur Installation eines Updates.",
+  "onboarding.channel.manual": "Diese Desktopversion lädt Updates manuell über Info herunter. Verfügbare stabile und Vorschaupakete findest du auf der Veröffentlichungsseite. Diese Seite wechselt die installierte App nicht automatisch und führt kein Downgrade aus.",
+  "onboarding.explore": "Ich erkunde selbst"
 }

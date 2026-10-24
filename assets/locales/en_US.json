@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Download Later",
   "onboarding.prepare.progress": "View Character Pack Download Progress",
   "onboarding.prepare.cancel": "Stop Character Pack Downloads",
-  "onboarding.prepare.cancelled": "Character pack downloads have stopped. You can try again later."
+  "onboarding.prepare.cancelled": "Character pack downloads have stopped. You can try again later.",
+  "onboarding.language.title": "Choose your language",
+  "onboarding.language.detail": "Choose the app language. Click Restart to apply it and resume the setup guide. You can continue directly if you keep the current language.",
+  "onboarding.language.restart": "Restart",
+  "onboarding.timeEstimate": "Allow about 15–25 minutes to complete the full guide. Character downloads and model service setup may take extra time. You can save your progress and continue later.",
+  "onboarding.channel.title": "Choose an update channel",
+  "onboarding.channel.detail": "Stable (main) is for dependable daily use and receives stable updates only. Preview (dev) offers new features earlier, may have unfinished behavior, and also receives newer stable releases. Keep your current choice or change it as needed. Changing channels does not downgrade the app or immediately download or install an update.",
+  "onboarding.channel.manual": "This desktop frontend downloads updates manually through About. Check the releases page for available stable or preview packages. This page does not switch or downgrade the installed app.",
+  "onboarding.explore": "I’ll explore on my own"
 }

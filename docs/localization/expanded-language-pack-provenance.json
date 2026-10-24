@@ -13,8 +13,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "196199b00cbc4e13bb0c251f62194665817dcac578ae1a0c056d886182701512",
+    "keys": 4507,
+    "sha256": "ae3f2a9d8fda100575234a31a79cbfb62c651aa1df3d3f1110c925ea74041e66",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -101,7 +101,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "196199b00cbc4e13bb0c251f62194665817dcac578ae1a0c056d886182701512",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "de_DE",
@@ -117,8 +129,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "fe0834b727bb410bcc325d60f94165a799157b09c501ea8a98b11ec2d2198d01",
+    "keys": 4507,
+    "sha256": "d1776d8ea5c6c09660ebb2417df49fb86eb1f4ef13fa8755ba20e12a4ccb536b",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -205,7 +217,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "fe0834b727bb410bcc325d60f94165a799157b09c501ea8a98b11ec2d2198d01",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "hi_IN",
@@ -221,8 +245,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "0c693f185b67bf384fa1a628dd48c93ee8232ed7bf8a50165b9d172d11c039e2",
+    "keys": 4507,
+    "sha256": "236d1d68cdf31457b58cb00ae866a2a8589fa9eb0f94f989d6276d692299ba9d",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -309,7 +333,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "0c693f185b67bf384fa1a628dd48c93ee8232ed7bf8a50165b9d172d11c039e2",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "id_ID",
@@ -325,8 +361,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "a536750a649dae5df94963444a87b658c10e024ccd02507eeac1c768c884b572",
+    "keys": 4507,
+    "sha256": "1cc54d9a8069fe952016b6c0f97ed0dda335782a468ceb727a128e2b3a4023f2",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -413,7 +449,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "a536750a649dae5df94963444a87b658c10e024ccd02507eeac1c768c884b572",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "it_IT",
@@ -429,8 +477,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "dd9bfcbda27eefbcd050b8fde05951e7bf04dd3c32e2ae8365299b62739febf0",
+    "keys": 4507,
+    "sha256": "d6c042e2e9c56a5feabbbfb76b014540ebf0425126689988f598efc08029879c",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -517,7 +565,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "dd9bfcbda27eefbcd050b8fde05951e7bf04dd3c32e2ae8365299b62739febf0",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "pt_BR",
@@ -533,8 +593,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "42dac05f5dc25149de4aef21eb5dfe0066525cde333b692398ba6710efa3e794",
+    "keys": 4507,
+    "sha256": "715164a808342a4f6ff52645531619a6370f40099b6cc859a38820eb60fdb074",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -621,7 +681,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "42dac05f5dc25149de4aef21eb5dfe0066525cde333b692398ba6710efa3e794",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "es_419",
@@ -637,8 +709,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "df20645d6722eae3f4f8b6ed9cb171ff73d0e5fea42926b17ab4297bdb5bd37b",
+    "keys": 4507,
+    "sha256": "90ac6511598b96f262ae488e6a8670549e9fc2cae7081e7932c61b948b5ca62b",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -725,7 +797,19 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "df20645d6722eae3f4f8b6ed9cb171ff73d0e5fea42926b17ab4297bdb5bd37b",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   },
   {
     "locale": "es_ES",
@@ -741,8 +825,8 @@
       "mcpToolAdapter.register.descriptionToolDescription"
     ],
     "translation": "AI translated draft, with structural validation; native proofreading not performed",
-    "keys": 4499,
-    "sha256": "3166a19e42b95948c585f037b6a9a2cf9eebb1ac1ca50ba5d951beabc1559e3a",
+    "keys": 4507,
+    "sha256": "f7e0b729c1233bff58d56c377607f8a6413e8cb14355625e2d404b6574c1ed89",
     "supplements": [
       "agent.jobs.ui.active",
       "agent.jobs.ui.all",
@@ -829,6 +913,18 @@
       "onboardingLessons.build.add.alternativeC": "2026-10-24 S16a: explicitly chosen roles can be prepared and selected during guidance; preserve usable artwork until background completion.",
       "onboardingLessons.build.add.alternativeA": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies.",
       "onboardingLessons.build.add.alternativeIQ": "2026-10-24 S16a: explicit guide actions can request character packs; GitHub routing also applies to official character downloads, independently of AI proxies."
-    }
+    },
+    "previous_dev2_sha256": "3166a19e42b95948c585f037b6a9a2cf9eebb1ac1ca50ba5d951beabc1559e3a",
+    "dev3_added_keys": [
+      "onboarding.language.title",
+      "onboarding.language.detail",
+      "onboarding.language.restart",
+      "onboarding.timeEstimate",
+      "onboarding.channel.title",
+      "onboarding.channel.detail",
+      "onboarding.channel.manual",
+      "onboarding.explore"
+    ],
+    "dev3_translation": "Assistant-authored additions for the requested onboarding improvements; native proofreading not performed."
   }
 ]

@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "後でダウンロード",
   "onboarding.prepare.progress": "キャラクターパックのダウンロード状況を表示",
   "onboarding.prepare.cancel": "キャラクターパックのダウンロードを停止",
-  "onboarding.prepare.cancelled": "キャラクターパックのダウンロードを停止しました。後で再試行できます。"
+  "onboarding.prepare.cancelled": "キャラクターパックのダウンロードを停止しました。後で再試行できます。",
+  "onboarding.language.title": "言語を選択",
+  "onboarding.language.detail": "アプリの表示言語を選択してください。「再起動」を押すと選択した言語が適用され、設定ガイドを再開します。現在の言語を使う場合は、そのまま続行できます。",
+  "onboarding.language.restart": "再起動",
+  "onboarding.timeEstimate": "ガイド全体の所要時間の目安：約15–25分。キャラクターパックのダウンロードやモデルサービスの設定には追加の時間がかかる場合があります。進行状況を保存して後で続けられます。",
+  "onboarding.channel.title": "更新チャンネルを選択",
+  "onboarding.channel.detail": "正式版（main）は安定した日常利用向けで、正式な更新のみを受け取ります。プレビュー版（dev）は新機能を早く試せますが、不安定な場合があり、新しい正式版も受け取ります。現在の選択を保つか、必要に応じて変更してください。切り替えてもダウングレードや更新の即時ダウンロード・インストールは行いません。",
+  "onboarding.channel.manual": "このデスクトップ版では「このアプリについて」から手動で更新をダウンロードします。リリースページで正式版やプレビュー版の配布パッケージをご確認ください。このページはアプリを自動で切り替えたりダウングレードしたりしません。",
+  "onboarding.explore": "自分で試してみる"
 }

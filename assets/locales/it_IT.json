@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Scarica più tardi",
   "onboarding.prepare.progress": "Mostra avanzamento dei download dei pacchetti",
   "onboarding.prepare.cancel": "Interrompi download dei pacchetti",
-  "onboarding.prepare.cancelled": "I download dei pacchetti sono stati interrotti. Puoi riprovare più tardi."
+  "onboarding.prepare.cancelled": "I download dei pacchetti sono stati interrotti. Puoi riprovare più tardi.",
+  "onboarding.language.title": "Scegli la tua lingua",
+  "onboarding.language.detail": "Scegli la lingua dell’app. Fai clic su Riavvia per applicarla e riprendere la guida. Puoi proseguire direttamente se mantieni la lingua attuale.",
+  "onboarding.language.restart": "Riavvia",
+  "onboarding.timeEstimate": "Prevedi circa 15–25 minuti per completare l’intera guida. Il download dei personaggi e la configurazione dei servizi dei modelli potrebbero richiedere altro tempo. Puoi salvare i progressi e continuare più tardi.",
+  "onboarding.channel.title": "Scegli un canale di aggiornamento",
+  "onboarding.channel.detail": "Stabile (main) è adatto all’uso quotidiano affidabile e riceve solo aggiornamenti stabili. Anteprima (dev) offre prima le novità, può avere comportamenti instabili e riceve anche le nuove versioni stabili. Mantieni la scelta o cambiala secondo necessità. Cambiare canale non esegue un downgrade né scarica o installa subito un aggiornamento.",
+  "onboarding.channel.manual": "Questa versione desktop scarica gli aggiornamenti manualmente da Informazioni. Consulta la pagina delle versioni per i pacchetti stabili o di anteprima disponibili. Questa pagina non cambia né retrocede automaticamente l’app installata.",
+  "onboarding.explore": "Esploro da solo"
 }

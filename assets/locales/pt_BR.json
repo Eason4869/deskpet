@@ -4497,5 +4497,13 @@
   "onboarding.prepare.later": "Baixar mais tarde",
   "onboarding.prepare.progress": "Ver progresso do download dos pacotes",
   "onboarding.prepare.cancel": "Parar downloads dos pacotes",
-  "onboarding.prepare.cancelled": "Os downloads dos pacotes foram interrompidos. Você pode tentar novamente mais tarde."
+  "onboarding.prepare.cancelled": "Os downloads dos pacotes foram interrompidos. Você pode tentar novamente mais tarde.",
+  "onboarding.language.title": "Escolha seu idioma",
+  "onboarding.language.detail": "Escolha o idioma do aplicativo. Clique em Reiniciar para aplicá-lo e retomar o guia. Você pode continuar diretamente se mantiver o idioma atual.",
+  "onboarding.language.restart": "Reiniciar",
+  "onboarding.timeEstimate": "Reserve cerca de 15–25 minutos para concluir o guia completo. O download de personagens e a configuração dos serviços de modelos podem levar mais tempo. Você pode salvar o progresso e continuar depois.",
+  "onboarding.channel.title": "Escolha um canal de atualização",
+  "onboarding.channel.detail": "Estável (main) é indicado para uso diário confiável e recebe apenas atualizações estáveis. Prévia (dev) oferece novidades antes, pode apresentar instabilidade e também recebe versões estáveis mais recentes. Mantenha sua escolha ou altere conforme necessário. Mudar de canal não rebaixa o aplicativo nem baixa ou instala uma atualização imediatamente.",
+  "onboarding.channel.manual": "Esta versão desktop baixa atualizações manualmente em Sobre. Confira os pacotes estáveis ou de prévia disponíveis na página de versões. Esta página não troca nem rebaixa automaticamente o aplicativo instalado.",
+  "onboarding.explore": "Vou explorar por conta própria"
 }
