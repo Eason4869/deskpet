@@ -1,0 +1,132 @@
+{
+  "zh_CN": {
+    "relationship.stage.first_meeting": "初次见面",
+    "relationship.stage.familiar": "逐渐熟悉",
+    "relationship.stage.close": "亲近",
+    "relationship.stage.trusted": "信赖",
+    "relationship.stage.heartfelt": "心意相通",
+    "relationship.stage.best_friend": "挚友",
+    "relationship.card.title": "相伴纪念卡",
+    "relationship.card.halloweenTitle": "万圣节"
+  },
+  "zh_TW": {
+    "relationship.stage.first_meeting": "初次見面",
+    "relationship.stage.familiar": "逐漸熟悉",
+    "relationship.stage.close": "親近",
+    "relationship.stage.trusted": "信賴",
+    "relationship.stage.heartfelt": "心意相通",
+    "relationship.stage.best_friend": "摯友",
+    "relationship.card.title": "相伴紀念卡",
+    "relationship.card.halloweenTitle": "萬聖節"
+  },
+  "en_US": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Companion keepsake",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "ja_JP": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "ふたりの記念カード",
+    "relationship.card.halloweenTitle": "ハロウィン"
+  },
+  "ko_KR": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "함께한 기념 카드",
+    "relationship.card.halloweenTitle": "할로윈"
+  },
+  "fr_FR": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Souvenir de notre amitié",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "de_DE": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Erinnerung an unsere Freundschaft",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "hi_IN": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "साथ की यादें",
+    "relationship.card.halloweenTitle": "हैलोवीन"
+  },
+  "id_ID": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Kenang-kenangan bersama",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "it_IT": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Un ricordo insieme",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "pt_BR": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Lembrança da nossa companhia",
+    "relationship.card.halloweenTitle": "Dia das Bruxas"
+  },
+  "es_419": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Recuerdo de nuestra compañía",
+    "relationship.card.halloweenTitle": "Halloween"
+  },
+  "es_ES": {
+    "relationship.stage.first_meeting": "First meeting",
+    "relationship.stage.familiar": "Familiar",
+    "relationship.stage.close": "Close",
+    "relationship.stage.trusted": "Trusted",
+    "relationship.stage.heartfelt": "Heartfelt",
+    "relationship.stage.best_friend": "Best friend",
+    "relationship.card.title": "Recuerdo de nuestra compañía",
+    "relationship.card.halloweenTitle": "Halloween"
+  }
+}

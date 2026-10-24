@@ -25,6 +25,7 @@
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/additional/e-bao.png" Link="Assets/additional/e-bao.png" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/companion-animations/e-bao/*.png" Link="Assets/companion-animations/e-bao/%(Filename)%(Extension)" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/official/bundled-catalog.json" Link="Assets/bundled-skins/catalog.json" />
+    <AvaloniaResource Include="../../assets/fonts/relationships/*.otf;../../assets/fonts/relationships/*.ttf;../../assets/fonts/relationships/OFL-*.txt" Link="Assets/fonts/relationships/%(Filename)%(Extension)" />
     <AvaloniaResource Include="../../assets/avatars/**/*.png" Link="Assets/avatars/%(RecursiveDir)%(Filename)%(Extension)" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/additional/*.png" Link="Assets/additional/%(Filename)%(Extension)" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/companion-animations/**/*.png" Link="Assets/companion-animations/%(RecursiveDir)%(Filename)%(Extension)" />

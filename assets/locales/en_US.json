@@ -4636,5 +4636,6 @@
   "relationship.card.memoryHeartfelt": "Understanding grows quietly in the ordinary days we share.",
   "relationship.card.memoryBestFriend": "After all this time together, keep this moment for our future selves.",
   "relationship.card.firstDay": "The day we first met",
-  "relationship.card.acquaintanceDay": "Day {0} since we met"
+  "relationship.card.acquaintanceDay": "Day {0} since we met",
+  "relationship.card.halloweenTitle": "Halloween"
 }
