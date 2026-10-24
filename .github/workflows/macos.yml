@@ -125,6 +125,13 @@ jobs:
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-writer-exit-ui-only | tee "$REPORT_ROOT/image-writer-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-held-exit-ui-only | tee "$REPORT_ROOT/image-held-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-exit-ui-only | tee "$REPORT_ROOT/image-exit.log"
+      - name: Companion home routes and saved relationship UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in en_US de_DE ja_JP; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --companion-home-ui="$locale" | tee "$REPORT_ROOT/companion-home-$locale.log"
+          done
       - name: Thirteen translated startup UI matrices
         shell: bash
         run: |

@@ -54,8 +54,8 @@ namespace Dafeiyu.Tests
                 var menu=avatar.ContextMenu;var languages=menu.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileLanguage");
                 Check(!languages.HasItems&&menu.Items.IndexOf(languages)+1==menu.Items.IndexOf(menu.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileSettings")),mode+" language dialog entry is immediately above settings");
                 Check((string)languages.Header==TextResources.Get("menus.language"),mode+" WPF language menu label is translated "+code);
-                var subtitle=((StackPanel)menu.Items.OfType<MenuItem>().First().Header).Children.OfType<TextBlock>().Single(item=>item.Name=="ProfileCompanionLabel");
-                Check(subtitle.Text==TextResources.Get("chatAppShell.openProfileMenu.companionLabel"),mode+" WPF avatar subtitle is translated "+code);
+                var subtitle=All<TextBlock>(menu).Single(item=>item.Name=="ProfileCompanionLabel");
+                Check(subtitle.Text==TextResources.Get("relationship.home.open"),mode+" WPF avatar subtitle is translated "+code);
                 string pending=code=="en_US"?"ja_JP":"en_US";
                 ChooseLanguage(languages,code,pending,Path.Combine(root,"language-dialog-"+mode+".png"));
                 Check(pet.Settings.UiLanguage==pending&&store.Load().UiLanguage==pending&&TextResources.CurrentLanguage==code,mode+" selection persists and retains the running language");

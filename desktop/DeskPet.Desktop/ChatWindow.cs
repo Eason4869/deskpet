@@ -126,7 +126,7 @@ internal sealed partial class ChatWindow : Window
             if(binding==null){owner.Settings.SelectTextModel(item.Provider,item.Model);owner.Save();}else owner.WorkBindings.SelectModel(binding.Id,item.Provider,item.Model);
         };
         owner.RegisterChatHost(this);
-        owner.Changed += Refresh; Closed += (_, _) => { closed = true; owner.ChatHostClosed(this); imageWorkspace.Dispose(); foreach (var view in rendered.Values) view.DisposeImages(); uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); owner.Drafts[DraftKey] = draft.Text ?? ""; owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
+        owner.Changed += Refresh; Closed += (_, _) => { closed = true; DisposeCompanionRoutes(); owner.ChatHostClosed(this); imageWorkspace.Dispose(); foreach (var view in rendered.Values) view.DisposeImages(); uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); owner.Drafts[DraftKey] = draft.Text ?? ""; owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
         Refresh();
         history.SizeChanged += (_, _) => ResizeBubbles();
     }
@@ -137,13 +137,21 @@ internal sealed partial class ChatWindow : Window
     internal void ShowImages(GeneratedImage? image = null) { Navigate("images"); if (image != null) imageWorkspace.Prepare(image); }
     private void Navigate(string route) { if (CurrentPage == route) return; routes.RemoveRange(routeIndex + 1, routes.Count - routeIndex - 1); routes.Add(route); routeIndex++; ApplyRoute(); }
     internal void NavigateHistory(int delta) { var next = routeIndex + delta; if (next < 0 || next >= routes.Count) return; routeIndex = next; ApplyRoute(); }
-    private void ApplyRoute() { pageHost.Content = null; pageHost.Content = CurrentPage == "images" ? imageWorkspace : chatPage; routeBack.IsEnabled = routeIndex > 0; routeForward.IsEnabled = routeIndex < routes.Count - 1; }
+    private void ApplyRoute() { pageHost.Content = null; pageHost.Content = CompanionRouteContent(); routeBack.IsEnabled = routeIndex > 0; routeForward.IsEnabled = routeIndex < routes.Count - 1; }
     private void Try(Action action) { try { action(); } catch (Exception e) { owner.Error(e); } }
     private ContextMenu CreateProfileMenu()
     {
+        var menu=new ContextMenu{Name="ShellProfileMenu",MinWidth=258};
+        var avatar=new AvatarView{Assets=avatarAssets,Skin=owner.Skin,Width=32,Height=32};
+        var title=Ui.Text(owner.Skin.DisplayName,15);var subtitle=Ui.Text(TextResources.Get("relationship.home.open"),12);
+        var heading=new Grid{ColumnDefinitions=new ColumnDefinitions("*,Auto")};heading.Children.Add(Ui.Column(title,subtitle));var arrow=Ui.Text("›",18);Grid.SetColumn(arrow,1);heading.Children.Add(arrow);
+        var home=new MenuItem{Name="ProfileCompanionHome",Header=heading,Icon=avatar,IsEnabled=true,Focusable=true};
+        Avalonia.Automation.AutomationProperties.SetName(home,owner.Skin.DisplayName+" · "+TextResources.Get("relationship.home.open"));
+        home.Click+=(_,_)=>{menu.Close();ShowCompanionPage();};
         var languages=new MenuItem{Name="ProfileLanguage",Header=TextResources.Get("menus.language")};
-        var settings=new MenuItem{Name="ProfileSettings",Header=TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC")};settings.Click+=(_,_)=>owner.ShowSettings();
-        var menu=new ContextMenu{Name="ShellProfileMenu",ItemsSource=new object[]{languages,settings}};
+        var settings=new MenuItem{Name="ProfileSettings",Header=TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC")};settings.Click+=(_,_)=>{menu.Close();owner.ShowSettings();};
+        menu.ItemsSource=new object[]{home,new Separator(),languages,settings};
+        menu.Opening+=(_,_)=>{avatar.Skin=owner.Skin;title.Text=owner.Skin.DisplayName;subtitle.Text=TextResources.Get("relationship.home.open");Avalonia.Automation.AutomationProperties.SetName(home,owner.Skin.DisplayName+" · "+subtitle.Text);};
         languages.Click+=async (_,_)=>{menu.Close();var dialog=new LanguagePickerWindow(owner.Settings.UiLanguage,owner.SetUiLanguage);await dialog.ShowDialog(this);};return menu;
     }
     private void OpenAttachmentMenu() => addAttachment.ContextMenu!.Open(addAttachment);

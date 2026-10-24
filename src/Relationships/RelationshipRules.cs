@@ -18,6 +18,13 @@ namespace Dafeiyu
         }
         internal static bool ValidEventId(string id) { return !String.IsNullOrWhiteSpace(id) && id.Length <= 200 && !id.Any(Char.IsControl); }
         internal static bool ValidType(RelationshipEventType type) { return type >= RelationshipEventType.Visit && type <= RelationshipEventType.SuccessfulWorkTask; }
+        internal static int TodayPoints(CompanionRelationshipState state, RelationshipTime time)
+        {
+            if (state == null) return 0;
+            string naturalDate = time.UtcNow.AddMinutes(state.OffsetMinutes).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            string previousDate = state.LastSeenUtc.AddMinutes(state.OffsetMinutes).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            return time.UtcNow >= state.LastSeenUtc && String.CompareOrdinal(naturalDate, previousDate) > 0 && String.CompareOrdinal(time.LocalDate, state.DateHighWater) > 0 ? 0 : state.DailyTotal;
+        }
         internal static bool Apply(RelationshipData data, string id, RelationshipEventType type, string token, RelationshipTime time, out int awarded)
         {
             awarded = 0;
