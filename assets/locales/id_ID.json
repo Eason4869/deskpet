@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Perjalanan kita",
   "relationship.home.title": "Beranda pendamping",
   "relationship.home.today": "Diperoleh hari ini: {0} / 20",
-  "relationship.home.settingsWarning": "Pengaturan tidak dapat disimpan. Pengaturan sebelumnya tetap tersimpan. Coba lagi untuk menyimpan perubahan."
+  "relationship.home.settingsWarning": "Pengaturan tidak dapat disimpan. Pengaturan sebelumnya tetap tersimpan. Coba lagi untuk menyimpan perubahan.",
+  "relationship.feedback.gain": "Kedekatan +{0}",
+  "relationship.feedback.dismiss": "Tutup",
+  "relationship.card.title": "Kenang-kenangan bersama",
+  "relationship.card.footer": "Menyimpan waktu indah bersama",
+  "relationship.card.save": "Simpan kartu kenangan",
+  "relationship.card.pngFilter": "Gambar PNG",
+  "relationship.card.saved": "Kartu kenangan disimpan.",
+  "relationship.card.failed": "Kartu kenangan tidak dapat disimpan. Pilih lokasi lain dan coba lagi."
 }

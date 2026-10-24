@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Nossa jornada",
   "relationship.home.title": "Página do companheiro",
   "relationship.home.today": "Ganhos hoje: {0} / 20",
-  "relationship.home.settingsWarning": "Não foi possível salvar as configurações. As configurações anteriores foram mantidas. Tente salvar as alterações novamente."
+  "relationship.home.settingsWarning": "Não foi possível salvar as configurações. As configurações anteriores foram mantidas. Tente salvar as alterações novamente.",
+  "relationship.feedback.gain": "Afinidade +{0}",
+  "relationship.feedback.dismiss": "Fechar",
+  "relationship.card.title": "Lembrança da nossa companhia",
+  "relationship.card.footer": "Guardando nossos momentos juntos",
+  "relationship.card.save": "Salvar lembrança",
+  "relationship.card.pngFilter": "Imagem PNG",
+  "relationship.card.saved": "Lembrança salva.",
+  "relationship.card.failed": "Não foi possível salvar a lembrança. Escolha outro local e tente novamente."
 }

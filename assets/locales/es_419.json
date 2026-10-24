@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Nuestro recorrido",
   "relationship.home.title": "Página del compañero",
   "relationship.home.today": "Obtenidos hoy: {0} / 20",
-  "relationship.home.settingsWarning": "No se pudo guardar la configuración. Se conserva la configuración anterior. Reintenta guardar los cambios."
+  "relationship.home.settingsWarning": "No se pudo guardar la configuración. Se conserva la configuración anterior. Reintenta guardar los cambios.",
+  "relationship.feedback.gain": "Afecto +{0}",
+  "relationship.feedback.dismiss": "Cerrar",
+  "relationship.card.title": "Recuerdo de nuestra compañía",
+  "relationship.card.footer": "Atesorando nuestro tiempo juntos",
+  "relationship.card.save": "Guardar recuerdo",
+  "relationship.card.pngFilter": "Imagen PNG",
+  "relationship.card.saved": "Recuerdo guardado.",
+  "relationship.card.failed": "No se pudo guardar el recuerdo. Elige otra ubicación e inténtalo de nuevo."
 }

@@ -79,6 +79,7 @@ namespace Dafeiyu.Tests
         {
             using(var f=new Fixture())
             {
+                Check(!f.Manager.HasActiveJobs,"animation guard is idle before any process exists");
                 string id;
                 using(var workspace=f.Workspace())
                 {
@@ -86,6 +87,7 @@ namespace Dafeiyu.Tests
                     var response=Execute(workspace,"start_job","{\"command\":\"echo fixture\"}","stable-start");id=(string)((Dictionary<string,object>)response["job"])["id"];
                     Check((bool)response["ok"]&&!(bool)response["replayed"]&&f.Factory.Processes.Count==1,"first tool call hands one process to the application manager");
                 }
+                Check(f.Manager.HasActiveJobs,"animation guard remains busy after the task workspace closes");
                 Check(f.Factory.Processes[0].Stops==0,"disposing the first tool workspace does not stop its committed job");
                 using(var workspace=f.Workspace())
                 {

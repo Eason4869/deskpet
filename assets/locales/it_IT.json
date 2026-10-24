@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Il nostro percorso",
   "relationship.home.title": "Pagina del compagno",
   "relationship.home.today": "Ottenuti oggi: {0} / 20",
-  "relationship.home.settingsWarning": "Impossibile salvare le impostazioni. Le impostazioni precedenti sono conservate. Riprova a salvare le modifiche."
+  "relationship.home.settingsWarning": "Impossibile salvare le impostazioni. Le impostazioni precedenti sono conservate. Riprova a salvare le modifiche.",
+  "relationship.feedback.gain": "Affetto +{0}",
+  "relationship.feedback.dismiss": "Chiudi",
+  "relationship.card.title": "Un ricordo insieme",
+  "relationship.card.footer": "Custodire il tempo trascorso insieme",
+  "relationship.card.save": "Salva il ricordo",
+  "relationship.card.pngFilter": "Immagine PNG",
+  "relationship.card.saved": "Ricordo salvato.",
+  "relationship.card.failed": "Impossibile salvare il ricordo. Scegli un’altra posizione e riprova."
 }

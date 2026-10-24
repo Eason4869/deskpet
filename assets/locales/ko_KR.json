@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "함께한 여정",
   "relationship.home.title": "파트너 홈",
   "relationship.home.today": "오늘 획득: {0} / 20",
-  "relationship.home.settingsWarning": "설정을 저장할 수 없습니다. 이전 설정은 유지됩니다. 변경 사항을 저장하려면 다시 시도하세요."
+  "relationship.home.settingsWarning": "설정을 저장할 수 없습니다. 이전 설정은 유지됩니다. 변경 사항을 저장하려면 다시 시도하세요.",
+  "relationship.feedback.gain": "호감도 +{0}",
+  "relationship.feedback.dismiss": "닫기",
+  "relationship.card.title": "함께한 기념 카드",
+  "relationship.card.footer": "함께한 시간을 소중히 간직해요",
+  "relationship.card.save": "기념 카드 저장",
+  "relationship.card.pngFilter": "PNG 이미지",
+  "relationship.card.saved": "기념 카드를 저장했어요.",
+  "relationship.card.failed": "기념 카드를 저장할 수 없어요. 다른 위치를 선택하고 다시 시도하세요."
 }

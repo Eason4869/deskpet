@@ -69,7 +69,15 @@ namespace Dafeiyu
                 relation.Children.Add(Text(TextResources.Format("relationship.home.activeDays",View.ActiveDays),13,"CompanionActiveDays"));relation.Children.Add(Text(TextResources.Format("relationship.home.acquaintanceDays",View.AcquaintanceDays),13,"CompanionAcquaintanceDays"));
                 var timeline=Section("relationship.home.timeline");var cards=Section("relationship.home.cards");
                 if(View.Snapshot.State==null){timeline.Children.Add(Label("relationship.home.empty"));cards.Children.Add(Label("relationship.home.emptyCards"));}
-                else foreach(var m in View.Snapshot.State.Milestones){timeline.Children.Add(Text(TextResources.Format("relationship.home.achievement",m.EarnedLocalDate,RelationshipContent.StageName(m.StageId))));var card=new StackPanel{Margin=new Thickness(0,10,0,12)};card.Children.Add(Text(RelationshipContent.StageName(m.StageId),15));card.Children.Add(Text(RelationshipContent.Welcome(m.StageId,owner.RelationshipPack)));cards.Children.Add(card);}
+                else foreach(var m in View.Snapshot.State.Milestones){timeline.Children.Add(Text(TextResources.Format("relationship.home.achievement",m.EarnedLocalDate,RelationshipContent.StageName(m.StageId))));var card=new StackPanel{Margin=new Thickness(0,10,0,12)};card.Children.Add(Text(RelationshipContent.StageName(m.StageId),15));card.Children.Add(Text(RelationshipContent.Welcome(m.StageId,owner.RelationshipPack)));var data=RelationshipCardData.FromSnapshot(View.Snapshot,m.StageId,owner.Skin.DisplayName);var avatar=SkinCatalog.GetAvatar(owner.Skin);
+                    card.Children.Add(Text(data.DateText));
+                    var save=Ui.Button(TextResources.Get("relationship.card.save"));save.Name="SaveRelationshipCard";save.HorizontalAlignment=HorizontalAlignment.Left;
+                    var status=Text("",13,"RelationshipCardStatus");save.Click+=async delegate{
+                        if(disposed||!save.IsEnabled)return;save.IsEnabled=false;status.Text="";
+                        try{var picker=new Microsoft.Win32.SaveFileDialog{Title=TextResources.Get("relationship.card.save"),Filter=TextResources.Get("relationship.card.pngFilter")+"|*.png",DefaultExt=".png",AddExtension=true,OverwritePrompt=true,FileName=data.FileName};
+                            if(picker.ShowDialog(Window.GetWindow(this))==true){if(disposed)return;var result=await RelationshipCardFile.SaveAsync(picker.FileName,RelationshipCardRenderer.Render(data,avatar));if(!disposed)status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");}
+                        }catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is InvalidOperationException||error is ArgumentException))throw;if(!disposed)status.Text=TextResources.Get("relationship.card.failed");}finally{save.IsEnabled=!disposed;}
+                    };card.Children.Add(save);card.Children.Add(status);cards.Children.Add(card);}
                 body.Children.Add(timeline);body.Children.Add(cards);
             }
             bool warning=View.ReadFailed||saveFailed||!String.IsNullOrEmpty(owner.Relationships.Warning);

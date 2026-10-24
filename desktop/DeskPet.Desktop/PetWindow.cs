@@ -25,6 +25,8 @@ internal sealed partial class PetWindow : Window
     private string action => playback.Action;
     private bool original => playback.Original;
     private bool dragging, moved, nativeIgnored, fullscreenHidden;
+    internal bool RelationshipFeedbackAllowed=>IsPetVisible&&sessionInteractive;
+    internal void CelebrateRelationship(string name){if(!RelationshipFeedbackAllowed||owner.Settings.QuietMode||owner.HolidayBusinessBusy||owner.WorkBindings.Manager.Busy||owner.WorkBindings.Jobs.Manager?.HasActiveJobs==true||owner.GuideLocked||Paused||dragging||drop.Active||holidayPlayback.Active||holidayTransition.Active||action!="idle")return;Interact(name);}
     public bool IsPetVisible=>IsVisible && !fullscreenHidden && Opacity>0;
     private Point press;
     private PixelPoint start;

@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Our journey",
   "relationship.home.title": "Companion home",
   "relationship.home.today": "Earned today: {0} / 20",
-  "relationship.home.settingsWarning": "Settings could not be saved. Your previous settings are kept. Retry to save the requested changes."
+  "relationship.home.settingsWarning": "Settings could not be saved. Your previous settings are kept. Retry to save the requested changes.",
+  "relationship.feedback.gain": "Affection +{0}",
+  "relationship.feedback.dismiss": "Dismiss",
+  "relationship.card.title": "Companion keepsake",
+  "relationship.card.footer": "Treasuring our time together",
+  "relationship.card.save": "Save keepsake",
+  "relationship.card.pngFilter": "PNG image",
+  "relationship.card.saved": "Keepsake saved.",
+  "relationship.card.failed": "Could not save the keepsake. Choose another location and try again."
 }

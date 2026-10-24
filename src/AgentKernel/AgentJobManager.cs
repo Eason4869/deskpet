@@ -345,6 +345,7 @@ namespace Dafeiyu
         }
         void Release(Entry entry)
         {entry.Lifetime.Cancel();if(entry.Process!=null)entry.Process.Dispose();if(entry.DirectoryLease!=null){entry.DirectoryLease.Dispose();entry.DirectoryLease=null;}}
+        public bool HasActiveJobs {get{lock(gate)return jobs.Values.Any(entry=>!AgentJobStore.IsTerminal(entry.Record.State));}}
         public IList<AgentJobSnapshot> ListForConversation(string conversationId){lock(gate)return jobs.Values.Where(entry=>entry.Record.Owner.ConversationId==conversationId).Select(Snapshot).ToList().AsReadOnly();}
         internal IList<AgentJobSnapshot> ListAll(){lock(gate)return jobs.Values.Select(Snapshot).ToList().AsReadOnly();}
         public IList<AgentJobSnapshot> ListForProject(string projectId)

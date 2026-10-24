@@ -35,6 +35,8 @@ internal sealed partial class DesktopController : IDisposable
     public PetSettings Settings { get; }
     public List<PetSkin> Skins { get; }
     public PetSkin Skin { get; private set; }
+    readonly RelationshipFeedback relationshipFeedback;
+    RelationshipFeedbackWindow? relationshipNotice;
     public RelationshipRuntime Relationships {get;}
     public RelationshipService RelationshipService=>Relationships.Service;
     public string RelationshipCompanionId=>RelationshipIdentity.Resolve(DataDirectory,Skin.PickerKey,Skin.OfficialCharacterId,Skin.Id);
@@ -122,6 +124,10 @@ internal sealed partial class DesktopController : IDisposable
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
         Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
+        relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,notice=>{
+            relationshipNotice?.Close();relationshipNotice=new RelationshipFeedbackWindow(this,notice);var shown=relationshipNotice;shown.Closed+=(_,_)=>{if(ReferenceEquals(relationshipNotice,shown))relationshipNotice=null;};shown.Show();
+            if(notice.Milestones.Count>0)Pet.CelebrateRelationship(RelationshipContent.Action(notice.Milestones.Last().StageId,RelationshipPack)??"waving");
+        },null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
@@ -293,6 +299,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
+        relationshipFeedback.Dispose();relationshipNotice?.Close();
         companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();imageNoticeTimer.Stop();

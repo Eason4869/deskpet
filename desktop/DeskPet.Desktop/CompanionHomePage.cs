@@ -1,3 +1,4 @@
+using Avalonia.Platform.Storage;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -62,7 +63,16 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
             relation.Children.Add(Text(p.NextText));relation.Children.Add(Text(TextResources.Format("relationship.home.today",view.TodayPoints),14,"CompanionTodayGrowth"));relation.Children.Add(Text(TextResources.Format("relationship.home.activeDays",view.ActiveDays),14,"CompanionActiveDays"));relation.Children.Add(Text(TextResources.Format("relationship.home.acquaintanceDays",view.AcquaintanceDays),14,"CompanionAcquaintanceDays"));
             var timeline=Section("relationship.home.timeline");var cards=Section("relationship.home.cards");
             if(view.Snapshot.State==null){timeline.Children.Add(Label("relationship.home.empty"));cards.Children.Add(Label("relationship.home.emptyCards"));}
-            else foreach(var m in view.Snapshot.State.Milestones){timeline.Children.Add(Text(TextResources.Format("relationship.home.achievement",m.EarnedLocalDate,RelationshipContent.StageName(m.StageId))));cards.Children.Add(Ui.Column(Text(RelationshipContent.StageName(m.StageId),16),Text(RelationshipContent.Welcome(m.StageId,owner.RelationshipPack))));}
+            else foreach(var m in view.Snapshot.State.Milestones){timeline.Children.Add(Text(TextResources.Format("relationship.home.achievement",m.EarnedLocalDate,RelationshipContent.StageName(m.StageId))));var data=RelationshipCardData.FromSnapshot(view.Snapshot,m.StageId,owner.Skin.DisplayName);var skin=owner.Skin;
+                var status=Text("",14,"RelationshipCardStatus");Button? save=null;
+                save=Ui.Button(TextResources.Get("relationship.card.save"),async()=>{
+                    if(disposed||save==null||!save.IsEnabled)return;save.IsEnabled=false;status.Text="";
+                    try{var top=TopLevel.GetTopLevel(this);if(top==null)throw new InvalidOperationException();
+                        var file=await top.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions{Title=TextResources.Get("relationship.card.save"),SuggestedFileName=data.FileName,DefaultExtension="png",ShowOverwritePrompt=true,FileTypeChoices=new[]{new Avalonia.Platform.Storage.FilePickerFileType(TextResources.Get("relationship.card.pngFilter")){Patterns=new[]{"*.png"},MimeTypes=new[]{"image/png"}}}});
+                        if(file!=null){using(file){if(disposed)return;var path=file.TryGetLocalPath();var result=path==null?RelationshipCardSaveResult.Failed:await RelationshipCardFile.SaveAsync(path,RelationshipCardRenderer.Render(data,skin,assets));if(!disposed)status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");}}
+                    }catch(Exception error){if(error is OperationCanceledException)return;if(!(error is IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException))throw;if(!disposed)status.Text=TextResources.Get("relationship.card.failed");}finally{save.IsEnabled=!disposed;}
+                });save.Name="SaveRelationshipCard";save.HorizontalAlignment=HorizontalAlignment.Left;
+                cards.Children.Add(Ui.Column(Text(data.StageName,16),Text(RelationshipContent.Welcome(m.StageId,owner.RelationshipPack)),Text(data.DateText),save,status));}
             body.Children.Add(timeline);body.Children.Add(cards);
         }
         bool warning=view.ReadFailed||saveFailed||!string.IsNullOrEmpty(owner.Relationships.Warning);

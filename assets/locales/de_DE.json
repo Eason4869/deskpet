@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Unser gemeinsamer Weg",
   "relationship.home.title": "Begleiterprofil",
   "relationship.home.today": "Heute erhalten: {0} / 20",
-  "relationship.home.settingsWarning": "Die Einstellungen konnten nicht gespeichert werden. Die bisherigen Einstellungen bleiben erhalten. Versuche erneut, die Änderungen zu speichern."
+  "relationship.home.settingsWarning": "Die Einstellungen konnten nicht gespeichert werden. Die bisherigen Einstellungen bleiben erhalten. Versuche erneut, die Änderungen zu speichern.",
+  "relationship.feedback.gain": "Zuneigung +{0}",
+  "relationship.feedback.dismiss": "Schließen",
+  "relationship.card.title": "Erinnerung an unsere Freundschaft",
+  "relationship.card.footer": "Unsere gemeinsame Zeit bewahren",
+  "relationship.card.save": "Erinnerung speichern",
+  "relationship.card.pngFilter": "PNG-Bild",
+  "relationship.card.saved": "Erinnerung gespeichert.",
+  "relationship.card.failed": "Die Erinnerung konnte nicht gespeichert werden. Wähle einen anderen Ort und versuche es erneut."
 }

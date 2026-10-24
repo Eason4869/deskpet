@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "相伴历程",
   "relationship.home.title": "伙伴主页",
   "relationship.home.today": "今日获得：{0} / 20",
-  "relationship.home.settingsWarning": "设置暂时无法保存，之前的设置已保留。请重试以保存刚才的更改。"
+  "relationship.home.settingsWarning": "设置暂时无法保存，之前的设置已保留。请重试以保存刚才的更改。",
+  "relationship.feedback.gain": "好感度 +{0}",
+  "relationship.feedback.dismiss": "关闭",
+  "relationship.card.title": "相伴纪念卡",
+  "relationship.card.footer": "珍藏一起走过的日子",
+  "relationship.card.save": "保存纪念卡",
+  "relationship.card.pngFilter": "PNG 图片",
+  "relationship.card.saved": "纪念卡已保存。",
+  "relationship.card.failed": "无法保存纪念卡，请选择其他位置后重试。"
 }

@@ -22,10 +22,23 @@ internal static class CompanionHomeUiChecks
         void Click(Button b)=>b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Directory.CreateDirectory(directory);
         SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=language,OnboardingState="completed",AutoUpdate=false});
-        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));
+        var lifetime=new ClassicDesktopStyleApplicationLifetime();using var owner=new DesktopController(lifetime,new FixtureRuntime(directory));
         Complete(Task.Run(()=>RelationshipHomeFixtures.Seed156(owner.RelationshipService,owner.RelationshipCompanionId)));
-        var chat=new ChatWindow(owner,false);chat.Show();
+        owner.Pet.Paused=true;var chat=new ChatWindow(owner,false);chat.Show();owner.Pet.Show();
         try{
+            var feedbackDeadline=System.Diagnostics.Stopwatch.StartNew();RelationshipFeedbackWindow? passive=null;
+            while(passive==null){if(feedbackDeadline.ElapsedMilliseconds>10000)throw new TimeoutException("Actual feedback not displayed");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);passive=(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);}
+            Check(!passive.ShowActivated&&!passive.ShowInTaskbar,"actual saved stage window does not request focus or taskbar entry");
+            Check((string)typeof(PetWindow).GetProperty("action",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)! == "idle","paused pet is not interrupted by automatic celebration");
+            Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==156,"automatic popup and celebration add no points");
+            var feedbackCaptures=Path.GetFullPath(Path.Combine("work","relationship-validation","avalonia"));Directory.CreateDirectory(feedbackCaptures);AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var rendered=passive.CaptureRenderedFrame())rendered!.Save(Path.Combine(feedbackCaptures,language+"-stage-feedback.png"),new PngBitmapEncoderOptions());
+            // RunJobs deliberately ignores OS events; a real dispatcher frame is required
+            // to exercise DispatcherTimer, matching the existing native job UI fixture.
+            owner.Settings.QuietMode=true;feedbackDeadline.Restart();var frame=new DispatcherFrame();
+            using(var pulse=new System.Threading.Timer(_=>Dispatcher.UIThread.Post(()=>{if(!passive.IsVisible||feedbackDeadline.ElapsedMilliseconds>1500)frame.Continue=false;}),null,0,10))Dispatcher.UIThread.PushFrame(frame);
+            Check(!passive.IsVisible,"quiet mode dismisses an already-visible automatic notice");owner.Settings.QuietMode=false;owner.Pet.Paused=false;
+            owner.Pet.CelebrateRelationship("waving");Complete(owner.Relationships.FlushAsync());
+            Check((string)typeof(PetWindow).GetProperty("action",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)! == "waving"&&owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==156,"actual automatic celebration plays without interaction rewards");
             var draft=Named<TextBox>(chat,"ChatDraft");draft.Text="preserved companion draft";var session=chat.BoundSession;
             var avatar=Named<Button>(chat,"ShellAvatar");Click(avatar);Dispatcher.UIThread.RunJobs();
             var entry=avatar.ContextMenu!.Items.OfType<MenuItem>().Single(x=>x.Name=="ProfileCompanionHome");
@@ -33,6 +46,22 @@ internal static class CompanionHomeUiChecks
             Check(entry.Icon is AvatarView a&&ReferenceEquals(a.Skin,owner.Skin)&&entry.Opacity==1,"original-color canonical avatar");
             entry.Focus();Check(entry.IsFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Key=Key.Enter});Dispatcher.UIThread.RunJobs();
             var page=chat.GetLogicalDescendants().OfType<CompanionHomePage>().Single();Complete(owner.Relationships.FlushAsync());Complete(page.RefreshAsync());
+            var cardData=RelationshipCardData.FromSnapshot(page.View!.Snapshot,"familiar",owner.Skin.DisplayName);
+            using(var cardAssets=new SpriteAssets()){
+                var png=RelationshipCardRenderer.Render(cardData,owner.Skin,cardAssets);
+                var exported=Path.GetFullPath(Path.Combine("work","relationship-validation","avalonia","keepsake-"+language+".png"));Directory.CreateDirectory(Path.GetDirectoryName(exported)!);
+                var save=RelationshipCardFile.SaveAsync(exported,png);Complete(save);Check(save.Result==RelationshipCardSaveResult.Saved,"actual PNG is atomically saved");
+                using var decoded=new Bitmap(exported);Check(decoded.PixelSize==new PixelSize(800,480),"export decodes as 800 by 480 PNG");
+                using var pixels=new WriteableBitmap(decoded.PixelSize,new Vector(96,96),Avalonia.Platform.PixelFormat.Bgra8888,Avalonia.Platform.AlphaFormat.Premul);
+                using(var buffer=pixels.Lock()){
+                    decoded.CopyPixels(buffer);var bytes=new byte[buffer.RowBytes*480];System.Runtime.InteropServices.Marshal.Copy(buffer.Address,bytes,0,bytes.Length);
+                    bool Ink(int x,int y,int width,int height){int ink=0;for(int yy=y;yy<y+height;yy++)for(int xx=x;xx<x+width;xx++){int i=yy*buffer.RowBytes+xx*4;if(bytes[i]+bytes[i+1]+bytes[i+2]<650&&bytes[i+3]>200)ink++;}return ink>100;}
+                    Check(Ink(42,95,168,168)&&Ink(242,95,500,168)&&Ink(42,280,700,90),"decoded PNG contains actual avatar, name/stage and date/footer ink");
+                }
+                var visual=RelationshipCardRenderer.Create(cardData,owner.Skin,cardAssets);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));
+                Check(visual.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==owner.Skin.DisplayName)&&visual.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==cardData.StageName)&&visual.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==cardData.DateText),"native rendered text comes from saved identity, stage and original date");
+            }
+            Check(page.GetLogicalDescendants().OfType<Button>().Count(b=>b.Name=="SaveRelationshipCard")==page.View!.Snapshot.State.Milestones.Count,"every saved home card has export action");
             Check(chat.CurrentPage=="companion"&&!avatar.ContextMenu.IsOpen,"profile closes and navigates in main page host");
             Check(page.View!.Snapshot.State.Score==156&&Named<TextBlock>(page,"CompanionRelationshipScore").Text=="156 / 240","home visit renders committed actual values");
             chat.NavigateHistory(-1);Check(chat.CurrentPage=="chat"&&draft.Text=="preserved companion draft"&&ReferenceEquals(chat.BoundSession,session),"draft and session survive companion navigation");chat.NavigateHistory(1);chat.ShowImages();chat.NavigateHistory(-1);Check(chat.CurrentPage=="companion","images and companion share history");

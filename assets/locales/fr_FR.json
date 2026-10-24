@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "Notre parcours",
   "relationship.home.title": "Accueil du compagnon",
   "relationship.home.today": "Gagnés aujourd’hui : {0} / 20",
-  "relationship.home.settingsWarning": "Impossible d’enregistrer les paramètres. Les paramètres précédents sont conservés. Réessayez pour enregistrer les modifications."
+  "relationship.home.settingsWarning": "Impossible d’enregistrer les paramètres. Les paramètres précédents sont conservés. Réessayez pour enregistrer les modifications.",
+  "relationship.feedback.gain": "Affection +{0}",
+  "relationship.feedback.dismiss": "Fermer",
+  "relationship.card.title": "Souvenir de notre amitié",
+  "relationship.card.footer": "Préserver nos moments partagés",
+  "relationship.card.save": "Enregistrer le souvenir",
+  "relationship.card.pngFilter": "Image PNG",
+  "relationship.card.saved": "Souvenir enregistré.",
+  "relationship.card.failed": "Impossible d’enregistrer le souvenir. Choisissez un autre emplacement et réessayez."
 }

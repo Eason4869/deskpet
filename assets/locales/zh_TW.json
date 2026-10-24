@@ -4551,5 +4551,13 @@
   "relationship.home.timeline": "相伴歷程",
   "relationship.home.title": "夥伴主頁",
   "relationship.home.today": "今日獲得：{0} / 20",
-  "relationship.home.settingsWarning": "設定暫時無法儲存，先前的設定已保留。請重試以儲存剛才的變更。"
+  "relationship.home.settingsWarning": "設定暫時無法儲存，先前的設定已保留。請重試以儲存剛才的變更。",
+  "relationship.feedback.gain": "好感度 +{0}",
+  "relationship.feedback.dismiss": "關閉",
+  "relationship.card.title": "相伴紀念卡",
+  "relationship.card.footer": "珍藏一起走過的日子",
+  "relationship.card.save": "儲存紀念卡",
+  "relationship.card.pngFilter": "PNG 圖片",
+  "relationship.card.saved": "紀念卡已儲存。",
+  "relationship.card.failed": "無法儲存紀念卡，請選擇其他位置後重試。"
 }
