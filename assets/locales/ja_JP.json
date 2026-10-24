@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "ここまで共に歩んだ今を、未来の私たちへ残そう。",
   "relationship.card.firstDay": "初めて出会った日",
   "relationship.card.acquaintanceDay": "出会って {0} 日目",
-  "relationship.card.halloweenTitle": "ハロウィン"
+  "relationship.card.halloweenTitle": "ハロウィン",
+  "holidayKeepsake.albumTitle": "季節の記念",
+  "holidayKeepsake.relationshipAlbum": "絆の記念",
+  "holidayKeepsake.savedCount": "保存済み {0} 枚",
+  "holidayKeepsake.locked": "未獲得 · 祝日に会って、その年の思い出を残しましょう。",
+  "holidayKeepsake.unavailable": "季節のイラストを読み込めません。リソースを確認して再試行してください。",
+  "holidayKeepsake.readError": "記念帳を読み込めないため件数は不明です。元のファイルは保持されています。データフォルダーの権限やアプリの更新を確認してください。",
+  "holidayKeepsake.sceneError": "保存した場面を読み込めません。記録は保持されています。",
+  "holidayKeepsake.retry": "再試行",
+  "holidayKeepsake.previous": "前へ",
+  "holidayKeepsake.next": "次へ",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "季節の思い出はまだありません。",
+  "holidayKeepsake.halloweenMessage": "やさしい灯りと小さな魔法。あなたと過ごした夜が、特別になった。",
+  "holidayKeepsake.historyMessage": "一緒に過ごした季節を、大切な思い出に。",
+  "holidayKeepsake.historyTitle": "ふたりの記念カード"
 }

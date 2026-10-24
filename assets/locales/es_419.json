@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "Tras este camino juntos, guardemos este momento para el futuro.",
   "relationship.card.firstDay": "El día en que nos conocimos",
   "relationship.card.acquaintanceDay": "Día {0} desde que nos conocimos",
-  "relationship.card.halloweenTitle": "Halloween"
+  "relationship.card.halloweenTitle": "Halloween",
+  "holidayKeepsake.albumTitle": "Recuerdos de fiestas",
+  "holidayKeepsake.relationshipAlbum": "Recuerdos de amistad",
+  "holidayKeepsake.savedCount": "{0} guardados",
+  "holidayKeepsake.locked": "Por conseguir · Encuéntrense el día de la fiesta.",
+  "holidayKeepsake.unavailable": "Ilustración no disponible. Revisa los recursos e intenta de nuevo.",
+  "holidayKeepsake.readError": "No se puede leer el álbum; cantidad desconocida. Los originales se conservan. Revisa el acceso a la carpeta de datos o las actualizaciones.",
+  "holidayKeepsake.sceneError": "No se pudo leer la escena guardada. El registro se conserva.",
+  "holidayKeepsake.retry": "Reintentar",
+  "holidayKeepsake.previous": "Anterior",
+  "holidayKeepsake.next": "Siguiente",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "Aún no hay recuerdos de fiestas guardados.",
+  "holidayKeepsake.halloweenMessage": "Una luz suave y un poco de magia: juntos, una noche común se volvió especial.",
+  "holidayKeepsake.historyMessage": "Una fiesta juntos, un recuerdo para guardar.",
+  "holidayKeepsake.historyTitle": "Recuerdo de nuestra compañía"
 }

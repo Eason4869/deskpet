@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "So weit sind wir gemeinsam gekommen. Diesen Moment bewahren wir.",
   "relationship.card.firstDay": "Der Tag unserer ersten Begegnung",
   "relationship.card.acquaintanceDay": "Tag {0} seit unserer Begegnung",
-  "relationship.card.halloweenTitle": "Halloween"
+  "relationship.card.halloweenTitle": "Halloween",
+  "holidayKeepsake.albumTitle": "Festtagserinnerungen",
+  "holidayKeepsake.relationshipAlbum": "Gemeinsame Erinnerungen",
+  "holidayKeepsake.savedCount": "{0} gespeichert",
+  "holidayKeepsake.locked": "Noch nicht erhalten · Begegnet euch am Festtag.",
+  "holidayKeepsake.unavailable": "Festtagsbild nicht verfügbar. Ressourcen prüfen und erneut versuchen.",
+  "holidayKeepsake.readError": "Album nicht lesbar, Anzahl unbekannt. Originale bleiben erhalten. Datenordner und Zugriffsrechte oder App-Updates prüfen.",
+  "holidayKeepsake.sceneError": "Gespeicherte Szene nicht lesbar. Der Eintrag bleibt erhalten.",
+  "holidayKeepsake.retry": "Erneut versuchen",
+  "holidayKeepsake.previous": "Zurück",
+  "holidayKeepsake.next": "Weiter",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "Noch keine Festtagserinnerungen gespeichert.",
+  "holidayKeepsake.halloweenMessage": "Sanftes Laternenlicht, ein wenig Magie: Zusammen wird eine gewöhnliche Nacht wundervoll.",
+  "holidayKeepsake.historyMessage": "Ein gemeinsamer Festtag, eine bleibende Erinnerung.",
+  "holidayKeepsake.historyTitle": "Erinnerung an unsere Freundschaft"
 }

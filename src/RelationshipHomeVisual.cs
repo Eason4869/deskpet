@@ -39,7 +39,7 @@ namespace Dafeiyu
         internal static FrameworkElement Rules(){var panel=new StackPanel{Margin=new Thickness(0,12,0,0)};panel.Children.Add(Header("home",TextResources.Get("relationship.home.ruleVisit")));panel.Children.Add(Header("heart",TextResources.Get("relationship.home.ruleInteraction")));panel.Children.Add(Header("chat",TextResources.Get("relationship.home.ruleConversation")));panel.Children.Add(Header("work",TextResources.Get("relationship.home.ruleWork")));var total=Ui.Text(TextResources.Get("relationship.home.ruleLimit"),13,AgentUi.Muted);total.Margin=new Thickness(0,10,0,0);panel.Children.Add(total);return panel;}
         internal sealed class FocusToken
         {
-            internal string CompanionId,StageId,ActionName,DisclosureName;
+            internal string CompanionId,StageId,ActionName,DisclosureName,HolidayIdentity;
         }
         static System.Collections.Generic.IEnumerable<FrameworkElement> Visuals(DependencyObject root)
         {
@@ -54,6 +54,7 @@ namespace Dafeiyu
             if(disclosure!=null)token.DisclosureName=disclosure.Name;
             if(String.IsNullOrEmpty(token.ActionName)&&String.IsNullOrEmpty(token.DisclosureName))return null;
             for(DependencyObject ancestor=focused;ancestor!=null;ancestor=VisualTreeHelper.GetParent(ancestor)){
+                var holiday=ancestor as HolidayCardPreview;if(holiday!=null){token.HolidayIdentity=holiday.Tag as string;break;}
                 var card=ancestor as RelationshipCardPreview;if(card==null)continue;var capture=(HomeCardCapture)card.Tag;token.CompanionId=capture.Data.CompanionId;token.StageId=capture.Data.StageId;break;
             }
             return token;
@@ -65,6 +66,7 @@ namespace Dafeiyu
         internal static FrameworkElement ResolveFocus(FrameworkElement root,FocusToken token)
         {
             if(token==null)return null;FrameworkElement scope=root;
+            if(token.HolidayIdentity!=null){scope=Visuals(root).OfType<HolidayCardPreview>().FirstOrDefault(x=>(x.Tag as string)==token.HolidayIdentity);if(scope==null)return null;}
             if(token.StageId!=null){scope=Visuals(root).OfType<RelationshipCardPreview>().FirstOrDefault(x=>{var capture=(HomeCardCapture)x.Tag;return capture.Data.StageId==token.StageId&&capture.Data.CompanionId==token.CompanionId;});if(scope==null)return null;}
             if(!String.IsNullOrEmpty(token.DisclosureName)){var disclosure=Visuals(scope).OfType<Expander>().FirstOrDefault(x=>x.Name==token.DisclosureName);return disclosure==null?null:DisclosureHeader(disclosure);}
             return Visuals(scope).FirstOrDefault(x=>x.Name==token.ActionName);

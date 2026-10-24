@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,6 +34,21 @@ namespace Dafeiyu
         // Scene is borrowed from the page. This branch never loads or disposes artwork.
         internal static Canvas CreateScene(RelationshipCardData data,BitmapSource scene,bool dark)
         {
+            var content=SceneBackground(scene,dark);
+SceneText(content,TextResources.Get("relationship.card.title"),32,24,15,15,dark,"RelationshipCardTitle",false);
+            SceneText(content,data.Name,62,38,27,22,dark,"RelationshipCardName",false);
+            double titleHeight=SceneText(content,data.StageName,108,104,44,32,dark,"RelationshipCardStage",true);
+            var ornament=OrnamentFor(data.StageId,dark);
+            Canvas.SetLeft(ornament,456);Canvas.SetTop(ornament,108+titleHeight+12);content.Children.Add(ornament);
+            SceneText(content,data.MemoryText,270,92,24,18,dark,"RelationshipCardMemory",false);
+            SceneText(content,data.DateText,378,52,20,16,dark,"RelationshipCardDate",false);
+            SceneText(content,data.AcquaintanceText,438,24,17,15,dark,"RelationshipCardAcquaintance",false);
+            System.Windows.Automation.AutomationProperties.SetName(content,data.Name+" "+data.StageName+" "+data.MemoryText+" "+data.DateText+" "+data.AcquaintanceText);
+            return content;
+        }
+
+        static Canvas SceneBackground(BitmapSource scene,bool dark)
+        {
             var content=new Canvas{Width=800,Height=480,ClipToBounds=true,Background=dark?Brushes.MidnightBlue:Brushes.White};
             content.Children.Add(new Image{Source=scene,Width=800,Height=480,Stretch=Stretch.Uniform});
             var fade=new LinearGradientBrush();fade.StartPoint=new Point(0,0);fade.EndPoint=new Point(1,0);
@@ -44,16 +59,25 @@ namespace Dafeiyu
             fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),.55));
             fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),1));
             content.Children.Add(new Border{Name="RelationshipCardReadingGradient",Width=800,Height=480,Background=fade,IsHitTestVisible=false});
-            SceneText(content,TextResources.Get("relationship.card.title"),32,24,15,15,dark,"RelationshipCardTitle",false);
-            SceneText(content,data.Name,62,38,27,22,dark,"RelationshipCardName",false);
-            double titleHeight=SceneText(content,data.StageName,108,104,44,32,dark,"RelationshipCardStage",true);
-            var ornament=OrnamentFor(data.StageId,dark);
-            Canvas.SetLeft(ornament,456);Canvas.SetTop(ornament,108+titleHeight+12);content.Children.Add(ornament);
-            SceneText(content,data.MemoryText,270,92,24,18,dark,"RelationshipCardMemory",false);
-            SceneText(content,data.DateText,378,52,20,16,dark,"RelationshipCardDate",false);
-            SceneText(content,data.AcquaintanceText,438,24,17,15,dark,"RelationshipCardAcquaintance",false);
-            System.Windows.Automation.AutomationProperties.SetName(content,data.Name+" "+data.StageName+" "+data.MemoryText+" "+data.DateText+" "+data.AcquaintanceText);
             return content;
+        }
+        internal static Canvas CreateHoliday(HolidayKeepsakeCardData data,BitmapSource scene,bool dark)
+        {
+            var content=SceneBackground(scene,dark);
+            SceneText(content,TextResources.Get("holidayKeepsake.albumTitle"),32,24,15,15,dark,"HolidayCardHeading",false);
+            SceneText(content,data.Name,62,38,27,22,dark,"HolidayCardName",false);
+            double titleHeight=SceneText(content,data.Title,108,104,44,32,dark,"HolidayCardTitle",true);
+            var ornament=OrnamentFor(data.Style,dark);Canvas.SetLeft(ornament,456);Canvas.SetTop(ornament,108+titleHeight+12);content.Children.Add(ornament);
+            SceneText(content,data.Message,270,92,24,18,dark,"HolidayCardMessage",false);
+            SceneText(content,data.DateText,378,52,20,16,dark,"HolidayCardDate",false);
+            SceneText(content,data.YearText,438,24,17,15,dark,"HolidayCardYear",false);
+            return content;
+        }
+        internal static byte[] RenderHoliday(HolidayKeepsakeCardData data,BitmapSource scene,bool dark)
+        {
+            var visual=CreateHoliday(data,scene,dark);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));visual.UpdateLayout();
+            var bitmap=new RenderTargetBitmap(800,480,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);
+            var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var memory=new MemoryStream()){png.Save(memory);return memory.ToArray();}
         }
         internal static System.Windows.Shapes.Path OrnamentFor(string style,bool dark)
         {
@@ -68,12 +92,12 @@ namespace Dafeiyu
         static double SceneText(Canvas canvas,string value,double y,double height,double size,double minimum,bool dark,string name,bool artistic)
         {
             var family=artistic?RelationshipTitleFont.FontForLocale(TextResources.CurrentLanguage,value):new FontFamily("Global User Interface");
-            var text=new TextBlock{Name=name,Text=value,Width=312,Height=height,FontSize=size,FontFamily=family,TextWrapping=TextWrapping.Wrap,TextTrimming=TextTrimming.None,Foreground=new SolidColorBrush(artistic?(dark?Color.FromRgb(255,231,177):Color.FromRgb(73,52,22)):(dark?Color.FromRgb(255,249,236):Color.FromRgb(38,61,97)))};
+            var text=new TextBlock{Name=name,Text=value,Width=312,Height=height,FontSize=size,FontFamily=family,TextWrapping=name=="HolidayCardName"?TextWrapping.NoWrap:TextWrapping.Wrap,TextTrimming=name=="HolidayCardName"?TextTrimming.CharacterEllipsis:TextTrimming.None,Foreground=new SolidColorBrush(artistic?(dark?Color.FromRgb(255,231,177):Color.FromRgb(73,52,22)):(dark?Color.FromRgb(255,249,236):Color.FromRgb(38,61,97)))};
             text.Language=System.Windows.Markup.XmlLanguage.GetLanguage(TextResources.CurrentLanguage.Replace('_','-'));
             double measured=height;
             // Measure the whole string with its actual local family; never truncate stage text.
             for(double candidate=size;candidate>=minimum;candidate--){
-                var probe=new TextBlock{Text=value,Width=312,FontSize=candidate,FontFamily=family,TextWrapping=TextWrapping.Wrap};
+                var probe=new TextBlock{Text=value,Width=312,FontSize=candidate,FontFamily=family,TextWrapping=text.TextWrapping};
                 probe.Language=System.Windows.Markup.XmlLanguage.GetLanguage(TextResources.CurrentLanguage.Replace('_','-'));
                 probe.Measure(new Size(312,Double.PositiveInfinity));
                 text.FontSize=candidate;measured=probe.DesiredSize.Height;

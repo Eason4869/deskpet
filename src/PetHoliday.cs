@@ -153,6 +153,7 @@ namespace Dafeiyu
         }
         void HolidayFrameRendered()
         {
+            var observed=ObserveHolidayEncounter(IsPetVisible&&Opacity>0&&image.Source!=null,HolidayEncounterKind.VisibleBuddy);
             if(!holidayPlayback.Active || holidayPlayback.FirstFrameRendered || shownMotion==null)return;
             holidayPlayback.MarkFirstFrameRendered();Holidays.MarkHoverFirstFrame(holidayPlayback.Ticket);
         }

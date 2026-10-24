@@ -45,6 +45,9 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--holiday-keepsake-lifecycle")){Console.WriteLine("HolidayLifecycle: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle()+" passed");return;}
+    if(args.Contains("--holiday-keepsake-presentation")){Console.WriteLine("HolidayPresentation: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-native/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--holiday-keepsake-ui="))){Console.WriteLine("HolidayKeepsakeUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.Run(args.Single(a=>a.StartsWith("--holiday-keepsake-ui=")).Split('=')[1],args.Contains("--sample"))+" passed");return;}
     if(args.Contains("--relationship-ornament-only")){Console.WriteLine("OrnamentOnly: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.OrnamentOnly()+" passed");return;}
     if(args.Any(a=>a.StartsWith("--relationship-stage-art-sample="))){Console.WriteLine("RelationshipStageArtSample: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Sample(args.Single(a=>a.StartsWith("--relationship-stage-art-sample=")).Split('=')[1])+" passed");return;}
     if(args.Any(a=>a.StartsWith("--relationship-stage-art="))){Console.WriteLine("RelationshipStageArtChecks: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(args.Single(a=>a.StartsWith("--relationship-stage-art=")).Substring(25),args.Contains("--resources"),args.Contains("--quick"))+" passed");return;}

@@ -17,6 +17,12 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     protected override Type StyleKeyOverride=>typeof(ScrollViewer);
     readonly DesktopController owner;
     readonly RelationshipHomeModel model;
+        readonly HolidayKeepsakeAlbumView holidayAlbum;
+        bool holidaySelected;
+        readonly Avalonia.Threading.DispatcherTimer holidayPulse=new Avalonia.Threading.DispatcherTimer();
+        internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
+        async void ObserveShownHome(){if(disposed)return;var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
+
     readonly SpriteAssets assets=new();
     readonly StackPanel body=Ui.Column();
     StackPanel? settingsControls;Button? retryControl;
@@ -35,13 +41,17 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     public Task PendingRetry {get;private set;}=Task.CompletedTask;
     public CompanionHomePage(DesktopController owner)
     {
-        this.owner=owner;model=new RelationshipHomeModel(owner.Relationships);Name="CompanionHomePage";
+        this.owner=owner;model=new RelationshipHomeModel(owner.Relationships);
+            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,()=>owner.Holidays.Catalog,async delegate{var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.DataDirectory);
+            holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
+            AttachedToVisualTree+=delegate{holidayPulse.Start();ObserveShownHome();};DetachedFromVisualTree+=delegate{holidayPulse.Stop();};
+Name="CompanionHomePage";
         VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
         Background=DesktopTheme.Surface;body.Margin=new Thickness(28,24,28,28);body.MaxWidth=1080;body.HorizontalAlignment=HorizontalAlignment.Stretch;Content=body;
         if(Application.Current!=null)Application.Current.ActualThemeVariantChanged+=ThemeChanged;owner.Relationships.Changed+=SavedChanged;owner.Changed+=IdentityChanged;SizeChanged+=(_,_)=>updateLayout?.Invoke();
         PropertyChanged+=(_,args)=>{if(args.Property==ViewportProperty)updateLayout?.Invoke();};
     }
-    void ThemeChanged(object? sender,EventArgs args){if(!disposed&&View!=null)Render();}
+    void ThemeChanged(object? sender,EventArgs args){if(!disposed&&View!=null){Render();var holidayRefresh=holidayAlbum.RefreshAsync();}}
     async void SavedChanged(){if(!disposed)await RefreshAsync();}
     async void IdentityChanged()
     {
@@ -54,7 +64,9 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     {
         if(disposed)return;string id=owner.RelationshipCompanionId;int version=++revision;
         if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label("relationship.home.loading"));}
-        var view=await model.LoadAsync(id,RelationshipTime.Current());
+        var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.OfficialCharacterId,owner.Skin.DisplayName);
+            var view=await model.LoadAsync(id,RelationshipTime.Current());
+            await holiday;
         if(disposed)return;
         if(version!=revision){await refreshTask;return;}
         if(id!=owner.RelationshipCompanionId){await RefreshAsync();return;}
@@ -114,6 +126,11 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
                 }
                 bottom=new Grid{Margin=new Thickness(0,4,0,20)};bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(78,GridUnitType.Star)});bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(22,GridUnitType.Star)});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.Children.Add(timeline);bottom.Children.Add(cards);body.Children.Add(bottom);
             }
+            var albumSelection=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,16)};
+            var relationshipTab=Ui.Button(TextResources.Get("holidayKeepsake.relationshipAlbum"),()=>{});var holidayTab=Ui.Button(TextResources.Get("holidayKeepsake.albumTitle"),()=>{});HomeVisual.SecondaryButton(relationshipTab);HomeVisual.SecondaryButton(holidayTab);
+            if(bottom!=null)body.Children.Remove(bottom);body.Children.Add(albumSelection);if(bottom!=null)body.Children.Add(bottom);body.Children.Add(holidayAlbum);
+            Action selectAlbum=delegate{relationshipTab.Background=holidaySelected?DesktopTheme.Surface:HomeVisual.Accent;holidayTab.Background=holidaySelected?HomeVisual.Accent:DesktopTheme.Surface;relationshipTab.Foreground=holidaySelected?DesktopTheme.Brush("#203754"):Brushes.White;holidayTab.Foreground=holidaySelected?Brushes.White:DesktopTheme.Brush("#203754");relationshipTab.FontWeight=holidaySelected?FontWeight.Normal:FontWeight.SemiBold;holidayTab.FontWeight=holidaySelected?FontWeight.SemiBold:FontWeight.Normal;holidayAlbum.IsVisible=holidaySelected;if(bottom!=null)bottom.IsVisible=!holidaySelected;};selectAlbum();
+            relationshipTab.Name="RelationshipAlbumTab";holidayTab.Name="HolidayAlbumTab";albumSelection.Children.Add(relationshipTab);albumSelection.Children.Add(holidayTab);relationshipTab.Click+=delegate{holidaySelected=false;selectAlbum();};holidayTab.Click+=delegate{holidaySelected=true;selectAlbum();};
             bool warning=View.ReadFailed||saveFailed||!String.IsNullOrEmpty(owner.Relationships.Warning);bool restart=owner.Relationships.RequiresRestart;
             var warningPanel=new StackPanel();var warningText=Label(restart?"relationship.home.restartRequired":View.ReadFailed?"relationship.home.readWarning":saveFailed?"relationship.home.settingsWarning":"relationship.saveWarning",13,"RelationshipWarning");warningText.IsVisible=warning;warningText.Foreground=DesktopTheme.Brush("#91682E");warningPanel.Children.Add(warningText);
             var actions=new WrapPanel{Margin=new Thickness(0,8,0,0)};var retry=Ui.Button(TextResources.Get("relationship.home.retry"),()=>{});retry.Name="RelationshipRetry";retry.IsVisible=warning&&!restart;retry.IsEnabled=!saving;retryControl=retry;retry.Click+=delegate{if(!BeginSaving())return;PendingRetry=RetryChangesAsync();};actions.Children.Add(retry);
@@ -153,5 +170,5 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     {
         var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
     }
-    public void Dispose(){if(disposed)return;disposed=true;revision++;if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
+    public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
 }

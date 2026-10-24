@@ -16,6 +16,12 @@ namespace Dafeiyu
     {
         readonly PetWindow owner;
         readonly RelationshipHomeModel model;
+        readonly HolidayKeepsakeAlbumView holidayAlbum;
+        bool holidaySelected;
+        readonly System.Windows.Threading.DispatcherTimer holidayPulse=new System.Windows.Threading.DispatcherTimer();
+        internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
+        async void ObserveShownHome(){if(disposed)return;var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
+
         readonly StackPanel body = new StackPanel();
         StackPanel settingsControls;Button retryControl;
         readonly RelationshipStageArtSource scenes=new RelationshipStageArtSource();
@@ -34,13 +40,17 @@ namespace Dafeiyu
         public CompanionHomePage(PetWindow owner)
         {
             this.owner = owner; model = new RelationshipHomeModel(owner.Relationships);
+            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,()=>owner.Holidays.Catalog,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
+            holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
+            Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
+
             PendingRetry=PendingSettings=Task.FromResult(true);Name = "CompanionHomePage"; VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; Background = ThemeManager.Surface;
             body.Margin = new Thickness(28,24,28,28); body.MaxWidth=1080; body.HorizontalAlignment=HorizontalAlignment.Stretch; Content = body;
             ThemeManager.Changed+=ThemeChanged;owner.Relationships.Changed += SavedChanged;SizeChanged+=delegate{if(updateLayout!=null)updateLayout();};
             ScrollChanged+=delegate(object sender,ScrollChangedEventArgs args){if(args.ViewportWidthChange!=0&&updateLayout!=null)updateLayout();};
         }
-        void ThemeChanged(){if(!disposed&&View!=null)Render();}
+        void ThemeChanged(){if(!disposed&&View!=null){Render();var holidayRefresh=holidayAlbum.RefreshAsync();}}
         void SavedChanged() { if (!disposed) ObserveRefresh(); }
         async void ObserveRefresh() { await RefreshAsync(); }
         internal void RefreshIdentity()
@@ -55,7 +65,9 @@ namespace Dafeiyu
             if (disposed) return;
             string id=owner.RelationshipCompanionId;int version=++revision;
             if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label("relationship.home.loading"));}
+            var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.IsOfficial?owner.Skin.BuiltinCharacterId:null,owner.Skin.DisplayName);
             var view=await model.LoadAsync(id,RelationshipTime.Current());
+            await holiday;
             if(disposed)return;
             if(version!=revision){if(refreshTask!=null)await refreshTask;return;}
             if(id!=owner.RelationshipCompanionId){await RefreshAsync();return;}
@@ -117,6 +129,11 @@ namespace Dafeiyu
                 }
                 bottom=new Grid{Margin=new Thickness(0,4,0,20)};bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(78,GridUnitType.Star)});bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(22,GridUnitType.Star)});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.Children.Add(timeline);bottom.Children.Add(cards);body.Children.Add(bottom);
             }
+            var albumSelection=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,16)};
+            var relationshipTab=Ui.Button(TextResources.Get("holidayKeepsake.relationshipAlbum"));var holidayTab=Ui.Button(TextResources.Get("holidayKeepsake.albumTitle"));
+            if(bottom!=null)body.Children.Remove(bottom);body.Children.Add(albumSelection);if(bottom!=null)body.Children.Add(bottom);body.Children.Add(holidayAlbum);
+            Action selectAlbum=delegate{relationshipTab.Background=holidaySelected?ThemeManager.Surface:HomeVisual.Accent;holidayTab.Background=holidaySelected?HomeVisual.Accent:ThemeManager.Surface;relationshipTab.Foreground=holidaySelected?AgentUi.Ink:Brushes.White;holidayTab.Foreground=holidaySelected?Brushes.White:AgentUi.Ink;relationshipTab.FontWeight=holidaySelected?FontWeights.Normal:FontWeights.SemiBold;holidayTab.FontWeight=holidaySelected?FontWeights.SemiBold:FontWeights.Normal;holidayAlbum.Visibility=holidaySelected?Visibility.Visible:Visibility.Collapsed;if(bottom!=null)bottom.Visibility=holidaySelected?Visibility.Collapsed:Visibility.Visible;};selectAlbum();
+            relationshipTab.Name="RelationshipAlbumTab";holidayTab.Name="HolidayAlbumTab";albumSelection.Children.Add(relationshipTab);albumSelection.Children.Add(holidayTab);relationshipTab.Click+=delegate{holidaySelected=false;selectAlbum();};holidayTab.Click+=delegate{holidaySelected=true;selectAlbum();};
             bool warning=View.ReadFailed||saveFailed||!String.IsNullOrEmpty(owner.Relationships.Warning);bool restart=owner.Relationships.RequiresRestart;
             var warningPanel=new StackPanel();var warningText=Label(restart?"relationship.home.restartRequired":View.ReadFailed?"relationship.home.readWarning":saveFailed?"relationship.home.settingsWarning":"relationship.saveWarning",13,"RelationshipWarning");warningText.Visibility=warning?Visibility.Visible:Visibility.Collapsed;warningText.Foreground=ThemeManager.Brush("#97580C","#FFD38A");warningPanel.Children.Add(warningText);
             var actions=new WrapPanel{Margin=new Thickness(0,8,0,0)};var retry=Ui.Button(TextResources.Get("relationship.home.retry"));retry.Name="RelationshipRetry";retry.Visibility=warning&&!restart?Visibility.Visible:Visibility.Collapsed;retry.IsEnabled=!saving;retryControl=retry;retry.Click+=delegate{if(!BeginSaving())return;PendingRetry=RetryChangesAsync();};actions.Children.Add(retry);
@@ -166,6 +183,6 @@ namespace Dafeiyu
         {
             var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
         }
-        public void Dispose(){if(disposed)return;disposed=true;revision++;ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
+        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
     }
 }

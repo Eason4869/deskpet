@@ -66,7 +66,7 @@ namespace DeskPet.Desktop;
         internal static Control Rules(){var panel=new StackPanel{Margin=new Thickness(0,12,0,0)};panel.Children.Add(Header("home",TextResources.Get("relationship.home.ruleVisit")));panel.Children.Add(Header("heart",TextResources.Get("relationship.home.ruleInteraction")));panel.Children.Add(Header("chat",TextResources.Get("relationship.home.ruleConversation")));panel.Children.Add(Header("work",TextResources.Get("relationship.home.ruleWork")));var total=HomeText(TextResources.Get("relationship.home.ruleLimit"),13,DesktopTheme.Brush("#7A7E86"));total.Margin=new Thickness(0,10,0,0);panel.Children.Add(total);return panel;}
         internal sealed class FocusToken
         {
-            internal string? CompanionId,StageId,ActionName,DisclosureName;
+            internal string? CompanionId,StageId,ActionName,DisclosureName,HolidayIdentity;
         }
         static IEnumerable<Control> Controls(Control root)=>new[]{root}.Concat(root.GetLogicalDescendants().OfType<Control>());
         internal static FocusToken? CaptureFocus(Control root,Control? focused)
@@ -75,6 +75,7 @@ namespace DeskPet.Desktop;
             var token=new FocusToken{ActionName=focused.Name};
             if(focused is Button button&&button.Name=="CompanionDisclosureHeader"&&button.Tag is Expander disclosure)token.DisclosureName=disclosure.Name;
             if(String.IsNullOrEmpty(token.ActionName)&&String.IsNullOrEmpty(token.DisclosureName))return null;
+            var holiday=focused.GetVisualAncestors().OfType<HolidayCardPreview>().FirstOrDefault();if(holiday!=null)token.HolidayIdentity=holiday.Tag as string;
             var card=focused.GetVisualAncestors().OfType<RelationshipCardPreview>().FirstOrDefault();
             if(card?.Tag is HomeCardCapture capture){token.CompanionId=capture.Data.CompanionId;token.StageId=capture.Data.StageId;}
             return token;
@@ -86,6 +87,7 @@ namespace DeskPet.Desktop;
         internal static Control? ResolveFocus(Control root,FocusToken? token)
         {
             if(token==null)return null;Control? scope=root;
+            if(token.HolidayIdentity!=null){scope=Controls(root).OfType<HolidayCardPreview>().FirstOrDefault(x=>(x.Tag as string)==token.HolidayIdentity);if(scope==null)return null;}
             if(token.StageId!=null){scope=Controls(root).OfType<RelationshipCardPreview>().FirstOrDefault(x=>x.Tag is HomeCardCapture capture&&capture.Data.StageId==token.StageId&&capture.Data.CompanionId==token.CompanionId);if(scope==null)return null;}
             if(!String.IsNullOrEmpty(token.DisclosureName)){var disclosure=Controls(scope).OfType<Expander>().FirstOrDefault(x=>x.Name==token.DisclosureName);return disclosure==null?null:DisclosureHeader(disclosure);}
             return Controls(scope).FirstOrDefault(x=>x.Name==token.ActionName);

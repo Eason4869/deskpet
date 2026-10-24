@@ -20,7 +20,7 @@ CACHE = ROOT / 'work/f4a/upstream'
 CJK = 'f8d157532fbfaeda587e826d4cd5b21a49186f7c'
 GF = 'e7db6ca603fd4862010383ff17ffd6cc4ffac1c0'
 LOCALES = ['zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES']
-KEYS = ['relationship.stage.'+s for s in ['first_meeting','familiar','close','trusted','heartfelt','best_friend']] + ['relationship.card.title','relationship.card.halloweenTitle']
+KEYS = ['relationship.stage.'+s for s in ['first_meeting','familiar','close','trusted','heartfelt','best_friend']] + ['relationship.card.title','relationship.card.halloweenTitle','holidayKeepsake.historyTitle']
 REGIONS = {'zh_CN':'SC','zh_TW':'TC','ja_JP':'JP','ko_KR':'KR','hi_IN':'Devanagari'}
 FACES = {
     'SC': ('notofonts/noto-cjk',CJK,'Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Regular.otf','Serif/LICENSE'),

@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "After all this time together, keep this moment for our future selves.",
   "relationship.card.firstDay": "The day we first met",
   "relationship.card.acquaintanceDay": "Day {0} since we met",
-  "relationship.card.halloweenTitle": "Halloween"
+  "relationship.card.halloweenTitle": "Halloween",
+  "holidayKeepsake.albumTitle": "Holiday keepsakes",
+  "holidayKeepsake.relationshipAlbum": "Relationship keepsakes",
+  "holidayKeepsake.savedCount": "{0} saved",
+  "holidayKeepsake.locked": "Not earned · Meet on the holiday to remember this year.",
+  "holidayKeepsake.unavailable": "Holiday artwork is unavailable. Check companion resources and retry.",
+  "holidayKeepsake.readError": "The album cannot be read; its count is unknown. Original files are preserved. Check access in the data folder or check for app updates before retrying.",
+  "holidayKeepsake.sceneError": "This saved scene could not be read. Its record is preserved.",
+  "holidayKeepsake.retry": "Retry",
+  "holidayKeepsake.previous": "Previous",
+  "holidayKeepsake.next": "Next",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "No holiday memories saved yet.",
+  "holidayKeepsake.halloweenMessage": "A little lantern light, a little magic — an ordinary night made wonderful together.",
+  "holidayKeepsake.historyMessage": "A holiday we shared, a memory to keep.",
+  "holidayKeepsake.historyTitle": "Companion keepsake"
 }

@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -41,17 +41,8 @@ internal static class RelationshipCardRenderer
     // Scene is borrowed from the page. This branch never loads or disposes artwork.
     internal static CompanionCardVisual CreateScene(RelationshipCardData data,Bitmap scene,bool dark)
     {
-        var content=new CompanionCardVisual{Width=800,Height=480,ClipToBounds=true,Background=dark?Brushes.MidnightBlue:Brushes.White};
-        content.Children.Add(new Image{Source=scene,Width=800,Height=480,Stretch=Stretch.Uniform});
-        var fade=new LinearGradientBrush();fade.StartPoint=new RelativePoint(0,0,RelativeUnit.Relative);fade.EndPoint=new RelativePoint(1,0,RelativeUnit.Relative);
-        var color=dark?Color.FromRgb(20,30,49):Color.FromRgb(248,249,251);
-        fade.GradientStops.Add(new GradientStop(Color.FromArgb(0,color.R,color.G,color.B),0));
-        fade.GradientStops.Add(new GradientStop(Color.FromArgb(0,color.R,color.G,color.B),.36));
-        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)85:(byte)90,color.R,color.G,color.B),.45));
-        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),.55));
-        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),1));
-        content.Children.Add(new Border{Name="RelationshipCardReadingGradient",Width=800,Height=480,Background=fade,IsHitTestVisible=false});
-        SceneText(content,TextResources.Get("relationship.card.title"),32,24,15,15,dark,"RelationshipCardTitle",false);
+        var content=SceneBackground(scene,dark);
+SceneText(content,TextResources.Get("relationship.card.title"),32,24,15,15,dark,"RelationshipCardTitle",false);
         SceneText(content,data.Name,62,38,27,22,dark,"RelationshipCardName",false);
         double titleHeight=SceneText(content,data.StageName,108,104,44,32,dark,"RelationshipCardStage",true);
         var ornament=OrnamentFor(data.StageId,dark);
@@ -62,6 +53,39 @@ internal static class RelationshipCardRenderer
         Avalonia.Automation.AutomationProperties.SetName(content,data.Name+" "+data.StageName+" "+data.MemoryText+" "+data.DateText+" "+data.AcquaintanceText);
         return content;
     }
+
+        static CompanionCardVisual SceneBackground(Bitmap scene,bool dark)
+        {
+        var content=new CompanionCardVisual{Width=800,Height=480,ClipToBounds=true,Background=dark?Brushes.MidnightBlue:Brushes.White};
+        content.Children.Add(new Image{Source=scene,Width=800,Height=480,Stretch=Stretch.Uniform});
+        var fade=new LinearGradientBrush();fade.StartPoint=new RelativePoint(0,0,RelativeUnit.Relative);fade.EndPoint=new RelativePoint(1,0,RelativeUnit.Relative);
+        var color=dark?Color.FromRgb(20,30,49):Color.FromRgb(248,249,251);
+        fade.GradientStops.Add(new GradientStop(Color.FromArgb(0,color.R,color.G,color.B),0));
+        fade.GradientStops.Add(new GradientStop(Color.FromArgb(0,color.R,color.G,color.B),.36));
+        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)85:(byte)90,color.R,color.G,color.B),.45));
+        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),.55));
+        fade.GradientStops.Add(new GradientStop(Color.FromArgb(dark?(byte)166:(byte)175,color.R,color.G,color.B),1));
+        content.Children.Add(new Border{Name="RelationshipCardReadingGradient",Width=800,Height=480,Background=fade,IsHitTestVisible=false});
+            return content;
+        }
+        internal static CompanionCardVisual CreateHoliday(HolidayKeepsakeCardData data,Bitmap scene,bool dark)
+        {
+            var content=SceneBackground(scene,dark);
+            SceneText(content,TextResources.Get("holidayKeepsake.albumTitle"),32,24,15,15,dark,"HolidayCardHeading",false);
+            SceneText(content,data.Name,62,38,27,22,dark,"HolidayCardName",false);
+            double titleHeight=SceneText(content,data.Title,108,104,44,32,dark,"HolidayCardTitle",true);
+            var ornament=OrnamentFor(data.Style,dark);Canvas.SetLeft(ornament,456);Canvas.SetTop(ornament,108+titleHeight+12);content.Children.Add(ornament);
+            SceneText(content,data.Message,270,92,24,18,dark,"HolidayCardMessage",false);
+            SceneText(content,data.DateText,378,52,20,16,dark,"HolidayCardDate",false);
+            SceneText(content,data.YearText,438,24,17,15,dark,"HolidayCardYear",false);
+            return content;
+        }
+        internal static byte[] RenderHoliday(HolidayKeepsakeCardData data,Bitmap scene,bool dark)
+        {
+            using var visual=CreateHoliday(data,scene,dark);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));
+            using var bitmap=new RenderTargetBitmap(new PixelSize(800,480),new Vector(96,96));bitmap.Render(visual);
+            using var memory=new MemoryStream();bitmap.Save(memory,new PngBitmapEncoderOptions());return memory.ToArray();
+        }
     internal static Avalonia.Controls.Shapes.Path OrnamentFor(string style,bool dark)
     {
         var decoration=Geometry.Parse(RelationshipCardDecoration.PathFor(style));
@@ -75,12 +99,12 @@ internal static class RelationshipCardRenderer
     static double SceneText(CompanionCardVisual canvas,string value,double y,double height,double size,double minimum,bool dark,string name,bool artistic)
     {
         var family=artistic?RelationshipTitleFont.FontForLocale(TextResources.CurrentLanguage,value):new FontFamily("Microsoft YaHei UI, PingFang SC, Noto Sans CJK SC, Noto Sans, Segoe UI");
-        var text=new TextBlock{Name=name,Text=value,Width=312,Height=height,FontSize=size,FontFamily=family,TextWrapping=TextWrapping.Wrap,TextTrimming=TextTrimming.None,Foreground=new SolidColorBrush(artistic?(dark?Color.FromRgb(255,231,177):Color.FromRgb(73,52,22)):(dark?Color.FromRgb(255,249,236):Color.FromRgb(38,61,97)))};
+        var text=new TextBlock{Name=name,Text=value,Width=312,Height=height,FontSize=size,FontFamily=family,TextWrapping=name=="HolidayCardName"?TextWrapping.NoWrap:TextWrapping.Wrap,TextTrimming=name=="HolidayCardName"?TextTrimming.CharacterEllipsis:TextTrimming.None,Foreground=new SolidColorBrush(artistic?(dark?Color.FromRgb(255,231,177):Color.FromRgb(73,52,22)):(dark?Color.FromRgb(255,249,236):Color.FromRgb(38,61,97)))};
 
         double measured=height;
         // Measure the whole string with its actual local family; never truncate stage text.
         for(double candidate=size;candidate>=minimum;candidate--){
-            var probe=new TextBlock{Text=value,Width=312,FontSize=candidate,FontFamily=family,TextWrapping=TextWrapping.Wrap};
+            var probe=new TextBlock{Text=value,Width=312,FontSize=candidate,FontFamily=family,TextWrapping=text.TextWrapping};
 
             probe.Measure(new Size(312,Double.PositiveInfinity));
             text.FontSize=candidate;measured=probe.DesiredSize.Height;

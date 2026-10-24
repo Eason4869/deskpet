@@ -29,6 +29,7 @@ internal sealed partial class PetWindow
     private string? rejectedOutfit;
     private bool refreshingHoliday, disposedHoliday, rejectingHoliday;
     private bool sessionInteractive = true;
+    internal bool KeepsakeInteractive=>sessionInteractive&&!owner.IsExiting;
     private ulong lifecycleRevision;
     private int observedTerminalRevision;
     internal Func<DateTime> HolidayLocalNow { get; set; } = () => DateTime.Now;
@@ -211,6 +212,7 @@ internal sealed partial class PetWindow
     }
     private void HolidayFrameRendered()
     {
+        _=owner.ObserveHolidayEncounter(IsPetVisible&&sprite.Clip!=null,HolidayEncounterKind.VisibleBuddy);
         if (!holidayPlayback.Active || holidayPlayback.FirstFrameRendered || sprite.Frame != 0 || committedOutfit == null || sprite.Clip?.File != SpriteAssets.OutfitClip(committedOutfit, holidayPlayback.Ticket.Clip).File) return;
         holidayPlayback.MarkFirstFrameRendered(); owner.Holidays.MarkHoverFirstFrame(holidayPlayback.Ticket);
     }

@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "यहाँ तक साथ चले हैं, इस पल को अपने आने वाले कल के लिए सँजो लें।",
   "relationship.card.firstDay": "हमारी पहली मुलाकात का दिन",
   "relationship.card.acquaintanceDay": "मुलाकात के बाद दिन {0}",
-  "relationship.card.halloweenTitle": "हैलोवीन"
+  "relationship.card.halloweenTitle": "हैलोवीन",
+  "holidayKeepsake.albumTitle": "त्योहार की यादें",
+  "holidayKeepsake.relationshipAlbum": "हमारे साथ की यादें",
+  "holidayKeepsake.savedCount": "{0} सहेजी गईं",
+  "holidayKeepsake.locked": "अभी नहीं मिला · त्योहार के दिन मिलकर इस साल की याद बनाएँ।",
+  "holidayKeepsake.unavailable": "त्योहार का चित्र उपलब्ध नहीं है। संसाधन जाँचकर फिर कोशिश करें।",
+  "holidayKeepsake.readError": "एल्बम पढ़ा नहीं जा सका; संख्या अज्ञात है। मूल फ़ाइलें सुरक्षित हैं। डेटा फ़ोल्डर की अनुमति या ऐप अपडेट जाँचें।",
+  "holidayKeepsake.sceneError": "सहेजा हुआ दृश्य पढ़ा नहीं जा सका। रिकॉर्ड सुरक्षित है।",
+  "holidayKeepsake.retry": "फिर कोशिश करें",
+  "holidayKeepsake.previous": "पिछला",
+  "holidayKeepsake.next": "अगला",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "अभी त्योहार की कोई याद नहीं सहेजी गई।",
+  "holidayKeepsake.halloweenMessage": "दीये की नरम रोशनी और थोड़ा जादू — साथ बिताई साधारण रात भी खास बन गई।",
+  "holidayKeepsake.historyMessage": "साथ मनाया त्योहार, सहेजने लायक एक याद।",
+  "holidayKeepsake.historyTitle": "साथ की यादें"
 }

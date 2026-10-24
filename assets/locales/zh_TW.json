@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "一路相伴至此，把這一刻留給未來的我們。",
   "relationship.card.firstDay": "相識的第一天",
   "relationship.card.acquaintanceDay": "相識第 {0} 天",
-  "relationship.card.halloweenTitle": "萬聖節"
+  "relationship.card.halloweenTitle": "萬聖節",
+  "holidayKeepsake.albumTitle": "節日紀念",
+  "holidayKeepsake.relationshipAlbum": "關係紀念",
+  "holidayKeepsake.savedCount": "已儲存 {0} 張",
+  "holidayKeepsake.locked": "尚未獲得 · 在節日當天相見，留下這一年的紀念。",
+  "holidayKeepsake.unavailable": "節日場景暫時無法使用，請檢查夥伴資源後重試。",
+  "holidayKeepsake.readError": "暫時無法讀取紀念冊，數量未知。原始檔案已保留。請開啟資料目錄檢查權限，或檢查應用程式更新。",
+  "holidayKeepsake.sceneError": "無法讀取這張紀念卡的場景，原有紀錄仍保留。",
+  "holidayKeepsake.retry": "重試",
+  "holidayKeepsake.previous": "上一頁",
+  "holidayKeepsake.next": "下一頁",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "尚未留下節日紀念。",
+  "holidayKeepsake.halloweenMessage": "這一夜，燈光溫柔，和你一起把平凡變成了奇妙。",
+  "holidayKeepsake.historyMessage": "和你一起度過的節日，已成為值得珍藏的回憶。",
+  "holidayKeepsake.historyTitle": "相伴紀念卡"
 }

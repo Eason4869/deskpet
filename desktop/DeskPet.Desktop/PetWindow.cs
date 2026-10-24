@@ -30,7 +30,7 @@ internal sealed partial class PetWindow : Window
     public bool IsPetVisible=>IsVisible && !fullscreenHidden && Opacity>0;
     private Point press;
     private PixelPoint start;
-    private double lastTime, wanderAt, runUntil, policyAt;
+    private double lastTime, wanderAt, runUntil, policyAt,keepsakeFrameAt;
     private double? walkTarget;
     private double motionX;
     private int direction = 1;
@@ -63,7 +63,7 @@ internal sealed partial class PetWindow : Window
         ContextMenu = BuildMenu();
         Opened += (_, _) => { owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);ApplySettings(); Clamp(); ConfigureNative(false); };
         timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => Tick());
-        Closed += (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
+        Closed += async (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; await owner.HolidayKeepsakes.FlushAsync();DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
         wanderAt = WanderSchedule.Next(0, random.NextDouble());
         ApplySettings();
         if (owner.Settings.X == null || owner.Settings.Y == null)
@@ -205,6 +205,7 @@ internal sealed partial class PetWindow : Window
     private void Tick()
     {
         var now = clock.Elapsed.TotalSeconds; var gap = now - lastTime; var dt = Math.Clamp(gap, 0, .125); lastTime = now;
+        if(IsPetVisible&&now>=keepsakeFrameAt){keepsakeFrameAt=now+1;sprite.InvalidateVisual();}
         var nativeWindow = NativeWindowHandle;
         var hasNativeWindow = nativeWindow != IntPtr.Zero;
         var wasInteractive = sessionInteractive;

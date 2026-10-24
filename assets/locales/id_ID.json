@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "Setelah perjalanan bersama ini, simpan momen ini untuk masa depan.",
   "relationship.card.firstDay": "Hari pertama kita bertemu",
   "relationship.card.acquaintanceDay": "Hari ke-{0} sejak kita bertemu",
-  "relationship.card.halloweenTitle": "Halloween"
+  "relationship.card.halloweenTitle": "Halloween",
+  "holidayKeepsake.albumTitle": "Kenangan hari raya",
+  "holidayKeepsake.relationshipAlbum": "Kenangan kebersamaan",
+  "holidayKeepsake.savedCount": "{0} tersimpan",
+  "holidayKeepsake.locked": "Belum didapat · Bertemulah pada hari raya untuk mengenang tahun ini.",
+  "holidayKeepsake.unavailable": "Ilustrasi tidak tersedia. Periksa sumber daya lalu coba lagi.",
+  "holidayKeepsake.readError": "Album tidak dapat dibaca; jumlah tidak diketahui. Berkas asli disimpan. Periksa akses folder data atau pembaruan aplikasi.",
+  "holidayKeepsake.sceneError": "Adegan tersimpan tidak dapat dibaca. Catatannya tetap disimpan.",
+  "holidayKeepsake.retry": "Coba lagi",
+  "holidayKeepsake.previous": "Sebelumnya",
+  "holidayKeepsake.next": "Berikutnya",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "Belum ada kenangan hari raya.",
+  "holidayKeepsake.halloweenMessage": "Cahaya lentera dan sedikit keajaiban — malam biasa menjadi istimewa bersamamu.",
+  "holidayKeepsake.historyMessage": "Hari raya bersama, kenangan untuk disimpan.",
+  "holidayKeepsake.historyTitle": "Kenang-kenangan bersama"
 }

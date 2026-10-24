@@ -4,4 +4,5 @@
   <ItemGroup><Compile Include="../../tests/RelationshipHomeFixtures.cs" Link="Tests/RelationshipHomeFixtures.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/RelationshipStageArtContractChecks.cs" Link="RelationshipStageArtContractChecks.cs" /></ItemGroup>
   <ItemGroup><Compile Include="../../tests/HolidayKeepsakeContractChecks.cs" Link="HolidayKeepsakeContractChecks.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../tests/HolidayKeepsakePresentationChecks.cs" Link="HolidayKeepsakePresentationChecks.cs" /></ItemGroup>
 </Project>

@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "一路相伴至此，把这一刻留给未来的我们。",
   "relationship.card.firstDay": "相识的第一天",
   "relationship.card.acquaintanceDay": "相识第 {0} 天",
-  "relationship.card.halloweenTitle": "万圣节"
+  "relationship.card.halloweenTitle": "万圣节",
+  "holidayKeepsake.albumTitle": "节日纪念",
+  "holidayKeepsake.relationshipAlbum": "关系纪念",
+  "holidayKeepsake.savedCount": "已保存 {0} 张",
+  "holidayKeepsake.locked": "未获得 · 在节日当天相见，留下这一年的纪念。",
+  "holidayKeepsake.unavailable": "节日场景暂不可用，请检查伙伴资源后重试。",
+  "holidayKeepsake.readError": "纪念册暂时无法读取，数量未知。原文件已保留。请打开数据目录检查访问权限，或检查应用更新后再试。",
+  "holidayKeepsake.sceneError": "这张纪念卡的场景无法读取。原有记录仍保留。",
+  "holidayKeepsake.retry": "重试",
+  "holidayKeepsake.previous": "上一页",
+  "holidayKeepsake.next": "下一页",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "尚未留下节日纪念。",
+  "holidayKeepsake.halloweenMessage": "这一夜，灯光温柔，和你一起把平凡变成了奇妙。",
+  "holidayKeepsake.historyMessage": "和你一起度过的节日，已经成为值得珍藏的回忆。",
+  "holidayKeepsake.historyTitle": "相伴纪念卡"
 }

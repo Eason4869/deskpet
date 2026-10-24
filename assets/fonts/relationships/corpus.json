@@ -7,7 +7,8 @@
     "relationship.stage.heartfelt": "心意相通",
     "relationship.stage.best_friend": "挚友",
     "relationship.card.title": "相伴纪念卡",
-    "relationship.card.halloweenTitle": "万圣节"
+    "relationship.card.halloweenTitle": "万圣节",
+    "holidayKeepsake.historyTitle": "相伴纪念卡"
   },
   "zh_TW": {
     "relationship.stage.first_meeting": "初次見面",
@@ -17,7 +18,8 @@
     "relationship.stage.heartfelt": "心意相通",
     "relationship.stage.best_friend": "摯友",
     "relationship.card.title": "相伴紀念卡",
-    "relationship.card.halloweenTitle": "萬聖節"
+    "relationship.card.halloweenTitle": "萬聖節",
+    "holidayKeepsake.historyTitle": "相伴紀念卡"
   },
   "en_US": {
     "relationship.stage.first_meeting": "First meeting",
@@ -27,7 +29,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Companion keepsake",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Companion keepsake"
   },
   "ja_JP": {
     "relationship.stage.first_meeting": "First meeting",
@@ -37,7 +40,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "ふたりの記念カード",
-    "relationship.card.halloweenTitle": "ハロウィン"
+    "relationship.card.halloweenTitle": "ハロウィン",
+    "holidayKeepsake.historyTitle": "ふたりの記念カード"
   },
   "ko_KR": {
     "relationship.stage.first_meeting": "First meeting",
@@ -47,7 +51,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "함께한 기념 카드",
-    "relationship.card.halloweenTitle": "할로윈"
+    "relationship.card.halloweenTitle": "할로윈",
+    "holidayKeepsake.historyTitle": "함께한 기념 카드"
   },
   "fr_FR": {
     "relationship.stage.first_meeting": "First meeting",
@@ -57,7 +62,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Souvenir de notre amitié",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Souvenir de notre amitié"
   },
   "de_DE": {
     "relationship.stage.first_meeting": "First meeting",
@@ -67,7 +73,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Erinnerung an unsere Freundschaft",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Erinnerung an unsere Freundschaft"
   },
   "hi_IN": {
     "relationship.stage.first_meeting": "First meeting",
@@ -77,7 +84,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "साथ की यादें",
-    "relationship.card.halloweenTitle": "हैलोवीन"
+    "relationship.card.halloweenTitle": "हैलोवीन",
+    "holidayKeepsake.historyTitle": "साथ की यादें"
   },
   "id_ID": {
     "relationship.stage.first_meeting": "First meeting",
@@ -87,7 +95,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Kenang-kenangan bersama",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Kenang-kenangan bersama"
   },
   "it_IT": {
     "relationship.stage.first_meeting": "First meeting",
@@ -97,7 +106,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Un ricordo insieme",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Un ricordo insieme"
   },
   "pt_BR": {
     "relationship.stage.first_meeting": "First meeting",
@@ -107,7 +117,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Lembrança da nossa companhia",
-    "relationship.card.halloweenTitle": "Dia das Bruxas"
+    "relationship.card.halloweenTitle": "Dia das Bruxas",
+    "holidayKeepsake.historyTitle": "Lembrança da nossa companhia"
   },
   "es_419": {
     "relationship.stage.first_meeting": "First meeting",
@@ -117,7 +128,8 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Recuerdo de nuestra compañía",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Recuerdo de nuestra compañía"
   },
   "es_ES": {
     "relationship.stage.first_meeting": "First meeting",
@@ -127,6 +139,7 @@
     "relationship.stage.heartfelt": "Heartfelt",
     "relationship.stage.best_friend": "Best friend",
     "relationship.card.title": "Recuerdo de nuestra compañía",
-    "relationship.card.halloweenTitle": "Halloween"
+    "relationship.card.halloweenTitle": "Halloween",
+    "holidayKeepsake.historyTitle": "Recuerdo de nuestra compañía"
   }
 }

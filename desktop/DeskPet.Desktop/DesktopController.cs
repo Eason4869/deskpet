@@ -73,6 +73,7 @@ internal sealed partial class DesktopController : IDisposable
         Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action));
         Directory.CreateDirectory(DataDirectory);
         Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
+        InitializeHolidayKeepsakes();
         runtime.InitializeProtection();
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
         bool firstLaunch = !File.Exists(settingsPath);
@@ -294,6 +295,7 @@ internal sealed partial class DesktopController : IDisposable
             var ordinary=ImageTaskCenterState.BeginExitDrain(DrainApplicationForExitAsync,out applicationExitDrain);
             await WorkBindings.StopForExitAsync(deadline.Token).WaitAsync(deadline.Token);
             await ordinary;
+            await HolidayKeepsakes.ShutdownAsync();
             await Dispatcher.UIThread.InvokeAsync(()=>{exitPrepared=true;lifetime.Shutdown();});
         }
         catch(OperationCanceledException error){exiting=false;throw new InvalidOperationException(TextResources.Get("agentJobs.exitBlocked"),error);}
@@ -302,7 +304,7 @@ internal sealed partial class DesktopController : IDisposable
     private async Task DrainApplicationForExitAsync()
     {
         await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
-        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();
+        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();await HolidayKeepsakes.FlushAsync();
     }
     private void FinalizeConversationServices()
     {
@@ -319,7 +321,7 @@ internal sealed partial class DesktopController : IDisposable
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
-        companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); officialCompanions.Dispose(); companionNative.Dispose();
+        companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();imageNoticeTimer.Stop();
         imageNotification?.Close();
@@ -331,6 +333,8 @@ internal sealed partial class DesktopController : IDisposable
         ImageServicesShutdown=Task.Run(async()=>
         {
             try{await applicationExitDrain;}catch(Exception){}
+            await HolidayKeepsakes.ShutdownAsync();
+            officialCompanions.Dispose();companionNative.Dispose();
             await ImageTasks.StopAsync(CancellationToken.None);
             await WorkBindings.StopForExitAsync();
             FinalizeConversationServices();

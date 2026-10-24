@@ -4637,5 +4637,20 @@
   "relationship.card.memoryBestFriend": "Après ce chemin ensemble, gardons cet instant pour demain.",
   "relationship.card.firstDay": "Le jour de notre rencontre",
   "relationship.card.acquaintanceDay": "Jour {0} depuis notre rencontre",
-  "relationship.card.halloweenTitle": "Halloween"
+  "relationship.card.halloweenTitle": "Halloween",
+  "holidayKeepsake.albumTitle": "Souvenirs de fêtes",
+  "holidayKeepsake.relationshipAlbum": "Souvenirs de notre lien",
+  "holidayKeepsake.savedCount": "{0} enregistrés",
+  "holidayKeepsake.locked": "À obtenir · Retrouvez-vous le jour de la fête.",
+  "holidayKeepsake.unavailable": "Illustration indisponible. Vérifiez les ressources puis réessayez.",
+  "holidayKeepsake.readError": "Album illisible, nombre inconnu. Les originaux sont conservés. Vérifiez les accès au dossier de données ou les mises à jour.",
+  "holidayKeepsake.sceneError": "Scène illisible. Le souvenir reste conservé.",
+  "holidayKeepsake.retry": "Réessayer",
+  "holidayKeepsake.previous": "Précédent",
+  "holidayKeepsake.next": "Suivant",
+  "holidayKeepsake.pageNumber": "{0} / {1}",
+  "holidayKeepsake.empty": "Aucun souvenir de fête enregistré.",
+  "holidayKeepsake.halloweenMessage": "Une douce lumière, un peu de magie : ensemble, cette nuit ordinaire devient merveilleuse.",
+  "holidayKeepsake.historyMessage": "Une fête partagée, un souvenir à garder.",
+  "holidayKeepsake.historyTitle": "Souvenir de notre amitié"
 }
