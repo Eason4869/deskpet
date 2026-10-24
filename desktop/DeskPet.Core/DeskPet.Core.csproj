@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/Relationships/*.cs" Link="Shared/Relationships/%(Filename)%(Extension)" />
     <Compile Include="../../src/TextResources.cs" Link="Shared/TextResources.cs" />
     <Compile Include="../../src/ApplicationRestart.cs" Link="Shared/ApplicationRestart.cs" />
     <Compile Include="../../src/ReplyLanguagePolicy.cs" Link="Shared/ReplyLanguagePolicy.cs" />
