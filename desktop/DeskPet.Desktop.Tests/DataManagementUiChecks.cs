@@ -55,6 +55,14 @@ internal static class DataManagementUiChecks
                 Check(!dialog.IsVisible&&owner.Pet.IsVisible,"native "+action+" "+cancel+" leaves pet alive");
             }
             var attachments=Named<Button>(host,"OpenPreservedAttachments");Click(attachments);Until(()=>attachments.IsEnabled);Check(Named<TextBlock>(host,"DataManagementStatus").Text==TextResources.Get("dataManagement.attachmentsEmpty"),"native missing attachment directory reports empty");
+            var emptyStatus=Named<TextBlock>(host,"DataManagementStatus");var previousWidth=host.Width;var previousHeight=host.Height;var previousTheme=DesktopTheme.IsDark?"dark":"light";
+            foreach(string theme in new[]{"light","dark"})foreach(int width in new[]{570,790}){
+                DesktopTheme.Apply(theme);host.Width=width;host.Height=860;Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var bounds=new Rect(emptyStatus.Bounds.Size).TransformToAABB(emptyStatus.TransformToVisual(host)!.Value);
+                Check(emptyStatus.IsEffectivelyVisible&&emptyStatus.Text==TextResources.Get("dataManagement.attachmentsEmpty")&&bounds.Left>=0&&bounds.Right<=host.Bounds.Width&&bounds.Top>=0&&bounds.Bottom<=host.Bounds.Height,"actual empty attachment status remains visible "+language+" "+theme+" "+width);
+                Capture(host,"attachments-empty-"+theme+"-"+width);
+            }
+            host.Width=previousWidth;host.Height=previousHeight;DesktopTheme.Apply(previousTheme);Dispatcher.UIThread.RunJobs();
             foreach(string action in new[]{"ClearAllHistory","RestoreDefaultPreferences"})using(owner.DataMaintenance.EnterActivity()){
                 var dialog=Open(action);Confirm(dialog);Check(Status(dialog)==TextResources.Get("dataMaintenance.busy"),"native confirmed action rechecks busy "+action);dialog.Close();
             }
@@ -96,9 +104,9 @@ internal static class DataManagementUiChecks
                 Capture(host,"hosted-570-"+route);
             }
             host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
-            foreach(string action in new[]{"ClearAllHistory","RestoreDefaultPreferences"})foreach(string theme in new[]{"light","dark"}){
-                DesktopTheme.Apply(theme);var dialog=Open(action);dialog.Width=380;dialog.Height=340;Dispatcher.UIThread.RunJobs();Capture(dialog,action+"-"+theme+"-380");
-                foreach(var button in dialog.GetVisualDescendants().OfType<Button>().Where(b=>b.Name is "ConfirmDataAction" or "CancelDataAction")) {var rect=new Rect(button.Bounds.Size).TransformToAABB(button.TransformToVisual(dialog)!.Value);Check(rect.Left>=0&&rect.Right<=dialog.Bounds.Width&&rect.Bottom<=dialog.Bounds.Height,"safe narrow confirmation action bounds "+language+" "+action+" "+button.Name);Check(!button.IsDefault,"maintenance confirmation has no Enter default");}dialog.Close();
+            foreach(string action in new[]{"ClearAllHistory","RestoreDefaultPreferences"})foreach(string theme in new[]{"light","dark"})foreach(int width in new[]{380,520}){
+                DesktopTheme.Apply(theme);var dialog=Open(action);dialog.Width=width;dialog.Height=340;Dispatcher.UIThread.RunJobs();Check(Math.Abs(dialog.Bounds.Width-width)<1,"actual confirmation width "+language+" "+action+" "+width);Capture(dialog,action+"-"+theme+"-"+width);
+                foreach(var button in dialog.GetVisualDescendants().OfType<Button>().Where(b=>b.Name is "ConfirmDataAction" or "CancelDataAction")) {var rect=new Rect(button.Bounds.Size).TransformToAABB(button.TransformToVisual(dialog)!.Value);Check(rect.Left>=0&&rect.Right<=dialog.Bounds.Width&&rect.Bottom<=dialog.Bounds.Height,"safe confirmation action bounds "+language+" "+action+" "+width+" "+button.Name);Check(!button.IsDefault,"maintenance confirmation has no Enter default");}dialog.Close();
             }
             Check(owner.Pet.IsVisible,"native successful operations leave pet alive");Console.WriteLine("Native data captures="+captures);return checks;
         }finally{host.Close();owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);}
