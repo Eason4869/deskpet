@@ -337,6 +337,7 @@ namespace Dafeiyu.Tests
             using(var service=new Service(root.Path,new AgentJobTestSupport.Clock()))
             {
                 service.InjectIO(io);Start(service,root.Path).GetAwaiter().GetResult();io.HoldMetadataCommit=true;
+                Task<IDisposable> maintenance=null;
                 try
                 {
                     var elapsed=System.Diagnostics.Stopwatch.StartNew();
@@ -345,9 +346,40 @@ namespace Dafeiyu.Tests
                     var report=exit.GetAwaiter().GetResult();
                     Check(!report.CleanupConfirmed&&elapsed.ElapsedMilliseconds<11000,"exit reports unconfirmed storage drain within the application deadline");
                     using(var second=new Service(root.Path,new AgentJobTestSupport.Clock()))Check(!second.Initialize().GetAwaiter().GetResult(),"stalled metadata retains the task-store lease after native cleanup");
+                    Check(io.CommitEntered.IsSet&&!service.Manager.HasActiveJobs,"held commit belongs to an already terminal job");
+                    maintenance=BeginAfterActivities(service.Manager.Maintenance);
+                    Check(!maintenance.Wait(200),"maintenance joins actual terminal metadata after failed exit deadline");
                 }
-                finally{io.HoldMetadataCommit=false;io.CommitRelease.Set();}
+                finally{io.HoldMetadataCommit=false;io.CommitRelease.Set();if(maintenance!=null)using(maintenance.GetAwaiter().GetResult()){} }
                 Check(service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"retry joins completed storage cleanup before releasing the application");
+            }
+        }
+        static async Task<IDisposable> BeginAfterActivities(Dafeiyu.Maintenance.DataMaintenanceGate gate)
+        {
+            var deadline=DateTime.UtcNow.AddSeconds(5);
+            while(true){try{return await gate.BeginAsync();}catch(InvalidOperationException){if(DateTime.UtcNow>=deadline)throw;}await Task.Delay(1);}
+        }
+        static void FailedCloseJoinsActualLogCommit()
+        {
+            using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var io=new AgentJobTestSupport.ControlledIO())
+            using(var service=new Service(root.Path,new AgentJobTestSupport.Clock(),io))
+            {
+                Start(service,root.Path).GetAwaiter().GetResult();
+                Check(service.Invoke<Task<AgentJobExitReport>>("PrepareForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"close fixture starts after terminal process cleanup");
+                io.HoldIndexCommit=true;Task<IDisposable> maintenance=null;
+                try
+                {
+                    using(var cancel=new CancellationTokenSource())
+                    {
+                        var exit=service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",cancel.Token);
+                        Check(io.IndexEntered.Wait(5000),"actual store close reached held index commit");cancel.Cancel();
+                        Check(!exit.GetAwaiter().GetResult().CleanupConfirmed,"cancelled close remains bounded with actual storage still held");
+                    }
+                    maintenance=BeginAfterActivities(service.Manager.Maintenance);
+                    Check(!maintenance.Wait(2300),"maintenance joins store close and flush even after close timeout");
+                }
+                finally{io.HoldIndexCommit=false;io.IndexRelease.Set();if(maintenance!=null)using(maintenance.GetAwaiter().GetResult()){} }
+                Check(service.Invoke<Task<AgentJobExitReport>>("StopAllForExitAsync",CancellationToken.None).GetAwaiter().GetResult().CleanupConfirmed,"released index commit permits maintenance and exit retry");
             }
         }
         static void PreparedExitRetainsLeaseUntilViewsDrain()
@@ -367,7 +399,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             checks=0;int failures=0;
-            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease,SynchronousCatalogMutationNeverQueuesOrWaits,PreparedExitRetainsLeaseUntilViewsDrain})
+            foreach(var test in new Action[]{ConcurrentInitializationAndRecovery,SecondHostCannotWriteBindings,ExitBlocksFutureInitializationAndWrites,ExitRetainsAnInitializingLeaseUntilRetry,CatalogGateOrdersProjectsAndReleasesAfterFailure,ExitJoinsCatalogMutationAndLeaseFailurePreventsWrites,FailedCleanupKeepsLeaseAndCatalogUnchanged,PersistentWorkspaceReceivesTheApplicationManager,RealConversationUsesTheInjectedApplicationService,StalledStorageKeepsTheExitAsyncAndRetainsTheLease,FailedCloseJoinsActualLogCommit,SynchronousCatalogMutationNeverQueuesOrWaits,PreparedExitRetainsLeaseUntilViewsDrain})
                 try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobLifecycleTests: "+checks+" passed");return failures==0?0:1;
         }

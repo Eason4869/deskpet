@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace Dafeiyu
 {
-    public sealed class AgentJobLogStore : IDisposable
+    public sealed partial class AgentJobLogStore : IDisposable
     {
         const int IndexMaximum=8192,FrameMaximum=65536,PageRecordMaximum=256;
         const long SegmentMaximum=(AgentJobPolicy.MaximumJobLogBytes-2*IndexMaximum)/2;
@@ -194,7 +194,8 @@ namespace Dafeiyu
             locations.Add(new Location{Sequence=item.Frame.Sequence,Segment=activeSegment,Offset=offset,Length=item.Bytes.Length,BodyBytes=item.BodyBytes});
             if(clock.ElapsedMilliseconds-lastIndexMilliseconds>=1000)WriteIndex();
         }
-        public async Task FlushAsync(CancellationToken token)
+        public Task FlushAsync(CancellationToken token){return maintenanceFlushes.Track(FlushCoreAsync(token));}
+        async Task FlushCoreAsync(CancellationToken token)
         {
             Task<bool> wait;lock(appendGate){EnsureReadable();if(failure!=null)throw new IOException("log_storage_failed",failure);wait=drained.Task;}
             await AgentAuthorizationService.AwaitCancellation(wait,token).ConfigureAwait(false);

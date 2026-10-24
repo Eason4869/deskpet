@@ -24,7 +24,7 @@ namespace Dafeiyu.Tests
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();Wait(pet.AgentJobs.InitializeAsync());
                 var gate=pet.DataMaintenance;
                 if(!ReferenceEquals(gate,pet.Conversation.Maintenance)||!ReferenceEquals(gate,pet.Dictation.Maintenance)||!ReferenceEquals(gate,pet.Live.Maintenance)||!ReferenceEquals(gate,pet.Workspaces.Maintenance)||!ReferenceEquals(gate,pet.AgentJobs.Maintenance))throw new Exception("WPF producer gates differ");
-                pet.Activate();if(!pet.CanApplyUpdate(true))throw new Exception("Update admission fixture was not initially idle");
+                pet.Activate();if(!pet.CanApplyUpdate(true))throw new Exception("Update admission fixture was not initially idle: fullscreen="+DesktopInterop.ForegroundIsFullScreen()+", jobs="+pet.HasActiveAgentJobs+", saveWarning="+pet.HasHistorySaveWarning+", conversation="+pet.Conversation.IsBusy+", workspace="+pet.Workspaces.Busy);
                 var acquired=gate.BeginAsync();Wait(acquired);using(acquired.Result)
                 {
                     if(pet.CanApplyUpdate(true)||pet.CanApplyUpdate(false))throw new Exception("Update can close the host during maintenance");

@@ -98,6 +98,26 @@ namespace Dafeiyu.Tests
                     await Rejected(async()=>{using(await gate.BeginAsync()){} });await manager.StopAsync(owner,job.Id,AgentJobStopReason.User,CancellationToken.None);using(await AfterTerminalTails(gate)){}
                 }
             });
+            Run("cancelled log flush still drains the actual terminal job append",async()=>{
+                var gate=new DataMaintenanceGate();var clock=new AgentJobTestSupport.Clock();
+                using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var io=new AgentJobTestSupport.ControlledIO())
+                using(var store=new AgentJobStore(root.Path,clock,io)){
+                    string id=Guid.NewGuid().ToString("N");await store.SaveAsync(AgentJobTestSupport.Snapshot(root.Path,id,AgentJobState.Stopped,clock),CancellationToken.None);
+                    var manager=new AgentJobManager(store,new JobFactory(),clock,gate);await manager.RecoverAsync(CancellationToken.None);
+                    var log=store.OpenLog(id);io.HoldWrites=true;Task<IDisposable> maintenance=null;bool held=false;
+                    try{
+                        var bytes=System.Text.Encoding.UTF8.GetBytes("held terminal output");log.Append(new AgentJobOutputChunk("stdout",bytes,bytes.Length,clock.UtcNow));log.Complete();
+                        Check(io.Entered.Wait(5000),"log append never reached held real IO");
+                        using(var cancel=new CancellationTokenSource()){
+                            var flush=log.FlushAsync(cancel.Token);cancel.Cancel();bool cancelled=false;try{await flush;}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"flush caller ignored cancellation");
+                        }
+                        maintenance=gate.BeginAsync();await Task.Delay(100);held=!maintenance.IsCompleted;
+                    }finally{io.HoldWrites=false;io.Release.Set();}
+                    if(maintenance!=null)using(await maintenance){}
+                    Check(held,"cancelled flush hid its actual append");
+                    Check((await log.ReadAsync("",4096,CancellationToken.None)).Records.Count>0,"joined append was lost");
+                }
+            });
             Run("simultaneous actual send and maintenance have exactly one admitted owner",async()=>{
                 for(int attempt=0;attempt<25;attempt++){
                     var gate=new DataMaintenanceGate();var api=new Api{Hold=true};using(var session=Session(gate,null,api))using(var start=new ManualResetEventSlim(false)){

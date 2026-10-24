@@ -151,7 +151,7 @@ namespace Dafeiyu
         public Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token){return StopForExitAsync(token,true);}
         public Task<AgentJobExitReport> PrepareForExitAsync(CancellationToken token){return StopForExitAsync(token,false);}
         async Task<AgentJobExitReport> StopForExitAsync(CancellationToken token,bool releaseStore)
-        {
+        {using(Maintenance.EnterActivity()){
             var elapsed=Stopwatch.StartNew();Task<bool> pending;Task[] admitted;
             AgentJobExitReport completed=null;
             lock(gate){exiting=true;cleanupConfirmed=false;pending=initialization;admitted=mutations.ToArray();}
@@ -173,7 +173,7 @@ namespace Dafeiyu
                     lock(gate)
                     {
                         if(store!=null&&(storeClosing==null||storeClosing.IsFaulted||storeClosing.IsCanceled))
-                        {var ownedStore=store;storeClosing=Task.Run(()=>ownedStore.Dispose());}
+                        {var ownedStore=store;storeClosing=ownedStore.TrackMaintenance(Task.Run(()=>ownedStore.Dispose()));}
                         closing=storeClosing;
                     }
                     if(closing!=null)await AgentAuthorizationService.AwaitCancellation(closing.ContinueWith(task=>{task.GetAwaiter().GetResult();return true;},TaskScheduler.Default),deadline.Token).ConfigureAwait(false);
@@ -187,7 +187,7 @@ namespace Dafeiyu
                 }
                 catch(Exception error){Debug.WriteLine(error);return new AgentJobExitReport(false,completed==null?new AgentJobSnapshot[0]:completed.Jobs,elapsed.ElapsedMilliseconds);}
             }
-        }
+        }}
         public void Dispose()
         {
             lock(gate)

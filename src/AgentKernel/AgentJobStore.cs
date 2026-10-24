@@ -15,7 +15,7 @@ namespace Dafeiyu
         public string Code {get;private set;}
         internal AgentJobStorageWarning(string jobId,string code){JobId=jobId;Code=code;}
     }
-    public sealed class AgentJobStore : IDisposable
+    public sealed partial class AgentJobStore : IDisposable
     {
         readonly object ioGate=new object();
         readonly IAgentJobClock clock;
@@ -126,7 +126,7 @@ namespace Dafeiyu
         public Task SaveAsync(AgentJobSnapshot snapshot,CancellationToken token)
         {
             if(snapshot==null)throw new ArgumentNullException("snapshot");var record=snapshot.ToRecord();
-            return Task.Run(delegate{token.ThrowIfCancellationRequested();lock(ioGate){token.ThrowIfCancellationRequested();SaveCore(record);}},token);
+            return TrackMaintenance(Task.Run(delegate{token.ThrowIfCancellationRequested();lock(ioGate){token.ThrowIfCancellationRequested();SaveCore(record);}},token));
         }
         AgentJobRecord ReadCore(string path)
         {

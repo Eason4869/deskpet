@@ -42,7 +42,7 @@ namespace Dafeiyu
         public event Action Changed;
         public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock):this(store,factory,clock,null){}
         public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock,Dafeiyu.Maintenance.DataMaintenanceGate maintenance)
-        {Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();maintenanceRegistration=Maintenance.Register(()=>Task.FromResult(0),()=>HasActiveJobs,this);if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;store.Retired+=Retire;}
+        {if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();maintenanceRegistration=Maintenance.Register(store.DrainMaintenanceAsync,()=>HasActiveJobs,this);store.Retired+=Retire;}
         void Retire(string id)
         {
             lock(gate)
@@ -123,7 +123,7 @@ namespace Dafeiyu
             }catch{admission.Dispose();throw;}
         }
         static async Task<AgentJobSnapshot> JoinStartAsync(Task<AgentJobSnapshot> pending,IDisposable admission){try{return await pending.ConfigureAwait(false);}finally{admission.Dispose();}}
-        internal void RetireMaintenance(){maintenanceRegistration.Dispose();}
+        internal void RetireMaintenance(){store.DrainMaintenanceAsync().ContinueWith(done=>{var observed=done.Exception;maintenanceRegistration.Dispose();},TaskScheduler.Default);}
         async void CompleteStartAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken,TaskCompletionSource<AgentJobSnapshot> result,IDisposable admission)
         {
             await entry.Mutation.WaitAsync().ConfigureAwait(false);
