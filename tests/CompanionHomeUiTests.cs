@@ -21,6 +21,14 @@ namespace Dafeiyu.Tests
         static bool Ink(BitmapSource source,Int32Rect region)
         {var converted=new FormatConvertedBitmap(source,PixelFormats.Bgra32,null,0);var bytes=new byte[region.Width*region.Height*4];converted.CopyPixels(region,bytes,region.Width*4,0);int ink=0;for(int i=0;i<bytes.Length;i+=4)if(bytes[i]+bytes[i+1]+bytes[i+2]<650&&bytes[i+3]>200)ink++;return ink>100;}
         static void Capture(FrameworkElement w,string file){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(file))png.Save(f);}
+        static async Task CaptureFeedback(RelationshipFeedbackWindow window,string captures,string locale,string kind)
+        {
+            foreach(string theme in new[]{"light","dark"}){
+                ThemeManager.Apply(theme);await Task.Delay(60);Capture(window,Path.Combine(captures,locale+"-"+theme+"-"+kind+"-feedback.png"));
+                var name=All<TextBlock>(window).Single(t=>t.ToolTip as string==pet.Skin.DisplayName);string original=name.Text;
+                name.Text="很长的伙伴名字 · A companion with a long localized name";window.Width=260;await Task.Delay(30);Capture(window,Path.Combine(captures,locale+"-"+theme+"-"+kind+"-feedback-narrow.png"));name.Text=original;window.Width=350;
+            }
+        }
         static async Task Run(string locale)
         {
             string captures=Path.GetFullPath(Path.Combine("work","relationship-validation","wpf"));Directory.CreateDirectory(captures);
@@ -32,7 +40,7 @@ namespace Dafeiyu.Tests
             Check(!feedbackWindow.ShowActivated&&!feedbackWindow.ShowInTaskbar,"actual saved stage window does not request focus or taskbar entry");
             Check(pet.Animation.State=="idle","paused pet is not interrupted by automatic celebration");
             Check(pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==156,"automatic popup and celebration add no points");
-            Capture(feedbackWindow,Path.Combine(captures,locale+"-stage-feedback.png"));pet.Settings.QuietMode=true;deadline.Restart();while(feedbackWindow.IsVisible&&deadline.ElapsedMilliseconds<1500)await Task.Delay(10);Check(!feedbackWindow.IsVisible,"quiet mode dismisses an already-visible automatic notice");pet.Settings.QuietMode=false;pet.SetPaused(false);
+            await CaptureFeedback(feedbackWindow,captures,locale,"stage");pet.Settings.QuietMode=true;deadline.Restart();while(feedbackWindow.IsVisible&&deadline.ElapsedMilliseconds<1500)await Task.Delay(10);Check(!feedbackWindow.IsVisible,"quiet mode dismisses an already-visible automatic notice");pet.Settings.QuietMode=false;pet.SetPaused(false);
             pet.PlayAction("waiting",100);pet.CelebrateRelationship("familiar");Check(pet.Animation.State=="waiting","celebration never preempts an existing manual action");
             pet.Animation.Play("idle",0);pet.CelebrateRelationship("familiar");await pet.Relationships.FlushAsync();Check(pet.Animation.State=="waving"&&pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==156,"actual automatic celebration plays without interaction rewards");
             await Task.Delay(100);var chat=app.Windows.OfType<ChatWindow>().Single(x=>x.IsVisible);
@@ -81,7 +89,7 @@ namespace Dafeiyu.Tests
             var settingsModel=new RelationshipHomeModel(pet.Relationships);Check((await settingsModel.UpdateSettingsAsync(true,true,true)).Success,"feedback window fixture enables saved feedback");
             await pet.Relationships.Enqueue(originalId,RelationshipEventType.CompletedConversation,"feedback-window-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());
             deadline.Restart();while(!app.Windows.OfType<RelationshipFeedbackWindow>().Any()){if(deadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");await Task.Delay(10);}
-            var savedNotice=app.Windows.OfType<RelationshipFeedbackWindow>().Single();await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
+            var savedNotice=app.Windows.OfType<RelationshipFeedbackWindow>().Single();await CaptureFeedback(savedNotice,captures,locale,"gain");await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
             byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
             var failedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(failedFeedback,null);await page.PendingSettings;
             Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();

@@ -20,6 +20,19 @@ internal static class CompanionHomeUiChecks
         void Complete(Task task,int timeout=15000){var timer=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(timer.ElapsedMilliseconds>timeout)throw new TimeoutException("Companion fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
         T Named<T>(Control root,string name) where T:Control=>root.GetLogicalDescendants().OfType<T>().Single(x=>x.Name==name);
         void Click(Button b)=>b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        void CaptureFeedback(RelationshipFeedbackWindow window,string kind)
+        {
+            var captures=Path.GetFullPath(Path.Combine("work","relationship-validation","avalonia"));Directory.CreateDirectory(captures);
+            void Capture(string suffix){AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var rendered=window.CaptureRenderedFrame())rendered!.Save(Path.Combine(captures,suffix+".png"),new PngBitmapEncoderOptions());
+                // The headless framebuffer is RGB. Preserve a transparent Skia visual
+                // capture too, so the outer-corner alpha can be inspected directly.
+                using(var surface=new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(window.Bounds.Width),(int)Math.Ceiling(window.Bounds.Height)))){surface.Render(window);surface.Save(Path.Combine(captures,suffix+"-surface.png"),new PngBitmapEncoderOptions());}}
+            foreach(string theme in new[]{"light","dark"}){
+                DesktopTheme.Apply(theme);Dispatcher.UIThread.RunJobs();Capture(language+"-"+theme+"-"+kind+"-feedback");
+                var name=window.GetLogicalDescendants().OfType<TextBlock>().Single(t=>ToolTip.GetTip(t) is string);string? original=name.Text;
+                name.Text="很长的伙伴名字 · A companion with a long localized name";window.Width=260;Dispatcher.UIThread.RunJobs();Capture(language+"-"+theme+"-"+kind+"-feedback-narrow");name.Text=original;window.Width=350;
+            }
+        }
         Directory.CreateDirectory(directory);
         SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=language,OnboardingState="completed",AutoUpdate=false});
         var lifetime=new ClassicDesktopStyleApplicationLifetime();using var owner=new DesktopController(lifetime,new FixtureRuntime(directory));
@@ -31,7 +44,7 @@ internal static class CompanionHomeUiChecks
             Check(!passive.ShowActivated&&!passive.ShowInTaskbar,"actual saved stage window does not request focus or taskbar entry");
             Check((string)typeof(PetWindow).GetProperty("action",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)! == "idle","paused pet is not interrupted by automatic celebration");
             Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==156,"automatic popup and celebration add no points");
-            var feedbackCaptures=Path.GetFullPath(Path.Combine("work","relationship-validation","avalonia"));Directory.CreateDirectory(feedbackCaptures);AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var rendered=passive.CaptureRenderedFrame())rendered!.Save(Path.Combine(feedbackCaptures,language+"-stage-feedback.png"),new PngBitmapEncoderOptions());
+            CaptureFeedback(passive,"stage");
             // RunJobs deliberately ignores OS events; a real dispatcher frame is required
             // to exercise DispatcherTimer, matching the existing native job UI fixture.
             owner.Settings.QuietMode=true;feedbackDeadline.Restart();var frame=new DispatcherFrame();
@@ -100,7 +113,7 @@ internal static class CompanionHomeUiChecks
             var settingsModel=new RelationshipHomeModel(owner.Relationships);var enable=settingsModel.UpdateSettingsAsync(true,true,true);Complete(enable);Check(enable.Result.Success,"feedback window fixture enables saved feedback");
             Complete(owner.Relationships.Enqueue(originalId,RelationshipEventType.CompletedConversation,"feedback-window-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current()));
             RelationshipFeedbackWindow? savedNotice=null;feedbackDeadline.Restart();while(savedNotice==null){if(feedbackDeadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);savedNotice=(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);}
-            Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
+            CaptureFeedback(savedNotice,"gain");Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
             var failedFeedback=Named<CheckBox>(page,"RelationshipFeedbackEnabled");failedFeedback.IsChecked=false;failedFeedback.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));Complete(page.PendingSettings);
             Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();
             var savedFeedback=Named<CheckBox>(page,"RelationshipFeedbackEnabled");savedFeedback.IsChecked=false;savedFeedback.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));Complete(page.PendingSettings);Dispatcher.UIThread.RunJobs();
