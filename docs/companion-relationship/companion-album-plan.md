@@ -34,6 +34,7 @@
 - 不新增六阶段几何徽章帮助类。优先复用原生图像和文字布局；确需共享只读排版参数时放入现有展示层，禁止业务计算或新持久化schema。
 - Tests: `tests/CompanionHomeUiTests.cs`, `desktop/DeskPet.Desktop.Tests/CompanionHomeUiChecks.cs`；仅针对图像与卡面边界需要时加小型测试文件并接入原测试入口。
 - Resources: `assets/locales/*.json`；文档更新本设计及入口表中本轮新增显示说明。
+- Modify: `src/Relationships/RelationshipCard.cs`，只读捕获首次相识日期、里程碑当日相识天数及六阶段本地化纪念文字；不改变账本schema或计分。
 
 **Consumes:** RelationshipHomeView/Snapshot、RelationshipContent.Welcome(stageId,pack)、RelationshipCardData.FromSnapshot、现有HomeCardCapture、预览及文件保存合同。只从已保存阶段读取留言。图像API与所有权注意见builder check。
 
@@ -42,6 +43,7 @@
 - [ ] 先覆盖真实风险：当前阶段与历程欢迎语对应；未初始化不伪造；长文展开/焦点保持；损坏preview与avatar回退；透明边界保留实际像素；多次换伙伴/同ID换装图像来源正确。保留现有S2回归断言，不为像素微调写镜像测试。
 - [ ] 运行新增重点测试，记录真实失败，再实现小型静态图像与阶段图形帮助类。预览加载失败不得令整页或导出崩溃。
 - [ ] 实现新800×480卡面：独立肖像区和边界明确的阶段/姓名/日期区，无装饰圆弧；捕获主题与本地化文字。输出六阶段浅深卡图并直接查看，验证长名/长日期图像边界及导出字节一致。
+- [ ] 按设计补充阶段纪念文字与里程碑当日相识天数。测试FirstLocalDate=2026-10-05、EarnedLocalDate=2026-10-12得到8；后来再次截图仍为8，不能变为当前相识天数；缺失/倒置日期省略该字段，原文件不改。验证六阶段文字不同、固定PNG不裁切且完整文本可访问。
 - [ ] 接入顶部人物/留言/关系布局、纪念册及历程分区，按实际容器宽度在单/双列切换；保留所有入口、已保存状态、恢复警告与S2展开/滚动/焦点合同。
 - [ ] 两端相关UI测试中英/长德语，使用现有SDK与WPF自有非活动桌面；全分支测试在M6，不重复无关维护套件。真实桌面焦点SKIP继续明确。
 - [ ] 交付浅深宽窄、零分/最高/错误、长留言展开、导入角色与图像回退的实际截图；截图和生成卡面元数据清单，说明headless/inactive限制。原图库不覆盖。
