@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
@@ -110,6 +110,28 @@ internal static class HolidayKeepsakeUiChecks
         interactive.SetValue(owner.Pet,true);Render();Check(Result(owner.HolidayKeepsakes.LoadAsync(owner.RelationshipCompanionId)).Records.Count==1,"actual visible unlocked frame earns while wardrobe disabled and quiet");
         Complete((Task)typeof(DesktopController).GetMethod("DrainApplicationForExitAsync",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(owner,null)!);Check(Result(owner.HolidayKeepsakes.ObserveAsync(new HolidayKeepsakeEncounter(owner.RelationshipCompanionId,"e-bao","resumed after preparation",Earned),Catalog())).Status==HolidayKeepsakeObservationStatus.Completed,"ordinary exit preparation leaves admission available until final exit is accepted");
         owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);Check(Result(owner.HolidayKeepsakes.ObserveAsync(new HolidayKeepsakeEncounter(owner.RelationshipCompanionId,"e-bao","late",Earned),Catalog())).Status==HolidayKeepsakeObservationStatus.Closed,"application shutdown closes and awaits holiday runtime");
+    }
+    internal static int BetweenReadUi()
+    {
+        TextResources.ConfigureStartupLanguage("zh_CN");
+        foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/h1b/r1/native-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
+        using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>fixture.CapturedCatalog,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
+            var window=new Window{Width=900,Height=760,Content=new ScrollViewer{Content=view}};window.Show();
+            try{
+                Complete(view.SetIdentityAsync(fixture.Saved.CompanionId,fixture.Saved.CharacterId,fixture.Saved.CompanionName));
+                Check(view.SavedCount==2&&view.DecodedCount==2,"healthy real-store page displays both retained scenes before phase failure");
+                Complete(fixture.StartFailure(()=>view.RefreshAsync(),incompatible));
+                Check(fixture.MutationRan&&view.SavedCount==2&&view.DecodedCount==0,"between-read failure preserves actual saved count without inventing images");
+                var details=view.GetLogicalDescendants().OfType<TextBlock>().Where(x=>x.Name=="HolidayCardErrorMetadata").ToArray();
+                Check(details.Length==2&&details.Select(x=>x.Tag).Distinct().Count()==2,"actual native error view retains both full historical record identities");
+                Check(details.Any(x=>x.Text!.Contains(fixture.Saved.CompanionName)&&x.Text.Contains("2026")&&x.Text.Contains(RelationshipCardData.FormatDate(fixture.Saved.EarnedLocalDate))),"actual native error metadata keeps saved name/year/date");
+                Check(view.GetLogicalDescendants().OfType<TextBlock>().Count(x=>x.Text==TextResources.Get("holidayKeepsake.sceneError"))==2&&view.GetLogicalDescendants().OfType<Button>().Count(x=>x.Name=="SaveHolidayCard"&&!x.IsEnabled)==2,"actual native state-read errors are explicit and saved actions disabled");
+                fixture.Restore();Complete(view.RefreshAsync());
+                var restored=view.GetLogicalDescendants().OfType<HolidayCardPreview>().Single(x=>x.Capture.Data.HolidayId=="halloween").Capture.Data.Record;
+                Check(view.SavedCount==2&&view.DecodedCount==2&&restored.SceneSha256==fixture.Saved.SceneSha256&&restored.EarnedLocalDate==fixture.Saved.EarnedLocalDate,"restored native page uses the original saved scene hash and facts");
+            }finally{window.Close();}
+        }
+        return count;
     }
     static void CheckSave(HolidayCardCapture capture,string output,string character,bool dark)
     {

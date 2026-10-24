@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -96,6 +96,27 @@ namespace Dafeiyu.Tests
             Check(page.View.ReadFailed&&album.SavedCount==2&&album.DecodedCount==2&&album.Visibility==Visibility.Visible,"holiday album stays usable with an unreadable independent relationship ledger");Capture(window,Path.Combine(output,"independent-ledger-error-dark.png"));
             using(var fresh=new CompanionHomePage(owner)){window.Content=fresh;await fresh.RefreshAsync();Click(fresh,"HolidayAlbumTab");fresh.UpdateLayout();var independent=All<HolidayKeepsakeAlbumView>(fresh).Single();Check(fresh.View.Snapshot==null&&fresh.View.ReadFailed&&independent.SavedCount==2&&independent.DecodedCount==2,"cold relationship read failure still mounts independently saved holiday album");Capture(window,Path.Combine(output,"cold-ledger-error-dark.png"));window.Content=page;}
         }
+        static async Task BetweenReadUi()
+        {
+            foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/h1b/r1/wpf-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
+            using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>fixture.CapturedCatalog,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
+                var window=new Window{Width=900,Height=760,Content=new ScrollViewer{Content=view}};window.Show();
+                try{
+                    await view.SetIdentityAsync(fixture.Saved.CompanionId,fixture.Saved.CharacterId,fixture.Saved.CompanionName);
+                    Check(view.SavedCount==2&&view.DecodedCount==2,"healthy real-store page displays both retained scenes before phase failure");
+                    await fixture.StartFailure(()=>view.RefreshAsync(),incompatible);view.UpdateLayout();
+                    Check(fixture.MutationRan&&view.SavedCount==2&&view.DecodedCount==0,"between-read failure preserves actual saved count without inventing images");
+                    var details=All<TextBlock>(view).Where(x=>x.Name=="HolidayCardErrorMetadata").ToArray();
+                    Check(details.Length==2&&details.Select(x=>x.Tag).Distinct().Count()==2,"actual WPF error view retains both full historical record identities");
+                    Check(details.Any(x=>x.Text.Contains(fixture.Saved.CompanionName)&&x.Text.Contains("2026")&&x.Text.Contains(RelationshipCardData.FormatDate(fixture.Saved.EarnedLocalDate))),"actual WPF error metadata keeps saved name/year/date");
+                    Check(All<TextBlock>(view).Count(x=>x.Text==TextResources.Get("holidayKeepsake.sceneError"))==2&&All<Button>(view).Count(x=>x.Name=="SaveHolidayCard"&&!x.IsEnabled)==2,"actual WPF state-read errors are explicit and saved actions disabled");
+                    fixture.Restore();await view.RefreshAsync();
+                    var restored=All<HolidayCardPreview>(view).Single(x=>x.Capture.Data.HolidayId=="halloween").Capture.Data.Record;
+                    Check(view.SavedCount==2&&view.DecodedCount==2&&restored.SceneSha256==fixture.Saved.SceneSha256&&restored.EarnedLocalDate==fixture.Saved.EarnedLocalDate,"restored WPF page uses the original saved scene hash and facts");
+                }finally{window.Close();}
+            }
+            Console.WriteLine("HolidayBetweenReadUi: "+count+" passed");
+        }
         static async Task CheckSave(HolidayCardCapture capture,string output,string character,bool dark)
         {
             bool current=true;var picker=new TaskCompletionSource<string>();var preview=new HolidayCardPreview(capture,()=>current,()=>picker.Task);var save=preview.Children.OfType<Button>().Single();string path=Path.Combine(output,"saved-"+character+"-"+dark+"-"+Guid.NewGuid().ToString("N")+".png");
@@ -108,9 +129,10 @@ namespace Dafeiyu.Tests
         [STAThread]public static int Main(string[] args)
         {
             if(args.Contains("--compile-only"))return 0;
+            if(args.Contains("--between-reads")){try{Console.WriteLine("HolidayBetweenReads: "+HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/wpf-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
             if(args.Contains("--contracts")){try{Console.WriteLine("HolidayPresentation: "+HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-wpf/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}string language=args.FirstOrDefault(x=>x.StartsWith("--locale="));language=language==null?"zh_CN":language.Substring(9);TextResources.ConfigureStartupLanguage(language);
             app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;
-            app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(language,args.Contains("--sample"));code=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();app.Shutdown();}}));app.Run();return code;
+            app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--between-read-ui"))await BetweenReadUi();else await Run(language,args.Contains("--sample"));code=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();app.Shutdown();}}));app.Run();return code;
         }
     }
 }

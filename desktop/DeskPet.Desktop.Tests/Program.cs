@@ -45,6 +45,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--holiday-keepsake-between-read-ui")){Console.WriteLine("HolidayBetweenReadUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.BetweenReadUi()+" passed");return;}
+    if(args.Contains("--holiday-keepsake-between-reads")){Console.WriteLine("HolidayBetweenReads: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/native-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
     if(args.Contains("--holiday-keepsake-lifecycle")){Console.WriteLine("HolidayLifecycle: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle()+" passed");return;}
     if(args.Contains("--holiday-keepsake-presentation")){Console.WriteLine("HolidayPresentation: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-native/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--holiday-keepsake-ui="))){Console.WriteLine("HolidayKeepsakeUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.Run(args.Single(a=>a.StartsWith("--holiday-keepsake-ui=")).Split('=')[1],args.Contains("--sample"))+" passed");return;}

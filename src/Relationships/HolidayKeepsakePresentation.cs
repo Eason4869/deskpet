@@ -78,8 +78,12 @@ namespace Dafeiyu
         {
             var album=await runtime.LoadAsync(id);int pages=Math.Max(1,(album.Records.Count+PageSize-1)/PageSize);page=Math.Max(0,Math.Min(page,pages-1));
             var scenes=new List<HolidayKeepsakeSceneResult>();
-            foreach(var record in album.Records.OrderByDescending(x=>x.OccurrenceYear).ThenBy(x=>x.HolidayId,StringComparer.Ordinal).Skip(page*PageSize).Take(PageSize))
-                scenes.Add(await runtime.ReadSceneAsync(record.CompanionId,record.HolidayId,record.InstanceKey));
+            foreach(var record in album.Records.OrderByDescending(x=>x.OccurrenceYear).ThenBy(x=>x.HolidayId,StringComparer.Ordinal).Skip(page*PageSize).Take(PageSize)){
+                var scene=await runtime.ReadSceneAsync(record.CompanionId,record.HolidayId,record.InstanceKey);
+                // The independent scene read can lose access to the state after
+                // the album succeeded. Keep that saved record, never a blank slot.
+                scenes.Add(scene.Record==null?new HolidayKeepsakeSceneResult(scene.Status,record):scene);
+            }
             return new HolidayKeepsakePage{Album=album,Page=page,PageCount=pages,Scenes=scenes.AsReadOnly()};
         }
     }

@@ -73,7 +73,7 @@ namespace Dafeiyu
             foreach(var item in result.Scenes){
                 if(item.Record==null)continue;
                 var data=HolidayKeepsakeCardData.Owned(item.Record,HolidayKeepsakeRegistry.BuiltIn);
-                if(item.Status!=HolidayKeepsakeReadStatus.Available){Children.Add(Text(data.Title+" · "+data.YearText+" · "+data.Name,16));Children.Add(Text(TextResources.Get("holidayKeepsake.sceneError"),13));var unavailableSave=Button(TextResources.Get("relationship.card.save"),delegate{});unavailableSave.Name="SaveHolidayCard";unavailableSave.IsEnabled=false;Children.Add(unavailableSave);continue;}
+                if(item.Status!=HolidayKeepsakeReadStatus.Available){var details=Text(data.Title+" · "+data.YearText+" · "+data.Name+" · "+data.DateText,16);details.Name="HolidayCardErrorMetadata";details.Tag=data.Identity;Children.Add(details);Children.Add(Text(TextResources.Get("holidayKeepsake.sceneError"),13));var unavailableSave=Button(TextResources.Get("relationship.card.save"),delegate{});unavailableSave.Name="SaveHolidayCard";unavailableSave.IsEnabled=false;Children.Add(unavailableSave);continue;}
                 AddCard(data,item.CopyPngBytes(),keep,version,id);
             }
             if(result.PageCount>1){

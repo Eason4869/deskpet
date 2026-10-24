@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -6,6 +6,76 @@ using Dafeiyu;
 using Dafeiyu.Maintenance;
 public static class HolidayKeepsakePresentationChecks
 {
+    // Real-store fixture: hold the runtime queue until LoadAsync has captured its
+    // continuation, then fail the state only after that album read completes.
+    public sealed class BetweenReadsFixture:IDisposable
+    {
+        readonly ManualResetEventSlim opened=new ManualResetEventSlim(false),release=new ManualResetEventSlim(false);
+        bool blockSource;Stream exclusive=Stream.Null;byte[] beforeMutation=new byte[0];
+        public readonly string DirectoryPath;
+        public readonly HolidayKeepsakeRuntime Runtime;
+        public readonly HolidayKeepsakeRecord Saved;
+        public readonly HolidayCatalog CapturedCatalog=Catalog();
+        public bool MutationRan {get;private set;}
+        public BetweenReadsFixture(string directory,IHolidayKeepsakeSceneValidator validator)
+        {
+            DirectoryPath=Path.GetFullPath(directory);Directory.CreateDirectory(DirectoryPath);
+            var provider=new RelationshipSceneProvider(asset=>{if(blockSource){opened.Set();release.Wait();}return File.OpenRead(Path.Combine("assets",asset.RelativePath));});
+            Runtime=new HolidayKeepsakeRuntime(DirectoryPath,new DataMaintenanceGate(),new HolidayCalendar(),HolidayKeepsakeRegistry.BuiltIn,provider,validator);
+            var result=Runtime.ObserveAsync(Encounter("e-bao"),CapturedCatalog).GetAwaiter().GetResult();
+            if(result.Status!=HolidayKeepsakeObservationStatus.Completed||result.Results.Count!=1||result.Results[0].Status!=HolidayKeepsakeStatus.Saved)
+                throw new Exception("Between-read seed: "+result.Status+" / "+String.Join(",",result.Results.Select(x=>x.Status)));
+            Saved=Runtime.LoadAsync("official:e-bao").GetAwaiter().GetResult().Records.Single();AddHistoricalTwin(DirectoryPath,false);
+        }
+        static HolidayKeepsakeEncounter Encounter(string character)
+        {return new HolidayKeepsakeEncounter("official:"+character,character,"Saved across read phases",new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero));}
+        public T StartFailure<T>(Func<T> load,bool incompatible) where T:System.Threading.Tasks.Task
+        {
+            blockSource=true;Runtime.ObserveAsync(Encounter("marfu"),CapturedCatalog);
+            if(!opened.Wait(10000))throw new TimeoutException("Between-read queue was not held.");
+            var previous=SynchronizationContext.Current;
+            try{SynchronizationContext.SetSynchronizationContext(new FirstContinuation(previous??new SynchronizationContext(),delegate{
+                string path=Path.Combine(DirectoryPath,"commemorations/holiday-state.json");beforeMutation=File.ReadAllBytes(path);MutationRan=true;
+                if(incompatible)File.WriteAllText(path,"{failed between album and scene");
+                else exclusive=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.None);
+            }));return load();}
+            finally{SynchronizationContext.SetSynchronizationContext(previous);release.Set();}
+        }
+        public void Restore()
+        {exclusive.Dispose();exclusive=Stream.Null;if(beforeMutation.Length!=0){File.WriteAllBytes(Path.Combine(DirectoryPath,"commemorations/holiday-state.json"),beforeMutation);beforeMutation=new byte[0];}}
+        public void Dispose(){release.Set();Restore();Runtime.ShutdownAsync().GetAwaiter().GetResult();opened.Dispose();release.Dispose();}
+        sealed class FirstContinuation:SynchronizationContext
+        {
+            readonly SynchronizationContext resume;readonly Action fail;int called;
+            internal FirstContinuation(SynchronizationContext resume,Action fail){this.resume=resume;this.fail=fail;}
+#if NET10_0_OR_GREATER
+            public override void Post(SendOrPostCallback callback,object? state)
+#else
+            public override void Post(SendOrPostCallback callback,object state)
+#endif
+            {
+                SendOrPostCallback invoke=delegate{if(Interlocked.Exchange(ref called,1)==0)fail();callback(state);};
+                resume.Post(invoke,null);
+            }
+        }
+    }
+    public static int RunBetweenReadFailures(string directory,IHolidayKeepsakeSceneValidator validator)
+    {
+        int start=count;
+        foreach(bool incompatible in new[]{true,false})using(var fixture=new BetweenReadsFixture(Path.Combine(directory,incompatible?"incompatible":"storage"),validator)){
+            var page=fixture.StartFailure(()=>new HolidayKeepsakeAlbumModel(fixture.Runtime).LoadAsync(fixture.Saved.CompanionId,0),incompatible).GetAwaiter().GetResult();
+            var expected=incompatible?HolidayKeepsakeReadStatus.StoreIncompatible:HolidayKeepsakeReadStatus.StorageUnavailable;
+            Check(fixture.MutationRan&&page.Album.Status==HolidayKeepsakeReadStatus.Available&&page.Album.Records.Count==2,"actual album read succeeds before "+expected);
+            Check(page.Scenes.Count==2&&page.Scenes.All(x=>x.Status==expected),"subsequent actual scene state-read errors retain their status "+expected);
+            Check(page.Scenes.All(x=>x.Record!=null&&Object.ReferenceEquals(x.Record,page.Album.Records.Single(r=>r.HolidayId==x.Record.HolidayId))),"every failed scene retains the exact loaded record "+expected);
+            Check(page.Scenes.All(x=>x.CopyPngBytes()==null)&&page.Scenes.Select(x=>x.Record.HolidayId).Distinct().Count()==2,"read error does not invent image bytes or merge historical identity "+expected);
+            var kept=page.Scenes.Single(x=>x.Record.HolidayId=="halloween").Record;
+            Check(kept.SceneSha256==fixture.Saved.SceneSha256&&kept.SceneVersion==fixture.Saved.SceneVersion&&kept.CompanionName==fixture.Saved.CompanionName&&kept.EarnedLocalDate==fixture.Saved.EarnedLocalDate,"failure preserves saved source hash/name/date facts "+expected);
+            fixture.Restore();var restored=new HolidayKeepsakeAlbumModel(fixture.Runtime).LoadAsync(fixture.Saved.CompanionId,0).GetAwaiter().GetResult();
+            Check(restored.Scenes.Count==2&&restored.Scenes.All(x=>x.Status==HolidayKeepsakeReadStatus.Available),"ordinary fresh read recovers both original scenes "+expected);
+        }
+        return count-start;
+    }
     public static byte[] AddHistoricalTwin(string directory,bool badScene)
     {
         string path=Path.Combine(directory,"commemorations/holiday-state.json");
