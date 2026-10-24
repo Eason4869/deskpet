@@ -22,13 +22,15 @@ The service scans only these canonical locations, without invoking lazy migratio
 | `projects/<id>/chats/<id>/history/*.history` | Preserve embedded media, then remove |
 | `ownership-backups/<conversation>/*.history` | Preserve embedded media, then remove before primary histories |
 | Each corresponding `history/agent-tasks/*.task` | Preserve guidance attachments, then remove replay/resume checkpoints |
-| Each corresponding `kernel-sessions/*.session` | Remove model session context |
+| Each corresponding `kernel-sessions/*.session` | Strictly inspect supported format/structure, then remove model session context |
 | Root/workspace `queued-messages.json` and `queue.json` | Inspect encrypted content; refuse if pending or unreadable; keep empty queue files |
 | `generated-images/tasks.dat` and loaded image task managers | Preserve tasks/assets; detach old conversation delivery origins |
 
 Registered sessions supply every cached persona history and pending checkpoint attachment. Under the exclusive lease, the service clears matching successfully removed histories in memory, task retry caches, model pending/delivered/events, context-usage and prediction caches, and old notices. Ordinary close, persona selection and checkpoint retry therefore cannot rewrite successfully cleared transcripts. Old task checkpoints are removed and their cached task identities become nonresumable; clearing does not turn a completed disabled-growth task into a new reward opportunity.
 
 The service first validates and preserves all embedded media, including media present only in loaded memory or a pending checkpoint. Files are content-addressed by SHA-256 with a media extension, flushed durably, reopened, and compared byte-for-byte before the containing history can be removed. Image media are validated with the existing image parser/decoder; PDFs retain their original bytes after signature validation. The archive contains no chat text, prompts, source paths or account metadata. Existing external `SourcePath` files are untouched. A corrupt/unreadable history, malformed media, archive failure, or storage warning keeps the original history and reports a partial result.
+
+Kernel session files are inspected before any archive writes or removals. The read-only inspector supports the current `DPS1` encrypted envelope and legacy plaintext JSON with the current session schema. It rejects unknown members/versions and invalid identities, collections, inputs, events or counters. Corrupt, undecryptable or unsupported unloaded contexts remain byte-for-byte unchanged with a partial result and file diagnostic, matching loaded corruption retention. Inspection never calls the migrating session loader or creates files.
 
 Directories are pinned without walking their subtrees. Removal checks the exact file's content hash and uses the shared pinned-directory deletion primitive. No history directory is recursively deleted. If deletion fails, that file remains and its loaded history remains available. Retry inspects the current state again. Completed removals are not rolled back.
 

@@ -5,6 +5,8 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.Collections.Generic;
+using System.Web.Script.Serialization;
 namespace Dafeiyu
 {
     public sealed class AgentSessionStore
@@ -41,6 +43,44 @@ namespace Dafeiyu
             }
         }
         public void Clear(){lock(gate){if(Directory.Exists(directory))foreach(string path in Directory.GetFiles(directory,"*.session"))File.Delete(path);}}
+        // Maintenance must not use Load: legacy loading renames/re-encrypts data
+        // and changes project ownership. Inspection recognizes only this schema
+        // and never creates a directory, temporary file or migration output.
+        internal static AgentSessionModel InspectFileStrict(string path)
+        {
+            Maintenance.CachePaths.Check(path);var info=new FileInfo(path);
+            if(!info.Exists||info.Length==0||info.Length>MaxBytes+Header.Length)throw InvalidSession();
+            byte[] bytes=File.ReadAllBytes(path);bool encrypted=bytes.Length>=Header.Length&&bytes.Take(Header.Length).SequenceEqual(Header);
+            byte[] plain=encrypted?SecretProtection.Unprotect(bytes.Skip(Header.Length).ToArray()):bytes;
+            if(plain==null||plain.Length==0||plain.Length>MaxBytes)throw InvalidSession();
+            string json=new UTF8Encoding(false,true).GetString(plain).TrimStart('\ufeff');
+            // Checking member names prevents a future JSON version from being
+            // silently accepted by DataContractJsonSerializer's unknown-field policy.
+            var tree=InspectMembers(new JavaScriptSerializer{MaxJsonLength=MaxBytes}.DeserializeObject(json),"SessionId","ProjectId","ConversationId","Pending","Delivered","Events","Sequence","Step","RecoveryState");
+            foreach(string key in new[]{"SessionId","ProjectId","ConversationId","RecoveryState"})if(!(tree[key] is string))throw InvalidSession();
+            if(!Counter(tree["Sequence"])||!Counter(tree["Step"]))throw InvalidSession();
+            foreach(string key in new[]{"Pending","Delivered"})foreach(object item in InspectArray(tree[key])){
+                var input=InspectMembers(item,"IdempotencyId","Kind","Text","Resume","Steer","AttachmentIds");
+                foreach(string name in new[]{"IdempotencyId","Kind","Text"})if(!(input[name] is string))throw InvalidSession();
+                if(!(input["Resume"] is bool)||!(input["Steer"] is bool)||InspectArray(input["AttachmentIds"]).Any(id=>!(id is string)||String.IsNullOrWhiteSpace((string)id)))throw InvalidSession();
+            }
+            foreach(object item in InspectArray(tree["Events"])){
+                var entry=InspectMembers(item,"Sequence","Type","InputId","StepId","CreatedUtc");
+                if(!Counter(entry["Sequence"]))throw InvalidSession();
+                foreach(string name in new[]{"Type","InputId","StepId"})if(!(entry[name] is string))throw InvalidSession();
+            }
+            AgentSessionModel model;using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(json)))model=(AgentSessionModel)new DataContractJsonSerializer(typeof(AgentSessionModel)).ReadObject(stream);
+            if(model==null||String.IsNullOrWhiteSpace(model.SessionId)||String.IsNullOrWhiteSpace(model.ConversationId)||model.Pending==null||model.Delivered==null||model.Events==null||!new[]{"idle","running","failed","interrupted"}.Contains(model.RecoveryState))throw InvalidSession();
+            var ids=new HashSet<string>(StringComparer.Ordinal);
+            foreach(var input in model.Pending.Concat(model.Delivered))if(input==null||String.IsNullOrWhiteSpace(input.IdempotencyId)||input.IdempotencyId.Length>200||!ids.Add(input.IdempotencyId)||!new[]{"prompt","resume","steer"}.Contains(input.Kind)||input.Text==null||input.AttachmentIds==null)throw InvalidSession();
+            long sequence=0;foreach(var entry in model.Events){if(entry==null||entry.Sequence<=sequence||entry.Sequence>model.Sequence||String.IsNullOrWhiteSpace(entry.Type)||entry.CreatedUtc==DateTime.MinValue)throw InvalidSession();sequence=entry.Sequence;}
+            return model;
+        }
+        static Dictionary<string,object> InspectMembers(object value,params string[] members)
+        {var fields=value as Dictionary<string,object>;if(fields==null||fields.Count!=members.Length||members.Any(name=>!fields.ContainsKey(name)))throw InvalidSession();return fields;}
+        static object[] InspectArray(object value){var items=value as object[];if(items==null)throw InvalidSession();return items;}
+        static bool Counter(object value){return (value is int||value is long)&&Convert.ToInt64(value)>=0;}
+        static SerializationException InvalidSession(){return new SerializationException(TextResources.Get("sessionStore.load.text"));}
         string PathFor(string conversationId)
         {
             if(String.IsNullOrWhiteSpace(conversationId))throw new ArgumentException(TextResources.Get("sessionStore.pathFor.text"));

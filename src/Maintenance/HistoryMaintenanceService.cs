@@ -64,6 +64,12 @@ namespace Dafeiyu.Maintenance
                 }
                 foreach(string backup in Children(Path.Combine(root,"ownership-backups"),pins))AddFiles(backup,"*.history",1,targets,pins,result);
                 foreach(var queue in gate.GetParticipants<ConversationQueue>())if(queue.HasPending||queue.IsRunning){result.Status=HistoryMaintenanceStatus.Busy;return;}
+                // Unknown/corrupt unloaded model context gets the same fail-closed
+                // treatment as a loaded kernel warning, before even archive writes.
+                foreach(var target in targets.Where(t=>t.File.Path.EndsWith(".session",StringComparison.OrdinalIgnoreCase)))try{
+                    AgentSessionStore.InspectFileStrict(target.File.Path);VerifyUnchanged(target.File);
+                }catch(Exception error){if(!StorageError(error))throw;result.Fail(target.File.Path,error);}
+                if(result.Failures.Count!=0)return;
                 var archive=new AttachmentArchive(AttachmentDirectory);
                 // Complete the preservation phase before removing anything. A
                 // corrupt migration backup must not later restore cleared root history.
