@@ -125,7 +125,8 @@ namespace Dafeiyu
             if(!restartAt.HasValue)restartAt=DateTime.UtcNow.AddSeconds(immediate?0:5);
             int seconds=Math.Max(0,(int)Math.Ceiling((restartAt.Value-DateTime.UtcNow).TotalSeconds));
             Status=TextResources.Format("updateCoordinator.tryApplyPendingAsync.statusSeconds",seconds);Notify();if(seconds>0)return;
-            applying=true;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status");Notify();
+            IDisposable admission;if(!pet.DataMaintenance.TryEnterActivity(out admission))return;
+            using(admission){applying=true;readyTimer.Stop();Status=TextResources.Get("updateCoordinator.tryApplyPendingAsync.status");Notify();
             var job=pending;
             try
             {
@@ -138,7 +139,7 @@ namespace Dafeiyu
                 }
                 pet.Close();
             }
-            catch(Exception e){Abort(job);applying=false;pending=null;ReleaseCache();restartAt=null;Status=e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.tryApplyPendingAsync.invalidOperationExceptionEMessage");Notify();}
+            catch(Exception e){Abort(job);applying=false;pending=null;ReleaseCache();restartAt=null;Status=e is InvalidOperationException?e.Message:TextResources.Get("updateCoordinator.tryApplyPendingAsync.invalidOperationExceptionEMessage");Notify();}}
         }
         async Task StartWorkerAsync(UpdateJob job)
         {

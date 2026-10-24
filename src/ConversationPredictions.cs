@@ -50,7 +50,12 @@ namespace Dafeiyu
             lock(gate){string key=PredictionKey(settings);stale=(predictionRequestKey!=null && predictionRequestKey!=key) || (predictions.Length>0 && predictionCacheKey!=key);}
             if(stale)CancelPredictions();
         }
-        public Task RequestPredictionsAsync(PetSettings settings)
+        public async Task RequestPredictionsAsync(PetSettings settings)
+        {
+            IDisposable admission;try{admission=Maintenance.EnterActivity();}catch(InvalidOperationException){return;}
+            using(admission)await RequestPredictionsCoreAsync(settings).ConfigureAwait(false);
+        }
+        Task RequestPredictionsCoreAsync(PetSettings settings)
         {
             TaskCompletionSource<bool> completion;CancellationTokenSource cancel;string key;int revision;List<ChatMessage> messages;ConnectionSettings connection;bool cached=false;
             lock(gate)

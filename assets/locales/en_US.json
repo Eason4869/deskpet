@@ -4571,5 +4571,6 @@
   "cache.clean": "Clean",
   "cache.rescan": "Rescan",
   "cache.result": "Freed {0:N0} bytes; removed {1} folders; skipped {2}; failed {3}.",
-  "cache.failed": "The operation could not finish. Rescan and try again."
+  "cache.failed": "The operation could not finish. Rescan and try again.",
+  "dataMaintenance.busy": "Data maintenance is unavailable while work is active. Finish sending, recording, Live calls and queued tasks, then try again."
 }

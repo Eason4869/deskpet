@@ -4571,5 +4571,6 @@
   "cache.clean": "Bersihkan",
   "cache.rescan": "Pindai ulang",
   "cache.result": "{0:N0} byte dibebaskan; {1} folder dihapus; {2} dilewati; {3} gagal.",
-  "cache.failed": "Operasi belum selesai. Pindai ulang lalu coba lagi."
+  "cache.failed": "Operasi belum selesai. Pindai ulang lalu coba lagi.",
+  "dataMaintenance.busy": "Pemeliharaan data tidak tersedia saat ada aktivitas. Selesaikan pengiriman, perekaman, panggilan Live, dan tugas antrean, lalu coba lagi."
 }

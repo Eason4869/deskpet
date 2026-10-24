@@ -99,7 +99,8 @@ namespace Dafeiyu
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("ConversationSession");
-                var repair=imageRepairTail.ContinueWith(_=>RepairImageDeliveryCoreAsync(taskId,token),TaskScheduler.Default).Unwrap();
+                var admission=Maintenance.EnterActivity();
+                var repair=imageRepairTail.ContinueWith(async _=>{try{await RepairImageDeliveryCoreAsync(taskId,token).ConfigureAwait(false);}finally{admission.Dispose();}},TaskScheduler.Default).Unwrap();
                 imageRepairTail=repair.ContinueWith(completed=>{var observed=completed.Exception;},TaskScheduler.Default);
                 return repair;
             }

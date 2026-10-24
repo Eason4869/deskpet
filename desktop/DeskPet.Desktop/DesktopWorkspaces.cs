@@ -19,10 +19,10 @@ internal sealed class DesktopWorkspaces
     internal DesktopWorkspaces(DesktopController owner,DesktopRuntime runtime,Func<string,AgentJobApplicationService>? jobsFactory=null)
     {
         this.owner=owner;directory=owner.DataDirectory;
-        Jobs=jobsFactory?.Invoke(directory)??new AgentJobApplicationService(directory,clock=>OperatingSystem.IsWindows()?new WindowsAgentJobProcessFactory(clock):throw new PlatformNotSupportedException(),new Clock());
-        Jobs.TerminalCompleted+=owner.AgentJobCompleted;
+        Jobs=jobsFactory?.Invoke(directory)??new AgentJobApplicationService(directory,clock=>OperatingSystem.IsWindows()?new WindowsAgentJobProcessFactory(clock):throw new PlatformNotSupportedException(),new Clock(),owner.DataMaintenance);
+        Jobs.ConfigureMaintenance(owner.DataMaintenance);Jobs.TerminalCompleted+=owner.AgentJobCompleted;
         _=Jobs.InitializeAsync();
-        Manager=new ConversationWorkspaceManager(directory,owner.Skin.Id,()=>new ApiClient(),()=>runtime.CreateSpeech(new ApiClient()),runtime.CreateRecorder,()=>owner.Settings,()=>owner.Settings.SaveChatHistory)
+        Manager=new ConversationWorkspaceManager(directory,owner.Skin.Id,()=>new ApiClient(),()=>runtime.CreateSpeech(new ApiClient()),runtime.CreateRecorder,()=>owner.Settings,()=>owner.Settings.SaveChatHistory,owner.DataMaintenance)
         {Relationships=owner.Relationships,RelationshipCompanion=()=>owner.RelationshipCompanionId,JobServices=Jobs,QuestionProvider=owner.Questions,ApprovalProvider=new DesktopWorkApproval(owner),ImageStore=owner.ImageStore,ImageClient=owner.ImageClient,ImageTasks=owner.ImageTasks,ImageUsage=owner.ImageUsage};
         Manager.StateChanged+=owner.NotifyWorkChanged;
     }

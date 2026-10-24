@@ -4571,5 +4571,6 @@
   "cache.clean": "Bereinigen",
   "cache.rescan": "Erneut prüfen",
   "cache.result": "{0:N0} Bytes freigegeben; {1} Ordner entfernt; {2} übersprungen; {3} fehlgeschlagen.",
-  "cache.failed": "Der Vorgang konnte nicht abgeschlossen werden. Erneut prüfen und versuchen."
+  "cache.failed": "Der Vorgang konnte nicht abgeschlossen werden. Erneut prüfen und versuchen.",
+  "dataMaintenance.busy": "Während laufender Aufgaben ist die Datenwartung nicht verfügbar. Beende Sendevorgänge, Aufnahmen, Live-Anrufe und Aufgaben in der Warteschlange und versuche es erneut."
 }

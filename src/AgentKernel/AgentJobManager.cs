@@ -29,6 +29,8 @@ namespace Dafeiyu
             internal long StartedMilliseconds;
             internal Task<AgentJobSnapshot> Start;
         }
+        public Dafeiyu.Maintenance.DataMaintenanceGate Maintenance {get;private set;}
+        readonly IDisposable maintenanceRegistration;
         readonly object gate=new object();
         readonly AgentJobStore store;
         readonly IAgentJobProcessFactory factory;
@@ -38,8 +40,9 @@ namespace Dafeiyu
         readonly CancellationTokenSource exiting=new CancellationTokenSource();
         bool recovered,recovering,exitRequested;
         public event Action Changed;
-        public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock)
-        {if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;store.Retired+=Retire;}
+        public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock):this(store,factory,clock,null){}
+        public AgentJobManager(AgentJobStore store,IAgentJobProcessFactory factory,IAgentJobClock clock,Dafeiyu.Maintenance.DataMaintenanceGate maintenance)
+        {Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();maintenanceRegistration=Maintenance.Register(()=>Task.FromResult(0),()=>HasActiveJobs,this);if(store==null||factory==null||clock==null)throw new ArgumentNullException("services");this.store=store;this.factory=factory;this.clock=clock;store.Retired+=Retire;}
         void Retire(string id)
         {
             lock(gate)
@@ -49,7 +52,7 @@ namespace Dafeiyu
             }
         }
         public async Task RecoverAsync(CancellationToken token)
-        {
+        {using(Maintenance.EnterActivity()){
             lock(gate){if(recovered)return;if(recovering)throw new InvalidOperationException("jobs_recovering");recovering=true;}
             try
             {
@@ -58,7 +61,7 @@ namespace Dafeiyu
                 Notify();
             }
             finally{lock(gate)recovering=false;}
-        }
+        }}
         static string Payload(AgentJobSpec spec)
         {
             var json=new JavaScriptSerializer().Serialize(new object[]{spec.Command,spec.Title,spec.WorkingDirectory,spec.TimeoutSeconds});
@@ -94,7 +97,7 @@ namespace Dafeiyu
         {bool replayed;return StartForToolAsync(context,spec,requestToken,out replayed);}
         internal Task<AgentJobSnapshot> StartForToolAsync(AgentJobStartContext context,AgentJobSpec spec,CancellationToken requestToken,out bool replayed)
         {
-            replayed=false;
+            replayed=false;var admission=Maintenance.EnterActivity();try{
             if(context==null||spec==null)throw new ArgumentNullException("context");
             if(context.Owner.AgentId!="primary")throw new InvalidOperationException("job_owner_denied");
             var key=AgentJobPolicy.IdempotencyKey(context.Owner,context.Invocation);var payload=Payload(spec);Entry entry;
@@ -106,7 +109,7 @@ namespace Dafeiyu
                 {
                     replayed=true;
                     if(entry.Record.PayloadHash!=payload)throw new InvalidOperationException("job_idempotency_conflict");
-                    return entry.Start??Task.FromResult(Snapshot(entry));
+                    return JoinStartAsync(entry.Start??Task.FromResult(Snapshot(entry)),admission);
                 }
                 if(exitRequested)throw new InvalidOperationException("jobs_exiting");
                 entry=new Entry{Record=new AgentJobRecord{Id=Guid.NewGuid().ToString("N"),InvocationKey=key,PayloadHash=payload,SourceTaskId=context.Invocation.TaskId,SourceCallId=context.Invocation.CallId,SourceReplyId=context.ReplyId,Owner=context.Owner,Spec=spec,State=AgentJobState.Starting,CreatedUtc=clock.UtcNow},Start=result.Task};
@@ -115,16 +118,19 @@ namespace Dafeiyu
                 invocations.Add(key,entry);
             }
             // StartCore owns all exceptions and never exposes an unobserved async-void task.
-            CompleteStartAsync(entry,context,requestToken,result);
+            CompleteStartAsync(entry,context,requestToken,result,admission);
             return result.Task;
+            }catch{admission.Dispose();throw;}
         }
-        async void CompleteStartAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken,TaskCompletionSource<AgentJobSnapshot> result)
+        static async Task<AgentJobSnapshot> JoinStartAsync(Task<AgentJobSnapshot> pending,IDisposable admission){try{return await pending.ConfigureAwait(false);}finally{admission.Dispose();}}
+        internal void RetireMaintenance(){maintenanceRegistration.Dispose();}
+        async void CompleteStartAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken,TaskCompletionSource<AgentJobSnapshot> result,IDisposable admission)
         {
             await entry.Mutation.WaitAsync().ConfigureAwait(false);
             try{result.TrySetResult(await StartCoreAsync(entry,context,requestToken).ConfigureAwait(false));}
             catch(OperationCanceledException){result.TrySetCanceled();}
             catch(Exception error){result.TrySetException(error);}
-            finally{entry.Mutation.Release();}
+            finally{entry.Mutation.Release();admission.Dispose();}
         }
         async Task<AgentJobSnapshot> StartCoreAsync(Entry entry,AgentJobStartContext context,CancellationToken requestToken)
         {
@@ -221,7 +227,7 @@ namespace Dafeiyu
             return changed;
         }
         async Task RefreshAsync(Entry entry,CancellationToken token)
-        {
+        {using(Maintenance.EnterActivity()){
             await entry.Mutation.WaitAsync(token).ConfigureAwait(false);
             using(var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token,entry.RefreshCancellation.Token))
             {
@@ -262,7 +268,7 @@ namespace Dafeiyu
             catch(OperationCanceledException){if(!entry.RefreshCancellation.IsCancellationRequested)throw;}
             finally{entry.Mutation.Release();}
             }
-        }
+        }}
         static AgentJobSnapshot Snapshot(Entry entry){return entry.Published;}
         internal bool TrySnapshot(AgentJobOwner owner,string id,out AgentJobSnapshot snapshot)
         {lock(gate){Entry entry;if(owner!=null&&jobs.TryGetValue(id??"",out entry)&&owner.Matches(entry.Record.Owner)){snapshot=Snapshot(entry);return true;}snapshot=null;return false;}}
@@ -312,7 +318,7 @@ namespace Dafeiyu
             }
         }
         async Task<AgentJobSnapshot> StopEntryAsync(Entry entry,AgentJobStopReason reason,CancellationToken token,string warning=null)
-        {
+        {using(Maintenance.EnterActivity()){
             var elapsed=Stopwatch.StartNew();bool pending;
             lock(gate){pending=!entry.HandedOff;if(pending)entry.RequestedStop=entry.RequestedStop??reason;}
             if(pending)entry.PendingStart.Cancel();entry.RefreshCancellation.Cancel();
@@ -342,7 +348,7 @@ namespace Dafeiyu
             }
             finally{entry.Mutation.Release();}
             }
-        }
+        }}
         void Release(Entry entry)
         {entry.Lifetime.Cancel();if(entry.Process!=null)entry.Process.Dispose();if(entry.DirectoryLease!=null){entry.DirectoryLease.Dispose();entry.DirectoryLease=null;}}
         public bool HasActiveJobs {get{lock(gate)return jobs.Values.Any(entry=>!AgentJobStore.IsTerminal(entry.Record.State));}}

@@ -4571,5 +4571,6 @@
   "cache.clean": "Limpar",
   "cache.rescan": "Verificar novamente",
   "cache.result": "{0:N0} bytes liberados; {1} pastas removidas; {2} ignorados; {3} falhas.",
-  "cache.failed": "Não foi possível concluir. Verifique novamente e tente outra vez."
+  "cache.failed": "Não foi possível concluir. Verifique novamente e tente outra vez.",
+  "dataMaintenance.busy": "A manutenção de dados não está disponível durante atividades. Conclua os envios, gravações, chamadas Live e tarefas na fila e tente novamente."
 }

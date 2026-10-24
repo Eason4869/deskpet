@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -98,7 +98,7 @@ internal sealed partial class DesktopController : IDisposable
         ImageUsage = new ImageAssetUsageRegistry();
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
-        Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory);
+        Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory,maintenance:DataMaintenance);
         ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
         ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
@@ -107,10 +107,10 @@ internal sealed partial class DesktopController : IDisposable
         ImageManagement = new ImageAssetManagementService(ImageStore, ImageUsage, new ImageAssetReferenceResolver(DataDirectory, ImageStore, ImageTasks));
         Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
-        Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings);
+        Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings,DataMaintenance);
         Session.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);
         Queue = new ConversationQueue(Session, () => Settings, () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
-        Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput);
+        Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput,DataMaintenance);
         Live.RelationshipCompanion=()=>RelationshipCompanionId;
         Live.LogicalTurnCommitted += turn =>
         {
@@ -268,7 +268,7 @@ internal sealed partial class DesktopController : IDisposable
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()
     {
-        if (exiting) return; exiting = true;foreach(var host in chatHosts)host.FreezeForExit();
+        if (exiting) return; using var admission=DataMaintenance.EnterActivity();exiting = true;foreach(var host in chatHosts)host.FreezeForExit();
         try
         {
             using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));

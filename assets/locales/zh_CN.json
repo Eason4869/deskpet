@@ -4571,5 +4571,6 @@
   "cache.clean": "清理",
   "cache.rescan": "重新扫描",
   "cache.result": "已释放 {0:N0} 字节；移除 {1} 个目录；跳过 {2} 项；失败 {3} 项。",
-  "cache.failed": "操作未能完成，请重新扫描后重试。"
+  "cache.failed": "操作未能完成，请重新扫描后重试。",
+  "dataMaintenance.busy": "当前有任务或数据维护正在进行。请结束发送、录音、Live 通话及排队任务后重试。"
 }

@@ -4571,5 +4571,6 @@
   "cache.clean": "Nettoyer",
   "cache.rescan": "Analyser à nouveau",
   "cache.result": "{0:N0} octets libérés ; {1} dossiers supprimés ; {2} ignorés ; {3} échecs.",
-  "cache.failed": "L’opération n’a pas pu aboutir. Relancez l’analyse puis réessayez."
+  "cache.failed": "L’opération n’a pas pu aboutir. Relancez l’analyse puis réessayez.",
+  "dataMaintenance.busy": "La maintenance des données est indisponible pendant une activité. Terminez les envois, les enregistrements, les appels Live et les tâches en attente, puis réessayez."
 }

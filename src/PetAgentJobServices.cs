@@ -16,7 +16,7 @@ namespace Dafeiyu
             get
             {
                 lock(agentJobServicesGate)
-                    return agentJobServices??(agentJobServices=new AgentJobApplicationService(Store.DirectoryPath,clock=>new WindowsAgentJobProcessFactory(clock),new ApplicationJobClock()));
+                    return agentJobServices??(agentJobServices=new AgentJobApplicationService(Store.DirectoryPath,clock=>new WindowsAgentJobProcessFactory(clock),new ApplicationJobClock(),DataMaintenance));
             }
         }
         async void InitializeAgentJobs()

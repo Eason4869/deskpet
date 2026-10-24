@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -71,7 +71,7 @@ namespace Dafeiyu
         private ConversationSession conversation;
         private ConversationQueue inputQueue;private ProjectCatalog projectCatalog;private ProjectDefinition editingProject;private ProjectCatalogStore projectCatalogStore;private ConversationWorkspaceManager workspaces;private readonly HashSet<string> titleGenerationStarted=new HashSet<string>();private ConversationWorkspace quickWorkspace;internal event Action ProjectsChanged;
         private DictationSession dictation;
-        public DictationSession Dictation{get{return dictation ?? (dictation=new DictationSession(new ApiClient(),()=>new AudioRecorder(),()=>Settings));}}
+        public DictationSession Dictation{get{return dictation ?? (dictation=new DictationSession(new ApiClient(),()=>new AudioRecorder(),()=>Settings,DataMaintenance));}}
         public bool DictationActive{get{return dictation!=null && dictation.IsBusy;}}
         public ConversationQueue InputQueue
         {
@@ -102,7 +102,7 @@ namespace Dafeiyu
         public UpdateCoordinator Updates {get{return updates ?? (updates=new UpdateCoordinator(this));}}
         public bool CanApplyUpdate(bool manual)
         {
-            return !closing && !HasActiveAgentJobs && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
+            return !DataMaintenance.IsMaintenanceActive && !closing && !HasActiveAgentJobs && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
                 (chat==null || (!chat.HasDraft && !chat.HasUnsavedMcpEdits && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
                 (preferences==null || (!preferences.HasUnsavedEdits && (manual || !preferences.IsVisible))) && (guide==null || !guide.IsVisible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen();
         }
@@ -174,14 +174,14 @@ namespace Dafeiyu
         }
         void CompleteProjectOwnership()
         {
-            if(projectCatalog==null||closing)return;
-            try
+            if(projectCatalog==null||closing)return;IDisposable admission;if(!DataMaintenance.TryEnterActivity(out admission))return;
+            using(admission){try
             {
                 AgentJobs.EnsureWritable();
                 var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
                 if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);RestoreProjectCatalog(upgraded);NotifyProjectsChanged();}
             }
-            catch(Exception){projectCatalogStore.PreserveAfterReadFailure();Notice=TextResources.Get("petWindow.projects.notice");}
+            catch(Exception){projectCatalogStore.PreserveAfterReadFailure();Notice=TextResources.Get("petWindow.projects.notice");}}
         }
         void ConfigureCatalogBindingGuard()
         {
@@ -200,7 +200,7 @@ namespace Dafeiyu
         {
             get
             {
-                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.Relationships=Relationships;workspaces.RelationshipCompanion=()=>RelationshipCompanionId;workspaces.JobServices=AgentJobs;workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
+                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;},DataMaintenance);workspaces.Relationships=Relationships;workspaces.RelationshipCompanion=()=>RelationshipCompanionId;workspaces.JobServices=AgentJobs;workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
                 return workspaces;
             }
         }
@@ -211,20 +211,20 @@ namespace Dafeiyu
                 if(conversation==null)
                 {
                     var api=new ApiClient();var voice=new SpeechOutput(api,Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);
-                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;});conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
+                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;},maintenance:DataMaintenance);conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
                 }
                 return conversation;
             }
         }
         public bool LiveActive {get{return live!=null && live.IsActive;}}
-        public bool DialogueBusy {get{return IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy) || (workspaces!=null && workspaces.Busy);}}
+        public bool DialogueBusy {get{return DataMaintenance.IsMaintenanceActive || IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy) || (workspaces!=null && workspaces.Busy);}}
         public GeminiLiveSession Live
         {
             get
             {
                 if(live==null)
                 {
-                    live=new GeminiLiveSession();live.StateChanged+=delegate {if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};
+                    live=new GeminiLiveSession(DataMaintenance);live.StateChanged+=delegate {if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};
                     live.RelationshipCompanion=()=>RelationshipCompanionId;
                     live.LogicalTurnCommitted+=delegate(RelationshipLiveTurn turn){string id=liveSkinId;Action commit=delegate {if(!exitPrepared)Conversation.AddLiveTurn(id,turn.User,turn.Reply,turn.Status,turn.LogicalTurnId,turn.CompanionId,true,turn.CompletedTime);};if(Dispatcher.CheckAccess())commit();else if(!Dispatcher.HasShutdownStarted)Dispatcher.Invoke(commit);};
                 }
@@ -706,13 +706,14 @@ namespace Dafeiyu
             if(DialogueBusy || DictationActive){Notice=TextResources.Get("petWindow.activateSkin.notice.alternativeA");return false;}
             try
             {
+                using(DataMaintenance.EnterActivity()){
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
                 if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
-                if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
+                if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;}
             }
             catch(Exception e)
             {
@@ -1154,7 +1155,7 @@ namespace Dafeiyu
         {
             if(!exitPrepared)
             {
-                args.Cancel=true;if(closing)return;closing=true;
+                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;closing=true;
                 // Close can be requested before Application.Run or from a host with
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
@@ -1162,11 +1163,11 @@ namespace Dafeiyu
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
-            DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
+            DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
         }
         async void PrepareCloseOnDispatcherAsync()
         {
-            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;return;}
+            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();return;}
             foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeRelationshipFeedback();DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();

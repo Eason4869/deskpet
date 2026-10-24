@@ -141,6 +141,7 @@ internal sealed partial class DesktopController
                 await Live.StopAsync(); await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
                 await Session.StopAsync(); await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
             }
+            using var admission=DataMaintenance.EnterActivity();
             if (next.OfficialCharacterId != null && !CanPublishOfficial(next)) return;
             Pet.CancelHolidayForSkinChange();
             PersonaProfiles.SaveVoices(Settings); Skin = next;

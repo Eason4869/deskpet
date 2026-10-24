@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -7,12 +7,13 @@ namespace Dafeiyu
 {
     public sealed class ConversationWorkspaceManager : IDisposable
     {
+        public Dafeiyu.Maintenance.DataMaintenanceGate Maintenance {get;private set;}
         readonly object gate=new object();readonly List<ConversationWorkspace> workspaces=new List<ConversationWorkspace>();
         readonly Dictionary<string,Task> closing=new Dictionary<string,Task>(StringComparer.Ordinal);
         readonly string dataRoot,personaId;readonly Func<IConversationApi> apiFactory;readonly Func<IReplySpeech> speechFactory;readonly Func<IAudioRecorder> recorderFactory;readonly Func<PetSettings> settings;readonly Func<bool> saveHistory;bool disposed;
-        public ConversationWorkspaceManager(string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory)
+        public ConversationWorkspaceManager(string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
         {
-            this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
+            Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
         }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}
         public event Action StateChanged;
@@ -36,7 +37,7 @@ namespace Dafeiyu
         internal IList<ConversationWorkspace> AllOwnedWorkspaces {get{lock(gate)return workspaces.ToArray();}}
         public bool Busy {get{lock(gate)return closing.Count>0||workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
-        {
+        {using(Maintenance.EnterActivity()){
             if(project==null||conversation==null)throw new ArgumentNullException("conversation");
             lock(gate)
             {
@@ -44,7 +45,7 @@ namespace Dafeiyu
                 if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.createWorkspace.text"));
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
-                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);
+                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride,Maintenance);
                 workspace.Session.ConfigureRelationships(Relationships,RelationshipCompanion);
                 workspace.Session.ApprovalProvider=ApprovalProvider;
                 workspace.Session.QuestionProvider=QuestionProvider;
@@ -59,7 +60,7 @@ namespace Dafeiyu
                 workspaces.Add(workspace);
                 return workspace;
             }
-        }
+        }}
         public async Task<ConversationWorkspace> CreateWorkspaceAsync(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
         {
             while(true)
@@ -88,7 +89,7 @@ namespace Dafeiyu
             return GetCatalogWorkspaceAsync(catalog,id,null);
         }
         async Task<ConversationWorkspace> GetCatalogWorkspaceAsync(ProjectCatalog catalog,string id,string requiredPersona)
-        {
+        {using(Maintenance.EnterActivity()){
             while(true)
             {
                 Task pending;
@@ -114,7 +115,7 @@ namespace Dafeiyu
                 }
                 await pending.ConfigureAwait(false);
             }
-        }
+        }}
         public Task CloseWorkspaceAsync(string id)
         {
             lock(gate)
@@ -123,6 +124,7 @@ namespace Dafeiyu
                 if(closing.TryGetValue(id,out pending))return pending;
                 var workspace=workspaces.SingleOrDefault(w=>w.Id==id);
                 if(workspace==null)return Task.FromResult(0);
+                var admission=Maintenance.EnterActivity();
                 var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 // Publish ownership before invoking any synchronous pre-await close work.
                 closing.Add(id,completion.Task);
@@ -144,7 +146,7 @@ namespace Dafeiyu
                             else if(!workspace.IsDisposed){workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;}
                             if(error==null||!workspace.IsDisposed)closing.Remove(id);
                         }
-                        if(error==null)completion.TrySetResult(true);else completion.TrySetException(error);
+                        admission.Dispose();if(error==null)completion.TrySetResult(true);else completion.TrySetException(error);
                         NotifyState();
                     }
                 });

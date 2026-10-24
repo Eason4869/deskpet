@@ -46,7 +46,7 @@ namespace Dafeiyu
             snapshot=settings.Copy();snapshot.AgentEnabled=false;snapshot.SaveChatHistory=false;snapshot.ReadReplies=false;snapshot.ShowPredictedMessages=false;
             string project=String.IsNullOrWhiteSpace(projectName)?TextResources.Get("sideChatPane.sideChatPane.projectStringIsNullOrWhiteSpace"):projectName;
             snapshot.SystemPrompt=(settings.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt)+"\n\n当前是项目内独立的临时聊天。项目名称："+project+"\n工作目录："+(snapshot.AgentWorkspace??"")+"\n以上仅为项目背景，并不代表已读取项目。没有文件、目录、终端或其他 Agent 工具，不会自动读取文件，也无法看到主会话及其他临时聊天的历史。只根据本聊天中用户提供的内容交流，不要声称已经查看或修改电脑文件。";
-            Session=new ConversationSession(api??new ApiClient(),new SilentSpeech(),()=>null,null,()=>false);
+            Session=new ConversationSession(api??new ApiClient(),new SilentSpeech(),()=>null,null,()=>false,maintenance:pet.DataMaintenance);
             try{avatar=SkinCatalog.GetAvatar(pet.Skin);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is ArgumentException||error is InvalidOperationException||error is NotSupportedException))throw;}
             Name="SideChatPane";Background=Ui.Brush("#F8F9FB");
             RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});

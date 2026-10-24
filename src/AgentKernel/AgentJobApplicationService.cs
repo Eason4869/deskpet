@@ -10,6 +10,7 @@ namespace Dafeiyu
     // The lease and native process owner outlive every conversation and task panel.
     public sealed class AgentJobApplicationService : IDisposable
     {
+        public Dafeiyu.Maintenance.DataMaintenanceGate Maintenance {get;private set;}
         readonly object gate=new object();
         readonly string dataDirectory;
         readonly Func<IAgentJobClock,IAgentJobProcessFactory> createFactory;
@@ -31,13 +32,17 @@ namespace Dafeiyu
             foreach(var job in tracker.Observe(owned.ListAll()))
             {var handler=TerminalCompleted;if(handler!=null)foreach(Action<AgentJobSnapshot> callback in handler.GetInvocationList())try{callback(job);}catch(Exception error){Debug.WriteLine(error);}}
         }
-        public AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock):this(dataDirectory,createFactory,clock,null){}
-        internal AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock,AgentJobStorageIO storageIO)
+        public AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock):this(dataDirectory,createFactory,clock,null,null){}
+        public AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock,Dafeiyu.Maintenance.DataMaintenanceGate maintenance):this(dataDirectory,createFactory,clock,null,maintenance){}
+        internal AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock,AgentJobStorageIO storageIO):this(dataDirectory,createFactory,clock,storageIO,null){}
+        internal AgentJobApplicationService(string dataDirectory,Func<IAgentJobClock,IAgentJobProcessFactory> createFactory,IAgentJobClock clock,AgentJobStorageIO storageIO,Dafeiyu.Maintenance.DataMaintenanceGate maintenance)
         {
             if(String.IsNullOrWhiteSpace(dataDirectory)||!Path.IsPathRooted(dataDirectory))throw new ArgumentException("dataDirectory");
             if(createFactory==null||clock==null)throw new ArgumentNullException("services");
-            this.dataDirectory=dataDirectory;this.createFactory=createFactory;this.clock=clock;this.storageIO=storageIO;
+            Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.dataDirectory=dataDirectory;this.createFactory=createFactory;this.clock=clock;this.storageIO=storageIO;
         }
+        public void ConfigureMaintenance(Dafeiyu.Maintenance.DataMaintenanceGate maintenance)
+        {if(maintenance==null)throw new ArgumentNullException("maintenance");lock(gate){if(initialization!=null||mutations.Count!=0)throw new InvalidOperationException("jobs_already_initialized");Maintenance=maintenance;}}
         public AgentJobManager Manager {get{lock(gate)return manager;}}
         public string FailureCode {get{lock(gate)return failureCode;}}
         public Task<bool> InitializeAsync()
@@ -45,7 +50,8 @@ namespace Dafeiyu
             lock(gate)
             {
                 if(exiting||disposed)return Task.FromResult(false);
-                return initialization??(initialization=Task.Run((Func<Task<bool>>)InitializeCoreAsync));
+                if(initialization!=null)return initialization;var admission=Maintenance.EnterActivity();
+                return initialization=Task.Run(async()=>{try{return await InitializeCoreAsync().ConfigureAwait(false);}finally{admission.Dispose();}});
             }
         }
         public Task<bool> RetryInitializationAsync()
@@ -71,7 +77,7 @@ namespace Dafeiyu
             {
                 // Acquire the exclusive lease before constructing any platform executor.
                 opened=storageIO==null?new AgentJobStore(dataDirectory,clock):new AgentJobStore(dataDirectory,clock,storageIO);
-                var recovered=new AgentJobManager(opened,new DeferredFactory(createFactory,clock),clock);
+                var recovered=new AgentJobManager(opened,new DeferredFactory(createFactory,clock),clock,Maintenance);
                 await recovered.RecoverAsync(CancellationToken.None).ConfigureAwait(false);
                 lock(gate){store=opened;manager=recovered;completions=new AgentJobCompletionTracker(recovered.ListAll());recovered.Changed+=JobsChanged;}
                 return true;
@@ -100,12 +106,13 @@ namespace Dafeiyu
         }
         internal Task RunMutationAsync(Func<AgentJobManager,Task> mutation,CancellationToken token)
         {
+            var admission=Maintenance.EnterActivity();
             var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            lock(gate)
+            try{lock(gate)
             {
                 if(exiting||disposed)throw new InvalidOperationException("jobs_exiting");
                 mutations.Add(completion.Task);
-            }
+            }}catch{admission.Dispose();throw;}
             Task.Run(async delegate
             {
                 Exception failure=null;bool cancelled=false;
@@ -117,7 +124,7 @@ namespace Dafeiyu
                 }
                 catch(OperationCanceledException){cancelled=true;}
                 catch(Exception error){failure=error;}
-                finally{lock(gate)mutations.Remove(completion.Task);}
+                finally{lock(gate)mutations.Remove(completion.Task);admission.Dispose();}
                 if(cancelled)completion.TrySetCanceled();
                 else if(failure!=null)completion.TrySetException(failure);
                 else completion.TrySetResult(true);
@@ -134,13 +141,13 @@ namespace Dafeiyu
             }
         }
         internal bool TryRunMutation(Func<AgentJobManager,bool> mutation)
-        {
+        {using(Maintenance.EnterActivity()){
             var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             AgentJobManager owned;
             lock(gate){EnsureWritable();owned=manager;mutations.Add(completion.Task);}
             try{return mutation(owned);}
             finally{completion.TrySetResult(true);lock(gate)mutations.Remove(completion.Task);}
-        }
+        }}
         public Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token){return StopForExitAsync(token,true);}
         public Task<AgentJobExitReport> PrepareForExitAsync(CancellationToken token){return StopForExitAsync(token,false);}
         async Task<AgentJobExitReport> StopForExitAsync(CancellationToken token,bool releaseStore)
@@ -188,7 +195,7 @@ namespace Dafeiyu
                 if(disposed)return;
                 if(!cleanupConfirmed)throw new InvalidOperationException("job_cleanup_unconfirmed");
                 // Native, catalog and storage cleanup has already joined off the UI thread.
-                if(manager!=null)manager.Changed-=JobsChanged;disposed=true;store=null;manager=null;completions=null;
+                if(manager!=null){manager.Changed-=JobsChanged;manager.RetireMaintenance();}disposed=true;store=null;manager=null;completions=null;
             }
         }
     }
