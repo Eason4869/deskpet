@@ -23,6 +23,9 @@ internal sealed class RelationshipFeedbackWindow : Window
         foreach(var m in notice.Milestones){body.Children.Add(Ui.Text(RelationshipContent.StageName(m.StageId),18));body.Children.Add(Ui.Text(RelationshipCardData.FormatDate(m.EarnedLocalDate),12));}
         Content=new Border{Child=new ScrollViewer{Content=body,MaxHeight=420},BorderThickness=new Thickness(1),BorderBrush=DesktopTheme.Brush("#E5E7EB")};
         var area=owner.Pet.Screens.ScreenFromWindow(owner.Pet)?.WorkingArea??new PixelRect(0,0,1920,1080);Position=new PixelPoint(Math.Clamp(owner.Pet.Position.X,area.X,Math.Max(area.X,area.Right-400)),Math.Max(area.Y,owner.Pet.Position.Y-280));
-        var age=System.Diagnostics.Stopwatch.StartNew();lifetime.Tick+=(_,_)=>{if(age.Elapsed>=TimeSpan.FromSeconds(7)||owner.IsExiting||owner.Settings.QuietMode||notice.CompanionId!=owner.RelationshipCompanionId||!owner.Pet.RelationshipFeedbackAllowed)Close();};Closed+=(_,_)=>{lifetime.Stop();assets.Dispose();};lifetime.Start();
+        int suppressionVersion=owner.Relationships.FeedbackSuppressionVersion;
+        Action savedSettingsChanged=()=>{if(!owner.Relationships.FeedbackEnabled||suppressionVersion!=owner.Relationships.FeedbackSuppressionVersion)Close();};
+        owner.Relationships.FeedbackSettingsChanged+=savedSettingsChanged;
+        var age=System.Diagnostics.Stopwatch.StartNew();lifetime.Tick+=(_,_)=>{if(age.Elapsed>=TimeSpan.FromSeconds(7)||owner.IsExiting||owner.Settings.QuietMode||notice.CompanionId!=owner.RelationshipCompanionId||!owner.Pet.RelationshipFeedbackAllowed||suppressionVersion!=owner.Relationships.FeedbackSuppressionVersion)Close();};Closed+=(_,_)=>{lifetime.Stop();owner.Relationships.FeedbackSettingsChanged-=savedSettingsChanged;assets.Dispose();};lifetime.Start();
     }
 }

@@ -78,6 +78,18 @@ namespace Dafeiyu.Tests
                 var admittedRetry=page.PendingRetry;Click(Button(page,"RelationshipRetry"));Check(ReferenceEquals(admittedRetry,page.PendingRetry),"retry handler rejects duplicate admission while busy");
             }
             await page.PendingRetry;await page.RefreshAsync();page.UpdateLayout();Check(!page.View.ReadFailed&&!pet.RelationshipService.GetSnapshot(originalId).Settings.FeedbackEnabled,"retry recovers preserved ledger and requested settings");
+            var settingsModel=new RelationshipHomeModel(pet.Relationships);Check((await settingsModel.UpdateSettingsAsync(true,true,true)).Success,"feedback window fixture enables saved feedback");
+            await pet.Relationships.Enqueue(originalId,RelationshipEventType.CompletedConversation,"feedback-window-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());
+            deadline.Restart();while(!app.Windows.OfType<RelationshipFeedbackWindow>().Any()){if(deadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");await Task.Delay(10);}
+            var savedNotice=app.Windows.OfType<RelationshipFeedbackWindow>().Single();await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
+            byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
+            var failedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(failedFeedback,null);await page.PendingSettings;
+            Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
+            var savedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(savedFeedback,null);await page.PendingSettings;
+            deadline.Restart();while(savedNotice.IsVisible&&deadline.ElapsedMilliseconds<1500)await Task.Delay(10);
+            Check(!savedNotice.IsVisible,"successfully disabling feedback through home settings promptly closes the actual notice");
+            Check((await settingsModel.UpdateSettingsAsync(true,true,true)).Success,"feedback can be re-enabled after dismissal");await Task.Delay(650);
+            Check(!app.Windows.OfType<RelationshipFeedbackWindow>().Any(),"re-enabling feedback never replays the dismissed notice");
             Console.WriteLine("CompanionHomeUiTests: "+checks+" passed");
         }
         [STAThread]public static int Main(string[] args){string locale=args.Length==1?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}

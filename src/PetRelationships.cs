@@ -8,7 +8,7 @@ namespace Dafeiyu
         RelationshipFeedback relationshipFeedback;
         RelationshipFeedbackWindow relationshipNotice;
         internal bool RelationshipFeedbackAllowed(string id)
-        {return !closing&&id==RelationshipCompanionId&&!Settings.QuietMode&&IsPetVisible&&!sessionLocked&&!DesktopInterop.ForegroundIsFullScreen();}
+        {return !closing&&id==RelationshipCompanionId&&!Settings.QuietMode&&Relationships.FeedbackEnabled&&IsPetVisible&&!sessionLocked&&!DesktopInterop.ForegroundIsFullScreen();}
         void InitializeRelationshipFeedback()
         {
             relationshipFeedback=new RelationshipFeedback(Relationships,RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,

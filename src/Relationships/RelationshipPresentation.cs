@@ -82,7 +82,7 @@ namespace Dafeiyu
         }
         RelationshipResult SaveSettings(bool growth,bool feedback,bool aiContext)
         {
-            var result=runtime.Service.UpdateSettings(growth,feedback,aiContext);
+            var result=runtime.SaveSettings(growth,feedback,aiContext);
             lock(gate)pendingSettings=result.Success?null:new RelationshipSettings{GrowthEnabled=growth,FeedbackEnabled=feedback,AiContextEnabled=aiContext};
             return result;
         }

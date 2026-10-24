@@ -97,6 +97,17 @@ internal static class CompanionHomeUiChecks
                 var admittedRetry=page.PendingRetry;Click(Named<Button>(page,"RelationshipRetry"));Check(ReferenceEquals(admittedRetry,page.PendingRetry),"retry handler rejects duplicate admission while busy");
             }
             Complete(page.PendingRetry);Complete(page.RefreshAsync());Check(!page.View!.ReadFailed&&!owner.RelationshipService.GetSnapshot(originalId).Settings.FeedbackEnabled,"retry recovers preserved ledger and failed settings intent");
+            var settingsModel=new RelationshipHomeModel(owner.Relationships);var enable=settingsModel.UpdateSettingsAsync(true,true,true);Complete(enable);Check(enable.Result.Success,"feedback window fixture enables saved feedback");
+            Complete(owner.Relationships.Enqueue(originalId,RelationshipEventType.CompletedConversation,"feedback-window-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current()));
+            RelationshipFeedbackWindow? savedNotice=null;feedbackDeadline.Restart();while(savedNotice==null){if(feedbackDeadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);savedNotice=(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);}
+            Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
+            var failedFeedback=Named<CheckBox>(page,"RelationshipFeedbackEnabled");failedFeedback.IsChecked=false;failedFeedback.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));Complete(page.PendingSettings);
+            Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();
+            var savedFeedback=Named<CheckBox>(page,"RelationshipFeedbackEnabled");savedFeedback.IsChecked=false;savedFeedback.RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));Complete(page.PendingSettings);Dispatcher.UIThread.RunJobs();
+            Check(!savedNotice.IsVisible,"successfully disabling feedback through home settings promptly closes the actual notice");
+            var reenable=settingsModel.UpdateSettingsAsync(true,true,true);Complete(reenable);Check(reenable.Result.Success,"feedback can be re-enabled after dismissal");
+            feedbackDeadline.Restart();var quietFrame=new DispatcherFrame();using(var pulse=new System.Threading.Timer(_=>Dispatcher.UIThread.Post(()=>{if(feedbackDeadline.ElapsedMilliseconds>=650)quietFrame.Continue=false;}),null,0,10))Dispatcher.UIThread.PushFrame(quietFrame);
+            Check(typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner)==null,"re-enabling feedback never replays the dismissed notice");
         }finally{chat.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
         return checks;
     }

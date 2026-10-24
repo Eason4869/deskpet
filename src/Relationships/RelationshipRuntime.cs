@@ -22,6 +22,10 @@ namespace Dafeiyu
         readonly object gate=new object();readonly string directory,path;readonly Action<Action> dispatch;
         List<PendingEvent> pending=new List<PendingEvent>();bool blocked;volatile bool disposed;volatile string warning="";volatile int pendingCount;
         readonly object submissionGate=new object();Task worker=Task.FromResult(0),shutdown;bool admissionClosed;
+        readonly object settingsGate=new object();volatile bool feedbackEnabled=true;int feedbackSuppressionVersion;
+        public bool FeedbackEnabled {get{return feedbackEnabled;}}
+        public int FeedbackSuppressionVersion {get{return System.Threading.Volatile.Read(ref feedbackSuppressionVersion);}}
+        public event Action FeedbackSettingsChanged;
         public RelationshipService Service {get;private set;}
         public string Warning {get{return warning;}}
         public int PendingCount {get{return pendingCount;}}
@@ -44,6 +48,23 @@ namespace Dafeiyu
         static bool StorageError(Exception e){return e is IOException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
         void Publish(Action action){dispatch(delegate{if(!disposed)action();});}
         void Notify(){Publish(delegate{var changed=Changed;if(changed!=null)changed();});}
+        // HomeModel calls this only from its existing FIFO worker. Serialize the
+        // transaction and cache together across pages; UI observers read memory.
+        internal RelationshipResult SaveSettings(bool growth,bool feedback,bool aiContext)
+        {
+            RelationshipResult result;
+            lock(settingsGate){
+                result=Service.UpdateSettings(growth,feedback,aiContext);
+                if(result.Success){feedbackEnabled=result.Snapshot.Settings.FeedbackEnabled;if(!feedbackEnabled)System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);}
+            }
+            if(result.Success){
+                // No captured bool: delayed/reordered UI callbacks always observe
+                // the latest cache and the monotonic history of saved disables.
+                Publish(delegate{var changed=FeedbackSettingsChanged;if(changed!=null)changed();});
+                Notify();
+            }
+            return result;
+        }
         void SavePending()
         {
             CompanionPackStorage.AssetPath(Path.GetDirectoryName(directory),"relationships/pending.json");Directory.CreateDirectory(directory);string temp=Path.Combine(directory,Guid.NewGuid().ToString("N")+".pending.tmp");
@@ -110,7 +131,7 @@ namespace Dafeiyu
         }
         void DisposeCore()
         {
-            lock(gate){if(disposed)return;try{if(!blocked && pending.Count>0)SavePending();}catch(Exception error){if(!StorageError(error))throw;}disposed=true;Changed=null;Committed=null;}
+            lock(gate){if(disposed)return;try{if(!blocked && pending.Count>0)SavePending();}catch(Exception error){if(!StorageError(error))throw;}disposed=true;Changed=null;Committed=null;FeedbackSettingsChanged=null;}
         }
         public void Dispose(){ShutdownAsync().GetAwaiter().GetResult();}
 

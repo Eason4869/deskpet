@@ -25,7 +25,10 @@ namespace Dafeiyu
             Content=new Border{Child=new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,MaxHeight=420},BorderThickness=new Thickness(1),BorderBrush=Ui.Line};
             SourceInitialized+=delegate{DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
             Loaded+=delegate{var area=DesktopInterop.WorkArea(new WindowInteropHelper(pet).Handle);Left=Math.Max(area.Left,Math.Min(pet.Left,area.Right-Width));Top=Math.Max(area.Top,pet.Top-ActualHeight-8);};
-            var age=System.Diagnostics.Stopwatch.StartNew();lifetime.Tick+=delegate{if(age.Elapsed>=TimeSpan.FromSeconds(7)||!pet.RelationshipFeedbackAllowed(notice.CompanionId))Close();};Closed+=delegate{lifetime.Stop();};lifetime.Start();
+            int suppressionVersion=pet.Relationships.FeedbackSuppressionVersion;
+            Action savedSettingsChanged=delegate{if(!pet.Relationships.FeedbackEnabled||suppressionVersion!=pet.Relationships.FeedbackSuppressionVersion)Close();};
+            pet.Relationships.FeedbackSettingsChanged+=savedSettingsChanged;
+            var age=System.Diagnostics.Stopwatch.StartNew();lifetime.Tick+=delegate{if(age.Elapsed>=TimeSpan.FromSeconds(7)||!pet.RelationshipFeedbackAllowed(notice.CompanionId)||suppressionVersion!=pet.Relationships.FeedbackSuppressionVersion)Close();};Closed+=delegate{lifetime.Stop();pet.Relationships.FeedbackSettingsChanged-=savedSettingsChanged;};lifetime.Start();
         }
     }
 }

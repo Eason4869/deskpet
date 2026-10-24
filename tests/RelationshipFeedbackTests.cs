@@ -46,6 +46,7 @@ namespace Dafeiyu.Tests
                 }
             }
             await FailedClaimAndSwitch();
+            await SavedFeedbackSettings();
             await GroupedAndDisposed();
             using(var f=new RelationshipFixture()){
                 Directory.CreateDirectory(f.Root);string target=Path.Combine(f.Root,"card.png");
@@ -58,6 +59,31 @@ namespace Dafeiyu.Tests
                 Check(File.ReadAllText(target)=="original"&&Directory.GetFiles(f.Root,"*.tmp").Length==0,"failed atomic overwrite preserves destination and removes temporary output");
                 Check(await RelationshipCardFile.SaveAsync(target,validPng)==RelationshipCardSaveResult.Saved&&File.ReadAllBytes(target).SequenceEqual(validPng),"approved existing destination atomically receives PNG bytes");
                 Check(RelationshipCardData.SafeFileName("../A:*?", "familiar","2026-10-24").IndexOfAny(Path.GetInvalidFileNameChars())<0,"suggested filename is safe");
+            }
+        }
+        static async Task SavedFeedbackSettings()
+        {
+            using(var f=new RelationshipFixture()){
+                var publications=new List<Action>();var publicationGate=new object();
+                using(var runtime=new RelationshipRuntime(f.Root,action=>{lock(publicationGate)publications.Add(action);})) {
+                    var clock=new Clock();var notices=new List<RelationshipFeedbackNotice>();var model=new RelationshipHomeModel(runtime);int changes=0;Action changed=()=>changes++;runtime.FeedbackSettingsChanged+=changed;
+                    var feedback=new RelationshipFeedback(runtime,_=>true,notices.Add,clock);var time=RelationshipFixture.Time("2026-10-24T12:00:00Z");string id="official:e-bao";
+                    await feedback.AcceptAsync(id,f.Service.RecordChecked(id,RelationshipEventType.Visit,"settings-first",time));
+                    Check((await model.UpdateSettingsAsync(true,false,true)).Success,"saved feedback disable succeeds");
+                    Check(!runtime.FeedbackEnabled,"successful settings save publishes disabled state without UI disk reads");
+                    Check((await model.UpdateSettingsAsync(true,true,true)).Success,"saved feedback enable succeeds");
+                    List<Action> delayed;lock(publicationGate){delayed=publications.ToList();publications.Clear();}
+                    delayed.Reverse();foreach(var publication in delayed)publication();clock.Advance();await feedback.PendingDisplay;
+                    Check(runtime.FeedbackEnabled&&notices.Count==0,"out-of-order settings notifications cannot replay pre-disable pending feedback");
+                    await feedback.AcceptAsync(id,f.Service.RecordChecked(id,RelationshipEventType.CompletedConversation,"settings-second",time.AddSeconds(1)));
+                    string path=Path.Combine(f.Root,"relationships","state.json");byte[] original=File.ReadAllBytes(path);File.WriteAllText(path,"{broken");int before=changes;
+                    Check(!(await model.UpdateSettingsAsync(true,false,true)).Success&&runtime.FeedbackEnabled,"failed settings save never pretends feedback was disabled");File.WriteAllBytes(path,original);
+                    lock(publicationGate){delayed=publications.ToList();publications.Clear();}foreach(var publication in delayed)publication();clock.Advance();await feedback.PendingDisplay;
+                    Check(changes==before&&notices.Count==1,"failed settings save emits no settings event and keeps allowed feedback");
+                    feedback.Dispose();runtime.FeedbackSettingsChanged-=changed;
+                    var subscriptions=(Delegate)typeof(RelationshipRuntime).GetField("FeedbackSettingsChanged",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(runtime);
+                    Check(subscriptions==null,"disposed feedback detaches saved-settings subscription");
+                }
             }
         }
         static async Task GroupedAndDisposed()

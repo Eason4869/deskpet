@@ -19,6 +19,9 @@
 - `RelationshipFeedback` 订阅应用级 `RelationshipRuntime.Committed`，400ms 合并，
   所有领取和展示前设置读取均在工作线程执行。异步领取后和最终展示前重查身份与抑制条件。
   `IRelationshipFeedbackScheduler` 可注入，`Dispose` 取消定时器并退订。
+  主页设置保存成功后通过运行时内存状态和事件立即关闭已有提示并清除待显示反馈。
+  每次保存关闭反馈都会推进抑制序号，快速关闭后再开启也不会保留旧提示；
+  保存失败不发布变化。窗口关闭和协调器销毁均解除设置订阅，UI 定时器不读取存储。
 - `RelationshipCardData.FromSnapshot` 仅从真实里程碑读取阶段和原始日期。
   `RelationshipCardFile.SaveAsync` 返回 `Cancelled`、`Saved` 或 `Failed`。
 - 两个 UI 工程分别通过 WPF `RenderTargetBitmap/PngBitmapEncoder` 与
