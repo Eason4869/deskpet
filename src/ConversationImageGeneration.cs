@@ -73,14 +73,17 @@ namespace Dafeiyu
             await saved.ConfigureAwait(false);
             if(!String.IsNullOrEmpty(store.Warning))throw new System.IO.IOException(TextResources.Get("conversationImageGeneration.persistImageHistoryAsync.text"));history.ReconcileImageUsage();
         }
-        async Task PromoteImageTasksAsync(ConversationLog history,CancellationToken token)
+        async Task PromoteImageTasksAsync(ConversationLog history,CancellationToken token,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(ImageTasks==null)return;
             foreach(var message in history.Messages)if(message.ImageGenerationTaskIds!=null)foreach(var id in message.ImageGenerationTaskIds)
             {
                 var job=ImageTasks.Get(id);if(job==null)continue; // Old terminal task logs may have aged out; asset references remain authoritative.
                 var linked=(job.ReferenceImageIds??new System.Collections.Generic.List<string>()).Concat(String.IsNullOrEmpty(job.ResultImageId)?new string[0]:new[]{job.ResultImageId});
-                if(!job.Persistent||linked.Any(assetId=>ImageStore==null||ImageStore.Get(assetId)==null||ImageStore.Get(assetId).Temporary))await ImageTasks.PromoteAsync(id,token).ConfigureAwait(false);
+                if(!job.Persistent||linked.Any(assetId=>ImageStore==null||ImageStore.Get(assetId)==null||ImageStore.Get(assetId).Temporary)){
+                    if(owner==null)await ImageTasks.PromoteAsync(id,token).ConfigureAwait(false);
+                    else await ImageTasks.PromoteForUninstallAsync(id,token,owner).ConfigureAwait(false);
+                }
             }
         }
         async Task DeliverImageAsync(string id,ConversationLog history,string persona,CancellationToken token,Operation owner=null)

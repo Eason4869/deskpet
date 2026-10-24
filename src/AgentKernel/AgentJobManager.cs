@@ -352,6 +352,12 @@ namespace Dafeiyu
         void Release(Entry entry)
         {entry.Lifetime.Cancel();if(entry.Process!=null)entry.Process.Dispose();if(entry.DirectoryLease!=null){entry.DirectoryLease.Dispose();entry.DirectoryLease=null;}}
         public bool HasActiveJobs {get{lock(gate)return jobs.Values.Any(entry=>!AgentJobStore.IsTerminal(entry.Record.State));}}
+        internal void CheckForUninstall(Dafeiyu.Maintenance.UninstallOwner owner)
+        {
+            owner.Require(Maintenance);
+            lock(gate)if(!recovered||(exitRequested&&!owner.IsClosed)||jobs.Values.Any(e=>!AgentJobStore.IsTerminal(e.Record.State)||e.FinalPersistencePending||!String.IsNullOrEmpty(e.Record.LogWarning)))
+                throw new System.IO.IOException(TextResources.Get("dataMaintenance.storageFailure"));
+        }
         public IList<AgentJobSnapshot> ListForConversation(string conversationId){lock(gate)return jobs.Values.Where(entry=>entry.Record.Owner.ConversationId==conversationId).Select(Snapshot).ToList().AsReadOnly();}
         internal IList<AgentJobSnapshot> ListAll(){lock(gate)return jobs.Values.Select(Snapshot).ToList().AsReadOnly();}
         public IList<AgentJobSnapshot> ListForProject(string projectId)

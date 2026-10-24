@@ -147,10 +147,7 @@ namespace Dafeiyu
         }
         void Uninstall()
         {
-            if(!pet.CanApplyUpdate(true)){updates.ReportValidation(TextResources.Get("aboutPanel.uninstall.updatesReportValidation"));return;}
-            string path;try{path=UpdateInstall.GetUninstallerPath(AppDomain.CurrentDomain.BaseDirectory);}catch(System.Security.SecurityException){updates.ReportValidation(TextResources.Get("aboutPanel.uninstall.updatesReportValidation.alternativeA"));return;}
-            if(path==null){updates.ReportValidation(TextResources.Get("aboutPanel.uninstall.updatesReportValidation.alternativeB"));return;}
-            try{Process.Start(new ProcessStartInfo(path){UseShellExecute=true,WorkingDirectory=Path.GetDirectoryName(path)});pet.Close();}catch(System.ComponentModel.Win32Exception){updates.ReportValidation(TextResources.Get("aboutPanel.uninstall.updatesReportValidation.alternativeC"));}
+            var dialog=new UninstallConfirmationWindow(pet){Owner=Window.GetWindow(this)};dialog.ShowDialog();
         }
         void Open(string address){try{Process.Start(new ProcessStartInfo(address){UseShellExecute=true});}catch(System.ComponentModel.Win32Exception){updates.ReportValidation(TextResources.Get("aboutPanel.open.updatesReportValidation"));}}
         public void Dispose(){if(disposed)return;disposed=true;if(probe!=null)probe.Cancel();updates.Changed-=Refresh;}

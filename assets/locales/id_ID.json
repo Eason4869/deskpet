@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "Belum ada kenangan hari raya.",
   "holidayKeepsake.halloweenMessage": "Cahaya lentera dan sedikit keajaiban — malam biasa menjadi istimewa bersamamu.",
   "holidayKeepsake.historyMessage": "Hari raya bersama, kenangan untuk disimpan.",
-  "holidayKeepsake.historyTitle": "Kenang-kenangan bersama"
+  "holidayKeepsake.historyTitle": "Kenang-kenangan bersama",
+  "uninstall.title": "Hapus instalasi",
+  "uninstall.scope": "Tutup pendamping dan hapus instalasi aplikasi? Pengaturan, kunci API, obrolan, hubungan, dan kenang-kenangan tersimpan akan tetap ada di folder data. Batal membuat pendamping tetap berjalan.",
+  "uninstall.portable": "Salinan ini tidak memiliki pendaftaran instalasi yang cocok. Penghapusan otomatis tidak tersedia. Tutup aplikasi lalu hapus berkas program secara manual dengan mempertahankan folder data.",
+  "uninstall.prepareFailed": "Persiapan penghapusan gagal. Pendamping masih berjalan. Selesaikan kesalahan penyimpanan yang tertunda dan coba lagi.",
+  "uninstall.closeCanceled": "Penutupan dibatalkan atau pengaturan berubah. Pendamping masih berjalan; penghapusan dibatalkan."
 }

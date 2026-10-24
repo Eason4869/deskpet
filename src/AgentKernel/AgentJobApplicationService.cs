@@ -150,8 +150,19 @@ namespace Dafeiyu
         }}
         public Task<AgentJobExitReport> StopAllForExitAsync(CancellationToken token){return StopForExitAsync(token,true);}
         public Task<AgentJobExitReport> PrepareForExitAsync(CancellationToken token){return StopForExitAsync(token,false);}
+        internal async Task CheckForUninstallAsync(Dafeiyu.Maintenance.UninstallOwner owner)
+        {
+            owner.Require(Maintenance);AgentJobStore storage;AgentJobManager owned;
+            lock(gate){if(disposed||exiting||initialization==null||!initialization.IsCompleted||initialization.IsFaulted||initialization.IsCanceled||!initialization.Result||!String.IsNullOrEmpty(failureCode)||mutations.Count!=0)throw new System.IO.IOException(TextResources.Get("dataMaintenance.storageFailure"));storage=store;owned=manager;}
+            if(storage!=null){await storage.DrainMaintenanceAsync().ConfigureAwait(false);if(storage.HasUninstallStorageFailure)throw new System.IO.IOException(TextResources.Get("dataMaintenance.storageFailure"));}
+            owner.Require(Maintenance);if(owned!=null)owned.CheckForUninstall(owner);
+        }
+        internal async Task<AgentJobExitReport> CloseForUninstallAsync(Dafeiyu.Maintenance.UninstallOwner owner)
+        {owner.Require(Maintenance,true);var report=await StopForExitCoreAsync(CancellationToken.None,true).ConfigureAwait(false);owner.Require(Maintenance,true);if(manager!=null)manager.CheckForUninstall(owner);return report;}
         async Task<AgentJobExitReport> StopForExitAsync(CancellationToken token,bool releaseStore)
-        {using(Maintenance.EnterActivity()){
+        {using(Maintenance.EnterActivity())return await StopForExitCoreAsync(token,releaseStore).ConfigureAwait(false);}
+        async Task<AgentJobExitReport> StopForExitCoreAsync(CancellationToken token,bool releaseStore)
+        {
             var elapsed=Stopwatch.StartNew();Task<bool> pending;Task[] admitted;
             AgentJobExitReport completed=null;
             lock(gate){exiting=true;cleanupConfirmed=false;pending=initialization;admitted=mutations.ToArray();}
@@ -187,7 +198,7 @@ namespace Dafeiyu
                 }
                 catch(Exception error){Debug.WriteLine(error);return new AgentJobExitReport(false,completed==null?new AgentJobSnapshot[0]:completed.Jobs,elapsed.ElapsedMilliseconds);}
             }
-        }}
+        }
         public void Dispose()
         {
             lock(gate)

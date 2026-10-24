@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "Aucun souvenir de fête enregistré.",
   "holidayKeepsake.halloweenMessage": "Une douce lumière, un peu de magie : ensemble, cette nuit ordinaire devient merveilleuse.",
   "holidayKeepsake.historyMessage": "Une fête partagée, un souvenir à garder.",
-  "holidayKeepsake.historyTitle": "Souvenir de notre amitié"
+  "holidayKeepsake.historyTitle": "Souvenir de notre amitié",
+  "uninstall.title": "Désinstaller",
+  "uninstall.scope": "Fermer le compagnon et désinstaller l’application ? Les paramètres, clés API, discussions, relations et souvenirs enregistrés resteront dans le dossier data. Annuler laisse le compagnon ouvert.",
+  "uninstall.portable": "Cette copie ne correspond à aucune installation enregistrée. La désinstallation automatique est indisponible. Fermez l’application et retirez ses fichiers manuellement en conservant le dossier data.",
+  "uninstall.prepareFailed": "La préparation a échoué. Le compagnon reste ouvert. Corrigez les erreurs d’enregistrement en attente et réessayez.",
+  "uninstall.closeCanceled": "La fermeture a été annulée ou les paramètres ont changé. Le compagnon reste ouvert ; la désinstallation est annulée."
 }

@@ -521,11 +521,13 @@ namespace Dafeiyu
             try{var candidate=Snapshot(settings);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));}
             finally{writes.Release();}
         }
-        static PetSettings Snapshot(PetSettings settings)
+        internal static PetSettings Snapshot(PetSettings settings)
         {
             var serializer=new DataContractJsonSerializer(typeof(PetSettings));
             using(var stream=new MemoryStream()){serializer.WriteObject(stream,settings);stream.Position=0;return (PetSettings)serializer.ReadObject(stream);}
         }
+        internal static string SnapshotIdentity(PetSettings settings)
+        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,settings);return Convert.ToBase64String(stream.ToArray());}}
         static void CopyPreferences(PetSettings source,PetSettings target)
         {
             target.ThemeMode=source.ThemeMode;target.Scale=source.Scale;target.Volume=source.Volume;

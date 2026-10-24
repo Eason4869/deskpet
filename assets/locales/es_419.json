@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "Aún no hay recuerdos de fiestas guardados.",
   "holidayKeepsake.halloweenMessage": "Una luz suave y un poco de magia: juntos, una noche común se volvió especial.",
   "holidayKeepsake.historyMessage": "Una fiesta juntos, un recuerdo para guardar.",
-  "holidayKeepsake.historyTitle": "Recuerdo de nuestra compañía"
+  "holidayKeepsake.historyTitle": "Recuerdo de nuestra compañía",
+  "uninstall.title": "Desinstalar",
+  "uninstall.scope": "¿Cerrar el compañero y desinstalar la aplicación? La configuración, claves API, chats, relaciones y recuerdos guardados permanecerán en la carpeta data. Cancelar mantiene el compañero abierto.",
+  "uninstall.portable": "Esta copia no tiene una instalación registrada coincidente. La desinstalación automática no está disponible. Cierra la aplicación y elimina sus archivos manualmente, conservando la carpeta data.",
+  "uninstall.prepareFailed": "No se pudo preparar la desinstalación. El compañero sigue abierto. Resuelve los errores de guardado pendientes y vuelve a intentarlo.",
+  "uninstall.closeCanceled": "Se canceló el cierre o cambió la configuración. El compañero sigue abierto; se canceló la desinstalación."
 }

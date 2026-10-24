@@ -16,6 +16,7 @@ namespace Dafeiyu
         readonly GeneratedImageStore assets;
         readonly IImageGenerationExecutor executor;
         readonly ImageAssetUsageRegistry usage;
+        readonly Dafeiyu.Maintenance.DataMaintenanceGate maintenance;
         readonly List<Job> jobs=new List<Job>();
         readonly Queue<ImageGenerationTaskSnapshot> notifications=new Queue<ImageGenerationTaskSnapshot>();
         readonly HashSet<string> detachedOrigins=new HashSet<string>(StringComparer.Ordinal);
@@ -32,7 +33,7 @@ namespace Dafeiyu
             }
             // A failed/cancelled generation can own the only reference image,
             // even when no history ever received a generated-image attachment.
-            foreach(string id in promote)PromoteAsync(id,CancellationToken.None).GetAwaiter().GetResult();
+            foreach(string id in promote)PromoteCoreAsync(id,CancellationToken.None).GetAwaiter().GetResult();
             lock(gate){
                 if(!restored||recoveryRequired||!String.IsNullOrEmpty(Warning)||jobs.Any(j=>!j.Record.IsTerminal||j.Running))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));
                 var changed=jobs.Where(j=>j.Record.Source==ImageGenerationSource.Conversation).ToArray();var before=changed.Select(j=>j.Record.Copy()).ToArray();
@@ -57,8 +58,10 @@ namespace Dafeiyu
         }
         sealed class Phase : IProgress<ImageGenerationPhase>
         {readonly Action<ImageGenerationPhase> report;public Phase(Action<ImageGenerationPhase> report){this.report=report;}public void Report(ImageGenerationPhase value){report(value);}}
-        public ImageGenerationTaskManager(ImageGenerationTaskStore log,GeneratedImageStore assets,IImageGenerationExecutor executor,ImageAssetUsageRegistry usage)
-        {if(log==null || assets==null || executor==null || usage==null)throw new ArgumentNullException();this.log=log;this.assets=assets;this.executor=executor;this.usage=usage;Warning="";}
+        public ImageGenerationTaskManager(ImageGenerationTaskStore log,GeneratedImageStore assets,IImageGenerationExecutor executor,ImageAssetUsageRegistry usage,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
+        {if(log==null || assets==null || executor==null || usage==null)throw new ArgumentNullException();this.log=log;this.assets=assets;this.executor=executor;this.usage=usage;Warning="";this.maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.maintenance.Register(()=>Task.FromResult(0),()=>{lock(gate)return jobs.Any(j=>!j.Record.IsTerminal||j.Running);},this);}
+        internal void CheckForUninstall(Dafeiyu.Maintenance.UninstallOwner owner)
+        {owner.Require(maintenance);lock(gate)if(!restored||recoveryRequired||!String.IsNullOrEmpty(Warning)||jobs.Any(j=>!j.Record.IsTerminal||j.Running))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));}
         public int Concurrency{get{lock(gate)return concurrency;}set{lock(gate)concurrency=Math.Max(1,Math.Min(4,value));Schedule();}}
         public ImageGenerationTaskSnapshot Get(string id){lock(gate){var j=Find(id);return j==null?null:new ImageGenerationTaskSnapshot(j.Record);}}
         public IList<ImageGenerationTaskSnapshot> List(){lock(gate)return jobs.Select(j=>new ImageGenerationTaskSnapshot(j.Record)).ToList();}
@@ -67,6 +70,8 @@ namespace Dafeiyu
         static bool SameCall(ImageTaskOrigin a,ImageTaskOrigin b){return a!=null && b!=null && !String.IsNullOrEmpty(a.ConversationId) && !String.IsNullOrEmpty(a.AgentTaskId) && !String.IsNullOrEmpty(a.ToolCallId) && a.ConversationId==b.ConversationId && a.AgentTaskId==b.AgentTaskId && a.ToolCallId==b.ToolCallId;}
         public Task<ImageGenerationTaskHandle> EnqueueAsync(ImageGenerationTaskSubmission submission,CancellationToken ownerToken){return EnqueueCore(submission,ownerToken,null);}
         async Task<ImageGenerationTaskHandle> EnqueueCore(ImageGenerationTaskSubmission submission,CancellationToken ownerToken,string retryOf)
+        {using(maintenance.EnterActivity())return await EnqueueAdmittedAsync(submission,ownerToken,retryOf).ConfigureAwait(false);}
+        async Task<ImageGenerationTaskHandle> EnqueueAdmittedAsync(ImageGenerationTaskSubmission submission,CancellationToken ownerToken,string retryOf)
         {
             if(submission==null)throw new ArgumentNullException("submission");
             var request=submission.Request;var origin=submission.Origin;var beforeStart=submission.BeforeStart;Job job;
@@ -199,6 +204,10 @@ namespace Dafeiyu
             }return Task.FromResult(0);
         }
         public async Task PromoteAsync(string id,CancellationToken token)
+        {using(maintenance.EnterActivity())await PromoteCoreAsync(id,token).ConfigureAwait(false);}
+        internal Task PromoteForUninstallAsync(string id,CancellationToken token,Dafeiyu.Maintenance.UninstallOwner owner)
+        {owner.Require(maintenance);return PromoteCoreAsync(id,token);}
+        async Task PromoteCoreAsync(string id,CancellationToken token)
         {
             Job job;lock(gate){job=Find(id);if(job==null)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.promoteAsync.text"));}
             await job.AssetsReady.Task.ConfigureAwait(false);
@@ -212,7 +221,7 @@ namespace Dafeiyu
             }finally{job.Commit.Release();foreach(var notify in assetNotifications)notify();}
         }
         public Task SetDeliveryStateAsync(string id,ImageTaskDeliveryState state)
-        {lock(gate){var j=Find(id);if(j==null)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.text"));j.Record.DeliveryState=state;j.Record.DeliveryError=state==ImageTaskDeliveryState.Failed?TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.stateImageTaskDeliveryStateFailed"):"";j.Record.UpdatedUtc=DateTime.UtcNow;Save();Notify(j);}return Task.FromResult(0);}
+        {using(maintenance.EnterActivity()){lock(gate){var j=Find(id);if(j==null)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.text"));j.Record.DeliveryState=state;j.Record.DeliveryError=state==ImageTaskDeliveryState.Failed?TextResources.Get("imageGenerationTaskManager.setDeliveryStateAsync.stateImageTaskDeliveryStateFailed"):"";j.Record.UpdatedUtc=DateTime.UtcNow;Save();Notify(j);}return Task.FromResult(0);}}
         public async Task StopAsync(CancellationToken token)
         {
             List<Job> pending;lock(gate){stopping=true;pending=jobs.Where(j=>!j.Record.IsTerminal).ToList();}

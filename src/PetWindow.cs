@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -248,7 +248,7 @@ namespace Dafeiyu
 
         public PetWindow(SpriteAtlas source,PetSettings settings,SettingsStore store,EventWaitHandle wakeSignal)
         {
-            atlas=source; Settings=settings; Store=store;Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);}); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
+            atlas=source; Settings=settings; Store=store;Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);},DataMaintenance); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
             Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;
@@ -1174,6 +1174,7 @@ namespace Dafeiyu
         { if(handle==IntPtr.Zero) return; Rect bounds=DesktopInterop.Bounds(handle); Settings.X=bounds.Left; Settings.Y=bounds.Top; SaveSettings(); }
         private void OnClosing(object sender,System.ComponentModel.CancelEventArgs args)
         {
+            if(uninstallPreparing)return;
             if(!exitPrepared)
             {
                 args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;closing=true;
@@ -1181,6 +1182,10 @@ namespace Dafeiyu
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
             }
+            CleanupClosedWindow();
+        }
+        void CleanupClosedWindow()
+        {
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;

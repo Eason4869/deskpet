@@ -22,6 +22,7 @@ namespace Dafeiyu
         readonly object gate=new object();readonly string directory,path;readonly Action<Action> dispatch;
         List<PendingEvent> pending=new List<PendingEvent>();bool blocked;volatile bool disposed;volatile string warning="";volatile int pendingCount;
         readonly object submissionGate=new object();Task worker=Task.FromResult(0),shutdown;bool admissionClosed;
+        readonly Dafeiyu.Maintenance.DataMaintenanceGate maintenance;
         readonly object settingsGate=new object();volatile bool feedbackEnabled=true;int feedbackSuppressionVersion;
         public bool FeedbackEnabled {get{return feedbackEnabled;}}
         public int FeedbackSuppressionVersion {get{return System.Threading.Volatile.Read(ref feedbackSuppressionVersion);}}
@@ -33,8 +34,9 @@ namespace Dafeiyu
         public int PendingCount {get{return pendingCount;}}
         public event Action Changed;
         public event Action<string,RelationshipResult> Committed;
-        public RelationshipRuntime(string dataDirectory,Action<Action> uiDispatch=null)
+        public RelationshipRuntime(string dataDirectory,Action<Action> uiDispatch=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
         {
+            this.maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();
             Service=new RelationshipService(new RelationshipStore(dataDirectory));directory=Path.Combine(Path.GetFullPath(dataDirectory),"relationships");path=CompanionPackStorage.AssetPath(dataDirectory,"relationships/pending.json");dispatch=uiDispatch??(action=>action());
             try{
                 if(File.Exists(path)){
@@ -53,6 +55,8 @@ namespace Dafeiyu
         // HomeModel calls this only from its existing FIFO worker. Serialize the
         // transaction and cache together across pages; UI observers read memory.
         internal RelationshipResult SaveSettings(bool growth,bool feedback,bool aiContext)
+        {using(maintenance.EnterActivity())return SaveSettingsCore(growth,feedback,aiContext);}
+        RelationshipResult SaveSettingsCore(bool growth,bool feedback,bool aiContext)
         {
             RelationshipResult result;
             lock(settingsGate){
@@ -74,6 +78,8 @@ namespace Dafeiyu
             finally{if(File.Exists(temp))try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
         }
         public void Record(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
+        {using(maintenance.EnterActivity())RecordCore(companionId,type,eventId,time);}
+        void RecordCore(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
         {
             if(!RelationshipIdentity.IsValid(companionId) || !RelationshipRules.ValidEventId(eventId) || !RelationshipRules.ValidType(type) || time==null)return;
             var notifications=new List<Action>();
@@ -95,7 +101,8 @@ namespace Dafeiyu
                 warning="";
             }catch(Exception error){if(!StorageError(error))throw;warning=TextResources.Get("relationship.saveWarning");}
         }
-        public void RetryPending(){var notifications=new List<Action>();lock(gate){if(disposed)return;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();}
+        public void RetryPending(){using(maintenance.EnterActivity())RetryPendingCore();}
+        void RetryPendingCore(){var notifications=new List<Action>();lock(gate){if(disposed)return;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();}
         public void RecordVisit(string companionId,bool actuallyVisible=true){if(actuallyVisible)Record(companionId,RelationshipEventType.Visit,"visit-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());}
         public void RecordUserInteraction(string companionId,bool userOrigin,bool started){if(userOrigin && started)Record(companionId,RelationshipEventType.UserInteraction,"interaction-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());}
         public string StageContext(string companionId)
@@ -110,7 +117,8 @@ namespace Dafeiyu
         {
             lock(submissionGate){
                 if(admissionClosed)return Task.FromResult(0);
-                worker=worker.ContinueWith(delegate{Record(companionId,type,eventId,time);},TaskScheduler.Default);
+                IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return Task.FromResult(0);
+                worker=worker.ContinueWith(delegate{using(activity)RecordCore(companionId,type,eventId,time);},TaskScheduler.Default);
                 return worker;
             }
         }
@@ -124,8 +132,10 @@ namespace Dafeiyu
         }
         public Task RetryPendingAsync()
         {
-            lock(submissionGate){if(admissionClosed)return Task.FromResult(0);worker=worker.ContinueWith(delegate{RetryPending();},TaskScheduler.Default);return worker;}
+            lock(submissionGate){if(admissionClosed)return Task.FromResult(0);IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return Task.FromResult(0);worker=worker.ContinueWith(delegate{using(activity)RetryPendingCore();},TaskScheduler.Default);return worker;}
         }
+        internal async Task CheckForUninstallAsync(Dafeiyu.Maintenance.UninstallOwner owner)
+        {owner.Require(maintenance);await FlushAsync().ConfigureAwait(false);owner.Require(maintenance);if(RequiresRestart||PendingCount!=0||!String.IsNullOrEmpty(Warning))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));}
         public Task FlushAsync(){lock(submissionGate)return worker;}
         public Task ShutdownAsync()
         {

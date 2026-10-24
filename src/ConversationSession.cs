@@ -78,10 +78,10 @@ namespace Dafeiyu
             var loaded=new ConversationLog();loaded.ConfigureImageUsage(imageUsage);if(store!=null)loaded.Replace(store.Load(id));
             lock(gate){if(histories.TryGetValue(id,out history)){loaded.ReleaseImageUsage();return history;}histories[id]=loaded;return loaded;}
         }
-        private void Save(string id,ConversationLog history)
+        private void Save(string id,ConversationLog history,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(store==null||!saveEnabled())return;
-            try{PromoteImageTasksAsync(history,CancellationToken.None).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
+            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning=TextResources.Get("conversationSession.save.imageHistoryWarning");OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}

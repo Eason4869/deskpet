@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "尚未留下节日纪念。",
   "holidayKeepsake.halloweenMessage": "这一夜，灯光温柔，和你一起把平凡变成了奇妙。",
   "holidayKeepsake.historyMessage": "和你一起度过的节日，已经成为值得珍藏的回忆。",
-  "holidayKeepsake.historyTitle": "相伴纪念卡"
+  "holidayKeepsake.historyTitle": "相伴纪念卡",
+  "uninstall.title": "卸载",
+  "uninstall.scope": "关闭桌面伙伴并卸载应用？设置、API 密钥、聊天、关系和已保存的纪念物会保留在 data 文件夹中。取消后桌面伙伴继续运行。",
+  "uninstall.portable": "此副本没有匹配的安装注册信息，无法自动卸载。请关闭应用后手动移除程序文件，并保留 data 文件夹。",
+  "uninstall.prepareFailed": "卸载准备失败，桌面伙伴仍在运行。请处理待保存的错误后重试。",
+  "uninstall.closeCanceled": "关闭被取消或设置发生变化，桌面伙伴仍在运行，卸载已取消。"
 }

@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "尚未留下節日紀念。",
   "holidayKeepsake.halloweenMessage": "這一夜，燈光溫柔，和你一起把平凡變成了奇妙。",
   "holidayKeepsake.historyMessage": "和你一起度過的節日，已成為值得珍藏的回憶。",
-  "holidayKeepsake.historyTitle": "相伴紀念卡"
+  "holidayKeepsake.historyTitle": "相伴紀念卡",
+  "uninstall.title": "解除安裝",
+  "uninstall.scope": "關閉桌面夥伴並解除安裝應用程式？設定、API 金鑰、聊天、關係和已儲存的紀念物會保留在 data 資料夾中。取消後桌面夥伴繼續執行。",
+  "uninstall.portable": "此副本沒有相符的安裝註冊資訊，無法自動解除安裝。請關閉應用程式後手動移除程式檔案，並保留 data 資料夾。",
+  "uninstall.prepareFailed": "解除安裝準備失敗，桌面夥伴仍在執行。請處理待儲存的錯誤後重試。",
+  "uninstall.closeCanceled": "關閉已取消或設定已變更，桌面夥伴仍在執行，解除安裝已取消。"
 }

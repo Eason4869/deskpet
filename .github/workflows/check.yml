@@ -208,6 +208,15 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Verify abortable uninstall UI and close ownership
+        shell: powershell
+        run: |
+          .\Build.ps1 -Target UninstallUiTests -TestArguments '--compile-only'
+          if ($LASTEXITCODE) { throw 'Uninstall UI compilation failed' }
+          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning')) {
+            & .\work\UninstallUiTests.exe $mode
+            if ($LASTEXITCODE) { throw "Uninstall UI failed: $mode" }
+          }
       - name: Verify trusted uninstall handoff in a unique owned Inno installation
         shell: powershell
         run: |
@@ -216,6 +225,8 @@ jobs:
           if (!$env:DESKPET_TEST_INNO) { throw 'Inno compiler required for owned uninstall acceptance' }
           python tests/UninstallHandoffSmoke.py
           if ($LASTEXITCODE) { throw 'Owned uninstall handoff failed' }
+          python tests/UninstallInstalledUiSmoke.py
+          if ($LASTEXITCODE) { throw 'Actual installed WPF uninstall failed' }
           python tests/UpdateLifecycleSmoke.py --receipts-only
           if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
       - name: Preserve owned uninstall handoff diagnostics
@@ -225,6 +236,11 @@ jobs:
           name: uninstall-handoff-${{ github.sha }}
           if-no-files-found: ignore
           path: |
+            work/uc-*/install.log
+            work/uc-*/i/data/fixture-error
+            work/uc-*/i/data/pre-uninstall.json
+            work/uc-*/i/data/uninstall/*/*.log
+            work/uc-*/i/data/uninstall/*/result.json
             work/uninstall-handoff-*/install.log
             work/uninstall-handoff-*/owned */data/uninstall/*/*.log
             work/uninstall-handoff-*/owned */data/uninstall/*/result.json

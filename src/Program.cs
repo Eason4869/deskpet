@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Security.Principal;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 [assembly: AssemblyTitle(Dafeiyu.ReleaseInfo.ProductName)]
@@ -50,7 +51,7 @@ namespace Dafeiyu
                         var pet = new PetWindow(null, settings, store, wake);
                         bool resume=Array.IndexOf(startupArgs,ApplicationRestart.ResumeArgument)>=0;
                         pet.Loaded+=delegate {pet.Updates.StartAutomaticChecks();if(onboarding.ShowGuide||resume)pet.Dispatcher.BeginInvoke(new Action(pet.ShowOnboarding));};
-                        pet.Closed += delegate { app.Shutdown(); }; normalExit=app.Run(pet)==0;
+                        pet.Closed += async delegate {await ShutdownAfterCloseAsync(app,pet);}; normalExit=app.Run(pet)==0;
                     }
                     catch (Exception error)
                     {
@@ -62,5 +63,7 @@ namespace Dafeiyu
             }
             if(normalExit&&ApplicationRestart.Requested)ApplicationRestart.Launch();
         }
+        internal static async Task ShutdownAfterCloseAsync(Application app,PetWindow pet)
+        {try{await pet.UninstallCompletion;app.Shutdown();}catch(Exception error){RuntimeDiagnostics.Record(error);app.Shutdown(1);}}
     }
 }

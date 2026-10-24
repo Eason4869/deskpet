@@ -70,7 +70,7 @@ internal sealed partial class DesktopController : IDisposable
         runtime ??= new MacRuntime();
         this.runtime = runtime;
         DataDirectory = runtime.DataDirectory;
-        Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action));
+        Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action),DataMaintenance);
         Directory.CreateDirectory(DataDirectory);
         Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         InitializeHolidayKeepsakes();
@@ -100,7 +100,7 @@ internal sealed partial class DesktopController : IDisposable
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
         Session = new ConversationSession(Api, runtime.CreateSpeech(Api), runtime.CreateRecorder, new HistoryStore(Path.Combine(DataDirectory, "history")), () => Settings.SaveChatHistory,maintenance:DataMaintenance);
-        ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage);
+        ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage,DataMaintenance);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
         ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
         imageCompletions=new ImageTaskCompletionTracker(ImageTasks.List());ImageTasks.Changed+=ImageTaskCompleted;imageNoticeTimer.Tick+=(_,_)=>{imageNoticeTimer.Stop();imageNotification?.Hide();};

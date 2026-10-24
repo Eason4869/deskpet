@@ -12,6 +12,16 @@ namespace Dafeiyu
         IDisposable maintenanceRegistration;
         internal string MaintenanceHistoryDirectory {get{return store==null?null:store.DirectoryPath;}}
         internal string MaintenanceStorageWarning {get{return String.Join(" ",new[]{HistoryWarning,AgentTaskWarning}.Where(s=>!String.IsNullOrEmpty(s)));}}
+        internal async Task SaveForUninstallAsync(UninstallOwner owner)
+        {
+            owner.Require(Maintenance);
+            await WaitForIdleAsync().ConfigureAwait(false);
+            // The owner blocks all writers. Save cached personas as well as the visible one.
+            KeyValuePair<string,ConversationLog>[] logs;lock(gate)logs=histories.ToArray();
+            foreach(var entry in logs){owner.Require(Maintenance);Save(entry.Key,entry.Value,owner);}
+            await FlushHistoryAsync().ConfigureAwait(false);owner.Require(Maintenance);
+            if(!String.IsNullOrEmpty(MaintenanceStorageWarning)||(taskStore!=null&&taskStore.MaintenancePending().Length!=0))throw new System.IO.IOException(TextResources.Get("dataMaintenance.storageFailure"));
+        }
         internal IList<ChatMessage> MaintenanceMessages()
         {lock(gate)return histories.Values.SelectMany(log=>log.Messages).ToList();}
         internal AgentTaskState[] MaintenanceTasks()

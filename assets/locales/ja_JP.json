@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "季節の思い出はまだありません。",
   "holidayKeepsake.halloweenMessage": "やさしい灯りと小さな魔法。あなたと過ごした夜が、特別になった。",
   "holidayKeepsake.historyMessage": "一緒に過ごした季節を、大切な思い出に。",
-  "holidayKeepsake.historyTitle": "ふたりの記念カード"
+  "holidayKeepsake.historyTitle": "ふたりの記念カード",
+  "uninstall.title": "アンインストール",
+  "uninstall.scope": "コンパニオンを終了してアプリをアンインストールしますか？設定、API キー、チャット、関係、保存した記念品は data フォルダーに残ります。キャンセルすると引き続き動作します。",
+  "uninstall.portable": "このコピーに一致するインストール登録がないため、自動アンインストールは利用できません。アプリを終了し、data フォルダーを残してプログラムファイルを手動で削除してください。",
+  "uninstall.prepareFailed": "アンインストールの準備に失敗しました。コンパニオンは動作中です。未保存のエラーを解消して再試行してください。",
+  "uninstall.closeCanceled": "終了がキャンセルされたか、設定が変更されました。コンパニオンは動作中で、アンインストールはキャンセルされました。"
 }

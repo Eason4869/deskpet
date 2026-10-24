@@ -32,6 +32,8 @@ namespace Dafeiyu
     }
     public sealed partial class AgentJobStore
     {
+        internal bool HasUninstallStorageFailure
+        {get{AgentJobLogStore[] opened;lock(ioGate){if(warnings.Count!=0)return true;opened=logs.Values.ToArray();}return opened.Any(log=>log.Failure!=null);}}
         readonly AgentJobPendingStorage maintenanceWrites=new AgentJobPendingStorage();
         internal Task TrackMaintenance(Task task){return maintenanceWrites.Track(task);}
         internal async Task DrainMaintenanceAsync()

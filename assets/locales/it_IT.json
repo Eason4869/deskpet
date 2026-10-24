@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "Nessun ricordo delle feste salvato.",
   "holidayKeepsake.halloweenMessage": "Una luce gentile, un po’ di magia: insieme, una notte qualunque diventa speciale.",
   "holidayKeepsake.historyMessage": "Una festa insieme, un ricordo da custodire.",
-  "holidayKeepsake.historyTitle": "Un ricordo insieme"
+  "holidayKeepsake.historyTitle": "Un ricordo insieme",
+  "uninstall.title": "Disinstalla",
+  "uninstall.scope": "Chiudere il compagno e disinstallare l’applicazione? Impostazioni, chiavi API, chat, relazioni e ricordi salvati resteranno nella cartella data. Annulla mantiene il compagno in esecuzione.",
+  "uninstall.portable": "Questa copia non corrisponde a un’installazione registrata. La disinstallazione automatica non è disponibile. Chiudi l’app e rimuovi manualmente i file del programma, conservando la cartella data.",
+  "uninstall.prepareFailed": "Preparazione non riuscita. Il compagno è ancora in esecuzione. Risolvi gli errori di salvataggio in sospeso e riprova.",
+  "uninstall.closeCanceled": "La chiusura è stata annullata o le impostazioni sono cambiate. Il compagno è ancora in esecuzione; la disinstallazione è annullata."
 }

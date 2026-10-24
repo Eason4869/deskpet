@@ -4652,5 +4652,10 @@
   "holidayKeepsake.empty": "아직 명절의 추억이 없습니다.",
   "holidayKeepsake.halloweenMessage": "은은한 등불과 작은 마법. 함께라서 평범한 밤이 특별해졌어요.",
   "holidayKeepsake.historyMessage": "함께 보낸 명절이 소중한 추억으로 남았어요.",
-  "holidayKeepsake.historyTitle": "함께한 기념 카드"
+  "holidayKeepsake.historyTitle": "함께한 기념 카드",
+  "uninstall.title": "제거",
+  "uninstall.scope": "동반자를 종료하고 앱을 제거할까요? 설정, API 키, 대화, 관계 및 저장된 기념품은 data 폴더에 남습니다. 취소하면 동반자가 계속 실행됩니다.",
+  "uninstall.portable": "이 사본에 일치하는 설치 등록이 없어 자동 제거를 사용할 수 없습니다. 앱을 종료하고 data 폴더를 유지한 채 프로그램 파일을 직접 제거하세요.",
+  "uninstall.prepareFailed": "제거 준비에 실패했습니다. 동반자는 계속 실행 중입니다. 저장 오류를 해결한 후 다시 시도하세요.",
+  "uninstall.closeCanceled": "종료가 취소되었거나 설정이 변경되었습니다. 동반자는 계속 실행 중이며 제거가 취소되었습니다."
 }
