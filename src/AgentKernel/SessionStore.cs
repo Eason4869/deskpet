@@ -67,7 +67,10 @@ namespace Dafeiyu
             foreach(object item in InspectArray(tree["Events"])){
                 var entry=InspectMembers(item,"Sequence","Type","InputId","StepId","CreatedUtc");
                 if(!Counter(entry["Sequence"]))throw InvalidSession();
-                foreach(string name in new[]{"Type","InputId","StepId"})if(!(entry[name] is string))throw InvalidSession();
+                if(!(entry["Type"] is string)||String.IsNullOrWhiteSpace((string)entry["Type"]))throw InvalidSession();
+                // Work lifecycle events have no input identifier; Record also
+                // permits a null step identifier. Other JSON types are invalid.
+                foreach(string name in new[]{"InputId","StepId"})if(entry[name]!=null&&!(entry[name] is string))throw InvalidSession();
             }
             AgentSessionModel model;using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(json)))model=(AgentSessionModel)new DataContractJsonSerializer(typeof(AgentSessionModel)).ReadObject(stream);
             if(model==null||String.IsNullOrWhiteSpace(model.SessionId)||String.IsNullOrWhiteSpace(model.ConversationId)||model.Pending==null||model.Delivered==null||model.Events==null||!new[]{"idle","running","failed","interrupted"}.Contains(model.RecoveryState))throw InvalidSession();
