@@ -1,0 +1,632 @@
+{
+  "schema_version": 1,
+  "tool": "image_gen.imagegen",
+  "asset_count": 35,
+  "original_total_bytes": 84014116,
+  "assets": [
+    {
+      "character": "dafeiyu",
+      "stage": "first_meeting",
+      "path": "assets/relationships/dafeiyu/first_meeting.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2342411,
+      "sha256": "c694c4243075c7a58c5a2348eac32110361f5c3cb0cce985c1bdd9e7b5ac6759",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-48e2a9ed-c957-4e9f-9715-b5a31e806a87.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Shy graceful small wave at a sunlit blue coastal house doorway, original navy-white frilled maid dress, pale blue hydrangeas and folded note.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "familiar",
+      "path": "assets/relationships/dafeiyu/familiar.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2445771,
+      "sha256": "5d5953cfc06d6f634cb2fc5b748f3059b6f170481aac7e76fd655aec8dfda385",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-ce174e27-5afa-4335-9b36-b746889c5944.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Relaxed happy smile while seated sideways on a window bench, a light blue bolero over a neat navy-white dress, breezy seaside garden and one paper pinwheel.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "close",
+      "path": "assets/relationships/dafeiyu/close.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2405927,
+      "sha256": "39428808f58e38a1faa4ad501fdb0522f0b1d094d07e0e897c6ada6f7af00c72",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-420b56a1-4c4b-4109-a764-49f25a3cde75.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Friendly warm smile offering a small porcelain teacup toward viewer with both hands, soft white-blue apron dress, intimate sunny tea table with tasteful seashell and blue flowers.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "trusted",
+      "path": "assets/relationships/dafeiyu/trusted.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2298808,
+      "sha256": "738164e660c38c6f53cefddc4c6654e80df49208ff39910e7e87781f5a05d202",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-82064739-7874-49c6-aee8-4c09b7499296.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Calm reliable expression holding a closed household journal against chest, elegant navy vest dress and white blouse, quiet library overlooking sea at dusk, small silver bookmark.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "heartfelt",
+      "path": "assets/relationships/dafeiyu/heartfelt.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2392161,
+      "sha256": "c89bd12610f2581efedad352338dbe1eab77d30cbb5e6e47e842da11033263d8",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-fe7fe997-8082-440c-a63d-6e59095227f9.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Eyes peacefully closed holding a folded blue-ribbon letter, ivory cardigan over navy dress, blue hair loose, lavender twilight harbor through window, pressed blue flower at edge.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "best_friend",
+      "path": "assets/relationships/dafeiyu/best_friend.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2596199,
+      "sha256": "5b2bf58b96857be819d5e952e4efde131aaa8cdb30098cc11ce954bf75f6741d",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-b16b9e0b-9714-4366-aaae-795dbf86c44e.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Dafeiyu, chibi blue-haired girl, long flowing deep-blue to cyan hair, bright blue eyes, characteristic blue animal-like side ears and blue tail, delicate white maid headband, round cute face. Preserve reference identity and innocent Q-anime proportions. Stage direction: Joyfully opening both arms in welcome, special elegant white-and-navy festival dress with subtle silver piping, blue headband and tail retained, luminous blue coastal night terrace, satin ribbon and small blue floral keepsake.",
+      "promptReference": null,
+      "references": [
+        "assets/pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "first_meeting",
+      "path": "assets/relationships/marfu/first_meeting.png",
+      "width": 1619,
+      "height": 972,
+      "bytes": 2504229,
+      "sha256": "d1495a5878768cc1a2db3e5d62cd2081abf34f3c1c5cae8ed0830dc30c2d3ad9",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-5fc1cc2d-559c-4690-ae4f-159a197df980.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Reserved courteous small wave, original green-trimmed black scholarly robe over white shirt and green tie, carrying slim wand, entrance of sunlit ivy-covered old library with folded parchment.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "familiar",
+      "path": "assets/relationships/marfu/familiar.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2505700,
+      "sha256": "64c1d1af95e835026cc29f730a66229e56838857b5df84d48b1df6154840019a",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-2efb027c-0e1b-4761-9d21-48f1f5c90e56.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Warm relaxed smile sitting on a stone window bench with a book open on lap, loose dark-green cardigan over white shirt, golden afternoon light and a small paper leaf bookmark.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "close",
+      "path": "assets/relationships/marfu/close.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2409538,
+      "sha256": "6bb4a8aa9243c3352b2156781a5269a656e184c97bf989d09203616e13575b1f",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-66e1d8c3-b4b2-408e-b9fb-dc798b898db6.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Leaning gently forward offering a delicate green-tea cup with friendly smile, cream blouse and forest-green skirt with capelet, botanical conservatory window and two cups.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "trusted",
+      "path": "assets/relationships/marfu/trusted.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2439980,
+      "sha256": "1aae25d2cdd451f643f6603bf1d431469432c36ccff6089b25b5b15c584d8fbb",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-e9073fe9-7c2d-4aa8-8352-37ef3f00af44.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Calm confident gaze holding closed emerald spellbook against chest, neat green vest and dark scholarly robe, amber-lit old library with brass lamp and pressed-leaf bookmark.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "heartfelt",
+      "path": "assets/relationships/marfu/heartfelt.png",
+      "width": 1619,
+      "height": 972,
+      "bytes": 2574268,
+      "sha256": "75097bba41d2520e7d0dd378fd1512c1d70464a404f634810e3f322c425fd4ff",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-86989e97-b4d2-4e63-a9b3-aa902c61e322.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Eyes softly closed holding a sealed letter between both hands, ivory knit sweater with emerald scarf, quiet lavender and moss-green dusk study, ivy and wax-seal motif.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "best_friend",
+      "path": "assets/relationships/marfu/best_friend.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2612787,
+      "sha256": "8b59ce77c03ef9c26d34c6e868d1f3294d3284daf37978a60d8ccd987ef5da7a",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-1f6fe357-45ac-4dcc-8204-577cba46d6b2.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Marfu, chibi elegant young woman, very long golden-blonde hair, vivid green eyes, black hoop earrings, green and black scholarly magic-witch aesthetic. Match face and recognizable reference identity, innocent cute Q-anime proportions. Stage direction: Happy open-arm welcoming gesture with graceful flowing blonde hair, special refined black-green celebratory robe with tasteful gold botanical embroidery, moonlit garden library terrace with soft golden lights, a satin emerald ribbon and pressed leaves.",
+      "promptReference": null,
+      "references": [
+        "assets/marfu-pet-preview-hd.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "first_meeting",
+      "path": "assets/relationships/xiaobei/first_meeting.png",
+      "width": 1619,
+      "height": 972,
+      "bytes": 2294119,
+      "sha256": "4275a93b445d06bb09a9d3bfb81ffb4298723326bd80a42054bc7983df181dbd",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-94ca3add-74ac-43f3-8166-c0ce4ee770d9.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Small slightly shy wave, original black-white cyan technical jacket and shorts with mechanical ears, clean bright workshop doorway, a small folded blueprint at edge.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "familiar",
+      "path": "assets/relationships/xiaobei/familiar.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2218579,
+      "sha256": "71f633544f1dffede9715769f2fe4bf93a440f92cf00b20839ca4c6abcce77fe",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-003085be-a10b-459d-9513-b0782fab19a4.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Playful friendly grin sitting on a workbench with legs swinging, lighter open white-cyan technical hoodie, cyan-accent daylight workshop with a tiny friendly desktop robot.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "close",
+      "path": "assets/relationships/xiaobei/close.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2265056,
+      "sha256": "fc73e511c2dc0264a6b68a1926a293bbae94c68a75fbb7acc853bf6b6f6f3ccb",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-5440c66b-f6c2-4bf7-8b5c-9a92e8b24edf.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Leaning forward extending a welcoming open hand, soft black-white casual layered jacket with cyan trim, sunlit cozy creative studio, two modest mugs and a neatly folded paper gadget.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "trusted",
+      "path": "assets/relationships/xiaobei/trusted.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2259985,
+      "sha256": "e1ab49c2ce25dd038d76ace3c1676fb9bc3fc408d9905d9b8d4a5be2b0a1e6e0",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-df15d401-5986-4019-8abd-2476f1bfce09.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Calm reliable expression holding a closed dark technical notebook to chest, smart black vest over white shirt with cyan seams and original neck ornament, blue evening desk lamp and a small circuit-shaped bookmark.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "heartfelt",
+      "path": "assets/relationships/xiaobei/heartfelt.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2302117,
+      "sha256": "1a7b6b8a16fb978c23d25c8adf9f84273f85c85573df6e0f48720d32853bd9bf",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-aa4e2bbf-e087-4134-9109-bf90bc70c0d1.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Eyes happily closed into simple curved lines holding a folded handwritten-note envelope with both hands, ivory technical knit sweater and muted cyan scarf, violet-blue city window at dusk, a small cyan ribbon.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "best_friend",
+      "path": "assets/relationships/xiaobei/best_friend.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2492807,
+      "sha256": "9695026ac2e166cae3131f1a7818129255da5b182be601efaa5e3e8ae5ef9725",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-3156665c-7ac4-4f50-92f2-80d4aafa4e96.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Xiaobei, chibi boy with fluffy black-to-silver gradient hair, signature black mechanical cat-ear headset with cyan glowing details, simple solid dark oval eyes as in reference (do not turn into blue Ebao eyes), pale round face, black-white technical streetwear and small cyan yin-yang neck ornament. Cat ears are mechanical, NOT an animal boy. Preserve reference identity. Stage direction: Joyful open-arm greeting, special refined white-black technical coat with precise cyan piping and small silver fastener, mechanical ears and gradient hair intact, luminous midnight creative-studio terrace, restrained cyan fabric ribbon and delicate geometric paper keepsake without circular UI rings.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "first_meeting",
+      "path": "assets/relationships/gugugaga/first_meeting.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2256517,
+      "sha256": "e0910454d72b8f0f3a009a0e1e6c35ada23dd8cb8380100484747aad3f37bfe5",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-03b509da-2334-432b-89bf-e931f0a084b1.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Shy curious small flipper wave beside a cozy snowy cottage doorway, original round penguin onesie and silver buckle, soft winter-blue morning light, a little folded postcard.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "familiar",
+      "path": "assets/relationships/gugugaga/familiar.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2286984,
+      "sha256": "8b354c97b6298098f1c3608af6256185b75d3cc720f9fe8b0ba5791b57b8aed6",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-24ea9100-f104-4bf5-ad8a-41c5e089f88c.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Happy playful seated pose swinging yellow penguin feet on a low bench, original penguin hood and white belly with a small pale-blue scarf, bright winter window and a tiny paper boat.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "close",
+      "path": "assets/relationships/gugugaga/close.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2279316,
+      "sha256": "77c2e973cde481ac537e02b900d959f2e53fb8aac4c32a35f614aa8ab93f456c",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-f7b775dc-6507-45ec-98d0-064a62d67e74.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Warm inviting expression offering a small biscuit on a plate with both flippers, penguin outfit with a neat little white-blue apron, cozy sunlit snack table and two mugs, no eating mess.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "trusted",
+      "path": "assets/relationships/gugugaga/trusted.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2375695,
+      "sha256": "c00ac75a1c55f111d048762ab7472f982df4962a07436c8ce40c459b3bb8f1a2",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-13a9cb9b-2665-4780-a5a5-8ab75418b06f.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Calm earnest proud expression holding a closed small navy keepsake notebook to the white belly, penguin suit with a dark-blue waistcoat accent while retaining hood/beak/buckle, warm reading nook and a little feather bookmark.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "heartfelt",
+      "path": "assets/relationships/gugugaga/heartfelt.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2383801,
+      "sha256": "b489cda8a2b9c867cc1655987768b472a9ecac9bd4bcb2bb20a64cd42d1c378a",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-c0eaa2db-a74f-4663-8aff-cafa552c5174.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Eyes gently closed smiling while holding a tiny folded letter at chest, penguin suit with ivory knit shoulder wrap and blue scarf, lavender winter twilight window, a simple envelope with ribbon.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "best_friend",
+      "path": "assets/relationships/gugugaga/best_friend.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2615526,
+      "sha256": "03a9527ef3b526c9b958d1545d05ae2088329c2f4bd8d5a5b7494a4e1c218427",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-9a22e588-3393-4842-bef0-ec2dbf5f81b5.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. Character: Gugugaga, adorable chibi girl with short straight black bob hair, pale grey-blue eyes and signature mechanical silver hairclip, round plump PENGUIN COSTUME with black hood bearing penguin eyes and yellow beak, white belly, small flipper-like sleeves, yellow feet, prominent silver buckle at neck. Must remain recognizably a person inside a cute rounded penguin outfit, never replace with a generic girl or ordinary penguin. Stage direction: Joyful wide-flipper welcoming gesture, special dignified penguin costume with subtle navy-white satin capelet and small gold trim, original hood/yellowbeak/silverbuckle retained, midnight snowy terrace with warm lanterns, one elegant blue ribbon and a tiny pressed-flower postcard.",
+      "promptReference": null,
+      "references": [
+        "assets/bundled-skins/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "halloween",
+      "path": "assets/relationships/holidays/halloween/e-bao.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2530942,
+      "sha256": "6fc76d72723f6d917eabe8adbc90a759109314cf102314ae21f89aec199b357d",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-af8e00e4-14b6-41f0-8c68-7740be6221d9.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. HALLOWEEN SPECIAL keepsake: FIRST reference specifies BOTH character AND exact existing Halloween outfit; preserve its recognizable colors, hat/cape/accessories. New dynamic pose and coherent festive environment, not ordinary stage outfit. Snow-white tousled hair, blue eyes chibi boy, exact black-red little vampire count costume from reference with gold trim, white ruffled shirt and cape. Playfully lift one edge of cape and offer a wrapped candy with other hand, friendly moonlit castle entrance with small glowing pumpkin lanterns, bats far in sky, burgundy and midnight blue. Friendly Halloween celebration, no horror/gore, no fake date, retain broad right text-safe scene area. Purposeful pumpkin/bat/candy decorations integrated into scene, not arbitrary graphic clutter.",
+      "promptReference": null,
+      "references": [
+        "assets/holidays/halloween/e-bao/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "dafeiyu",
+      "stage": "halloween",
+      "path": "assets/relationships/holidays/halloween/dafeiyu.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2596945,
+      "sha256": "46e00738f2aa6f6931fe51b6cedce49b34c1bd2dcbcd9b279bab0c6af942886b",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-061e044b-4571-40f0-90b4-21a50eb08ffa.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. HALLOWEEN SPECIAL keepsake: FIRST reference specifies BOTH character AND exact existing Halloween outfit; preserve its recognizable colors, hat/cape/accessories. New dynamic pose and coherent festive environment, not ordinary stage outfit. Blue-haired blue-eyed girl with blue ears/tail, exact navy-orange pirate costume and ornate tricorn with white feather from reference. Cheerfully raise a tiny pumpkin lantern beside a moonlit harbor ship, cape and blue hair moving in breeze, small treasure box of wrapped candies, navy-orange and twilight lavender. Friendly Halloween celebration, no horror/gore, no fake date, retain broad right text-safe scene area. Purposeful pumpkin/bat/candy decorations integrated into scene, not arbitrary graphic clutter.",
+      "promptReference": null,
+      "references": [
+        "assets/holidays/halloween/dafeiyu/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "marfu",
+      "stage": "halloween",
+      "path": "assets/relationships/holidays/halloween/marfu.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2617771,
+      "sha256": "486ac3319c4b859ee8ad7bbe941caba533070ab9dfd23bf8025eabebbb75389a",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-81977002-683a-4749-a954-44fb54f1f4bd.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. HALLOWEEN SPECIAL keepsake: FIRST reference specifies BOTH character AND exact existing Halloween outfit; preserve its recognizable colors, hat/cape/accessories. New dynamic pose and coherent festive environment, not ordinary stage outfit. Long blonde hair green-eyed chibi young woman with black hoop earrings, exact orange-black layered witch dress and big pointed hat with orange ribbon from reference. Graceful seated/half-turn pose holding a wand above a tiny pumpkin lantern, cozy autumn witch cottage with ivy and amber window, tasteful bats and falling leaves, purplegray and warm pumpkin orange. Friendly Halloween celebration, no horror/gore, no fake date, retain broad right text-safe scene area. Purposeful pumpkin/bat/candy decorations integrated into scene, not arbitrary graphic clutter.",
+      "promptReference": null,
+      "references": [
+        "assets/holidays/halloween/marfu/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "xiaobei",
+      "stage": "halloween",
+      "path": "assets/relationships/holidays/halloween/xiaobei.png",
+      "width": 1619,
+      "height": 972,
+      "bytes": 2632053,
+      "sha256": "330ec4023f1e3d49f839997dd8378effec0e65cbb58859df723706be6236e552",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-e6e4cd67-7e34-442b-a509-2cb184ae5d0f.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. HALLOWEEN SPECIAL keepsake: FIRST reference specifies BOTH character AND exact existing Halloween outfit; preserve its recognizable colors, hat/cape/accessories. New dynamic pose and coherent festive environment, not ordinary stage outfit. Black-silver gradient hair, cyan mechanical cat ears, simple dark oval eyes, exact black-purple cyan magic-tech Halloween costume with translucent cyan winglike cape panels from reference. Playfully inspect a floating tiny pumpkin-shaped mechanical lantern over open hand, festive midnight workshop garden, cyan violet with small orange highlights, subtle distant bats. No giant magic ring/UI. Friendly Halloween celebration, no horror/gore, no fake date, retain broad right text-safe scene area. Purposeful pumpkin/bat/candy decorations integrated into scene, not arbitrary graphic clutter.",
+      "promptReference": null,
+      "references": [
+        "assets/holidays/halloween/xiaobei/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "gugugaga",
+      "stage": "halloween",
+      "path": "assets/relationships/holidays/halloween/gugugaga.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2597343,
+      "sha256": "b4288cbb8ab1ed2a2e84f8fb9b70aa1dcf6ec90f095bbd35c907f2dc47d622eb",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-1387479b-499e-48bb-af3f-3765ecce0a67.png",
+      "prompt": "Use case: illustration-story. Create ONE finished text-free LANDSCAPE collectible companionship keepsake illustration, 5:3 ratio, ideally1600x960. FIRST reference is STRICT character identity, second is APPROVED ART STYLE only (Ebao board); DO NOT copy Ebao's white hair/blue eyes onto a different character. Match board's polished expressive chibi anime rendering and scenic emotional warmth, but only ONE standalone scene, not a grid. Character on LEFT45% with face and hands clearly visible, full or three-quarter framing. RIGHT48% a calmer low-detail extension of the scene for program-rendered localized stage title/memory/date, no distracting foreground props there. Keep distinctive stage pose, own costume and personality, beautiful painterly soft cel shading, coherent anatomy, wholesome friendly companionship. No text, no words/letters/numbers, no signature/logo/watermark, no UI/frame, no arbitrary rings/orbital arcs/rarity symbols. Retain clothing coverage and exact facial/hair identity. HALLOWEEN SPECIAL keepsake: FIRST reference specifies BOTH character AND exact existing Halloween outfit; preserve its recognizable colors, hat/cape/accessories. New dynamic pose and coherent festive environment, not ordinary stage outfit. Short black bob grey-blue eyes mechanical silver hairclip, exact orange-black pumpkin-penguin witch hood with yellow beak, silver neck clasp and pumpkin skirt from reference. Happy curious pose hugging a small pumpkin candy bucket, inviting moonlit cottage path with glowing pumpkins and candy wrappers, warm orange/black and lavenderblue, retain chubby rounded costume silhouette. Friendly Halloween celebration, no horror/gore, no fake date, retain broad right text-safe scene area. Purposeful pumpkin/bat/candy decorations integrated into scene, not arbitrary graphic clutter.",
+      "promptReference": null,
+      "references": [
+        "assets/holidays/halloween/gugugaga/preview.png",
+        "work/relationship-validation/ui-review/stage-art/ebao-six-stages-concept.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "first_meeting",
+      "path": "assets/relationships/e-bao/first_meeting.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2164733,
+      "sha256": "e2a9f8aeb8a6dd9912302036031b7c8c528939859d6bbcc6a295917a4eab958c",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-9eb040d4-5178-4042-a73d-db4363d7943b.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "familiar",
+      "path": "assets/relationships/e-bao/familiar.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2199927,
+      "sha256": "af1617d695f6717d1ea25e4d65dfbb38d27485d52845ca83f4a3a13c6335a536",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-6285c6ab-2e10-462e-825c-ee7e14001a21.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "close",
+      "path": "assets/relationships/e-bao/close.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2144102,
+      "sha256": "627966c3fb35d22ce96ee67620b80b98ce516e1253fc98d69c75fcb778b280ce",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-7aaa7aac-01b8-49a3-823c-3f010eb78dec.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "trusted",
+      "path": "assets/relationships/e-bao/trusted.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2083166,
+      "sha256": "99df95ad412041d97351015d4d62c2d52deb5e1550bf0d0285191d2fad6f5f26",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-65cdda25-9d8c-459e-91a7-f949736aa784.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "heartfelt",
+      "path": "assets/relationships/e-bao/heartfelt.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2397412,
+      "sha256": "3f96a61de1138de3bfd75e9927eeee49addf85e64af2010bacc407986859f0b0",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-d07ae3d5-4ffb-4366-afab-d6169821d2ba.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    },
+    {
+      "character": "e-bao",
+      "stage": "best_friend",
+      "path": "assets/relationships/e-bao/best_friend.png",
+      "width": 1619,
+      "height": 971,
+      "bytes": 2491441,
+      "sha256": "576c2b0eb334d1891536148019bf0b6e3cb6aec96e059bfba12ec50d1be029f2",
+      "tool": "image_gen.imagegen",
+      "generation_source": "exec-1e41d64d-3fb9-40c7-9d31-83d90a97d356.png",
+      "prompt": null,
+      "promptReference": "Initial six Ebao standalone generation prompts in conversation; art direction in stage-keepsake-art-design.md",
+      "references": [
+        "assets/e-bao-pet-preview-hd.png"
+      ],
+      "modifications": "none; selected generated original copied byte-for-byte"
+    }
+  ]
+}

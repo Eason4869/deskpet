@@ -42,6 +42,9 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--relationship-ornament-only")){Console.WriteLine("OrnamentOnly: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.OrnamentOnly()+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--relationship-stage-art-sample="))){Console.WriteLine("RelationshipStageArtSample: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Sample(args.Single(a=>a.StartsWith("--relationship-stage-art-sample=")).Split('=')[1])+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--relationship-stage-art="))){Console.WriteLine("RelationshipStageArtChecks: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(args.Single(a=>a.StartsWith("--relationship-stage-art=")).Substring(25),args.Contains("--resources"),args.Contains("--quick"))+" passed");return;}
     if(args.Contains("--relationship-title-font-only")){Console.WriteLine("RelationshipTitleFontChecks: "+DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/f4a/title-proofs"))+" passed");return;}
     if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}

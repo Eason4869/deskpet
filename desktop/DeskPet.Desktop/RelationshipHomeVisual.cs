@@ -101,7 +101,7 @@ internal sealed class HomeCardCapture:IDisposable
 }
 internal sealed class RelationshipCardPreview:StackPanel
 {
-    internal RelationshipCardPreview(HomeCardCapture capture,string welcome,Func<bool> current,Func<bool> sameIdentity,Action resized)
+    internal RelationshipCardPreview(HomeCardCapture capture,string welcome,Func<bool> current,Func<bool> sameIdentity,Action resized,Func<Task<string?>>? chooseDestination=null)
     {
         Tag=capture;Margin=new Thickness(0,0,14,18);var image=new Image{Name="RelationshipCardImage",Source=capture.Image,Stretch=Stretch.Uniform,MaxWidth=520,HorizontalAlignment=HorizontalAlignment.Left};
         image.SizeChanged+=(_,_)=>image.Clip=new RectangleGeometry(new Rect(image.Bounds.Size),12,12);
@@ -115,10 +115,18 @@ internal sealed class RelationshipCardPreview:StackPanel
         var status=Ui.Text("",12);status.Name="RelationshipCardStatus";Button? save=null;
         save=Ui.Button(TextResources.Get("relationship.card.save"),async()=>{
             if(!current()||save==null||!save.IsEnabled)return;save.IsEnabled=false;status.Text="";
-            try{var top=TopLevel.GetTopLevel(this);if(top==null)throw new InvalidOperationException();
-                var file=await top.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions{Title=TextResources.Get("relationship.card.save"),SuggestedFileName=capture.Data.FileName,DefaultExtension="png",ShowOverwritePrompt=true,FileTypeChoices=new[]{new FilePickerFileType(TextResources.Get("relationship.card.pngFilter")){Patterns=new[]{"*.png"},MimeTypes=new[]{"image/png"}}}});
-                if(file==null){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}using(file){if(!sameIdentity())return;var path=file.TryGetLocalPath();var result=path==null?RelationshipCardSaveResult.Failed:await RelationshipCardFile.SaveAsync(path,capture.Png);if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");}
+            try{
+                var destination=await (chooseDestination==null?PickDestinationAsync(capture.Data):chooseDestination());
+                if(String.IsNullOrEmpty(destination)){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}if(!sameIdentity())return;
+                var result=await RelationshipCardFile.SaveAsync(destination,capture.Png);if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");
             }catch(Exception error){if(error is OperationCanceledException){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}if(!(error is IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException))throw;if(current())status.Text=TextResources.Get("relationship.card.failed");}finally{save.IsEnabled=current();}
         });HomeVisual.SecondaryButton(save);save.Name="SaveRelationshipCard";save.HorizontalAlignment=HorizontalAlignment.Left;Children.Add(save);Children.Add(status);
+    }
+    async Task<string?> PickDestinationAsync(RelationshipCardData data)
+    {
+        var top=TopLevel.GetTopLevel(this);if(top==null)throw new InvalidOperationException();
+        using var file=await top.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions{Title=TextResources.Get("relationship.card.save"),SuggestedFileName=data.FileName,DefaultExtension="png",ShowOverwritePrompt=true,FileTypeChoices=new[]{new FilePickerFileType(TextResources.Get("relationship.card.pngFilter")){Patterns=new[]{"*.png"},MimeTypes=new[]{"image/png"}}}});
+        if(file==null)return null;
+        return file.TryGetLocalPath()??throw new NotSupportedException("A local PNG destination is required.");
     }
 }

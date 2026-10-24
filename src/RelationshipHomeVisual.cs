@@ -78,7 +78,7 @@ namespace Dafeiyu
     }
     internal sealed class RelationshipCardPreview:StackPanel
     {
-        internal RelationshipCardPreview(HomeCardCapture capture,string welcome,Func<bool> current,Func<bool> sameIdentity,Action resized)
+        internal RelationshipCardPreview(HomeCardCapture capture,string welcome,Func<bool> current,Func<bool> sameIdentity,Action resized,Func<System.Threading.Tasks.Task<string>> chooseDestination=null)
         {
             Tag=capture;Margin=new Thickness(0,0,14,18);var image=new Image{Name="RelationshipCardImage",Source=capture.Image,Stretch=Stretch.Uniform,MaxWidth=520,HorizontalAlignment=HorizontalAlignment.Left};
             image.SizeChanged+=delegate{image.Clip=new RectangleGeometry(new Rect(0,0,image.ActualWidth,image.ActualHeight),12,12);};
@@ -93,11 +93,17 @@ namespace Dafeiyu
             var status=Ui.Text("",12,AgentUi.Muted);status.Name="RelationshipCardStatus";var save=Ui.Button(TextResources.Get("relationship.card.save"));save.Name="SaveRelationshipCard";save.HorizontalAlignment=HorizontalAlignment.Left;
             save.Click+=async delegate{
                 if(!current()||!save.IsEnabled)return;save.IsEnabled=false;status.Text="";
-                try{var picker=new Microsoft.Win32.SaveFileDialog{Title=TextResources.Get("relationship.card.save"),Filter=TextResources.Get("relationship.card.pngFilter")+"|*.png",DefaultExt=".png",AddExtension=true,OverwritePrompt=true,FileName=capture.Data.FileName};
-                    if(picker.ShowDialog(Window.GetWindow(this))!=true){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}if(!sameIdentity())return;
-                    var result=await RelationshipCardFile.SaveAsync(picker.FileName,capture.Png);if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");
+                try{
+                    string destination=await (chooseDestination==null?PickDestinationAsync(capture.Data):chooseDestination());
+                    if(String.IsNullOrEmpty(destination)){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}if(!sameIdentity())return;
+                    var result=await RelationshipCardFile.SaveAsync(destination,capture.Png);if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");
                 }catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is InvalidOperationException||error is ArgumentException))throw;if(current())status.Text=TextResources.Get("relationship.card.failed");}finally{save.IsEnabled=current();}
             };Children.Add(save);Children.Add(status);
+        }
+        System.Threading.Tasks.Task<string> PickDestinationAsync(RelationshipCardData data)
+        {
+            var picker=new Microsoft.Win32.SaveFileDialog{Title=TextResources.Get("relationship.card.save"),Filter=TextResources.Get("relationship.card.pngFilter")+"|*.png",DefaultExt=".png",AddExtension=true,OverwritePrompt=true,FileName=data.FileName};
+            return System.Threading.Tasks.Task.FromResult(picker.ShowDialog(Window.GetWindow(this))==true?picker.FileName:null);
         }
     }
 }

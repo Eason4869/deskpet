@@ -2,7 +2,7 @@
 
 ## Local title fonts (F4a)
 
-Only title fonts are registered here so far. Scene selection/integration is a separate F4b/H1 gate. These modified, static, regular title-only subsets are renamed `DeskPet Keepsake <region>`; no system fonts are redistributed or installed. Names, body copy and dates retain their existing UI fonts.
+F4a title-font evidence is retained below; selected generated scenes are registered in the F4b section. Holiday acquisition and owned-card presentation remain H1 gates. These modified, static, regular title-only subsets are renamed `DeskPet Keepsake <region>`; no system fonts are redistributed or installed. Names, body copy and dates retain their existing UI fonts.
 
 Official upstream pins: `notofonts/noto-cjk@f8d157532fbfaeda587e826d4cd5b21a49186f7c` and `google/fonts@e7db6ca603fd4862010383ff17ffd6cc4ffac1c0`. The source URLs below use those immutable commits, not branch heads. Source files stay in the asset preparation cache and are not bundled.
 
@@ -61,3 +61,59 @@ WPF `tools/fonts/Build-WpfTitleResources.ps1` uses a bounded six-file allowlist 
 Avalonia unconditionally includes `assets/fonts/relationships/*.otf`, `*.ttf`, `OFL-*.txt`, linked under `Assets/fonts/relationships/`. Family URI: `avares://DeskPet/Assets/fonts/relationships#DeskPet Keepsake <region>`; actual resource path: `avares://DeskPet/Assets/fonts/relationships/<file>`. The resolver verifies FontManager's real GlyphTypeface family and cmap. No global FontManager replacement or registration is used. See [official custom font documentation](https://docs.avaloniaui.net/docs/styling/custom-fonts).
 
 Focused proof: all 13 current locale corpora and both themes rendered to 26 title sheets per host (52 PNGs), with actual family/cmap checks, missing-resource/invalid-family/unsupported-scalar fallback checks, native Hindi shaping checks, and font/license byte checks from built resources. WPF also loaded all six fonts from the actual production App assembly without starting its entry point. Sources remain in `work/f4a/title-proofs/{wpf,avalonia}/`; these are title-only evidence, not complete card/layout/contrast acceptance. F4b must apply the helper only to card title elements, set appropriate language metadata, include the font/style version in capture invalidation, and verify complete scene/ornament layouts. Native macOS hardware and final EXE/ZIP installation remain unverified.
+
+## Original scene artwork (F4b)
+
+Thirty stage scenes (five official companions × six stages), plus five separate Halloween scenes, were created with `image_gen.imagegen` for DeskPet using each existing official portrait or real Halloween outfit as the identity reference. The approved E-bao concept board supplied art direction only. Every selected file below is the complete generated original: no crop, extraction from the six-panel board, resampling, image editing, text baking or PNG re-encoding. Runtime scales a display copy to 800px; original bytes remain available through the trusted raw scene provider.
+
+`assets/relationships/manifest.json` records exact prompts where present (29), the supplied conversation prompt reference for the initial six E-bao scenes, reference paths, generation output filename, geometry, bytes and SHA256 per image. The source captures and prompts remain in the owned validation directory `work/relationship-validation/f4-art/`; product runtime uses the fixed C# allowlist rather than reading or trusting this development provenance manifest. No network is used at runtime. These generated scenes are companion artwork, not third-party stock art or an assertion that a user earned a milestone. Halloween scenes are bound to `halloween` / `halloween-2026` / `1.0.0`; F4b does not grant or persist a holiday card or outfit.
+
+Total selected original PNG payload: **84,014,116 bytes** (about 80.1 MiB), including the five Halloween scenes. This is the raw artwork increment, not a measured final EXE/ZIP/install delta; M6 owns final payload verification. Near-5:3 originals (1619×971/972) are deliberately preserved. Production WPF embeds all 35 through a fixed build allowlist; Avalonia resources include all 35 independently of reduced fixture/default-art flags. Core contains descriptors only, with no duplicated binary artwork.
+
+|Companion / scene|Selected original path|Pixels|Bytes|SHA256|
+|---|---|---|---|---|
+|`dafeiyu` / `first_meeting`|`assets/relationships/dafeiyu/first_meeting.png`|1619×971|2342411|`c694c4243075c7a58c5a2348eac32110361f5c3cb0cce985c1bdd9e7b5ac6759`|
+|`dafeiyu` / `familiar`|`assets/relationships/dafeiyu/familiar.png`|1619×971|2445771|`5d5953cfc06d6f634cb2fc5b748f3059b6f170481aac7e76fd655aec8dfda385`|
+|`dafeiyu` / `close`|`assets/relationships/dafeiyu/close.png`|1619×971|2405927|`39428808f58e38a1faa4ad501fdb0522f0b1d094d07e0e897c6ada6f7af00c72`|
+|`dafeiyu` / `trusted`|`assets/relationships/dafeiyu/trusted.png`|1619×971|2298808|`738164e660c38c6f53cefddc4c6654e80df49208ff39910e7e87781f5a05d202`|
+|`dafeiyu` / `heartfelt`|`assets/relationships/dafeiyu/heartfelt.png`|1619×971|2392161|`c89bd12610f2581efedad352338dbe1eab77d30cbb5e6e47e842da11033263d8`|
+|`dafeiyu` / `best_friend`|`assets/relationships/dafeiyu/best_friend.png`|1619×971|2596199|`5b2bf58b96857be819d5e952e4efde131aaa8cdb30098cc11ce954bf75f6741d`|
+|`marfu` / `first_meeting`|`assets/relationships/marfu/first_meeting.png`|1619×972|2504229|`d1495a5878768cc1a2db3e5d62cd2081abf34f3c1c5cae8ed0830dc30c2d3ad9`|
+|`marfu` / `familiar`|`assets/relationships/marfu/familiar.png`|1619×971|2505700|`64c1d1af95e835026cc29f730a66229e56838857b5df84d48b1df6154840019a`|
+|`marfu` / `close`|`assets/relationships/marfu/close.png`|1619×971|2409538|`6bb4a8aa9243c3352b2156781a5269a656e184c97bf989d09203616e13575b1f`|
+|`marfu` / `trusted`|`assets/relationships/marfu/trusted.png`|1619×971|2439980|`1aae25d2cdd451f643f6603bf1d431469432c36ccff6089b25b5b15c584d8fbb`|
+|`marfu` / `heartfelt`|`assets/relationships/marfu/heartfelt.png`|1619×972|2574268|`75097bba41d2520e7d0dd378fd1512c1d70464a404f634810e3f322c425fd4ff`|
+|`marfu` / `best_friend`|`assets/relationships/marfu/best_friend.png`|1619×971|2612787|`8b59ce77c03ef9c26d34c6e868d1f3294d3284daf37978a60d8ccd987ef5da7a`|
+|`xiaobei` / `first_meeting`|`assets/relationships/xiaobei/first_meeting.png`|1619×972|2294119|`4275a93b445d06bb09a9d3bfb81ffb4298723326bd80a42054bc7983df181dbd`|
+|`xiaobei` / `familiar`|`assets/relationships/xiaobei/familiar.png`|1619×971|2218579|`71f633544f1dffede9715769f2fe4bf93a440f92cf00b20839ca4c6abcce77fe`|
+|`xiaobei` / `close`|`assets/relationships/xiaobei/close.png`|1619×971|2265056|`fc73e511c2dc0264a6b68a1926a293bbae94c68a75fbb7acc853bf6b6f6f3ccb`|
+|`xiaobei` / `trusted`|`assets/relationships/xiaobei/trusted.png`|1619×971|2259985|`e1ab49c2ce25dd038d76ace3c1676fb9bc3fc408d9905d9b8d4a5be2b0a1e6e0`|
+|`xiaobei` / `heartfelt`|`assets/relationships/xiaobei/heartfelt.png`|1619×971|2302117|`1a7b6b8a16fb978c23d25c8adf9f84273f85c85573df6e0f48720d32853bd9bf`|
+|`xiaobei` / `best_friend`|`assets/relationships/xiaobei/best_friend.png`|1619×971|2492807|`9695026ac2e166cae3131f1a7818129255da5b182be601efaa5e3e8ae5ef9725`|
+|`gugugaga` / `first_meeting`|`assets/relationships/gugugaga/first_meeting.png`|1619×971|2256517|`e0910454d72b8f0f3a009a0e1e6c35ada23dd8cb8380100484747aad3f37bfe5`|
+|`gugugaga` / `familiar`|`assets/relationships/gugugaga/familiar.png`|1619×971|2286984|`8b354c97b6298098f1c3608af6256185b75d3cc720f9fe8b0ba5791b57b8aed6`|
+|`gugugaga` / `close`|`assets/relationships/gugugaga/close.png`|1619×971|2279316|`77c2e973cde481ac537e02b900d959f2e53fb8aac4c32a35f614aa8ab93f456c`|
+|`gugugaga` / `trusted`|`assets/relationships/gugugaga/trusted.png`|1619×971|2375695|`c00ac75a1c55f111d048762ab7472f982df4962a07436c8ce40c459b3bb8f1a2`|
+|`gugugaga` / `heartfelt`|`assets/relationships/gugugaga/heartfelt.png`|1619×971|2383801|`b489cda8a2b9c867cc1655987768b472a9ecac9bd4bcb2bb20a64cd42d1c378a`|
+|`gugugaga` / `best_friend`|`assets/relationships/gugugaga/best_friend.png`|1619×971|2615526|`03a9527ef3b526c9b958d1545d05ae2088329c2f4bd8d5a5b7494a4e1c218427`|
+|`e-bao` / `halloween`|`assets/relationships/holidays/halloween/e-bao.png`|1619×971|2530942|`6fc76d72723f6d917eabe8adbc90a759109314cf102314ae21f89aec199b357d`|
+|`dafeiyu` / `halloween`|`assets/relationships/holidays/halloween/dafeiyu.png`|1619×971|2596945|`46e00738f2aa6f6931fe51b6cedce49b34c1bd2dcbcd9b279bab0c6af942886b`|
+|`marfu` / `halloween`|`assets/relationships/holidays/halloween/marfu.png`|1619×971|2617771|`486ac3319c4b859ee8ad7bbe941caba533070ab9dfd23bf8025eabebbb75389a`|
+|`xiaobei` / `halloween`|`assets/relationships/holidays/halloween/xiaobei.png`|1619×972|2632053|`330ec4023f1e3d49f839997dd8378effec0e65cbb58859df723706be6236e552`|
+|`gugugaga` / `halloween`|`assets/relationships/holidays/halloween/gugugaga.png`|1619×971|2597343|`b4288cbb8ab1ed2a2e84f8fb9b70aa1dcf6ec90f095bbd35c907f2dc47d622eb`|
+|`e-bao` / `first_meeting`|`assets/relationships/e-bao/first_meeting.png`|1619×971|2164733|`e2a9f8aeb8a6dd9912302036031b7c8c528939859d6bbcc6a295917a4eab958c`|
+|`e-bao` / `familiar`|`assets/relationships/e-bao/familiar.png`|1619×971|2199927|`af1617d695f6717d1ea25e4d65dfbb38d27485d52845ca83f4a3a13c6335a536`|
+|`e-bao` / `close`|`assets/relationships/e-bao/close.png`|1619×971|2144102|`627966c3fb35d22ce96ee67620b80b98ce516e1253fc98d69c75fcb778b280ce`|
+|`e-bao` / `trusted`|`assets/relationships/e-bao/trusted.png`|1619×971|2083166|`99df95ad412041d97351015d4d62c2d52deb5e1550bf0d0285191d2fad6f5f26`|
+|`e-bao` / `heartfelt`|`assets/relationships/e-bao/heartfelt.png`|1619×971|2397412|`3f96a61de1138de3bfd75e9927eeee49addf85e64af2010bacc407986859f0b0`|
+|`e-bao` / `best_friend`|`assets/relationships/e-bao/best_friend.png`|1619×971|2491441|`576c2b0eb334d1891536148019bf0b6e3cb6aec96e059bfba12ec50d1be029f2`|
+
+### Composition and source ownership
+
+The 800×480 card uses an uncropped full-scene image and a local reading fade: transparent to x288, progressive at x360, plateau by x440. Dark `(20,30,49)` alpha166/255 and light `(248,249,251)` alpha175/255 preserve scene details while keeping text readable even against extreme backgrounds. Text and ornaments share x456 and right edge ≤768, as requested after actual native sample review. Dark titles use warm gold; light titles use dark brown. Other text retains the normal UI font. Native vector decorations differ by stage (folded note, plane trail, paired leaves, trusted leaf/bookplate, heartfelt note, best-friend bow); the controlled Halloween style has pumpkin/vine/bat details for H1b.
+
+Each host's page cache owns only the current companion's six 800px stage sources. Failed resources are negatively cached by content version; unknown/custom identities keep their own F3 portrait. WPF sources are frozen OnLoad bitmaps; Avalonia sources are disposable page-owned bitmaps outside SpriteAssets' evictable dictionary. Renderers borrow them. Shared immutable raw-source captures contain a fixed descriptor, runtime generation and bound stream opener and survive page disposal, so H1a can validate/persist the exact original PNG independently of native display copies.
+
+F4b screenshots use controlled fixture milestone dates and acquaintance spans. They establish rendering/layout/export behavior only, not user acquisition, real OS picker success, macOS hardware acceptance or final install/package validation. Several existing stage labels remain English in otherwise localized dictionaries; this work preserves their actual values and reuses F4a font coverage checks. Future translated strings require regenerating the local title-font corpus.
+
+The ornament canvas is 210×26 in both hosts, with a fixed shared design transform `(scaleX=1.72, scaleY=0.85, inset=3)`, allowing actual stroke and antialiasing margins. Scale is deliberately independent of native geometry bounds: the installed Avalonia renderer reported a line-only trailing figure's endpoint outside its own `Geometry.Bounds`. A transparent 400×60 raster fixture scans **all alpha > 0 pixels** for all seven motifs in both themes and both hosts, and checks the trailing line remains visible. Thus reported geometry bounds alone are not the decoration safety gate.

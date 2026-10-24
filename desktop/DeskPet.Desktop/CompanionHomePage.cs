@@ -20,6 +20,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     readonly SpriteAssets assets=new();
     readonly StackPanel body=Ui.Column();
     StackPanel? settingsControls;Button? retryControl;
+    readonly RelationshipStageArtSource scenes=new RelationshipStageArtSource();
     readonly Dictionary<string,HomeCardCapture> captures=new();
     bool introOpen,welcomeOpen,rulesOpen,settingsOpen;string? captureKey;
     string? identity;
@@ -52,12 +53,12 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     async Task LoadAndRenderAsync()
     {
         if(disposed)return;string id=owner.RelationshipCompanionId;int version=++revision;
-        if(identity!=id){identity=id;View=null;body.Children.Clear();body.Children.Add(Label("relationship.home.loading"));}
+        if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label("relationship.home.loading"));}
         var view=await model.LoadAsync(id,RelationshipTime.Current());
         if(disposed)return;
         if(version!=revision){await refreshTask;return;}
         if(id!=owner.RelationshipCompanionId){await RefreshAsync();return;}
-        View=view;Render();
+        scenes.SetIdentity(id);View=view;Render();
     }
     static TextBlock Text(string value,double size=14,string? name=null){var t=Ui.Text(value,size);t.Name=name;return t;}
     static TextBlock Label(string key,double size=14,string? name=null)=>Text(TextResources.Get(key),size,name);
@@ -69,7 +70,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
             var focused=TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
             var focusToken=HomeVisual.CaptureFocus(body,focused);
             var expandedStages=captures.Where(x=>x.Value.Expanded).Select(x=>x.Key).ToArray();
-            string key=identity+"|"+TextResources.CurrentLanguage+"|"+owner.Skin.DisplayName+"|"+owner.Skin.PickerKey+"|"+owner.Skin.GetHashCode()+"|"+owner.Skin.SourceKey+"|"+owner.Skin.Preview+"|"+owner.Skin.Avatar+"|"+DesktopTheme.IsDark;
+            string key=identity+"|"+TextResources.CurrentLanguage+"|"+owner.Skin.DisplayName+"|"+owner.Skin.PickerKey+"|"+owner.Skin.GetHashCode()+"|"+owner.Skin.SourceKey+"|"+owner.Skin.Preview+"|"+owner.Skin.Avatar+"|"+DesktopTheme.IsDark+"|"+RelationshipStageArt.Version+"|"+RelationshipTitleFonts.Version+"|"+RelationshipCardDecoration.Version+"|"+String.Join(",",RelationshipStageArt.All.Where(a=>a.CompanionId==identity&&a.HolidayId==null).Select(a=>a.SceneVersion));
             if(captureKey!=key){bool switched=captureKey==null||!captureKey.StartsWith(identity+"|",StringComparison.Ordinal);foreach(var old in captures.Values)old.Dispose();captures.Clear();captureKey=key;if(switched){introOpen=false;welcomeOpen=false;scroll=0;expandedStages=new string[0];}}
             string nextArtwork=owner.Skin.GetHashCode()+"|"+owner.Skin.SourceKey+"|"+owner.Skin.Preview+"|"+owner.Skin.Avatar;
             if(artworkKey!=nextArtwork){portrait?.Dispose();avatarSource?.Dispose();portrait=CompanionPortraitSource.Load(owner.Skin,assets);avatarSource=new CompanionPortraitSource(CompanionPortraitSource.Avatar(owner.Skin,assets));artworkKey=nextArtwork;}
@@ -108,7 +109,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
                 if(View.Snapshot.State==null){timeline.Children.Add(Label("relationship.home.empty"));cards.Children.Add(Label("relationship.home.emptyCards"));}
                 else foreach(var milestone in View.Snapshot.State.Milestones.AsEnumerable().Reverse())timeline.Children.Add(HomeVisual.Milestone(RelationshipContent.StageName(milestone.StageId),RelationshipCardData.FormatDate(milestone.EarnedLocalDate)));
                 if(View.Snapshot.State!=null)foreach(var milestone in View.Snapshot.State.Milestones){
-                    HomeCardCapture? capture;if(!captures.TryGetValue(milestone.StageId,out capture)||capture.Data.EarnedLocalDate!=milestone.EarnedLocalDate){capture?.Dispose();var data=RelationshipCardData.FromSnapshot(View.Snapshot,milestone.StageId,owner.Skin.DisplayName);capture=new HomeCardCapture(data,RelationshipCardRenderer.Render(data,portrait!,DesktopTheme.IsDark)){Expanded=expandedStages.Contains(milestone.StageId)};captures[milestone.StageId]=capture;}
+                    HomeCardCapture? capture;if(!captures.TryGetValue(milestone.StageId,out capture)||capture.Data.EarnedLocalDate!=milestone.EarnedLocalDate||capture.Data.FirstLocalDate!=View.Snapshot.State.FirstLocalDate){capture?.Dispose();var data=RelationshipCardData.FromSnapshot(View.Snapshot,milestone.StageId,owner.Skin.DisplayName);capture=new HomeCardCapture(data,RelationshipCardRenderer.Render(data,portrait!,DesktopTheme.IsDark,scenes.Get(data))){Expanded=expandedStages.Contains(milestone.StageId)};captures[milestone.StageId]=capture;}
                     var card=new RelationshipCardPreview(capture,RelationshipContent.Welcome(milestone.StageId,owner.RelationshipPack),delegate{return !disposed&&captureKey==key&&identity==capture.Data.CompanionId&&owner.RelationshipCompanionId==capture.Data.CompanionId&&version==revision;},delegate{return !disposed&&owner.RelationshipCompanionId==capture.Data.CompanionId;},delegate{if(updateLayout!=null)updateLayout();});cardsWrap.Children.Add(card);
                 }
                 bottom=new Grid{Margin=new Thickness(0,4,0,20)};bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(78,GridUnitType.Star)});bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(22,GridUnitType.Star)});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.Children.Add(timeline);bottom.Children.Add(cards);body.Children.Add(bottom);
@@ -152,5 +153,5 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     {
         var result=await model.RetryAsync();saving=false;if(disposed)return;saveFailed=!result.Success;await RefreshAsync();
     }
-    public void Dispose(){if(disposed)return;disposed=true;revision++;if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
+    public void Dispose(){if(disposed)return;disposed=true;revision++;if(Application.Current!=null)Application.Current.ActualThemeVariantChanged-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;owner.Changed-=IdentityChanged;foreach(var capture in captures.Values)capture.Dispose();captures.Clear();body.Children.Clear();scenes.Dispose();portrait?.Dispose();avatarSource?.Dispose();assets.Dispose();}
 }
