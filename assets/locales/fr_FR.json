@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Gagnés aujourd’hui",
   "relationship.home.activeDaysLabel": "Jours actifs ensemble",
   "relationship.home.acquaintanceDaysLabel": "Depuis la rencontre",
-  "relationship.home.daysValue": "{0} jours"
+  "relationship.home.daysValue": "{0} jours",
+  "dataManagement.intro": "Gérez les discussions, préférences et pièces jointes stockées sur cet appareil.",
+  "dataManagement.historyNote": "Enregistrées sous forme chiffrée sur cet appareil. Désactiver la sauvegarde conserve l’historique existant.",
+  "dataManagement.clearNote": "Supprime les discussions et leur contexte pour les compagnons et les projets. Une confirmation sera demandée avant toute suppression.",
+  "dataManagement.preferenceTitle": "Préférences par défaut",
+  "dataManagement.preferenceNote": "Rétablit l’apparence et les interactions. La configuration des modèles, les clés et les profils personnels sont conservés.",
+  "dataManagement.attachmentsTitle": "Pièces jointes conservées",
+  "dataManagement.attachmentsNote": "Retrouvez les images et pièces jointes conservées lors de la suppression de l’historique.",
+  "dataManagement.localDirectory": "Dossier de données local",
+  "dataManagement.tools": "Outils de l’application",
+  "dataManagement.toolsNote": "Routage réseau, progression des téléchargements, guide de configuration et À propos.",
+  "cache.spaceLabel": "Espace pouvant être libéré",
+  "cache.updateCategory": "Paquets de mise à jour expirés",
+  "cache.downloadCategory": "Téléchargements restants",
+  "dataManagement.historyTitle": "Historique des discussions"
 }

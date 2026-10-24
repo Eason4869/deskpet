@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "आज मिले",
   "relationship.home.activeDaysLabel": "साथ बिताए सक्रिय दिन",
   "relationship.home.acquaintanceDaysLabel": "मुलाकात के बाद से",
-  "relationship.home.daysValue": "{0} दिन"
+  "relationship.home.daysValue": "{0} दिन",
+  "dataManagement.intro": "इस डिवाइस पर सहेजी गई चैट, प्राथमिकताएँ और अटैचमेंट प्रबंधित करें।",
+  "dataManagement.historyNote": "इस डिवाइस पर एन्क्रिप्ट करके सहेजा जाता है। सहेजना बंद करने पर मौजूदा इतिहास बना रहता है।",
+  "dataManagement.clearNote": "साथियों और प्रोजेक्ट की चैट व बातचीत का संदर्भ हटाएँ। हटाने से पहले पुष्टि माँगी जाएगी।",
+  "dataManagement.preferenceTitle": "डिफ़ॉल्ट प्राथमिकताएँ",
+  "dataManagement.preferenceNote": "रूप और इंटरैक्शन की प्राथमिकताएँ बहाल करें। मॉडल कॉन्फ़िगरेशन, कुंजियाँ और व्यक्तिगत प्रोफ़ाइल सुरक्षित रहती हैं।",
+  "dataManagement.attachmentsTitle": "सुरक्षित अटैचमेंट",
+  "dataManagement.attachmentsNote": "चैट इतिहास मिटाते समय सुरक्षित रखे गए चित्र और अटैचमेंट यहाँ पाएँ।",
+  "dataManagement.localDirectory": "स्थानीय डेटा फ़ोल्डर",
+  "dataManagement.tools": "ऐप के टूल",
+  "dataManagement.toolsNote": "नेटवर्क रूटिंग, डाउनलोड की प्रगति, सेटअप गाइड और परिचय।",
+  "cache.spaceLabel": "खाली की जा सकने वाली जगह",
+  "cache.updateCategory": "पुराने अपडेट पैकेज",
+  "cache.downloadCategory": "बचे हुए डाउनलोड",
+  "dataManagement.historyTitle": "चैट इतिहास"
 }

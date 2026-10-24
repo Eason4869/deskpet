@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Heute erhalten",
   "relationship.home.activeDaysLabel": "Aktive Tage zusammen",
   "relationship.home.acquaintanceDaysLabel": "Seit dem Kennenlernen",
-  "relationship.home.daysValue": "{0} Tage"
+  "relationship.home.daysValue": "{0} Tage",
+  "dataManagement.intro": "Verwalte lokal gespeicherte Chats, Einstellungen und Anhänge.",
+  "dataManagement.historyNote": "Auf diesem Gerät verschlüsselt gespeichert. Bereits gespeicherte Verläufe bleiben auch nach dem Ausschalten erhalten.",
+  "dataManagement.clearNote": "Chats und Gesprächskontext von Begleitern und Projekten entfernen. Vor dem Löschen wirst du um Bestätigung gebeten.",
+  "dataManagement.preferenceTitle": "Standardeinstellungen",
+  "dataManagement.preferenceNote": "Darstellung und Interaktion zurücksetzen. Modellkonfiguration, Schlüssel und persönliche Profile bleiben erhalten.",
+  "dataManagement.attachmentsTitle": "Aufbewahrte Anhänge",
+  "dataManagement.attachmentsNote": "Bilder und Anhänge abrufen, die beim Leeren des Chatverlaufs aufbewahrt wurden.",
+  "dataManagement.localDirectory": "Lokaler Datenordner",
+  "dataManagement.tools": "Anwendungswerkzeuge",
+  "dataManagement.toolsNote": "Netzwerk-Routing, Download-Fortschritt, Einrichtungsassistent und Info.",
+  "cache.spaceLabel": "Bereinigbarer Speicherplatz",
+  "cache.updateCategory": "Abgelaufene Update-Pakete",
+  "cache.downloadCategory": "Verbleibende Downloads",
+  "dataManagement.historyTitle": "Chatverlauf"
 }

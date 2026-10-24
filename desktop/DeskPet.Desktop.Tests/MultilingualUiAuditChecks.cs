@@ -110,7 +110,7 @@ internal static class MultilingualUiAuditChecks
                         settings.Width=width;settings.Height=760;
                         foreach(string section in new[]{"partner","behavior","text","image","asr","speech","live","work","voice","storage"})
                         {
-                            settings.SelectSection(section);Settle();Check(settings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem!=null,"selected section "+section);
+                            settings.SelectSection(section);Settle();Check(settings.SelectedSection==section,"selected section "+section);
                             ScrollCaptures(settings,"settings-"+section+"-"+mode+"-"+width);
                         }
                     }

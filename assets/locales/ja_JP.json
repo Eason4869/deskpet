@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "今日の獲得",
   "relationship.home.activeDaysLabel": "一緒に過ごした日数",
   "relationship.home.acquaintanceDaysLabel": "出会ってから",
-  "relationship.home.daysValue": "{0} 日"
+  "relationship.home.daysValue": "{0} 日",
+  "dataManagement.intro": "このデバイスに保存されたチャット、設定、添付ファイルを管理します。",
+  "dataManagement.historyNote": "このデバイスに暗号化して保存します。保存をオフにしても既存の履歴は残ります。",
+  "dataManagement.clearNote": "パートナーとプロジェクトのチャットや会話コンテキストを削除します。実行前に確認が表示されます。",
+  "dataManagement.preferenceTitle": "既定の設定",
+  "dataManagement.preferenceNote": "外観や操作の設定を復元します。モデル設定、キー、個人プロフィールは保持されます。",
+  "dataManagement.attachmentsTitle": "保持された添付ファイル",
+  "dataManagement.attachmentsNote": "チャット履歴の削除時に保持された画像や添付ファイルを取り出せます。",
+  "dataManagement.localDirectory": "ローカルデータフォルダー",
+  "dataManagement.tools": "アプリのツール",
+  "dataManagement.toolsNote": "ネットワーク経路、ダウンロードの進行状況、設定ガイド、アプリ情報。",
+  "cache.spaceLabel": "削除可能な容量",
+  "cache.updateCategory": "期限切れの更新パッケージ",
+  "cache.downloadCategory": "残ったダウンロード",
+  "dataManagement.historyTitle": "チャット履歴"
 }

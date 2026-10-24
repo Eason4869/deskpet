@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Diperoleh hari ini",
   "relationship.home.activeDaysLabel": "Hari aktif bersama",
   "relationship.home.acquaintanceDaysLabel": "Sejak bertemu",
-  "relationship.home.daysValue": "{0} hari"
+  "relationship.home.daysValue": "{0} hari",
+  "dataManagement.intro": "Kelola chat, preferensi, dan lampiran yang disimpan di perangkat ini.",
+  "dataManagement.historyNote": "Disimpan terenkripsi di perangkat ini. Mematikan penyimpanan tetap mempertahankan riwayat yang ada.",
+  "dataManagement.clearNote": "Hapus chat dan konteks percakapan pendamping serta proyek. Konfirmasi diminta sebelum penghapusan.",
+  "dataManagement.preferenceTitle": "Preferensi bawaan",
+  "dataManagement.preferenceNote": "Pulihkan preferensi tampilan dan interaksi. Konfigurasi model, kunci, dan profil pribadi tetap disimpan.",
+  "dataManagement.attachmentsTitle": "Lampiran tersimpan",
+  "dataManagement.attachmentsNote": "Ambil kembali gambar dan lampiran yang dipertahankan saat riwayat chat dihapus.",
+  "dataManagement.localDirectory": "Folder data lokal",
+  "dataManagement.tools": "Alat aplikasi",
+  "dataManagement.toolsNote": "Perutean jaringan, progres unduhan, panduan penyiapan, dan Tentang.",
+  "cache.spaceLabel": "Ruang yang dapat dibersihkan",
+  "cache.updateCategory": "Paket pembaruan kedaluwarsa",
+  "cache.downloadCategory": "Sisa unduhan",
+  "dataManagement.historyTitle": "Riwayat chat"
 }

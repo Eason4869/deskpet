@@ -79,7 +79,9 @@ try
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
     if(args.Contains("--data-admission-host-only")){Console.WriteLine("PASS: "+DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission"))+" admission host assertions");return;}
+    if(args.Any(a=>a.StartsWith("--settings-visual-ui="))){var language=args.Single(a=>a.StartsWith("--settings-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"settings-visual"),language)+" settings visual assertions");return;}
     if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
+    if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"));
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
@@ -653,7 +655,7 @@ try
     }
     uploadWindow.Close(); Dispatcher.UIThread.RunJobs();
     var settings = (SettingsWindow)windows[2];
-    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem != null, "settings section " + section); }
+    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.SelectedSection == section, "settings section " + section); }
     var settingsFile = Path.Combine(controller.DataDirectory, "settings.json"); var beforeWorkOpen = File.GetLastWriteTimeUtc(settingsFile);
     _ = new WorkSettingsView(controller, settings); Dispatcher.UIThread.RunJobs();
     Check(File.GetLastWriteTimeUtc(settingsFile) == beforeWorkOpen, "creating work settings does not save or dirty initial values");

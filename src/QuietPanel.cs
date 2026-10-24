@@ -25,9 +25,9 @@ namespace Dafeiyu
             clickthrough=Ui.Toggle(TextResources.Get("quietPanel.quietPanel.toggle.alternativeC"),pet.Settings.ClickThrough,delegate(bool enabled){if(!refreshing)pet.SetClickThrough(enabled);});clickthrough.Name="ClickThrough";behavior.Children.Add(clickthrough);behavior.Children.Add(Ui.Text(TextResources.Get("quietPanel.quietPanel.text.alternativeD"),12,Ui.Muted));
             locked=Ui.Toggle(TextResources.Get("quietPanel.quietPanel.toggle.alternativeD"),pet.Settings.LockPosition,delegate(bool enabled){if(!refreshing){pet.Settings.LockPosition=enabled;pet.ApplySettings();}});locked.Name="LockPosition";behavior.Children.Add(locked);general.Children.Add(GlassSurface.Card(behavior));
             shortcuts=new ShortcutSettingsPanel(pet);
-            var storage=new StackPanel();storage.Children.Add(Ui.Text(TextResources.Get("dataManagement.title"),16));history=Ui.Toggle(TextResources.Get("quietPanel.quietPanel.toggle.alternativeE"),pet.Settings.SaveChatHistory,delegate(bool enabled){if(!refreshing){pet.Settings.SaveChatHistory=enabled;pet.SaveSettings();}});history.Name="SaveChatHistory";storage.Children.Add(history);storage.Children.Add(Ui.Text(TextResources.Get("quietPanel.quietPanel.text.alternativeF"),12,Ui.Muted));
-            storage.Children.Add(new DataManagementPanel(pet,delegate{shortcuts.DiscardPreferenceDrafts();if(preferencesRestored!=null)preferencesRestored();else RefreshState();}));
-            pages=new UIElement[]{Ui.Scroll(general),shortcuts,Ui.Scroll(GlassSurface.Card(storage))};header.SelectionChanged+=index=>body.Content=pages[index];SelectSection(0);
+            var storage=new StackPanel();history=Ui.Toggle(TextResources.Get("quietPanel.quietPanel.toggle.alternativeE"),pet.Settings.SaveChatHistory,delegate(bool enabled){if(!refreshing){pet.Settings.SaveChatHistory=enabled;pet.SaveSettings();}});history.Name="SaveChatHistory";
+            storage.Children.Add(new DataManagementPanel(pet,delegate{shortcuts.DiscardPreferenceDrafts();if(preferencesRestored!=null)preferencesRestored();else RefreshState();},history));
+            pages=new UIElement[]{Ui.Scroll(general),shortcuts,Ui.Scroll(storage)};header.SelectionChanged+=index=>body.Content=pages[index];SelectSection(0);
         }
         public void SelectSection(int index){header.Select(index);}
         internal void ShowTarget(string name){SelectSection(name.StartsWith("Hotkey")||name.StartsWith("GuideShortcut")||name.StartsWith("SaveShortcut")?1:name=="SaveChatHistory"?2:0);}

@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Earned today",
   "relationship.home.activeDaysLabel": "Active days together",
   "relationship.home.acquaintanceDaysLabel": "Days since meeting",
-  "relationship.home.daysValue": "{0} days"
+  "relationship.home.daysValue": "{0} days",
+  "dataManagement.intro": "Manage chats, preferences and attachments stored on this device.",
+  "dataManagement.historyNote": "Saved encrypted on this device. Turning saving off keeps existing history.",
+  "dataManagement.clearNote": "Remove chats and conversation context for companions and projects. You will confirm before anything is cleared.",
+  "dataManagement.preferenceTitle": "Default preferences",
+  "dataManagement.preferenceNote": "Restore appearance and interaction preferences. Keep model configuration, keys and personal profiles.",
+  "dataManagement.attachmentsTitle": "Retained attachments",
+  "dataManagement.attachmentsNote": "Retrieve images and attachments kept when chat history is cleared.",
+  "dataManagement.localDirectory": "Local data folder",
+  "dataManagement.tools": "Application tools",
+  "dataManagement.toolsNote": "Network routing, download progress, setup guide and About.",
+  "cache.spaceLabel": "Space available to clean",
+  "cache.updateCategory": "Expired update packages",
+  "cache.downloadCategory": "Leftover downloads",
+  "dataManagement.historyTitle": "Chat history"
 }

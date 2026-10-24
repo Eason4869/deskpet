@@ -11,7 +11,7 @@ namespace Dafeiyu
     public sealed class DataManagementPanel:StackPanel
     {
         readonly TextBlock status;readonly HistoryMaintenanceService service;
-        public DataManagementPanel(PetWindow pet,Action refresh)
+        public DataManagementPanel(PetWindow pet,Action refresh,FrameworkElement historyToggle=null)
         {
             service=new HistoryMaintenanceService(pet.Store.DirectoryPath,pet.DataMaintenance,pet.ImageTasks);
             Margin=new Thickness(0,16,0,0);
@@ -25,8 +25,16 @@ namespace Dafeiyu
             var attachments=Ui.Button(TextResources.Get("dataManagement.attachments"));attachments.Name="OpenPreservedAttachments";attachments.Click+=async delegate{
                 attachments.IsEnabled=false;try{if(!await DataManagementPresentation.HasAttachmentsAsync(service.AttachmentDirectory))status.Text=TextResources.Get("dataManagement.attachmentsEmpty");else{Process.Start(new ProcessStartInfo(service.AttachmentDirectory){UseShellExecute=true});status.Text="";}}catch(Exception){status.Text=TextResources.Get("dataManagement.attachmentsFailed");}finally{attachments.IsEnabled=true;}
             };
-            foreach(var button in new[]{clear,reset,attachments}){button.HorizontalAlignment=HorizontalAlignment.Left;button.Margin=new Thickness(0,4,0,8);Children.Add(button);}
-            Children.Add(Ui.Text(TextResources.Get("dataManagement.retained"),12,Ui.Muted));status=Ui.Text("",12,Ui.Muted);status.Name="DataManagementStatus";status.Margin=new Thickness(0,12,0,0);Children.Add(status);
+            foreach(var button in new[]{clear,reset,attachments})DataManagementVisual.Button(button,button==clear);
+            var intro=Ui.Text(TextResources.Get("dataManagement.intro"),13,Ui.Muted);intro.Margin=new Thickness(0,0,0,16);Children.Add(intro);
+            var history=new StackPanel();history.Children.Add(DataManagementVisual.Header("chat",TextResources.Get("dataManagement.historyTitle")));
+            if(historyToggle!=null){historyToggle.Margin=new Thickness(0,12,0,6);history.Children.Add(historyToggle);}
+            history.Children.Add(Ui.Text(TextResources.Get("dataManagement.historyNote"),12,Ui.Muted));history.Children.Add(new Border{Height=1,Background=ThemeManager.CardBorder,Margin=new Thickness(0,16,0,16)});
+            history.Children.Add(DataManagementVisual.ActionRow("",TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.clearNote"),clear));Children.Add(DataManagementVisual.Card(history));
+            Children.Add(DataManagementVisual.Card(DataManagementVisual.ActionRow("settings",TextResources.Get("dataManagement.preferenceTitle"),TextResources.Get("dataManagement.preferenceNote"),reset)));
+            var attachmentGroup=new StackPanel();attachmentGroup.Children.Add(DataManagementVisual.ActionRow("folder",TextResources.Get("dataManagement.attachmentsTitle"),TextResources.Get("dataManagement.attachmentsNote"),attachments));
+            status=Ui.Text("",12,Ui.Muted);status.Name="DataManagementStatus";status.Margin=new Thickness(0,12,0,0);var statusStyle=new Style(typeof(TextBlock));var empty=new Trigger{Property=TextBlock.TextProperty,Value=""};empty.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Collapsed));statusStyle.Triggers.Add(empty);status.Style=statusStyle;attachmentGroup.Children.Add(status);Children.Add(DataManagementVisual.Card(attachmentGroup));
+            Children.Add(new Border{CornerRadius=new CornerRadius(10),Padding=new Thickness(14),Background=ThemeManager.Brush("#F7F8FA"),Child=DataManagementVisual.Note("shield",TextResources.Get("dataManagement.retained"))});
         }
     }
 }

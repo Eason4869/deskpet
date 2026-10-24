@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Ottenuti oggi",
   "relationship.home.activeDaysLabel": "Giorni attivi insieme",
   "relationship.home.acquaintanceDaysLabel": "Dal primo incontro",
-  "relationship.home.daysValue": "{0} giorni"
+  "relationship.home.daysValue": "{0} giorni",
+  "dataManagement.intro": "Gestisci chat, preferenze e allegati salvati su questo dispositivo.",
+  "dataManagement.historyNote": "Salvati in forma crittografata su questo dispositivo. Disattivando il salvataggio, la cronologia esistente viene conservata.",
+  "dataManagement.clearNote": "Rimuove chat e contesto delle conversazioni di compagni e progetti. Verrà chiesta conferma prima di cancellare.",
+  "dataManagement.preferenceTitle": "Preferenze predefinite",
+  "dataManagement.preferenceNote": "Ripristina aspetto e interazioni. Conserva configurazione dei modelli, chiavi e profili personali.",
+  "dataManagement.attachmentsTitle": "Allegati conservati",
+  "dataManagement.attachmentsNote": "Recupera immagini e allegati conservati durante la cancellazione della cronologia.",
+  "dataManagement.localDirectory": "Cartella dati locale",
+  "dataManagement.tools": "Strumenti dell’applicazione",
+  "dataManagement.toolsNote": "Instradamento di rete, avanzamento download, guida alla configurazione e Informazioni.",
+  "cache.spaceLabel": "Spazio liberabile",
+  "cache.updateCategory": "Pacchetti di aggiornamento scaduti",
+  "cache.downloadCategory": "Download residui",
+  "dataManagement.historyTitle": "Cronologia chat"
 }

@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "Obtenidos hoy",
   "relationship.home.activeDaysLabel": "Días activos juntos",
   "relationship.home.acquaintanceDaysLabel": "Desde el encuentro",
-  "relationship.home.daysValue": "{0} días"
+  "relationship.home.daysValue": "{0} días",
+  "dataManagement.intro": "Gestiona chats, preferencias y adjuntos guardados en este dispositivo.",
+  "dataManagement.historyNote": "Se guardan cifrados en este dispositivo. Desactivar el guardado conserva el historial existente.",
+  "dataManagement.clearNote": "Elimina los chats y el contexto de conversación de compañeros y proyectos. Se pedirá confirmación antes de borrar.",
+  "dataManagement.preferenceTitle": "Preferencias predeterminadas",
+  "dataManagement.preferenceNote": "Restaura las preferencias de apariencia e interacción. Conserva la configuración de modelos, claves y perfiles personales.",
+  "dataManagement.attachmentsTitle": "Adjuntos conservados",
+  "dataManagement.attachmentsNote": "Recupera las imágenes y los adjuntos conservados al borrar el historial.",
+  "dataManagement.localDirectory": "Carpeta de datos local",
+  "dataManagement.tools": "Herramientas de la aplicación",
+  "dataManagement.toolsNote": "Ruta de red, progreso de descargas, guía de configuración y Acerca de.",
+  "cache.spaceLabel": "Espacio que se puede liberar",
+  "cache.updateCategory": "Paquetes de actualización caducados",
+  "cache.downloadCategory": "Descargas sobrantes",
+  "dataManagement.historyTitle": "Historial de chat"
 }

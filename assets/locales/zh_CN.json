@@ -4613,5 +4613,19 @@
   "relationship.home.todayLabel": "今日获得",
   "relationship.home.activeDaysLabel": "有效相处",
   "relationship.home.acquaintanceDaysLabel": "已经认识",
-  "relationship.home.daysValue": "{0} 天"
+  "relationship.home.daysValue": "{0} 天",
+  "dataManagement.intro": "管理保存在本机的聊天记录、偏好与附件。",
+  "dataManagement.historyNote": "在本机加密保存。关闭保存后，已有记录仍会保留。",
+  "dataManagement.clearNote": "清除伙伴与项目中的聊天及会话上下文。执行前会再次确认。",
+  "dataManagement.preferenceTitle": "默认偏好",
+  "dataManagement.preferenceNote": "恢复外观与交互等偏好，保留模型配置、密钥与个人资料。",
+  "dataManagement.attachmentsTitle": "保留附件",
+  "dataManagement.attachmentsNote": "清理聊天时保留的图片与附件，可在这里取回。",
+  "dataManagement.localDirectory": "本地数据目录",
+  "dataManagement.tools": "应用工具",
+  "dataManagement.toolsNote": "网络加速、下载进度、配置向导与关于。",
+  "cache.spaceLabel": "可清理空间",
+  "cache.updateCategory": "过期更新包",
+  "cache.downloadCategory": "遗留下载",
+  "dataManagement.historyTitle": "聊天记录"
 }
