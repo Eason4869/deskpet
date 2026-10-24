@@ -35,9 +35,41 @@ namespace Dafeiyu
         }
         internal static FrameworkElement Stat(string icon,string label,string value,string name){var grid=new Grid{Margin=new Thickness(0,6,0,6)};grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(48)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.Children.Add(new Border{Width=36,Height=36,CornerRadius=new CornerRadius(11),Background=ThemeManager.Brush("#EDF3FF"),Child=Icon(icon),HorizontalAlignment=HorizontalAlignment.Left});var words=new StackPanel();words.Children.Add(Ui.Text(label,12,AgentUi.Muted));var text=Ui.Text(value,22,AgentUi.Ink);text.FontWeight=FontWeights.SemiBold;text.Name=name;words.Children.Add(text);Grid.SetColumn(words,1);grid.Children.Add(words);return grid;}
         internal static FrameworkElement Milestone(string title,string date){var row=new Grid{MinHeight=78};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(26)});row.ColumnDefinitions.Add(new ColumnDefinition());row.Children.Add(new Border{Width=1,Background=ThemeManager.Brush("#D5E1ED"),HorizontalAlignment=HorizontalAlignment.Center});row.Children.Add(new Ellipse{Width=10,Height=10,Fill=Accent,Stroke=ThemeManager.Surface,StrokeThickness=2,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,7,0,0)});var words=new StackPanel{Margin=new Thickness(6,0,8,16)};var text=Ui.Text(title,14,AgentUi.Ink);text.FontWeight=FontWeights.SemiBold;words.Children.Add(text);words.Children.Add(Ui.Text(date,12,AgentUi.Muted));Grid.SetColumn(words,1);row.Children.Add(words);return row;}
-        internal static FrameworkElement Header(string icon,string value){var row=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(2,5,2,5)};row.Children.Add(Icon(icon,18));var text=Ui.Text(value,14,AgentUi.Ink);text.Margin=new Thickness(12,0,0,0);row.Children.Add(text);return row;}
+        internal static FrameworkElement Header(string icon,string value){var row=new Grid{Margin=new Thickness(2,5,2,5)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});row.ColumnDefinitions.Add(new ColumnDefinition());var graphic=Icon(icon,18);graphic.Margin=new Thickness(0,0,12,0);graphic.VerticalAlignment=VerticalAlignment.Center;row.Children.Add(graphic);var text=Ui.Text(value,14,AgentUi.Ink);Grid.SetColumn(text,1);row.Children.Add(text);return row;}
         internal static FrameworkElement Rules(){var panel=new StackPanel{Margin=new Thickness(0,12,0,0)};panel.Children.Add(Header("home",TextResources.Get("relationship.home.ruleVisit")));panel.Children.Add(Header("heart",TextResources.Get("relationship.home.ruleInteraction")));panel.Children.Add(Header("chat",TextResources.Get("relationship.home.ruleConversation")));panel.Children.Add(Header("work",TextResources.Get("relationship.home.ruleWork")));var total=Ui.Text(TextResources.Get("relationship.home.ruleLimit"),13,AgentUi.Muted);total.Margin=new Thickness(0,10,0,0);panel.Children.Add(total);return panel;}
-        internal static FrameworkElement FindNamed(DependencyObject root,string name){var e=root as FrameworkElement;if(e!=null&&e.Name==name)return e;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++){var found=FindNamed(VisualTreeHelper.GetChild(root,i),name);if(found!=null)return found;}return null;}
+        internal sealed class FocusToken
+        {
+            internal string CompanionId,StageId,ActionName,DisclosureName;
+        }
+        static System.Collections.Generic.IEnumerable<FrameworkElement> Visuals(DependencyObject root)
+        {
+            var element=root as FrameworkElement;if(element!=null)yield return element;
+            for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in Visuals(VisualTreeHelper.GetChild(root,i)))yield return child;
+        }
+        internal static FocusToken CaptureFocus(FrameworkElement root,FrameworkElement focused)
+        {
+            if(focused==null||(!Object.ReferenceEquals(root,focused)&&!root.IsAncestorOf(focused)))return null;
+            var token=new FocusToken{ActionName=focused.Name};
+            var disclosure=focused is ToggleButton?focused.TemplatedParent as Expander:null;
+            if(disclosure!=null)token.DisclosureName=disclosure.Name;
+            if(String.IsNullOrEmpty(token.ActionName)&&String.IsNullOrEmpty(token.DisclosureName))return null;
+            for(DependencyObject ancestor=focused;ancestor!=null;ancestor=VisualTreeHelper.GetParent(ancestor)){
+                var card=ancestor as RelationshipCardPreview;if(card==null)continue;var capture=(HomeCardCapture)card.Tag;token.CompanionId=capture.Data.CompanionId;token.StageId=capture.Data.StageId;break;
+            }
+            return token;
+        }
+        internal static FrameworkElement DisclosureHeader(Expander expander)
+        {
+            expander.ApplyTemplate();return Visuals(expander).OfType<ToggleButton>().FirstOrDefault(x=>Object.ReferenceEquals(x.TemplatedParent,expander));
+        }
+        internal static FrameworkElement ResolveFocus(FrameworkElement root,FocusToken token)
+        {
+            if(token==null)return null;FrameworkElement scope=root;
+            if(token.StageId!=null){scope=Visuals(root).OfType<RelationshipCardPreview>().FirstOrDefault(x=>{var capture=(HomeCardCapture)x.Tag;return capture.Data.StageId==token.StageId&&capture.Data.CompanionId==token.CompanionId;});if(scope==null)return null;}
+            if(!String.IsNullOrEmpty(token.DisclosureName)){var disclosure=Visuals(scope).OfType<Expander>().FirstOrDefault(x=>x.Name==token.DisclosureName);return disclosure==null?null:DisclosureHeader(disclosure);}
+            return Visuals(scope).FirstOrDefault(x=>x.Name==token.ActionName);
+        }
+
     }
     internal sealed class HomeCardCapture
     {
@@ -51,7 +83,7 @@ namespace Dafeiyu
             Tag=capture;Margin=new Thickness(0,0,14,18);var image=new Image{Name="RelationshipCardImage",Source=capture.Image,Stretch=Stretch.Uniform,MaxWidth=340,HorizontalAlignment=HorizontalAlignment.Left};
             var expanded=new Image{Name="RelationshipCardExpandedImage",Source=capture.Image,Stretch=Stretch.Uniform};
             var preview=new Expander{Name="RelationshipCardPreview",Header=TextResources.Get("relationship.home.preview"),Content=expanded,IsExpanded=capture.Expanded,HorizontalContentAlignment=HorizontalAlignment.Stretch};
-            preview.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Expander'><StackPanel><ToggleButton IsChecked='{Binding IsExpanded,RelativeSource={RelativeSource TemplatedParent}}' Content='{TemplateBinding Header}' HorizontalContentAlignment='Stretch' Background='Transparent' BorderThickness='0'><ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border x:Name='frame' Background='Transparent' BorderBrush='{TemplateBinding Foreground}' BorderThickness='0' CornerRadius='12'><DockPanel><Path DockPanel.Dock='Right' Data='M0,0 L5,5 L10,0' Stroke='{TemplateBinding Foreground}' StrokeThickness='1.5' Width='10' Height='5' Margin='12,0,4,0'/><ContentPresenter Content='{TemplateBinding Content}' HorizontalAlignment='Left'/></DockPanel></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='frame' Property='BorderThickness' Value='2'/></Trigger><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='frame' Property='Opacity' Value='0.9'/></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter x:Name='expanded' ContentSource='Content' Visibility='Collapsed' Margin='0,12,0,0'/></StackPanel><ControlTemplate.Triggers><Trigger Property='IsExpanded' Value='True'><Setter TargetName='expanded' Property='Visibility' Value='Visible'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+            preview.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Expander'><StackPanel><ToggleButton x:Name='CompanionDisclosureHeader' IsChecked='{Binding IsExpanded,RelativeSource={RelativeSource TemplatedParent}}' Content='{TemplateBinding Header}' HorizontalContentAlignment='Stretch' Background='Transparent' BorderThickness='0'><ToggleButton.Template><ControlTemplate TargetType='ToggleButton'><Border x:Name='frame' Background='Transparent' BorderBrush='{TemplateBinding Foreground}' BorderThickness='0' CornerRadius='12'><DockPanel><Path DockPanel.Dock='Right' Data='M0,0 L5,5 L10,0' Stroke='{TemplateBinding Foreground}' StrokeThickness='1.5' Width='10' Height='5' Margin='12,0,4,0'/><ContentPresenter Content='{TemplateBinding Content}' HorizontalAlignment='Left'/></DockPanel></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='frame' Property='BorderThickness' Value='2'/></Trigger><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='frame' Property='Opacity' Value='0.9'/></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template></ToggleButton><ContentPresenter x:Name='expanded' ContentSource='Content' Visibility='Collapsed' Margin='0,12,0,0'/></StackPanel><ControlTemplate.Triggers><Trigger Property='IsExpanded' Value='True'><Setter TargetName='expanded' Property='Visibility' Value='Visible'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
             var thumbnail=Ui.Button("");thumbnail.Name="RelationshipCardThumbnail";thumbnail.Content=image;thumbnail.Padding=new Thickness(0);thumbnail.Margin=new Thickness(0);thumbnail.HorizontalContentAlignment=HorizontalAlignment.Stretch;System.Windows.Automation.AutomationProperties.SetName(thumbnail,TextResources.Get("relationship.home.preview")+" "+capture.Data.Name+" "+capture.Data.StageName+" "+capture.Data.DateText);thumbnail.HorizontalAlignment=HorizontalAlignment.Left;thumbnail.Click+=delegate{preview.IsExpanded=!preview.IsExpanded;};thumbnail.ToolTip=TextResources.Get("relationship.home.preview");Children.Add(thumbnail);
             System.Windows.Automation.AutomationProperties.SetName(preview,TextResources.Get("relationship.home.preview")+" "+capture.Data.Name+" "+capture.Data.StageName+" "+capture.Data.DateText);
             preview.Expanded+=delegate{capture.Expanded=true;resized();};preview.Collapsed+=delegate{capture.Expanded=false;resized();};Children.Add(preview);

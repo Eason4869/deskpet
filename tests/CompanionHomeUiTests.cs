@@ -52,6 +52,23 @@ namespace Dafeiyu.Tests
             Check(((Image)entry.Icon).Source==SkinCatalog.GetAvatar(pet.Skin)&&entry.Opacity==1,"profile avatar retains canonical original color");
             entry.Focus();Check(entry.IsKeyboardFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(entry),0,Key.Enter){RoutedEvent=Keyboard.KeyDownEvent});await Task.Delay(80);Check(!menu.IsOpen&&chat.CurrentPage=="companion","profile click closes menu and opens companion route in same window");
             var page=All<CompanionHomePage>(chat).Single();await page.RefreshAsync();page.UpdateLayout();await pet.Relationships.FlushAsync();await page.RefreshAsync();page.UpdateLayout();
+            chat.Width=520;chat.Height=880;var narrowRules=All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules");narrowRules.IsExpanded=true;
+            foreach(string narrowTheme in new[]{"light","dark"}){
+                ThemeManager.Apply(narrowTheme);await Task.Delay(60);page.UpdateLayout();narrowRules=All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules");narrowRules.BringIntoView();await Task.Delay(30);Capture(chat,Path.Combine(captures,"fix1-"+locale+"-rules-520-"+narrowTheme+".png"));
+                foreach(string ruleText in new[]{TextResources.Get("relationship.home.ruleInteraction"),TextResources.Get("relationship.home.ruleConversation")}){var rule=All<TextBlock>(narrowRules).Single(x=>x.Text==ruleText);double right=rule.TransformToAncestor(narrowRules).Transform(new Point(rule.ActualWidth,0)).X;Check(right<=narrowRules.ActualWidth+1,"localized expanded rule stays inside narrow group: "+locale+" "+narrowTheme);}
+            }
+            narrowRules.IsExpanded=false;chat.Width=1100;page.ScrollToTop();await Task.Delay(30);
+            var focusApi=typeof(HomeVisual).GetMethod("CaptureFocus",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+            Check(focusApi!=null,"semantic focus capture identifies later milestone actions and disclosure headers");
+            var laterCard=All<RelationshipCardPreview>(page).Single(x=>((HomeCardCapture)x.Tag).Data.StageId=="familiar");
+            var laterSave=All<Button>(laterCard).Single(x=>x.Name=="SaveRelationshipCard");var laterThumb=All<Button>(laterCard).Single(x=>x.Name=="RelationshipCardThumbnail");var laterDisclosure=All<Expander>(laterCard).Single(x=>x.Name=="RelationshipCardPreview");
+            var saveFocus=HomeVisual.CaptureFocus(page,laterSave);var thumbFocus=HomeVisual.CaptureFocus(page,laterThumb);var cardHeaderFocus=HomeVisual.CaptureFocus(page,HomeVisual.DisclosureHeader(laterDisclosure));var rulesHeaderFocus=HomeVisual.CaptureFocus(page,HomeVisual.DisclosureHeader(All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules")));
+            Check(HomeVisual.CaptureFocus(page,input)==null,"focus capture rejects controls outside the companion page");
+            await page.RefreshAsync();page.UpdateLayout();laterCard=All<RelationshipCardPreview>(page).Single(x=>((HomeCardCapture)x.Tag).Data.StageId=="familiar");
+            Check(ReferenceEquals(HomeVisual.ResolveFocus(page,saveFocus),All<Button>(laterCard).Single(x=>x.Name=="SaveRelationshipCard"))&&ReferenceEquals(HomeVisual.ResolveFocus(page,thumbFocus),All<Button>(laterCard).Single(x=>x.Name=="RelationshipCardThumbnail")),"rebuilt visual tree resolves later milestone save and thumbnail, never the first card");
+            Check(ReferenceEquals(HomeVisual.ResolveFocus(page,cardHeaderFocus),HomeVisual.DisclosureHeader(All<Expander>(laterCard).Single(x=>x.Name=="RelationshipCardPreview"))),"rebuilt visual tree resolves the later card disclosure header");
+            Check(ReferenceEquals(HomeVisual.ResolveFocus(page,rulesHeaderFocus),HomeVisual.DisclosureHeader(All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules"))),"rebuilt visual tree resolves the rules disclosure header");
+            Console.WriteLine("WPF_RESOLVER_ONLY: actual rebuilt controls checked; real input-desktop keyboard focus remains the separate SKIP.");
             var cardData=RelationshipCardData.FromSnapshot(page.View.Snapshot,"familiar",pet.Skin.DisplayName);
             var previews=All<Expander>(page).Where(x=>x.Name=="RelationshipCardPreview").ToArray();
             Check(previews.Length==page.View.Snapshot.State.Milestones.Count,"every saved milestone shows an in-page PNG preview");

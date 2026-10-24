@@ -66,7 +66,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
             int version=revision;double scroll=Offset.Y;
             var focused=TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
-            string? focusName=focused!=null&&this.GetLogicalDescendants().Contains(focused)?focused.Name:null;
+            var focusToken=HomeVisual.CaptureFocus(body,focused);
             var expandedStages=captures.Where(x=>x.Value.Expanded).Select(x=>x.Key).ToArray();
             string key=identity+"|"+TextResources.CurrentLanguage+"|"+owner.Skin.DisplayName+"|"+owner.Skin.PickerKey+"|"+owner.Skin.GetHashCode()+"|"+DesktopTheme.IsDark;
             if(captureKey!=key){bool switched=captureKey==null||!captureKey.StartsWith(identity+"|",StringComparison.Ordinal);foreach(var old in captures.Values)old.Dispose();captures.Clear();captureKey=key;if(switched){introOpen=false;scroll=0;expandedStages=new string[0];}}
@@ -118,7 +118,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
                 if(stats!=null){stats.Orientation=wide?Orientation.Horizontal:Orientation.Vertical;foreach(Control stat in stats.Children)stat.Width=wide?width/3:Double.NaN;}
                 if(bottom!=null){var cards=(Control)bottom.Children[1];Grid.SetColumn(cards,wide?1:0);Grid.SetRow(cards,wide?0:1);Grid.SetColumnSpan(bottom.Children[0],wide?1:2);Grid.SetColumnSpan(cards,wide?1:2);cards.Margin=new Thickness(wide?16:0,0,0,0);double cardArea=wide?width*.68-16:width;double cardWidth=wide?cardArea/2-22:cardArea-14;foreach(Control card in cardsWrap!.Children)card.Width=Math.Max(120,((HomeCardCapture)card.Tag!).Expanded?cardArea-14:cardWidth);}
             };updateLayout();InvalidateMeasure();Offset=new Vector(Offset.X,scroll);
-            if(!String.IsNullOrEmpty(focusName)&&TopLevel.GetTopLevel(this) is Window window&&window.IsActive){var replacement=HomeVisual.FindNamed(body,focusName);if(replacement!=null)replacement.Focus();}
+            if(focusToken!=null&&TopLevel.GetTopLevel(this) is Window window&&window.IsActive){var replacement=HomeVisual.ResolveFocus(body,focusToken);if(replacement!=null)replacement.Focus();}
         }
     void AddSetting(StackPanel parent,string name,string key,bool value,int kind)
     {

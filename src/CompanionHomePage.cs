@@ -69,7 +69,7 @@ namespace Dafeiyu
             displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
             int version=revision;double scroll=VerticalOffset;
             var focused=Keyboard.FocusedElement as FrameworkElement;
-            string focusName=focused!=null&&IsAncestorOf(focused)?focused.Name:null;
+            var focusToken=HomeVisual.CaptureFocus(body,focused);
             var expandedStages=captures.Where(x=>x.Value.Expanded).Select(x=>x.Key).ToArray();
             string key=identity+"|"+TextResources.CurrentLanguage+"|"+owner.Skin.DisplayName+"|"+owner.Skin.PickerKey+"|"+owner.Skin.GetHashCode()+"|"+ThemeManager.IsDark;
             if(captureKey!=key){bool switched=captureKey==null||!captureKey.StartsWith(identity+"|",StringComparison.Ordinal);captures.Clear();captureKey=key;if(switched){introOpen=false;scroll=0;expandedStages=new string[0];}}
@@ -121,7 +121,7 @@ namespace Dafeiyu
                 if(stats!=null){stats.Orientation=wide?Orientation.Horizontal:Orientation.Vertical;foreach(FrameworkElement stat in stats.Children)stat.Width=wide?width/3:Double.NaN;}
                 if(bottom!=null){var cards=bottom.Children[1] as FrameworkElement;Grid.SetColumn(cards,wide?1:0);Grid.SetRow(cards,wide?0:1);Grid.SetColumnSpan(bottom.Children[0],wide?1:2);Grid.SetColumnSpan(cards,wide?1:2);cards.Margin=new Thickness(wide?16:0,0,0,0);double cardArea=wide?width*.68-16:width;double cardWidth=wide?cardArea/2-22:cardArea-14;foreach(FrameworkElement card in cardsWrap.Children)card.Width=Math.Max(120,((HomeCardCapture)card.Tag).Expanded?cardArea-14:cardWidth);}
             };updateLayout();UpdateLayout();ScrollToVerticalOffset(scroll);
-            if(!String.IsNullOrEmpty(focusName)&&Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive){var replacement=HomeVisual.FindNamed(body,focusName);if(replacement!=null)replacement.Focus();}
+            if(focusToken!=null&&Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive){var replacement=HomeVisual.ResolveFocus(body,focusToken);if(replacement!=null)replacement.Focus();}
         }
         void AddSetting(StackPanel parent,string name,string label,bool value,int kind)
         {

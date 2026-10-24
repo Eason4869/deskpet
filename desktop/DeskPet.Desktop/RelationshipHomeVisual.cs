@@ -12,6 +12,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Controls.Presenters;
 using Avalonia.Data;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Dafeiyu;
 using Path=Avalonia.Controls.Shapes.Path;
 namespace DeskPet.Desktop;
@@ -25,7 +26,7 @@ namespace DeskPet.Desktop;
                 var header=new Grid{ColumnDefinitions=new ColumnDefinitions("*,20")};
                 var title=new ContentPresenter{Content=control.Header,VerticalAlignment=VerticalAlignment.Center};header.Children.Add(title);
                 var arrow=new Path{Data=Geometry.Parse("M2,6 L8,12 L14,6"),Stroke=DesktopTheme.Brush("#7A7E86"),StrokeThickness=1.5,Width=16,Height=16,VerticalAlignment=VerticalAlignment.Center};Grid.SetColumn(arrow,1);header.Children.Add(arrow);
-                var button=Ui.Button("",()=>control.IsExpanded=!control.IsExpanded);button.Content=header;button.Background=Brushes.Transparent;button.Padding=new Thickness(0,8);button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Stretch;
+                var button=Ui.Button("",()=>control.IsExpanded=!control.IsExpanded);button.Name="CompanionDisclosureHeader";button.Tag=control;button.Content=header;button.Background=Brushes.Transparent;button.Padding=new Thickness(0,8);button.HorizontalAlignment=HorizontalAlignment.Stretch;button.HorizontalContentAlignment=HorizontalAlignment.Stretch;
                 var content=new ContentPresenter{Content=control.Content,Margin=new Thickness(0,8,0,0),HorizontalAlignment=HorizontalAlignment.Stretch};content.Bind(Visual.IsVisibleProperty,new Binding("IsExpanded"){Source=control});
                 void UpdateArrow(){arrow.RenderTransform=new RotateTransform(control.IsExpanded?180:0);}
                 control.PropertyChanged+=(_,e)=>{if(e.Property==Expander.IsExpandedProperty)UpdateArrow();};UpdateArrow();
@@ -61,9 +62,35 @@ namespace DeskPet.Desktop;
         }
         internal static Control Stat(string icon,string label,string value,string name){var grid=new Grid{Margin=new Thickness(0,6,0,6)};grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(48)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.Children.Add(new Border{Width=36,Height=36,CornerRadius=new CornerRadius(11),Background=DesktopTheme.Brush("#EDF3FF"),Child=Icon(icon),HorizontalAlignment=HorizontalAlignment.Left});var words=new StackPanel();words.Children.Add(HomeText(label,12,DesktopTheme.Brush("#7A7E86")));var text=HomeText(value,22,DesktopTheme.Brush("#282A2F"));text.FontWeight=FontWeight.SemiBold;text.Name=name;words.Children.Add(text);Grid.SetColumn(words,1);grid.Children.Add(words);return grid;}
         internal static Control Milestone(string title,string date){var row=new Grid{MinHeight=78};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(26)});row.ColumnDefinitions.Add(new ColumnDefinition());row.Children.Add(new Border{Width=1,Background=DesktopTheme.Brush("#D5E1ED"),HorizontalAlignment=HorizontalAlignment.Center});row.Children.Add(new Ellipse{Width=10,Height=10,Fill=Accent,Stroke=DesktopTheme.Surface,StrokeThickness=2,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,7,0,0)});var words=new StackPanel{Margin=new Thickness(6,0,8,16)};var text=HomeText(title,14,DesktopTheme.Brush("#282A2F"));text.FontWeight=FontWeight.SemiBold;words.Children.Add(text);words.Children.Add(HomeText(date,12,DesktopTheme.Brush("#7A7E86")));Grid.SetColumn(words,1);row.Children.Add(words);return row;}
-        internal static Control Header(string icon,string value){var row=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(2,5,2,5)};row.Children.Add(Icon(icon,18));var text=HomeText(value,14,DesktopTheme.Brush("#282A2F"));text.Margin=new Thickness(12,0,0,0);row.Children.Add(text);return row;}
+        internal static Control Header(string icon,string value){var row=new Grid{ColumnDefinitions=new ColumnDefinitions("Auto,*"),Margin=new Thickness(2,5,2,5)};var graphic=Icon(icon,18);graphic.Margin=new Thickness(0,0,12,0);graphic.VerticalAlignment=VerticalAlignment.Center;row.Children.Add(graphic);var text=HomeText(value,14,DesktopTheme.Brush("#282A2F"));Grid.SetColumn(text,1);row.Children.Add(text);return row;}
         internal static Control Rules(){var panel=new StackPanel{Margin=new Thickness(0,12,0,0)};panel.Children.Add(Header("home",TextResources.Get("relationship.home.ruleVisit")));panel.Children.Add(Header("heart",TextResources.Get("relationship.home.ruleInteraction")));panel.Children.Add(Header("chat",TextResources.Get("relationship.home.ruleConversation")));panel.Children.Add(Header("work",TextResources.Get("relationship.home.ruleWork")));var total=HomeText(TextResources.Get("relationship.home.ruleLimit"),13,DesktopTheme.Brush("#7A7E86"));total.Margin=new Thickness(0,10,0,0);panel.Children.Add(total);return panel;}
-        internal static Control? FindNamed(Control root,string name)=>root.GetLogicalDescendants().OfType<Control>().FirstOrDefault(x=>x.Name==name);
+        internal sealed class FocusToken
+        {
+            internal string? CompanionId,StageId,ActionName,DisclosureName;
+        }
+        static IEnumerable<Control> Controls(Control root)=>new[]{root}.Concat(root.GetLogicalDescendants().OfType<Control>());
+        internal static FocusToken? CaptureFocus(Control root,Control? focused)
+        {
+            if(focused==null||(!ReferenceEquals(root,focused)&&!focused.GetVisualAncestors().Contains(root)))return null;
+            var token=new FocusToken{ActionName=focused.Name};
+            if(focused is Button button&&button.Name=="CompanionDisclosureHeader"&&button.Tag is Expander disclosure)token.DisclosureName=disclosure.Name;
+            if(String.IsNullOrEmpty(token.ActionName)&&String.IsNullOrEmpty(token.DisclosureName))return null;
+            var card=focused.GetVisualAncestors().OfType<RelationshipCardPreview>().FirstOrDefault();
+            if(card?.Tag is HomeCardCapture capture){token.CompanionId=capture.Data.CompanionId;token.StageId=capture.Data.StageId;}
+            return token;
+        }
+        internal static Control? DisclosureHeader(Expander expander)
+        {
+            expander.ApplyTemplate();return expander.GetVisualDescendants().OfType<Button>().FirstOrDefault(x=>x.Name=="CompanionDisclosureHeader"&&ReferenceEquals(x.Tag,expander));
+        }
+        internal static Control? ResolveFocus(Control root,FocusToken? token)
+        {
+            if(token==null)return null;Control? scope=root;
+            if(token.StageId!=null){scope=Controls(root).OfType<RelationshipCardPreview>().FirstOrDefault(x=>x.Tag is HomeCardCapture capture&&capture.Data.StageId==token.StageId&&capture.Data.CompanionId==token.CompanionId);if(scope==null)return null;}
+            if(!String.IsNullOrEmpty(token.DisclosureName)){var disclosure=Controls(scope).OfType<Expander>().FirstOrDefault(x=>x.Name==token.DisclosureName);return disclosure==null?null:DisclosureHeader(disclosure);}
+            return Controls(scope).FirstOrDefault(x=>x.Name==token.ActionName);
+        }
+
     }
 
 internal sealed class HomeCardCapture:IDisposable
