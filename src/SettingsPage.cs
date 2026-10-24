@@ -208,7 +208,7 @@ namespace Dafeiyu
         public void RefreshTextProviders(){connections.RefreshTextProviders();}
         void RefreshRestoredPreferences()
         {
-            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();work.RefreshRestoredPreferences();RefreshState();
+            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();connections.RefreshPreferenceVolume();work.RefreshRestoredPreferences();RefreshState();
         }
         public void RefreshState()
         {

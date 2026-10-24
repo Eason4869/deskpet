@@ -24,6 +24,12 @@ namespace Dafeiyu.Tests
             Exception failure=null;var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(30)};timer.Tick+=delegate{var dialog=app.Windows.OfType<Window>().FirstOrDefault(w=>w.Name=="DataActionConfirmation");if(dialog==null)return;timer.Stop();try{run(dialog);}catch(Exception error){failure=error;}finally{dialog.Close();}};timer.Start();Click(action);if(failure!=null)throw failure;
         }
         static Task Operation(Window dialog){return (Task)dialog.GetType().GetProperty("PendingOperation",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public).GetValue(dialog,null);}
+        static int SpeechVolume(PetWindow pet)
+        {
+            const System.Reflection.BindingFlags fields=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+            var speech=(SpeechOutput)typeof(ConversationSession).GetField("speech",fields).GetValue(pet.Conversation);
+            return (int)typeof(SpeechOutput).GetField("currentVolume",fields).GetValue(speech);
+        }
         [STAThread]public static int Main()
         {
             app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window host=null;
@@ -56,7 +62,15 @@ namespace Dafeiyu.Tests
                 Check(pet.Conversation.InputDraft=="unsent draft","clear preserves composer draft");
                 Check(editor.Text=="unsent draft"&&composer.HasEdit,"actual WPF main composer draft and draft attachment survive clearing");chat.Close();
                 Wait(pet.Conversation.SaveHistoryForCloseAsync());Check(new HistoryStore(history).Load(pet.Conversation.PersonaId).Count==0,"actual UI clear and close-save never resurrect sent history");
-                cfg.Scale=1.6;Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(cfg.Scale==1.25&&pet.Width==240,"reset applies persisted scale at runtime");});
+                page.SelectAiSection(2);Pump();var volume=Find<Slider>(page,"VoiceVolume");volume.Value=20;var volumeLabel=((StackPanel)volume.Parent).Children.OfType<TextBlock>().Single();
+                var voiceDraft=Find<ComboBox>(page,"SpeechVoice");voiceDraft.Text="unsaved voice selection";var providerDraft=Find<TextBox>(page,"SpeechProviderName");providerDraft.Text="unsaved speech provider";
+                Check(cfg.Volume==20&&SpeechVolume(pet)==20,"actual speech volume editor applies nondefault runtime volume");page.SelectGeneralSection(2);Pump();
+                cfg.AgentCommandsEnabled=true;cfg.Scale=1.6;Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(cfg.Scale==1.25&&pet.Width==240,"reset applies persisted scale at runtime");});
+                page.SelectAiSection(2);Pump();Check(volume.Value==50&&volumeLabel.Text==TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",50)&&SpeechVolume(pet)==50&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Volume==50,"reset refreshes retained WPF speech slider label durable and runtime volume");
+                Check(cfg.AgentCommandsEnabled&&File.ReadAllText(Path.Combine(root,"settings.json")).Contains("\"AgentCommandsEnabled\":true"),"volume editor refresh neither saves nor normalizes retained settings");
+                Check(ReferenceEquals(volume,Find<Slider>(page,"VoiceVolume"))&&voiceDraft.Text=="unsaved voice selection"&&providerDraft.Text=="unsaved speech provider","volume refresh preserves existing provider and voice editor drafts");
+                volume.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(volume),0,Key.Right){RoutedEvent=Keyboard.KeyDownEvent});
+                Check(volume.Value==55&&cfg.Volume==55&&SpeechVolume(pet)==55&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Volume==55,"keyboard volume increment starts from reset value and persists runtime value");page.SelectGeneralSection(2);Pump();
                 page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingMinMinutes")).Text=="30"&&((TextBox)page.FindControl("GreetingMaxMinutes")).Text=="60","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
                 page.SelectWorkSettings();Pump();Check(((TextBox)page.FindControl("AgentGoal")).Text=="unsaved project goal"&&((CheckBox)page.FindControl("PlainTextEditor")).IsChecked==false,"reset refreshes chat preferences while preserving unrelated work draft");page.SelectGeneralSection(2);Pump();
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{

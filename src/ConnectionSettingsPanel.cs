@@ -11,6 +11,7 @@ namespace Dafeiyu
         readonly ImageGenerationSettings images;
         readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
         readonly TextBlock speechAdvice,liveAdvice;
+        readonly Slider volume;readonly TextBlock volumeLabel;bool refreshingVolume;
         string speechContext,liveContext;
         internal int SpeechTestRevision {get;private set;}
         internal bool SpeechTestSucceeded {get;private set;}
@@ -33,9 +34,9 @@ namespace Dafeiyu
             speechAdvice=Ui.Text("",11,Ui.Muted);speechAdvice.Name="SpeechCharacterRecommendation";synthesis.Extras.Children.Add(speechAdvice);
             var sound=new StackPanel{Margin=new Thickness(0,16,0,0)};
             sound.Children.Add(Ui.ReplySpeechToggle(pet));
-            var label=Ui.Text(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume),12,Ui.Blue);sound.Children.Add(label);
-            var volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
-            volume.ValueChanged+=delegate {int value=(int)Math.Round(volume.Value);label.Text=TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value);pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.SaveSettings();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
+            volumeLabel=Ui.Text(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume),12,Ui.Blue);sound.Children.Add(volumeLabel);
+            volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
+            volume.ValueChanged+=delegate {if(refreshingVolume)return;int value=(int)Math.Round(volume.Value);volumeLabel.Text=TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value);pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.SaveSettings();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
             liveVoice=VoiceField(pet.Settings.LiveVoice,"LiveVoice");Ui.Label(live.Extras,TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeB"),liveVoice);live.Extras.Children.Add(Ui.Text(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeC"),12,Ui.Muted));
             liveAdvice=Ui.Text("",11,Ui.Muted);liveAdvice.Name="LiveCharacterRecommendation";live.Extras.Children.Add(liveAdvice);
             var modes=new ComboBox{Name="VoiceMode",ItemsSource=new[]{TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource"),TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource.alternativeA")},SelectedIndex=pet.Settings.VoiceMode=="live" ? 1 : 0,MinHeight=38,Padding=new Thickness(8)};
@@ -66,6 +67,12 @@ namespace Dafeiyu
             FillVoices(voice,"speech",speech,initial,ref speechContext);FillVoices(liveVoice,"live",live.Preview(),initial,ref liveContext);
         }
         public void RefreshTextProviders(){text.RefreshSaved(pet.Settings);}
+        internal void RefreshPreferenceVolume()
+        {
+            refreshingVolume=true;
+            try{volume.Value=pet.Settings.Volume;volumeLabel.Text=TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",pet.Settings.Volume);}
+            finally{refreshingVolume=false;}
+        }
         public void ExpandTextConnection(){text.ExpandConnection();}
         public void ExpandConnectionFor(string name){if(name.StartsWith("TextService"))text.ExpandConnection();else if(name.StartsWith("Transcription"))recognition.ExpandConnection();else if(name.StartsWith("Speech") && name!="SpeechVoice")synthesis.ExpandConnection();else if(name.StartsWith("LiveService"))live.ExpandConnection();}
         bool SaveTextConnection()
