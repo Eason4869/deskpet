@@ -4572,5 +4572,6 @@
   "cache.rescan": "Ripeti scansione",
   "cache.result": "Liberati {0:N0} byte; rimosse {1} cartelle; ignorati {2}; errori {3}.",
   "cache.failed": "Impossibile completare l’operazione. Ripeti la scansione e riprova.",
-  "dataMaintenance.busy": "La manutenzione dei dati non è disponibile durante le attività. Termina invii, registrazioni, chiamate Live e attività in coda, quindi riprova."
+  "dataMaintenance.busy": "La manutenzione dei dati non è disponibile durante le attività. Termina invii, registrazioni, chiamate Live e attività in coda, quindi riprova.",
+  "dataMaintenance.storageFailure": "Non è stato possibile leggere, conservare o rimuovere alcuni dati in sicurezza. Gli originali rimanenti sono stati conservati. Risolvi il problema e riprova."
 }

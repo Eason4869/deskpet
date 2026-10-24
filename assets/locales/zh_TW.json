@@ -4572,5 +4572,6 @@
   "cache.rescan": "重新掃描",
   "cache.result": "已釋放 {0:N0} 位元組；移除 {1} 個目錄；略過 {2} 項；失敗 {3} 項。",
   "cache.failed": "操作未能完成，請重新掃描後重試。",
-  "dataMaintenance.busy": "目前有工作或資料維護正在進行。請結束傳送、錄音、Live 通話及佇列工作後重試。"
+  "dataMaintenance.busy": "目前有工作或資料維護正在進行。請結束傳送、錄音、Live 通話及佇列工作後重試。",
+  "dataMaintenance.storageFailure": "部分資料無法安全讀取、保留或移除。未移除的原始資料已保留，請排除問題後重試。"
 }

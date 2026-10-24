@@ -4572,5 +4572,6 @@
   "cache.rescan": "Volver a analizar",
   "cache.result": "{0:N0} bytes liberados; {1} carpetas eliminadas; {2} omitidos; {3} errores.",
   "cache.failed": "No se pudo completar la operación. Vuelve a analizar e inténtalo otra vez.",
-  "dataMaintenance.busy": "El mantenimiento de datos no está disponible mientras hay tareas activas. Termina los envíos, las grabaciones, las llamadas Live y las tareas en cola, y vuelve a intentarlo."
+  "dataMaintenance.busy": "El mantenimiento de datos no está disponible mientras hay tareas activas. Termina los envíos, las grabaciones, las llamadas Live y las tareas en cola, y vuelve a intentarlo.",
+  "dataMaintenance.storageFailure": "No se pudieron leer, conservar o eliminar algunos datos de forma segura. Se conservaron los originales restantes. Resuelve el problema e inténtalo de nuevo."
 }

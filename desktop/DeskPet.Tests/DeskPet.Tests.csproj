@@ -7,6 +7,7 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/HistoryMaintenanceTests.cs" Link="Tests/HistoryMaintenanceTests.cs" />
     <Compile Include="../../tests/DataMaintenanceAdmissionTests.cs" Link="Tests/DataMaintenanceAdmissionTests.cs" />
     <Compile Include="../../tests/CacheMaintenanceTests.cs" Link="Tests/CacheMaintenanceTests.cs" />
     <Compile Include="../../tests/Relationship*.cs" Link="Tests/%(Filename)%(Extension)" />

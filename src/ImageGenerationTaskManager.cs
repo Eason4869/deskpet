@@ -18,6 +18,29 @@ namespace Dafeiyu
         readonly ImageAssetUsageRegistry usage;
         readonly List<Job> jobs=new List<Job>();
         readonly Queue<ImageGenerationTaskSnapshot> notifications=new Queue<ImageGenerationTaskSnapshot>();
+        readonly HashSet<string> detachedOrigins=new HashSet<string>(StringComparer.Ordinal);
+        internal string MaintenanceDirectory {get{return log.DirectoryPath;}}
+        static string OriginKey(ImageTaskOrigin origin){return origin==null?"":(origin.ConversationId??"")+"\n"+(origin.MessageId??"");}
+        internal static void DetachHistoryRecord(ImageGenerationTaskRecord record)
+        {if(record.Source==ImageGenerationSource.Conversation){record.Origin=new ImageTaskOrigin{Source=ImageGenerationSource.Workspace};record.DeliveryState=ImageTaskDeliveryState.Detached;record.DeliveryError="";}}
+        internal void DetachHistoryForMaintenance()
+        {
+            string[] promote;
+            lock(gate){
+                if(!restored||recoveryRequired||!String.IsNullOrEmpty(Warning)||jobs.Any(j=>!j.Record.IsTerminal||j.Running))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));
+                promote=jobs.Where(j=>j.Record.Source==ImageGenerationSource.Conversation).Select(j=>j.Record.Id).ToArray();
+            }
+            // A failed/cancelled generation can own the only reference image,
+            // even when no history ever received a generated-image attachment.
+            foreach(string id in promote)PromoteAsync(id,CancellationToken.None).GetAwaiter().GetResult();
+            lock(gate){
+                if(!restored||recoveryRequired||!String.IsNullOrEmpty(Warning)||jobs.Any(j=>!j.Record.IsTerminal||j.Running))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));
+                var changed=jobs.Where(j=>j.Record.Source==ImageGenerationSource.Conversation).ToArray();var before=changed.Select(j=>j.Record.Copy()).ToArray();
+                try{foreach(var job in changed)DetachHistoryRecord(job.Record);Save();}
+                catch{for(int i=0;i<changed.Length;i++)changed[i].Record=before[i];throw;}
+                foreach(var record in before)detachedOrigins.Add(OriginKey(record.Origin));foreach(var job in changed)Notify(job);
+            }
+        }
         bool notifying,restored,stopping,recoveryRequired;int concurrency=1,running;
         public event Action<ImageGenerationTaskSnapshot> Changed;
         public string Warning {get;private set;}
@@ -49,6 +72,7 @@ namespace Dafeiyu
             var request=submission.Request;var origin=submission.Origin;var beforeStart=submission.BeforeStart;Job job;
             lock(gate){
                 if(!restored)throw new InvalidOperationException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text"));
+                if(origin.Source==ImageGenerationSource.Conversation&&detachedOrigins.Contains(OriginKey(origin)))origin=new ImageTaskOrigin{Source=ImageGenerationSource.Workspace};
                 if(recoveryRequired)throw new IOException(TextResources.Get("imageGenerationTaskManager.enqueueCore.text.alternativeA"));
                 var existing=jobs.Find(j=>j.Record.RequestId==submission.RequestId || (retryOf==null && SameCall(j.Record.Origin,origin)));
                 if(existing!=null)return existing.Handle;

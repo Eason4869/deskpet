@@ -29,11 +29,17 @@ namespace Dafeiyu.Maintenance
         [DllImport("libc",SetLastError=true)] static extern int unlinkat(int directory,string path,int flags);
         [DllImport("libc",SetLastError=true)] static extern int flock(int file,int operation);
         internal static CacheDirectoryPins Open(string path)
+        {return Open(path,true);}
+        // History maintenance pins only explicitly selected directories. Never
+        // walk a project source tree just to protect one canonical data file.
+        internal static CacheDirectoryPins OpenDirectory(string path)
+        {return Open(path,false);}
+        static CacheDirectoryPins Open(string path,bool recursive)
         {
             var pins=new CacheDirectoryPins();
             try{
                 var parents=new Stack<string>();for(string parent=Path.GetDirectoryName(path);!String.IsNullOrEmpty(parent);parent=Path.GetDirectoryName(parent))parents.Push(parent);
-                while(parents.Count>0)pins.Pin(parents.Pop());pins.Tree(path);return pins;
+                while(parents.Count>0)pins.Pin(parents.Pop());if(recursive)pins.Tree(path);else pins.Pin(path);return pins;
             }catch{pins.Dispose();throw;}
         }
         void Pin(string path)

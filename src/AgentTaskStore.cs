@@ -19,6 +19,14 @@ namespace Dafeiyu
         void Warn(string path,string text){Action changed;lock(gate){if(String.IsNullOrEmpty(text))warnings.Remove(path);else warnings[path]=text;string merged=String.Join(" ",warnings.Values.Distinct());if(merged==warning)return;warning=merged;changed=WarningChanged;}if(changed!=null)changed();}
         internal bool HasWarning(string persona,string workspace){lock(gate)return warnings.ContainsKey(FilePath(persona,workspace));}
         public Task FlushAsync(){lock(gate)return worker;}
+        internal AgentTaskState[] MaintenancePending(){lock(gate)return pending.Values.Select(s=>s.Copy()).ToArray();}
+        internal void ForgetForMaintenance(){lock(gate){pending.Clear();unreadable.Clear();warnings.Clear();warning="";}}
+        internal static AgentTaskState InspectFileStrict(string path)
+        {
+            if(new FileInfo(path).Length>8*1024*1024)throw new SerializationException();byte[] plain=SecretProtection.Unprotect(File.ReadAllBytes(path));if(plain.Length>8*1024*1024)throw new SerializationException();AgentTaskState state;
+            using(var memory=new MemoryStream(plain))state=(AgentTaskState)new DataContractJsonSerializer(typeof(AgentTaskState)).ReadObject(memory);
+            if(!Valid(state))throw new SerializationException();return state;
+        }
         internal static bool FitsCheckpoint(AgentTaskState state)
         {
             if(!Valid(state))return false;

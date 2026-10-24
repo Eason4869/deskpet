@@ -4572,5 +4572,6 @@
   "cache.rescan": "Verificar novamente",
   "cache.result": "{0:N0} bytes liberados; {1} pastas removidas; {2} ignorados; {3} falhas.",
   "cache.failed": "Não foi possível concluir. Verifique novamente e tente outra vez.",
-  "dataMaintenance.busy": "A manutenção de dados não está disponível durante atividades. Conclua os envios, gravações, chamadas Live e tarefas na fila e tente novamente."
+  "dataMaintenance.busy": "A manutenção de dados não está disponível durante atividades. Conclua os envios, gravações, chamadas Live e tarefas na fila e tente novamente.",
+  "dataMaintenance.storageFailure": "Alguns dados não puderam ser lidos, preservados ou removidos com segurança. Os originais restantes foram mantidos. Resolva o problema e tente novamente."
 }

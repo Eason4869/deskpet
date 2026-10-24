@@ -56,6 +56,15 @@ namespace Dafeiyu
         public bool IsRunning{get{lock(gate)return running || steering;}}
         public bool IsPaused{get{lock(gate)return paused.Contains(session.PersonaId);}}
         public bool HasPending{get{lock(gate)return loadFailed || queues.Any(p=>p.Value.Count>0);}}
+        internal static bool HasPersistedPendingStrict(string path)
+        {
+            if(new FileInfo(path).Length>32*1024*1024)throw new SerializationException();StoredQueue saved;
+            using(var stream=File.OpenRead(path))saved=(StoredQueue)new DataContractJsonSerializer(typeof(StoredQueue)).ReadObject(stream);
+            if(saved==null||saved.Version!=1||String.IsNullOrEmpty(saved.Payload))throw new SerializationException();
+            byte[] plain=SecretProtection.Unprotect(Convert.FromBase64String(saved.Payload));if(plain.Length>32*1024*1024)throw new SerializationException();Dictionary<string,List<QueuedMessage>> contents;
+            using(var stream=new MemoryStream(plain))contents=(Dictionary<string,List<QueuedMessage>>)new DataContractJsonSerializer(typeof(Dictionary<string,List<QueuedMessage>>)).ReadObject(stream);
+            if(contents==null||contents.Any(p=>p.Value==null))throw new SerializationException();return contents.Any(p=>p.Value.Count!=0);
+        }
         static string Validate(string text){text=(text??"").Trim();if(text.Length==0 || text.Length>8000)throw new ApiException(TextResources.Get("conversationQueue.validate.text"));return text;}
         void Writable(){if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
         void Save()

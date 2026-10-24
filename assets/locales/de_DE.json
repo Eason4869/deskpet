@@ -4572,5 +4572,6 @@
   "cache.rescan": "Erneut prüfen",
   "cache.result": "{0:N0} Bytes freigegeben; {1} Ordner entfernt; {2} übersprungen; {3} fehlgeschlagen.",
   "cache.failed": "Der Vorgang konnte nicht abgeschlossen werden. Erneut prüfen und versuchen.",
-  "dataMaintenance.busy": "Während laufender Aufgaben ist die Datenwartung nicht verfügbar. Beende Sendevorgänge, Aufnahmen, Live-Anrufe und Aufgaben in der Warteschlange und versuche es erneut."
+  "dataMaintenance.busy": "Während laufender Aufgaben ist die Datenwartung nicht verfügbar. Beende Sendevorgänge, Aufnahmen, Live-Anrufe und Aufgaben in der Warteschlange und versuche es erneut.",
+  "dataMaintenance.storageFailure": "Einige Daten konnten nicht sicher gelesen, gesichert oder entfernt werden. Verbleibende Originale wurden beibehalten. Beheben Sie das Problem und versuchen Sie es erneut."
 }

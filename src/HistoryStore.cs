@@ -38,6 +38,9 @@ namespace Dafeiyu
         {
             using(var hash=SHA256.Create())return Path.Combine(directory,BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(petId??""))).Replace("-","").ToLowerInvariant()+".history");
         }
+        internal string MaintenancePath(string persona){return FilePath(persona);}
+        internal void ForgetRemovedForMaintenance(string path)
+        {lock(gate)unreadableFiles.Remove(path);ReleasePendingImages(path);SetWarning(path,"");}
         private void SetWarning(string path,string value)
         { Action changed;lock(gate){if(String.IsNullOrEmpty(value))warnings.Remove(path);else warnings[path]=value;string merged=String.Join(" ",warnings.Values.Distinct());if(warning==merged)return;warning=merged;changed=WarningChanged;}if(changed!=null)changed(); }
         private Task Enqueue(Action action)
