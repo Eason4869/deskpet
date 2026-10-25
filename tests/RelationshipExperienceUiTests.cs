@@ -74,10 +74,45 @@ namespace Dafeiyu.Tests
             pet.PlayUserInteraction("petting");pet.Close();await pet.Relationships.FlushAsync();await Task.Delay(200);Check(Notice()==null,"actual close discards pending user response");
             Console.WriteLine("CAPTURE_ROOT "+root);
         }
+        static async Task FeedbackPlacement()
+        {
+            string root=Path.GetFullPath(Path.Combine("work","feedback-placement",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
+            var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";
+            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
+            var handle=new System.Windows.Interop.WindowInteropHelper(pet).Handle;var area=DesktopInterop.WorkArea(handle);pet.Left=area.Left+100;pet.Top=area.Top+8;await Task.Delay(100);
+            var notice=new RelationshipFeedbackNotice{CompanionId=pet.RelationshipCompanionId,AwardedPoints=2,Milestones=new List<RelationshipMilestone>()};
+            var window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(300);
+            var bounds=DesktopInterop.Bounds(handle);var popup=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(window).Handle);Console.WriteLine("PLACEMENT pet="+bounds+" feedback="+popup);
+            Check(!bounds.IntersectsWith(popup),"feedback near the screen top does not cover the pet's native input rectangle");
+            pet.Left+=100;await Task.Delay(250);Check(!DesktopInterop.Bounds(handle).IntersectsWith(DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(window).Handle)),"moving the pet keeps the feedback clear of its input rectangle");window.Close();
+            pet.Top=area.Top+350;await Task.Delay(100);window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(300);window.SetInteraction(new string('W',600),"long-response");await Task.Delay(300);
+            bounds=DesktopInterop.Bounds(handle);popup=DesktopInterop.Bounds(new System.Windows.Interop.WindowInteropHelper(window).Handle);Console.WriteLine("EXPANDED pet="+bounds+" feedback="+popup);
+            Check(!bounds.IntersectsWith(popup),"an expanding interaction response repositions rather than covering the pet");window.Close();
+            var fromDevice=PresentationSource.FromVisual(pet).CompositionTarget.TransformFromDevice;area.Transform(fromDevice);pet.Left=area.Left;pet.Top=area.Top;pet.Width=area.Width;pet.Height=area.Height;await Task.Delay(100);
+            Check((bool)Call("RelationshipInteractionAllowed",pet.RelationshipCompanionId),"no-space controller case is admitted before popup placement");Console.WriteLine("NO_SPACE pet="+DesktopInterop.Bounds(handle)+" workArea="+DesktopInterop.WorkArea(handle));
+            Call("ShowRelationshipInteraction",pet.RelationshipCompanionId,"No room for passive feedback","no-room");await Task.Delay(100);
+            Check(Notice()==null,"an oversized pet suppresses an unplaceable notice without throwing or blocking its input");
+        }
+        static async Task FeedbackMotion()
+        {
+            string root=Path.GetFullPath(Path.Combine("work","feedback-motion","wpf-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
+            var cfg=new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";
+            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
+            var notice=new RelationshipFeedbackNotice{CompanionId=pet.RelationshipCompanionId,AwardedPoints=2,Milestones=new List<RelationshipMilestone>()};
+            var window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(50);double startTop=window.Top;
+            Check(window.Opacity<1,"ordinary gain enters with a fade rather than appearing fully opaque");
+            await Task.Delay(250);Check(window.Opacity>.98&&window.Top<startTop,"ordinary gain rises into its readable resting position");Capture(window,Path.Combine(root,"gain-rest.png"));
+            Check(!window.ShowActivated&&!window.ShowInTaskbar&&pet.IsEnabled&&pet.IsHitTestVisible&&!pet.Settings.ClickThrough,"feedback leaves the pet enabled and hit-testable without activation");
+            double restTop=window.Top;await Task.Delay(750);Check(window.IsVisible&&window.Opacity>.98,"ordinary gain remains readable for its short hold");
+            await Until(()=>window.Opacity<.9,"exit fade starts");Check(window.IsVisible&&window.Top<restTop,"exit continues upward while fading out");await Until(()=>!window.IsVisible,"ordinary gain closes after exit");
+            var rich=new RelationshipFeedbackWindow(pet,notice);rich.Show();rich.SetInteraction("A readable interaction response","motion-response");await Task.Delay(1700);Check(rich.IsVisible&&rich.Opacity>.98,"interaction response retains its longer reading time");rich.Close();
+            var merged=new RelationshipFeedbackWindow(pet,notice);merged.Show();await Task.Delay(900);double before=merged.Top;merged.Merge(notice);await Task.Delay(650);Check(merged.IsVisible&&merged.Opacity>.98&&Math.Abs(merged.Top-before)<.5&&All<TextBlock>(merged).Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",4)),"merged gain extends the hold without restarting or jumping");merged.Close();
+            Console.WriteLine("MOTION_ROOT "+root);
+        }
         [STAThread]public static int Main(string[] args)
         {
             if(args.Contains("--compile-only"))return 0;app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int exit=0;
-            app.Startup+=async delegate{try{if(args.Contains("--official"))await Official();else await Run(args.Contains("--import-only"),args.Contains("--crossing"));Console.WriteLine("RelationshipExperienceUiTests: "+checks+" passed");}catch(Exception error){Console.WriteLine("FAIL "+error);exit=1;}finally{if(pet!=null)pet.Close();app.Shutdown();}};app.Run();return exit;
+            app.Startup+=async delegate{try{if(args.Contains("--feedback-placement"))await FeedbackPlacement();else if(args.Contains("--feedback-motion"))await FeedbackMotion();else if(args.Contains("--official"))await Official();else await Run(args.Contains("--import-only"),args.Contains("--crossing"));Console.WriteLine("RelationshipExperienceUiTests: "+checks+" passed");}catch(Exception error){Console.WriteLine("FAIL "+error);exit=1;}finally{if(pet!=null)pet.Close();app.Shutdown();}};app.Run();return exit;
         }
     }
 }

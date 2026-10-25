@@ -44,12 +44,29 @@ internal static class CompanionHomeUiChecks
         try{
             Complete(page.RefreshAsync());Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();Dispatcher.UIThread.RunJobs();
             var track=page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Single(x=>x.Name=="RelationshipStageNodes");
-            Check(track.Columns==(language=="de_DE"?3:6)&&track.Rows==(language=="de_DE"?2:1),"stage track uses fitting columns in actual "+window.Width+"px home");
+            int initialColumns=language is "de_DE" or "ja_JP"?3:6;
+            Check(track.Columns==initialColumns&&track.Rows==6/initialColumns,"stage track uses fitting columns in actual "+window.Width+"px home");
             foreach(var label in track.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()))Check(StageWordsStayWhole(label),"stage words do not split across rendered lines: "+label.Text);
             Console.WriteLine("STAGE_TRACK width="+track.Bounds.Width+" columns="+track.Columns+" rows="+track.Rows);
             string output=Path.GetFullPath(captureDirectory??"work/ui-consistency/stage-track-after");Directory.CreateDirectory(output);
             if(captureDirectory==null){using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(output,"native-"+language+"-"+window.Width+".png"),new PngBitmapEncoderOptions());}
             else foreach(string theme in new[]{"light","dark"}){DesktopTheme.Apply(theme);Complete(page.RefreshAsync());Dispatcher.UIThread.RunJobs();using var image=new RenderTargetBitmap(new PixelSize((int)window.Width,(int)window.Height));image.Render(window);image.Save(Path.Combine(output,"native-home-"+theme+".png"),new PngBitmapEncoderOptions());}
+            if(language=="ja_JP"){
+                window.Width=880;Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();Dispatcher.UIThread.RunJobs();
+                Check(track.Columns==2&&track.Rows==3,"880px hosted-width Japanese home uses two fitting columns: track="+track.Bounds.Width);
+                foreach(var label in track.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()))Check(StageWordsStayWhole(label),"880px hosted-width Japanese stage label stays whole: "+label.Text);
+                var fixtureTrack=HomeVisual.Nodes(page.View!.Progress);fixtureTrack.Width=660;var fixtureWindow=new Window{Width=700,Height=400,Content=fixtureTrack};fixtureWindow.Show();
+                try{foreach(var (width,columns) in new[]{(660d,6),(330d,3),(303d,2),(150d,1)}){
+                    fixtureTrack.Width=width;Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();Dispatcher.UIThread.RunJobs();
+                    Check(Math.Abs(fixtureTrack.Bounds.Width-width)<.5&&fixtureTrack.Columns==columns&&fixtureTrack.Rows==6/columns,"Japanese stage track fits "+columns+" columns at explicit "+width+"px: actual="+fixtureTrack.Bounds.Width);
+                    foreach(var label in fixtureTrack.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()))Check(StageWordsStayWhole(label),"Japanese stage label stays whole at "+width+"px: "+label.Text);
+                }}finally{fixtureWindow.Close();}
+                var evidence=Path.GetFullPath("work/ci-mac-home-stage-evidence");Directory.CreateDirectory(evidence);
+                foreach(var theme in new[]{"light","dark"}){
+                    DesktopTheme.Apply(theme);Complete(page.RefreshAsync());window.Width=880;Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(evidence,"ja_JP-home-880-"+theme+".png"),new PngBitmapEncoderOptions());
+                }
+            }
         }finally{window.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}return checks;
     }
     internal static int RunFirstVisit(string directory)
@@ -125,7 +142,7 @@ internal static class CompanionHomeUiChecks
                 using(var surface=new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(window.Bounds.Width),(int)Math.Ceiling(window.Bounds.Height)))){surface.Render(window);surface.Save(Path.Combine(captures,suffix+"-surface.png"),new PngBitmapEncoderOptions());}}
             foreach(string theme in new[]{"light","dark"}){
                 DesktopTheme.Apply(theme);Dispatcher.UIThread.RunJobs();Capture(language+"-"+theme+"-"+kind+"-feedback");
-                var name=window.GetLogicalDescendants().OfType<TextBlock>().Single(t=>ToolTip.GetTip(t) is string);string? original=name.Text;
+                var name=window.GetLogicalDescendants().OfType<TextBlock>().Single(t=>t.Parent is DockPanel&&ToolTip.GetTip(t) is string);string? original=name.Text;
                 name.Text="很长的伙伴名字 · A companion with a long localized name";window.Width=260;Dispatcher.UIThread.RunJobs();Capture(language+"-"+theme+"-"+kind+"-feedback-narrow");name.Text=original;window.Width=350;
             }
         }
@@ -156,7 +173,9 @@ internal static class CompanionHomeUiChecks
             Check(entry.Icon is AvatarView a&&ReferenceEquals(a.Skin,owner.Skin)&&entry.Opacity==1,"original-color canonical avatar");
             entry.Focus();Check(entry.IsFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Key=Key.Enter});Dispatcher.UIThread.RunJobs();
             var page=chat.GetLogicalDescendants().OfType<CompanionHomePage>().Single();Complete(owner.Relationships.FlushAsync());Complete(page.RefreshAsync());
-            Check(page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Single(x=>x.Name=="RelationshipStageNodes").Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()).All(StageWordsStayWhole),"hosted home stage words do not split across rendered lines");
+            var hostedTrack=page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Single(x=>x.Name=="RelationshipStageNodes");
+            var splitStages=hostedTrack.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()).Where(label=>!StageWordsStayWhole(label)).Select(label=>label.Text+" label="+label.Bounds.Width+"x"+label.Bounds.Height).ToArray();
+            Check(splitStages.Length==0,"hosted home stage words do not split across rendered lines: track="+hostedTrack.Bounds.Width+" columns="+hostedTrack.Columns+" split="+String.Join(", ",splitStages));
             Check(page.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.Name=="CompanionCurrentWelcome"&&x.Text==RelationshipContent.Welcome(page.View!.Progress.StageId,owner.RelationshipPack)),"current saved stage has its own truthful welcome message");
             Check(page.GetLogicalDescendants().OfType<Image>().Any(x=>x.Name=="CompanionProfileScene"&&x.Source!=null),"actual earned profile shows its original stage scene");
             checks+=ProfileArtworkChecks.CheckPage(owner,page,"familiar");
@@ -266,9 +285,13 @@ internal static class CompanionHomeUiChecks
             Check(Named<Expander>(page,"CompanionGrowthRules").IsExpanded&&Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded&&page.GetLogicalDescendants().OfType<Expander>().First(x=>x.Name=="RelationshipCardPreview").IsExpanded,"real saved growth preserves rules, settings and preview expansion");
             Check(Math.Abs(page.Offset.Y-priorOffset)<2,"real saved growth preserves reasonable scroll offset");
             RelationshipFeedbackWindow? savedNotice=null;feedbackDeadline.Restart();while(savedNotice==null){if(feedbackDeadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);savedNotice=(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);}
-            CaptureFeedback(savedNotice,"gain");Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllText(file,"{broken");
+            savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-capture-observation");CaptureFeedback(savedNotice,"gain");Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllText(file,"{broken");
+            // Observe settings-driven dismissal on the same saved notice with a
+            // readable response, independently of the short ordinary-gain timeout.
+            savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-failure-observation");
             var failedFeedback=Named<ToggleSwitch>(page,"RelationshipFeedbackEnabled");failedFeedback.IsChecked=false;failedFeedback.RaiseEvent(new RoutedEventArgs(ToggleSwitch.ClickEvent));Complete(page.PendingSettings);
             Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllBytes(file,settingsBytes);Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();
+            savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-success-observation");Check(savedNotice.IsVisible,"saved feedback is still visible immediately before disabling it");
             var savedFeedback=Named<ToggleSwitch>(page,"RelationshipFeedbackEnabled");savedFeedback.IsChecked=false;savedFeedback.RaiseEvent(new RoutedEventArgs(ToggleSwitch.ClickEvent));Complete(page.PendingSettings);Dispatcher.UIThread.RunJobs();
             Check(!savedNotice.IsVisible,"successfully disabling feedback through home settings promptly closes the actual notice");
             var reenable=settingsModel.UpdateSettingsAsync(true,true,true);Complete(reenable);Check(reenable.Result.Success,"feedback can be re-enabled after dismissal");

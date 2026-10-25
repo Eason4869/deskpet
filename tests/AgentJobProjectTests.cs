@@ -13,6 +13,7 @@ namespace Dafeiyu.Tests
     {
         static int checks;
         static void Check(bool condition,string description){if(!condition)throw new Exception(description);checks++;Console.WriteLine("PASS "+description);}
+        static bool NoOfficialDownloads(PetWindow pet){return typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null;}
         sealed class Clock : IAgentJobClock
         {public DateTime UtcNow{get{return DateTime.UtcNow;}}public long ElapsedMilliseconds{get{return Environment.TickCount&Int32.MaxValue;}}}
         sealed class Approval : IAgentAuthorizationService
@@ -45,7 +46,8 @@ namespace Dafeiyu.Tests
             using(var root=new AgentJobTestSupport.TemporaryDirectory())
             {
                 var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=true,ReadReplies=false,OnboardingState="completed"};foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-                var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);pet.Show();pet.SetPaused(true);
+                var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);
+                pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
                 var original=pet.AgentJobs;await original.InitializeAsync();await original.StopAllForExitAsync(CancellationToken.None);original.Dispose();
                 var factory=new Factory();var service=new AgentJobApplicationService(root.Path,clock=>factory,new Clock());
                 typeof(PetWindow).GetField("agentJobServices",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,service);await service.InitializeAsync();
@@ -75,6 +77,9 @@ namespace Dafeiyu.Tests
                     using(var secondRoot=new AgentJobTestSupport.TemporaryDirectory())
                     {
                         var second=new PetWindow(null,settings.Copy(),new SettingsStore(Path.Combine(root.Path,"other-settings.json")),null);
+                        second.Skin.FixtureEmbedded=true;
+                        var secondClosed=new TaskCompletionSource<bool>();second.Closed+=delegate{secondClosed.TrySetResult(true);};
+                        Exception secondFailure=null;
                         try
                         {
                             Check(!await second.AgentJobs.InitializeAsync(),"second WPF host cannot acquire the shared job lease");
@@ -86,12 +91,21 @@ namespace Dafeiyu.Tests
                             var fresh=ProjectCatalogStore.CreateProject(pet.Projects,"new owner",root.Path);pet.ProjectStore.Save(pet.Projects);
                             denied=false;try{second.ProjectStore.Save(catalog);}catch(IOException){denied=true;}
                             Check(denied&&new ProjectCatalogStore(Path.Combine(root.Path,"projects.json")).Load().Projects.Any(p=>p.Id==fresh.Id),"ordinary chat writes from a stale second host cannot overwrite newer work bindings");
+                            Check(NoOfficialDownloads(second),"second catalog host starts no unrelated official download");
                         }
+                        catch(Exception error){secondFailure=error;}
                         finally{second.Close();}
+                        await AgentJobExitHost.WaitAsync(()=>secondClosed.Task.IsCompleted,10000,"second catalog fixture closed");
+                        await second.ImageServicesShutdown;
+                        if(secondFailure!=null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(secondFailure).Throw();
                     }
+                    Check(NoOfficialDownloads(pet),"catalog fixture starts no unrelated official download");
                 }
                 catch(Exception error){failure=error;}
-                if(factory.Last!=null)factory.Last.Clean=true;pet.Close();await AgentJobExitHost.WaitAsync(()=>service.Manager==null,10000,"catalog fixture exit");
+                if(factory.Last!=null)factory.Last.Clean=true;
+                var petClosed=new TaskCompletionSource<bool>();pet.Closed+=delegate{petClosed.TrySetResult(true);};pet.Close();
+                await AgentJobExitHost.WaitAsync(()=>petClosed.Task.IsCompleted&&service.Manager==null,10000,"catalog fixture exit");
+                await pet.ImageServicesShutdown;
                 if(failure!=null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             }
         }

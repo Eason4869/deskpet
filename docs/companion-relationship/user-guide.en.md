@@ -25,6 +25,8 @@ Scores belong to each stable companion identity; relationship switches apply to 
 
 The overall daily cap is 20. Failures, cancellation, repeated completion, internal subtasks, automatic actions and background recovery do not add rewards. Work remains attributed to its original companion. Upgrades do not reconstruct scores from old chats or tasks. Growth feedback follows successful storage; failures retain pending records and show a warning.
 
+Ordinary affection notices rise and fade in, remain briefly for about a second, then rise and fade out. Consecutive gains merge. Interaction responses and stage milestones remain readable longer. Notices avoid covering the companion; if there is no room, the popup is suppressed and saved growth remains available on companion home.
+
 Days since meeting counts calendar days from the first encounter. Active days counts days with actual activity. Daily budgets advance through a naturally elapsed local midnight; changing the offset alone or rolling the clock back does not create a fresh budget. Missing a day does not subtract points.
 
 Disabling growth preserves the relationship and stops new growth; enabling it later does not backfill the disabled period. Disabling feedback clears displayed and pending notices, without replay after re-enabling. Disabling AI stage context stops that additional factual context. Explicit persona settings and preferences remain authoritative. Stage welcomes use the existing greeting channel and its holiday/AI priorities. Stage responses accompany supported user actions and do not add a separate reward.

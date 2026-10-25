@@ -21,7 +21,7 @@ internal sealed partial class DesktopController
     {
         if(exiting||id!=RelationshipCompanionId||RelationshipEventDismissed(eventId))return;
         if(relationshipNotice?.IsVisible!=true||relationshipNotice.CompanionId!=id)OpenRelationshipNotice(new RelationshipFeedbackNotice{CompanionId=id,Milestones=new List<RelationshipMilestone>()});
-        relationshipNotice!.SetInteraction(text,eventId);
+        if(relationshipNotice?.IsVisible==true&&relationshipNotice.CompanionId==id)relationshipNotice.SetInteraction(text,eventId);
     }
 }
 internal sealed partial class PetWindow

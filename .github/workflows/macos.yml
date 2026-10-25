@@ -131,6 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          # The default headless suite includes feedback motion and placement checks.
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll | tee "$REPORT_ROOT/headless-ui.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --data-management-ui-only | tee "$REPORT_ROOT/data-management-ui.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --cache-ui-only | tee "$REPORT_ROOT/cache-maintenance-ui.log"

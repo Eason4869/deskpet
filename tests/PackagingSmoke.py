@@ -104,9 +104,13 @@ for entry in companion_index['companions']:
         assert skin['version']==2 and len(skin['animations'])==17 and skin['gaze']['frames']==16
         assert skin['system_prompt'] and skin['special_action'] and skin['special_action2']
         assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech'] and skin['voice_presets']['live']
-        expected_counts=[6,8,8,4,5,8,6,6,6]+[4]*8
+        # The reviewed quiet source replaces idle and sleeping for every official role.
+        expected_counts=[8,8,8,4,5,8,6,6,6]+[4]*6+[8,4]
         action_names=['idle','running-right','running-left','waving','jumping','failed','waiting','running','review','lifted','landing','petting','poked','feeding','happy','sleeping','special']
-        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet in ('xiaobei','gugugaga') else expected_counts)
+        actual_counts=[skin['animations'][name]['frames'] for name in action_names]
+        assert actual_counts==([8]*17 if pet in ('xiaobei','gugugaga') else expected_counts), (pet,dict(zip(action_names,actual_counts)))
+        assert [(skin[group][name]['frames'],skin[group][name]['fps']) for group,name in
+                (('animations','idle'),('animations','sleeping'),('alternate_animations','sleeping'))]==[(8,4),(8,2.5),(8,2.5)], pet+' quiet timing'
         assert set(skin['extra_animations'])=={'stumble','special2'}
         assert len(skin['alternate_animations'])==(9 if pet in ('e-bao','gugugaga') else 8)
         for group in ('animations','extra_animations','alternate_animations'):

@@ -58,7 +58,12 @@ namespace DeskPet.Desktop;
         static void FitNodes(UniformGrid panel)
         {
             double labelWidth=0;
-            Action update=delegate{if(labelWidth<=0)return;int columns=panel.Bounds.Width>=labelWidth*6?6:3;panel.Columns=columns;panel.Rows=6/columns;};
+            Action update=delegate{
+                if(labelWidth<=0)return;
+                int columns=1;
+                foreach(int candidate in new[]{6,3,2})if(panel.Bounds.Width>=labelWidth*candidate){columns=candidate;break;}
+                panel.Columns=columns;panel.Rows=6/columns;
+            };
             panel.Loaded+=delegate{
                 foreach(var label in panel.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>())){
                     var measure=new TextBlock{Text=label.Text,FontFamily=label.FontFamily,FontSize=label.FontSize,FontWeight=label.FontWeight,FontStyle=label.FontStyle,FontStretch=label.FontStretch,TextWrapping=TextWrapping.NoWrap};

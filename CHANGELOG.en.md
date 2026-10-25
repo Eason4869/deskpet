@@ -8,6 +8,8 @@ Based on the explicitly selected v0.10.5-dev.3. See the [local acceptance snapsh
 
 - Fixes keepsake album sizing after a constrained window grows from a narrow layout. Cards follow the arranged content width and retain two readable columns when space allows.
 - Allows active text, voice, regeneration and speech operations to finalize after the host UI dispatcher stops, preserving bounded exit and deferred service cleanup.
+- Ordinary affection notices now rise and fade in, pause briefly, then rise and fade out. Consecutive gains merge; interaction responses and milestones retain longer reading time. Notices avoid the companion at screen edges, after content grows and as the companion moves, keeping its input surface clear.
+- Longer relationship stage names, including Japanese labels, adapt to six, three, two or one column without splitting a stage name.
 
 - Adds companion home within the existing main window, a per-identity relationship ledger, stage welcomes and actual user-interaction responses while preserving persona priority, drafts and navigation. Encounters, interactions, completed conversations and successful root work tasks settle saved facts, capped at 20 points daily; old chats/background recovery do not reconstruct rewards.
 - The left profile card shows a complete raw scene with name and biography. Official companions start with introductory first-meeting artwork, then use their highest earned stage; the stage welcome stays in the right relationship card. Introductory art creates no score or keepsake record.

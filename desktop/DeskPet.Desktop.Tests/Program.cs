@@ -77,6 +77,8 @@ try
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
     if(args.Contains("--first-home-visit")){Console.WriteLine("FirstHomeVisitUi: "+CompanionHomeUiChecks.RunFirstVisit(Path.Combine(directory,"first-home"))+" passed");return;}
     if(args.Contains("--relationship-settings-maintenance")){Console.WriteLine("Companion settings maintenance: "+CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance"))+" passed");return;}
+    if(args.Contains("--relationship-feedback-motion")){Console.WriteLine("RelationshipFeedbackMotion: "+RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion"))+" passed");return;}
+    if(args.Contains("--relationship-feedback-placement")){Console.WriteLine("RelationshipFeedbackPlacement: "+RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement"))+" passed");return;}
     if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
     if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
     if(args.Contains("--relationship-experience-visibility-only")){Console.WriteLine("RelationshipExperienceVisibility: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-visibility"),visibilityOnly:true)+" passed");return;}
@@ -130,6 +132,8 @@ try
     assertions+=RelationshipPackChecks.Run();
     if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
     assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);
+    assertions+=RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion-default"));
+    assertions+=RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement-default"));
     assertions+=QuietMotionChecks.Run(Path.Combine(directory,"quiet-default"));
     Console.WriteLine("START OnboardingPreparationUiChecks");
     assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));

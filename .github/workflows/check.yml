@@ -70,6 +70,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Saved-stage actual WPF crossing failed' }
           & work/RelationshipExperienceUiTests.exe --official
           if ($LASTEXITCODE) { throw 'Saved-stage official WPF response failed' }
+          & work/RelationshipExperienceUiTests.exe --feedback-motion
+          if ($LASTEXITCODE) { throw 'Relationship feedback WPF motion failed' }
+          & work/RelationshipExperienceUiTests.exe --feedback-placement
+          if ($LASTEXITCODE) { throw 'Relationship feedback WPF placement failed' }
       - name: Companion home narrow and translated routes
         shell: powershell
         run: |

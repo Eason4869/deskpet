@@ -38,7 +38,7 @@ namespace Dafeiyu
         {
             if(!RelationshipInteractionAllowed(id)||dismissedRelationshipEvents.Contains(eventId))return;
             if(relationshipNotice==null||!relationshipNotice.IsVisible||relationshipNotice.CompanionId!=id)OpenRelationshipNotice(new RelationshipFeedbackNotice{CompanionId=id,Milestones=new List<RelationshipMilestone>()});
-            relationshipNotice.SetInteraction(text,eventId);
+            if(relationshipNotice!=null)relationshipNotice.SetInteraction(text,eventId);
         }
         bool RelationshipNoticeVisible {get{return relationshipNotice!=null&&relationshipNotice.IsVisible;}}
         string RelationshipWelcome(RelationshipExperienceContent content)
