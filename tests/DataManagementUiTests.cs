@@ -101,8 +101,22 @@ namespace Dafeiyu.Tests
                         Check(cfg.Scale==1.7&&status.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&status.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately: scale="+cfg.Scale+" status="+status);Capture(d,Path.Combine(root,"reset-save-failure.png"));
                     });}finally{releaseReset.TrySetResult(true);}
                 }
-                var retryWarning=pet.FlushDeferredSettingsAsync();Wait(retryWarning);var retryDisk=new SettingsStore(Path.Combine(root,"settings.json")).Load();
-                Check(retryDisk.X==555&&cfg.Scale==1.7,"failed WPF reset retains latest position for retry: actual="+cfg.X+" durable="+retryDisk.X+" scale="+cfg.Scale+" warning="+retryWarning.Result);
+                var retryErrors=new System.Collections.Generic.List<string>();int recordingRetryError=0;
+                EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> retryDiagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs eventArgs){
+                    if(System.Threading.Interlocked.Exchange(ref recordingRetryError,1)!=0)return;
+                    try{
+                        var error=eventArgs.Exception;var stack=error.StackTrace??"";
+                        if(!(error is IOException||error is UnauthorizedAccessException||error is InvalidOperationException)||
+                            !(stack.Contains("DataMaintenanceGate.BeginAsync")||stack.Contains("SettingsStore.SaveSnapshot")||stack.Contains("SettingsStore.SaveExactSnapshotAsync")||stack.Contains("AtomicFile.Commit")||stack.Contains("PetWindow.FlushDeferredSettingsAsync")))return;
+                        string detail=error.GetType().Name+" HResult=0x"+error.HResult.ToString("X8")+" message="+error.Message.Replace(root,"<fixture>")+" stack="+stack.Replace(root,"<fixture>").Replace("\r"," ").Replace("\n"," / ");
+                        lock(retryErrors){if(retryErrors.Count==4)retryErrors.RemoveAt(0);retryErrors.Add(detail);}
+                    }catch{}finally{System.Threading.Interlocked.Exchange(ref recordingRetryError,0);}
+                };
+                Task<string> retryWarning;AppDomain.CurrentDomain.FirstChanceException+=retryDiagnostic;
+                try{retryWarning=pet.FlushDeferredSettingsAsync();Wait(retryWarning);}
+                finally{AppDomain.CurrentDomain.FirstChanceException-=retryDiagnostic;}
+                var retryDisk=new SettingsStore(Path.Combine(root,"settings.json")).Load();bool retrySaved=retryDisk.X==555&&cfg.Scale==1.7;
+                Check(retrySaved,"failed WPF reset retains latest position for retry: actual="+cfg.X+" durable="+retryDisk.X+" scale="+cfg.Scale+" warning="+retryWarning.Result+(retrySaved?"":" firstChance="+(retryErrors.Count==0?"none":String.Join(" | ",retryErrors))));
                 CaptureStates(host,root,"data",false);
                 foreach(var action in new[]{clear,reset})Dialog(action,d=>{CaptureStates(d,root,action==clear?"clear-confirm":"reset-confirm",true);foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+name);Check(!button.IsDefault,"maintenance confirmation has no Enter default "+name);}});
                 Check(pet.IsVisible,"successful maintenance leaves pet alive");Console.WriteLine("DataManagementUiTests: "+checks+" passed; captures="+root);host.Close();page.Dispose();return 0;
