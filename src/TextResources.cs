@@ -62,13 +62,9 @@ namespace Dafeiyu
         static readonly Lazy<TextCatalog> catalog=new Lazy<TextCatalog>(Load,LazyThreadSafetyMode.ExecutionAndPublication);
         static readonly Dictionary<string,Lazy<TextCatalog>> catalogs=CreateCatalogs();
         static readonly object languageGate=new object();
-        sealed class Selection
-        {
-            internal readonly string Code;internal readonly Lazy<TextCatalog> Catalog;
-            internal Selection(string code,Lazy<TextCatalog> catalog){Code=code;Catalog=catalog;}
-        }
-        static volatile Selection selection=new Selection("zh_CN",catalog);
-        static bool startupConfigured;
+        static volatile LanguageSelection selection;
+        public static event EventHandler LanguageChanged;
+        static LanguageSelection Selection {get{return selection??PrepareLanguage("zh_CN");}}
         static readonly Lazy<string[]> errorPrefixes=new Lazy<string[]>(LoadErrorPrefixes,LazyThreadSafetyMode.ExecutionAndPublication);
         static TextCatalog Load()
         {
@@ -88,16 +84,22 @@ namespace Dafeiyu
             return result;
         }
         internal static TextCatalog CatalogFor(string code){return catalogs[UiLanguages.Resolve(code)].Value;}
-        public static string CurrentLanguage {get{return selection.Code;}}
-        // Startup only. Existing controls keep one consistent language until restart.
+        public static string CurrentLanguage {get{return Selection.Code;}}
+        public static LanguageSelection CaptureLanguage(){return Selection;}
+        public static LanguageSelection PrepareLanguage(string code)
+        {string resolved=UiLanguages.Resolve(code);return new LanguageSelection(resolved,catalogs[resolved].Value);}
+        public static bool ApplyLanguage(LanguageSelection prepared)
+        {
+            if(prepared==null)throw new ArgumentNullException("prepared");
+            lock(languageGate){if(Selection.Code==prepared.Code){selection=prepared;return false;}selection=prepared;}
+            var listeners=LanguageChanged;
+            if(listeners!=null)foreach(EventHandler listener in listeners.GetInvocationList())
+                try{listener(null,EventArgs.Empty);}catch(Exception error){foreach(TraceListener diagnostic in Trace.Listeners)try{diagnostic.WriteLine("Language refresh failed: "+error);}catch(Exception){/* A diagnostic sink cannot undo a committed preference. */}}
+            return true;
+        }
         public static void ConfigureStartupLanguage(string code)
         {
-            string normalized=UiLanguages.Resolve(code);var chosen=catalogs[normalized];chosen.Value.Get("common.cancel");
-            lock(languageGate)
-            {
-                if(startupConfigured&&selection.Code!=normalized)throw new InvalidOperationException("UI language is frozen for this process.");
-                selection=new Selection(normalized,chosen);startupConfigured=true;
-            }
+            lock(languageGate)selection=PrepareLanguage(code);
         }
         static string[] LoadErrorPrefixes()
         {
@@ -113,12 +115,12 @@ namespace Dafeiyu
         }
         public static bool IsToolError(string result)
         {if(result==null)return false;foreach(string prefix in errorPrefixes.Value)if(result.StartsWith(prefix,StringComparison.Ordinal))return true;return false;}
-        public static string Get(string key){return selection.Catalog.Value.Get(key);}
+        public static string Get(string key){return Selection.Get(key);}
         // Explicit catalog reads retain one requested locale without changing startup selection.
         internal static string Get(string key,TextCatalog source){if(source==null)throw new ArgumentNullException("source");return source.Get(key);}
         internal static string FormatForCatalog(TextCatalog source,string key,params object[] args){if(source==null)throw new ArgumentNullException("source");return source.Format(key,args);}
-        public static string Format(string key,params object[] args){return selection.Catalog.Value.Format(key,args);}
-        public static string Format(IFormatProvider provider,string key,params object[] args){return selection.Catalog.Value.Format(provider,key,args);}
+        public static string Format(string key,params object[] args){return Selection.Format(key,args);}
+        public static string Format(IFormatProvider provider,string key,params object[] args){return String.Format(provider,Selection.Get(key),args);}
         // Error reporting must never recursively require a broken embedded catalog.
         public static string StartupMessage(string key)
         {

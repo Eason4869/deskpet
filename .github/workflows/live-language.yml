@@ -1,0 +1,28 @@
+name: Live language stage checks
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'desktop/**'
+      - '.github/workflows/live-language.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build shared language tests
+        run: dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1 -nr:false
+      - name: Prepared catalogs and durable language save
+        run: dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only

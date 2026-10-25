@@ -455,6 +455,7 @@ namespace Dafeiyu
     {
         private readonly string path;
         readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
+        string committedLanguage;
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
         public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
@@ -493,9 +494,38 @@ namespace Dafeiyu
         public void SaveUiLanguage(PetSettings settings,string code)
         {
             if(settings==null)throw new ArgumentNullException("settings");
-            string previous=settings.UiLanguage;settings.UiLanguage=UiLanguages.Normalize(code);
-            try{Save(settings);}catch{settings.UiLanguage=previous;throw;}
+            SaveLanguageSelection(settings,code,false);
         }
+        internal void SaveLanguageSelection(PetSettings settings,string code,bool guide)
+        {
+            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{
+                var json=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=16*1024*1024,RecursionLimit=128};
+                Dictionary<string,object> values;
+                try{
+                    string raw=File.ReadAllText(path,new UTF8Encoding(false,true));
+                    using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(raw)))
+                        if(new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream)==null)throw new InvalidDataException("Empty settings.");
+                    values=json.DeserializeObject(raw) as Dictionary<string,object>;
+                    if(values==null)throw new InvalidDataException("Expected a settings object.");
+                }catch(FileNotFoundException){values=DefaultLanguageSettings(json);}
+                catch(DirectoryNotFoundException){values=DefaultLanguageSettings(json);}
+                catch(Exception error){if(!(error is SerializationException||error is ArgumentException||error is InvalidOperationException||error is DecoderFallbackException))throw;throw new InvalidDataException("Cannot read existing settings; language was not changed.",error);}
+                string normalized=UiLanguages.Normalize(code);values["UiLanguage"]=normalized;
+                if(guide){values["OnboardingLessonId"]="welcome";values["OnboardingStep"]=0;values["OnboardingState"]="deferred";}
+                Directory.CreateDirectory(DirectoryPath);string temporary=path+".tmp";
+                // Never delete a temporary file owned/locked by another writer on failure.
+                using(var stream=new FileStream(temporary,FileMode.Create,FileAccess.Write,FileShare.None)){
+                    var bytes=new UTF8Encoding(false).GetBytes(json.Serialize(values));stream.Write(bytes,0,bytes.Length);stream.Flush(true);
+                }
+                AtomicFile.Commit(temporary,path);
+                committedLanguage=normalized;settings.UiLanguage=normalized;
+                if(guide){settings.OnboardingLessonId="welcome";settings.OnboardingStep=0;settings.OnboardingState="deferred";}
+                Warning="";
+            }finally{writes.Release();}
+        }
+        static Dictionary<string,object> DefaultLanguageSettings(System.Web.Script.Serialization.JavaScriptSerializer json)
+        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,new PetSettings());return (Dictionary<string,object>)json.DeserializeObject(Encoding.UTF8.GetString(stream.ToArray()));}}
         public void Save(PetSettings settings)
         {
             if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
@@ -546,6 +576,7 @@ namespace Dafeiyu
         }
         void SaveSnapshot(PetSettings settings)
         {
+            if(committedLanguage!=null)settings.UiLanguage=committedLanguage;
             Directory.CreateDirectory(DirectoryPath);
             string temporary = path + ".tmp";
             try

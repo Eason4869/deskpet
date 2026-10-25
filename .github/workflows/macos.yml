@@ -117,6 +117,7 @@ jobs:
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
           python3 tools/verify_language_packs.py --report "$REPORT_ROOT/language-pack-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only | tee "$REPORT_ROOT/live-language-core.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json "$REPORT_ROOT/core-tests.json" | tee "$REPORT_ROOT/core-tests.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only 2>&1 | tee "$REPORT_ROOT/agent-jobs-logic.log"
       - name: Build and execute real native bridge tests

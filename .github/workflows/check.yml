@@ -176,6 +176,8 @@ jobs:
           try {
             dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1
             if ($LASTEXITCODE) { throw 'Shared business build failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only
+            if ($LASTEXITCODE) { throw "Live language core checks failed" }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json work/localization-core-report.json
             if ($LASTEXITCODE) { throw 'Shared business regression failed' }
             dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only
