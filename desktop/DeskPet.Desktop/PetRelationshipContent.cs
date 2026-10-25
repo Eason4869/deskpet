@@ -13,7 +13,7 @@ internal sealed partial class DesktopController
     }
     void ShowRelationshipFeedback(RelationshipFeedbackNotice notice)
     {
-        if(exiting||notice.CompanionId!=RelationshipCompanionId||Settings.QuietMode||!Pet.RelationshipFeedbackAllowed||notice.EventIds.Count>0&&notice.EventIds.All(dismissedRelationshipEvents.Contains))return;
+        if(exiting||notice.CompanionId!=RelationshipCompanionId||Settings.QuietMode||!Pet.RelationshipFeedbackAllowed||notice.SuppressionVersion.HasValue&&notice.SuppressionVersion.Value!=Relationships.FeedbackSuppressionVersion||notice.EventIds.Count>0&&notice.EventIds.All(dismissedRelationshipEvents.Contains))return;
         if(relationshipNotice?.IsVisible==true&&relationshipNotice.CompanionId==notice.CompanionId)relationshipNotice.Merge(notice);else OpenRelationshipNotice(notice);
         if(notice.Milestones.Count>0)Pet.CelebrateRelationship(RelationshipContent.Action(notice.Milestones.Last().StageId,RelationshipPack)??"waving");
     }

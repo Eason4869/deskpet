@@ -18,6 +18,7 @@ namespace Dafeiyu
             [DataMember] public long UtcTicks;
             [DataMember] public int OffsetMinutes;
             internal RelationshipResult CommittedResult;
+            internal int FeedbackSuppressionVersion;
             internal RelationshipTime Time(){return new RelationshipTime(new DateTime(UtcTicks,DateTimeKind.Utc),TimeSpan.FromMinutes(OffsetMinutes));}
         }
         readonly object gate=new object();readonly string directory,path;readonly Action<Action> dispatch;
@@ -30,6 +31,13 @@ namespace Dafeiyu
         public bool FeedbackEnabled {get{return feedbackEnabled;}}
         public int FeedbackSuppressionVersion {get{return System.Threading.Volatile.Read(ref feedbackSuppressionVersion);}}
         public event Action FeedbackSettingsChanged;
+        // Host transitions invalidate history, even if eligibility returns to
+        // the same Boolean before an asynchronous continuation is delivered.
+        public void InvalidateFeedback()
+        {
+            System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);
+            Publish(delegate{var changed=FeedbackSettingsChanged;if(changed!=null)changed();});
+        }
         public RelationshipService Service {get;private set;}
         public string Warning {get{return warning;}}
         public bool RequiresRestart {get{return blocked;}}
@@ -106,12 +114,12 @@ namespace Dafeiyu
             finally{if(File.Exists(temp)&&(!replacing||File.Exists(path)))try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
         }
         public void Record(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
-        {using(maintenance.EnterActivity())RecordCore(companionId,type,eventId,time);}
-        void RecordCore(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
+        {int version=FeedbackSuppressionVersion;using(maintenance.EnterActivity())RecordCore(companionId,type,eventId,time,version);}
+        void RecordCore(string companionId,RelationshipEventType type,string eventId,RelationshipTime time,int feedbackVersion)
         {
             if(!RelationshipIdentity.IsValid(companionId) || !RelationshipRules.ValidEventId(eventId) || !RelationshipRules.ValidType(type) || time==null)return;
             var notifications=new List<Action>();
-            lock(gate){if(disposed)return;if(!pending.Any(p=>p.CompanionId==companionId && p.EventId==eventId))pending.Add(new PendingEvent{CompanionId=companionId,Type=type,EventId=eventId,UtcTicks=time.UtcNow.Ticks,OffsetMinutes=(int)time.LocalOffset.TotalMinutes});pendingCount=pending.Count;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();
+            lock(gate){if(disposed)return;if(!pending.Any(p=>p.CompanionId==companionId && p.EventId==eventId))pending.Add(new PendingEvent{CompanionId=companionId,Type=type,EventId=eventId,UtcTicks=time.UtcNow.Ticks,OffsetMinutes=(int)time.LocalOffset.TotalMinutes,FeedbackSuppressionVersion=feedbackVersion});pendingCount=pending.Count;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();
         }
         void Drain(List<Action> notifications)
         {
@@ -123,6 +131,7 @@ namespace Dafeiyu
                 while(pending.Count>0){
                     var next=pending[0];var result=next.CommittedResult??Service.Record(next.CompanionId,next.Type,next.EventId,next.Time());
                     if(!result.Success){warning=TextResources.Get("relationship.saveWarning");return;}
+                    if(!result.FeedbackSuppressionVersion.HasValue)result.FeedbackSuppressionVersion=next.FeedbackSuppressionVersion;
                     next.CommittedResult=result;
                     pending.RemoveAt(0);pendingCount=pending.Count;
                     try{SavePending();}catch{pending.Insert(0,next);pendingCount=pending.Count;throw;}
@@ -151,7 +160,8 @@ namespace Dafeiyu
                 completion=Task.FromResult(0);
                 if(admissionClosed)return false;
                 IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return false;
-                worker=worker.ContinueWith(delegate{using(activity)RecordCore(companionId,type,eventId,time);},TaskScheduler.Default);
+                int feedbackVersion=FeedbackSuppressionVersion;
+                worker=worker.ContinueWith(delegate{using(activity)RecordCore(companionId,type,eventId,time,feedbackVersion);},TaskScheduler.Default);
                 completion=worker;return true;
             }
         }

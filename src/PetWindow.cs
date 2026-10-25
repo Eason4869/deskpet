@@ -316,7 +316,7 @@ namespace Dafeiyu
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
             InitializeRelationshipFeedback();InitializeHoliday();InitializeHolidayKeepsakes();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
-            IsVisibleChanged+=delegate { RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
+            IsVisibleChanged+=delegate { Relationships.InvalidateFeedback();RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
         }
         private void RefreshRendering()
         {
@@ -688,6 +688,7 @@ namespace Dafeiyu
         {ApplySettingsCore(true);}
         internal string ApplyRestoredPreferences()
         {
+            Relationships.InvalidateFeedback();
             ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
             if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
             if(clickThroughItem!=null)clickThroughItem.IsChecked=Settings.ClickThrough;
@@ -721,7 +722,7 @@ namespace Dafeiyu
             {
                 using(DataMaintenance.EnterActivity()){
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
-                if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
+                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName); tray.Text=Title;
@@ -1083,14 +1084,14 @@ namespace Dafeiyu
         {return first!=null && second!=null && first.BaseUrl==second.BaseUrl && first.Model==second.Model && first.EncryptedKey==second.EncryptedKey && first.Protocol==second.Protocol && first.UseProxy==second.UseProxy && first.ProxyAddress==second.ProxyAddress;}
         private void SessionChanged(object sender,Microsoft.Win32.SessionSwitchEventArgs args)
         {
-            if(closing)return;Dispatcher.BeginInvoke(new Action(delegate
+            if(closing)return;Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate
             {
                 if(closing)return;if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionLock)sessionLocked=true;
                 if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionUnlock)sessionLocked=false;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);
             }));
         }
         private void PowerChanged(object sender,Microsoft.Win32.PowerModeChangedEventArgs args)
-        {if(!closing && args.Mode==Microsoft.Win32.PowerModes.Resume)Dispatcher.BeginInvoke(new Action(delegate {if(!closing){CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);}}));}
+        {if(!closing && args.Mode==Microsoft.Win32.PowerModes.Resume){Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate {if(!closing){CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);}}));}}
         public void RefreshChatAppearance(){CancelPendingGreeting();if(chat!=null)chat.RefreshAppearance();if(quick!=null)quick.RefreshPersona();if(preferences!=null)preferences.RefreshTextProviders();}
         public void ReloadConversation(){DismissGreeting();if(chat!=null)chat.ReloadHistory();if(quick!=null)quick.RefreshPersona();}
         private void ConversationMemoryChanged()
@@ -1109,6 +1110,7 @@ namespace Dafeiyu
         private void PollVisibility()
         {
             if(handle==IntPtr.Zero || closing)return;
+            if(!DesktopInterop.ForegroundBelongsToPet())ObserveRelationshipFullscreen(DesktopInterop.ForegroundIsFullScreen(handle));
             if(visibility.OverrideFullscreen && quick!=null && !quick.IsVisible)visibility.OverrideFullscreen=false;
             // Keep the last fullscreen state while a companion-owned panel has focus.
             if(!DesktopInterop.ForegroundBelongsToPet())visibility.Fullscreen=Settings.HideOnFullscreen && DesktopInterop.ForegroundIsFullScreen(handle);
@@ -1117,6 +1119,7 @@ namespace Dafeiyu
         }
         private void ApplyVisibility()
         {
+            if(!visibility.Visible&&petDisplayed)Relationships.InvalidateFeedback();
             // Keep the per-pixel surface attached. On Windows 11, hiding and
             // showing this layered HWND can leave its native alpha surface empty.
             // Zero opacity plus native pass-through hides it without that cycle.
@@ -1140,7 +1143,7 @@ namespace Dafeiyu
             if(visibilityItem!=null)visibilityItem.IsChecked=visibility.UserVisible;
         }
         public void SetQuietMode(bool enabled)
-        {Settings.QuietMode=enabled;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
+        {if(Settings.QuietMode!=enabled)Relationships.InvalidateFeedback();Settings.QuietMode=enabled;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public void SetClickThrough(bool enabled)
         {RecordPetInteraction();Settings.ClickThrough=enabled;if(enabled){CancelInteraction();UpdateFrame();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,enabled || !petDisplayed);SaveSettings();if(clickThroughItem!=null)clickThroughItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public bool UpdateHotkey(string action,string value,out string error)

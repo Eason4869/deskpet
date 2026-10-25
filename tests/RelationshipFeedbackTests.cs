@@ -14,6 +14,7 @@ namespace Dafeiyu.Tests
             sealed class Ticket : IDisposable {public Action Action;public void Dispose(){Action=null;}}
             readonly List<Ticket> tickets=new List<Ticket>();
             public IDisposable Schedule(TimeSpan delay,Action action){var t=new Ticket{Action=action};tickets.Add(t);return t;}
+            public Action[] PostedCallbacks(){return tickets.Where(t=>t.Action!=null).Select(t=>t.Action).ToArray();}
             public void Advance(){foreach(var t in tickets.ToArray()){var action=t.Action;t.Dispose();if(action!=null)action();}tickets.Clear();}
         }
         public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("RelationshipFeedbackTests: "+checks+" passed");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
@@ -46,6 +47,7 @@ namespace Dafeiyu.Tests
                 }
             }
             await FailedClaimAndSwitch();
+            await SuppressionCycles();
             await SavedFeedbackSettings();
             await GroupedAndDisposed();
             using(var f=new RelationshipFixture()){
@@ -120,6 +122,59 @@ namespace Dafeiyu.Tests
                     }
                     allowed=true;clock.Advance();await feedback.PendingDisplay;Check(notices.Count==0&&f.Service.GetSnapshot(id).State.Milestones.All(m=>m.NotificationClaimed),"async claim rechecks suppression and consumes stages durably");
                     await feedback.AcceptAsync(id,result);allowed=false;clock.Advance();await feedback.PendingDisplay;allowed=true;clock.Advance();await feedback.PendingDisplay;Check(notices.Count==0,"suppression at scheduled display does not replay");
+                }
+            }
+        }
+        static void Invalidate(RelationshipRuntime runtime)
+        {runtime.InvalidateFeedback();}
+        static async Task SuppressionCycles()
+        {
+            foreach(string transition in new[]{"quiet", "visibility", "identity", "fullscreen", "session"})
+            foreach(string phase in new[]{"claim", "timer", "read", "publication", "worker"}){
+                using(var f=new RelationshipFixture()){
+                    var publications=new List<Action>();var publicationGate=new object();
+                    using(var runtime=new RelationshipRuntime(f.Root,a=>{lock(publicationGate)publications.Add(a);})){
+                        var clock=new Clock();var notices=new List<RelationshipFeedbackNotice>();bool allowed=true;string current="official:e-bao";string id=current;
+                        using(var feedback=new RelationshipFeedback(runtime,k=>allowed&&k==current,notices.Add,clock)){
+                            var time=RelationshipFixture.Time("2026-10-01T12:00:00Z");
+                            Action cycle=()=>{allowed=false;current="official:marfu";Invalidate(runtime);allowed=true;current=id;Invalidate(runtime);};
+                            var saved=f.Service.RecordChecked(id,RelationshipEventType.Visit,"cycle-first",time);
+                            if(phase=="claim"){
+                                using(var held=new FileStream(Path.Combine(f.Root,"relationships",".transaction.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
+                                    var accepting=feedback.AcceptAsync(id,saved);cycle();held.Dispose();await accepting;
+                                }
+                            }else if(phase=="publication"||phase=="worker"){
+                                if(phase=="worker"){
+                                    using(var held=new RelationshipStore(f.Root).Acquire()){
+                                        var queued=runtime.Enqueue(id,RelationshipEventType.CompletedConversation,"cycle-queued",time.AddSeconds(1));cycle();held.Dispose();await queued;
+                                    }
+                                }else{await runtime.Enqueue(id,RelationshipEventType.CompletedConversation,"cycle-queued",time.AddSeconds(1));cycle();}
+                                Action[] callbacks;lock(publicationGate){callbacks=publications.ToArray();publications.Clear();}foreach(var callback in callbacks)callback();
+                                await feedback.PendingAcceptance;
+                            }else{
+                                await feedback.AcceptAsync(id,saved);
+                                if(phase=="read"){
+                                    using(var held=new FileStream(Path.Combine(f.Root,"relationships",".transaction.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
+                                        clock.Advance();cycle();held.Dispose();await feedback.PendingDisplay;
+                                    }
+                                }else cycle();
+                            }
+                            clock.Advance();await feedback.PendingDisplay;
+                            Check(notices.Count==0,transition+" complete suppression cycle discards old "+phase+" feedback");
+                            Check(f.Service.GetSnapshot(id).State.Milestones.All(m=>m.NotificationClaimed),transition+" "+phase+" suppression retains durable milestone consumption");
+                            await feedback.AcceptAsync(id,f.Service.RecordChecked(id,RelationshipEventType.CompletedConversation,"cycle-fresh",time.AddSeconds(2)));clock.Advance();await feedback.PendingDisplay;
+                            Check(notices.Count==1&&notices[0].AwardedPoints==2,transition+" "+phase+" permits a fresh post-cycle event");
+                        }
+                    }
+                }
+            }
+            using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
+                var clock=new Clock();var notices=new List<RelationshipFeedbackNotice>();string id="official:e-bao";var time=RelationshipFixture.Time("2026-10-01T12:00:00Z");
+                using(var feedback=new RelationshipFeedback(runtime,_=>true,notices.Add,clock)){
+                    await feedback.AcceptAsync(id,f.Service.RecordChecked(id,RelationshipEventType.Visit,"posted-old",time));var old=clock.PostedCallbacks();Invalidate(runtime);
+                    await feedback.AcceptAsync(id,f.Service.RecordChecked(id,RelationshipEventType.CompletedConversation,"posted-new",time.AddSeconds(1)));
+                    foreach(var callback in old)callback();await feedback.PendingDisplay;Check(notices.Count==0,"already-posted stale timer cannot take the new generation pending notice");
+                    clock.Advance();await feedback.PendingDisplay;Check(notices.Count==1&&notices[0].AwardedPoints==2,"fresh timer retains its own notice after stale callback");
                 }
             }
         }

@@ -7,8 +7,11 @@ namespace Dafeiyu
     {
         RelationshipFeedback relationshipFeedback;
         RelationshipFeedbackWindow relationshipNotice;
+        bool relationshipFullscreen;
+        void ObserveRelationshipFullscreen(bool fullscreen)
+        {if(relationshipFullscreen!=fullscreen){relationshipFullscreen=fullscreen;Relationships.InvalidateFeedback();}}
         internal bool RelationshipFeedbackAllowed(string id)
-        {return !closing&&id==RelationshipCompanionId&&!Settings.QuietMode&&Relationships.FeedbackEnabled&&IsPetVisible&&!sessionLocked&&!DesktopInterop.ForegroundIsFullScreen();}
+        {bool fullscreen=DesktopInterop.ForegroundIsFullScreen();ObserveRelationshipFullscreen(fullscreen);return !closing&&id==RelationshipCompanionId&&!Settings.QuietMode&&Relationships.FeedbackEnabled&&IsPetVisible&&!sessionLocked&&!fullscreen;}
         void InitializeRelationshipFeedback()
         {
             relationshipFeedback=new RelationshipFeedback(Relationships,RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,
@@ -16,7 +19,7 @@ namespace Dafeiyu
         }
         void ShowRelationshipFeedback(RelationshipFeedbackNotice notice)
         {
-            if(!RelationshipFeedbackAllowed(notice.CompanionId)||RelationshipNoticeDismissed(notice))return;
+            if(!RelationshipFeedbackAllowed(notice.CompanionId)||notice.SuppressionVersion.HasValue&&notice.SuppressionVersion.Value!=Relationships.FeedbackSuppressionVersion||RelationshipNoticeDismissed(notice))return;
             if(relationshipNotice!=null&&relationshipNotice.IsVisible&&relationshipNotice.CompanionId==notice.CompanionId)relationshipNotice.Merge(notice);
             else OpenRelationshipNotice(notice);
             // Busy work/chat may show the passive card. Only an idle pet may animate.

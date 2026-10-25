@@ -98,6 +98,8 @@ namespace Dafeiyu
     }
     public sealed class RelationshipResult
     {
+        // Presentation admission only; never part of saved relationship data.
+        internal int? FeedbackSuppressionVersion;
         public bool Success { get; internal set; }
         public int AwardedPoints { get; internal set; }
         public bool ClaimedNotification { get; internal set; }

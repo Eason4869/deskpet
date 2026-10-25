@@ -44,6 +44,10 @@ namespace Dafeiyu
         {
             get {
                 var state=Snapshot==null?null:Snapshot.State;
+                if(state==null){
+                    RelationshipStageArtAsset introductory;
+                    return Snapshot!=null&&!ReadFailed&&RelationshipStageArt.TryGet(CompanionId,"first_meeting",out introductory)?"first_meeting":null;
+                }
                 if(state==null||String.IsNullOrEmpty(CompanionId)||state.CompanionId!=CompanionId||state.Milestones==null||state.Score<0||state.Score>1000)return null;
                 for(int index=RelationshipRules.Stages.Length-1;index>=0;index--){
                     string stage=RelationshipRules.Stages[index];RelationshipStageArtAsset asset;

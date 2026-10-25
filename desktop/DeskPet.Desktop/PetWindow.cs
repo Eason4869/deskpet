@@ -25,7 +25,19 @@ internal sealed partial class PetWindow : Window
     private string action => playback.Action;
     private bool original => playback.Original;
     private bool dragging, moved, nativeIgnored, fullscreenHidden;
-    internal bool RelationshipFeedbackAllowed=>IsPetVisible&&sessionInteractive&&owner.Relationships.FeedbackEnabled;
+    private bool feedbackQuiet,feedbackFullscreen,feedbackInteractive=true,feedbackSessionObserved;
+    private ulong feedbackSessionRevision;
+    private void ObserveFeedbackQuiet()
+    {if(feedbackQuiet!=owner.Settings.QuietMode){feedbackQuiet=owner.Settings.QuietMode;owner.Relationships.InvalidateFeedback();}}
+    private void ObserveFeedbackSession()
+    {
+        if(NativeWindowHandle==IntPtr.Zero)return;
+        bool interactive=MacServices.IsSessionInteractive;ulong revision=MacServices.SessionLifecycleRevision;
+        bool fullscreen=MacServices.IsFrontApplicationFullscreen();
+        if(feedbackSessionObserved&&(interactive!=feedbackInteractive||revision!=feedbackSessionRevision||fullscreen!=feedbackFullscreen))owner.Relationships.InvalidateFeedback();
+        feedbackInteractive=interactive;feedbackSessionRevision=revision;feedbackFullscreen=fullscreen;feedbackSessionObserved=true;
+    }
+    internal bool RelationshipFeedbackAllowed{get{ObserveFeedbackSession();return IsPetVisible&&sessionInteractive&&feedbackInteractive&&owner.Relationships.FeedbackEnabled;}}
     internal void CelebrateRelationship(string name){if(!RelationshipFeedbackAllowed||owner.Settings.QuietMode||owner.HolidayBusinessBusy||owner.WorkBindings.Manager.Busy||owner.WorkBindings.Jobs.Manager?.HasActiveJobs==true||owner.GuideLocked||Paused||dragging||drop.Active||holidayPlayback.Active||holidayTransition.Active||action!="idle")return;Interact(name);}
     public bool IsPetVisible=>IsVisible && !fullscreenHidden && Opacity>0;
     private Point press;
@@ -58,12 +70,13 @@ internal sealed partial class PetWindow : Window
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
         PointerExited += (_, _) => LeaveHolidayHover();
+        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty)owner.Relationships.InvalidateFeedback();};
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
-        Opened += (_, _) => { owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);ApplySettings(); Clamp(); ConfigureNative(false); };
+        Opened += (_, _) => { ObserveFeedbackSession();owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);ApplySettings(); Clamp(); ConfigureNative(false); };
         timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => Tick());
-        Closed += async (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; await owner.HolidayKeepsakes.FlushAsync();DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
+        Closed += async (_, _) => { owner.Relationships.InvalidateFeedback();timer.Stop(); Screens.Changed -= ScreensChanged; await owner.HolidayKeepsakes.FlushAsync();DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
         wanderAt = WanderSchedule.Next(0, random.NextDouble());
         ApplySettings();
         if (owner.Settings.X == null || owner.Settings.Y == null)
@@ -75,6 +88,7 @@ internal sealed partial class PetWindow : Window
     public void ApplySettings()
     {
         relationshipContentEpoch++;
+        ObserveFeedbackQuiet();
         CancelHoliday();
         Width = 192 * owner.Settings.Scale; Height = 208 * owner.Settings.Scale;
         Topmost = owner.Settings.Topmost;
@@ -91,6 +105,7 @@ internal sealed partial class PetWindow : Window
         owner.Holidays.CancelHover(); holidayPlayback.Cancel(); holidayTransition.FinishImmediately();
         committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
         var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
+        if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
         drop.Cancel(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
@@ -216,6 +231,7 @@ internal sealed partial class PetWindow : Window
             sessionInteractive = MacServices.IsSessionInteractive;
             var latestLifecycle = MacServices.SessionLifecycleRevision;
             lifecycleChanged = latestLifecycle != lifecycleRevision; lifecycleRevision = latestLifecycle;
+            ObserveFeedbackSession();
         }
         if (gap > 1 || !sessionInteractive || lifecycleChanged) { CancelHoliday(); DismissGreeting(); }
         RefreshHoliday(gap > 1 || lifecycleChanged || wasInteractive != sessionInteractive);
@@ -295,6 +311,7 @@ internal sealed partial class PetWindow : Window
     private void ApplyFullscreenVisibility(bool hidden)
     {
         var wasHidden=fullscreenHidden;
+        if(hidden!=wasHidden)owner.Relationships.InvalidateFeedback();
         if(hidden&&!wasHidden)DismissGreeting();
         fullscreenHidden=hidden;Opacity=hidden?0:1;
         if(wasHidden&&IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
@@ -302,6 +319,7 @@ internal sealed partial class PetWindow : Window
     }
     public void ConfigureGreetings()
     {
+        ObserveFeedbackQuiet();
         greetingSchedule = new GreetingSchedule(DateTime.UtcNow, owner.Settings.GreetingMinMinutes, owner.Settings.GreetingMaxMinutes, random.NextDouble);
         DismissGreeting();
     }

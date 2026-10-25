@@ -22,6 +22,10 @@ namespace Dafeiyu.Tests
             profileView.CompanionId=profileState.CompanionId="custom:e-bao";Check(profileStage.GetValue(profileView,null)==null,"a same-named custom partner cannot borrow official stage art");
             profileView.CompanionId=profileState.CompanionId="official:e-bao";profileState.Milestones.Clear();Check(profileStage.GetValue(profileView,null)==null,"no earned milestone uses own portrait fallback");
             profileView.Snapshot=null;Check(profileStage.GetValue(profileView,null)==null,"unknown relationship data never invents a first-meeting scene");
+            profileView.Snapshot=new RelationshipSnapshot();Check((string)profileStage.GetValue(profileView,null)=="first_meeting","successful fresh official snapshot has introductory raw artwork without an earned milestone");
+            profileView.ReadFailed=true;Check(profileStage.GetValue(profileView,null)==null,"failed empty snapshot cannot masquerade as a fresh official profile");
+            profileView.ReadFailed=false;profileView.CompanionId="custom:e-bao";Check(profileStage.GetValue(profileView,null)==null,"fresh custom profile never borrows official introductory artwork");
+            profileView.CompanionId="official:e-bao";profileView.Snapshot=new RelationshipSnapshot{State=profileState};profileState.Milestones.Add(new RelationshipMilestone{StageId="familiar"});profileView.ReadFailed=true;Check((string)profileStage.GetValue(profileView,null)=="familiar","same-identity last successful earned artwork remains during a read warning");
             var earnedDays=typeof(RelationshipCardData).GetProperty("EarnedAcquaintanceDays");
             Check(earnedDays!=null,"keepsake captures acquaintance span at the earned milestone, not today");
             var cardSnapshot=new RelationshipSnapshot{State=new CompanionRelationshipState{CompanionId="custom:card",FirstLocalDate="2026-10-05",Milestones=new System.Collections.Generic.List<RelationshipMilestone>{new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-12"}}}};
