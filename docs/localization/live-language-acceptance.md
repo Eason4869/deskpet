@@ -35,3 +35,5 @@ Base: live GitHub dev and v0.11.0-dev.1 both 574cad11ef353c2c05e18d07910b549c03c
 ## Acceptance boundary
 
 No merge, tag or binary Release has been created. macOS real-device menu/focus/IME behavior, Windows physical IME composition, real paid ASR/Live/Agent services, and speech voice audition remain manual acceptance items; fake transports establish request-language continuity without issuing paid requests. Historical conversations, user prompts, plugin/tool output, and captured/exported documents retain their original text. Update/data/relationship recovery restart mechanisms remain available; language switching no longer asks for restart.
+
+Additional final checks: German dark WPF audit passed 206 captures / 7,878 checks, including visually inspected 700px General and Work layouts. AboutSmoke 23 and native TrayInteractionTests 22 passed. Standalone updater binary verified against all 13 exact source catalog byte hashes, with no artwork resources and within the helper code-size budget. Six duplicate image-default display keys are explicitly retired after consolidating the stable default sentinel; catalog bytes remain protected.
