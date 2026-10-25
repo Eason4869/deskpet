@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+  "resourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
   "translationMethod": "assistant-authored",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
@@ -3310,7 +3310,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CompanionHomePage.cs",
-          "contextHash": "38b1ef69878fe6a32d1855da32033769a14428557fca907e2ae08108dc25b9d3",
+          "contextHash": "dc4c8291b149e86d886d916601b6abcf64d4bcc79a9ac825da5151dc1a0fce05",
           "count": 1
         },
         {
@@ -3651,7 +3651,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CompanionHomePage.cs",
-          "contextHash": "38b1ef69878fe6a32d1855da32033769a14428557fca907e2ae08108dc25b9d3",
+          "contextHash": "dc4c8291b149e86d886d916601b6abcf64d4bcc79a9ac825da5151dc1a0fce05",
           "count": 1
         },
         {
@@ -3850,7 +3850,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CompanionHomePage.cs",
-          "contextHash": "5a4dd1fb9c462592cd817a077ea9c138ef6ae8d67be14a7e43dcd1144e13ce5f",
+          "contextHash": "801579793ab65b521faf1c4c4fbfeb19f74500299d5c38e3807bb88e6ed1d758",
           "count": 1
         },
         {
@@ -3918,7 +3918,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CompanionHomePage.cs",
-          "contextHash": "0d4173a3ea500f82b884637952bea3328a19c955720f46da594e898200ced5e3",
+          "contextHash": "119bf6fc5879122035937b2b947408680804878606c06b6dc2e02d3b21cc7dc6",
           "count": 1
         },
         {
@@ -5476,7 +5476,7 @@
       "value": "（暂无）",
       "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Existing model greeting instruction literal; S1 changed its containing context to append factual stage context. It remains non-UI protocol/prompt content, with original text preserved."
     },
     {
@@ -5484,7 +5484,7 @@
       "value": "\n最近聊天背景：\n",
       "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Existing model greeting instruction literal; S1 changed its containing context to append factual stage context. It remains non-UI protocol/prompt content, with original text preserved."
     },
     {
@@ -5492,7 +5492,7 @@
       "value": "\n请以当前伙伴的语气写一句新的主动问候。",
       "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Existing model greeting instruction literal; S1 changed its containing context to append factual stage context. It remains non-UI protocol/prompt content, with original text preserved."
     },
     {
@@ -5500,7 +5500,7 @@
       "value": "\n最近已显示的问候（避免重复）：\n",
       "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Existing model greeting instruction literal; S1 changed its containing context to append factual stage context. It remains non-UI protocol/prompt content, with original text preserved."
     },
     {
@@ -5508,7 +5508,7 @@
       "value": "当前本地时间：",
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Existing model greeting instruction literal; S1 changed its containing context to append factual stage context. It remains non-UI protocol/prompt content, with original text preserved."
     },
     {
@@ -5516,7 +5516,7 @@
       "value": "桌面伙伴.exe",
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Stable executable filename used to bind installed runtime identity; data identity, not display copy."
     },
     {
@@ -5524,7 +5524,7 @@
       "value": "桌面伙伴维护助手：校验更新包与卸载交接，保留用户数据",
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
-      "sourceCommit": "e958907887b15846b1c2efb1fb9fdf41cb57b880",
+      "sourceCommit": "dcefcc6753646bdc735b2e27e2ded4deeab90c05",
       "reason": "Compile-time maintenance-helper assembly description; not runtime UI, expanded to include the implemented uninstall handoff."
     }
   ]
