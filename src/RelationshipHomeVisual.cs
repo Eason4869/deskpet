@@ -18,7 +18,7 @@ namespace Dafeiyu
         internal static FrameworkElement Icon(string kind,double size=22)
         {
             string path=kind=="heart"?"M12,21 C9,18 2,13 2,7 C2,1 9,1 12,6 C15,1 22,1 22,7 C22,13 15,18 12,21 Z":kind=="calendar"?"M3,5 L21,5 L21,22 L3,22 Z M3,10 L21,10 M7,2 L7,7 M17,2 L17,7 M7,14 L9,14 M14,14 L16,14 M7,18 L9,18 M14,18 L16,18":kind=="sun"?"M12,5 A7,7 0 1 1 11.99,5 M12,0 L12,3 M12,21 L12,24 M0,12 L3,12 M21,12 L24,12 M3,3 L5,5 M19,19 L21,21 M3,21 L5,19 M19,5 L21,3":kind=="diamond"?"M12,2 L22,12 L12,22 L2,12 Z M7,12 L17,12 M12,7 L12,17":kind=="settings"?"M12,2 L14,6 L18,5 L19,9 L23,12 L19,15 L18,19 L14,18 L12,22 L10,18 L6,19 L5,15 L1,12 L5,9 L6,5 L10,6 Z M12,8 A4,4 0 1 1 11.99,8":kind=="chat"?"M2,3 L22,3 L22,17 L10,17 L4,22 L4,17 L2,17 Z M6,8 L18,8 M6,12 L16,12":kind=="work"?"M2,7 L22,7 L22,21 L2,21 Z M8,7 L8,3 L16,3 L16,7 M2,12 L22,12 M10,12 L10,15 L14,15 L14,12":"M3,12 L12,3 L21,12 M6,10 L6,22 L18,22 L18,10";
-            return new Viewbox{Width=size,Height=size,Child=new Path{Data=Geometry.Parse(path),Stroke=Accent,StrokeThickness=1.7,StrokeLineJoin=PenLineJoin.Round,Width=24,Height=24,Stretch=Stretch.Uniform},Focusable=false};
+            return new Viewbox{Width=size,Height=size,Child=new Path{Data=Geometry.Parse(path),Stroke=Accent,StrokeThickness=1.7,StrokeLineJoin=PenLineJoin.Round,Width=24,Height=24,Stretch=kind=="heart"?Stretch.None:Stretch.Uniform},Focusable=false};
         }
         internal static FrameworkElement Ring(double fraction)
         {

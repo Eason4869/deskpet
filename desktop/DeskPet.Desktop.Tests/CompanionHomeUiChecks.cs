@@ -14,11 +14,27 @@ using DeskPet.Desktop;
 
 internal static class CompanionHomeUiChecks
 {
+    internal static int RunHeartIcons(string output)
+    {
+        Directory.CreateDirectory(output);int checks=0;
+        foreach(string theme in new[]{"light","dark"})foreach(int size in new[]{22,32}){
+            DesktopTheme.Apply(theme);int n=size+16;var canvas=new Canvas{Width=n,Height=n};var icon=HomeVisual.Icon("heart",size);Canvas.SetLeft(icon,8);Canvas.SetTop(icon,8);canvas.Children.Add(icon);
+            var window=new Window{Width=n,Height=n,Content=canvas,Background=Brushes.Transparent};window.Show();Dispatcher.UIThread.RunJobs();canvas.Measure(new Size(n,n));canvas.Arrange(new Rect(0,0,n,n));AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            try{using var bitmap=new RenderTargetBitmap(new PixelSize(n,n));bitmap.Render(canvas);bitmap.Save(Path.Combine(output,"native-"+theme+"-heart-"+size+".png"),new PngBitmapEncoderOptions());
+                byte[] pixels=new byte[n*n*4];var pin=System.Runtime.InteropServices.GCHandle.Alloc(pixels,System.Runtime.InteropServices.GCHandleType.Pinned);try{bitmap.CopyPixels(new PixelRect(0,0,n,n),pin.AddrOfPinnedObject(),pixels.Length,n*4);}finally{pin.Free();}
+                int edge=0,ink=0,minY=n,maxY=-1;var rows=new List<string>();bool lobes=false;
+                for(int y=0;y<n;y++){int count=0,runs=0;bool prior=false;for(int x=0;x<n;x++){bool visible=pixels[(y*n+x)*4+3]>0;if(visible){ink++;count++;minY=Math.Min(minY,y);maxY=Math.Max(maxY,y);if(!prior)runs++;if(x==8||x==8+size-1||y==8||y==8+size-1)edge++;}prior=visible;}if(count>0)rows.Add(y+":"+count);if(y<=12&&runs>=2)lobes=true;}
+                Console.WriteLine("HEART_RASTER native "+theme+" size="+size+" edge="+edge+" y="+minY+".."+maxY+" rows="+String.Join(",",rows));
+                if(ink<30||!lobes)throw new Exception("heart retains two curved lobes and visible silhouette");checks++;
+                if(edge!=0)throw new Exception("heart design-space stroke has clear inset at every viewport edge");checks++;
+            }finally{window.Close();}
+        }return checks;
+    }
     static bool StageWordsStayWhole(TextBlock label)
     {
         int start=0;foreach(string word in label.Text!.Split(' ')){if(word.Length>0&&Math.Abs(label.TextLayout.HitTestTextPosition(start).Y-label.TextLayout.HitTestTextPosition(start+word.Length-1).Y)>.5)return false;start+=word.Length+1;}return true;
     }
-    internal static int RunStageTrackLayout(string directory,string language)
+    internal static int RunStageTrackLayout(string directory,string language,string? captureDirectory=null)
     {
         int checks=0;void Check(bool value,string text){if(!value)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
         void Complete(Task task){var timer=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(timer.ElapsedMilliseconds>15000)throw new TimeoutException("Stage track fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
@@ -31,7 +47,9 @@ internal static class CompanionHomeUiChecks
             Check(track.Columns==(language=="de_DE"?3:6)&&track.Rows==(language=="de_DE"?2:1),"stage track uses fitting columns in actual "+window.Width+"px home");
             foreach(var label in track.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()))Check(StageWordsStayWhole(label),"stage words do not split across rendered lines: "+label.Text);
             Console.WriteLine("STAGE_TRACK width="+track.Bounds.Width+" columns="+track.Columns+" rows="+track.Rows);
-            string output=Path.GetFullPath("work/ui-consistency/stage-track-after");Directory.CreateDirectory(output);using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(output,"native-"+language+"-"+window.Width+".png"),new PngBitmapEncoderOptions());
+            string output=Path.GetFullPath(captureDirectory??"work/ui-consistency/stage-track-after");Directory.CreateDirectory(output);
+            if(captureDirectory==null){using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(output,"native-"+language+"-"+window.Width+".png"),new PngBitmapEncoderOptions());}
+            else foreach(string theme in new[]{"light","dark"}){DesktopTheme.Apply(theme);Complete(page.RefreshAsync());Dispatcher.UIThread.RunJobs();using var image=new RenderTargetBitmap(new PixelSize((int)window.Width,(int)window.Height));image.Render(window);image.Save(Path.Combine(output,"native-home-"+theme+".png"),new PngBitmapEncoderOptions());}
         }finally{window.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}return checks;
     }
     internal static int RunFirstVisit(string directory)

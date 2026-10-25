@@ -24,6 +24,17 @@ namespace Dafeiyu.Tests
         static byte[] Pixel(BitmapSource bitmap,int x,int y){var source=new FormatConvertedBitmap(bitmap,PixelFormats.Bgra32,null,0);var pixel=new byte[4];source.CopyPixels(new Int32Rect(x,y,1,1),pixel,4,0);return pixel;}
         static bool DarkPng(BitmapSource bitmap){var source=new FormatConvertedBitmap(bitmap,PixelFormats.Bgra32,null,0);var pixel=new byte[4];source.CopyPixels(new Int32Rect(0,0,1,1),pixel,4,0);return pixel[0]+pixel[1]+pixel[2]<200;}
         static void Capture(FrameworkElement w,string file){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(file))png.Save(f);}
+        static void HeartIcons()
+        {
+            string output=Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-wpf");Directory.CreateDirectory(output);
+            foreach(string theme in new[]{"light","dark"})foreach(int size in new[]{22,32}){
+                ThemeManager.Apply(theme);int n=size+16;var canvas=new Canvas{Width=n,Height=n};var icon=HomeVisual.Icon("heart",size);Canvas.SetLeft(icon,8);Canvas.SetTop(icon,8);canvas.Children.Add(icon);canvas.Measure(new Size(n,n));canvas.Arrange(new Rect(0,0,n,n));canvas.UpdateLayout();
+                var bitmap=new RenderTargetBitmap(n,n,96,96,PixelFormats.Pbgra32);bitmap.Render(canvas);var bytes=new byte[n*n*4];bitmap.CopyPixels(bytes,n*4,0);Capture(canvas,Path.Combine(output,"wpf-"+theme+"-heart-"+size+".png"));
+                int edge=0,ink=0,minY=n,maxY=-1;bool lobes=false;var rows=new System.Collections.Generic.List<string>();
+                for(int y=0;y<n;y++){int count=0,runs=0;bool prior=false;for(int x=0;x<n;x++){bool visible=bytes[(y*n+x)*4+3]>0;if(visible){ink++;count++;minY=Math.Min(minY,y);maxY=Math.Max(maxY,y);if(!prior)runs++;if(x==8||x==8+size-1||y==8||y==8+size-1)edge++;}prior=visible;}if(count>0)rows.Add(y+":"+count);if(y<=12&&runs>=2)lobes=true;}
+                Console.WriteLine("HEART_RASTER WPF "+theme+" size="+size+" edge="+edge+" y="+minY+".."+maxY+" rows="+String.Join(",",rows));Check(ink>30&&lobes,"heart retains two curved lobes and visible silhouette");Check(edge==0,"heart design-space stroke has clear inset at every viewport edge");
+            }
+        }
         static async Task CaptureFeedback(RelationshipFeedbackWindow window,string captures,string locale,string kind)
         {
             foreach(string theme in new[]{"light","dark"}){
@@ -35,6 +46,11 @@ namespace Dafeiyu.Tests
         static bool StageWordsStayWhole(TextBlock label)
         {
             var text=label.Inlines.FirstInline.ContentStart;int start=0;foreach(string word in label.Text.Split(' ')){if(word.Length>0&&Math.Abs(text.GetPositionAtOffset(start).GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward).Y-text.GetPositionAtOffset(start+word.Length-1).GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward).Y)>.5)return false;start+=word.Length+1;}return true;
+        }
+        static async Task<System.Windows.Controls.Primitives.UniformGrid> LoadedTrack(CompanionHomePage page)
+        {
+            page.UpdateLayout();var track=All<System.Windows.Controls.Primitives.UniformGrid>(page).Single(x=>x.Name=="RelationshipStageNodes");var timer=System.Diagnostics.Stopwatch.StartNew();
+            while(!track.IsLoaded){if(timer.ElapsedMilliseconds>2000)throw new TimeoutException("Hosted stage track did not load");await Task.Delay(10);track=All<System.Windows.Controls.Primitives.UniformGrid>(page).Single(x=>x.Name=="RelationshipStageNodes");}page.UpdateLayout();return track;
         }
         static async Task StageTrackLayout(string locale)
         {
@@ -75,8 +91,9 @@ namespace Dafeiyu.Tests
             }
             chat.Close();await pet.Relationships.FlushAsync();Console.WriteLine("FirstHomeVisitUi: "+checks+" passed");
         }
-        static async Task Run(string locale)
+        static async Task Run(string locale,bool hostedOnly=false)
         {
+            HeartIcons();
             var sparseBytes=new byte[40*60*4];sparseBytes[(10*40+12)*4+3]=255;sparseBytes[(49*40+27)*4+3]=255;var sparse=BitmapSource.Create(40,60,96,96,PixelFormats.Bgra32,null,sparseBytes,40*4);var trimmed=CompanionPortraitSource.Trim(sparse);Check(trimmed.PixelWidth==20&&trimmed.PixelHeight==44,"transparent exterior is removed with safe margin around every opaque pixel");Check(CompanionPortraitSource.Trim(BitmapSource.Create(20,20,96,96,PixelFormats.Bgra32,null,new byte[20*20*4],20*4))==null,"fully transparent artwork enters fallback");
             string captures=Path.GetFullPath(Path.Combine("work","relationship-validation","f3","wpf"));Directory.CreateDirectory(captures);
             string root=Path.Combine(captures,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
@@ -100,7 +117,8 @@ namespace Dafeiyu.Tests
             Check(((Image)entry.Icon).Source==SkinCatalog.GetAvatar(pet.Skin)&&entry.Opacity==1,"profile avatar retains canonical original color");
             entry.Focus();Check(entry.IsKeyboardFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(entry),0,Key.Enter){RoutedEvent=Keyboard.KeyDownEvent});await Task.Delay(80);Check(!menu.IsOpen&&chat.CurrentPage=="companion","profile click closes menu and opens companion route in same window");
             var page=All<CompanionHomePage>(chat).Single();await page.RefreshAsync();page.UpdateLayout();await pet.Relationships.FlushAsync();await page.RefreshAsync();page.UpdateLayout();
-            Check(All<TextBlock>(All<System.Windows.Controls.Primitives.UniformGrid>(page).Single(x=>x.Name=="RelationshipStageNodes")).All(StageWordsStayWhole),"hosted home stage words do not split across rendered lines");
+            var hostedTrack=await LoadedTrack(page);Check(All<TextBlock>(hostedTrack).All(StageWordsStayWhole),"hosted home stage words do not split across rendered lines");
+            if(hostedOnly){foreach(string theme in new[]{"light","dark"})foreach(int width in new[]{520,1280}){chat.Width=width;ThemeManager.Apply(theme);await page.RefreshAsync();var ready=await LoadedTrack(page);Check(All<TextBlock>(ready).All(StageWordsStayWhole),"settled hosted stage words stay whole "+locale+" "+theme+" "+width);Capture(chat,Path.Combine(captures,locale+"-hosted-ready-"+theme+"-"+width+".png"));}Console.WriteLine("HostedHomeReady: "+checks+" passed");return;}
             Check(All<TextBlock>(page).Any(x=>x.Name=="CompanionCurrentWelcome"&&x.Text==RelationshipContent.Welcome(page.View.Snapshot.StageId,pet.RelationshipPack)),"current saved stage has its own truthful welcome message");
             chat.Width=520;chat.Height=880;var narrowRules=All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules");narrowRules.IsExpanded=true;
             foreach(string narrowTheme in new[]{"light","dark"}){
@@ -205,6 +223,6 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("CompanionHomeUiTests: "+checks+" passed");
         }
-        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string stage=args.SingleOrDefault(x=>x.StartsWith("--stage-track-layout="));string locale=stage!=null?stage.Split('=')[1]:args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(stage!=null)await StageTrackLayout(locale);else if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
+        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string stage=args.SingleOrDefault(x=>x.StartsWith("--stage-track-layout=")),hosted=args.SingleOrDefault(x=>x.StartsWith("--hosted-ready="));string locale=hosted!=null?hosted.Split('=')[1]:stage!=null?stage.Split('=')[1]:args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--heart-icons"))HeartIcons();else if(hosted!=null)await Run(locale,true);else if(stage!=null)await StageTrackLayout(locale);else if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
     }
 }

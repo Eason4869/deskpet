@@ -45,6 +45,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--heart-icons")){Console.WriteLine("HeartIcons: "+CompanionHomeUiChecks.RunHeartIcons(Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native"))+" passed");return;}
+    if(args.Contains("--heart-home")){Console.WriteLine("HeartHome: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"heart-home"),"zh_CN",Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native-home"))+" passed");return;}
     if(args.Contains("--maintenance-default-sequence")){
         TextResources.ConfigureStartupLanguage("zh_CN");TextResources.Get("common.cancel");
         bool frozen=false;try{TextResources.ConfigureStartupLanguage("en_US");}catch(InvalidOperationException){frozen=true;}
@@ -781,7 +783,8 @@ finally
 int CompanionLifecycleSmoke(string root)
 {
     Directory.CreateDirectory(root);
-    int total=DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"));
+    int total=CompanionHomeUiChecks.RunHeartIcons(Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native"));
+    total+=DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"));
     total+=DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(TextResources.CurrentLanguage,true,true);
     // Core negative cases deliberately retain read-only/reparse fixtures. Keep their
     // owned GUID evidence outside the generic native UI temporary-root teardown.
