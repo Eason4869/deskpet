@@ -44,3 +44,5 @@ jobs:
         run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --live-language-ui-only
       - name: Apply and continue without process restart
         run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --onboarding-preparation-ui=en_US
+      - name: Feedback exit after a delayed UI dispatcher
+        run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --relationship-feedback-motion
