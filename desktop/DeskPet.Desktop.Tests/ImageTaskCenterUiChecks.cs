@@ -153,11 +153,13 @@ internal static class ImageTaskCenterUiChecks
     }
     internal static int RunHeldQuit(string directory)
     {
-        void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>10)throw new TimeoutException("Held native exit did not finish");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
+        Action diagnostic=()=>{};
+        void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>10){diagnostic();throw new TimeoutException("Held native exit did not finish");}Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
         var lifetime=NativeLifetime();using var owner=new DesktopController(lifetime,new TestRuntime(directory));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
         var api=new HeldConversationApi();var speech=new HeldFinalization();var setupSafety=Task.Run(async()=>{await Task.Delay(15000);api.Release.TrySetResult("cleanup");speech.Release.Set();});typeof(ConversationSession).GetField("api",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,api);typeof(ConversationSession).GetField("speech",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,speech);
         owner.Settings.AgentEnabled=false;owner.Settings.ReadReplies=false;owner.Settings.Text.BaseUrl="https://unused.invalid/v1";owner.Settings.Text.Model="fixture";owner.Settings.Text.ApiKey="local-fixture-only";var sending=owner.Session.SendTextAsync("hold active session on native quit",owner.Settings,"pet");Until(()=>api.Entered.Task.IsCompleted||sending.IsCompleted);if(!api.Entered.Task.IsCompleted){speech.Release.Set();sending.GetAwaiter().GetResult();throw new Exception("active Avalonia session did not enter held API");}
         bool exited=false,hostClosed=false;host.Closed+=(_,_)=>hostClosed=true;lifetime.Exit+=(_,_)=>{owner.Dispose();exited=true;};var watchdog=Task.Run(async()=>{await Task.Delay(7500);speech.Release.Set();});var watch=System.Diagnostics.Stopwatch.StartNew();
+        diagnostic=()=>{var drain=(Task)typeof(DesktopController).GetField("applicationExitDrain",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;Console.WriteLine("HELD_EXIT sending="+sending.Status+" shutdown="+owner.ImageServicesShutdown.Status+" drain="+drain.Status+" busy="+owner.Session.IsBusy+" idle="+owner.Session.WaitForIdleAsync().IsCompleted+" exited="+exited+" hostClosed="+hostClosed+" apiReleased="+api.Release.Task.IsCompleted+" speechEntered="+speech.Entered.Task.IsCompleted+" speechReleased="+speech.Release.WaitOne(0));};
         try
         {
             if(lifetime.TryShutdown())throw new Exception("FAIL native held session quit was not deferred");Until(()=>exited);
@@ -165,7 +167,7 @@ internal static class ImageTaskCenterUiChecks
             if(!hostClosed)throw new Exception("FAIL held native quit did not close real ChatWindow");
             if(speech.Entered.Task.IsCompleted||owner.ImageServicesShutdown.IsCompleted)throw new Exception("FAIL native OS quit finalized resources before active writer drained");
         }
-        finally{api.Release.TrySetResult("finished");speech.Release.Set();}
+        finally{api.Release.TrySetResult("finished");speech.Release.Set();diagnostic();}
         Until(()=>sending.IsCompleted&&owner.ImageServicesShutdown.IsCompleted);Console.WriteLine("PASS actual native OS quit defers held active-session finalization beyond deadline, then drains safely");return 3;
     }
     internal static int RunWriterGateQuit(string directory)

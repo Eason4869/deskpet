@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -56,12 +57,116 @@ namespace Dafeiyu.Tests
                     denied=false;try{await s.SendVoiceAsync(new byte[5],Configured(),"E包");}catch(ApiException){denied=true;}Check(denied && !s.IsBusy,"bad wave accepted");}
             });
             Run("clear resets completed context",async delegate {using(var s=Create(new FakeApi(),new FakeSpeech())) {await s.SendTextAsync("clear",Configured(),"E包");s.Clear();Check(s.History.Messages.Count==0,"clear retained history");}});
+            Run("held text drains after its UI context stops",async delegate {
+                var api=new HeldApi {ChatGate=new Gate<string>()};var cfg=Configured();cfg.ReadReplies=false;
+                using(var s=HeldSession(api,new HeldSpeech()))await DrainAfterContextStops(s,()=>s.SendTextAsync("held text",cfg,"E包"),()=>api.ChatGate.Entered.Task.IsCompleted,()=>api.ChatGate.Release.TrySetResult("late reply"),"text");
+            });
+            Run("held voice and recording drain after their UI context stops",async delegate {
+                var cfg=Configured();cfg.ReadReplies=false;var wav=WaveData.EncodePcm(new byte[16000]);
+                var api=new HeldApi {RecognitionGate=new Gate<string>()};
+                using(var s=HeldSession(api,new HeldSpeech()))await DrainAfterContextStops(s,()=>s.SendVoiceAsync(wav,cfg,"E包"),()=>api.RecognitionGate.Entered.Task.IsCompleted,()=>api.RecognitionGate.Release.TrySetResult("识别文字"),"voice");
+                api=new HeldApi {ChatGate=new Gate<string>()};
+                using(var s=HeldSession(api,new HeldSpeech()))await DrainAfterContextStops(s,()=>s.SendVoiceAsync(wav,cfg,"E包"),()=>api.ChatGate.Entered.Task.IsCompleted,()=>api.ChatGate.Release.TrySetResult("late voice reply"),"voice reply");
+                var recorder=new HeldRecorder {FinishGate=new Gate<byte[]>()};
+                using(var s=HeldSession(new HeldApi(),new HeldSpeech(),recorder)){
+                    s.StartRecording(cfg);
+                    await DrainAfterContextStops(s,()=>s.FinishRecordingAsync("E包"),()=>recorder.FinishGate.Entered.Task.IsCompleted,()=>recorder.FinishGate.Release.TrySetResult(wav),"recording");
+                    Check(recorder.Disposed,"held recording did not release microphone");
+                }
+                api=new HeldApi {ChatGate=new Gate<string>()};recorder=new HeldRecorder();
+                using(var s=HeldSession(api,new HeldSpeech(),recorder)){
+                    s.StartRecording(cfg);
+                    await DrainAfterContextStops(s,()=>s.FinishRecordingAsync("E包"),()=>api.ChatGate.Entered.Task.IsCompleted,()=>api.ChatGate.Release.TrySetResult("late recorded reply"),"recorded reply");
+                    Check(recorder.Disposed,"held recorded reply did not release microphone");
+                }
+            });
+            Run("held regeneration drains after its UI context stops",async delegate {
+                var api=new HeldApi();var cfg=Configured();cfg.ReadReplies=false;
+                using(var s=HeldSession(api,new HeldSpeech())){
+                    await s.SendTextAsync("seed",cfg,"E包");var id=s.History.Messages.Last().Id;api.ChatGate=new Gate<string>();
+                    await DrainAfterContextStops(s,()=>s.RegenerateAsync(id,cfg,"E包"),()=>api.ChatGate.Entered.Task.IsCompleted,()=>api.ChatGate.Release.TrySetResult("late regeneration"),"regeneration");
+                }
+            });
+            Run("held response and standalone speech drain after their UI context stops",async delegate {
+                var cfg=Configured();cfg.ReadReplies=true;
+                var speech=new HeldSpeech {Gate=new Gate<bool>()};
+                using(var s=HeldSession(new HeldApi(),speech))await DrainAfterContextStops(s,()=>s.SendTextAsync("read reply",cfg,"E包"),()=>speech.Gate.Entered.Task.IsCompleted,()=>speech.Gate.Release.TrySetResult(true),"response speech");
+                cfg.ReadReplies=false;speech=new HeldSpeech();
+                using(var s=HeldSession(new HeldApi(),speech)){
+                    await s.SendTextAsync("seed",cfg,"E包");var id=s.History.Messages.Last().Id;speech.Gate=new Gate<bool>();
+                    await DrainAfterContextStops(s,()=>s.SpeakReplyAsync(id,cfg),()=>speech.Gate.Entered.Task.IsCompleted,()=>speech.Gate.Release.TrySetResult(true),"standalone speech");
+                }
+                speech=new HeldSpeech {Gate=new Gate<bool>()};
+                using(var s=HeldSession(new HeldApi(),speech))await DrainAfterContextStops(s,()=>s.PreviewSpeechAsync(cfg,"E包"),()=>speech.Gate.Entered.Task.IsCompleted,()=>speech.Gate.Release.TrySetResult(true),"preview speech");
+            });
             Console.WriteLine("Conversation tests: "+passed+" passed, "+failed+" failed");return failed==0 ? 0:1;
         }
         static ConversationSession Create(FakeApi api,FakeSpeech speech){return new ConversationSession(api,speech,delegate{return new FakeRecorder();});}
         static PetSettings Configured(){return new PetSettings {AgentEnabled=false,Text=new ConnectionSettings {BaseUrl="http://127.0.0.1:9001/v1",Model="chat"},Transcription=new ConnectionSettings {BaseUrl="http://127.0.0.1:9002/v1",Model="stt"}};}
         static void Check(bool value,string reason){if(!value)throw new Exception(reason);}
         static void Run(string name,Func<Task> test){try{test().GetAwaiter().GetResult();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
+        static ConversationSession HeldSession(HeldApi api,HeldSpeech speech,HeldRecorder recorder=null){return new ConversationSession(api,speech,delegate{return recorder??new HeldRecorder();});}
+        static async Task DrainAfterContextStops(ConversationSession session,Func<Task> begin,Func<bool> entered,Action release,string name)
+        {
+            var previous=SynchronizationContext.Current;var context=new StoppedUiContext();Task operation=null,stop=null;
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(context);
+                try{operation=begin();context.PumpUntil(entered,name+" did not enter held service");Check(session.IsBusy,name+" was not active");}
+                finally{context.Stop();SynchronizationContext.SetSynchronizationContext(previous);}
+                stop=session.StopAsync();Check(!stop.IsCompleted,name+" stop did not wait for held service");release();
+                var completed=Task.WhenAll(Observe(operation),stop);var winner=await Task.WhenAny(completed,Task.Delay(3000)).ConfigureAwait(false);
+                Check(ReferenceEquals(winner,completed),name+" needs stopped UI context to finish");await completed.ConfigureAwait(false);
+                Check(operation.IsCompleted && !operation.IsFaulted && stop.IsCompleted && !session.IsBusy && session.Stage==ConversationStage.Idle,name+" did not end cleanly");
+            }
+            finally
+            {
+                release();context.Resume();var current=SynchronizationContext.Current;SynchronizationContext.SetSynchronizationContext(context);
+                try{context.PumpUntil(()=>(operation==null||operation.IsCompleted)&&(stop==null||stop.IsCompleted),name+" cleanup could not drain queued continuations");}
+                catch(TimeoutException){}finally{SynchronizationContext.SetSynchronizationContext(current);}
+            }
+        }
+        static async Task Observe(Task operation){try{await operation.ConfigureAwait(false);}catch(OperationCanceledException){}}
+        sealed class StoppedUiContext:SynchronizationContext
+        {
+            readonly ConcurrentQueue<KeyValuePair<SendOrPostCallback,object>> pending=new ConcurrentQueue<KeyValuePair<SendOrPostCallback,object>>();bool stopped;
+            public override void Post(SendOrPostCallback callback,object state){pending.Enqueue(new KeyValuePair<SendOrPostCallback,object>(callback,state));}
+            public void Stop(){stopped=true;}public void Resume(){stopped=false;}
+            public void PumpUntil(Func<bool> ready,string failure)
+            {
+                var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){
+                    if(stopped)throw new InvalidOperationException("stopped UI context was pumped");
+                    KeyValuePair<SendOrPostCallback,object> work;if(pending.TryDequeue(out work))work.Key(work.Value);else Thread.Sleep(1);
+                    if(watch.ElapsedMilliseconds>3000)throw new TimeoutException(failure);
+                }
+            }
+        }
+        sealed class Gate<T>
+        {
+            public readonly TaskCompletionSource<bool> Entered=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public readonly TaskCompletionSource<T> Release=new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public Task<T> Arrive(){Entered.TrySetResult(true);return Release.Task;}
+        }
+        sealed class HeldApi:IConversationApi
+        {
+            public Gate<string> ChatGate,RecognitionGate;
+            public Task<string> ChatAsync(ConnectionSettings s,IList<ChatMessage> m,CancellationToken c){return ChatGate==null?Task.FromResult("模型回答"):ChatGate.Arrive();}
+            public Task<string> TranscribeAsync(ConnectionSettings s,byte[] wav,CancellationToken c){return RecognitionGate==null?Task.FromResult("识别文字"):RecognitionGate.Arrive();}
+            public Task<byte[]> SpeechAsync(ConnectionSettings s,string voice,string text,CancellationToken c){return Task.FromResult(WaveData.EncodePcm(new byte[16000]));}
+            public void Dispose(){}
+        }
+        sealed class HeldSpeech:IReplySpeech
+        {
+            public Gate<bool> Gate;
+            public Task SpeakAsync(string reply,PetSettings cfg,CancellationToken c){return Gate==null?Task.FromResult(true):Gate.Arrive();}
+            public void SetVolume(int volume){}public void Stop(){}public void Dispose(){}
+        }
+        sealed class HeldRecorder:IAudioRecorder
+        {
+            public Gate<byte[]> FinishGate;public bool Disposed;public bool IsRecording{get{return !Disposed;}}
+            public void Start(){}public Task<byte[]> FinishAsync(){return FinishGate==null?Task.FromResult(WaveData.EncodePcm(new byte[16000])):FinishGate.Arrive();}
+            public void Dispose(){Disposed=true;}
+        }
         sealed class FakeApi:IConversationApi {
             public int Delay,ChatCalls,RecognitionCalls;public bool IgnoreCancel;public IList<ChatMessage> Messages;public string RecognitionUrl;
             public async Task<string> ChatAsync(ConnectionSettings s,IList<ChatMessage> m,CancellationToken c){ChatCalls++;Messages=m;if(Delay>0)await Task.Delay(Delay,IgnoreCancel ? CancellationToken.None:c);return "模型回答";}
