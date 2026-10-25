@@ -138,9 +138,28 @@ namespace Dafeiyu.Tests
             Check(result.Results.Single(x=>x.HolidayId=="mid-autumn").Status==HolidayKeepsakeStatus.ResourceUnavailable&&result.Results.Single(x=>x.HolidayId=="national-day").Status==HolidayKeepsakeStatus.Saved,"One missing source cannot suppress valid candidate");
             source=new Source{BadHoliday="mid-autumn"};runtime=Runtime(Fresh("bad-partial"),source,Overlap());result=Observe(runtime,"2025-10-06",catalog);
             Check(result.Results.Count(x=>x.Status==HolidayKeepsakeStatus.Saved)==1,"One malformed scene cannot suppress valid candidate");
-            path=Fresh("json-failure");runtime=Runtime(path,null,Overlap());Observe(runtime,"2025-10-05",new HolidayCatalog(new OutfitDefinition[0]));
+            int failedSaveSceneReads=0;source=new Source{BeforeOpen=holiday=>failedSaveSceneReads++};
+            path=Fresh("json-failure");runtime=Runtime(path,source,Overlap());Observe(runtime,"2025-10-05",new HolidayCatalog(new OutfitDefinition[0]));
             string state=Path.Combine(path,"commemorations/holiday-state.json"),before=File.ReadAllText(state);notifications=0;runtime.Changed+=id=>notifications++;
-            using(var held=new FileStream(state,FileMode.Open,FileAccess.Read,FileShare.Read))result=Observe(runtime,"2025-10-06",catalog);
+            if(Environment.OSVersion.Platform==PlatformID.Win32NT){
+                using(var held=new FileStream(state,FileMode.Open,FileAccess.Read,FileShare.Read))result=Observe(runtime,"2025-10-06",catalog);
+            }else{
+#if NET10_0_OR_GREATER
+                if(OperatingSystem.IsWindows())throw new InvalidOperationException("Unix write-permission fixture required.");
+                string stateDirectory=Path.GetDirectoryName(state);
+                Directory.CreateDirectory(Path.Combine(stateDirectory,"scenes"));
+                var originalMode=File.GetUnixFileMode(stateDirectory);
+                try{
+                    // Read the valid ledger and publish scenes in the writable
+                    // child directory, then fail the JSON Save's temporary write.
+                    File.SetUnixFileMode(stateDirectory,originalMode&~(UnixFileMode.UserWrite|UnixFileMode.GroupWrite|UnixFileMode.OtherWrite));
+                    result=Observe(runtime,"2025-10-06",catalog);
+                }finally{File.SetUnixFileMode(stateDirectory,originalMode);}
+#else
+                throw new PlatformNotSupportedException("This Unix fixture requires the portable .NET runtime.");
+#endif
+            }
+            Check(failedSaveSceneReads==2,"JSON failure is injected after the valid ledger read and both scene reads");
             Check(result.Status==HolidayKeepsakeObservationStatus.StorageUnavailable&&result.Results.Count==0&&notifications==0,"Atomic JSON failure reports no Saved or notifications");
             Check(File.ReadAllText(state)==before&&runtime.LoadAsync("official:e-bao").Result.Records.Count==0,"JSON failure preserves prior state");
             Check(Observe(runtime,"2025-10-07",catalog).Results.Single().HolidayId=="national-day","Fresh retry cannot backfill ended mid-autumn");

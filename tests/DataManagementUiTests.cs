@@ -82,7 +82,17 @@ namespace Dafeiyu.Tests
                 var reservation=pet.DataMaintenance.BeginAsync();Wait(reservation);using(reservation.Result){cfg.X=666;pet.SaveSettings();}
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){var flush=pet.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.Scale==1.25&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Scale==1.25,"later WPF autosave failure never reports durable reset rolled back");}
                 Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==666,"later WPF autosave failure remains retryable");
-                cfg.Scale=1.7;using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=555;pet.SaveSettings();Wait(Operation(d));Check(cfg.Scale==1.7&&Find<TextBlock>(d,"DataActionStatus").Text.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&Find<TextBlock>(d,"DataActionStatus").Text.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately");Capture(d,Path.Combine(root,"reset-save-failure.png"));});
+                cfg.Scale=1.7;var resetEntered=new TaskCompletionSource<bool>();var releaseReset=new TaskCompletionSource<bool>();
+                using(pet.DataMaintenance.Register(()=>{resetEntered.TrySetResult(true);return releaseReset.Task;}))
+                using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){
+                    try{Dialog(reset,d=>{
+                        Click(Find<Button>(d,"ConfirmDataAction"));
+                        try{Wait(resetEntered.Task);Check(pet.DataMaintenance.IsMaintenanceActive&&!Operation(d).IsCompleted,"failed reset reserves maintenance before arriving position autosave");cfg.X=555;pet.SaveSettings();}
+                        finally{releaseReset.TrySetResult(true);}
+                        Wait(Operation(d));string status=Find<TextBlock>(d,"DataActionStatus").Text;
+                        Check(cfg.Scale==1.7&&status.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&status.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately: scale="+cfg.Scale+" status="+status);Capture(d,Path.Combine(root,"reset-save-failure.png"));
+                    });}finally{releaseReset.TrySetResult(true);}
+                }
                 Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==555&&cfg.Scale==1.7,"failed WPF reset retains latest position for retry");
                 CaptureStates(host,root,"data",false);
                 foreach(var action in new[]{clear,reset})Dialog(action,d=>{CaptureStates(d,root,action==clear?"clear-confirm":"reset-confirm",true);foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+name);Check(!button.IsDefault,"maintenance confirmation has no Enter default "+name);}});

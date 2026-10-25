@@ -70,7 +70,7 @@ namespace Dafeiyu.Tests
                 var motion=new SmoothMotion(skin);
                 for(int action=0;action<IllustratedPack.Actions.Length;action++) {
                     string name=IllustratedPack.Actions[action];
-                    double expected=name=="running-right" || name=="running-left" ? 1.76 : name=="jumping" || name=="landing" || name=="poked" ? 1 : name=="sleeping" ? 3.2 : name=="special" ? 2 : 1.6;
+                    double expected=name=="idle" ? 2 : name=="running-right" || name=="running-left" ? 1.76 : name=="jumping" || name=="landing" || name=="poked" ? 1 : name=="sleeping" ? 3.2 : name=="special" ? 2 : 1.6;
                     var clip=motion.Get(action<9?action:action+2);
                     Check(clip.Count==8 && Math.Abs(clip.Duration-expected)<1e-8,"bundled runtime honors selected eight-frame duration: "+name);
                 }
