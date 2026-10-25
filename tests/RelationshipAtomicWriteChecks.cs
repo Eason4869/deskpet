@@ -10,6 +10,7 @@ namespace Dafeiyu.Tests
     {
         const string Id="official:e-bao";
         static readonly RelationshipTime Time=RelationshipFixture.Time("2026-10-25T12:00:00Z");
+        static bool WindowsSharing {get{return Environment.OSVersion.Platform==PlatformID.Win32NT;}}
         [System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode,SetLastError=true)]
         [return:System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
         static extern bool CreateSymbolicLink(string link,string target,int flags);
@@ -44,6 +45,7 @@ namespace Dafeiyu.Tests
         }
         internal static void Ledger()
         {
+            LedgerNeutral();if(!WindowsSharing){Console.WriteLine("SKIP Win32 ledger delete-sharing and partial-replace mechanism; platform-neutral ledger contracts passed");return;}
             using(var f=new RelationshipFixture()){
                 Directory.CreateDirectory(f.Store.FilePath);Check(!f.Service.Record(Id,RelationshipEventType.Visit,"first-refused",Time).Success,"failed first creation never claims a saved ledger");Directory.Delete(f.Store.FilePath);
                 Check(f.Service.GetSnapshot(Id).State==null&&f.Service.Record(Id,RelationshipEventType.Visit,"first-refused",Time).AwardedPoints==2,"known failed first creation cleans only its uncommitted candidate and can retry");
@@ -83,6 +85,7 @@ namespace Dafeiyu.Tests
         }
         internal static void Pending()
         {
+            PendingNeutral();if(!WindowsSharing){Console.WriteLine("SKIP Win32 pending delete-sharing and partial-replace mechanism; platform-neutral pending contracts passed");return;}
             using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
                 string blocked=Path.Combine(f.Root,"relationships/pending.json");Directory.CreateDirectory(blocked);runtime.Record(Id,RelationshipEventType.Visit,"first-refused",Time);Check(runtime.Warning!=""&&runtime.PendingCount==1,"first outbox creation failure remains pending");Directory.Delete(blocked);runtime.RetryPending();Check(runtime.Warning==""&&runtime.PendingCount==0&&f.Service.GetSnapshot(Id).State.Score==2,"known failed first outbox creation remains retryable");
             }
@@ -108,6 +111,7 @@ namespace Dafeiyu.Tests
         }
         internal static void Holiday()
         {
+            HolidayNeutral();if(!WindowsSharing){Console.WriteLine("SKIP Win32 holiday delete-sharing and partial-replace mechanism; platform-neutral holiday contracts passed");return;}
             using(var f=new RelationshipFixture()){
                 var store=new HolidayKeepsakeStore(f.Root);using(store.Acquire())store.Save(new HolidayKeepsakeData());string path=Path.Combine(f.Root,"commemorations/holiday-state.json");
                 TransientReader(path,delegate{using(store.Acquire())store.Save(store.Load());});byte[] before=File.ReadAllBytes(path);bool refused=false;
@@ -123,6 +127,7 @@ namespace Dafeiyu.Tests
         }
         internal static void PostLedgerRetirement()
         {
+            if(!WindowsSharing){Console.WriteLine("SKIP Win32 post-ledger delete-sharing transition; persisted replay contracts remain shared");return;}
             using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
                 runtime.Record(Id,RelationshipEventType.Visit,"seed",Time);string pending=Path.Combine(f.Root,"relationships/pending.json");
                 FileStream ledger=new FileStream(f.Store.FilePath,FileMode.Open,FileAccess.Read,FileShare.Read),outbox=null;int writer=Thread.CurrentThread.ManagedThreadId;bool switched=false;
@@ -135,6 +140,39 @@ namespace Dafeiyu.Tests
                 Check(callbacks==0&&runtime.PendingCount==1&&runtime.Warning!="","failed post-ledger retirement retains its head without premature callback");
                 runtime.RetryPending();Check(callbacks==1&&award==2&&runtime.PendingCount==0&&runtime.Warning=="","retirement recovery publishes the original award exactly once");
                 runtime.RetryPending();Check(callbacks==1&&f.Service.GetSnapshot(Id).State.Score==4&&f.Service.GetSnapshot(Id).State.Receipts.Count==2,"retirement retry cannot accept or notify the event twice");
+            }
+        }
+        internal static void PlatformNeutral()
+        {LedgerNeutral();PendingNeutral();HolidayNeutral();Console.WriteLine("PASS platform-neutral atomic contracts on actual host "+Environment.OSVersion.Platform+"; no alternate-OS execution claimed");}
+        static void LedgerNeutral()
+        {
+            using(var f=new RelationshipFixture()){
+                Directory.CreateDirectory(f.Store.FilePath);Check(!f.Service.Record(Id,RelationshipEventType.Visit,"first",Time).Success,"shared failed first ledger creation remains failure");Directory.Delete(f.Store.FilePath);
+                Check(f.Service.Record(Id,RelationshipEventType.Visit,"first",Time).Success,"shared first ledger retry saves one event");Check(f.Service.Record(Id,RelationshipEventType.Visit,"first",Time).AwardedPoints==0,"shared persisted ledger replay is deduplicated");
+                string candidate=Path.Combine(Path.GetDirectoryName(f.Store.FilePath),".state-"+Guid.NewGuid().ToString("N")+".tmp");File.Move(f.Store.FilePath,candidate);byte[] bytes=File.ReadAllBytes(candidate);bool refused=false;try{f.Service.GetSnapshot(Id);}catch(IOException){refused=true;}
+                Check(refused&&File.ReadAllBytes(candidate).SequenceEqual(bytes)&&!f.Service.Record(Id,RelationshipEventType.Visit,"new",Time).Success,"shared missing authoritative ledger preserves orphan and refuses defaults");
+            }
+            using(var f=new RelationshipFixture()){
+                string directory=Path.Combine(f.Root,"relationships");Directory.CreateDirectory(directory);File.WriteAllText(Path.Combine(directory,".state-unrelated.tmp"),"unrelated");Check(f.Service.GetSnapshot(Id).State==null,"shared fresh ledger ignores uncontrolled names");
+                string candidate=Path.Combine(directory,".state-"+Guid.NewGuid().ToString("N")+".tmp");File.WriteAllText(candidate,"interrupted first creation");Check(!f.Service.Record(Id,RelationshipEventType.Visit,"first",Time).Success&&File.ReadAllText(candidate)=="interrupted first creation","shared interrupted first creation is protected");
+            }
+        }
+        static void PendingNeutral()
+        {
+            using(var f=new RelationshipFixture()){
+                using(var runtime=new RelationshipRuntime(f.Root)){string path=Path.Combine(f.Root,"relationships/pending.json");Directory.CreateDirectory(path);runtime.Record(Id,RelationshipEventType.Visit,"first",Time);Check(runtime.Warning!=""&&runtime.PendingCount==1,"shared first pending creation failure remains pending");Directory.Delete(path);runtime.RetryPending();Check(runtime.PendingCount==0&&f.Service.GetSnapshot(Id).State.Score==2,"shared first pending retry succeeds");}
+                using(var runtime=new RelationshipRuntime(f.Root)){runtime.Record(Id,RelationshipEventType.Visit,"first",Time);Check(f.Service.GetSnapshot(Id).State.Score==2&&f.Service.GetSnapshot(Id).State.Receipts.Count==1,"shared persisted pending replay remains deduplicated");}
+            }
+            using(var f=new RelationshipFixture()){
+                string directory=Path.Combine(f.Root,"relationships");Directory.CreateDirectory(directory);string candidate=Path.Combine(directory,Guid.NewGuid().ToString("N")+".pending.tmp");File.WriteAllText(candidate,"[]");using(var runtime=new RelationshipRuntime(f.Root))Check(runtime.RequiresRestart&&File.ReadAllText(candidate)=="[]"&&!File.Exists(Path.Combine(directory,"pending.json")),"shared orphan pending candidate blocks empty initialization");
+            }
+        }
+        static void HolidayNeutral()
+        {
+            using(var f=new RelationshipFixture()){
+                var store=new HolidayKeepsakeStore(f.Root);Check(store.Load().Records.Count==0,"shared fresh holiday state remains empty");string path=Path.Combine(f.Root,"commemorations/holiday-state.json");Directory.CreateDirectory(path);bool failed=false;
+                try{using(store.Acquire())store.Save(new HolidayKeepsakeData());}catch(IOException){failed=true;}Directory.Delete(path);using(store.Acquire())store.Save(new HolidayKeepsakeData());Check(failed&&store.Load().Records.Count==0,"shared first holiday creation failure can retry");
+                string candidate=Path.Combine(Path.GetDirectoryName(path),".state-"+Guid.NewGuid().ToString("N")+".tmp");File.Move(path,candidate);byte[] bytes=File.ReadAllBytes(candidate);bool refused=false;try{store.Load();}catch(IOException){refused=true;}Check(refused&&File.ReadAllBytes(candidate).SequenceEqual(bytes),"shared orphan holiday candidate never becomes an empty album");
             }
         }
     }
