@@ -76,7 +76,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 [Files]
 Source: "%s\\*"; DestDir: "{app}"
 '''%(APP_ID,VERSION,installation,MUTEX,ROOT,runtime),encoding='utf-8-sig')
-run([INNO,'/Qp',iss]);run([ROOT/'OwnedSetup.exe','/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART','/DIR='+str(installation),'/LOG='+str(ROOT/'install.log')])
+# Compressing the full illustrated fixture can exceed 90s; runtime deadlines stay unchanged.
+run([INNO,'/Qp',iss],seconds=180);run([ROOT/'OwnedSetup.exe','/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART','/DIR='+str(installation),'/LOG='+str(ROOT/'install.log')])
 check(registered(),'real unique registration exists')
 data.mkdir(exist_ok=True)
 for relative in ['history/retained.history','relationships/retained.json','relationships/receipts.json','commemorations/portraits/retained.png','preserved-attachments/original.png']:

@@ -16,6 +16,9 @@ import time
 import uuid
 import winreg
 
+# Owned installation paths include Unicode even on CI's legacy console code page.
+sys.stdout.reconfigure(encoding='utf-8')
+
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
 from worker_fixture import compile_sources, VERSION, COMMIT, numeric, CSC
