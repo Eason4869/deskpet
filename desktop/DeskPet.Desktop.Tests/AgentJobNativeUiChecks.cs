@@ -27,7 +27,20 @@ internal static class AgentJobNativeUiChecks
         {
             Check(window.TryGetPlatformHandle()?.HandleDescriptor=="HWND","task panel uses an actual native Avalonia Windows window");
             var watch=Stopwatch.StartNew();var job=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-preview",command);Check(watch.ElapsedMilliseconds<2000,"native server task hands off within two seconds");
-            await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");AgentJobUiChecks.All<Expander>(panel).Single().IsExpanded=true;
+            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");}
+            catch(TimeoutException error)
+            {
+                string diagnostic;
+                try
+                {
+                    var page=await owner.WorkBindings.Jobs.Manager.GetAsync(job.Owner,job.Id,"",16384,CancellationToken.None);
+                    diagnostic=JsonSerializer.Serialize(new{ready=File.Exists(ready),attached=panel.Attached,cards=AgentJobUiChecks.All<Expander>(panel).Count(),state=page.Snapshot.State.ToString(),exitCode=page.Snapshot.RootExitCode,shell=AgentCommandExecutor.PowerShellPath(),output=page.Records.Select(record=>new{record.Stream,record.Text})});
+                }
+                catch(Exception failure){diagnostic="Could not read fixture job: "+failure;}
+                File.WriteAllText(Path.Combine(output,"server-readiness-failure.json"),diagnostic);
+                throw new TimeoutException(error.Message+": "+diagnostic,error);
+            }
+            AgentJobUiChecks.All<Expander>(panel).Single().IsExpanded=true;
             // Chromium may open an idle preconnection before its HTTP request.
             // Keep one open throughout the browser check so it cannot starve GET.
             using var idleConnection=new TcpClient();await idleConnection.ConnectAsync(IPAddress.Loopback,port);
