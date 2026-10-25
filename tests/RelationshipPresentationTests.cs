@@ -35,8 +35,11 @@ namespace Dafeiyu.Tests
             cardSnapshot.State.FirstLocalDate="bad";Check(earnedDays.GetValue(RelationshipCardData.FromSnapshot(cardSnapshot,"familiar","Companion"),null)==null,"invalid first date omits acquaintance span");
             var restart=typeof(ApplicationRestart).GetMethod("StartInfo",new[]{typeof(string),typeof(string),typeof(bool)});
             Check(restart!=null,"safe restart supports an explicit onboarding resume reason");
-            var recovery=(System.Diagnostics.ProcessStartInfo)restart.Invoke(null,new object[]{@"C:\Program Files\dotnet\dotnet.exe",@"C:\Desk Pet\DeskPet.dll",false});
-            Check(recovery.Arguments=="\"C:\\Desk Pet\\DeskPet.dll\"","relationship recovery quotes the DLL and does not resume onboarding");
+            string restartRoot=Path.Combine(Path.GetTempPath(),"Desk Pet Restart");
+            string dotnetHost=Path.Combine(restartRoot,Environment.OSVersion.Platform==PlatformID.Win32NT?"dotnet.exe":"dotnet");
+            string entryDll=Path.Combine(restartRoot,"DeskPet.dll");
+            var recovery=(System.Diagnostics.ProcessStartInfo)restart.Invoke(null,new object[]{dotnetHost,entryDll,false});
+            Check(recovery.Arguments=="\""+entryDll+"\""&&recovery.WorkingDirectory==restartRoot,"relationship recovery quotes the DLL and does not resume onboarding");
             Check(ApplicationRestart.StartInfo(@"C:\App\DeskPet.exe",@"C:\App\DeskPet.dll").Arguments==ApplicationRestart.ResumeArgument,"existing default restart still resumes onboarding");
             ApplicationRestart.Request(false);Check(ApplicationRestart.Requested&&ApplicationRestart.StartInfo(@"C:\App\DeskPet.exe",@"C:\App\DeskPet.dll").Arguments=="","actual recovery restart request uses normal launch without guide flag");
             ApplicationRestart.Requested=false;ApplicationRestart.Requested=true;Check(ApplicationRestart.StartInfo(@"C:\App\DeskPet.exe",@"C:\App\DeskPet.dll").Arguments==ApplicationRestart.ResumeArgument,"a later existing onboarding request resets recovery restart reason");ApplicationRestart.Requested=false;

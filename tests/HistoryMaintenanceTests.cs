@@ -34,7 +34,10 @@ namespace Dafeiyu.Tests
                 await runtime.Enqueue(pet,RelationshipEventType.CompletedConversation,"retained-event",time);Console.WriteLine("HISTORY_REL_SEED root="+root+" worker="+runtime.FlushAsync().Status+" pending="+runtime.PendingCount+" warning="+runtime.Warning+" restart="+runtime.RequiresRestart+" maintenance="+gate.IsMaintenanceActive);inventory();Check(runtime.Warning.Length==0,"relationship fixture failed: "+root);
                 phase="milestone claim and settings";Check(runtime.Service.ClaimMilestone(pet,"first_meeting").ClaimedNotification,"real earned milestone fixture missing");
                 Check((await new RelationshipHomeModel(runtime).UpdateSettingsAsync(true,false,false)).Success,"relationship settings fixture failed");
-                phase="expected held-state write failure";using(var held=File.Open(Path.Combine(root,"relationships/state.json"),FileMode.Open,FileAccess.Read,FileShare.Read))await runtime.Enqueue(pet,RelationshipEventType.CompletedConversation,"pending-event",time.AddSeconds(2));
+                // Unix permits unlink/rename of a read-shared file. An exclusive
+                // read lock instead makes the ledger unavailable without blocking
+                // the independent pending-event file; Windows keeps its save failure.
+                phase="expected held-state failure";using(var held=File.Open(Path.Combine(root,"relationships/state.json"),FileMode.Open,FileAccess.Read,Environment.OSVersion.Platform==PlatformID.Win32NT?FileShare.Read:FileShare.None))await runtime.Enqueue(pet,RelationshipEventType.CompletedConversation,"pending-event",time.AddSeconds(2));
                 Check(runtime.PendingCount==1&&runtime.Warning.Length>0,"actual blocked save did not retain pending event");
                 phase="cache history and preferences preservation";var before=Directory.GetFiles(Path.Combine(root,"relationships")).ToDictionary(p=>p,p=>File.ReadAllBytes(p));
                 Action unchanged=()=>{foreach(var file in before)Check(File.ReadAllBytes(file.Key).SequenceEqual(file.Value),"actual relationship data changed: "+Path.GetFileName(file.Key));};
@@ -108,10 +111,16 @@ namespace Dafeiyu.Tests
                 string root=Root();var gate=new DataMaintenanceGate();var store=new HistoryStore(Path.Combine(root,"history"));await Seed(store.DirectoryPath,"first");await Seed(store.DirectoryPath,"second");
                 using(var session=Session(gate,store)){
                     session.SelectPersona("first");session.SelectPersona("second");string retained=store.MaintenancePath("first");byte[] before=File.ReadAllBytes(retained);
+                    var retainedBefore=new HistoryStore(store.DirectoryPath).Load("first").Select(m=>new{m.Id,m.Role,m.Content,m.Status,m.Timestamp}).ToArray();
                     using(var locked=new FileStream(retained,FileMode.Open,FileAccess.Read,FileShare.Read)){
                         var result=await new HistoryMaintenanceService(root,gate).ClearAllAsync();Check(result.Status==HistoryMaintenanceStatus.Partial&&result.RemovedFiles==1,"in-use history was not partial");Check(session.History.Messages.Count==0,"removed cached history remains");await session.SaveHistoryForCloseAsync();Check(new HistoryStore(store.DirectoryPath).Load("second").Count==0,"close recreated cleared second persona");
                     }
-                    Check(File.ReadAllBytes(retained).SequenceEqual(before),"failed removal changed original");
+                    // Unix can replace a read-shared file when normal close saves
+                    // the retained cache, producing a new encryption nonce. The
+                    // original transcript must still be intact on every platform.
+                    Check(new HistoryStore(store.DirectoryPath).Load("first").Select(m=>m.Content).SequenceEqual(new[]{"private transcript","private answer"}),"failed removal lost retained transcript");
+                    Check(new HistoryStore(store.DirectoryPath).Load("first").Select(m=>new{m.Id,m.Role,m.Content,m.Status,m.Timestamp}).SequenceEqual(retainedBefore),"failed removal changed retained message identity or metadata");
+                    if(Environment.OSVersion.Platform==PlatformID.Win32NT)Check(File.ReadAllBytes(retained).SequenceEqual(before),"failed removal changed original");
                 }
             });
             Run("failed real checkpoint storage preserves unsaved guidance and never claims successful drain",async()=>{
