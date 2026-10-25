@@ -1,6 +1,6 @@
-﻿[简体中文](README.md) | [English](README.en.md)
+[简体中文](README.md) | [English](README.en.md)
 
-In development: the 0.11.0-dev.1 [companion, relationship and maintenance guide](docs/companion-relationship/user-guide.en.md). This source version is not released; download links below continue to refer to published versions.
+Source preview: the 0.11.0-dev.1 [companion, relationship and maintenance guide](docs/companion-relationship/user-guide.en.md) and [local acceptance snapshot](docs/companion-relationship/acceptance.md). No corresponding binary Release is published; download links below still refer to published versions.
 
 <div align="center">
   <picture>

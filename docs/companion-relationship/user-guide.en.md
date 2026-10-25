@@ -2,11 +2,13 @@
 
 [简体中文](user-guide.md) · [Feature entry matrix](feature-entry-matrix.md) · [Schemas and identity](schema-and-packs.md)
 
-This guide describes the `0.11.0-dev.1` development source. Candidate packages, installation/upgrade, macOS hardware and remote publication have separate acceptance gates. This is not a release announcement.
+This guide describes the `0.11.0-dev.1` source preview. The [local acceptance snapshot](acceptance.md) records Windows candidate checks and platform limits; macOS hardware remains unverified. A source tag is not a binary Release.
 
 ## Open home and find features
 
 Open the current companion information row in the main window’s lower-left avatar menu. Companion home uses the same window and preserves the previous chat draft when you return. It shows the selected companion’s original artwork, introduction, saved relationship, rules and keepsakes. Long introductions and stage messages can expand; changing companions changes the identity, portrait, score and album together.
+
+The left card shows the complete raw illustration for the highest earned stage above the avatar, name and biography. An official companion with no saved relationship starts with introductory first-meeting art; this creates no points, date or acquired keepsake. Custom companions and unreadable new profiles use their own safe portrait fallback, while a same-identity last successful snapshot may remain during a read warning. The saved stage welcome appears after the statistics in the right relationship card.
 
 Windows settings search finds the companion, relationship, cache, history and default-preference entries and navigates to the actual category/subpage. Search does not perform clearing, reset or uninstall. The native interface retains explicit companion-home, General data-management and About/cache entry points; it does not acquire a separate global search feature.
 

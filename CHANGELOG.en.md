@@ -1,16 +1,17 @@
-﻿# Changelog
+# Changelog
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 0.11.0-dev.1 — Development source (not released)
+## 0.11.0-dev.1 — Source preview (no binary Release published)
 
-Based on the explicitly selected v0.10.5-dev.3. Final candidate installation, full regression, macOS hardware and remote publication have separate gates. This entry does not announce a downloadable 0.11 preview.
+Based on the explicitly selected v0.10.5-dev.3. See the [local acceptance snapshot](docs/companion-relationship/acceptance.md) for Windows candidates and complete regressions; macOS hardware remains unverified. A source tag does not announce a downloadable binary Release.
 
 - Adds companion home within the existing main window, a per-identity relationship ledger, stage welcomes and actual user-interaction responses while preserving persona priority, drafts and navigation. Encounters, interactions, completed conversations and successful root work tasks settle saved facts, capped at 20 points daily; old chats/background recovery do not reconstruct rewards.
+- The left profile card shows a complete raw scene with name and biography. Official companions start with introductory first-meeting artwork, then use their highest earned stage; the stage welcome stays in the right relationship card. Introductory art creates no score or keepsake record.
 - Relationship controls pause growth or disable feedback/AI stage context. Passive combined feedback does not steal focus or replay stale notices. Original artwork, a readable right-side gradient, stage/holiday ornaments and full 800×480 keepsake PNGs retain real dates and explicit cancellation/failure behavior.
 - Holiday albums distinguish locked previews from owned cards. Only Halloween from 2026 is currently collectible through a real eligible local-date encounter and trusted identity, deduplicated annually with the original scene retained. No extra affection/outfit grant, cross-date retry or retrospective collection.
 - Cache cleaning protects active/uncertain resources. History clearing retains drafts, images, attachments, relationships and project facts, with retained attachments available after restart. Preference reset preserves language, model credentials, personas, update channel and onboarding. Uninstall confirms within the app; cancellation, Escape, close and preparation failure keep the companion running.
-- Integrates controlled quiet clips for all five built-in companions and official packs while retaining legacy atlases, identity and saved historical cards. Final versioned companion packages remain a candidate acceptance task.
+- Updates all five complete companion packs to 0.11.0-dev.1 while retaining legacy atlases, stable identity and saved historical cards. All 30 quiet clips have eight frames: idle at 4FPS / 2 seconds and both sleeping variants at 2.5FPS / 3.2 seconds, with original pixels checked against final packages.
 - Completes new feature copy in 13 locales, literal resource keys, independent text/format and committed-source provenance, and regenerated title subsets with native Hindi shaping support. All 4507 original values per locale are retained; assistant-authored translations have not received native-human proofreading.
 - Adds settings feature/subpage discovery, recovery feedback, newer-schema protection and bounded default/CI relationship/keepsake coverage. Source display version is 0.11.0-dev.1 and assembly version 0.11.0.0; existing stable/preview channel and stable latest-link semantics are preserved.
 
