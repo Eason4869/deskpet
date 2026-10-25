@@ -32,6 +32,28 @@ namespace Dafeiyu.Tests
                 name.Text="很长的伙伴名字 · A companion with a long localized name";window.Width=260;await Task.Delay(30);Capture(window,Path.Combine(captures,locale+"-"+theme+"-"+kind+"-feedback-narrow.png"));name.Text=original;window.Width=350;
             }
         }
+        static bool StageWordsStayWhole(TextBlock label)
+        {
+            var text=label.Inlines.FirstInline.ContentStart;int start=0;foreach(string word in label.Text.Split(' ')){if(word.Length>0&&Math.Abs(text.GetPositionAtOffset(start).GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward).Y-text.GetPositionAtOffset(start+word.Length-1).GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward).Y)>.5)return false;start+=word.Length+1;}return true;
+        }
+        static async Task StageTrackLayout(string locale)
+        {
+            string root=Path.GetFullPath("work/ui-consistency/stage-track-after/wpf-fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            var settings=new PetSettings{UiLanguage=locale,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",QuietMode=true};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+            pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+            using(var page=new CompanionHomePage(pet)){
+                var window=new Window{Width=locale=="de_DE"?900:1100,Height=960,Content=page};window.Show();
+                try{
+                    await page.RefreshAsync();await Task.Delay(60);page.UpdateLayout();
+                    var track=All<System.Windows.Controls.Primitives.UniformGrid>(page).Single(x=>x.Name=="RelationshipStageNodes");
+                    Check(track.Columns==(locale=="de_DE"?3:6)&&track.Rows==(locale=="de_DE"?2:1),"stage track uses fitting columns in actual "+window.Width+"px home");
+                    foreach(var label in All<TextBlock>(track))Check(StageWordsStayWhole(label),"stage words do not split across rendered lines: "+label.Text);
+                    Console.WriteLine("STAGE_TRACK width="+track.ActualWidth+" columns="+track.Columns+" rows="+track.Rows);
+                    Capture(window,Path.GetFullPath("work/ui-consistency/stage-track-after/wpf-"+locale+"-"+window.Width+".png"));
+                }finally{window.Close();}
+            }
+            Console.WriteLine("StageTrackLayout: "+checks+" passed");
+        }
         static async Task FirstVisit()
         {
             string root=Path.GetFullPath("work/m6a/first-home-wpf-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
@@ -78,6 +100,7 @@ namespace Dafeiyu.Tests
             Check(((Image)entry.Icon).Source==SkinCatalog.GetAvatar(pet.Skin)&&entry.Opacity==1,"profile avatar retains canonical original color");
             entry.Focus();Check(entry.IsKeyboardFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(entry),0,Key.Enter){RoutedEvent=Keyboard.KeyDownEvent});await Task.Delay(80);Check(!menu.IsOpen&&chat.CurrentPage=="companion","profile click closes menu and opens companion route in same window");
             var page=All<CompanionHomePage>(chat).Single();await page.RefreshAsync();page.UpdateLayout();await pet.Relationships.FlushAsync();await page.RefreshAsync();page.UpdateLayout();
+            Check(All<TextBlock>(All<System.Windows.Controls.Primitives.UniformGrid>(page).Single(x=>x.Name=="RelationshipStageNodes")).All(StageWordsStayWhole),"hosted home stage words do not split across rendered lines");
             Check(All<TextBlock>(page).Any(x=>x.Name=="CompanionCurrentWelcome"&&x.Text==RelationshipContent.Welcome(page.View.Snapshot.StageId,pet.RelationshipPack)),"current saved stage has its own truthful welcome message");
             chat.Width=520;chat.Height=880;var narrowRules=All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules");narrowRules.IsExpanded=true;
             foreach(string narrowTheme in new[]{"light","dark"}){
@@ -182,6 +205,6 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("CompanionHomeUiTests: "+checks+" passed");
         }
-        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string locale=args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
+        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string stage=args.SingleOrDefault(x=>x.StartsWith("--stage-track-layout="));string locale=stage!=null?stage.Split('=')[1]:args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(stage!=null)await StageTrackLayout(locale);else if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
     }
 }

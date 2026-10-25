@@ -28,9 +28,23 @@ namespace Dafeiyu
             else if(fraction>0){double angle=fraction*Math.PI*2,x=54+49*Math.Sin(angle),y=54-49*Math.Cos(angle);string path=String.Format(System.Globalization.CultureInfo.InvariantCulture,"M54,5 A49,49 0 {0} 1 {1},{2}",fraction>.5?1:0,x,y);grid.Children.Add(new Path{Data=Geometry.Parse(path),Stroke=Accent,StrokeThickness=8,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round});}
             grid.Children.Add(Icon("heart",32));System.Windows.Automation.AutomationProperties.SetName(grid,TextResources.Get("relationship.home.relation"));return grid;
         }
+        static void FitNodes(UniformGrid panel)
+        {
+            double labelWidth=0;
+            Action update=delegate{if(labelWidth<=0)return;int columns=panel.ActualWidth>=labelWidth*6?6:3;panel.Columns=columns;panel.Rows=6/columns;};
+            panel.Loaded+=delegate{
+                foreach(var label in panel.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>())){
+                    var measure=new TextBlock{Text=label.Text,FontFamily=label.FontFamily,FontSize=label.FontSize,FontWeight=label.FontWeight,FontStyle=label.FontStyle,FontStretch=label.FontStretch,TextWrapping=TextWrapping.NoWrap};
+                    measure.Measure(new Size(Double.PositiveInfinity,Double.PositiveInfinity));labelWidth=Math.Max(labelWidth,measure.DesiredSize.Width+label.Margin.Left+label.Margin.Right);
+                }
+                update();
+            };
+            panel.SizeChanged+=delegate{update();};
+        }
         internal static UniformGrid Nodes(RelationshipProgress progress)
         {
             var panel=new UniformGrid{Columns=6,Rows=1,Margin=new Thickness(0,8,0,0),Name="RelationshipStageNodes"};
+            FitNodes(panel);
             foreach(var node in progress.Nodes){var item=new StackPanel{Margin=new Thickness(0,0,0,6)};var line=new Grid{Height=18};line.Children.Add(new Border{Height=node.Current?5:node.Completed?3:1,Margin=new Thickness(3,0,3,0),Background=node.Completed||node.Current?Accent:ThemeManager.Brush("#C9D2DE"),VerticalAlignment=VerticalAlignment.Center});item.Children.Add(line);var text=Ui.Text(RelationshipContent.StageName(node.StageId),12,node.Current?Accent:AgentUi.Muted);text.TextAlignment=TextAlignment.Center;text.Margin=new Thickness(3,7,3,0);item.Children.Add(text);System.Windows.Automation.AutomationProperties.SetName(item,RelationshipContent.StageName(node.StageId)+": "+(node.Current?TextResources.Get("relationship.home.stageCurrent"):node.Completed?TextResources.Get("relationship.home.stageCompleted"):TextResources.Get("relationship.home.stageLocked")));panel.Children.Add(item);}return panel;
         }
         internal static FrameworkElement Stat(string icon,string label,string value,string name){var grid=new Grid{Margin=new Thickness(0,6,0,6)};grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(48)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.Children.Add(new Border{Width=36,Height=36,CornerRadius=new CornerRadius(11),Background=ThemeManager.Brush("#EDF3FF"),Child=Icon(icon),HorizontalAlignment=HorizontalAlignment.Left});var words=new StackPanel();words.Children.Add(Ui.Text(label,12,AgentUi.Muted));var text=Ui.Text(value,22,AgentUi.Ink);text.FontWeight=FontWeights.SemiBold;text.Name=name;words.Children.Add(text);Grid.SetColumn(words,1);grid.Children.Add(words);return grid;}

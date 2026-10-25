@@ -45,6 +45,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(a=>a.StartsWith("--stage-track-layout="))){Console.WriteLine("StageTrackLayout: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"stage-track"),args.Single(a=>a.StartsWith("--stage-track-layout=")).Split('=')[1])+" passed");return;}
     if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
     if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}
     if(args.Contains("--quiet-installed")){Console.WriteLine("QuietInstalled: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet-installed"),true)+" passed");return;}

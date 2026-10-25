@@ -14,6 +14,26 @@ using DeskPet.Desktop;
 
 internal static class CompanionHomeUiChecks
 {
+    static bool StageWordsStayWhole(TextBlock label)
+    {
+        int start=0;foreach(string word in label.Text!.Split(' ')){if(word.Length>0&&Math.Abs(label.TextLayout.HitTestTextPosition(start).Y-label.TextLayout.HitTestTextPosition(start+word.Length-1).Y)>.5)return false;start+=word.Length+1;}return true;
+    }
+    internal static int RunStageTrackLayout(string directory,string language)
+    {
+        int checks=0;void Check(bool value,string text){if(!value)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
+        void Complete(Task task){var timer=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(timer.ElapsedMilliseconds>15000)throw new TimeoutException("Stage track fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=language,OnboardingState="completed",AutoUpdate=false,QuietMode=true});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));using var page=new CompanionHomePage(owner);
+        var window=new Window{Width=language=="de_DE"?900:1100,Height=960,Content=page};window.Show();
+        try{
+            Complete(page.RefreshAsync());Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();Dispatcher.UIThread.RunJobs();
+            var track=page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Single(x=>x.Name=="RelationshipStageNodes");
+            Check(track.Columns==(language=="de_DE"?3:6)&&track.Rows==(language=="de_DE"?2:1),"stage track uses fitting columns in actual "+window.Width+"px home");
+            foreach(var label in track.Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()))Check(StageWordsStayWhole(label),"stage words do not split across rendered lines: "+label.Text);
+            Console.WriteLine("STAGE_TRACK width="+track.Bounds.Width+" columns="+track.Columns+" rows="+track.Rows);
+            string output=Path.GetFullPath("work/ui-consistency/stage-track-after");Directory.CreateDirectory(output);using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(output,"native-"+language+"-"+window.Width+".png"),new PngBitmapEncoderOptions());
+        }finally{window.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}return checks;
+    }
     internal static int RunFirstVisit(string directory)
     {
         int checks=0;void Check(bool value,string text){if(!value)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
@@ -118,6 +138,7 @@ internal static class CompanionHomeUiChecks
             Check(entry.Icon is AvatarView a&&ReferenceEquals(a.Skin,owner.Skin)&&entry.Opacity==1,"original-color canonical avatar");
             entry.Focus();Check(entry.IsFocused,"profile accepts real keyboard focus");entry.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Key=Key.Enter});Dispatcher.UIThread.RunJobs();
             var page=chat.GetLogicalDescendants().OfType<CompanionHomePage>().Single();Complete(owner.Relationships.FlushAsync());Complete(page.RefreshAsync());
+            Check(page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Single(x=>x.Name=="RelationshipStageNodes").Children.OfType<StackPanel>().SelectMany(item=>item.Children.OfType<TextBlock>()).All(StageWordsStayWhole),"hosted home stage words do not split across rendered lines");
             Check(page.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.Name=="CompanionCurrentWelcome"&&x.Text==RelationshipContent.Welcome(page.View!.Progress.StageId,owner.RelationshipPack)),"current saved stage has its own truthful welcome message");
             chat.Width=1320;chat.Height=1040;DesktopTheme.Apply("dark");Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();string firstCapture=Path.GetFullPath("work/relationship-validation/f3/avalonia/first-home-dark.png");Directory.CreateDirectory(Path.GetDirectoryName(firstCapture)!);using(var firstFrame=chat.CaptureRenderedFrame())firstFrame!.Save(firstCapture,new PngBitmapEncoderOptions());Console.WriteLine("FIRST_ACTUAL_SCREENSHOT "+firstCapture);
             var fixCaptures=Path.GetFullPath(Path.Combine("work","relationship-validation","f3","fix1","avalonia"));Directory.CreateDirectory(fixCaptures);chat.Width=390;chat.Height=880;Named<Expander>(page,"CompanionGrowthRules").IsExpanded=true;

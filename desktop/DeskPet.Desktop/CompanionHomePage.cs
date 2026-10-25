@@ -145,7 +145,6 @@ Name="CompanionHomePage";
             updateLayout=delegate{
                 double viewport=Viewport.Width>0?Viewport.Width:Bounds.Width;double width=Math.Min(1080,Math.Max(0,viewport-(Bounds.Width<600?32:56)));bool wide=width>=760;body.Margin=new Thickness(Bounds.Width<600?16:28,24,Bounds.Width<600?16:28,28);
                 Grid.SetColumn(relationBox,wide?1:0);Grid.SetRow(relationBox,wide?0:1);Grid.SetColumnSpan(profileBox,wide?1:2);Grid.SetColumnSpan(relationBox,wide?1:2);relationBox.Margin=new Thickness(wide?22:0,wide?0:16,0,0);
-                if(nodes!=null){nodes.Columns=wide?6:3;nodes.Rows=wide?1:2;}
                 if(progressRow!=null){bool tiny=width<340;var words=(Control)progressRow.Children[1];Grid.SetColumn(words,tiny?0:1);Grid.SetRow(words,tiny?1:0);Grid.SetColumnSpan(words,tiny?2:1);words.Margin=new Thickness(tiny?0:18,tiny?12:0,0,0);}
                 double profileWidth=wide?width*.55-44:width-44;bool compactPortrait=profileWidth<380;profileContent.ColumnDefinitions[0].Width=new GridLength(compactPortrait?112:160);portraitView.Height=compactPortrait?216:230;portraitView.Margin=new Thickness(0,0,compactPortrait?12:20,0);
                 if(stats!=null){bool horizontal=wide?width*.45-66>=370:width-44>=370;stats.Orientation=horizontal?Orientation.Horizontal:Orientation.Vertical;foreach(Control stat in stats.Children)stat.Width=horizontal?(wide?width*.45-66:width-44)/3:Double.NaN;}
