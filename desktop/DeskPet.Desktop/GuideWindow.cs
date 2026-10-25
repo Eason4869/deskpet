@@ -133,7 +133,7 @@ internal sealed class GuideWindow : Window
     private void BuildLanguagePage()
     {
         var choices=new ComboBox{Name="GuideLanguagePicker",ItemsSource=UiLanguages.Choices,SelectedItem=UiLanguages.Choices.Single(choice=>choice.Code==UiLanguages.Normalize(owner.Settings.UiLanguage)),HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch,ItemTemplate=new Avalonia.Controls.Templates.FuncDataTemplate<UiLanguageChoice>((choice,_)=>Ui.Text(choice?.NativeName??""))};
-        languagePicker=choices;string Selected()=>((UiLanguageChoice)choices.SelectedItem!).Code;
+        languagePicker=choices;
         choices.SelectionChanged+=(_,_)=>{next.IsEnabled=choices.SelectedItem!=null;};
         LocalizedUi.Set(next,"Content",()=>TextResources.Get("onboarding.language.applyContinue"));next.IsEnabled=choices.SelectedItem!=null;
         bodyContent.Children.Add(choices);bodyContent.Children.Add(preparationStatus);

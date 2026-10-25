@@ -45,7 +45,7 @@ internal sealed class SettingsWindow : Window
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice()); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage());
         navigation.ItemsSource=entries;
         navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=pages[index];if(index==7)refreshVoice?.Invoke(); };
-        var sideTitle=SettingsVisual.Text(()=>Title,21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);
+        var sideTitle=SettingsVisual.Text(()=>Title??"",21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);
         var sidebar=new Border{Background=DesktopTheme.Brush("#F7F8FA"),BorderBrush=DesktopTheme.Brush("#D5E1ED"),BorderThickness=new Thickness(0,0,1,0),Child=new Grid{RowDefinitions=new RowDefinitions("Auto,*"),Children={sideTitle}}};
         var sideGrid=(Grid)sidebar.Child!;Grid.SetRow(navigation,1);sideGrid.Children.Add(navigation);navigation.Margin=new Thickness(8,0,8,16);
         var layout=new Grid{ColumnDefinitions=new ColumnDefinitions("180,*")};layout.Children.Add(sidebar);Grid.SetColumn(pageHost,1);layout.Children.Add(pageHost);Content=layout;

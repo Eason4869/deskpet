@@ -132,7 +132,7 @@ internal sealed class DesktopAgentJobCard:Border
                 row.Cursor=page.NextCursor;row.Candidates.Add(added);row.Log+=added;if(page.Gap!=null)row.Gap=TextResources.Format("agent.jobs.ui.logGap",page.Gap.DroppedBytes);
                 if(row.Log.Length>131072){int removed=row.Log.Length-131072;row.Log=row.Log.Substring(removed);row.Gap=TextResources.Format("agent.jobs.ui.logGap",removed);}
                 var scroll=log.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();var offset=scroll?.Offset??default;bool follow=scroll==null||scroll.Extent.Height-scroll.Viewport.Height-offset.Y<20;int start=log.SelectionStart,end=log.SelectionEnd;
-                LocalizedUi.Set(log,"Text",()=>(row.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):row.Log));log.SelectionStart=Math.Min(start,log.Text.Length);log.SelectionEnd=Math.Min(end,log.Text.Length);gap.Text=row.Gap;
+                LocalizedUi.Set(log,"Text",()=>(row.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):row.Log));int textLength=log.Text?.Length??0;log.SelectionStart=Math.Min(start,textLength);log.SelectionEnd=Math.Min(end,textLength);gap.Text=row.Gap;
                 if(scroll!=null){if(follow)scroll.ScrollToEnd();else scroll.Offset=offset;}RefreshPreviews();
             });
         }
