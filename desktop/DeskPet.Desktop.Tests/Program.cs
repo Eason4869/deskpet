@@ -46,6 +46,7 @@ Directory.CreateDirectory(directory);
 try
 {
     if(args.Any(a=>a.StartsWith("--profile-art="))){Console.WriteLine("ProfileArtwork: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-art"),args.Single(a=>a.StartsWith("--profile-art=")).Split('=')[1])+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--profile-type="))){Console.WriteLine("ProfileTypography: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-typography"),args.Single(a=>a.StartsWith("--profile-type=")).Split('=')[1],true)+" passed");return;}
     if(args.Contains("--heart-icons")){Console.WriteLine("HeartIcons: "+CompanionHomeUiChecks.RunHeartIcons(Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native"))+" passed");return;}
     if(args.Contains("--heart-home")){Console.WriteLine("HeartHome: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"heart-home"),"zh_CN",Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native-home"))+" passed");return;}
     if(args.Contains("--maintenance-default-sequence")){
