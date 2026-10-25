@@ -44,7 +44,9 @@ namespace Dafeiyu.Maintenance
         }
         static bool Matches(string root,string path,Proof proof,bool exact)
         {
+            if(proof==null||String.IsNullOrWhiteSpace(proof.Version)||String.IsNullOrWhiteSpace(proof.JobHash)||String.IsNullOrWhiteSpace(proof.ResultHash))return false;
             var job=Read<Job>(Path.Combine(path,"job.json"));var result=Read<Result>(Path.Combine(path,"result.json"));
+            if(job==null||result==null||String.IsNullOrWhiteSpace(job.InstallationDirectory)||String.IsNullOrWhiteSpace(job.WorkDirectory)||String.IsNullOrWhiteSpace(job.TargetVersion)||String.IsNullOrWhiteSpace(result.Version))return false;
             string install=Path.GetDirectoryName(root);if(!String.Equals(Path.GetFileName(root),"data",CachePaths.Comparison)||!String.Equals(job.InstallationDirectory,install,CachePaths.Comparison)||!String.Equals(job.WorkDirectory,path,CachePaths.Comparison)||job.TargetVersion!=proof.Version||!result.Success||result.Version!=proof.Version)return false;
             string executable=Path.Combine(install,"桌面伙伴.exe");CachePaths.Check(executable);int version=ReleaseIdentity.Read(executable).Version.CompareTo(ReleaseVersion.Parse(proof.Version));
             return (exact?version==0:version>=0)&&proof.JobHash==Hash(Path.Combine(path,"job.json"))&&proof.ResultHash==Hash(Path.Combine(path,"result.json"));

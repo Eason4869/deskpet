@@ -133,6 +133,24 @@ internal static class HolidayKeepsakeUiChecks
         }
         return count;
     }
+    internal static int FolderFailureUi()
+    {
+        string root=Path.GetFullPath("work/m6a/folder-native-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(root,"commemorations"));
+        string file=Path.Combine(root,"commemorations/holiday-state.json");File.WriteAllText(file,"{broken-owned-fixture");byte[] original=File.ReadAllBytes(file);
+        var runtime=new HolidayKeepsakeRuntime(root,new Dafeiyu.Maintenance.DataMaintenanceGate(),new HolidayCalendar(),HolidayKeepsakeRegistry.BuiltIn,new RelationshipSceneProvider(asset=>File.OpenRead(Path.Combine("assets",asset.RelativePath))),new HolidayKeepsakeSceneValidator());
+        try{foreach(var error in new Exception[]{new IOException("owned IO"),new UnauthorizedAccessException("owned access"),new System.ComponentModel.Win32Exception(5),new InvalidOperationException("owned shell")}){
+            int launches=0;using var view=new HolidayKeepsakeAlbumView(runtime,()=>Catalog(),()=>Task.FromResult(true),()=>true,root,path=>{Check(path==root,"folder launcher receives exact owned data directory");launches++;if(launches<=2)throw error;});
+            var window=new Window{Content=view,Width=800,Height=600};window.Show();
+            try{Complete(view.SetIdentityAsync("official:e-bao","e-bao","Owned"));
+                var button=view.GetLogicalDescendants().OfType<Button>().Single(x=>x.Content as string==TextResources.Get("relationship.home.openDataFolder"));
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Check(view.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.IsEffectivelyVisible&&x.Text==TextResources.Get("relationship.home.folderFailed")),"album visibly reports expected folder launch failure "+error.GetType().Name);
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(launches==2&&button.IsEnabled,"folder recovery action remains retryable");
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(launches==3&&view.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.Name=="HolidayFolderStatus"&&x.Text==""),"successful recovery retry clears stale folder failure status");
+                Check(File.ReadAllBytes(file).SequenceEqual(original),"folder launch failure preserves original holiday bytes");
+            }finally{window.Close();}
+        }}finally{Complete(runtime.ShutdownAsync());}return count;
+    }
     static void CheckSave(HolidayCardCapture capture,string output,string character,bool dark)
     {
         bool current=true;var picker=new TaskCompletionSource<string>();var preview=new HolidayCardPreview(capture,()=>current,()=>picker.Task);var button=preview.Children.OfType<Button>().Single();

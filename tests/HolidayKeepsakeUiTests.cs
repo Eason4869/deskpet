@@ -126,13 +126,33 @@ namespace Dafeiyu.Tests
         picker=new TaskCompletionSource<string>();save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));picker.SetResult(path);await preview.PendingSave;Check(File.ReadAllBytes(path).SequenceEqual(capture.Png),"failed destination can retry exact same frozen card");
         picker=new TaskCompletionSource<string>();save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));current=false;picker.SetResult(path+".stale");await preview.PendingSave;Check(!File.Exists(path+".stale"),"late picker cannot write after owner/page invalidation");
         }
+        static async Task FolderFailureUi()
+        {
+            string root=Path.GetFullPath("work/m6a/folder-wpf-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(root,"commemorations"));
+            string file=Path.Combine(root,"commemorations/holiday-state.json");File.WriteAllText(file,"{broken-owned-fixture");byte[] original=File.ReadAllBytes(file);
+            var runtime=new HolidayKeepsakeRuntime(root,new Dafeiyu.Maintenance.DataMaintenanceGate(),new HolidayCalendar(),HolidayKeepsakeRegistry.BuiltIn,new RelationshipSceneProvider(asset=>File.OpenRead(Path.Combine("assets",asset.RelativePath))),new HolidayKeepsakeSceneValidator());
+            foreach(var error in new Exception[]{new IOException("owned IO"),new UnauthorizedAccessException("owned access"),new System.ComponentModel.Win32Exception(5),new InvalidOperationException("owned shell")}){
+                int launches=0;using(var view=new HolidayKeepsakeAlbumView(runtime,()=>Catalog(),()=>Task.FromResult(true),()=>true,root,path=>{Check(path==root,"folder launcher receives exact owned data directory");launches++;if(launches<=2)throw error;})){
+                    var window=new Window{Content=view,Width=800,Height=600};window.Show();
+                    try{await view.SetIdentityAsync("official:e-bao","e-bao","Owned");
+                        var button=All<Button>(view).Single(x=>x.Content as string==TextResources.Get("relationship.home.openDataFolder"));
+                        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Check(All<TextBlock>(view).Any(x=>x.IsVisible&&x.Text==TextResources.Get("relationship.home.folderFailed")),"album visibly reports expected folder launch failure "+error.GetType().Name);
+                        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(launches==2&&button.IsEnabled,"folder recovery action remains retryable");
+                        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(launches==3&&All<TextBlock>(view).Any(x=>x.Name=="HolidayFolderStatus"&&x.Text==""),"successful recovery retry clears stale folder failure status");
+                        Check(File.ReadAllBytes(file).SequenceEqual(original),"folder launch failure preserves original holiday bytes");
+                    }finally{window.Close();}
+                }
+            }
+            await runtime.ShutdownAsync();Console.WriteLine("HolidayFolderFailureUi: "+count+" passed");
+        }
         [STAThread]public static int Main(string[] args)
         {
             if(args.Contains("--compile-only"))return 0;
             if(args.Contains("--between-reads")){try{Console.WriteLine("HolidayBetweenReads: "+HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/wpf-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
             if(args.Contains("--contracts")){try{Console.WriteLine("HolidayPresentation: "+HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-wpf/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}string language=args.FirstOrDefault(x=>x.StartsWith("--locale="));language=language==null?"zh_CN":language.Substring(9);TextResources.ConfigureStartupLanguage(language);
             app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;
-            app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--between-read-ui"))await BetweenReadUi();else await Run(language,args.Contains("--sample"));code=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();app.Shutdown();}}));app.Run();return code;
+            app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--folder-failure"))await FolderFailureUi();else if(args.Contains("--between-read-ui"))await BetweenReadUi();else await Run(language,args.Contains("--sample"));code=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();app.Shutdown();}}));app.Run();return code;
         }
     }
 }

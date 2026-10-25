@@ -291,8 +291,9 @@ namespace Dafeiyu
         {
             lock(gate){Entry entry;if(!jobs.TryGetValue(id??"",out entry)||owner==null||!owner.Matches(entry.Record.Owner))throw new KeyNotFoundException("job_not_found");return entry;}
         }
+        // Reading a recovered terminal job can lazily publish its log index.
         public async Task<AgentJobPage> GetAsync(AgentJobOwner owner,string id,string cursor,int limitBytes,CancellationToken token)
-        {
+        {using(Maintenance.EnterActivity()){
             var entry=Find(owner,id);await RefreshAsync(entry,token).ConfigureAwait(false);
             if(entry.Log==null&&entry.Start!=null)
             {
@@ -302,7 +303,7 @@ namespace Dafeiyu
             }
             var page=await LogFor(entry).ReadAsync(cursor,limitBytes,token).ConfigureAwait(false);
             return new AgentJobPage(Snapshot(entry),page.Records,page.NextCursor,page.HasMore,page.Gap);
-        }
+        }}
         public Task<AgentJobSnapshot> StopAsync(AgentJobOwner owner,string id,AgentJobStopReason reason,CancellationToken token)
         {return StopEntryAsync(Find(owner,id),reason,token);}
         internal Task<AgentJobSnapshot> StopForUserAsync(string id,AgentJobStopReason reason,CancellationToken token)

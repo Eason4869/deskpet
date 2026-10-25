@@ -51,7 +51,7 @@ namespace Dafeiyu
                 }
             }catch(Exception error){if(!StorageError(error))throw;pending=new List<PendingEvent>();pendingCount=0;blocked=true;warning=TextResources.Get("relationship.saveWarning");}
         }
-        static bool StorageError(Exception e){return e is IOException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
+        static bool StorageError(Exception e){return e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
         void Publish(Action action){dispatch(delegate{if(!disposed)action();});}
         void Notify(){Publish(delegate{var changed=Changed;if(changed!=null)changed();});}
         // Admission belongs to the requested HomeModel operation, including its

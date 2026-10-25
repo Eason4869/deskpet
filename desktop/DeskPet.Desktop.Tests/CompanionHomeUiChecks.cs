@@ -14,6 +14,29 @@ using DeskPet.Desktop;
 
 internal static class CompanionHomeUiChecks
 {
+    internal static int RunFirstVisit(string directory)
+    {
+        int checks=0;void Check(bool value,string text){if(!value)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
+        void Complete(Task task){var deadline=DateTime.UtcNow.AddSeconds(15);while(!task.IsCompleted){if(DateTime.UtcNow>deadline)throw new TimeoutException("First home Visit fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
+        T Named<T>(Control root,string name) where T:Control=>root.GetLogicalDescendants().OfType<T>().Single(x=>x.Name==name);
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{AutoUpdate=false,GreetingEnabled=false,QuietMode=true,ReadReplies=false,OnboardingState="completed",HideOnFullscreen=false});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));var chat=new ChatWindow(owner,false);var model=new RelationshipHomeModel(owner.Relationships);
+        try{
+            var disabled=model.UpdateSettingsAsync(false,false,true);Complete(disabled);Check(disabled.Result.Success,"first-visit fixture disables growth through actual settings request");
+            Complete(owner.SelectSkinAsync(owner.Skins.First(x=>x.PickerKey!=owner.Skin.PickerKey)));Complete(owner.Relationships.FlushAsync());chat.Show();
+            var enabled=model.UpdateSettingsAsync(true,false,true);Complete(enabled);Check(enabled.Result.Success,"first-visit fixture enables saved growth before home entry");Complete(owner.Relationships.FlushAsync());
+            string id=owner.RelationshipCompanionId;Check(!owner.Pet.IsVisible&&chat.IsVisible&&chat.CurrentPage=="chat"&&owner.RelationshipService.GetSnapshot(id).State==null,"shown chat with hidden pet remains unmet immediately before home entry");
+            for(int opening=0;opening<2;opening++){
+                var avatar=Named<Button>(chat,"ShellAvatar");avatar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();var menu=avatar.ContextMenu!;menu.Items.OfType<MenuItem>().Single(x=>x.Name=="ProfileCompanionHome").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));Dispatcher.UIThread.RunJobs();
+                Complete(owner.Relationships.FlushAsync());var page=chat.GetLogicalDescendants().OfType<CompanionHomePage>().Single();Complete(page.RefreshAsync());
+                var saved=new RelationshipService(new RelationshipStore(directory)).GetSnapshot(id).State;
+                Check(chat.CurrentPage=="companion"&&page.IsEffectivelyVisible&&!menu.IsOpen,"actual profile entry shows hosted companion home "+opening);
+                Check(saved!=null&&saved.Score==2&&saved.Receipts.Count==opening+1&&saved.Receipts.All(r=>r.EventType==RelationshipEventType.Visit)&&saved.Receipts.Count(r=>r.AwardedPoints==2)==1&&saved.Receipts.Sum(r=>r.AwardedPoints)==2&&saved.Receipts.Select(r=>r.EventId).Distinct().Count()==saved.Receipts.Count,"actual home entry persists distinct Visits with exactly one two-point award "+opening);
+                Check(saved!.FirstLocalDate==saved.Receipts[0].LocalDate&&saved.Milestones.Count==1,"first home encounter persists first meeting facts");
+                if(opening==0){chat.NavigateHistory(-1);Dispatcher.UIThread.RunJobs();Check(chat.CurrentPage=="chat","first home entry can return to chat before reopening");}
+            }
+        }finally{chat.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}return checks;
+    }
     internal static int RunMaintenanceSettings(string directory)
     {
         int checks=0;

@@ -48,6 +48,7 @@ try
     if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
     if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}
     if(args.Contains("--quiet-installed")){Console.WriteLine("QuietInstalled: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet-installed"),true)+" passed");return;}
+    if(args.Contains("--holiday-folder-failure")){Console.WriteLine("HolidayFolderFailureUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.FolderFailureUi()+" passed");return;}
     if(args.Contains("--holiday-keepsake-between-read-ui")){Console.WriteLine("HolidayBetweenReadUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.BetweenReadUi()+" passed");return;}
     if(args.Contains("--holiday-keepsake-between-reads")){Console.WriteLine("HolidayBetweenReads: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/native-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
     if(args.Contains("--holiday-keepsake-lifecycle")){Console.WriteLine("HolidayLifecycle: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle()+" passed");return;}
@@ -59,6 +60,7 @@ try
     if(args.Contains("--relationship-title-font-only")){Console.WriteLine("RelationshipTitleFontChecks: "+DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/f4a/title-proofs"))+" passed");return;}
     if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
+    if(args.Contains("--first-home-visit")){Console.WriteLine("FirstHomeVisitUi: "+CompanionHomeUiChecks.RunFirstVisit(Path.Combine(directory,"first-home"))+" passed");return;}
     if(args.Contains("--relationship-settings-maintenance")){Console.WriteLine("Companion settings maintenance: "+CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance"))+" passed");return;}
     if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
     if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}

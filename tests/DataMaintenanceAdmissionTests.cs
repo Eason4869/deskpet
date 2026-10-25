@@ -118,6 +118,29 @@ namespace Dafeiyu.Tests
                     Check((await log.ReadAsync("",4096,CancellationToken.None)).Records.Count>0,"joined append was lost");
                 }
             });
+            Run("recovered terminal lazy log index publication owns ordinary admission",async()=>{
+                var gate=new DataMaintenanceGate();var clock=new AgentJobTestSupport.Clock();
+                using(var root=new AgentJobTestSupport.TemporaryDirectory())using(var io=new AgentJobTestSupport.ControlledIO())
+                using(var store=new AgentJobStore(root.Path,clock,io)){
+                    string id=Guid.NewGuid().ToString("N");await store.SaveAsync(AgentJobTestSupport.Snapshot(root.Path,id,AgentJobState.Stopped,clock),CancellationToken.None);
+                    var manager=new AgentJobManager(store,new JobFactory(),clock,gate);await manager.RecoverAsync(CancellationToken.None);
+                    Check(io.IndexCommits==0&&!File.Exists(Path.Combine(store.DirectoryPath,id+".log-index")),"recovery already opened a log");
+                    io.HoldIndexCommit=true;Task<IDisposable> accidental=null;bool refused=false;
+                    var reading=Task.Run(()=>manager.GetAsync(new AgentJobOwner("project","conversation","primary"),id,"",4096,CancellationToken.None));
+                    try{
+                        Check(io.IndexEntered.Wait(5000),"GetAsync never reached actual initial index Commit");
+                        try{accidental=gate.BeginAsync();}catch(InvalidOperationException){refused=true;}
+                    }finally{io.HoldIndexCommit=false;io.IndexRelease.Set();}
+                    if(accidental!=null)using(await accidental){}
+                    var page=await reading;
+                    Check(refused,"maintenance reserved exclusivity during actual lazy index publication");
+                    Check(page.Snapshot.Id==id&&page.Records.Count==0&&io.IndexCommits==1,"lazy read changed terminal identity or duplicated initial index");
+                    using(await gate.BeginAsync()){}
+                    bool badOwner=false;try{await manager.GetAsync(new AgentJobOwner("other","conversation","primary"),id,"",4096,CancellationToken.None);}catch(System.Collections.Generic.KeyNotFoundException){badOwner=true;}Check(badOwner,"foreign owner read admitted");using(await gate.BeginAsync()){}
+                    bool badCursor=false;try{await manager.GetAsync(page.Snapshot.Owner,id,"invalid",4096,CancellationToken.None);}catch(ArgumentException){badCursor=true;}Check(badCursor,"malformed cursor accepted");using(await gate.BeginAsync()){}
+                    using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{await manager.GetAsync(page.Snapshot.Owner,id,"",4096,cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"cancelled viewer ignored");}using(await gate.BeginAsync()){}
+                }
+            });
             Run("simultaneous actual send and maintenance have exactly one admitted owner",async()=>{
                 for(int attempt=0;attempt<25;attempt++){
                     var gate=new DataMaintenanceGate();var api=new Api{Hold=true};using(var session=Session(gate,null,api))using(var start=new ManualResetEventSlim(false)){

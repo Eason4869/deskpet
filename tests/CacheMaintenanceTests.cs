@@ -110,6 +110,25 @@ namespace Dafeiyu.Tests
                     Check(service.Clean(scan,f.Now).DeletedItems==1&&!Directory.Exists(path),"proven completed update not deleted");
                 }
             });
+            foreach(string record in new[]{"job.json","result.json","proof"})Run("null "+record+" protects only that update and scan continues",()=>{
+                using(var f=new Fixture()){
+                    string path=f.Candidate("updates/"+new string('a',32)),install=Path.GetDirectoryName(f.Root);
+                    File.Copy(typeof(CacheMaintenanceTests).Assembly.Location,Path.Combine(install,"桌面伙伴.exe"),true);
+                    var json=new System.Web.Script.Serialization.JavaScriptSerializer();
+                    File.WriteAllText(Path.Combine(path,"job.json"),json.Serialize(new{InstallationDirectory=install,WorkDirectory=path,TargetVersion=ReleaseInfo.DisplayVersion}));
+                    File.WriteAllText(Path.Combine(path,"result.json"),json.Serialize(new{Success=true,Version=ReleaseInfo.DisplayVersion}));
+                    Directory.CreateDirectory(Path.Combine(path,"backup"));File.WriteAllText(Path.Combine(path,"backup","previous.exe"),"retain rollback");
+                    CacheUpdateRetirement.RecordCompleted(f.Root,path,ReleaseInfo.DisplayVersion);
+                    string proof=Directory.GetFiles(Path.Combine(f.Root,"cache-maintenance"),"*.completed").Single();
+                    File.WriteAllText(record=="proof"?proof:Path.Combine(path,record),"null");f.Age(path);
+                    var retained=Directory.GetFiles(path,"*",SearchOption.AllDirectories).Concat(new[]{proof}).ToDictionary(p=>p,p=>File.ReadAllBytes(p));
+                    string clean=f.Candidate("updates/"+new string('b',32),19);var service=new CacheMaintenanceService(f.Root);var scan=service.Scan(f.Now);
+                    Check(scan.Candidates.Count==1&&scan.TotalBytes==19,"bad record aborted or entered scan");
+                    var result=service.Clean(scan,f.Now);Check(result.DeletedItems==1&&result.FreedBytes==19&&!Directory.Exists(clean),"unrelated valid cache was not reclaimed");
+                    foreach(var pair in retained)Check(File.ReadAllBytes(pair.Key).SequenceEqual(pair.Value),"invalid update metadata or rollback changed");
+                    Check(service.Scan(f.Now).Candidates.Count==0,"rescan did not protect null update");
+                }
+            });
             Run("another process holds resource across scan execution and releases on exit",()=>{
                 using(var f=new Fixture()){
                     string path=f.Candidate("updates/"+new string('a',32));var service=new CacheMaintenanceService(f.Root);var scan=service.Scan(f.Now);

@@ -21,6 +21,35 @@ namespace Dafeiyu.Tests
         {
             var log=new ConversationLog();log.Commit("private transcript","private answer");if(file!=null)log.Attach(log.Messages[0].Id,new[]{file});var store=new HistoryStore(directory);await store.SaveAsync(persona,log.Messages);Check(String.IsNullOrEmpty(store.Warning),"fixture save failed: "+store.Warning);return Directory.GetFiles(directory,"*.history").Last();
         }
+        public static int RelationshipPreservationOnly()
+        {passed=failed=0;Run("earned relationship receipts milestone and nonempty outbox survive all maintenance actions and restart",PreserveRelationships);Console.WriteLine("RelationshipMaintenanceOnly: "+passed+" passed, "+failed+" failed");return failed==0?0:1;}
+        static async Task PreserveRelationships()
+        {
+            string root=Root();const string pet="legacy-skin:skin-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";var time=RelationshipTime.Current();var gate=new DataMaintenanceGate();
+            string phase="before first seed";int reporting=0,storageErrors=0;
+            Action inventory=()=>{string directory=Path.Combine(root,"relationships");Console.WriteLine("HISTORY_REL_PATHS phase="+phase+" root="+root+" state="+Path.Combine(directory,"state.json")+" pending="+Path.Combine(directory,"pending.json"));if(Directory.Exists(directory))foreach(var file in Directory.GetFiles(directory))Console.WriteLine("HISTORY_REL_FILE path="+file+" attributes="+File.GetAttributes(file));};
+            EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> diagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs args){var error=args.Exception;if(!(error is IOException||error is UnauthorizedAccessException)||System.Threading.Interlocked.Increment(ref storageErrors)>8||System.Threading.Interlocked.Exchange(ref reporting,1)!=0)return;try{Console.WriteLine("HISTORY_REL_EXCEPTION phase="+phase+" hresult=0x"+error.HResult.ToString("X8")+" "+error);inventory();}catch(Exception diagnosticError){Console.WriteLine("HISTORY_REL_DIAGNOSTIC_FAILURE "+diagnosticError.Message);}finally{System.Threading.Interlocked.Exchange(ref reporting,0);}};
+            AppDomain.CurrentDomain.FirstChanceException+=diagnostic;
+            try{inventory();using(var runtime=new RelationshipRuntime(root,maintenance:gate)){
+                await runtime.Enqueue(pet,RelationshipEventType.CompletedConversation,"retained-event",time);Console.WriteLine("HISTORY_REL_SEED root="+root+" worker="+runtime.FlushAsync().Status+" pending="+runtime.PendingCount+" warning="+runtime.Warning+" restart="+runtime.RequiresRestart+" maintenance="+gate.IsMaintenanceActive);inventory();Check(runtime.Warning.Length==0,"relationship fixture failed: "+root);
+                phase="milestone claim and settings";Check(runtime.Service.ClaimMilestone(pet,"first_meeting").ClaimedNotification,"real earned milestone fixture missing");
+                Check((await new RelationshipHomeModel(runtime).UpdateSettingsAsync(true,false,false)).Success,"relationship settings fixture failed");
+                phase="expected held-state write failure";using(var held=File.Open(Path.Combine(root,"relationships/state.json"),FileMode.Open,FileAccess.Read,FileShare.Read))await runtime.Enqueue(pet,RelationshipEventType.CompletedConversation,"pending-event",time.AddSeconds(2));
+                Check(runtime.PendingCount==1&&runtime.Warning.Length>0,"actual blocked save did not retain pending event");
+                phase="cache history and preferences preservation";var before=Directory.GetFiles(Path.Combine(root,"relationships")).ToDictionary(p=>p,p=>File.ReadAllBytes(p));
+                Action unchanged=()=>{foreach(var file in before)Check(File.ReadAllBytes(file.Key).SequenceEqual(file.Value),"actual relationship data changed: "+Path.GetFileName(file.Key));};
+                string candidate=Path.Combine(root,"updates",Guid.NewGuid().ToString("N"));using(CacheResourceLease.Acquire(root,candidate))File.WriteAllBytes(Path.Combine(candidate,"package.zip"),new byte[17]);
+                var now=DateTime.UtcNow.AddDays(8);var cache=new CacheMaintenanceService(root);Check(cache.Clean(cache.Scan(now),now).FreedBytes==17,"real cache maintenance did not clean owned candidate");unchanged();
+                await Seed(Path.Combine(root,"history"));Check((await new HistoryMaintenanceService(root,gate).ClearAllAsync()).Status==HistoryMaintenanceStatus.Complete,"actual history clear failed");unchanged();
+                await new SettingsStore(Path.Combine(root,"settings.json")).RestoreDefaultPreferencesAsync(new PetSettings{QuietMode=true},gate);unchanged();
+            }
+            phase="restart and explicit replay";using(var reopened=new RelationshipRuntime(root,maintenance:gate)){
+                var saved=reopened.Service.GetSnapshot(pet);Check(saved.State.Score==2&&saved.State.Receipts.Count==1&&saved.State.Milestones.Single().NotificationClaimed&&reopened.PendingCount==1&&!saved.Settings.FeedbackEnabled&&!saved.Settings.AiContextEnabled,"restart lost earned facts settings claim or real pending event");
+                await reopened.RetryPendingAsync();await reopened.Enqueue(pet,RelationshipEventType.CompletedConversation,"retained-event",time);var after=reopened.Service.GetSnapshot(pet);
+                Check(after.State.Score==4&&after.State.Receipts.Count==2&&after.State.Receipts.Single(r=>r.EventId=="pending-event").Utc==time.AddSeconds(2).UtcNow&&!reopened.Service.ClaimMilestone(pet,"first_meeting").ClaimedNotification,"maintenance reopened reward/claim or changed pending provenance");
+            }
+            }finally{AppDomain.CurrentDomain.FirstChanceException-=diagnostic;}
+        }
         [STAThread] public static int Main()
         {
             passed=failed=0;
@@ -116,13 +145,7 @@ namespace Dafeiyu.Tests
                 string root=Root();string file=await Seed(Path.Combine(root,"history"),file:ChatAttachment.CreateImage("broken.png",new byte[]{137,80,78,71,1,2,3,4}));byte[] before=File.ReadAllBytes(file);
                 var result=await new HistoryMaintenanceService(root,new DataMaintenanceGate()).ClearAllAsync();Check(result.Status==HistoryMaintenanceStatus.Partial&&File.ReadAllBytes(file).SequenceEqual(before),"bad media was reported preserved and original removed");
             });
-            Run("actual relationship ledger receipts outbox and settings are byte identical and replay stays deduplicated",async()=>{
-                string root=Root();const string pet="legacy-skin:skin-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";var time=RelationshipTime.Current();
-                using(var runtime=new RelationshipRuntime(root)){
-                    runtime.Record(pet,RelationshipEventType.CompletedConversation,"retained-event",time);Check(runtime.Warning.Length==0,"relationship fixture failed");runtime.Service.UpdateSettings(true,false,false);var before=Directory.GetFiles(Path.Combine(root,"relationships")).ToDictionary(p=>p,p=>File.ReadAllBytes(p));var score=runtime.Service.GetSnapshot(pet).State.Score;
-                    await Seed(Path.Combine(root,"history"));var result=await new HistoryMaintenanceService(root,new DataMaintenanceGate()).ClearAllAsync();Check(result.Status==HistoryMaintenanceStatus.Complete,"clear failed");foreach(var file in before)Check(File.ReadAllBytes(file.Key).SequenceEqual(file.Value),"actual relationship bytes changed");runtime.Record(pet,RelationshipEventType.CompletedConversation,"retained-event",time);var after=runtime.Service.GetSnapshot(pet);Check(after.State.Score==score&&after.State.Receipts.Count==1&&!after.Settings.FeedbackEnabled&&!after.Settings.AiContextEnabled,"clear reopened reward or reset relationship settings");
-                }
-            });
+            Run("earned relationship receipts milestone and nonempty outbox survive all maintenance actions and restart",PreserveRelationships);
             Run("corrupt and unsupported unloaded kernel contexts stop clearing before any mutation",async()=>{
                 var valid=new AgentSessionModel("session","project","unloaded");valid.Enqueue(new AgentSessionInput{IdempotencyId="input",Text="retained model context"});
                 byte[] plain=SessionBytes(valid);string json=System.Text.Encoding.UTF8.GetString(plain);

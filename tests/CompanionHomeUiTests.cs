@@ -32,6 +32,27 @@ namespace Dafeiyu.Tests
                 name.Text="很长的伙伴名字 · A companion with a long localized name";window.Width=260;await Task.Delay(30);Capture(window,Path.Combine(captures,locale+"-"+theme+"-"+kind+"-feedback-narrow.png"));name.Text=original;window.Width=350;
             }
         }
+        static async Task FirstVisit()
+        {
+            string root=Path.GetFullPath("work/m6a/first-home-wpf-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,QuietMode=true,ReadReplies=false,OnboardingState="completed",HideOnFullscreen=false};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
+            pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);var model=new RelationshipHomeModel(pet.Relationships);
+            Check((await model.UpdateSettingsAsync(false,false,true)).Success,"first-visit fixture disables growth through actual settings request");
+            var skin=pet.Catalog.Skins.First(x=>!x.IsPlaceholder&&x.PickerKey!=pet.Skin.PickerKey);Check(pet.SelectSkin(skin),"unmet identity selected with growth off");await pet.Relationships.FlushAsync();
+            pet.ShowChat();var chat=app.Windows.OfType<ChatWindow>().Single();chat.UpdateLayout();
+            Check((await model.UpdateSettingsAsync(true,false,true)).Success,"first-visit fixture enables saved growth before home entry");await pet.Relationships.FlushAsync();
+            string id=pet.RelationshipCompanionId;Check(!pet.IsVisible&&chat.IsVisible&&chat.CurrentPage=="home"&&pet.RelationshipService.GetSnapshot(id).State==null,"shown chat with hidden pet remains unmet immediately before home entry");
+            for(int opening=0;opening<2;opening++){
+                Click(Button(chat,"ShellAvatar"));var menu=Button(chat,"ShellAvatar").ContextMenu;var entry=menu.Items.OfType<MenuItem>().Single(x=>x.Name=="ProfileCompanionHome");entry.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await pet.Relationships.FlushAsync();var page=All<CompanionHomePage>(chat).Single();await page.RefreshAsync();page.UpdateLayout();
+                var saved=new RelationshipService(new RelationshipStore(root)).GetSnapshot(id).State;
+                Check(chat.CurrentPage=="companion"&&page.IsVisible&&!menu.IsOpen,"actual profile entry shows hosted companion home "+opening);
+                Check(saved!=null&&saved.Score==2&&saved.Receipts.Count==opening+1&&saved.Receipts.All(r=>r.EventType==RelationshipEventType.Visit)&&saved.Receipts.Count(r=>r.AwardedPoints==2)==1&&saved.Receipts.Sum(r=>r.AwardedPoints)==2&&saved.Receipts.Select(r=>r.EventId).Distinct().Count()==saved.Receipts.Count,"actual home entry persists distinct Visits with exactly one two-point award "+opening);
+                Check(saved.FirstLocalDate==saved.Receipts[0].LocalDate&&saved.Milestones.Count==1,"first home encounter persists first meeting facts");
+                if(opening==0){Click(Button(chat,"AppBack"));Check(chat.CurrentPage=="home","first home entry can return to chat before reopening");}
+            }
+            chat.Close();await pet.Relationships.FlushAsync();Console.WriteLine("FirstHomeVisitUi: "+checks+" passed");
+        }
         static async Task Run(string locale)
         {
             var sparseBytes=new byte[40*60*4];sparseBytes[(10*40+12)*4+3]=255;sparseBytes[(49*40+27)*4+3]=255;var sparse=BitmapSource.Create(40,60,96,96,PixelFormats.Bgra32,null,sparseBytes,40*4);var trimmed=CompanionPortraitSource.Trim(sparse);Check(trimmed.PixelWidth==20&&trimmed.PixelHeight==44,"transparent exterior is removed with safe margin around every opaque pixel");Check(CompanionPortraitSource.Trim(BitmapSource.Create(20,20,96,96,PixelFormats.Bgra32,null,new byte[20*20*4],20*4))==null,"fully transparent artwork enters fallback");
@@ -161,6 +182,6 @@ namespace Dafeiyu.Tests
             }
             Console.WriteLine("CompanionHomeUiTests: "+checks+" passed");
         }
-        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string locale=args.Length==1?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
+        [STAThread]public static int Main(string[] args){if(args.Contains("--compile-only"))return 0;string locale=args.Length==1&&!args[0].StartsWith("--")?args[0]:"en_US";TextResources.ConfigureStartupLanguage(locale);app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int result=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--first-visit"))await FirstVisit();else await Run(locale);result=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();app.Shutdown();}}));app.Run();return result;}
     }
 }

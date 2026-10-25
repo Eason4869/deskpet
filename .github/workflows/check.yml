@@ -60,6 +60,10 @@ jobs:
             & work/CompanionHomeUiTests.exe $locale
             if ($LASTEXITCODE) { throw ('Companion home UI failed: '+$locale) }
           }
+          & work/CompanionHomeUiTests.exe --first-visit
+          if ($LASTEXITCODE) { throw 'Actual first companion home Visit failed' }
+          & work/HolidayKeepsakeUiTests.exe --folder-failure
+          if ($LASTEXITCODE) { throw 'Holiday recovery folder feedback failed' }
       - name: Verify native background jobs and AppContainer ownership
         shell: powershell
         run: |
@@ -130,6 +134,10 @@ jobs:
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 --no-restore
           if ($LASTEXITCODE) { throw 'Desktop build failed' }
           $testDll = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
+          dotnet $testDll --first-home-visit
+          if ($LASTEXITCODE) { throw 'Actual native first companion home Visit failed' }
+          dotnet $testDll --holiday-folder-failure
+          if ($LASTEXITCODE) { throw 'Native holiday recovery folder feedback failed' }
           dotnet $testDll --relationship-experience-only
           if ($LASTEXITCODE) { throw 'Saved-stage native experience checks failed' }
           dotnet $testDll --relationship-experience-crossing

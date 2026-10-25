@@ -15,6 +15,7 @@ namespace Dafeiyu.Tests
         {
             if(args.Length==1&&args[0]=="--data-admission-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataMaintenanceAdmissionTests.Main();}
             if(args.Length==1&&args[0]=="--data-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataManagementTests.Main();}
+            if(args.Length==1&&args[0]=="--relationship-maintenance-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryMaintenanceTests.RelationshipPreservationOnly();}
             if(args.Length==1&&args[0]=="--history-maintenance-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryMaintenanceTests.Main();}
             if(args.Length>0&&args[0]=="--cache-lease-fixture")return CacheMaintenanceTests.Main(args);
             if(args.Length==1&&args[0]=="--cache-maintenance-only")return CacheMaintenanceTests.Main(new string[0]);

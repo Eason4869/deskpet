@@ -42,6 +42,22 @@ namespace Dafeiyu.Tests
                 }
             }
             await QueuedSettingsOwnAdmission();
+            using(var future=new RelationshipFixture()){
+                string file=Path.Combine(future.Root,"relationships","state.json");Directory.CreateDirectory(Path.GetDirectoryName(file));const string current="{\"SchemaVersion\":1,\"Companions\":[],\"Settings\":{\"GrowthEnabled\":true,\"FeedbackEnabled\":true,\"AiContextEnabled\":true}}";File.WriteAllText(file,current);
+                Check(future.Service.GetSnapshot("official:e-bao").State==null,"future-version fixture has a valid current-schema positive control");
+                string original=current.Replace("\"SchemaVersion\":1","\"SchemaVersion\":2");File.WriteAllText(file,original);
+                for(int startup=0;startup<2;startup++)using(var runtime=new RelationshipRuntime(future.Root)){
+                    var model=new RelationshipHomeModel(runtime);var view=await model.LoadAsync("official:e-bao",RelationshipTime.Current());
+                    Check(view.ReadFailed&&view.Snapshot==null,"future schema read/restart exposes failure instead of invented empty success");
+                    RelationshipExperienceContent content=null;string context=null;Exception experienceError=null,contextError=null;
+                    try{content=await new RelationshipExperience(runtime).ReadAsync("official:e-bao",null,"en_US");}catch(Exception error){experienceError=error;}
+                    try{context=runtime.StageContext("official:e-bao");}catch(Exception error){contextError=error;}
+                    Check(experienceError==null&&contextError==null,"actual future-schema saved readers reject expected invalid data without throwing: experience="+experienceError+" context="+contextError);
+                    Check(content.ReadFailed&&!content.HasSavedState&&content.Welcome==""&&content.Interaction==""&&content.AiContext==""&&context==""&&runtime.Warning.Length>0,"future schema cannot fabricate interaction welcome or AI context and exposes recovery warning");
+                    Check(!(await model.UpdateSettingsAsync(false,false,false)).Success&&!(await model.RetryAsync()).Success,"future schema cannot be overwritten by settings or recovery retry");
+                    Check(File.ReadAllText(file)==original,"future schema original survives read settings retry and restart byte identically");
+                }
+            }
             await DelayedRetryOrdersNewerEdit();
             var p=RelationshipProgress.FromScore(156);
             Check(p.StageId=="familiar"&&p.NextStageId=="close"&&p.NextThreshold==240&&p.RemainingPoints==84,"156 uses authoritative familiar/close/240/84 progress");

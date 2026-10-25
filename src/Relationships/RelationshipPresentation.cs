@@ -74,7 +74,7 @@ namespace Dafeiyu
                 RelationshipSnapshot snapshot = null; bool failed = false;
                 try { snapshot = runtime.Service.GetSnapshot(id); lock (gate) saved[id] = snapshot; }
                 catch (Exception error) {
-                    if (!(error is System.IO.IOException || error is UnauthorizedAccessException || error is System.Runtime.Serialization.SerializationException || error is ArgumentException)) throw;
+                    if (!(error is System.IO.IOException || error is System.IO.InvalidDataException || error is UnauthorizedAccessException || error is System.Runtime.Serialization.SerializationException || error is ArgumentException)) throw;
                     failed = true; lock (gate) saved.TryGetValue(id, out snapshot);
                 }
                 var state = snapshot == null ? null : snapshot.State;

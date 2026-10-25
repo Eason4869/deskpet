@@ -15,6 +15,22 @@ namespace Dafeiyu.Tests
         static void Run(string name,Func<Task> test){try{test().GetAwaiter().GetResult();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e);}}
         public static int Main()
         {
+            Run("old completed history and task startup never reconstruct relationship rewards",async delegate{
+                using(var f=new RelationshipFixture()){
+                    var history=new HistoryStore(Path.Combine(f.Root,"history"));var old=new ConversationLog();old.Commit("old completed user","old completed reply");await history.SaveAsync("pet",old.Messages);
+                    var cfg=Settings();cfg.AgentWorkspace=f.Root;cfg.AgentEnabled=true;
+                    await new AgentTaskStore(Path.Combine(history.DirectoryPath,"agent-tasks")).SaveAsync(new AgentTaskState{Workspace=f.Root,PersonaId="pet",Status="complete",Goal="work completed before relationship data"});
+                    Check(!Directory.Exists(Path.Combine(f.Root,"relationships")),"old-data fixture unexpectedly includes relationship storage");
+                    for(int startup=0;startup<2;startup++){
+                        var gate=new Dafeiyu.Maintenance.DataMaintenanceGate();using(var runtime=new RelationshipRuntime(f.Root,maintenance:gate))using(var session=new ConversationSession(new Api(),new Speech(),()=>null,new HistoryStore(history.DirectoryPath),maintenance:gate)){
+                            session.ConfigureRelationships(runtime,()=>A);session.SelectPersona("pet");session.LoadAgentTask(cfg);await session.FlushHistoryAsync();await runtime.FlushAsync();
+                            Check(session.History.Messages.Count==2&&session.CurrentAgentTask!=null&&session.CurrentAgentTask.Status=="complete","actual old completed history and task were not loaded");
+                            Check(runtime.Service.GetSnapshot(A).State==null&&runtime.PendingCount==0,"startup or restart reconstructed old completion points");
+                            if(startup==1){await runtime.EnqueueVisit(A);var state=runtime.Service.GetSnapshot(A).State;Check(state.Score==2&&state.Receipts.Count==1&&state.Receipts[0].EventType==RelationshipEventType.Visit,"only the new actual encounter earns its own receipt");}
+                        }
+                    }
+                }
+            });
             Run("text, ASR and retry use durable user ownership and one receipt",async delegate{
                 using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root))using(var s=new ConversationSession(new Api{Delay=40},new Speech(),()=>null)){
                     string selected=A;s.ConfigureRelationships(runtime,()=>selected);Check(runtime.Service.GetSnapshot(A).State==null,"background visit");

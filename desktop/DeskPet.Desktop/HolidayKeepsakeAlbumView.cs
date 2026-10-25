@@ -19,6 +19,7 @@ namespace DeskPet.Desktop
     {
         readonly HolidayKeepsakeRuntime runtime;
         readonly string runtimeDataDirectory;
+        readonly Action<string> openFolder;
         readonly HolidayKeepsakeAlbumModel model;
         readonly Func<HolidayCatalog> catalog;
         readonly Func<Task> retryEncounter;
@@ -30,11 +31,12 @@ namespace DeskPet.Desktop
         int page,revision; bool disposed;
         HolidayKeepsakePage loaded;
         HolidayKeepsakeReadStatus readStatus;
+        TextBlock folderStatus;
         public Task Pending {get;private set;}
         internal int SavedCount {get{return loaded==null?0:loaded.Album.Records.Count;}}
         internal int DecodedCount {get{return captures.Count;}}
-        internal HolidayKeepsakeAlbumView(HolidayKeepsakeRuntime runtime,Func<HolidayCatalog> catalog,Func<Task> retryEncounter,Func<bool> sameOwner,string dataDirectory)
-        {runtimeDataDirectory=dataDirectory;this.runtime=runtime;model=new HolidayKeepsakeAlbumModel(runtime);this.catalog=catalog;this.retryEncounter=retryEncounter;this.sameOwner=sameOwner;Pending=Task.FromResult(true);Name="HolidayKeepsakeAlbum";runtime.Changed+=Changed;SizeChanged+=delegate{ResizeCards();};}
+        internal HolidayKeepsakeAlbumView(HolidayKeepsakeRuntime runtime,Func<HolidayCatalog> catalog,Func<Task> retryEncounter,Func<bool> sameOwner,string dataDirectory,Action<string> openFolder=null)
+        {runtimeDataDirectory=dataDirectory;this.openFolder=openFolder??(path=>System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true}));this.runtime=runtime;model=new HolidayKeepsakeAlbumModel(runtime);this.catalog=catalog;this.retryEncounter=retryEncounter;this.sameOwner=sameOwner;Pending=Task.FromResult(true);Name="HolidayKeepsakeAlbum";runtime.Changed+=Changed;SizeChanged+=delegate{ResizeCards();};}
         async void Changed(string id){if(!disposed&&id==identity)await RefreshAsync();}
         internal Task SetIdentityAsync(string id,string verified,string name)
         {
@@ -71,7 +73,8 @@ namespace DeskPet.Desktop
             foreach(var key in captures.Keys.Where(x=>!wanted.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}
             var title=Text(TextResources.Get("holidayKeepsake.albumTitle"),18);Children.Add(title);
             if(readStatus==HolidayKeepsakeReadStatus.Available)Children.Add(Text(TextResources.Format("holidayKeepsake.savedCount",result.Album.Records.Count),13));
-            if(readStatus!=HolidayKeepsakeReadStatus.Available){Children.Add(Text(TextResources.Get("holidayKeepsake.readError"),13));Children.Add(Button(TextResources.Get("relationship.home.openDataFolder"),OpenDataFolder));}
+            folderStatus=null;
+            if(readStatus!=HolidayKeepsakeReadStatus.Available){Children.Add(Text(TextResources.Get("holidayKeepsake.readError"),13));Children.Add(Button(TextResources.Get("relationship.home.openDataFolder"),OpenDataFolder));folderStatus=Text("",13);folderStatus.Name="HolidayFolderStatus";Children.Add(folderStatus);}
             else if(result.Album.Records.Count==0)Children.Add(Text(TextResources.Get("holidayKeepsake.empty"),13));
             cards=new WrapPanel();cardAreas.Add(cards);Children.Add(cards);
             foreach(var item in result.Scenes){
@@ -108,7 +111,7 @@ namespace DeskPet.Desktop
             var card=new HolidayCardPreview(capture,delegate{return Current(version,id)&&captures.ContainsKey(key)&&IsEffectivelyVisible;},null,ResizeCards);cards.Children.Add(card);ResizeCards();
         }
         void ResizeCards(){if(cards==null)return;double available=Bounds.Width;if(available<=0)available=520;double width=available>=820?(available-22)/2:available;foreach(var area in cardAreas)foreach(var card in area.Children.OfType<HolidayCardPreview>())card.Width=Math.Max(120,(card.Capture.Expanded?available:width)-18);}
-        void OpenDataFolder(){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(runtimeDataDirectory){UseShellExecute=true});}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.ComponentModel.Win32Exception||error is InvalidOperationException))throw;}}
+        void OpenDataFolder(){try{openFolder(runtimeDataDirectory);if(folderStatus!=null)folderStatus.Text="";}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.ComponentModel.Win32Exception||error is InvalidOperationException))throw;if(folderStatus!=null)folderStatus.Text=TextResources.Get("relationship.home.folderFailed");}}
         void ClearCaptures(){foreach(var capture in captures.Values)capture.Dispose();captures.Clear();Children.Clear();}
         public void Dispose(){if(disposed)return;disposed=true;revision++;runtime.Changed-=Changed;ClearCaptures();loaded=null;expandedCards.Clear();cardAreas.Clear();}
         static TextBlock Text(string value,double size){return Ui.Text(value,size);}

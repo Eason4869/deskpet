@@ -35,7 +35,7 @@ namespace Dafeiyu
             string language=locale??TextResources.CurrentLanguage;
             return Task.Run(delegate{
                 try{return new RelationshipExperienceContent(companionId,runtime.Service.GetSnapshot(companionId),pack,language,false);}
-                catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is SerializationException||error is ArgumentException||error is System.Xml.XmlException))throw;return new RelationshipExperienceContent(companionId,null,null,language,true);}
+                catch(Exception error){if(!(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is SerializationException||error is ArgumentException||error is System.Xml.XmlException))throw;return new RelationshipExperienceContent(companionId,null,null,language,true);}
             });
         }
     }
