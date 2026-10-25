@@ -24,7 +24,7 @@ internal sealed class ThemeModePicker : UserControl
     {
         Name = "ThemeModePicker";
         var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        layout.Children.Add(new TextBlock { Text = TextResources.Get("themeModePicker.themeModePicker.text"), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        layout.Children.Add(LocalizedUi.With(new TextBlock { Text = TextResources.Get("themeModePicker.themeModePicker.text"), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },"Text",()=>(TextResources.Get("themeModePicker.themeModePicker.text"))));
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })
         {

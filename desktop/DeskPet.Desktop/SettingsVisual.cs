@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
@@ -93,4 +93,5 @@ internal static class SettingsVisual
             control.PropertyChanged+=(_,e)=>{if(e.Property==ListBoxItem.IsSelectedProperty||e.Property==InputElement.IsPointerOverProperty||e.Property==InputElement.IsKeyboardFocusWithinProperty)Refresh();};Refresh();return border;
         });
     }
-}
+internal static TextBlock Text(System.Func<string> text,double size=14,bool muted=false){return LocalizedUi.With(Text(text(),size,muted),"Text",text);}
+        internal static Button Button(System.Func<string> label,Action action,bool danger=false){return LocalizedUi.With(Button(label(),action,danger),"Content",label);}}

@@ -10,24 +10,24 @@ namespace Dafeiyu
         internal bool TryExecutePermissionCommand(string text)
         {
             string command=(text??"").Trim();if(!command.StartsWith("/permissions",StringComparison.OrdinalIgnoreCase)&&!command.StartsWith("/sandbox",StringComparison.OrdinalIgnoreCase))return false;
-            if(conversationOnly||!WorkSettings.AgentEnabled){status.Text=TextResources.Get("composerPermissions.tryExecutePermissionCommand.status");return true;}
+            if(conversationOnly||!WorkSettings.AgentEnabled){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status")));return true;}
             string[] parts=command.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);string head=parts[0].ToLowerInvariant();
             if(head=="/permissions"&&parts.Length==1){OpenPermissions();return true;}
             if(head=="/sandbox"&&parts.Length==1){status.Text=AgentAccessPolicy.Label(WorkSettings);return true;}
-            if(parts.Length!=2){status.Text=TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeA");return true;}
+            if(parts.Length!=2){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeA")));return true;}
             if(head=="/permissions"){
                 if(parts[1]=="ask")SelectPermissions(AgentApprovalMode.Ask,true);
                 else if(parts[1]=="auto")SelectPermissions(AgentApprovalMode.Auto,true);
                 else if(parts[1]=="full")SelectPermissions(AgentApprovalMode.Full,false);
-                else status.Text=TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeB");
+                else LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeB")));
             }else if(head=="/sandbox"&&(parts[1]=="on"||parts[1]=="off")){
                 var mode=WorkSettings.AgentApprovalMode;if(mode==AgentApprovalMode.Legacy||mode==AgentApprovalMode.Full)mode=AgentApprovalMode.Ask;SelectPermissions(mode,parts[1]=="on");
-            }else status.Text=TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeC");
+            }else LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeC")));
             return true;
         }
         void SelectPermissions(AgentApprovalMode mode,bool sandbox)
         {
-            if(session.IsBusy||queue.HasPending){status.Text=TextResources.Get("composerPermissions.selectPermissions.status");return;}
+            if(session.IsBusy||queue.HasPending){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.selectPermissions.status")));return;}
             var current=WorkSettings;bool expanding=mode==AgentApprovalMode.Full&&current.AgentApprovalMode!=AgentApprovalMode.Full||current.AgentSandboxEnabled&&!sandbox;
             if(expanding&&!(mode==AgentApprovalMode.Full?PermissionChangeDialog.ConfirmFullAccess(host):PermissionChangeDialog.Confirm(host,TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm"),TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm.alternativeA"))))return;
             Try(delegate{pet.SetConversationPermissions(session,mode,sandbox);RefreshMode();status.Text=TextResources.Format("composerPermissions.selectPermissions.statusAgentAccessPolicy",AgentAccessPolicy.Label(WorkSettings));});
@@ -35,7 +35,7 @@ namespace Dafeiyu
         internal void OpenPermissions()
         {
             if(modePicker==null)return;var cfg=WorkSettings;var menu=ChatUi.Menu();menu.Name="AgentPermissionsMenu";menu.MinWidth=340;
-            var heading=Ui.Text(TextResources.Get("composerPermissions.openPermissions.text"),13,AgentUi.Muted);heading.Margin=new Thickness(0,2,0,7);menu.Items.Add(new MenuItem{Header=heading,IsEnabled=false});
+            var heading=LocalizedUi.Text(()=>(TextResources.Get("composerPermissions.openPermissions.text")),13,AgentUi.Muted);heading.Margin=new Thickness(0,2,0,7);menu.Items.Add(new MenuItem{Header=heading,IsEnabled=false});
             AddPermissionItem(menu,TextResources.Get("composerPermissions.openPermissions.addPermissionItem"),TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeA"),AgentApprovalMode.Ask,cfg);
             AddPermissionItem(menu,TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeB"),TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeC"),AgentApprovalMode.Auto,cfg);
             AddPermissionItem(menu,TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeD"),TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeE"),AgentApprovalMode.Full,cfg);
@@ -67,9 +67,9 @@ namespace Dafeiyu
                 AddCapability(capabilities,"terminal",TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeB"),TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeC"),true);
                 AddCapability(capabilities,"globe",TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeD"),TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeE"),true);
                 body.Children.Add(new Border{Name="FullAccessCapabilities",Child=capabilities,Background=Ui.Brush("#EEEEF0"),CornerRadius=new CornerRadius(16),Padding=new Thickness(18,6,18,6)});
-                var risk=Ui.Text(TextResources.Get("composerPermissions.permissionChangeDialog.text"),13,AgentUi.Muted);risk.Name="FullAccessRiskNotice";risk.TextWrapping=TextWrapping.Wrap;risk.Margin=new Thickness(0,16,0,20);body.Children.Add(risk);
+                var risk=LocalizedUi.Text(()=>(TextResources.Get("composerPermissions.permissionChangeDialog.text")),13,AgentUi.Muted);risk.Name="FullAccessRiskNotice";risk.TextWrapping=TextWrapping.Wrap;risk.Margin=new Thickness(0,16,0,20);body.Children.Add(risk);
             }
-            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var cancel=Ui.Button(TextResources.Get("common.cancel"));cancel.Name="CancelPermissionChange";cancel.IsCancel=true;cancel.IsDefault=true;cancel.MinWidth=82;cancel.Height=38;cancel.Padding=new Thickness(16,0,16,0);cancel.Click+=delegate{DialogResult=false;};actions.Children.Add(cancel);var allow=Ui.Button(fullAccess?TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeA"):TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeB"));allow.Name="ConfirmPermissionChange";allow.MinWidth=110;allow.Height=38;allow.Padding=new Thickness(16,0,16,0);allow.Margin=new Thickness(12,0,0,0);allow.Background=Ui.Brush("#FAE7E6");allow.BorderBrush=Brushes.Transparent;allow.Foreground=Ui.Brush("#D94A40");allow.Click+=delegate{DialogResult=true;};actions.Children.Add(allow);body.Children.Add(actions);DialogUi.Apply(this,new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
+            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var cancel=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")));cancel.Name="CancelPermissionChange";cancel.IsCancel=true;cancel.IsDefault=true;cancel.MinWidth=82;cancel.Height=38;cancel.Padding=new Thickness(16,0,16,0);cancel.Click+=delegate{DialogResult=false;};actions.Children.Add(cancel);var allow=LocalizedUi.Button(()=>(fullAccess?TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeA"):TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeB")));allow.Name="ConfirmPermissionChange";allow.MinWidth=110;allow.Height=38;allow.Padding=new Thickness(16,0,16,0);allow.Margin=new Thickness(12,0,0,0);allow.Background=Ui.Brush("#FAE7E6");allow.BorderBrush=Brushes.Transparent;allow.Foreground=Ui.Brush("#D94A40");allow.Click+=delegate{DialogResult=true;};actions.Children.Add(allow);body.Children.Add(actions);DialogUi.Apply(this,new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
         }
         static void AddCapability(StackPanel parent,string icon,string title,string description,bool divider)
         {

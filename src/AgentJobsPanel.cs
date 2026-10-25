@@ -43,8 +43,8 @@ namespace Dafeiyu
         static void OpenBrowser(Uri uri){Process.Start(new ProcessStartInfo(uri.AbsoluteUri){UseShellExecute=true});}
         async void Attach()
         {
-            if(disposed||manager!=null||!IsVisible)return;int current=++generation;notice.Text=TextResources.Get("agent.jobs.ui.recovering");
-            if(!await services.InitializeAsync()){if(current==generation&&!disposed)notice.Text=TextResources.Get("agent.jobs.ui.unavailable");return;}
+            if(disposed||manager!=null||!IsVisible)return;int current=++generation;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.recovering")));
+            if(!await services.InitializeAsync()){if(current==generation&&!disposed)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.unavailable")));return;}
             if(current!=generation||disposed||!IsLoaded||!IsVisible)return;manager=services.Manager;if(manager==null)return;
             reading=new CancellationTokenSource();RefreshRows();timer.Start();
         }
@@ -59,7 +59,7 @@ namespace Dafeiyu
             {Row row;if(!rows.TryGetValue(job.Id,out row)){row=new Row{Job=job,Manager=manager,OpenPreview=openPreview};rows.Add(job.Id,row);}row.Job=job;if(row.View!=null)row.View.Update();visible.Add(row);}
             foreach(string id in rows.Keys.Where(id=>!jobs.Any(job=>job.Id==id)).ToArray())rows.Remove(id);
             string next=String.Join("|",jobs.Select(job=>job.Id));if(next!=order||list.ItemsSource==null){order=next;list.ItemsSource=visible;}
-            notice.Text=jobs.Count==0?TextResources.Get("agent.jobs.ui.empty"):"";
+            LocalizedUi.Set(notice,"Text",()=>(jobs.Count==0?TextResources.Get("agent.jobs.ui.empty"):""));
         }
         internal void Retry(){Detach();services.RetryInitializationAsync();Attach();}
         public void Dispose(){if(disposed)return;disposed=true;Detach();list.ItemsSource=null;rows.Clear();}
@@ -68,31 +68,31 @@ namespace Dafeiyu
     {
         AgentJobsPanel.Row row;
         readonly TextBlock title=Ui.Text("",14),status=Ui.Text("",12,Ui.Muted),owner=Ui.Text("",11,Ui.Muted),directory=Ui.Text("",11,Ui.Muted),notice=Ui.Text("",12,Ui.Muted),gap=Ui.Text("",11,Ui.Muted);
-        readonly TextBox command=Ui.Field("",true),log=Ui.Field("",true);readonly Button stop=Ui.Button(TextResources.Get("agent.jobs.ui.stop"));
-        readonly Expander logExpander=new Expander{Header=TextResources.Get("agent.jobs.ui.openLog"),Name="AgentJobLogExpander"};readonly WrapPanel previews=new WrapPanel();readonly TextBlock previewNotice=Ui.Text(TextResources.Get("agent.jobs.ui.previewUnchecked"),11,Ui.Muted);string previewSignature="";
+        readonly TextBox command=Ui.Field("",true),log=Ui.Field("",true);readonly Button stop=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.stop")));
+        readonly Expander logExpander=LocalizedUi.With(new Expander{Header=TextResources.Get("agent.jobs.ui.openLog"),Name="AgentJobLogExpander"},"Header",()=>(TextResources.Get("agent.jobs.ui.openLog")));readonly WrapPanel previews=new WrapPanel();readonly TextBlock previewNotice=LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.previewUnchecked")),11,Ui.Muted);string previewSignature="";
         public AgentJobCard()
         {
             Name="AgentJobCard";Background=ThemeManager.CardSurface;BorderBrush=Ui.Line;BorderThickness=new Thickness(1);CornerRadius=new CornerRadius(10);Padding=new Thickness(12);Margin=new Thickness(0,0,0,10);
             var body=new StackPanel();Child=body;title.Name="AgentJobTitle";title.FontWeight=FontWeights.SemiBold;body.Children.Add(title);status.Name="AgentJobStatus";body.Children.Add(status);
-            command.Name="AgentJobCommand";command.IsReadOnly=true;command.MaxHeight=100;command.FontFamily=new FontFamily("Consolas");command.FontSize=12;body.Children.Add(Ui.Text(TextResources.Get("agent.jobs.ui.command"),11,Ui.Muted));body.Children.Add(command);
+            command.Name="AgentJobCommand";command.IsReadOnly=true;command.MaxHeight=100;command.FontFamily=new FontFamily("Consolas");command.FontSize=12;body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.command")),11,Ui.Muted));body.Children.Add(command);
             directory.Name="AgentJobDirectory";directory.Margin=new Thickness(0,5,0,0);body.Children.Add(directory);owner.Name="AgentJobOwner";body.Children.Add(owner);
             var actions=new WrapPanel{Margin=new Thickness(0,8,0,6)};stop.Name="AgentJobStop";actions.Children.Add(stop);body.Children.Add(actions);body.Children.Add(notice);
-            var details=new StackPanel();log.Name="AgentJobLog";log.IsReadOnly=true;log.MaxHeight=240;log.FontFamily=new FontFamily("Consolas");log.FontSize=12;log.TextWrapping=TextWrapping.Wrap;details.Children.Add(gap);details.Children.Add(log);details.Children.Add(Ui.Text(TextResources.Get("agent.jobs.ui.preview"),12,Ui.Muted));details.Children.Add(previewNotice);details.Children.Add(previews);logExpander.Content=details;ChatUi.ProcessExpander(logExpander);body.Children.Add(logExpander);
+            var details=new StackPanel();log.Name="AgentJobLog";log.IsReadOnly=true;log.MaxHeight=240;log.FontFamily=new FontFamily("Consolas");log.FontSize=12;log.TextWrapping=TextWrapping.Wrap;details.Children.Add(gap);details.Children.Add(log);details.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.preview")),12,Ui.Muted));details.Children.Add(previewNotice);details.Children.Add(previews);logExpander.Content=details;ChatUi.ProcessExpander(logExpander);body.Children.Add(logExpander);
             DataContextChanged+=delegate{Bind();};Loaded+=delegate{Bind();};Unloaded+=delegate{if(row!=null&&ReferenceEquals(row.View,this))row.View=null;};
             stop.Click+=async delegate
             {
                 if(row==null||row.Stopping)return;var current=row;current.Stopping=true;stop.IsEnabled=false;notice.Text="";
-                try{var stopped=await current.Manager.StopAsync(current.Job.Owner,current.Job.Id,AgentJobStopReason.User,CancellationToken.None);current.Job=stopped;if(ReferenceEquals(current,row)){notice.Text=stopped.CleanupConfirmed?"":TextResources.Get("agent.jobs.ui.stopError");Update();}}
-                catch(Exception){if(ReferenceEquals(current,row))notice.Text=TextResources.Get("agent.jobs.ui.stopError");}
+                try{var stopped=await current.Manager.StopAsync(current.Job.Owner,current.Job.Id,AgentJobStopReason.User,CancellationToken.None);current.Job=stopped;if(ReferenceEquals(current,row)){LocalizedUi.Set(notice,"Text",()=>(stopped.CleanupConfirmed?"":TextResources.Get("agent.jobs.ui.stopError")));Update();}}
+                catch(Exception){if(ReferenceEquals(current,row))LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.stopError")));}
                 finally{current.Stopping=false;if(ReferenceEquals(current,row))Update();}
             };
         }
         void Bind(){var next=DataContext as AgentJobsPanel.Row;if(row!=null&&ReferenceEquals(row.View,this))row.View=null;row=next;notice.Text="";if(row==null)return;row.View=this;Update();log.Text=row.Log;gap.Text=row.Gap;RefreshPreviews();}
         internal void Update()
         {
-            if(row==null)return;var job=row.Job;title.Text=job.Spec.Title;status.Text=AgentJobUiText.State(job.State)+" / "+TextResources.Format("agent.jobs.ui.timeout",job.Spec.TimeoutSeconds)+(job.RootExitCode.HasValue?" / "+TextResources.Format("agent.jobs.ui.exitCode",job.RootExitCode.Value):"");
-            if(command.Text!=job.Spec.Command)command.Text=job.Spec.Command;directory.Text=TextResources.Get("agent.jobs.ui.directory")+": "+job.Spec.WorkingDirectory;owner.Text=TextResources.Get("agent.jobs.ui.owner")+": "+job.Owner.ProjectId+" / "+job.Owner.ConversationId;
-            stop.Content=(job.State==AgentJobState.CleanupFailed?TextResources.Get("agent.jobs.ui.retryStop"):TextResources.Get("agent.jobs.ui.stop"));stop.IsEnabled=!row.Stopping&&AgentJobUiText.IsActive(job)&&job.State!=AgentJobState.Stopping;
+            if(row==null)return;var job=row.Job;LocalizedUi.Set(title,"Text",()=>(job.Spec.Title));status.Text=AgentJobUiText.State(job.State)+" / "+TextResources.Format("agent.jobs.ui.timeout",job.Spec.TimeoutSeconds)+(job.RootExitCode.HasValue?" / "+TextResources.Format("agent.jobs.ui.exitCode",job.RootExitCode.Value):"");
+            if(command.Text!=job.Spec.Command)command.Text=job.Spec.Command;LocalizedUi.Set(directory,"Text",()=>(TextResources.Get("agent.jobs.ui.directory")+": "+job.Spec.WorkingDirectory));LocalizedUi.Set(owner,"Text",()=>(TextResources.Get("agent.jobs.ui.owner")+": "+job.Owner.ProjectId+" / "+job.Owner.ConversationId));
+            LocalizedUi.Set(stop,"Content",()=>((job.State==AgentJobState.CleanupFailed?TextResources.Get("agent.jobs.ui.retryStop"):TextResources.Get("agent.jobs.ui.stop"))));stop.IsEnabled=!row.Stopping&&AgentJobUiText.IsActive(job)&&job.State!=AgentJobState.Stopping;
         }
         internal async Task ReadLogAsync(CancellationToken token)
         {
@@ -103,16 +103,16 @@ namespace Dafeiyu
                 if(page.Gap!=null)current.Gap=TextResources.Format("agent.jobs.ui.logGap",page.Gap.DroppedBytes);
                 var text=String.Concat(page.Records.Select(record=>record.Text));current.Candidates.Add(text);current.Log+=text;if(current.Log.Length>131072){int removed=current.Log.Length-131072;current.Log=current.Log.Substring(removed);current.Gap=TextResources.Format("agent.jobs.ui.logGap",removed);}
                 if(!ReferenceEquals(current,row)||!IsVisible)return;double offset=log.VerticalOffset;bool follow=log.ExtentHeight-log.ViewportHeight-offset<20;int selected=log.SelectionStart,length=log.SelectionLength;
-                log.Text=current.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):current.Log;log.Select(Math.Min(selected,log.Text.Length),Math.Min(length,Math.Max(0,log.Text.Length-selected)));if(follow)log.ScrollToEnd();else log.ScrollToVerticalOffset(offset);gap.Text=current.Gap;RefreshPreviews();
+                LocalizedUi.Set(log,"Text",()=>(current.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):current.Log));log.Select(Math.Min(selected,log.Text.Length),Math.Min(length,Math.Max(0,log.Text.Length-selected)));if(follow)log.ScrollToEnd();else log.ScrollToVerticalOffset(offset);gap.Text=current.Gap;RefreshPreviews();
             }
             catch(OperationCanceledException){}
-            catch(Exception){if(ReferenceEquals(current,row)&&IsVisible)notice.Text=TextResources.Get("agent.jobs.ui.logError");}
+            catch(Exception){if(ReferenceEquals(current,row)&&IsVisible)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.logError")));}
             finally{current.Loading=false;}
         }
         void RefreshPreviews()
         {
             if(row==null)return;var candidates=row.Candidates.Candidates;string signature=String.Join("|",candidates.Select(uri=>uri.AbsoluteUri));if(previewSignature==signature)return;previewSignature=signature;previews.Children.Clear();
-            foreach(var uri in candidates){var target=uri;var button=Ui.Button(TextResources.Get("agent.jobs.ui.openPreview"));button.ToolTip=target.AbsoluteUri;button.Margin=new Thickness(0,5,8,0);button.Click+=delegate{try{row.OpenPreview(target);}catch(Exception error){notice.Text=error.Message;}};previews.Children.Add(button);}
+            foreach(var uri in candidates){var target=uri;var button=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.openPreview")));button.ToolTip=target.AbsoluteUri;button.Margin=new Thickness(0,5,8,0);button.Click+=delegate{try{row.OpenPreview(target);}catch(Exception error){notice.Text=error.Message;}};previews.Children.Add(button);}
         }
     }
 }

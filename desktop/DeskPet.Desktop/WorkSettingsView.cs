@@ -11,7 +11,7 @@ internal sealed class WorkSettingsView : StackPanel
 {
     private readonly DesktopController owner;
     private readonly Window host;
-    private readonly TextBlock notice = Ui.Text(TextResources.Get("workSettingsView.notice.text"), 12);
+    private readonly TextBlock notice = LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.notice.text")), 12);
     private readonly TextBox directory;
     private PetSettings settings;
     private readonly string? projectId;
@@ -19,36 +19,36 @@ internal sealed class WorkSettingsView : StackPanel
     {
         owner = controller; host = window; Name = "WorkSettings"; Spacing = 14;
         this.projectId=projectId;settings=projectId==null?owner.Settings:owner.WorkBindings.ProjectSettings(projectId); bool supported = OperatingSystem.IsWindows();
-        Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text"), 20)); Children.Add(notice);
-        Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeA"), 12));
-        if (!supported) Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeB"), 12));
-        var permission = new ComboBox { Name = "AgentAccess", ItemsSource = new[] { TextResources.Get("workSettingsView.workSettingsView.itemsSource"), TextResources.Get("workSettingsView.workSettingsView.itemsSource.alternativeA") }, SelectedIndex = settings.AgentFullAccess ? 0 : 1, IsEnabled = supported, HorizontalAlignment = HorizontalAlignment.Stretch };
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text")), 20)); Children.Add(notice);
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeA")), 12));
+        if (!supported) Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeB")), 12));
+        var permission = LocalizedUi.Options(new ComboBox { Name = "AgentAccess", ItemsSource = new[] { TextResources.Get("workSettingsView.workSettingsView.itemsSource"), TextResources.Get("workSettingsView.workSettingsView.itemsSource.alternativeA") }, SelectedIndex = settings.AgentFullAccess ? 0 : 1, IsEnabled = supported, HorizontalAlignment = HorizontalAlignment.Stretch },()=>(new[] { TextResources.Get("workSettingsView.workSettingsView.itemsSource"), TextResources.Get("workSettingsView.workSettingsView.itemsSource.alternativeA") }));
         permission.SelectionChanged += (_, _) => { if (permission.SelectedIndex < 0) return; bool full = permission.SelectedIndex == 0; if (settings.AgentFullAccess == full) return; settings.AgentFullAccess = full;settings.AgentApprovalMode=full?AgentApprovalMode.Full:AgentApprovalMode.Auto;settings.AgentSandboxEnabled=!full; Save(); };
-        Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field"), permission)); Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeC"), 12));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("workSettingsView.workSettingsView.field")), permission)); Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeC")), 12));
         directory = Ui.Input(settings.AgentWorkspace); directory.Name = "AgentWorkspaceInput"; directory.IsEnabled = supported;
         directory.LostFocus += (_, _) => { if ((directory.Text ?? "").Trim() != settings.AgentWorkspace) ApplyDirectory(); };
-        var browse = Ui.AsyncButton(TextResources.Get("workSettingsView.workSettingsView.asyncButton"), BrowseDirectoryAsync, owner.Error); browse.Name = "BrowseAgentWorkspace"; browse.IsEnabled = supported;
-        var apply = Ui.Button(TextResources.Get("workSettingsView.workSettingsView.text.alternativeD"), ApplyDirectory); apply.Name = "SaveAgentWorkspace"; apply.IsEnabled = supported;
-        var reset = Ui.Button(TextResources.Get("workSettingsView.workSettingsView.text.alternativeE"), () => { var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "agent-workspace"); directory.Text = path; if (settings.AgentWorkspace != path) { settings.AgentWorkspace = path; Save(); } notice.Text = TextResources.Get("workSettingsView.workSettingsView.notice"); }); reset.Name = "ResetAgentWorkspace"; reset.IsEnabled = supported;
-        Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field.alternativeA"), directory)); Children.Add(SettingsVisual.Wrap(browse, apply, reset));
-        var terminal=new ComboBox{Name="AgentTerminalPolicy",ItemsSource=new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")},SelectedIndex=settings.AgentTerminalPolicy==AgentTerminalPolicy.ConfirmEach?1:0,IsEnabled=supported,HorizontalAlignment=HorizontalAlignment.Stretch};
+        var browse = LocalizedUi.AsyncButton(()=>(TextResources.Get("workSettingsView.workSettingsView.asyncButton")), BrowseDirectoryAsync, owner.Error); browse.Name = "BrowseAgentWorkspace"; browse.IsEnabled = supported;
+        var apply = LocalizedUi.Button(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeD")), ApplyDirectory); apply.Name = "SaveAgentWorkspace"; apply.IsEnabled = supported;
+        var reset = LocalizedUi.Button(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeE")), () => { var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "agent-workspace"); directory.Text = path; if (settings.AgentWorkspace != path) { settings.AgentWorkspace = path; Save(); } LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsView.workSettingsView.notice"))); }); reset.Name = "ResetAgentWorkspace"; reset.IsEnabled = supported;
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("workSettingsView.workSettingsView.field.alternativeA")), directory)); Children.Add(SettingsVisual.Wrap(browse, apply, reset));
+        var terminal=LocalizedUi.Options(new ComboBox{Name="AgentTerminalPolicy",ItemsSource=new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")},SelectedIndex=settings.AgentTerminalPolicy==AgentTerminalPolicy.ConfirmEach?1:0,IsEnabled=supported,HorizontalAlignment=HorizontalAlignment.Stretch},()=>(new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")}));
         terminal.SelectionChanged+=(_,_)=>{if(terminal.SelectedIndex<0)return;var value=terminal.SelectedIndex==1?AgentTerminalPolicy.ConfirmEach:AgentTerminalPolicy.Disabled;if(settings.AgentTerminalPolicy==value)return;settings.AgentTerminalPolicy=value;Save();};
-        Children.Add(Ui.Field(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeM"),terminal));Children.Add(Ui.Text(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeN"),12));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeM")),terminal));Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeN")),12));
         var syncLimit=new NumericUpDown{Name="AgentCommandTimeoutSeconds",Minimum=1,Maximum=600,Value=settings.AgentCommandTimeoutSeconds,IsEnabled=supported};
-        syncLimit.ValueChanged+=(_,_)=>{if(syncLimit.Value is not {} value||settings.AgentCommandTimeoutSeconds==(int)value)return;settings.AgentCommandTimeoutSeconds=(int)value;Save();};Children.Add(Ui.Field(TextResources.Get("agent.jobs.ui.syncLimit"),syncLimit));
+        syncLimit.ValueChanged+=(_,_)=>{if(syncLimit.Value is not {} value||settings.AgentCommandTimeoutSeconds==(int)value)return;settings.AgentCommandTimeoutSeconds=(int)value;Save();};Children.Add(LocalizedUi.Field(()=>(TextResources.Get("agent.jobs.ui.syncLimit")),syncLimit));
         var backgroundLimit=new NumericUpDown{Name="AgentBackgroundJobTimeoutSeconds",Minimum=1,Maximum=28800,Value=settings.AgentBackgroundJobTimeoutSeconds,IsEnabled=supported};
-        backgroundLimit.ValueChanged+=(_,_)=>{if(backgroundLimit.Value is not {} value||settings.AgentBackgroundJobTimeoutSeconds==(int)value)return;settings.AgentBackgroundJobTimeoutSeconds=(int)value;Save();};Children.Add(Ui.Field(TextResources.Get("agent.jobs.ui.backgroundLimit"),backgroundLimit));
-        var plan = Ui.Check(TextResources.Get("workSettingsView.workSettingsView.check"), settings.AgentPlanMode, value => { if (settings.AgentPlanMode == value) return; settings.AgentPlanMode = value; Save(); }); plan.Name = "WorkPlanMode"; plan.IsEnabled = supported; Children.Add(plan);
-        var goal = Ui.Input(settings.AgentGoal ?? "", TextResources.Get("workSettingsView.workSettingsView.input")); goal.Name = "WorkGoal"; goal.AcceptsReturn = true; goal.MinHeight = 70; goal.TextWrapping = TextWrapping.Wrap; goal.MaxLength = 4000; goal.IsEnabled = supported;
-        goal.TextChanged += (_, _) => { var value = (goal.Text ?? "").Trim(); if (settings.AgentGoal == value) return; settings.AgentGoal = value; Save(); }; Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field.alternativeB"), goal));
-        var backup = Ui.Check(TextResources.Get("workSettingsView.workSettingsView.check.alternativeA"), settings.AgentBackupFiles, value => { if (settings.AgentBackupFiles == value) return; settings.AgentBackupFiles = value; Save(); }); backup.Name = "AgentBackupFiles"; backup.IsEnabled = supported; Children.Add(backup);
-        var openBackup = Ui.AsyncButton(TextResources.Get("workSettingsView.workSettingsView.asyncButton.alternativeA"), OpenBackupAsync, owner.Error); openBackup.Name = "OpenAgentBackups"; openBackup.IsEnabled = supported; Children.Add(openBackup);
-        Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeF"), 12));
+        backgroundLimit.ValueChanged+=(_,_)=>{if(backgroundLimit.Value is not {} value||settings.AgentBackgroundJobTimeoutSeconds==(int)value)return;settings.AgentBackgroundJobTimeoutSeconds=(int)value;Save();};Children.Add(LocalizedUi.Field(()=>(TextResources.Get("agent.jobs.ui.backgroundLimit")),backgroundLimit));
+        var plan = LocalizedUi.Check(()=>(TextResources.Get("workSettingsView.workSettingsView.check")), settings.AgentPlanMode, value => { if (settings.AgentPlanMode == value) return; settings.AgentPlanMode = value; Save(); }); plan.Name = "WorkPlanMode"; plan.IsEnabled = supported; Children.Add(plan);
+        var goal = LocalizedUi.Input(settings.AgentGoal ?? "", ()=>(TextResources.Get("workSettingsView.workSettingsView.input"))); goal.Name = "WorkGoal"; goal.AcceptsReturn = true; goal.MinHeight = 70; goal.TextWrapping = TextWrapping.Wrap; goal.MaxLength = 4000; goal.IsEnabled = supported;
+        goal.TextChanged += (_, _) => { var value = (goal.Text ?? "").Trim(); if (settings.AgentGoal == value) return; settings.AgentGoal = value; Save(); }; Children.Add(LocalizedUi.Field(()=>(TextResources.Get("workSettingsView.workSettingsView.field.alternativeB")), goal));
+        var backup = LocalizedUi.Check(()=>(TextResources.Get("workSettingsView.workSettingsView.check.alternativeA")), settings.AgentBackupFiles, value => { if (settings.AgentBackupFiles == value) return; settings.AgentBackupFiles = value; Save(); }); backup.Name = "AgentBackupFiles"; backup.IsEnabled = supported; Children.Add(backup);
+        var openBackup = LocalizedUi.AsyncButton(()=>(TextResources.Get("workSettingsView.workSettingsView.asyncButton.alternativeA")), OpenBackupAsync, owner.Error); openBackup.Name = "OpenAgentBackups"; openBackup.IsEnabled = supported; Children.Add(openBackup);
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeF")), 12));
         var context = new NumericUpDown { Name = "AgentContextTokenLimit", Minimum = 8192, Maximum = 2000000, Value = settings.AgentContextTokenLimit, IsEnabled = supported };
         context.ValueChanged += (_, _) => { if (context.Value is not { } value || settings.AgentContextTokenLimit == (int)value) return; settings.AgentContextTokenLimit = (int)value; Save(); };
-        Children.Add(Ui.Field(TextResources.Get("workSettingsView.workSettingsView.field.alternativeC"), context));
-        Children.Add(Ui.Text(TextResources.Get("workSettingsView.workSettingsView.text.alternativeG"), 12));
-        var detail = Ui.Check(TextResources.Get("workSettingsView.workSettingsView.check.alternativeB"), settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("workSettingsView.workSettingsView.field.alternativeC")), context));
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("workSettingsView.workSettingsView.text.alternativeG")), 12));
+        var detail = LocalizedUi.Check(()=>(TextResources.Get("workSettingsView.workSettingsView.check.alternativeB")), settings.AgentDetailedProcess, value => { if (settings.AgentDetailedProcess == value) return; settings.AgentDetailedProcess = value; Save(); }); detail.Name = "AgentDetailedProcess"; Children.Add(detail);
     }
     private void Save()
     {
@@ -56,7 +56,7 @@ internal sealed class WorkSettingsView : StackPanel
         {
             if(projectId==null)owner.Save();
             else if(!owner.WorkBindings.TryChangeProject(projectId,project=>{project.FullAccess=settings.AgentFullAccess;project.ApprovalMode=settings.AgentApprovalMode;project.SandboxEnabled=settings.AgentSandboxEnabled;project.Workspace=settings.AgentWorkspace;project.PlanMode=settings.AgentPlanMode;project.Goal=settings.AgentGoal;project.BackupFiles=settings.AgentBackupFiles;project.ContextTokenLimit=settings.AgentContextTokenLimit;project.TerminalPolicy=settings.AgentTerminalPolicy;project.CommandTimeoutSeconds=settings.AgentCommandTimeoutSeconds;project.BackgroundJobTimeoutSeconds=settings.AgentBackgroundJobTimeoutSeconds;}))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));
-            notice.Text=TextResources.Get("workSettingsView.save.notice");notice.Foreground=DesktopTheme.Brush("#687282");
+            LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsView.save.notice")));notice.Foreground=DesktopTheme.Brush("#687282");
         }
         catch(Exception error){if(projectId!=null)settings=owner.WorkBindings.ProjectSettings(projectId);notice.Text=AgentJobUiText.Error(error);notice.Foreground=DesktopTheme.Brush("#A54A37");}
     }
@@ -71,7 +71,7 @@ internal sealed class WorkSettingsView : StackPanel
     }
     private async Task BrowseDirectoryAsync()
     {
-        var picked = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = TextResources.Get("workSettingsView.browseDirectoryAsync.title"), AllowMultiple = false });
+        var picked = await host.StorageProvider.OpenFolderPickerAsync(LocalizedUi.With(new FolderPickerOpenOptions { Title = TextResources.Get("workSettingsView.browseDirectoryAsync.title"), AllowMultiple = false },"Title",()=>(TextResources.Get("workSettingsView.browseDirectoryAsync.title"))));
         if (!host.IsVisible || picked.Count == 0) return; directory.Text = picked[0].TryGetLocalPath() ?? throw new InvalidOperationException(TextResources.Get("workSettingsView.browseDirectoryAsync.directoryPickedTryGetLocalPath")); ApplyDirectory();
     }
     private async Task OpenBackupAsync()
@@ -79,11 +79,11 @@ internal sealed class WorkSettingsView : StackPanel
         var root = settings.AgentWorkspace;
         if (settings.AgentFullAccess)
         {
-            var picked = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = TextResources.Get("workSettingsView.openBackupAsync.title"), AllowMultiple = false });
+            var picked = await host.StorageProvider.OpenFolderPickerAsync(LocalizedUi.With(new FolderPickerOpenOptions { Title = TextResources.Get("workSettingsView.openBackupAsync.title"), AllowMultiple = false },"Title",()=>(TextResources.Get("workSettingsView.openBackupAsync.title"))));
             if (!host.IsVisible || picked.Count == 0) return; root = picked[0].TryGetLocalPath() ?? throw new InvalidOperationException(TextResources.Get("workSettingsView.openBackupAsync.rootPickedTryGetLocalPath"));
         }
         var path = Path.Combine(root, ".deskpet-agent-backups");
-        if (!Directory.Exists(path)) { notice.Text = TextResources.Get("workSettingsView.openBackupAsync.notice"); return; }
+        if (!Directory.Exists(path)) { LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsView.openBackupAsync.notice"))); return; }
         await host.Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(path));
     }
 }

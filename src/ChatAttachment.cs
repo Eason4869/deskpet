@@ -14,7 +14,7 @@ namespace Dafeiyu
     public sealed class ChatAttachment
     {
         public const int MaximumBytes=4*1024*1024;
-        public static readonly string FileFilter=TextResources.Get("chatAttachment.fileFilter.fileFilter");
+        public static string FileFilter {get{return TextResources.Get("chatAttachment.fileFilter.fileFilter");}}
         [DataMember] public string Name {get;private set;}
         [DataMember] public string MediaType {get;private set;}
         [DataMember] public string Data {get;private set;}

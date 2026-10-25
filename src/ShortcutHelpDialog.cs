@@ -22,7 +22,7 @@ namespace Dafeiyu
             if(owner==null)throw new ArgumentNullException("owner");
             if(source==null)throw new ArgumentNullException("source");
             commands=source.Where(c=>c!=null && !String.IsNullOrWhiteSpace(c.Title) && !String.IsNullOrWhiteSpace(c.GestureLabel)).ToList();
-            Owner=owner;Ui.Window(this,TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.window"),740,680);
+            Owner=owner;LocalizedUi.Window(this,()=>(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.window")),740,680);
             Width=Math.Min(740,Math.Max(300,SystemParameters.WorkArea.Width-40));
             Height=Math.Min(680,Math.Max(300,SystemParameters.WorkArea.Height-40));
             MinWidth=Math.Min(440,Width);MinHeight=Math.Min(400,Height);
@@ -30,19 +30,19 @@ namespace Dafeiyu
             root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             root.RowDefinitions.Add(new RowDefinition());
-            var title=Ui.Text(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.text"),25,ink);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(0,0,34,21);root.Children.Add(title);
+            var title=LocalizedUi.Text(()=>(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.text")),25,ink);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(0,0,34,21);root.Children.Add(title);
 
             var searchRow=new DockPanel{LastChildFill=true};
             var icon=UiIcons.Image("search",muted);icon.Width=icon.Height=17;icon.VerticalAlignment=VerticalAlignment.Center;icon.Margin=new Thickness(0,0,10,0);DockPanel.SetDock(icon,Dock.Left);searchRow.Children.Add(icon);
             var inputLayer=new Grid();
             search=new TextBox{Name="ShortcutSearch",Background=Brushes.Transparent,BorderThickness=new Thickness(0),Padding=new Thickness(0),MinHeight=44,FontSize=13,Foreground=ink,VerticalContentAlignment=VerticalAlignment.Center,TabIndex=0};
-            System.Windows.Automation.AutomationProperties.SetName(search,TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.automationAutomationPropertiesSetName"));
-            inputLayer.Children.Add(search);placeholder=Ui.Text(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.text.alternativeA"),13,muted);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;inputLayer.Children.Add(placeholder);searchRow.Children.Add(inputLayer);
+            LocalizedUi.Automation(search,()=>(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.automationAutomationPropertiesSetName")));
+            inputLayer.Children.Add(search);placeholder=LocalizedUi.Text(()=>(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.text.alternativeA")),13,muted);placeholder.VerticalAlignment=VerticalAlignment.Center;placeholder.IsHitTestVisible=false;inputLayer.Children.Add(placeholder);searchRow.Children.Add(inputLayer);
             var searchBox=new Border{Child=searchRow,Background=ThemeManager.Surface,BorderBrush=line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(10),Padding=new Thickness(13,0,13,0),Margin=new Thickness(0,0,0,18)};
             Grid.SetRow(searchBox,1);root.Children.Add(searchBox);
             groups=new StackPanel{Margin=new Thickness(0,0,12,0)};
             scroll=new ScrollViewer{Name="ShortcutScroll",Content=groups,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Focusable=true,TabIndex=1,Padding=new Thickness(0),CanContentScroll=false};
-            System.Windows.Automation.AutomationProperties.SetName(scroll,TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.automationAutomationPropertiesSetName.alternativeA"));
+            LocalizedUi.Automation(scroll,()=>(TextResources.Get("shortcutHelpDialog.shortcutHelpDialog.automationAutomationPropertiesSetName.alternativeA")));
             KeyboardNavigation.SetTabNavigation(scroll,KeyboardNavigationMode.None);Grid.SetRow(scroll,2);root.Children.Add(scroll);
 
             DialogUi.Apply(this,root);
@@ -62,8 +62,8 @@ namespace Dafeiyu
             if(visible.Length==0)
             {
                 var empty=new StackPanel{Margin=new Thickness(0,68,0,0)};
-                var title=Ui.Text(TextResources.Get("shortcutHelpDialog.renderGroups.text"),15,ink);title.Name="ShortcutEmptyState";title.HorizontalAlignment=HorizontalAlignment.Center;empty.Children.Add(title);
-                var hint=Ui.Text(TextResources.Get("shortcutHelpDialog.renderGroups.text.alternativeA"),12,muted);hint.HorizontalAlignment=HorizontalAlignment.Center;hint.Margin=new Thickness(0,8,0,0);empty.Children.Add(hint);groups.Children.Add(empty);
+                var title=LocalizedUi.Text(()=>(TextResources.Get("shortcutHelpDialog.renderGroups.text")),15,ink);title.Name="ShortcutEmptyState";title.HorizontalAlignment=HorizontalAlignment.Center;empty.Children.Add(title);
+                var hint=LocalizedUi.Text(()=>(TextResources.Get("shortcutHelpDialog.renderGroups.text.alternativeA")),12,muted);hint.HorizontalAlignment=HorizontalAlignment.Center;hint.Margin=new Thickness(0,8,0,0);empty.Children.Add(hint);groups.Children.Add(empty);
             }
             else foreach(var group in visible)
             {
@@ -72,7 +72,7 @@ namespace Dafeiyu
                 {
                     var row=new Grid{MinHeight=44,Margin=new Thickness(2,0,2,0)};
                     row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-                    var title=Ui.Text(command.Title,13,ink);title.Name="ShortcutCommandTitle";title.TextWrapping=TextWrapping.Wrap;title.VerticalAlignment=VerticalAlignment.Center;title.Margin=new Thickness(0,6,18,6);row.Children.Add(title);
+                    var title=Ui.Text(()=>(command.Title),13,ink);title.Name="ShortcutCommandTitle";title.TextWrapping=TextWrapping.Wrap;title.VerticalAlignment=VerticalAlignment.Center;title.Margin=new Thickness(0,6,18,6);row.Children.Add(title);
                     var keys=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
                     var labels=command.GestureLabel.Split(new[]{'+'},StringSplitOptions.RemoveEmptyEntries).Select(k=>k.Trim()).ToList();if(command.GestureLabel.EndsWith("+",StringComparison.Ordinal))labels.Add("+");
                     foreach(string label in labels)

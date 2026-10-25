@@ -12,10 +12,6 @@ namespace Dafeiyu
         static bool requested,resumeGuide=true;
         public static bool Requested { get{return requested;} set{requested=value;if(value)resumeGuide=true;} }
         public static void Request(bool resumeOnboarding){Requested=true;resumeGuide=resumeOnboarding;}
-        public static string Caption(string language)
-        {
-            return UiLanguages.Resolve(language)==TextResources.CurrentLanguage ? TextResources.Get("onboarding.language.restart") : TextResources.CatalogFor(language).Get("onboarding.language.restart");
-        }
         public static ProcessStartInfo StartInfo(string executable, string entryAssembly)
         {return StartInfo(executable,entryAssembly,resumeGuide);}
         public static ProcessStartInfo StartInfo(string executable, string entryAssembly,bool resumeOnboarding)

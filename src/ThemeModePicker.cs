@@ -28,7 +28,7 @@ namespace Dafeiyu
         {
             Name="ThemeModePicker";
             var layout=new Grid();layout.ColumnDefinitions.Add(new ColumnDefinition());layout.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            var label=Ui.InlineText(TextResources.Get("themeModePicker.themeModePicker.inlineText"),13);label.FontWeight=FontWeights.SemiBold;layout.Children.Add(label);
+            var label=LocalizedUi.InlineText(()=>(TextResources.Get("themeModePicker.themeModePicker.inlineText")),13);label.FontWeight=FontWeights.SemiBold;layout.Children.Add(label);
             var row=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
             foreach(string mode in new[]{"system","light","dark"})
             {

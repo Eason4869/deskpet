@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "Se canceló el cierre o cambió la configuración. El compañero sigue abierto; se canceló la desinstalación.",
   "settingsSearch.noResults": "No hay ajustes ni funciones que coincidan",
   "settingsSearch.clearHistoryAlias": "Borrar el historial de chat",
-  "settingsSearch.resetAlias": "Restaurar los ajustes predeterminados"
+  "settingsSearch.resetAlias": "Restaurar los ajustes predeterminados",
+  "onboarding.language.applyContinue": "Aplicar y continuar",
+  "onboarding.language.liveDetail": "Elige el idioma y selecciona Aplicar y continuar para aplicarlo de inmediato y continuar con la configuración."
 }

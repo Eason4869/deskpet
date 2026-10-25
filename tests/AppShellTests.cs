@@ -58,8 +58,8 @@ namespace Dafeiyu.Tests
                 Check(subtitle.Text==TextResources.Get("relationship.home.open"),mode+" WPF avatar subtitle is translated "+code);
                 string pending=code=="en_US"?"ja_JP":"en_US";
                 ChooseLanguage(languages,code,pending,Path.Combine(root,"language-dialog-"+mode+".png"));
-                Check(pet.Settings.UiLanguage==pending&&store.Load().UiLanguage==pending&&TextResources.CurrentLanguage==code,mode+" selection persists and retains the running language");
-                Check(SessionNotice(chat)==TextResources.Get("languages.restartRequired"),mode+" changing language explains restart");
+                Check(pet.Settings.UiLanguage==pending&&store.Load().UiLanguage==pending&&TextResources.CurrentLanguage==pending,mode+" selection immediately updates the running language");
+                Check(String.IsNullOrEmpty(SessionNotice(chat)),mode+" changing language requires no restart");
                 ChooseLanguage(languages,pending,code);
                 menu.IsOpen=false;
             }
@@ -80,7 +80,7 @@ namespace Dafeiyu.Tests
             Check(!language.HasItems,"language entry opens a scrollable dialog");
             ChooseLanguage(language,pet.Settings.UiLanguage,"en_US");
             Check(pet.Settings.UiLanguage=="en_US"&&new SettingsStore(Path.Combine(pet.Store.DirectoryPath,"settings.json")).Load().UiLanguage=="en_US","avatar selection saves English");
-            Check(TextResources.CurrentLanguage=="zh_CN"&&SessionNotice(chat).Contains("重启"),"changing language explains restart without mixing the current window language");
+            Check(TextResources.CurrentLanguage=="en_US"&&String.IsNullOrEmpty(SessionNotice(chat)),"changing language requires no restart without mixing the current window language");
             ChooseLanguage(language,"en_US","zh_CN");profile.IsOpen=false;await app.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);chat.UpdateLayout();
             var frame=All<Border>(chat).Single(b=>b.Name=="AppContentFrame");var clip=frame.Clip as RectangleGeometry;Check(clip!=null&&clip.RadiusX==16&&!clip.FillContains(new Point(1,1))&&!clip.FillContains(new Point(frame.ActualWidth-1,frame.ActualHeight-1)),"page children are clipped at all rounded content-frame corners");
             Check(Button(chat,"ShellUsage").IsVisible&&Button(chat,"ShellMcp").IsVisible,"usage and approved puzzle extension entries are visible in the left rail");var homePath=All<System.Windows.Shapes.Path>(Button(chat,"ShellHome")).Single();Check(homePath.Fill is SolidColorBrush&&((SolidColorBrush)homePath.Fill).Color==Color.FromRgb(28,32,36),"active home icon is a solid black silhouette");

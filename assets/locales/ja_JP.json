@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "終了がキャンセルされたか、設定が変更されました。コンパニオンは動作中で、アンインストールはキャンセルされました。",
   "settingsSearch.noResults": "一致する設定や機能が見つかりません",
   "settingsSearch.clearHistoryAlias": "チャット履歴を消去",
-  "settingsSearch.resetAlias": "既定の設定に戻す"
+  "settingsSearch.resetAlias": "既定の設定に戻す",
+  "onboarding.language.applyContinue": "適用して続行",
+  "onboarding.language.liveDetail": "表示言語を選び、「適用して続行」を押すとすぐに反映され、設定ガイドを続行します。"
 }

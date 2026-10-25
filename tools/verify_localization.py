@@ -147,7 +147,7 @@ def resource_call_details(source):
     # Comments must also be blanked before looking for executable calls.
     code=''.join(masked)
     code=re.sub(r'//[^\n]*|/\*[\s\S]*?\*/',lambda m:' '*(m.end()-m.start()),code)
-    for match in re.finditer(r'\bTextResources\s*\.\s*(Get|Format|FormatForCatalog|StartupMessage)\s*\(',code):
+    for match in re.finditer(r'\bTextResources\s*\.\s*(Get|Format|FormatForCatalog|StartupMessage|Message)\s*\(',code):
         depth=1;first=match.end();i=first;args=[]
         while i<len(code) and depth:
             c=code[i]
@@ -157,7 +157,9 @@ def resource_call_details(source):
             if depth==0:args.append((first,i))
             i+=1
         if depth:raise ValueError('Unterminated resource call')
-        yield ('Format' if match.group(1)=='FormatForCatalog' else match.group(1)),[source[a:b].strip() for a,b in args],match.start(),i
+        method=match.group(1)
+        if method=='Message':method='Format' if len(args)>1 else 'Get'
+        yield ('Format' if method=='FormatForCatalog' else method),[source[a:b].strip() for a,b in args],match.start(),i
 
 
 def resource_calls(source):

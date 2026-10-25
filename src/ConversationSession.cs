@@ -45,7 +45,10 @@ namespace Dafeiyu
         public bool IsBusy { get { lock(gate) return active!=null; } }
         public Task WaitForIdleAsync(){lock(gate)return Task.WhenAll(active==null?Task.FromResult(true):active.Complete.Task,imageRepairTail);}
         public string PersonaId { get { lock(gate)return personaId; } }
-        public string LastNotice { get; private set; }
+        string lastNotice;
+        LocalizedMessage localizedNotice;
+        public string LastNotice { get{return localizedNotice==null?lastNotice:localizedNotice.Value;} private set{localizedNotice=null;lastNotice=value;} }
+        void SetLocalizedNotice(LocalizedMessage message){localizedNotice=message;lastNotice=null;}
         string imageHistoryWarning="";
         public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
@@ -171,7 +174,7 @@ namespace Dafeiyu
             if(op.ResumeTask!=null){op.RelationshipCompanionId=op.ResumeTask.RelationshipCompanionId;op.RelationshipEventId=op.ResumeTask.RelationshipEventId;op.RelationshipWork=true;op.RelationshipSucceeded=op.ResumeTask.RelationshipSucceeded;}
             op.RelationshipSucceeded|=op.History.RelationshipHasSucceeded(op.RelationshipEventId);
             try { if(kernelSession!=null){kernelSession.Enqueue(new AgentSessionInput{IdempotencyId=String.IsNullOrWhiteSpace(kernelInputId)?Guid.NewGuid().ToString("N"):kernelInputId,Kind=resumeTask==null?"prompt":"resume",Text=text,Resume=resumeTask!=null});kernelSession.DeliverNext();kernelSession.StartStep();}await RequestReply(op,text,petName).ConfigureAwait(false);if(kernelSession!=null)kernelSession.CompleteStep(op.ReplyId); }
-            catch(OperationCanceledException) { if(kernelSession!=null)kernelSession.FailStep("cancelled"); LastNotice=TextResources.Get("conversationSession.sendTextAsync.lastNotice"); throw; }
+            catch(OperationCanceledException) { if(kernelSession!=null)kernelSession.FailStep("cancelled"); SetLocalizedNotice(TextResources.Message("conversationSession.sendTextAsync.lastNotice")); throw; }
             finally { FinishOperation(op); }
         }
         public void StartRecording(PetSettings settings)
@@ -213,7 +216,7 @@ namespace Dafeiyu
                 await RecognizeAndReply(op,wav,petName).ConfigureAwait(false);
             }
             catch(Exception)
-            { if(op.Cancel.IsCancellationRequested) { LastNotice=TextResources.Get("conversationSession.finishRecordingAsync.lastNotice"); throw new OperationCanceledException(op.Cancel.Token); } throw; }
+            { if(op.Cancel.IsCancellationRequested) { SetLocalizedNotice(TextResources.Message("conversationSession.finishRecordingAsync.lastNotice")); throw new OperationCanceledException(op.Cancel.Token); } throw; }
             finally { FinishOperation(op); }
         }
         public async Task SendVoiceAsync(byte[] wav,PetSettings settings,string petName)
@@ -221,7 +224,7 @@ namespace Dafeiyu
             if(!WaveData.IsWave(wav)) throw new ApiException(TextResources.Get("conversationSession.sendVoiceAsync.text"));
             ValidateVoice(settings); Operation op=Begin(settings,ConversationStage.Recognizing);
             try { await RecognizeAndReply(op,wav,petName).ConfigureAwait(false); }
-            catch(OperationCanceledException) { LastNotice=TextResources.Get("conversationSession.sendVoiceAsync.lastNotice"); throw; }
+            catch(OperationCanceledException) { SetLocalizedNotice(TextResources.Message("conversationSession.sendVoiceAsync.lastNotice")); throw; }
             finally { FinishOperation(op); }
         }
         private async Task RecognizeAndReply(Operation op,byte[] wav,string petName)
@@ -289,9 +292,9 @@ namespace Dafeiyu
             {
                 SetStage(ConversationStage.Speaking);
                 try { await speech.SpeakAsync(MarkdownContent.PlainText(answer),op.Live.Copy(),token).ConfigureAwait(false); }
-                catch(OperationCanceledException) { if(token.IsCancellationRequested) throw; LastNotice=TextResources.Get("conversationSession.requestReply.lastNotice"); }
+                catch(OperationCanceledException) { if(token.IsCancellationRequested) throw; SetLocalizedNotice(TextResources.Message("conversationSession.requestReply.lastNotice")); }
                 catch(Exception e)
-                { if(!(e is ApiException || e is InvalidOperationException || e is System.IO.IOException || e is UnauthorizedAccessException)) throw; LastNotice=TextResources.Get("conversationSession.requestReply.lastNotice.alternativeA")+(e is ApiException || e is InvalidOperationException ? e.Message : TextResources.Get("conversationSession.requestReply.lastNotice.alternativeB")); }
+                { if(!(e is ApiException || e is InvalidOperationException || e is System.IO.IOException || e is UnauthorizedAccessException)) throw; SetLocalizedNotice(LocalizedMessage.Concat(TextResources.Message("conversationSession.requestReply.lastNotice.alternativeA"),(e is ApiException || e is InvalidOperationException ? (object)e.Message : TextResources.Message("conversationSession.requestReply.lastNotice.alternativeB")))); }
             }
 
             }
@@ -314,7 +317,7 @@ namespace Dafeiyu
             }
             if(fresh.Count>0)op.Workspace.RecordGuidance(fresh);
             if(store!=null)await store.FlushAsync().ConfigureAwait(false);if(taskStore!=null)await taskStore.FlushAsync().ConfigureAwait(false);cancel.ThrowIfCancellationRequested();
-            if(String.IsNullOrEmpty(HistoryWarning) && String.IsNullOrEmpty(AgentTaskWarning))try{acknowledge(op.PersonaId,accepted);}catch(Exception e){if(!(e is System.IO.IOException || e is UnauthorizedAccessException))throw;LastNotice=TextResources.Get("conversationSession.applyGuidance.lastNotice");}
+            if(String.IsNullOrEmpty(HistoryWarning) && String.IsNullOrEmpty(AgentTaskWarning))try{acknowledge(op.PersonaId,accepted);}catch(Exception e){if(!(e is System.IO.IOException || e is UnauthorizedAccessException))throw;SetLocalizedNotice(TextResources.Message("conversationSession.applyGuidance.lastNotice"));}
             return result;
         }
         static bool SameAttachments(IList<ChatAttachment> a,IList<ChatAttachment> b)
@@ -438,6 +441,7 @@ namespace Dafeiyu
             return SendTextAsync(text,settings,name,resumeTask:state);
         }
         public void ReportNotice(string message){LastNotice=message??"";if(!disposed && StateChanged!=null)StateChanged();}
+        public void ReportNotice(LocalizedMessage message){if(message==null)throw new ArgumentNullException("message");SetLocalizedNotice(message);if(!disposed&&StateChanged!=null)StateChanged();}
         public async Task SpeakReplyAsync(string id,PetSettings settings)
         {
             ChatMessage reply;lock(gate)reply=History.Messages.FirstOrDefault(m=>m.Id==id && m.Role=="assistant");
@@ -451,12 +455,12 @@ namespace Dafeiyu
             lock(gate)History.ForRegeneration(id,"");
             Operation op=Begin(settings,ConversationStage.Thinking);op.Regenerating=true;op.ReplyId=id;
             var original=op.History.Messages.First(m=>m.Id==id);op.RelationshipCompanionId=original.RelationshipCompanionId;op.RelationshipEventId=original.RelationshipEventId;op.RelationshipWork=original.RelationshipWork;op.RelationshipSucceeded=original.RelationshipSucceeded || op.History.RelationshipHasSucceeded(op.RelationshipEventId);
-            try{await RequestReply(op,"",petName).ConfigureAwait(false);}catch(OperationCanceledException){LastNotice=TextResources.Get("conversationSession.regenerateAsync.lastNotice");throw;}finally{End(op);}
+            try{await RequestReply(op,"",petName).ConfigureAwait(false);}catch(OperationCanceledException){SetLocalizedNotice(TextResources.Message("conversationSession.regenerateAsync.lastNotice"));throw;}finally{End(op);}
         }
         public async Task<bool> PreviewSpeechAsync(PetSettings settings,string name)
         {
             Operation op=Begin(settings,ConversationStage.Speaking);
-            try { var voices=settings.ActiveVoiceRecommendations;await speech.SpeakAsync(voices!=null && !String.IsNullOrWhiteSpace(voices.SampleText)?voices.SampleText:TextResources.Format("conversationSession.previewSpeechAsync.speechSpeakAsync",name),op.Snapshot,op.Cancel.Token).ConfigureAwait(false); LastNotice=TextResources.Get("conversationSession.previewSpeechAsync.lastNotice"); return true; }
+            try { var voices=settings.ActiveVoiceRecommendations;await speech.SpeakAsync(voices!=null && !String.IsNullOrWhiteSpace(voices.SampleText)?voices.SampleText:TextResources.Format("conversationSession.previewSpeechAsync.speechSpeakAsync",name),op.Snapshot,op.Cancel.Token).ConfigureAwait(false); SetLocalizedNotice(TextResources.Message("conversationSession.previewSpeechAsync.lastNotice")); return true; }
             finally { FinishOperation(op); }
         }
         public void SetVolume(int volume) { lock(gate)if(active!=null)active.Live.Volume=Math.Max(0,Math.Min(100,volume));speech.SetVolume(volume); }
@@ -467,7 +471,7 @@ namespace Dafeiyu
             try { op.Cancel.Cancel(); } catch(ObjectDisposedException) { return; }
             speech.Stop();
             if(op.Recorder!=null && !op.Finishing)
-            { await Task.Run(delegate { op.Recorder.Dispose(); }); LastNotice=TextResources.Get("conversationSession.stopAsync.lastNotice"); End(op); }
+            { await Task.Run(delegate { op.Recorder.Dispose(); }); SetLocalizedNotice(TextResources.Message("conversationSession.stopAsync.lastNotice")); End(op); }
             await op.Complete.Task;
             await FlushHistoryAsync();
         }

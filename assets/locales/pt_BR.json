@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "O fechamento foi cancelado ou as configurações mudaram. O companheiro continua aberto; a desinstalação foi cancelada.",
   "settingsSearch.noResults": "Nenhuma configuração ou função correspondente",
   "settingsSearch.clearHistoryAlias": "Limpar histórico de conversas",
-  "settingsSearch.resetAlias": "Restaurar configurações padrão"
+  "settingsSearch.resetAlias": "Restaurar configurações padrão",
+  "onboarding.language.applyContinue": "Aplicar e continuar",
+  "onboarding.language.liveDetail": "Escolha o idioma e selecione Aplicar e continuar para aplicá-lo imediatamente e continuar a configuração."
 }

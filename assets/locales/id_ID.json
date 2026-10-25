@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "Penutupan dibatalkan atau pengaturan berubah. Pendamping masih berjalan; penghapusan dibatalkan.",
   "settingsSearch.noResults": "Tidak ada pengaturan atau fitur yang cocok",
   "settingsSearch.clearHistoryAlias": "Hapus riwayat obrolan",
-  "settingsSearch.resetAlias": "Pulihkan pengaturan bawaan"
+  "settingsSearch.resetAlias": "Pulihkan pengaturan bawaan",
+  "onboarding.language.applyContinue": "Terapkan dan lanjutkan",
+  "onboarding.language.liveDetail": "Pilih bahasa antarmuka, lalu pilih Terapkan dan lanjutkan untuk langsung menerapkannya dan melanjutkan pengaturan."
 }

@@ -25,7 +25,7 @@ internal sealed partial class DesktopController
     internal bool ExplainGuideCompanions()
     {
         if (!GuideLocked) return false;
-        var notice = Ui.Window(TextResources.Get("desktopCompanions.explainGuideCompanions.window"), Ui.Text(TextResources.Get("desktopCompanions.explainGuideCompanions.text")), 400, 180);
+        var notice = LocalizedUi.Window(()=>(TextResources.Get("desktopCompanions.explainGuideCompanions.window")), LocalizedUi.Text(()=>(TextResources.Get("desktopCompanions.explainGuideCompanions.text"))), 400, 180);
         notice.Name = "GuideCompanionNotice"; notice.ShowActivated = false; notice.ShowInTaskbar = false; notice.Show();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => { timer.Stop(); notice.Close(); }; notice.Closed += (_, _) => timer.Stop(); timer.Start();

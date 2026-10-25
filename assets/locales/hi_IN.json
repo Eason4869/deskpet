@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "बंद करना रद्द हुआ या सेटिंग बदल गई। साथी अभी चल रहा है; अनइंस्टॉल रद्द हुआ।",
   "settingsSearch.noResults": "कोई मेल खाती सेटिंग या सुविधा नहीं मिली",
   "settingsSearch.clearHistoryAlias": "चैट इतिहास साफ़ करें",
-  "settingsSearch.resetAlias": "डिफ़ॉल्ट सेटिंग बहाल करें"
+  "settingsSearch.resetAlias": "डिफ़ॉल्ट सेटिंग बहाल करें",
+  "onboarding.language.applyContinue": "लागू करें और जारी रखें",
+  "onboarding.language.liveDetail": "इंटरफ़ेस की भाषा चुनें, फिर तुरंत लागू करने और सेटअप जारी रखने के लिए लागू करें और जारी रखें चुनें।"
 }

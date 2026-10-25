@@ -22,7 +22,7 @@ internal static class LanguageUiChecks
         var chat=new ChatWindow(owner,false);chat.Show();Dispatcher.UIThread.RunJobs();
         var avatar=chat.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="ShellAvatar");avatar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var menu=avatar.ContextMenu!;Check(menu.ItemsSource!.OfType<MenuItem>().Single(item=>item.Name=="ProfileLanguage").Header as string==TextResources.Get("menus.language"),"actual avatar menu uses the resolved system language");menu.Close();
-        owner.SetUiLanguage("ja_JP");Check(owner.Settings.UiLanguage=="ja_JP"&&TextResources.CurrentLanguage==expected&&owner.Session.LastNotice==TextResources.Get("languages.restartRequired"),"manual preference persists while the process language stays frozen");
+        owner.SetUiLanguage("ja_JP");Check(owner.Settings.UiLanguage=="ja_JP"&&TextResources.CurrentLanguage=="ja_JP"&&String.IsNullOrEmpty(owner.Session.LastNotice),"manual preference persists while the process language stays frozen");
         owner.SetUiLanguage("system");Check(owner.Settings.UiLanguage=="system"&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().UiLanguage=="system"&&String.IsNullOrEmpty(owner.Session.LastNotice),"returning to the active system language clears an unnecessary restart notice");
         chat.Close();owner.Pet.Close();owner.Dispose();var watch=System.Diagnostics.Stopwatch.StartNew();while(!owner.ImageServicesShutdown.IsCompleted){if(watch.ElapsedMilliseconds>10000)throw new TimeoutException("System language fixture cleanup timed out");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}owner.ImageServicesShutdown.GetAwaiter().GetResult();return checks;
     }
@@ -53,8 +53,8 @@ internal static class LanguageUiChecks
                 list.SelectedItem=choices.Single(item=>item.Tag as string==selected);dialog.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="SaveLanguageSelection").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
             }
             string pending=code=="en_US"?"ja_JP":"en_US";Select(code,pending);
-            Check(owner.Settings.UiLanguage==pending&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().UiLanguage==pending&&TextResources.CurrentLanguage==code,mode+" selection persists without changing the running window language");
-            Check(owner.Session.LastNotice==TextResources.Get("languages.restartRequired"),mode+" selection explains the restart requirement");Select(pending,code);menu.Close();chat.Close();
+            Check(owner.Settings.UiLanguage==pending&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().UiLanguage==pending&&TextResources.CurrentLanguage==pending,mode+" selection immediately updates the running window language");
+            Check(String.IsNullOrEmpty(owner.Session.LastNotice),mode+" selection explains the restart requirement");Select(pending,code);menu.Close();chat.Close();
             var settings=new SettingsWindow(owner);settings.Show();Dispatcher.UIThread.RunJobs();
             var navigation=settings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
             var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")));

@@ -16,6 +16,13 @@ class LocalizationAuditTests(unittest.TestCase):
         cls.audit = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.audit)
 
+    def test_live_message_keys_are_checked(self):
+        refs, errors = self.audit.check_references('TextResources.Message("missing");', {})
+        self.assertEqual(refs['missing'], 1)
+        self.assertTrue(any('missing key' in e for e in errors))
+        refs, errors = self.audit.check_references('TextResources.Message("count", value);', {'count': '{0} / {1}'})
+        self.assertTrue(any('Insufficient format arguments' in e for e in errors))
+
     def test_comments_escapes_and_verbatim(self):
         source = '// "注释"\nvar a="\\u4e2d文"; /* "注释" */ var b=@"引号""与\\路径";'
         self.assertEqual([t[2] for t in self.audit.string_tokens(source)], ["中文", '引号"与\\路径'])

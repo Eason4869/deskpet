@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "La fermeture a été annulée ou les paramètres ont changé. Le compagnon reste ouvert ; la désinstallation est annulée.",
   "settingsSearch.noResults": "Aucun paramètre ni fonction correspondant",
   "settingsSearch.clearHistoryAlias": "Effacer l’historique des discussions",
-  "settingsSearch.resetAlias": "Rétablir les paramètres par défaut"
+  "settingsSearch.resetAlias": "Rétablir les paramètres par défaut",
+  "onboarding.language.applyContinue": "Appliquer et continuer",
+  "onboarding.language.liveDetail": "Choisissez la langue, puis sélectionnez Appliquer et continuer pour l’appliquer immédiatement et poursuivre la configuration."
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +18,7 @@ namespace Dafeiyu
             var current=workspace;
             var row=new DockPanel{LastChildFill=true};var settings=UiIcons.Button("settings",TextResources.Get("conversationProjectPicker.refreshProjectPicker.uiIcons"));settings.Name="ConversationProjectSettings";settings.Width=settings.Height=26;settings.Padding=new Thickness(4);settings.Margin=new Thickness(0);settings.Click+=delegate{if(current.ProjectId==ProjectCatalogStore.UnassignedProjectId)pet.ShowWorkSettings();else pet.EditProject(current.Project);};DockPanel.SetDock(settings,Dock.Right);row.Children.Add(settings);
             var button=Ui.Button("");projectPickerAnchor=button;button.Name="ConversationProjectPicker";button.Background=Brushes.Transparent;button.BorderBrush=Brushes.Transparent;button.HorizontalAlignment=HorizontalAlignment.Left;button.Padding=new Thickness(5,2,7,2);button.MinHeight=26;button.IsEnabled=current.IsDraft;
-            var content=new StackPanel{Orientation=Orientation.Horizontal};var icon=UiIcons.Image("folder",AgentUi.Muted);icon.Width=icon.Height=15;icon.Margin=new Thickness(0,0,7,0);icon.VerticalAlignment=VerticalAlignment.Center;content.Children.Add(icon);content.Children.Add(Ui.InlineText(current.ProjectId==ProjectCatalogStore.UnassignedProjectId?(current.IsDraft?TextResources.Get("conversationProjectPicker.refreshProjectPicker.inlineText"):TextResources.Get("conversationProjectPicker.refreshProjectPicker.inlineText.alternativeA")):current.Project.Name,12,AgentUi.Muted));button.Content=content;row.Children.Add(button);
+            var content=new StackPanel{Orientation=Orientation.Horizontal};var icon=UiIcons.Image("folder",AgentUi.Muted);icon.Width=icon.Height=15;icon.Margin=new Thickness(0,0,7,0);icon.VerticalAlignment=VerticalAlignment.Center;content.Children.Add(icon);content.Children.Add(LocalizedUi.InlineText(()=>(current.ProjectId==ProjectCatalogStore.UnassignedProjectId?(current.IsDraft?TextResources.Get("conversationProjectPicker.refreshProjectPicker.inlineText"):TextResources.Get("conversationProjectPicker.refreshProjectPicker.inlineText.alternativeA")):current.Project.Name),12,AgentUi.Muted));button.Content=content;row.Children.Add(button);
             var panel=new Border{Name="ConversationProjectHeader",Child=row,Background=Ui.Brush("#F2F3F5"),CornerRadius=new CornerRadius(14,14,0,0),Padding=new Thickness(10,5,10,13),Margin=new Thickness(2,6,2,-9)};
             button.Click+=delegate{OpenProjectPicker(button,current);};composer.SetProjectHeader(panel);
         }
@@ -26,7 +26,7 @@ namespace Dafeiyu
         {
             if(!current.IsDraft||!current.EffectiveSettings().AgentEnabled)return;
             var popup=new Popup{Name="ConversationProjectMenu",Placement=PlacementMode.Top,PlacementTarget=anchor,AllowsTransparency=true,StaysOpen=false};
-            var body=new StackPanel{Width=310,Margin=new Thickness(8)};var search=Ui.Field("");search.Name="ProjectPickerSearch";search.ToolTip=TextResources.Get("conversationProjectPicker.openProjectPicker.searchToolTip");search.Margin=new Thickness(2,2,2,6);body.Children.Add(search);var list=new StackPanel();body.Children.Add(new ScrollViewer{Content=list,MaxHeight=230,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});
+            var body=new StackPanel{Width=310,Margin=new Thickness(8)};var search=Ui.Field("");search.Name="ProjectPickerSearch";LocalizedUi.Set(search,"ToolTip",()=>(TextResources.Get("conversationProjectPicker.openProjectPicker.searchToolTip")));search.Margin=new Thickness(2,2,2,6);body.Children.Add(search);var list=new StackPanel();body.Children.Add(new ScrollViewer{Content=list,MaxHeight=230,VerticalScrollBarVisibility=ScrollBarVisibility.Auto});
             Action<ProjectDefinition> select=delegate(ProjectDefinition project){current.FollowProject(project??ProjectCatalogStore.UnassignedProject(pet.Projects,pet.Settings));popup.IsOpen=false;RefreshProjectPicker();taskPanel.SetTaskWorkspace(current.ProjectWorkspace);input.Focus();};
             Action render=delegate{
                 list.Children.Clear();var none=AgentUi.Nav(TextResources.Get("conversationProjectPicker.openProjectPicker.agentUiNav"),"SelectNoProject");none.Click+=delegate{select(null);};list.Children.Add(none);

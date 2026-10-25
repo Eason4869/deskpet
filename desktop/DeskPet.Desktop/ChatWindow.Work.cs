@@ -34,12 +34,12 @@ internal sealed partial class ChatWindow
     }
     private Control CreateWorkBindingActions()
     {
-        workBindingButton=Ui.Button(TextResources.Get("agent.work.choose"),()=>owner.Run(ShowWorkPickerAsync));workBindingButton.Name="ChooseWorkConversation";
-        var settings=Ui.Button(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),()=>
+        workBindingButton=LocalizedUi.Button(()=>(TextResources.Get("agent.work.choose")),()=>owner.Run(ShowWorkPickerAsync));workBindingButton.Name="ChooseWorkConversation";
+        var settings=LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")),()=>
         {
             if(binding==null){owner.ShowSettingsSection("work");return;}
-            var dialog=Ui.Window(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),new Border(),600,650);dialog.Content=new ScrollViewer{Content=new WorkSettingsView(owner,dialog,binding.ProjectId)};dialog.Show(this);
-        });settings.Name="BoundWorkSettings";workJobsButton=Ui.Button(TextResources.Get("agent.jobs.ui.title"),()=>{if(binding!=null)owner.ShowAgentJobs(binding.ProjectId);});workJobsButton.Name="BoundAgentJobs";workJobsButton.IsEnabled=binding!=null;var actions=new WrapPanel();actions.Children.Add(workBindingButton);actions.Children.Add(settings);actions.Children.Add(workJobsButton);return actions;
+            var dialog=LocalizedUi.Window(()=>(TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")),new Border(),600,650);dialog.Content=new ScrollViewer{Content=new WorkSettingsView(owner,dialog,binding.ProjectId)};dialog.Show(this);
+        });settings.Name="BoundWorkSettings";workJobsButton=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.title")),()=>{if(binding!=null)owner.ShowAgentJobs(binding.ProjectId);});workJobsButton.Name="BoundAgentJobs";workJobsButton.IsEnabled=binding!=null;var actions=new WrapPanel();actions.Children.Add(workBindingButton);actions.Children.Add(settings);actions.Children.Add(workJobsButton);return actions;
     }
     private async Task ShowWorkPickerAsync()
     {

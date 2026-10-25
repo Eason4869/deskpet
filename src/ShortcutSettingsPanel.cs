@@ -17,8 +17,8 @@ namespace Dafeiyu
         {
             pet=owner;VerticalScrollBarVisibility=ScrollBarVisibility.Auto;HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled;
             var root=new StackPanel{Margin=new Thickness(0,16,0,0)};
-            root.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text"),17));
-            root.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeA"),12,Ui.Muted));
+            root.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text")),17));
+            root.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeA")),12,Ui.Muted));
             notice=Ui.Text(pet.HotkeyWarning??"",12,Ui.Muted);notice.Name="ShortcutNotice";notice.Margin=new Thickness(0,12,0,0);root.Children.Add(notice);
             foreach(var group in ShortcutCatalog.All.GroupBy(d=>d.Group))
             {
@@ -26,10 +26,10 @@ namespace Dafeiyu
                 foreach(var definition in group)AddShortcut(panel,definition);
                 root.Children.Add(GlassSurface.Card(panel));
             }
-            var reference=new StackPanel();reference.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeC"),15));
-            reference.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeD"),12,Ui.Muted));
-            reference.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeE"),12,Ui.Muted));
-            reference.Children.Add(Ui.Text(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeF"),12,Ui.Muted));
+            var reference=new StackPanel();reference.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeC")),15));
+            reference.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeD")),12,Ui.Muted));
+            reference.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeE")),12,Ui.Muted));
+            reference.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeF")),12,Ui.Muted));
             root.Children.Add(GlassSurface.Card(reference));Content=root;
         }
         void AddShortcut(Panel panel,ShortcutDefinition definition)
@@ -37,11 +37,11 @@ namespace Dafeiyu
             var row=new Grid{Name="GuideShortcut"+definition.Id,Margin=new Thickness(0,12,0,0)};
             row.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});row.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});row.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            var title=Ui.Text(definition.Title,12);title.Margin=new Thickness(0,0,0,6);Grid.SetColumnSpan(title,3);row.Children.Add(title);
+            var title=Ui.Text(()=>(definition.Title),12);title.Margin=new Thickness(0,0,0,6);Grid.SetColumnSpan(title,3);row.Children.Add(title);
             var field=Ui.Field(ShortcutCatalog.Label(ShortcutCatalog.Value(pet.Settings,definition)));field.Name="Hotkey"+definition.Id;field.MaxLength=64;field.MinWidth=120;fields[definition.Id]=field;baselines[definition.Id]=field.Text;Grid.SetRow(field,1);row.Children.Add(field);
-            System.Windows.Automation.AutomationProperties.SetName(field,TextResources.Format("shortcutSettingsPanel.addShortcut.automationAutomationPropertiesSetName",definition.Title));
-            var save=Ui.Button(TextResources.Get("common.save"));save.Name="SaveShortcut"+definition.Id;save.Margin=new Thickness(8,0,0,0);Grid.SetRow(save,1);Grid.SetColumn(save,1);row.Children.Add(save);
-            var reset=Ui.Button(TextResources.Get("shortcutSettingsPanel.addShortcut.text"));reset.Name="ResetShortcut"+definition.Id;reset.Margin=new Thickness(6,0,0,0);Grid.SetRow(reset,1);Grid.SetColumn(reset,2);row.Children.Add(reset);
+            LocalizedUi.Automation(field,()=>(TextResources.Format("shortcutSettingsPanel.addShortcut.automationAutomationPropertiesSetName",definition.Title)));
+            var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")));save.Name="SaveShortcut"+definition.Id;save.Margin=new Thickness(8,0,0,0);Grid.SetRow(save,1);Grid.SetColumn(save,1);row.Children.Add(save);
+            var reset=LocalizedUi.Button(()=>(TextResources.Get("shortcutSettingsPanel.addShortcut.text")));reset.Name="ResetShortcut"+definition.Id;reset.Margin=new Thickness(6,0,0,0);Grid.SetRow(reset,1);Grid.SetColumn(reset,2);row.Children.Add(reset);
             save.Click+=delegate{Save(definition,field.Text);};reset.Click+=delegate{Save(definition,definition.Default);};panel.Children.Add(row);
         }
         void Save(ShortcutDefinition definition,string value)

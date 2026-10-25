@@ -21,9 +21,9 @@ namespace Dafeiyu
         {
             task=working&&snapshot!=null&&snapshot.Status=="running"?AgentChangeSummaryData.CopyTask(snapshot):null;Summary=AgentChangeSummaryData.FromTask(task);label.Inlines.Clear();
             if(task==null||Summary.FileCount==0){task=null;Visibility=Visibility.Collapsed;ToolTip=null;IsEnabled=false;return;}
-            label.Inlines.Add(new Run(TextResources.Format("liveChangeSummary.refresh.labelInlines",Summary.FileCount)){Foreground=AgentUi.Ink});
+            label.Inlines.Add(LocalizedUi.With(new Run(TextResources.Format("liveChangeSummary.refresh.labelInlines",Summary.FileCount)){Foreground=AgentUi.Ink},"Text",()=>(TextResources.Format("liveChangeSummary.refresh.labelInlines",Summary.FileCount))));
             if(Summary.AddedLines.HasValue&&Summary.RemovedLines.HasValue){label.Inlines.Add(new Run("   +"+Summary.AddedLines.Value){Foreground=Ui.Brush("#159A5A")});label.Inlines.Add(new Run("  −"+Summary.RemovedLines.Value){Foreground=Ui.Brush("#D65151")});}
-            else label.Inlines.Add(new Run(TextResources.Get("liveChangeSummary.refresh.labelInlines.alternativeA")){Foreground=AgentUi.Muted});
+            else label.Inlines.Add(LocalizedUi.With(new Run(TextResources.Get("liveChangeSummary.refresh.labelInlines.alternativeA")){Foreground=AgentUi.Muted},"Text",()=>(TextResources.Get("liveChangeSummary.refresh.labelInlines.alternativeA"))));
             ToolTip=TextResources.Get("liveChangeSummary.refresh.toolTip");IsEnabled=open!=null;Visibility=Visibility.Visible;
         }
     }

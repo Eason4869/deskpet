@@ -144,7 +144,7 @@ internal sealed class GeneratedImageGroupCard : Grid, IDisposable
         displayedId = state.SelectedId; displayedAssetId = asset?.Id; displayedHasTask = hasTask;
         if (asset != null) { selected = new(owner, host, asset); main.Content = selected; }
         else if (state.SelectedId != null)
-            main.Content = hasTask ? (Control)new ImageGenerationPendingCard(owner, host, state.SelectedId) : Ui.Text(TextResources.Get("generatedImageGroupCard.showSelected.text"), 12);
+            main.Content = hasTask ? (Control)new ImageGenerationPendingCard(owner, host, state.SelectedId) : LocalizedUi.Text(()=>(TextResources.Get("generatedImageGroupCard.showSelected.text")), 12);
     }
 
     void Layout()

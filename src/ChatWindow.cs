@@ -39,7 +39,7 @@ namespace Dafeiyu
         bool workspaceLayout,inspectorLayout,compactTaskExpanded;readonly double normalMaxHeight;
         public ChatWindow(PetWindow companion,ConversationWorkspace workspaceOverride=null)
         {
-            pet=companion;workspace=workspaceOverride;session=workspaceOverride==null?pet.Conversation:workspaceOverride.Session;queue=workspaceOverride==null?pet.InputQueue:workspaceOverride.Queue;Ui.Window(this,TextResources.Get("chatWindow.chatWindow.window"),1280,860);MinWidth=520;MinHeight=560;Width=Math.Min(1280,Math.Max(MinWidth,SystemParameters.WorkArea.Width-36));
+            pet=companion;workspace=workspaceOverride;session=workspaceOverride==null?pet.Conversation:workspaceOverride.Session;queue=workspaceOverride==null?pet.InputQueue:workspaceOverride.Queue;LocalizedUi.Window(this,()=>(TextResources.Get("chatWindow.chatWindow.window")),1280,860);MinWidth=520;MinHeight=560;Width=Math.Min(1280,Math.Max(MinWidth,SystemParameters.WorkArea.Width-36));
             Background=ThemeManager.Surface;
             normalMaxHeight=MaxHeight;
             var root=new Grid {Background=ThemeManager.Surface,Margin=new Thickness(22,18,22,6)};
@@ -52,8 +52,8 @@ namespace Dafeiyu
             messages=new StackPanel {Margin=new Thickness(2,8,2,12)};scroll=Ui.Scroll(messages);scroll.Name="ChatHistoryScroll";scroll.Margin=new Thickness(0,0,-18,0);
             conversationSurface=root;messageArea=new Grid();messageArea.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});messageArea.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});messageArea.RowDefinitions.Add(new RowDefinition());Grid.SetRow(compactTaskHost,1);messageArea.Children.Add(compactTaskHost);
             historyTools=new DockPanel{LastChildFill=false};
-            earlier=Ui.Button(TextResources.Get("chatWindow.chatWindow.text.alternativeI"));earlier.Name="HistoryEarlier";earlier.FontSize=11;earlier.Click+=delegate{double offset=scroll.VerticalOffset,extent=scroll.ExtentHeight;visibleTurns+=50;ReloadHistory(false);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.UpdateLayout();scroll.ScrollToVerticalOffset(offset+Math.Max(0,scroll.ExtentHeight-extent));}));};historyTools.Children.Add(earlier);
-            export=Ui.Button(TextResources.Get("chatWindow.chatWindow.text.alternativeJ"));export.Name="ExportChat";export.FontSize=11;export.Click+=delegate{Export();};DockPanel.SetDock(export,Dock.Right);scroll.Content=null;var historyBody=new StackPanel();historyBody.Children.Add(historyTools);historyBody.Children.Add(messages);scroll.Content=historyBody;
+            earlier=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeI")));earlier.Name="HistoryEarlier";earlier.FontSize=11;earlier.Click+=delegate{double offset=scroll.VerticalOffset,extent=scroll.ExtentHeight;visibleTurns+=50;ReloadHistory(false);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.UpdateLayout();scroll.ScrollToVerticalOffset(offset+Math.Max(0,scroll.ExtentHeight-extent));}));};historyTools.Children.Add(earlier);
+            export=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeJ")));export.Name="ExportChat";export.FontSize=11;export.Click+=delegate{Export();};DockPanel.SetDock(export,Dock.Right);scroll.Content=null;var historyBody=new StackPanel();historyBody.Children.Add(historyTools);historyBody.Children.Add(messages);scroll.Content=historyBody;
             var contextIcon=UiIcons.Image("file",AgentUi.Muted);contextIcon.Width=contextIcon.Height=15;contextIcon.Margin=new Thickness(0,0,7,0);contextNotice.Children.Add(contextIcon);contextLabel.Name="ContextCompactionLabel";contextNotice.Children.Add(contextLabel);
             Grid.SetRow(scroll,2);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,2);atmosphere.ArtworkOpacity=.20;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
@@ -64,7 +64,7 @@ namespace Dafeiyu
             Grid.SetColumn(root,2);Grid.SetColumnSpan(root,3);workspaceShell.Children.Add(root);
 
             inspectorHost=new ContentControl{VerticalContentAlignment=VerticalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch};
-            var inspectorBody=new Grid();inspectorBody.MaxHeight=720;inspectorBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});inspectorBody.RowDefinitions.Add(new RowDefinition());var inspectorTitle=Ui.Text(TextResources.Get("chatWindow.chatWindow.text.alternativeK"),14,AgentUi.Ink);inspectorTitle.FontWeight=FontWeights.SemiBold;inspectorTitle.Margin=new Thickness(16,18,16,14);inspectorBody.Children.Add(inspectorTitle);Grid.SetRow(inspectorHost,1);inspectorBody.Children.Add(inspectorHost);
+            var inspectorBody=new Grid();inspectorBody.MaxHeight=720;inspectorBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});inspectorBody.RowDefinitions.Add(new RowDefinition());var inspectorTitle=LocalizedUi.Text(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeK")),14,AgentUi.Ink);inspectorTitle.FontWeight=FontWeights.SemiBold;inspectorTitle.Margin=new Thickness(16,18,16,14);inspectorBody.Children.Add(inspectorTitle);Grid.SetRow(inspectorHost,1);inspectorBody.Children.Add(inspectorHost);
             summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=ThemeManager.Surface,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
             StateChanged+=delegate{RefreshWorkspaceLayout();};SizeChanged+=delegate{RefreshWorkspaceLayout();};workspaceShell.SizeChanged+=delegate{RefreshWorkspaceLayout();};
             MountWorkspace();InitializeAppShell();questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));Grid.SetRow(questionSurface,0);messageArea.Children.Add(questionSurface);Closed+=delegate{questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);};
@@ -118,7 +118,7 @@ namespace Dafeiyu
             if(navigation!=null){navigation.Dispose();workspaceShell.Children.Remove(navigation);navigation=null;}
         }
         public void RefreshAppearance()
-        {if(questionSurface!=null)questionSurface.Refresh();RefreshShellAppearance();if(showingWelcome)ReloadHistory(false);if(!(Content is LiveCallView))Title=TextResources.Format("chatWindow.refreshAppearance.petSkinName",pet.Skin.DisplayName);avatar.Source=SkinCatalog.GetAvatar(pet.Skin);avatar.ToolTip=pet.Skin.DisplayName;atmosphere.SetSkin(pet.Skin);RefreshConversationTitle();if(composer!=null)composer.RefreshModels();RefreshProjectPicker();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
+        {if(questionSurface!=null)questionSurface.Refresh();RefreshShellAppearance();if(showingWelcome)ReloadHistory(false);if(!(Content is LiveCallView))LocalizedUi.Set(this,"Title",()=>(TextResources.Format("chatWindow.refreshAppearance.petSkinName",pet.Skin.DisplayName)));avatar.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(avatar,"ToolTip",()=>(pet.Skin.DisplayName));atmosphere.SetSkin(pet.Skin);RefreshConversationTitle();if(composer!=null)composer.RefreshModels();RefreshProjectPicker();if(taskPanel!=null){taskPanel.SetTaskWorkspace(workspace==null?null:workspace.ProjectWorkspace);if(!session.IsBusy)session.LoadAgentTask(TaskSettings());}if(navigation!=null)navigation.Refresh();}
         public void ReloadHistory(bool scrollToBottom=true)
         {
             reloading=true;if(welcomeSuggestions!=null){welcomeSuggestions.Dispose();welcomeSuggestions=null;}messages.Children.Clear();rendered.Clear();displayed.Clear();showingWelcome=false;
@@ -132,8 +132,8 @@ namespace Dafeiyu
         {
             var dialog=new Microsoft.Win32.SaveFileDialog{Filter=TextResources.Get("chatWindow.export.filter"),FileName="DeskPet-chat-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".md"};
             if(dialog.ShowDialog(this)!=true)return;
-            try{File.WriteAllText(dialog.FileName,session.ExportHistory(),new System.Text.UTF8Encoding(false));ShowStatus(TextResources.Get("chatWindow.export.showStatus"));}
-            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is System.Security.SecurityException))throw;ShowStatus(TextResources.Get("chatWindow.export.showStatus.alternativeA"));}
+            try{File.WriteAllText(dialog.FileName,session.ExportHistory(),new System.Text.UTF8Encoding(false));ShowStatus(()=>(TextResources.Get("chatWindow.export.showStatus")));}
+            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is System.Security.SecurityException))throw;ShowStatus(()=>(TextResources.Get("chatWindow.export.showStatus.alternativeA")));}
         }
         private void UpdateMessage(ChatMessage message)
         {
@@ -149,9 +149,9 @@ namespace Dafeiyu
             var panel=new StackPanel{Margin=new Thickness(26,28,26,26)};
             var character=new Image{Name="WelcomeCharacter",Source=SkinCatalog.GetAvatar(pet.Skin),Width=154,Height=154,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,154,154),30.8,30.8),HorizontalAlignment=HorizontalAlignment.Left};
             RenderOptions.SetBitmapScalingMode(character,BitmapScalingMode.HighQuality);panel.Children.Add(character);
-            var heading=Ui.Text(TextResources.Get("chatWindow.welcome.text"),24);heading.Name="WelcomeHeading";heading.FontWeight=FontWeights.SemiBold;panel.Children.Add(heading);
+            var heading=LocalizedUi.Text(()=>(TextResources.Get("chatWindow.welcome.text")),24);heading.Name="WelcomeHeading";heading.FontWeight=FontWeights.SemiBold;panel.Children.Add(heading);
             bool work=pet.ConversationSettings(session).AgentEnabled;
-            panel.Children.Add(Ui.Text(work?TextResources.Get("chatWindow.welcome.text.alternativeA"):TextResources.Get("chatWindow.welcome.text.alternativeB"),13,Ui.Muted));
+            panel.Children.Add(LocalizedUi.Text(()=>(work?TextResources.Get("chatWindow.welcome.text.alternativeA"):TextResources.Get("chatWindow.welcome.text.alternativeB")),13,Ui.Muted));
             welcomeSuggestions=new WelcomeSuggestions(pet,this,session,workspace,input);panel.Children.Add(welcomeSuggestions);messages.Children.Add(panel);
         }
 
@@ -169,17 +169,18 @@ namespace Dafeiyu
             if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshSummary));return;}summaryEmpty.Visibility=session.CurrentAgentTask==null?Visibility.Visible:Visibility.Collapsed;
             messages.Children.Remove(contextNotice);var task=session.CurrentAgentTask;var reply=task==null?null:session.History.Messages.LastOrDefault(m=>m.Role=="assistant" && m.AgentTaskId==task.Id);
             RefreshChangeSummaries(task);ChatMessageView view;if(reply!=null && rendered.TryGetValue(reply.Id,out view))view.RefreshOutputFiles();
-            if(reply!=null && (task.ContextCompactions>0 || task.ContextStatus=="compacting" || task.ContextStatus=="limited" || task.ContextStatus=="cancelled") && rendered.TryGetValue(reply.Id,out view)){int index=messages.Children.IndexOf(view);if(index>=0){contextLabel.Text=task.ContextStatus=="compacting"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus"):task.ContextStatus=="limited"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeA"):task.ContextStatus=="cancelled"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeB"):TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeC");contextNotice.ToolTip=TextResources.Format("chatWindow.refreshSummary.toolTipTaskContextCompactions",task.ContextCompactions);messages.Children.Insert(index,contextNotice);}}
+            if(reply!=null && (task.ContextCompactions>0 || task.ContextStatus=="compacting" || task.ContextStatus=="limited" || task.ContextStatus=="cancelled") && rendered.TryGetValue(reply.Id,out view)){int index=messages.Children.IndexOf(view);if(index>=0){LocalizedUi.Set(contextLabel,"Text",()=>(task.ContextStatus=="compacting"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus"):task.ContextStatus=="limited"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeA"):task.ContextStatus=="cancelled"?TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeB"):TextResources.Get("chatWindow.refreshSummary.contextStatusTaskContextStatus.alternativeC")));LocalizedUi.Set(contextNotice,"ToolTip",()=>(TextResources.Format("chatWindow.refreshSummary.toolTipTaskContextCompactions",task.ContextCompactions)));messages.Children.Insert(index,contextNotice);}}
         }
         private void RefreshState()
         {
             if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshState));return;}
             RefreshAppearance();if(pet.DictationActive)return;
             if(pet.LiveActive){ShowStatus(pet.Live.Status);return;}
-            ShowStatus(session.Stage==ConversationStage.Recognizing?TextResources.Get("chatWindow.refreshState.showStatus"):session.Stage==ConversationStage.Thinking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeA"):session.Stage==ConversationStage.Speaking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeB"):String.IsNullOrEmpty(session.AgentTaskWarning)?String.IsNullOrEmpty(session.HistoryWarning)?(String.IsNullOrEmpty(session.LastNotice)?ChatUi.SendHint(pet.Settings):session.LastNotice):session.HistoryWarning:session.AgentTaskWarning);
+            ShowStatus(()=>(session.Stage==ConversationStage.Recognizing?TextResources.Get("chatWindow.refreshState.showStatus"):session.Stage==ConversationStage.Thinking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeA"):session.Stage==ConversationStage.Speaking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeB"):String.IsNullOrEmpty(session.AgentTaskWarning)?String.IsNullOrEmpty(session.HistoryWarning)?(String.IsNullOrEmpty(session.LastNotice)?ChatUi.SendHint(pet.Settings):session.LastNotice):session.HistoryWarning:session.AgentTaskWarning));
         }
+        private void ShowStatus(Func<string> text){if(!closed)LocalizedUi.Set(status,"Text",text);}
         private void ShowStatus(string text){if(!closed)status.Text=text;}
         private void ShowError(Exception error)
-        {if(error is OperationCanceledException)ShowStatus(TextResources.Get("chatWindow.showError.showStatus"));else if(error is ApiException || error is InvalidOperationException)ShowStatus(error.Message);else ShowStatus(TextResources.Get("chatWindow.showError.showStatus.alternativeA"));}
+        {if(error is OperationCanceledException)ShowStatus(()=>(TextResources.Get("chatWindow.showError.showStatus")));else if(error is ApiException || error is InvalidOperationException)ShowStatus(error.Message);else ShowStatus(()=>(TextResources.Get("chatWindow.showError.showStatus.alternativeA")));}
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -268,12 +268,12 @@ namespace Dafeiyu
         }
         internal void ShowOfficialPreparation()
         {
-            var state=OfficialPreparation;var window=new Window();Ui.Window(window,TextResources.Get("onboarding.prepare.progress"),520,330);window.Name="OfficialPreparationProgress";
-            var label=Ui.Text(state.StatusText,13,Ui.Ink);label.TextWrapping=System.Windows.TextWrapping.Wrap;
+            var state=OfficialPreparation;var window=new Window();LocalizedUi.Window(window,()=>(TextResources.Get("onboarding.prepare.progress")),520,330);window.Name="OfficialPreparationProgress";
+            var label=Ui.Text(()=>(state.StatusText),13,Ui.Ink);label.TextWrapping=System.Windows.TextWrapping.Wrap;
             var body=new System.Windows.Controls.StackPanel{Margin=new Thickness(22)};body.Children.Add(label);
-            var start=Ui.Button(TextResources.Get("onboarding.prepare.start"),true);start.Name="StartOfficialPreparation";start.Click+=delegate{var ignored=state.StartAsync();};body.Children.Add(start);
-            var cancel=Ui.Button(TextResources.Get("onboarding.prepare.cancel"));cancel.Click+=delegate{state.Cancel();};body.Children.Add(cancel);window.Content=new System.Windows.Controls.ScrollViewer{Content=body,VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Disabled};
-            Action refresh=()=>window.Dispatcher.BeginInvoke(new Action(()=>{label.Text=state.StatusText;start.IsEnabled=state.State!=OfficialCompanionPreparationState.Running;cancel.IsEnabled=state.State==OfficialCompanionPreparationState.Running;}));
+            var start=LocalizedUi.Button(()=>(TextResources.Get("onboarding.prepare.start")),true);start.Name="StartOfficialPreparation";start.Click+=delegate{var ignored=state.StartAsync();};body.Children.Add(start);
+            var cancel=LocalizedUi.Button(()=>(TextResources.Get("onboarding.prepare.cancel")));cancel.Click+=delegate{state.Cancel();};body.Children.Add(cancel);window.Content=new System.Windows.Controls.ScrollViewer{Content=body,VerticalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=System.Windows.Controls.ScrollBarVisibility.Disabled};
+            Action refresh=()=>window.Dispatcher.BeginInvoke(new Action(()=>{LocalizedUi.Set(label,"Text",()=>(state.StatusText));start.IsEnabled=state.State!=OfficialCompanionPreparationState.Running;cancel.IsEnabled=state.State==OfficialCompanionPreparationState.Running;}));
             state.Changed+=refresh;window.Closed+=delegate{state.Changed-=refresh;};refresh();window.Show();
         }
         async Task RefreshBulkInstallations(SkinDefinition captured,long token,IList<OfficialCompanionResult> results)

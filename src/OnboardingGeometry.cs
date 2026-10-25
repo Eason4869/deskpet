@@ -11,7 +11,7 @@ namespace Dafeiyu
     {
         private void TargetVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
-            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); status.Text = TextResources.Get("onboardingGeometry.targetVisibilityChanged.status"); }
+            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingGeometry.targetVisibilityChanged.status"))); }
         }
         private void RemoveHighlight()
         {

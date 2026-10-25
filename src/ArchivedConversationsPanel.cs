@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,8 +19,8 @@ namespace Dafeiyu
         internal void RefreshState()
         {
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshState));return;}
-            rows.Children.Clear();rows.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text"),18,AgentUi.Ink));
-            rows.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeA"),12,AgentUi.Muted));
+            rows.Children.Clear();rows.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("archivedConversationsPanel.refreshState.text")),18,AgentUi.Ink));
+            rows.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeA")),12,AgentUi.Muted));
             int count=0;
             foreach(var project in pet.Projects.Projects.Where(p=>p.Archived).OrderByDescending(p=>p.LastOpenedUtcTicks))
             {
@@ -35,12 +35,12 @@ namespace Dafeiyu
             foreach(var conversation in unassigned.Conversations.Where(c=>c.Archived).OrderByDescending(c=>c.LastOpenedUtcTicks)){AddConversation(ordinary,unassigned,conversation,false);count++;}
             foreach(var conversation in quick.Conversations.Where(c=>c.Archived).OrderByDescending(c=>c.LastOpenedUtcTicks)){AddConversation(ordinary,quick,conversation,false);count++;}
             if(ordinary.Children.Count>0)rows.Children.Add(GlassSurface.Card(ordinary));
-            if(count==0){var empty=new StackPanel{Margin=new Thickness(0,46,0,36)};var title=Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeB"),16,AgentUi.Ink);title.Name="ArchivedConversationsEmpty";empty.Children.Add(title);empty.Children.Add(Ui.Text(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeC"),12,AgentUi.Muted));rows.Children.Add(empty);}
+            if(count==0){var empty=new StackPanel{Margin=new Thickness(0,46,0,36)};var title=LocalizedUi.Text(()=>(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeB")),16,AgentUi.Ink);title.Name="ArchivedConversationsEmpty";empty.Children.Add(title);empty.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("archivedConversationsPanel.refreshState.text.alternativeC")),12,AgentUi.Muted));rows.Children.Add(empty);}
         }
         void AddConversation(Panel host,ProjectDefinition project,ConversationDefinition conversation,bool ownerArchived)
         {
             if(conversation.Mode=="work"&&project.Id!=ProjectCatalogStore.UnassignedProjectId)
-            {var jobs=Ui.Button(TextResources.Get("agent.jobs.ui.title"));jobs.Name="ArchivedBackgroundJobs_"+conversation.Id;jobs.Click+=delegate{pet.ShowAgentJobs(project.Id,conversation.Id);};host.Children.Add(jobs);}
+            {var jobs=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.title")));jobs.Name="ArchivedBackgroundJobs_"+conversation.Id;jobs.Click+=delegate{pet.ShowAgentJobs(project.Id,conversation.Id);};host.Children.Add(jobs);}
             string source=project.Id==ProjectCatalogStore.QuickProjectId?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId"):project.Id==ProjectCatalogStore.UnassignedProjectId?(conversation.Mode=="chat"?TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeA"):TextResources.Get("archivedConversationsPanel.addConversation.idProjectCatalogStoreUnassignedProjectId.alternativeB")):project.Name;
             var skin=pet.Catalog.Skins.FirstOrDefault(s=>s.Id==conversation.PetId);if(skin!=null)source+=" · "+skin.DisplayName;
             if(ownerArchived)source+=TextResources.Get("archivedConversationsPanel.addConversation.source");

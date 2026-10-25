@@ -23,11 +23,11 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
     {
         controller = holidays; currentSkin = skin ?? (() => null); avatars = assets ?? new SpriteAssets(); ownsAvatars = assets == null;
         Name = "HolidayOutfitPanel"; Spacing = 6;
-        enabled = new CheckBox { Name = "HolidayOutfitsEnabled", Content = TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"), FontSize = 12, Foreground = DesktopTheme.Brush("#61738B"), MinHeight = 24 };
+        enabled = LocalizedUi.With(new CheckBox { Name = "HolidayOutfitsEnabled", Content = TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content"), FontSize = 12, Foreground = DesktopTheme.Brush("#61738B"), MinHeight = 24 },"Content",()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.content")));
         choices = new ComboBox { Name = "HolidayOutfitPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.ItemTemplate = new FuncDataTemplate<Choice>((choice, _) => ItemRow(choice));
         status = Ui.Text(""); status.Name = "HolidayOutfitStatus"; status.FontSize = 12; status.Foreground = DesktopTheme.Brush("#61738B");
-        Children.Add(Ui.Text(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.text"))); Children.Add(choices); Children.Add(enabled); Children.Add(status);
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.text")))); Children.Add(choices); Children.Add(enabled); Children.Add(status);
         enabled.IsCheckedChanged += (_, _) => { if (!refreshing) controller.SetEnabled(enabled.IsChecked == true); };
         choices.SelectionChanged += (_, _) => { if (!refreshing && choices.SelectedItem is Choice { Available: true } choice) controller.SelectOwnedOutfit(choice.Id); };
         choices.ContainerPrepared += ItemPrepared;
@@ -63,7 +63,7 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
             var current = controller.EffectiveOutfit;
             choices.SelectedItem = options.FirstOrDefault(x => x.Id == (controller.Enabled ? current?.OutfitId : controller.PreferredOutfitId));
             choices.IsEnabled = controller.Enabled || skin is { BuiltinCharacterId: null };
-            choices.PlaceholderText = TextResources.Get("holidayOutfitPanel.refresh.choicesPlaceholderText");
+            LocalizedUi.Set(choices,"PlaceholderText",()=>(TextResources.Get("holidayOutfitPanel.refresh.choicesPlaceholderText")));
             status.Text = !string.IsNullOrEmpty(controller.PersistenceWarning) ? controller.PersistenceWarning :
                 current != null && !owned.Any(x => x.OutfitId == current.OutfitId) ? TextResources.Get("holidayOutfitPanel.refresh.statusIsNullOrEmpty") : "";
             status.IsVisible = !string.IsNullOrEmpty(status.Text);

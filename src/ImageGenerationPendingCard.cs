@@ -17,7 +17,7 @@ namespace Dafeiyu
         internal ImageGenerationPendingCard(ImageGenerationTaskManager tasks,string taskId,Func<bool> motion,Action cancelAction,Func<string,FrameworkElement> result)
         {
             Name="ImageGenerationPendingCard";manager=tasks;id=taskId;enabled=motion;cancel=cancelAction;completed=result;MotionEnabled=true;HorizontalAlignment=HorizontalAlignment.Left;MaxWidth=224;
-            var body=new StackPanel();body.Children.Add(dots);body.Children.Add(label);body.Children.Add(elapsed);stop=Ui.Button(TextResources.Get("imageGenerationPendingCard.imageGenerationPendingCard.text"));stop.Click+=delegate{if(cancel!=null)cancel();};body.Children.Add(stop);Children.Add(body);
+            var body=new StackPanel();body.Children.Add(dots);body.Children.Add(label);body.Children.Add(elapsed);stop=LocalizedUi.Button(()=>(TextResources.Get("imageGenerationPendingCard.imageGenerationPendingCard.text")));stop.Click+=delegate{if(cancel!=null)cancel();};body.Children.Add(stop);Children.Add(body);
             frames.Tick+=delegate{Draw();};seconds.Tick+=delegate{UpdateClock();};Loaded+=delegate{Attach();};Unloaded+=delegate{Detach();};IsVisibleChanged+=delegate{UpdateClock();};
         }
         internal static ImageGenerationPendingCard Create(PetWindow pet,Window host,string id,Action<GeneratedImage> regenerate=null)
@@ -32,7 +32,7 @@ namespace Dafeiyu
             label.Text=ImageGenerationMotion.Label(snapshot);if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Queued){int position=1;foreach(var task in manager.List())if(task.State==ImageGenerationTaskState.Queued&&task.QueuedUtc<snapshot.QueuedUtc)position++;label.Text+=TextResources.Format("imageGenerationPendingCard.update.labelPosition",position);}stop.Visibility=snapshot!=null&&!snapshot.IsTerminal?Visibility.Visible:Visibility.Collapsed;
             if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Succeeded&&!replaced&&!String.IsNullOrEmpty(snapshot.ResultImageId))try{
                 var view=completed(snapshot.ResultImageId);Children.Clear();Children.Add(view);replaced=true;frames.Stop();seconds.Stop();if(MotionEnabled&&enabled()&&SystemParameters.ClientAreaAnimation)view.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(180)));return;
-            }catch(System.IO.IOException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label");}catch(ArgumentException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label.alternativeA");}
+            }catch(System.IO.IOException){LocalizedUi.Set(label,"Text",()=>(TextResources.Get("imageGenerationPendingCard.update.label")));}catch(ArgumentException){LocalizedUi.Set(label,"Text",()=>(TextResources.Get("imageGenerationPendingCard.update.label.alternativeA")));}
             UpdateClock();Draw();
         }
         void UpdateClock(bool updateElapsed=true){if(replaced){frames.Stop();seconds.Stop();return;}bool active=listening&&IsVisible&&(host==null||host.WindowState!=WindowState.Minimized);if(active&&(snapshot==null||!snapshot.IsTerminal))seconds.Start();else seconds.Stop();if(snapshot!=null&&ImageGenerationMotion.ShouldAnimate(snapshot.State,MotionEnabled&&enabled(),active,false,!SystemParameters.ClientAreaAnimation))frames.Start();else frames.Stop();if(updateElapsed&&snapshot!=null){elapsed.Text=TextResources.Format("imageGenerationPendingCard.updateClock.elapsedImageGenerationMotionElapsedSeconds",ImageGenerationMotion.ElapsedSeconds(snapshot,DateTime.UtcNow));}}

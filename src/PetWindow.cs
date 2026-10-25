@@ -264,7 +264,7 @@ namespace Dafeiyu
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;
             Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
             Microsoft.Win32.SystemEvents.TimeChanged+=HolidayTimeChanged;
-            Title=TextResources.Format("petWindow.petWindow.titleSkinName",Skin.DisplayName);Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
+            LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.petWindow.titleSkinName",Skin.DisplayName)));Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
             ResizeMode=ResizeMode.NoResize; Background=Brushes.Transparent; ShowInTaskbar=false;
             ShowActivated=false; Focusable=false; Topmost=Settings.Topmost;
             Width=192*Settings.Scale; Height=208*Settings.Scale;
@@ -304,14 +304,14 @@ namespace Dafeiyu
             };
             using(Stream stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Icon")) trayIcon=(System.Drawing.Icon)new System.Drawing.Icon(stream).Clone();
             trayMenu=new TrayContextMenu();
-            visibilityItem=new MenuItem{Header=TextResources.Get("petWindow.petWindow.header"),Name="TrayVisibility",Icon=UiIcons.Image("pet-visible",Ui.Muted),IsCheckable=true,IsChecked=true};visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
-            quietItem=new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeA"),Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode};quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
-            clickThroughItem=new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeB"),Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough};clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
+            visibilityItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header"),Name="TrayVisibility",Icon=UiIcons.Image("pet-visible",Ui.Muted),IsCheckable=true,IsChecked=true},"Header",()=>(TextResources.Get("petWindow.petWindow.header")));visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
+            quietItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeA"),Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeA")));quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
+            clickThroughItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeB"),Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeB")));clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
             trayMenu.Opening+=delegate {visibilityItem.IsChecked=visibility.UserVisible;quietItem.IsChecked=Settings.QuietMode;clickThroughItem.IsChecked=Settings.ClickThrough;};
             AddTray(TextResources.Get("petWindow.petWindow.addTray"),ShowQuickChat,"TrayQuickChat","chat");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeA"),ShowChat,"TrayFullChat","full-view");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeB"),ShowSettings,"TraySettings","settings");
             AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeC"),ReturnHome,"TrayReturnHome","back");
             trayMenu.Items.Add(new Separator());AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeD"),Close,"TrayExit","close");
-            tray=new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true };tray.BalloonTipClicked+=OpenImageTaskNotification;
+            tray=LocalizedUi.With(new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true },"Text",()=>(TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName)));tray.BalloonTipClicked+=OpenImageTaskNotification;
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
@@ -337,30 +337,30 @@ namespace Dafeiyu
             // and WPF drops mouse capture. Keep the existing foreground owner;
             // normal popup capture still dismisses the menu on an outside click.
             menu.StaysOpen=false;menu.Opened+=delegate {Dispatcher.BeginInvoke(DispatcherPriority.Input,new Action(delegate {if(menu.IsOpen && !GuideActive && !DesktopInterop.ForegroundBelongsToPet())DesktopInterop.ForegroundMenu(menu);}));};
-            AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"};menu.Items.Add(appearance);
+            AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"},"Header",()=>(TextResources.Get("petWindow.createMenu.header")));menu.Items.Add(appearance);
             menu.Opened+=delegate{RefreshAppearanceMenu(appearance);};RefreshAppearanceMenu(appearance);
             AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings); menu.Items.Add(new Separator());
-            var actions=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeA") };
+            var actions=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeA") },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeA")));
             for(int i=0;i<AnimationPlayer.States.Length;i++)
             {
                 string state=AnimationPlayer.States[i]; var item=new MenuItem { Header=AnimationPlayer.Labels[i] };
                 item.Click+=delegate { PlayUserAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
             }
             menu.Items.Add(actions);
-            var interactions=new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeB")};
+            var interactions=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeB")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeB")));
             AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu"),"petting");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeA"),"poked");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeB"),"feeding");
-            var sleep=new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")};sleep.Click+=delegate {PlayUserInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
+            var sleep=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeC")));sleep.Click+=delegate {PlayUserInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
             var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayUserInteraction("special");};interactions.Items.Add(firstSkill);
             var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayUserInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
             menu.Opened+=delegate{RecordPetInteraction();firstSkill.Header=Skin.SpecialAction;extraSkill.Header=AdditionalInteractions.SpecialName(Skin);extraSkill.Visibility=AdditionalInteractions.Has(Skin,"special2")?Visibility.Visible:Visibility.Collapsed;};
-            menu.Opened+=delegate {CancelPendingClick();sleep.Header=interaction.IsSleeping ? TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping") : TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping.alternativeA");interactions.IsEnabled=!IsUpdating;};
-            var pause=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeD"),IsCheckable=true };
+            menu.Opened+=delegate {CancelPendingClick();LocalizedUi.Set(sleep,"Header",()=>(interaction.IsSleeping ? TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping") : TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping.alternativeA")));interactions.IsEnabled=!IsUpdating;};
+            var pause=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeD"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeD")));
             pause.Click+=delegate { SetPaused(pause.IsChecked); }; menu.Items.Add(pause);
-            var follow=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeE"),IsCheckable=true };
+            var follow=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeE"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeE")));
             follow.Click+=delegate { Settings.FollowCursor=follow.IsChecked; ApplySettings(); }; menu.Items.Add(follow);
-            var wander=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeF"),IsCheckable=true };
+            var wander=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeF"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeF")));
             wander.Click+=delegate { Settings.Wander=wander.IsChecked; ApplySettings(); }; menu.Items.Add(wander);
-            var top=new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeG"),IsCheckable=true };
+            var top=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeG"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeG")));
             top.Click+=delegate { Settings.Topmost=top.IsChecked; ApplySettings(); }; menu.Items.Add(top);
             menu.Opened+=delegate { pause.IsChecked=Paused; follow.IsChecked=Settings.FollowCursor; wander.IsChecked=Settings.Wander; top.IsChecked=Settings.Topmost; };
             menu.Items.Add(new Separator()); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeC"),ReturnHome); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeD"),HidePet); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeE"),Close);
@@ -372,7 +372,7 @@ namespace Dafeiyu
             foreach(var skin in Catalog.Skins)
             {
                 SkinDefinition selected=skin;
-                var item=new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey};
+                var item=LocalizedUi.With(new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey},"Header",()=>(skin.DisplayName));
                 item.Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=28,Height=28,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,28,28),5.6,5.6)};
                 item.Click+=async delegate{await RequestSkinAsync(selected,CompanionSelectionOrigin.PassiveMenu,null);foreach(MenuItem entry in menu.Items)entry.IsChecked=(string)entry.Tag==Skin.PickerKey;};menu.Items.Add(item);
             }
@@ -725,7 +725,7 @@ namespace Dafeiyu
                 Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
-                Title=TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName); tray.Text=Title;
+                LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName))); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
                 if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;}
             }

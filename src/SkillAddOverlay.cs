@@ -26,7 +26,7 @@ namespace Dafeiyu
             Children.Add(card);KeyboardNavigation.SetTabNavigation(card,KeyboardNavigationMode.Cycle);KeyboardNavigation.SetControlTabNavigation(card,KeyboardNavigationMode.Cycle);
             PreviewKeyDown+=delegate(object sender,KeyEventArgs args){if(args.Key==Key.Escape){args.Handled=true;Close();}};
             MouseLeftButtonDown+=delegate(object sender,MouseButtonEventArgs args){if(Object.ReferenceEquals(args.OriginalSource,this)){args.Handled=true;Close();}};
-            System.Windows.Automation.AutomationProperties.SetName(card,TextResources.Get("skillAddOverlay.skillAddOverlay.automationAutomationPropertiesSetName"));
+            LocalizedUi.Automation(card,()=>(TextResources.Get("skillAddOverlay.skillAddOverlay.automationAutomationPropertiesSetName")));
         }
         internal void Open(string heading,string description,UIElement content)
         {

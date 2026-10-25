@@ -101,6 +101,14 @@ namespace Dafeiyu.Tests
                         Check(cfg.Scale==1.7&&status.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&status.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately: scale="+cfg.Scale+" status="+status);Capture(d,Path.Combine(root,"reset-save-failure.png"));
                     });}finally{releaseReset.TrySetResult(true);}
                 }
+                // A deferred save must reject active producers rather than overwrite them.
+                using(pet.DataMaintenance.EnterActivity()){
+                    var busyRetry=pet.FlushDeferredSettingsAsync();Wait(busyRetry);
+                    Check(busyRetry.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.X==555,"busy retry retains latest unsaved position");
+                }
+                // Close/activation can enqueue relationship and keepsake work. Settle
+                // those fixture-owned producers before asserting a durable idle retry.
+                Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
                 var retryErrors=new System.Collections.Generic.List<string>();int recordingRetryError=0;
                 EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> retryDiagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs eventArgs){
                     if(System.Threading.Interlocked.Exchange(ref recordingRetryError,1)!=0)return;

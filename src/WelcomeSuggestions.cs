@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -49,7 +49,7 @@ namespace Dafeiyu
         void Render(IList<string> predictions)
         {
             Children.Clear(); var cfg = Settings(); var project = workspace == null ? null : workspace.Project; var records = workspace != null && cfg.AgentEnabled && project.Id != ProjectCatalogStore.UnassignedProjectId ? project.Conversations : ProjectCatalogStore.AllConversations(pet.Projects); var values = predictions != null && predictions.Count > 0 ? predictions : Defaults(cfg, project, records, pet.Skin.Id);
-            foreach (var text in values.Take(3)) { string draft = text; var button = Ui.Button(text); button.Name = "WelcomeSuggestion"; button.MaxWidth = 330; button.Margin = new Thickness(0, 0, 8, 8); button.ToolTip = TextResources.Get("welcomeSuggestions.render.buttonToolTip"); var label = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }; button.Content = label; button.Click += delegate { input.Text = draft; input.CaretIndex = input.Text.Length; input.Focus(); }; Children.Add(button); }
+            foreach (var text in values.Take(3)) { string draft = text; var button = Ui.Button(text); button.Name = "WelcomeSuggestion"; button.MaxWidth = 330; button.Margin = new Thickness(0, 0, 8, 8); LocalizedUi.Set(button,"ToolTip",()=>(TextResources.Get("welcomeSuggestions.render.buttonToolTip"))); var label = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }; button.Content = label; button.Click += delegate { input.Text = draft; input.CaretIndex = input.Text.Length; input.Focus(); }; Children.Add(button); }
         }
         public void Dispose() { if (disposed) return; disposed = true; debounce.Stop(); debounce.Tick -= Request; host.IsVisibleChanged -= VisibilityChanged; Loaded -= LoadedView; Unloaded -= UnloadedView; if (reference != null) reference.PredictionsChanged -= PredictionsChanged; reference = null; }
     }

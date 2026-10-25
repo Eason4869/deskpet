@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
@@ -16,5 +16,5 @@ namespace Dafeiyu
         }
         internal static Border Card(UIElement child)
         {return new Border{Child=child,Background=ThemeManager.CardSurface,BorderBrush=ThemeManager.Brush("#E9EAED","#52637C"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(13),Padding=new Thickness(18),Margin=new Thickness(0,0,0,14)};}
-    }
+internal static Button Nav(System.Func<string> text,string name,bool strongHover=false){return LocalizedUi.With(Nav(text(),name,strongHover),"Content",text);}    }
 }

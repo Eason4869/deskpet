@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "關閉已取消或設定已變更，桌面夥伴仍在執行，解除安裝已取消。",
   "settingsSearch.noResults": "找不到相符的設定或功能",
   "settingsSearch.clearHistoryAlias": "清空聊天記錄",
-  "settingsSearch.resetAlias": "恢復預設設定"
+  "settingsSearch.resetAlias": "恢復預設設定",
+  "onboarding.language.applyContinue": "套用並繼續",
+  "onboarding.language.liveDetail": "選擇應用程式的介面語言，按一下「套用並繼續」立即生效並繼續設定導覽。"
 }

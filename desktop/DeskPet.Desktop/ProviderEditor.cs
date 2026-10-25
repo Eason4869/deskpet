@@ -13,7 +13,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     private readonly TextBox name = Ui.Input(), address = Ui.Input(), key = Ui.Input(), model = Ui.Input(), alias = Ui.Input(), proxy = Ui.Input();
     private readonly ComboBox protocol = new() { ItemsSource = new[] { "auto", "openai", "anthropic", "mimo", "gemini-live" } };
     private readonly ComboBox models = new() { MinWidth = 180, MaxWidth = 280, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
-    private readonly CheckBox useProxy = new() { Content = TextResources.Get("providerEditor.useProxy.content") }, stream = new() { Content = TextResources.Get("providerEditor.useProxy.content.alternativeA") };
+    private readonly CheckBox useProxy = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("providerEditor.useProxy.content") },"Content",()=>(TextResources.Get("providerEditor.useProxy.content"))), stream = LocalizedUi.With(new CheckBox(){ Content = TextResources.Get("providerEditor.useProxy.content.alternativeA") },"Content",()=>(TextResources.Get("providerEditor.useProxy.content.alternativeA")));
     private readonly StackPanel found = Ui.Column();
     private readonly TextBlock notice = Ui.Text("");
     private CancellationTokenSource? fetch;
@@ -25,7 +25,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         owner = controller; kind = service; Spacing = 12;
         view = owner.Settings.Copy().ProviderView(kind); view.EnsureTextProviders();
         key.PasswordChar = '●';
-        var presets = new ComboBox { ItemsSource = ServicePresets.For(kind), PlaceholderText = TextResources.Get("providerEditor.providerEditor.placeholderText") };
+        var presets = LocalizedUi.With(new ComboBox { ItemsSource = ServicePresets.For(kind), PlaceholderText = TextResources.Get("providerEditor.providerEditor.placeholderText") },"PlaceholderText",()=>(TextResources.Get("providerEditor.providerEditor.placeholderText")));
         presets.SelectionChanged += (_, _) =>
         {
             if (presets.SelectedItem is not ServicePreset preset) return;
@@ -42,15 +42,15 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
             if (loading || selected == null || models.SelectedItem is not string id) return;
             model.Text = id; alias.Text = selected.ModelDisplayNames.GetValueOrDefault(id, "");
         };
-        Children.Add(SettingsVisual.Wrap(providers, Ui.Button(TextResources.Get("providerEditor.providerEditor.text"), AddProvider), Ui.Button(TextResources.Get("common.delete"), RemoveProvider)));
-        Children.Add(Ui.Text(TextResources.Get("providerEditor.providerEditor.text.alternativeA")));
-        Children.Add(presets); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field"), name)); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeA"), address)); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeB"), key));
-        Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeC"), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, stream)); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeD"), proxy));
-        Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeE"), models)); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeF"), model)); Children.Add(Ui.Field(TextResources.Get("providerEditor.providerEditor.field.alternativeG"), alias));
-        Children.Add(SettingsVisual.Wrap(Ui.Button(TextResources.Get("providerEditor.providerEditor.text.alternativeB"), AddModel), Ui.Button(TextResources.Get("providerEditor.providerEditor.text.alternativeC"), RemoveModel)));
-        Children.Add(SettingsVisual.Wrap(Ui.AsyncButton(TextResources.Get("providerEditor.providerEditor.asyncButton"), FetchAsync, owner.Error), Ui.Button(TextResources.Get("providerEditor.providerEditor.text.alternativeD"), CancelFetch)));
+        Children.Add(SettingsVisual.Wrap(providers, LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text")), AddProvider), LocalizedUi.Button(()=>(TextResources.Get("common.delete")), RemoveProvider)));
+        Children.Add(LocalizedUi.Text(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeA"))));
+        Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeB")), key));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeC")), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, stream)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeD")), proxy));
+        Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeE")), models)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeF")), model)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeG")), alias));
+        Children.Add(SettingsVisual.Wrap(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeB")), AddModel), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeC")), RemoveModel)));
+        Children.Add(SettingsVisual.Wrap(LocalizedUi.AsyncButton(()=>(TextResources.Get("providerEditor.providerEditor.asyncButton")), FetchAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeD")), CancelFetch)));
         Children.Add(new ScrollViewer { Content = found, MaxHeight = 220 }); Children.Add(notice);
-        Children.Add(Ui.Button(TextResources.Get("providerEditor.providerEditor.text.alternativeE"), Save));
+        Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeE")), Save));
         ReloadProviders(view.ActiveTextProviderId);
     }
     private void ReloadProviders(string id)
@@ -88,7 +88,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     }
     private void AddModel()
     {
-        try { Capture(); LoadFields(); notice.Text = TextResources.Get("providerEditor.addModel.notice"); } catch (Exception e) { owner.Error(e); }
+        try { Capture(); LoadFields(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.addModel.notice"))); } catch (Exception e) { owner.Error(e); }
     }
     private void RemoveModel()
     {
@@ -101,22 +101,22 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         Capture(); CancelFetch(); if (selected == null) return;
         var providerId = selected.Id; var tokenRevision = revision; var snapshot = selected.Connection.Copy();
         var cancellation = new CancellationTokenSource(); fetch = cancellation;
-        notice.Text = TextResources.Get("providerEditor.fetchAsync.notice");
+        LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.fetchAsync.notice")));
         try
         {
             var result = await owner.Api.ListModelsAsync(snapshot, cancellation.Token);
             if (cancellation.IsCancellationRequested || tokenRevision != revision || selected.Id != providerId) return;
             var checks = new List<CheckBox>();
             foreach (var id in result.Take(500)) { var check = new CheckBox { Content = id, Tag = id, IsChecked = selected.Models.Contains(id) }; checks.Add(check); found.Children.Add(check); }
-            found.Children.Add(Ui.Button(TextResources.Get("providerEditor.fetchAsync.text"), () =>
+            found.Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.fetchAsync.text")), () =>
             {
                 if (tokenRevision != revision || selected?.Id != providerId) return;
                 foreach (var check in checks.Where(c => c.IsChecked == true)) if (selected.Models.Count < TextProviderSettings.MaximumModels && !selected.Models.Contains((string)check.Tag!)) selected.Models.Add((string)check.Tag!);
-                LoadFields(); notice.Text = TextResources.Get("providerEditor.fetchAsync.notice.alternativeA");
+                LoadFields(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.fetchAsync.notice.alternativeA")));
             }));
-            notice.Text = TextResources.Format("providerEditor.fetchAsync.notice.alternativeB",result.Count);
+            LocalizedUi.Set(notice,"Text",()=>(TextResources.Format("providerEditor.fetchAsync.notice.alternativeB",result.Count)));
         }
-        catch (OperationCanceledException) { if (tokenRevision == revision) notice.Text = TextResources.Get("providerEditor.fetchAsync.notice.alternativeC"); }
+        catch (OperationCanceledException) { if (tokenRevision == revision) LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.fetchAsync.notice.alternativeC"))); }
         finally { if (ReferenceEquals(fetch, cancellation)) fetch = null; cancellation.Dispose(); }
     }
     private void Save()
@@ -127,7 +127,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
             Capture(); if (selected == null) return;
             view.ActiveTextProviderId = selected.Id; view.Text = selected.Connection.Copy();
             owner.Settings.ApplyProviders(kind, view.TextProviders.Select(p => p.Copy()).ToList(), selected.Id, selected.Connection.Copy());
-            owner.Save(); notice.Text = TextResources.Get("providerEditor.save.notice");
+            owner.Save(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.save.notice")));
         }
         catch (Exception e) { owner.Error(e); }
     }

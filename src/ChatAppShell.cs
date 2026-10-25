@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -95,7 +95,7 @@ namespace Dafeiyu
         }
         void RefreshShellAppearance()
         {
-            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);shellAvatarImage.ToolTip=pet.Skin.DisplayName;
+            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
         }
         void SelectRailIcon(Button button,string icon,bool selected)
         {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("chatAppShell.selectRailIcon.automationAutomationPropertiesSetItemStatus"):"");}
@@ -104,26 +104,23 @@ namespace Dafeiyu
         void LayoutAppSidebar(bool wide)
         {
             if(navigation==null)return;if(wide)sidebarTemporary=false;bool overlay=sidebarTemporary&&!sidebarHidden&&!wide&&shellPage=="home";navigation.Visibility=wide||overlay?Visibility.Visible:Visibility.Collapsed;Grid.SetColumn(navigation,overlay?2:0);Grid.SetColumnSpan(navigation,overlay?3:1);navigation.Width=overlay?Math.Max(210,Math.Min(navigationWidth,workspaceShell.ActualWidth-40)):Double.NaN;navigation.HorizontalAlignment=overlay?HorizontalAlignment.Left:HorizontalAlignment.Stretch;Panel.SetZIndex(navigation,overlay?40:0);navigation.Effect=overlay?new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=18,ShadowDepth=5,Opacity=.14}:null;
-            if(shellReady){shellSidebar.Background=wide||overlay?Ui.Brush("#E1E8EE"):Brushes.Transparent;shellSidebar.ToolTip=(wide||overlay?TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip"):TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeA"))+TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeB");var compose=conversationHeader.Children.OfType<Button>().FirstOrDefault(b=>b.Name=="ShellNewChat");if(compose!=null)compose.Visibility=wide?Visibility.Collapsed:Visibility.Visible;}
+            if(shellReady){shellSidebar.Background=wide||overlay?Ui.Brush("#E1E8EE"):Brushes.Transparent;LocalizedUi.Set(shellSidebar,"ToolTip",()=>((wide||overlay?TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip"):TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeA"))+TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeB")));var compose=conversationHeader.Children.OfType<Button>().FirstOrDefault(b=>b.Name=="ShellNewChat");if(compose!=null)compose.Visibility=wide?Visibility.Collapsed:Visibility.Visible;}
         }
         void OpenProfileMenu()
         {
             var button=FindShellButton("ShellAvatar");if(button.ContextMenu!=null&&button.ContextMenu.IsOpen){button.ContextMenu.IsOpen=false;return;}
             var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;menu.Items.Add(CompanionProfileEntry(menu));menu.Items.Add(new Separator());
-            AddProfile(menu,"ProfileUsage",TextResources.Get("chatAppShell.openProfileMenu.addProfile"),"usage",ShowUsagePage);
-            AddProfile(menu,"ProfilePetVisibility",pet.IsPetVisible?TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeA"):TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeB"),"pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
-            var skins=new MenuItem{Name="ProfileCompanions",Header=TextResources.Get("chatAppShell.openProfileMenu.header"),Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
-            AddProfile(menu,"ProfileLanguage",TextResources.Get("menus.language"),"language",delegate{
+            AddProfile(menu,"ProfileUsage",()=>TextResources.Get("chatAppShell.openProfileMenu.addProfile"),"usage",ShowUsagePage);
+            AddProfile(menu,"ProfilePetVisibility",()=>pet.IsPetVisible?TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeA"):TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeB"),"pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
+            var skins=LocalizedUi.With(new MenuItem{Name="ProfileCompanions",Header=TextResources.Get("chatAppShell.openProfileMenu.header"),Icon=ShellIcons.Image("people")},"Header",()=>(TextResources.Get("chatAppShell.openProfileMenu.header")));foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=LocalizedUi.With(new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}},"Header",()=>(skin.DisplayName));entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
+            AddProfile(menu,"ProfileLanguage",()=>TextResources.Get("menus.language"),"language",delegate{
                 var dialog=new LanguagePickerWindow(pet.Settings.UiLanguage,delegate(string code){
-                    pet.Store.SaveUiLanguage(pet.Settings,code);
-                    string restart=TextResources.Get("languages.restartRequired");
-                    if(UiLanguages.Resolve(pet.Settings.UiLanguage)!=TextResources.CurrentLanguage){session.ReportNotice(restart);ShowStatus(restart);}
-                    else if(session.LastNotice==restart){session.ReportNotice("");RefreshState();}
+                    UiLanguageChange.Apply(pet.Store,pet.Settings,code);
                 });dialog.Owner=this;dialog.ShowDialog();
             });
-            AddProfile(menu,"ProfileSettings",TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC"),"settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=new MenuItem{Name="ProfileHelp",Header=TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA"),Icon=ShellIcons.Image("help")};foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
+            AddProfile(menu,"ProfileSettings",()=>TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC"),"settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=LocalizedUi.With(new MenuItem{Name="ProfileHelp",Header=TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA"),Icon=ShellIcons.Image("help")},"Header",()=>(TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA")));foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
         }
-        void AddProfile(ContextMenu menu,string name,string label,string icon,Action action){var item=new MenuItem{Name=name,Header=label,Icon=ShellIcons.Image(icon)};item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
+        void AddProfile(ContextMenu menu,string name,Func<string> label,string icon,Action action){var item=LocalizedUi.With(new MenuItem{Name=name,Header=label(),Icon=ShellIcons.Image(icon)},"Header",label);item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
         Button FindShellButton(string name){return appRail.Child is Grid?((Grid)appRail.Child).Children.OfType<Button>().First(b=>b.Name==name):null;}
         void CloseProfileMenu(){if(appRail==null)return;var button=FindShellButton("ShellAvatar");if(button!=null&&button.ContextMenu!=null)button.ContextMenu.IsOpen=false;}
         internal void MountLiveContent(FrameworkElement view){liveReturnPage=shellPage;liveReturnSection=settingsPage==null?0:settingsPage.SelectedNavigationIndex;liveReturnHistory=historyIndex;ShowHomePage(false);workspaceShell.Visibility=Visibility.Collapsed;homePage.Children.Add(view);}
@@ -145,5 +142,5 @@ namespace Dafeiyu
         [StructLayout(LayoutKind.Sequential)]struct MonitorInfo{public int Size;public NativeRect Monitor,Work;public int Flags;}
         [DllImport("user32.dll")]static extern IntPtr MonitorFromWindow(IntPtr window,uint flags);
         [DllImport("user32.dll",CharSet=CharSet.Auto)]static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
-    }
+ Button FindShellButton(System.Func<string> name){return LocalizedUi.With(FindShellButton(name()),"Content",name);}    }
 }
