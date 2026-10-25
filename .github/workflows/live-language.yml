@@ -46,3 +46,13 @@ jobs:
         run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --onboarding-preparation-ui=en_US
       - name: Feedback exit after a delayed UI dispatcher
         run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --relationship-feedback-motion
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.x'
+      - name: Compiled guide property and runtime package contract
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force work | Out-Null
+          python tests/RuntimePackageTests.py

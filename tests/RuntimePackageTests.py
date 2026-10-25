@@ -48,7 +48,7 @@ class RuntimePackageTests(unittest.TestCase):
             root=Path(folder)
             self.assertTrue(root.resolve().is_relative_to((project/'work').resolve()))
             source=root/'Titles.cs'
-            source.write_text('using System; namespace Dafeiyu { class Lesson { public string Title; } static class OnboardingLessons { internal static readonly Lesson[] All = { new Lesson { Title="中文 {标题}" }, new Lesson { Title=String.Concat("开","始") } }; } }',encoding='utf-8-sig')
+            source.write_text('using System; namespace Dafeiyu { class Lesson { public string Title; } static class OnboardingLessons { internal static Lesson[] All { get { return new[] { new Lesson { Title="中文 {标题}" }, new Lesson { Title=String.Concat("开","始") } }; } } } }',encoding='utf-8-sig')
             assembly=root/'Fixture.dll';probe=root/'Probe.exe'
             for inputs in [ ['/target:library','/out:'+str(assembly),str(source)], ['/target:exe','/out:'+str(probe),str(project/'tools/localization/VerifyArtifacts.cs')] ]:
                 subprocess.run([str(compiler),'/nologo','/codepage:65001']+inputs,check=True,capture_output=True)
