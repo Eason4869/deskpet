@@ -10,6 +10,18 @@ namespace Dafeiyu.Tests
         public static int Main(){try{Run().GetAwaiter().GetResult();return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
         static async Task Run()
         {
+            var profileStage=typeof(RelationshipHomeView).GetProperty("ProfileArtStageId");
+            Check(profileStage!=null,"profile art selects an eligible saved milestone instead of optimistic score");
+            var profileState=new CompanionRelationshipState{CompanionId="official:e-bao",Score=156,Milestones=new System.Collections.Generic.List<RelationshipMilestone>{new RelationshipMilestone{StageId="familiar"},new RelationshipMilestone{StageId="first_meeting"}}};
+            var profileView=new RelationshipHomeView{CompanionId="official:e-bao",Snapshot=new RelationshipSnapshot{State=profileState}};
+            Check((string)profileStage.GetValue(profileView,null)=="familiar","highest saved familiar scene wins regardless of milestone insertion order");
+            profileState.Milestones.Add(new RelationshipMilestone{StageId="best_friend"});Check((string)profileStage.GetValue(profileView,null)=="familiar","saved score cannot unlock an ineligible future milestone");
+            profileState.Score=1000;Check((string)profileStage.GetValue(profileView,null)=="best_friend","saved maximum milestone selects its own scene");
+            profileState.Milestones.RemoveAt(2);Check((string)profileStage.GetValue(profileView,null)=="familiar","score alone cannot invent a missing highest milestone");
+            profileView.CompanionId="official:marfu";Check(profileStage.GetValue(profileView,null)==null,"another partner cached snapshot cannot select profile artwork");
+            profileView.CompanionId=profileState.CompanionId="custom:e-bao";Check(profileStage.GetValue(profileView,null)==null,"a same-named custom partner cannot borrow official stage art");
+            profileView.CompanionId=profileState.CompanionId="official:e-bao";profileState.Milestones.Clear();Check(profileStage.GetValue(profileView,null)==null,"no earned milestone uses own portrait fallback");
+            profileView.Snapshot=null;Check(profileStage.GetValue(profileView,null)==null,"unknown relationship data never invents a first-meeting scene");
             var earnedDays=typeof(RelationshipCardData).GetProperty("EarnedAcquaintanceDays");
             Check(earnedDays!=null,"keepsake captures acquaintance span at the earned milestone, not today");
             var cardSnapshot=new RelationshipSnapshot{State=new CompanionRelationshipState{CompanionId="custom:card",FirstLocalDate="2026-10-05",Milestones=new System.Collections.Generic.List<RelationshipMilestone>{new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-12"}}}};

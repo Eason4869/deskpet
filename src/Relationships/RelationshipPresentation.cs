@@ -40,6 +40,18 @@ namespace Dafeiyu
         public string CompanionId { get; internal set; }
         public RelationshipSnapshot Snapshot { get; internal set; }
         public bool ReadFailed { get; internal set; }
+        public string ProfileArtStageId
+        {
+            get {
+                var state=Snapshot==null?null:Snapshot.State;
+                if(state==null||String.IsNullOrEmpty(CompanionId)||state.CompanionId!=CompanionId||state.Milestones==null||state.Score<0||state.Score>1000)return null;
+                for(int index=RelationshipRules.Stages.Length-1;index>=0;index--){
+                    string stage=RelationshipRules.Stages[index];RelationshipStageArtAsset asset;
+                    if(state.Score>=RelationshipRules.Thresholds[index]&&state.Milestones.Exists(m=>m!=null&&m.StageId==stage)&&RelationshipStageArt.TryGet(CompanionId,stage,out asset))return stage;
+                }
+                return null;
+            }
+        }
         public RelationshipProgress Progress { get; internal set; }
         public int ActiveDays { get; internal set; }
         public int AcquaintanceDays { get; internal set; }
