@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -24,6 +25,13 @@ namespace Dafeiyu.Tests
             Exception failure=null;var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(30)};timer.Tick+=delegate{var dialog=app.Windows.OfType<Window>().FirstOrDefault(w=>w.Name=="DataActionConfirmation");if(dialog==null)return;timer.Stop();try{run(dialog);}catch(Exception error){failure=error;}finally{dialog.Close();}};timer.Start();Click(action);if(failure!=null)throw failure;
         }
         static Task Operation(Window dialog){return (Task)dialog.GetType().GetProperty("PendingOperation",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public).GetValue(dialog,null);}
+        static void SaveNativePosition(PetWindow pet,double x)
+        {
+            var handle=new WindowInteropHelper(pet).Handle;var before=DesktopInterop.Bounds(handle);
+            DesktopInterop.Move(handle,new Point(x,before.Top));
+            typeof(PetWindow).GetMethod("SavePosition",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(pet,null);
+            Check(pet.Settings.X==x&&DesktopInterop.Bounds(handle).Left==x,"pending position autosave captures actual WPF window location");
+        }
         static int SpeechVolume(PetWindow pet)
         {
             const System.Reflection.BindingFlags fields=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
@@ -87,13 +95,14 @@ namespace Dafeiyu.Tests
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){
                     try{Dialog(reset,d=>{
                         Click(Find<Button>(d,"ConfirmDataAction"));
-                        try{Wait(resetEntered.Task);Check(pet.DataMaintenance.IsMaintenanceActive&&!Operation(d).IsCompleted,"failed reset reserves maintenance before arriving position autosave");cfg.X=555;pet.SaveSettings();}
+                        try{Wait(resetEntered.Task);Check(pet.DataMaintenance.IsMaintenanceActive&&!Operation(d).IsCompleted,"failed reset reserves maintenance before arriving position autosave");SaveNativePosition(pet,555);}
                         finally{releaseReset.TrySetResult(true);}
                         Wait(Operation(d));string status=Find<TextBlock>(d,"DataActionStatus").Text;
                         Check(cfg.Scale==1.7&&status.StartsWith(TextResources.Get("dataManagement.resetFailed"))&&status.Contains(TextResources.Get("dataManagement.pendingSaveFailed")),"actual reset save failure keeps old preferences and pending position accurately: scale="+cfg.Scale+" status="+status);Capture(d,Path.Combine(root,"reset-save-failure.png"));
                     });}finally{releaseReset.TrySetResult(true);}
                 }
-                Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==555&&cfg.Scale==1.7,"failed WPF reset retains latest position for retry");
+                var retryWarning=pet.FlushDeferredSettingsAsync();Wait(retryWarning);var retryDisk=new SettingsStore(Path.Combine(root,"settings.json")).Load();
+                Check(retryDisk.X==555&&cfg.Scale==1.7,"failed WPF reset retains latest position for retry: actual="+cfg.X+" durable="+retryDisk.X+" scale="+cfg.Scale+" warning="+retryWarning.Result);
                 CaptureStates(host,root,"data",false);
                 foreach(var action in new[]{clear,reset})Dialog(action,d=>{CaptureStates(d,root,action==clear?"clear-confirm":"reset-confirm",true);foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+name);Check(!button.IsDefault,"maintenance confirmation has no Enter default "+name);}});
                 Check(pet.IsVisible,"successful maintenance leaves pet alive");Console.WriteLine("DataManagementUiTests: "+checks+" passed; captures="+root);host.Close();page.Dispose();return 0;

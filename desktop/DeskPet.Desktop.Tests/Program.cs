@@ -794,7 +794,11 @@ int CompanionLifecycleSmoke(string root)
     // owned GUID evidence outside the generic native UI temporary-root teardown.
     string core=Path.GetFullPath(Path.Combine("work","localization-completion","holiday-core-default",Guid.NewGuid().ToString("N")));
     Console.WriteLine("OWNED_HOLIDAY_CORE_RETAINED "+core);
-    total+=Result(Task.Run(()=>Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run(core,new HolidayKeepsakeSceneValidator())));
+    // This full core suite performs large storage/PNG checks and child processes,
+    // not a UI action subject to Until's 10-second dispatcher budget.
+    var coreWatch=System.Diagnostics.Stopwatch.StartNew();
+    total+=Task.Run(()=>Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run(core,new HolidayKeepsakeSceneValidator())).GetAwaiter().GetResult();
+    Console.WriteLine("Holiday core contracts completed in "+coreWatch.ElapsedMilliseconds+" ms");
     total+=Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.Combine(root,"holiday-read-boundary"),new HolidayKeepsakeSceneValidator())));
     total+=DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle();
     total+=CompanionHomeUiChecks.Run(Path.Combine(root,"home"),TextResources.CurrentLanguage);
