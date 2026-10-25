@@ -45,6 +45,15 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--maintenance-default-sequence")){
+        TextResources.ConfigureStartupLanguage("zh_CN");TextResources.Get("common.cancel");
+        bool frozen=false;try{TextResources.ConfigureStartupLanguage("en_US");}catch(InvalidOperationException){frozen=true;}
+        Check(frozen&&TextResources.CurrentLanguage=="zh_CN","production language freeze still rejects a different locale");
+        int sequence=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-sequence"),TextResources.CurrentLanguage)
+            +DataManagementUiChecks.Run(Path.Combine(directory,"data-management-sequence"),TextResources.CurrentLanguage)
+            +CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-sequence"),TextResources.CurrentLanguage);
+        Console.WriteLine("MaintenanceDefaultSequence: "+(sequence+assertions)+" passed");return;
+    }
     if(args.Any(a=>a.StartsWith("--stage-track-layout="))){Console.WriteLine("StageTrackLayout: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"stage-track"),args.Single(a=>a.StartsWith("--stage-track-layout=")).Split('=')[1])+" passed");return;}
     if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
     if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}
@@ -109,10 +118,10 @@ try
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
-    assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"));
+    assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
-    assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
-    assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"));
+    assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"),TextResources.CurrentLanguage);
+    assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"),TextResources.CurrentLanguage);
     assertions+=RelationshipPackChecks.Run();
     if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
     assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);

@@ -5,10 +5,10 @@ using DeskPet.Desktop;
 
 internal static class DataMaintenanceHostChecks
 {
-    internal static int Run(string directory)
+    internal static int Run(string directory,string language="en_US")
     {
         Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());
-        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{AutoUpdate=false,OnboardingState="completed",UiLanguage="en_US"});
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{AutoUpdate=false,OnboardingState="completed",UiLanguage=language});
         var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new Runtime(directory));
         void Wait(Task task){var deadline=DateTime.UtcNow.AddSeconds(20);while(!task.IsCompleted){if(DateTime.UtcNow>deadline)throw new TimeoutException("Admission UI fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();}
         try
