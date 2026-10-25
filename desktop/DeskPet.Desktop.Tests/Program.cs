@@ -238,7 +238,7 @@ try
         foreach (var original in new[] { false, true })
         {
             var clip = assets.Resolve(skin, action, original); var bitmap = assets.Get(skin, clip.File);
-            Check(clip.Fps == 8, skin.Id + "/" + action + " runs at 8FPS");
+            double expectedFps=action=="sleeping"?2.5:8;Check(clip.Fps == expectedFps, skin.Id + "/" + action + " uses reviewed cadence " + expectedFps + "FPS");
             for (int frame = 0; frame < clip.Frames; frame++)
             {
                 var rect = SpriteAssets.Rect(clip, frame);
