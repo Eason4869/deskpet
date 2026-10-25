@@ -17,7 +17,7 @@ namespace Dafeiyu
         readonly List<AppRoute> appHistory=new List<AppRoute>();int historyIndex=-1;
         readonly List<ShellCommand> shellCommands=new List<ShellCommand>();IInputElement lastEditingTarget;
         string liveReturnPage;int liveReturnSection,liveReturnHistory;
-        sealed class AppRoute{internal string Page;internal ConversationWorkspace Workspace;internal int Section;}
+        sealed class AppRoute{internal string Page;internal ConversationWorkspace Workspace;internal int Section,SecondarySection=-1;internal string FeatureAnchor;}
         internal string CurrentPage {get{return shellPage;}}
         internal bool HasUnsavedMcpEdits {get{return mcpPage!=null&&mcpPage.HasUnsavedEdits;}}
         internal void InitializeAppShell()
@@ -83,14 +83,14 @@ namespace Dafeiyu
         }
         void RecordPage(string page)
         {
-            if(restoringRoute||!shellReady)return;var route=new AppRoute{Page=page,Workspace=workspace,Section=settingsPage==null?0:settingsPage.SelectedNavigationIndex};var prior=historyIndex>=0?appHistory[historyIndex]:null;
-            if(prior!=null&&prior.Page==page&&(page!="home"||ReferenceEquals(prior.Workspace,workspace))&&(page!="settings"||prior.Section==route.Section)){RefreshShellAppearance();return;}
+            if(restoringRoute||!shellReady)return;var route=new AppRoute{Page=page,Workspace=workspace,Section=settingsPage==null?0:settingsPage.SelectedNavigationIndex,SecondarySection=settingsPage==null?-1:settingsPage.SelectedSecondarySection,FeatureAnchor=page=="companion"?companionFeatureAnchor:page=="settings"&&settingsPage!=null?settingsPage.SelectedFeatureAnchor:null};var prior=historyIndex>=0?appHistory[historyIndex]:null;
+            if(prior!=null&&prior.Page==page&&(page!="home"||ReferenceEquals(prior.Workspace,workspace))&&(page!="settings"||(prior.Section==route.Section&&prior.SecondarySection==route.SecondarySection&&prior.FeatureAnchor==route.FeatureAnchor))&&(page!="companion"||prior.FeatureAnchor==route.FeatureAnchor)){RefreshShellAppearance();return;}
             if(historyIndex+1<appHistory.Count)appHistory.RemoveRange(historyIndex+1,appHistory.Count-historyIndex-1);appHistory.Add(route);if(appHistory.Count>100)appHistory.RemoveAt(0);historyIndex=appHistory.Count-1;RefreshShellAppearance();
         }
         void TravelPage(int direction)
         {
             int next=historyIndex+direction;if(next<0||next>=appHistory.Count)return;var route=appHistory[next];restoringRoute=true;
-            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.SelectNavigation(route.Section);}else if(route.Page=="companion"){ShowCompanionPage();}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
+            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
             finally{restoringRoute=false;RefreshShellAppearance();}
         }
         void RefreshShellAppearance()

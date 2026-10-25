@@ -4657,5 +4657,8 @@
   "uninstall.scope": "Fermer le compagnon et désinstaller l’application ? Les paramètres, clés API, discussions, relations et souvenirs enregistrés resteront dans le dossier data. Annuler laisse le compagnon ouvert.",
   "uninstall.portable": "Cette copie ne correspond à aucune installation enregistrée. La désinstallation automatique est indisponible. Fermez l’application et retirez ses fichiers manuellement en conservant le dossier data.",
   "uninstall.prepareFailed": "La préparation a échoué. Le compagnon reste ouvert. Corrigez les erreurs d’enregistrement en attente et réessayez.",
-  "uninstall.closeCanceled": "La fermeture a été annulée ou les paramètres ont changé. Le compagnon reste ouvert ; la désinstallation est annulée."
+  "uninstall.closeCanceled": "La fermeture a été annulée ou les paramètres ont changé. Le compagnon reste ouvert ; la désinstallation est annulée.",
+  "settingsSearch.noResults": "Aucun paramètre ni fonction correspondant",
+  "settingsSearch.clearHistoryAlias": "Effacer l’historique des discussions",
+  "settingsSearch.resetAlias": "Rétablir les paramètres par défaut"
 }

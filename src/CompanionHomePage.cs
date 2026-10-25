@@ -28,6 +28,7 @@ namespace Dafeiyu
         readonly Dictionary<string,HomeCardCapture> captures=new Dictionary<string,HomeCardCapture>();
         bool introOpen,welcomeOpen,rulesOpen,settingsOpen;string captureKey;
         string identity;
+        string navigationIdentity;bool navigateToSettings;
         SkinDefinition displayedSkin;string displayedName;
         CompanionPortraitSource portrait;string artworkKey;
         int revision;
@@ -60,10 +61,13 @@ namespace Dafeiyu
             else if(View!=null&&(!Object.ReferenceEquals(displayedSkin,owner.Skin)||displayedName!=owner.Skin.DisplayName))Render();
         }
         public Task RefreshAsync(){return refreshTask=LoadAndRenderAsync();}
+        internal void RequestNavigationAnchor(string anchor)
+        {navigateToSettings=anchor=="CompanionRelationshipSettings";navigationIdentity=navigateToSettings?owner.RelationshipCompanionId:null;if(navigateToSettings)settingsOpen=true;}
         async Task LoadAndRenderAsync()
         {
             if (disposed) return;
             string id=owner.RelationshipCompanionId;int version=++revision;
+            if(navigationIdentity!=id)navigateToSettings=false;
             if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label("relationship.home.loading"));}
             var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.IsOfficial?owner.Skin.BuiltinCharacterId:null,owner.Skin.DisplayName);
             var view=await model.LoadAsync(id,RelationshipTime.Current());
@@ -155,6 +159,10 @@ namespace Dafeiyu
                 if(bottom!=null){var cards=bottom.Children[1] as FrameworkElement;var timeline=bottom.Children[0] as FrameworkElement;Grid.SetColumn(cards,0);Grid.SetRow(cards,0);Grid.SetColumn(timeline,wide?1:0);Grid.SetRow(timeline,wide?0:1);Grid.SetColumnSpan(timeline,wide?1:2);Grid.SetColumnSpan(cards,wide?1:2);cards.Margin=new Thickness(0,0,wide?24:0,0);timeline.Margin=new Thickness(wide?16:0,0,0,0);double available=cards.ActualWidth>0?cards.ActualWidth:wide?width*.78-24:width;double cardArea=Math.Max(120,available-14);double cardWidth=cardArea>=668?(cardArea-22)/2:cardArea;foreach(FrameworkElement card in cardsWrap.Children)card.Width=((HomeCardCapture)card.Tag).Expanded?cardArea:cardWidth;}
             };updateLayout();UpdateLayout();ScrollToVerticalOffset(scroll);
             if(focusToken!=null&&Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive){var replacement=HomeVisual.ResolveFocus(body,focusToken);if(replacement!=null)replacement.Focus();}
+            if(navigateToSettings&&navigationIdentity==identity&&identity==owner.RelationshipCompanionId&&IsVisible){
+                navigateToSettings=false;settingsExp.IsExpanded=true;settingsExp.Focusable=true;settingsExp.BringIntoView();
+                if(Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive)settingsExp.Focus();
+            }
         }
         void AddSetting(StackPanel parent,string name,string label,bool value,int kind)
         {

@@ -8,7 +8,7 @@ using Microsoft.Win32;
 
 namespace Dafeiyu
 {
-    public sealed class SettingsPage : UserControl, IDisposable
+    public sealed partial class SettingsPage : UserControl, IDisposable
     {
         private readonly PetWindow pet;
         private readonly TextBlock name,notice,sizeLabel;
@@ -58,6 +58,7 @@ namespace Dafeiyu
             name=Ui.Text(pet.Skin.DisplayName,24); name.FontWeight=FontWeights.SemiBold; introduction.Children.Add(name);
             introduction.Children.Add(Ui.Text(TextResources.Get("settingsPage.settingsPage.text.alternativeA"),12,Ui.Muted));
             Grid.SetColumn(introduction,1); header.Children.Add(introduction); root.Children.Add(header);
+            var homeLink=Ui.Button(TextResources.Get("relationship.home.open"));homeLink.Name="OpenCompanionHome";homeLink.HorizontalAlignment=HorizontalAlignment.Left;homeLink.Click+=delegate{OpenCompanionFeature("CompanionHomePage");};root.Children.Add(homeLink);
 
             var appearance=new StackPanel();
             var appearanceRow=new Grid {Name="CompanionWardrobeRow",Margin=new Thickness(0,0,0,6)};
@@ -139,13 +140,13 @@ namespace Dafeiyu
             categorySearch.Template=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Border Background='{TemplateBinding Background}' CornerRadius='17'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}' VerticalAlignment='Center'/></Border></ControlTemplate>");
             System.Windows.Automation.AutomationProperties.SetName(categorySearch,TextResources.Get("settingsPage.settingsPage.automationAutomationPropertiesSetName"));searchSurface.Children.Add(categorySearch);var searchGlyph=UiIcons.Image("search",Ui.Muted);searchGlyph.Width=searchGlyph.Height=13;searchGlyph.HorizontalAlignment=HorizontalAlignment.Left;searchGlyph.VerticalAlignment=VerticalAlignment.Center;searchGlyph.Margin=new Thickness(11,0,0,0);searchSurface.Children.Add(searchGlyph);var searchHint=Ui.InlineText(TextResources.Get("settingsPage.settingsPage.inlineText.alternativeB"),12,Ui.Muted);searchHint.Margin=new Thickness(30,0,10,0);searchHint.IsHitTestVisible=false;searchSurface.Children.Add(searchHint);sidebarHeader.Children.Add(searchSurface);sidebar.Children.Add(sidebarHeader);
             var navScroll=Ui.Scroll(navigation);Grid.SetRow(navScroll,1);sidebar.Children.Add(navScroll);
-            categorySearch.TextChanged+=delegate{string query=categorySearch.Text.Trim();searchHint.Visibility=categorySearch.Text.Length==0?Visibility.Visible:Visibility.Collapsed;foreach(ListBoxItem item in navigation.Items)item.Visibility=query.Length==0||((string)item.Content).IndexOf(query,StringComparison.CurrentCultureIgnoreCase)>=0?Visibility.Visible:Visibility.Collapsed;};
+            InitializeFeatureNavigation(categorySearch,searchHint,sidebarHeader);
             var sidebarFooter=new StackPanel{Margin=new Thickness(14,14,14,20)};
             var guideButton=Ui.Button(TextResources.Get("settingsPage.settingsPage.text.alternativeT"));guideButton.Name="OpenOnboarding";guideButton.HorizontalAlignment=HorizontalAlignment.Left;guideButton.Margin=new Thickness(0,0,0,10);guideButton.Click+=delegate {if(GuideRequested!=null)GuideRequested();};System.Windows.Automation.AutomationProperties.SetName(guideButton,TextResources.Get("settingsPage.settingsPage.automationAutomationPropertiesSetName.alternativeA"));guideButton.ToolTip=TextResources.Get("settingsPage.settingsPage.guideButtonToolTip");sidebarFooter.Children.Add(guideButton);
             var versionLabel=Ui.InlineText(TextResources.Format("settingsPage.settingsPage.inlineText",ReleaseInfo.DisplayVersion),11,Ui.Muted);sidebarFooter.Children.Add(versionLabel);Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=Ui.Brush("#F8F9FB"),BorderBrush=Ui.Brush("#E9ECF0"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
             bool? compactNavigation=null;Action updateNavigation=delegate{bool compact=ActualWidth>0&&ActualWidth<700;if(compactNavigation==compact)return;compactNavigation=compact;sidebarColumn.Width=new GridLength(compact?64:224);sidebarHeader.Visibility=compact?Visibility.Collapsed:Visibility.Visible;versionLabel.Visibility=compact?Visibility.Collapsed:Visibility.Visible;sidebarFooter.Margin=compact?new Thickness(10,14,10,20):new Thickness(14,14,14,20);navigation.Margin=compact?new Thickness(6,18,6,0):new Thickness(10,0,10,0);foreach(ListBoxItem item in navigation.Items){item.ContentTemplate=NavigationTemplate(compact);item.Padding=compact?new Thickness(10):new Thickness(10,8,10,8);if(compact)item.Visibility=Visibility.Visible;}if(compact)categorySearch.Text="";guideButton.Content=compact?(object)ShellIcons.Image("book",Ui.PageInk,16):TextResources.Get("settingsPage.settingsPage.guideButtonContentCompact");guideButton.Padding=compact?new Thickness(8):new Thickness(12,7,12,7);content.Margin=compact?new Thickness(0):new Thickness(16,18,16,8);};SizeChanged+=delegate{updateNavigation();};Loaded+=delegate{updateNavigation();};
-            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){RefreshWorkState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;if(NavigationChanged!=null)NavigationChanged(index);};navigation.SelectedIndex=0;
+            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){RefreshWorkState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
             RefreshState(); ShowNotice(pet.Notice ?? pet.Store.Warning);
         }
         private static DataTemplate NavigationTemplate(bool compact)
@@ -248,11 +249,11 @@ namespace Dafeiyu
             if(index<0 || index>7)throw new ArgumentOutOfRangeException("index");
             if(index>=2 && index<=5){SelectAiSection(index-2);return;}
             if(index<=1){SelectCompanionSection(0);if(index==1)FocusGuideTarget("PersonaPrompt");return;}
-            navigation.SelectedIndex=index==6?4:3;
+            RestoreNavigation(index==6?4:3,-1,null);
         }
-        public void SelectCompanionSection(int index){companionPage.SelectSection(index);navigation.SelectedIndex=0;}
-        public void SelectAiSection(int index){aiConfiguration.SelectSection(index);navigation.SelectedIndex=1;}
-        public void SelectGeneralSection(int index){quiet.SelectSection(index);navigation.SelectedIndex=3;}
+        public void SelectCompanionSection(int index){RestoreNavigation(0,index,null);}
+        public void SelectAiSection(int index){RestoreNavigation(1,index,null);}
+        public void SelectGeneralSection(int index){RestoreNavigation(3,index,null);}
         internal void SelectMcpSettings(bool edit=false){pet.ShowMcpPage(edit);}
         public bool CanChangeWorkSettingsProject(ProjectDefinition project)
         {
@@ -277,7 +278,7 @@ namespace Dafeiyu
         public void SelectNavigation(int index)
         {
             if(index<0 || index>=navigation.Items.Count)throw new ArgumentOutOfRangeException("index");
-            if(index==2){SelectWorkSettings();return;}navigation.SelectedIndex=index;
+            if(index==2){SelectWorkSettings();return;}RestoreNavigation(index,-1,null);
         }
         public void Dispose()
         {

@@ -4657,5 +4657,8 @@
   "uninstall.scope": "关闭桌面伙伴并卸载应用？设置、API 密钥、聊天、关系和已保存的纪念物会保留在 data 文件夹中。取消后桌面伙伴继续运行。",
   "uninstall.portable": "此副本没有匹配的安装注册信息，无法自动卸载。请关闭应用后手动移除程序文件，并保留 data 文件夹。",
   "uninstall.prepareFailed": "卸载准备失败，桌面伙伴仍在运行。请处理待保存的错误后重试。",
-  "uninstall.closeCanceled": "关闭被取消或设置发生变化，桌面伙伴仍在运行，卸载已取消。"
+  "uninstall.closeCanceled": "关闭被取消或设置发生变化，桌面伙伴仍在运行，卸载已取消。",
+  "settingsSearch.noResults": "未找到匹配的设置或功能",
+  "settingsSearch.clearHistoryAlias": "清空聊天记录",
+  "settingsSearch.resetAlias": "恢复默认设置"
 }

@@ -4657,5 +4657,8 @@
   "uninstall.scope": "Begleiter schließen und die Anwendung deinstallieren? Einstellungen, API-Schlüssel, Chats, Beziehungen und gespeicherte Erinnerungsstücke bleiben im Ordner data erhalten. Bei Abbrechen läuft der Begleiter weiter.",
   "uninstall.portable": "Für diese Kopie gibt es keine passende Installationsregistrierung. Automatisches Deinstallieren ist nicht verfügbar. Schließe die App und entferne die Programmdateien manuell. Behalte den Ordner data.",
   "uninstall.prepareFailed": "Die Vorbereitung ist fehlgeschlagen. Der Begleiter läuft weiter. Behebe ausstehende Speicherfehler und versuche es erneut.",
-  "uninstall.closeCanceled": "Das Schließen wurde abgebrochen oder Einstellungen wurden geändert. Der Begleiter läuft weiter; die Deinstallation wurde abgebrochen."
+  "uninstall.closeCanceled": "Das Schließen wurde abgebrochen oder Einstellungen wurden geändert. Der Begleiter läuft weiter; die Deinstallation wurde abgebrochen.",
+  "settingsSearch.noResults": "Keine passenden Einstellungen oder Funktionen",
+  "settingsSearch.clearHistoryAlias": "Chatverlauf löschen",
+  "settingsSearch.resetAlias": "Standardeinstellungen wiederherstellen"
 }

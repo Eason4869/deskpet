@@ -11,6 +11,8 @@ namespace Dafeiyu
         readonly SettingsPageHeader header;readonly ContentControl body=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch};
         readonly UIElement[] pages;readonly ShortcutSettingsPanel shortcuts;bool refreshing;
         public bool HasUnsavedChanges{get{return shortcuts.HasUnsavedChanges;}}
+        internal int SelectedSection{get{return header.SelectedIndex;}}
+        internal event System.Action SelectionChanged;
         public QuietPanel(PetWindow owner,System.Action preferencesRestored=null)
         {
             pet=owner;Margin=new Thickness(24,22,24,20);RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());
@@ -27,10 +29,10 @@ namespace Dafeiyu
             shortcuts=new ShortcutSettingsPanel(pet);
             var storage=new StackPanel();history=Ui.Toggle(TextResources.Get("quietPanel.quietPanel.toggle.alternativeE"),pet.Settings.SaveChatHistory,delegate(bool enabled){if(!refreshing){pet.Settings.SaveChatHistory=enabled;pet.SaveSettings();}});history.Name="SaveChatHistory";
             storage.Children.Add(new DataManagementPanel(pet,delegate{shortcuts.DiscardPreferenceDrafts();if(preferencesRestored!=null)preferencesRestored();else RefreshState();},history));
-            pages=new UIElement[]{Ui.Scroll(general),shortcuts,Ui.Scroll(storage)};header.SelectionChanged+=index=>body.Content=pages[index];SelectSection(0);
+            pages=new UIElement[]{Ui.Scroll(general),shortcuts,Ui.Scroll(storage)};header.SelectionChanged+=index=>{body.Content=pages[index];if(SelectionChanged!=null)SelectionChanged();};SelectSection(0);
         }
         public void SelectSection(int index){header.Select(index);}
-        internal void ShowTarget(string name){SelectSection(name.StartsWith("Hotkey")||name.StartsWith("GuideShortcut")||name.StartsWith("SaveShortcut")?1:name=="SaveChatHistory"?2:0);}
+        internal void ShowTarget(string name){SelectSection(name.StartsWith("Hotkey")||name.StartsWith("GuideShortcut")||name.StartsWith("SaveShortcut")?1:name=="SaveChatHistory"||name=="ClearAllHistory"||name=="RestoreDefaultPreferences"||name=="OpenPreservedAttachments"||name=="GeneralHistoryTab"?2:0);}
         public void RefreshState(){refreshing=true;imageMotion.IsChecked=pet.Settings.ImageGenerationMotionEnabled;imageConcurrency.SelectedItem=pet.Settings.ImageGenerationConcurrency;theme.Value=pet.Settings.ThemeMode;quiet.IsChecked=pet.Settings.QuietMode;fullscreen.IsChecked=pet.Settings.HideOnFullscreen;clickthrough.IsChecked=pet.Settings.ClickThrough;locked.IsChecked=pet.Settings.LockPosition;history.IsChecked=pet.Settings.SaveChatHistory;refreshing=false;shortcuts.RefreshState();}
     }
 }

@@ -7,6 +7,7 @@ namespace Dafeiyu
     public sealed partial class ChatWindow
     {
         CompanionHomePage companionPage;
+        string companionFeatureAnchor;
         MenuItem CompanionProfileEntry(ContextMenu menu)
         {
             var title=new StackPanel{Margin=new Thickness(0,4,12,4)};
@@ -19,10 +20,11 @@ namespace Dafeiyu
             item.Click+=delegate{menu.IsOpen=false;ShowCompanionPage();};
             return item;
         }
-        internal void ShowCompanionPage()
+        internal void ShowCompanionPage(string anchor=null)
         {
             if(!shellReady||closed)return;
             if(companionPage==null){companionPage=new CompanionHomePage(pet);appPages.Children.Add(companionPage);}
+            companionFeatureAnchor=anchor;companionPage.RequestNavigationAnchor(anchor);
             SetShellPage("companion");RecordPage("companion");pet.RecordVisit();
             RefreshCompanionPage();
         }

@@ -4657,5 +4657,8 @@
   "uninstall.scope": "동반자를 종료하고 앱을 제거할까요? 설정, API 키, 대화, 관계 및 저장된 기념품은 data 폴더에 남습니다. 취소하면 동반자가 계속 실행됩니다.",
   "uninstall.portable": "이 사본에 일치하는 설치 등록이 없어 자동 제거를 사용할 수 없습니다. 앱을 종료하고 data 폴더를 유지한 채 프로그램 파일을 직접 제거하세요.",
   "uninstall.prepareFailed": "제거 준비에 실패했습니다. 동반자는 계속 실행 중입니다. 저장 오류를 해결한 후 다시 시도하세요.",
-  "uninstall.closeCanceled": "종료가 취소되었거나 설정이 변경되었습니다. 동반자는 계속 실행 중이며 제거가 취소되었습니다."
+  "uninstall.closeCanceled": "종료가 취소되었거나 설정이 변경되었습니다. 동반자는 계속 실행 중이며 제거가 취소되었습니다.",
+  "settingsSearch.noResults": "일치하는 설정이나 기능이 없습니다",
+  "settingsSearch.clearHistoryAlias": "채팅 기록 지우기",
+  "settingsSearch.resetAlias": "기본 설정 복원"
 }
