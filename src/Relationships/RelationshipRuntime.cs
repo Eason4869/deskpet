@@ -17,6 +17,7 @@ namespace Dafeiyu
             [DataMember] public RelationshipEventType Type;
             [DataMember] public long UtcTicks;
             [DataMember] public int OffsetMinutes;
+            internal RelationshipResult CommittedResult;
             internal RelationshipTime Time(){return new RelationshipTime(new DateTime(UtcTicks,DateTimeKind.Utc),TimeSpan.FromMinutes(OffsetMinutes));}
         }
         readonly object gate=new object();readonly string directory,path;readonly Action<Action> dispatch;
@@ -48,7 +49,7 @@ namespace Dafeiyu
                     foreach(var p in pending)p.Time();
                     pendingCount=pending.Count;
                     if(pending.Count>0)warning=TextResources.Get("relationship.saveWarning");
-                }
+                }else RelationshipWriteRecovery.RequireNoCandidate(directory,false);
             }catch(Exception error){if(!StorageError(error))throw;pending=new List<PendingEvent>();pendingCount=0;blocked=true;warning=TextResources.Get("relationship.saveWarning");}
         }
         static bool StorageError(Exception e){return e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
@@ -100,8 +101,9 @@ namespace Dafeiyu
         void SavePending()
         {
             CompanionPackStorage.AssetPath(Path.GetDirectoryName(directory),"relationships/pending.json");Directory.CreateDirectory(directory);string temp=Path.Combine(directory,Guid.NewGuid().ToString("N")+".pending.tmp");
-            try{using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(List<PendingEvent>)).WriteObject(stream,pending);stream.Flush(true);}if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}
-            finally{if(File.Exists(temp))try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
+            bool replacing=RelationshipWriteRecovery.AuthoritativeExists(path);
+            try{using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(List<PendingEvent>)).WriteObject(stream,pending);stream.Flush(true);}AtomicFile.Commit(temp,path);}
+            finally{if(File.Exists(temp)&&(!replacing||File.Exists(path)))try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
         }
         public void Record(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
         {using(maintenance.EnterActivity())RecordCore(companionId,type,eventId,time);}
@@ -119,9 +121,11 @@ namespace Dafeiyu
                 // after ledger commit is safe: receipts deduplicate replay.
                 SavePending();
                 while(pending.Count>0){
-                    var next=pending[0];var result=Service.Record(next.CompanionId,next.Type,next.EventId,next.Time());
+                    var next=pending[0];var result=next.CommittedResult??Service.Record(next.CompanionId,next.Type,next.EventId,next.Time());
                     if(!result.Success){warning=TextResources.Get("relationship.saveWarning");return;}
-                    pending.RemoveAt(0);pendingCount=pending.Count;SavePending();
+                    next.CommittedResult=result;
+                    pending.RemoveAt(0);pendingCount=pending.Count;
+                    try{SavePending();}catch{pending.Insert(0,next);pendingCount=pending.Count;throw;}
                     var id=next.CompanionId;notifications.Add(delegate{var committed=Committed;if(committed!=null)committed(id,result);});
                 }
                 warning="";

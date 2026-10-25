@@ -28,7 +28,7 @@ namespace Dafeiyu
         internal RelationshipData Load()
         {
             string path = FilePath;
-            if (!File.Exists(path)) return new RelationshipData();
+            if (!File.Exists(path)) { RelationshipWriteRecovery.RequireNoCandidate(root,true); return new RelationshipData(); }
             using (var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)) {
                 if (input.Length == 0 || input.Length > MaximumBytes) throw new InvalidDataException("Relationship store size is invalid.");
                 var result = (RelationshipData)new DataContractJsonSerializer(typeof(RelationshipData)).ReadObject(input);
@@ -39,6 +39,7 @@ namespace Dafeiyu
         {
             RelationshipRules.Validate(data);
             string path = FilePath, temporary = CompanionPackStorage.AssetPath(root, ".state-" + Guid.NewGuid().ToString("N") + ".tmp");
+            bool replacing=RelationshipWriteRecovery.AuthoritativeExists(path);
             try {
                 using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) {
                     new DataContractJsonSerializer(typeof(RelationshipData)).WriteObject(output, data);
@@ -46,8 +47,8 @@ namespace Dafeiyu
                     output.Flush(true);
                 }
                 // No recovery-to-defaults or backup fallback: corrupt/newer bytes remain authoritative and untouched.
-                if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
-            } finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                AtomicFile.Commit(temporary,path);
+            } finally { if (File.Exists(temporary) && (!replacing || File.Exists(path))) File.Delete(temporary); }
         }
         internal static RelationshipData Copy(RelationshipData data)
         {

@@ -35,6 +35,7 @@ if ($Target -eq 'App') {
     if ($Target -eq 'HolidayKeepsakeTests') { $sources += Join-Path $projectRoot 'tests/HolidayKeepsakeContractChecks.cs' }
     if ($Target -eq 'CompanionHomeUiTests') { $sources += Join-Path $projectRoot 'tests/RelationshipHomeFixtures.cs' }
     if ($Target -like 'Relationship*') { $sources += Join-Path $projectRoot 'tests/RelationshipTestSupport.cs' }
+    if ($Target -in @('RelationshipStoreTests','RelationshipIntegrationTests')) { $sources += Join-Path $projectRoot 'tests/RelationshipAtomicWriteChecks.cs' }
     if ($Target -like 'AgentJob*' -or $Target -eq 'DataMaintenanceAdmissionTests') { $sources += Join-Path $projectRoot 'tests/AgentJobTestSupport.cs' }
     if ($Target -in @('AgentJobLifecycleUiTests','AgentJobProjectTests')) { $sources += Join-Path $projectRoot 'tests/AgentJobExitHost.cs' }
     if ($Target -in @('OfficialCompanionTests','WpfOfficialCompanionTests')) { $sources += Join-Path $projectRoot 'tests\OfficialCompanionFixtures.cs' }

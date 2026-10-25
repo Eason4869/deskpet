@@ -12,7 +12,7 @@ namespace Dafeiyu.Tests
         {
             EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> storageDiagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs args){var error=args.Exception;if((error is IOException||error is UnauthorizedAccessException)&&System.Threading.Interlocked.Increment(ref storageDiagnostics)<=8)Console.WriteLine("STORE_FIRST_CHANCE path="+diagnosticPath+" hresult=0x"+error.HResult.ToString("X8")+" "+error);};
             AppDomain.CurrentDomain.FirstChanceException+=storageDiagnostic;
-            try { ReviewBudgetIntegrity(); ReviewMilestoneIntegrity(); using (var f = new RelationshipFixture()) {
+            try { RelationshipAtomicWriteChecks.Ledger(); RelationshipAtomicWriteChecks.Holiday(); ReviewBudgetIntegrity(); ReviewMilestoneIntegrity(); using (var f = new RelationshipFixture()) {
                 TraceFixture(f.Store.FilePath);
                 var a = f.Service; var b = f.Service; string id = "official:e-bao"; var t = RelationshipFixture.Time("2026-10-24T12:00:00Z");
                 RelationshipFixture.Check(a.GetSnapshot(id).Settings.GrowthEnabled && a.GetSnapshot(id).Settings.FeedbackEnabled && a.GetSnapshot(id).Settings.AiContextEnabled, "settings default true");

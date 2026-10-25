@@ -28,7 +28,7 @@ namespace Dafeiyu
         internal HolidayKeepsakeData Load()
         {
             string path=Safe("holiday-state.json");if(Directory.Exists(path))throw new IOException("State path is a directory.");
-            if(!File.Exists(path))return new HolidayKeepsakeData();
+            if(!File.Exists(path)){RelationshipWriteRecovery.RequireNoCandidate(root,true);return new HolidayKeepsakeData();}
             try{
                 using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete)){
                     if(input.Length==0||input.Length>MaximumStateBytes)throw new InvalidDataException("State size is invalid.");
@@ -68,17 +68,18 @@ namespace Dafeiyu
         internal void Save(HolidayKeepsakeData data)
         {
             Validate(data);string temporary=".state-"+Guid.NewGuid().ToString("N")+".tmp";
+            bool replacing=RelationshipWriteRecovery.AuthoritativeExists(Safe("holiday-state.json"));
             try{
                 using(var output=new FileStream(Safe(temporary),FileMode.CreateNew,FileAccess.Write,FileShare.None)){
                     new DataContractJsonSerializer(typeof(HolidayKeepsakeData)).WriteObject(output,data);
                     if(output.Length>MaximumStateBytes)throw new IOException("Holiday store full; no records discarded.");output.Flush(true);
                 }
                 string path=Safe("holiday-state.json"),temp=Safe(temporary);
-                if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);
-            }finally{CleanOwnTemporary(temporary);}
+                AtomicFile.Commit(temp,path);
+            }finally{CleanOwnTemporary(temporary,replacing?"holiday-state.json":null);}
         }
-        void CleanOwnTemporary(string relative)
-        {try{string path=Safe(relative);if(File.Exists(path))File.Delete(path);}catch(InvalidDataException){}catch(IOException){}catch(UnauthorizedAccessException){}}
+        void CleanOwnTemporary(string relative,string authoritative=null)
+        {try{if(authoritative!=null&&!File.Exists(Safe(authoritative)))return;string path=Safe(relative);if(File.Exists(path))File.Delete(path);}catch(InvalidDataException){}catch(IOException){}catch(UnauthorizedAccessException){}}
         internal void PublishScene(HolidayKeepsakeRecord record,byte[] bytes)
         {
             string relative="scenes/"+record.SceneSha256+".png",path=Safe(relative);

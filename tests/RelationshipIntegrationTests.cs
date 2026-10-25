@@ -15,6 +15,7 @@ namespace Dafeiyu.Tests
         static void Run(string name,Func<Task> test){try{test().GetAwaiter().GetResult();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e);}}
         public static int Main()
         {
+            Run("bounded real pending writes and failed retirement recovery",delegate{RelationshipAtomicWriteChecks.Pending();RelationshipAtomicWriteChecks.PostLedgerRetirement();return Task.FromResult(0);});
             Run("old completed history and task startup never reconstruct relationship rewards",async delegate{
                 using(var f=new RelationshipFixture()){
                     var history=new HistoryStore(Path.Combine(f.Root,"history"));var old=new ConversationLog();old.Commit("old completed user","old completed reply");await history.SaveAsync("pet",old.Messages);
