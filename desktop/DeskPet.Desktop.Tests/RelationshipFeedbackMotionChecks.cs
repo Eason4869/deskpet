@@ -21,7 +21,7 @@ internal static class RelationshipFeedbackMotionChecks
         void Inside(RelationshipFeedbackWindow window,Border card,string description){var top=card.TranslatePoint(new Point(0,0),window)!.Value;var bottom=card.TranslatePoint(new Point(0,card.Bounds.Height),window)!.Value;Check(top.Y>=-.5&&bottom.Y<=window.Bounds.Height+.5,description+": top="+top.Y+" bottom="+bottom.Y+" window="+window.Bounds.Height);}
 
         Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());
-        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=TextResources.CurrentLanguage,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
         var lifetime=new ClassicDesktopStyleApplicationLifetime();using var owner=new DesktopController(lifetime,new FixtureRuntime(directory));owner.Pet.Show();
         try{
             var ordinary=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));ordinary.Show();
@@ -59,7 +59,7 @@ internal static class RelationshipFeedbackMotionChecks
         int checks=0;void Check(bool condition,string description){if(!condition)throw new Exception(description);checks++;Console.WriteLine("PASS "+description);}
         static PixelRect Pixels(Window window)=>new(window.Position.X,window.Position.Y,(int)Math.Ceiling(window.Bounds.Width*window.RenderScaling),(int)Math.Ceiling(window.Bounds.Height*window.RenderScaling));
         static bool Overlap(PixelRect a,PixelRect b)=>a.X<b.Right&&a.Right>b.X&&a.Y<b.Bottom&&a.Bottom>b.Y;
-        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=TextResources.CurrentLanguage,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
         var lifetime=new ClassicDesktopStyleApplicationLifetime();using var owner=new DesktopController(lifetime,new FixtureRuntime(directory));owner.Pet.Show();
         RelationshipFeedbackWindow? notice=null;
         try{
