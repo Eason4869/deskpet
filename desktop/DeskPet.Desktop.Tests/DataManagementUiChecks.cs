@@ -28,6 +28,15 @@ internal static class DataManagementUiChecks
         DataActionConfirmationWindow Open(string action){Click(Named<Button>(host,action));var dialog=host.OwnedWindows.OfType<DataActionConfirmationWindow>().Single();Check(dialog.Owner==host,"native actual settings action owns confirmation "+action);return dialog;}
         void Confirm(DataActionConfirmationWindow dialog){Click(Named<Button>(dialog,"ConfirmDataAction"));Wait(dialog.PendingOperation);}
         string Status(DataActionConfirmationWindow dialog)=>Named<TextBlock>(dialog,"DataActionStatus").Text!;
+        void WithFailedSettingsWrite(Action exercise)
+        {
+            // An owned directory at the fixed temporary filename rejects the
+            // actual write on both Windows and POSIX, leaving the ledger readable.
+            string temporary=Path.Combine(directory,"settings.json.tmp");
+            if(File.Exists(temporary)||Directory.Exists(temporary))throw new IOException("Unexpected settings temporary fixture");
+            Directory.CreateDirectory(temporary);
+            try{exercise();}finally{Directory.Delete(temporary);}
+        }
         var captures=Path.GetFullPath(Path.Combine("work","data-ui-native",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);
         void Capture(Window target,string name){AvaloniaHeadlessPlatform.ForceRenderTimerTick();using var image=target.CaptureRenderedFrame();image!.Save(Path.Combine(captures,name+".png"),new PngBitmapEncoderOptions());}
         try{
@@ -81,15 +90,30 @@ internal static class DataManagementUiChecks
             host.SelectSection("partner");Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(pageHost.Content,retainedPages["partner"])&&persona.Text=="unsaved persona F2","reset preserves persona page identity and unsaved draft");
             navigation.SelectedIndex=2;Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(pageHost.Content,textPage)&&host.GetLogicalDescendants().OfType<TabControl>().Single().SelectedIndex==1&&ReferenceEquals(imageDraft,Named<TextBox>(host,"ImageProviderName"))&&imageDraft.Text=="unsaved image provider F2","ordinary sidebar return and reset preserve image subtab and editor draft");
             host.SelectSection("voice");Dispatcher.UIThread.RunJobs();Check(host.GetLogicalDescendants().OfType<Slider>().Distinct().Single(s=>s.Maximum==100).Value==50&&runtime.Voices.All(v=>v.Volume==50),"native reset refreshes volume editor and applies runtime speech volume");host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
-            using(var locked=new FileStream(Path.Combine(directory,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){
-                var dialog=Open("RestoreDefaultPreferences");Click(Named<Button>(dialog,"ConfirmDataAction"));owner.Settings.X=444;owner.Save();Check(!dialog.PendingOperation.IsCompleted,"arriving native position autosave does not block UI during held commit");locked.Dispose();Wait(dialog.PendingOperation);Check(new SettingsStore(Path.Combine(directory,"settings.json")).Load().X==444,"successful native reset flushes latest position after publication");dialog.Close();
+            var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
+            using(owner.DataMaintenance.Register(()=>{entered.TrySetResult(true);return release.Task;})){
+                try{
+                    var dialog=Open("RestoreDefaultPreferences");Click(Named<Button>(dialog,"ConfirmDataAction"));Wait(entered.Task);
+                    try{Check(owner.DataMaintenance.IsMaintenanceActive,"native successful reset reserves maintenance before position autosave");owner.Settings.X=444;owner.Save();Check(!dialog.PendingOperation.IsCompleted,"arriving native position autosave does not block UI during held maintenance");}
+                    finally{release.TrySetResult(true);}
+                    Wait(dialog.PendingOperation);Check(new SettingsStore(Path.Combine(directory,"settings.json")).Load().X==444,"successful native reset flushes latest position after publication");dialog.Close();
+                }finally{release.TrySetResult(true);}
             }
             var reservation=owner.DataMaintenance.BeginAsync();Wait(reservation);using(reservation.Result){owner.Settings.X=666;owner.Save();}
-            using(var locked=new FileStream(Path.Combine(directory,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){var flush=owner.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&owner.Settings.Scale==1.25&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().Scale==1.25,"later native autosave failure never reports durable reset rolled back");}
+            WithFailedSettingsWrite(()=>{var flush=owner.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&owner.Settings.Scale==1.25&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().Scale==1.25,"later native autosave failure never reports durable reset rolled back");});
             Wait(owner.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(directory,"settings.json")).Load().X==666,"later native autosave failure remains retryable");
-            string settingsPath=Path.Combine(directory,"settings.json");owner.Settings.Scale=1.7;using(var locked=new FileStream(settingsPath,FileMode.Open,FileAccess.Read,FileShare.Read)){
-                var failed=Open("RestoreDefaultPreferences");Click(Named<Button>(failed,"ConfirmDataAction"));owner.Settings.X=555;owner.Save();Wait(failed.PendingOperation);Check(Status(failed).StartsWith(TextResources.Get("dataManagement.resetFailed"))&&Status(failed).Contains(TextResources.Get("dataManagement.pendingSaveFailed"))&&owner.Settings.Scale==1.7,"native failed save preserves preferences and pending position accurately");Capture(failed,"reset-save-failure");failed.Close();
-            }
+            string settingsPath=Path.Combine(directory,"settings.json");owner.Settings.Scale=1.7;
+            WithFailedSettingsWrite(()=>{
+                var failedEntered=new TaskCompletionSource<bool>();var releaseFailed=new TaskCompletionSource<bool>();
+                using(owner.DataMaintenance.Register(()=>{failedEntered.TrySetResult(true);return releaseFailed.Task;})){
+                    try{
+                        var failed=Open("RestoreDefaultPreferences");Click(Named<Button>(failed,"ConfirmDataAction"));Wait(failedEntered.Task);
+                        try{Check(owner.DataMaintenance.IsMaintenanceActive&&!failed.PendingOperation.IsCompleted,"native failed reset reserves maintenance before position autosave");owner.Settings.X=555;owner.Save();}
+                        finally{releaseFailed.TrySetResult(true);}
+                        Wait(failed.PendingOperation);Check(Status(failed).StartsWith(TextResources.Get("dataManagement.resetFailed"))&&Status(failed).Contains(TextResources.Get("dataManagement.pendingSaveFailed"))&&owner.Settings.Scale==1.7,"native failed save preserves preferences and pending position accurately");Capture(failed,"reset-save-failure");failed.Close();
+                    }finally{releaseFailed.TrySetResult(true);}
+                }
+            });
             Wait(owner.FlushDeferredSettingsAsync());Check(new SettingsStore(settingsPath).Load().X==555&&owner.Settings.Scale==1.7,"failed native reset retains latest position for retry");
             foreach(var theme in new[]{"light","dark"})foreach(int width in new[]{570,790}){DesktopTheme.Apply(theme);host.Width=width;host.Height=860;Dispatcher.UIThread.RunJobs();Capture(host,"data-"+theme+"-"+width);}
             foreach(var fold in host.GetLogicalDescendants().OfType<Expander>().Where(x=>x.Name is "LocalDataDirectory" or "ApplicationTools"))fold.IsExpanded=true;
