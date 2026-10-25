@@ -26,7 +26,7 @@ namespace Dafeiyu
         void OpenTaskChanges(AgentTaskState task)
         {
             if(task==null||closed)return;
-            var snapshot=AgentChangeSummaryData.CopyTask(task);var card=new AgentChangeSummaryCard(path=>{var ignored=ShowRecordedChangeAsync(snapshot,path);});card.Refresh(snapshot,true);OpenDetailTab(TextResources.Get("chatChangeSummaries.openTaskChanges.openDetailTab"),Ui.Scroll(card));
+            var snapshot=AgentChangeSummaryData.CopyTask(task);var card=new AgentChangeSummaryCard(path=>{var ignored=ShowRecordedChangeAsync(snapshot,path);});card.Refresh(snapshot,true);OpenDetailTab(()=>TextResources.Get("chatChangeSummaries.openTaskChanges.openDetailTab"),Ui.Scroll(card));
         }
         async Task RestoreSummaryChangeAsync(ConversationSession source,AgentTaskState snapshot,AgentChange change)
         {
@@ -50,7 +50,7 @@ namespace Dafeiyu
                 string root=Path.GetFullPath(task.Workspace).TrimEnd('\\','/');bool inside=selectedPath.StartsWith(root+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase);
                 bool restricted=inside&&(String.IsNullOrEmpty(record.BackupPath)||String.Equals(Path.GetDirectoryName(Path.GetFullPath(record.BackupPath)),Path.Combine(root,".deskpet-agent-backups"),StringComparison.OrdinalIgnoreCase));
                 var preview=await Task.Run(delegate{using(var files=new AgentWorkspace(task.Workspace,restricted){ReadOnly=true,BackupEnabled=false}){files.BeginTask(task);return files.PreviewChange(selectedPath,CancellationToken.None);}});
-                await Dispatcher.InvokeAsync(new Action(delegate{if(!closed&&ReferenceEquals(source,session))OpenDetailTab(TextResources.Format("chatChangeSummaries.showRecordedChangeAsync.openDetailTab",Path.GetFileName(path)),AgentChangePreviewContent.Create(preview));}));
+                await Dispatcher.InvokeAsync(new Action(delegate{if(!closed&&ReferenceEquals(source,session))OpenDetailTab(()=>TextResources.Format("chatChangeSummaries.showRecordedChangeAsync.openDetailTab",Path.GetFileName(path)),AgentChangePreviewContent.Create(preview));}));
             }
             catch(Exception error){if(!closed)source.ReportNotice(error is InvalidOperationException||error is ArgumentException?error.Message:TextResources.Get("chatChangeSummaries.showRecordedChangeAsync.sourceReportNotice"));}
         }

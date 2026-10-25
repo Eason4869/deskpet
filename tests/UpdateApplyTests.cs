@@ -37,8 +37,10 @@ namespace Dafeiyu.Tests
         {
             try
             {
-                engine=typeof(PetSettings).Assembly.GetType("Dafeiyu.UpdateInstall");Check(engine!=null,"提供退出后的更新执行器");
-                jobType=typeof(PetSettings).Assembly.GetType("Dafeiyu.UpdateJob");
+                engine=typeof(UpdateInstall);Check(engine!=null,"提供退出后的更新执行器");
+                jobType=typeof(UpdateJob);
+                var resources=Assembly.GetExecutingAssembly().GetManifestResourceNames();
+                Check(resources.Length==13 && Array.TrueForAll(resources,name=>name.StartsWith("Dafeiyu.Locales.",StringComparison.Ordinal) && name.EndsWith(".json",StringComparison.Ordinal)),"升级夹具仅携带助手所需的十三种语言资源");
                 Check(new FileInfo(Assembly.GetExecutingAssembly().Location).Length<10L*1024*1024,"升级夹具不携带伙伴图像资源");
                 string directory=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"apply-tests",Guid.NewGuid().ToString("N"),"中文 安装目录");Directory.CreateDirectory(directory);
                 fixtureDirectory=directory;

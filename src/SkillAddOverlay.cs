@@ -28,9 +28,9 @@ namespace Dafeiyu
             MouseLeftButtonDown+=delegate(object sender,MouseButtonEventArgs args){if(Object.ReferenceEquals(args.OriginalSource,this)){args.Handled=true;Close();}};
             LocalizedUi.Automation(card,()=>(TextResources.Get("skillAddOverlay.skillAddOverlay.automationAutomationPropertiesSetName")));
         }
-        internal void Open(string heading,string description,UIElement content)
+        internal void Open(System.Func<string> heading,System.Func<string> description,UIElement content)
         {
-            title.Text=heading;hint.Text=description;surface.Content=content;Visibility=Visibility.Visible;
+            LocalizedUi.Set(title,"Text",()=> (heading()));LocalizedUi.Set(hint,"Text",()=> (description()));surface.Content=content;Visibility=Visibility.Visible;
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,new Action(delegate{if(IsOpen)MoveFocus(new TraversalRequest(FocusNavigationDirection.First));}));
         }
         internal void Close(){if(!IsOpen)return;Visibility=Visibility.Collapsed;surface.Content=null;var closed=Closed;if(closed!=null)closed();}

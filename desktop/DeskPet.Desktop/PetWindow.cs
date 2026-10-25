@@ -123,19 +123,19 @@ internal sealed partial class PetWindow : Window
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu(); var items = new List<object>();
-        void Add(string label, Action command) { var item = new MenuItem { Header = label }; item.Click += (_, _) => command(); items.Add(item); }
-        Add(TextResources.Get("petWindow.buildMenu.text"), () => owner.ShowChat(true)); Add(TextResources.Get("petWindow.buildMenu.text.alternativeA"), () => owner.ShowChat(false));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeB"), ShowPalette); Add(TextResources.Get("petWindow.buildMenu.text.alternativeC"), () => UserInteract("feeding")); Add(TextResources.Get("petWindow.buildMenu.text.alternativeD"), () => UserInteract("petting"));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeE"), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
-        Add(owner.Skin.SpecialAction, () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(owner.Skin.SpecialAction2, () => UserInteract("special2"));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeF"), () => Paused = !Paused); Add(TextResources.Get("petWindow.buildMenu.text.alternativeG"), Hide);
+        void Add(System.Func<string> label, Action command) { var item = LocalizedUi.With(new MenuItem { Header = label() },"Header",()=> (label())); item.Click += (_, _) => command(); items.Add(item); }
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text")), () => owner.ShowChat(true)); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeA")), () => owner.ShowChat(false));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
+        Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), Hide);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
             var item = LocalizedUi.With(new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } },"Header",()=>(TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName)));
             item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeH"), owner.ShowSettings); Add(TextResources.Get("petWindow.buildMenu.text.alternativeI"), owner.ShowGuide); Add(TextResources.Get("petWindow.buildMenu.text.alternativeJ"), owner.ShowAbout); Add(TextResources.Get("petWindow.buildMenu.text.alternativeK"), () => owner.Run(owner.ExitAsync));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeH")), owner.ShowSettings); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeI")), owner.ShowGuide); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeJ")), owner.ShowAbout); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeK")), () => owner.Run(owner.ExitAsync));
         menu.ItemsSource = items; return menu;
     }
     public void ShowPalette()

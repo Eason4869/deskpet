@@ -32,9 +32,11 @@ namespace Dafeiyu
             string key=Path.GetFullPath(path);var found=tabs.FirstOrDefault(t=>String.Equals(t.Key,key,StringComparison.OrdinalIgnoreCase));if(found!=null){Select(found);return;}
             FilePreviewPane pane=null;pane=new FilePreviewPane(key,()=>Close(pane));Add(key,Path.GetFileName(path),String.Equals(Path.GetExtension(path),".html",StringComparison.OrdinalIgnoreCase)||String.Equals(Path.GetExtension(path),".htm",StringComparison.OrdinalIgnoreCase)?"globe":"file",pane);
         }
-        internal void AddTerminal(TerminalPane pane,int number){Add("terminal:"+Guid.NewGuid().ToString("N"),TextResources.Format("previewWorkspace.addTerminal.template",number),"terminal",pane);}
+        internal void AddTerminal(TerminalPane pane,int number){Add("terminal:"+Guid.NewGuid().ToString("N"),()=>TextResources.Format("previewWorkspace.addTerminal.template",number),"terminal",pane);}
         internal void AddPage(string title,string icon,FrameworkElement view){Add("page:"+Guid.NewGuid().ToString("N"),title,icon,view);}
+        internal void AddPage(Func<string> title,string icon,FrameworkElement view){Add("page:"+Guid.NewGuid().ToString("N"),title,icon,view);}
         internal void Replace(FrameworkElement previous,string title,string icon,FrameworkElement view){var old=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,previous));if(old==null){Release(view);return;}AddPage(title,icon,view);Close(previous);}
+        internal void Replace(FrameworkElement previous,Func<string> title,string icon,FrameworkElement view){var old=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,previous));if(old==null){Release(view);return;}AddPage(title,icon,view);Close(previous);}
         internal void AttachConversation(FrameworkElement view,string title)
         {
             if(view==null)throw new ArgumentNullException("view");if(disposed)throw new ObjectDisposedException("PreviewWorkspace");
@@ -45,6 +47,7 @@ namespace Dafeiyu
             if(pinned==null){pinned=CreateTab("conversation",ConversationTitle(title),"chat",view,true);tabs.Insert(0,pinned);headers.Children.Insert(0,pinned.Header);}
             else{body.Children.Remove(pinned.View);pinned.View.Visibility=Visibility.Visible;pinned.View=view;UpdateConversationTitle(title);}
             body.Children.Add(view);Select(selected??pinned);
+            UpdateConversationTitle(title);
         }
         internal FrameworkElement DetachConversation()
         {
@@ -56,11 +59,19 @@ namespace Dafeiyu
             return pinned.View;
         }
         internal void UpdateConversationTitle(string title)
+        {UpdateConversationTitle(()=>ConversationTitle(title));}
+        internal void UpdateConversationTitle(Func<string> title)
         {
-            var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned==null)return;string text=ConversationTitle(title);pinned.Title.Text=text;pinned.Title.ToolTip=text;pinned.Header.ToolTip=text;
+            var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned==null)return;LocalizedUi.Set(pinned.Title,"Text",title);LocalizedUi.Tooltip(pinned.Title,title);LocalizedUi.Tooltip(pinned.Header,title);
         }
         internal void SelectConversation(){var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned!=null)Select(pinned);}
         static string ConversationTitle(string title){return String.IsNullOrWhiteSpace(title)?TextResources.Get("previewWorkspace.conversationTitle.text"):title;}
+        void Add(string key,Func<string> title,string icon,FrameworkElement view)
+        {
+            Add(key,title(),icon,view);var tab=tabs.FirstOrDefault(value=>ReferenceEquals(value.View,view));if(tab==null)return;
+            LocalizedUi.Set(tab.Title,"Text",title);LocalizedUi.Tooltip(tab.Header,title);
+            if(tab.Close!=null){LocalizedUi.Tooltip(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.closeToolTipTitle",title()));LocalizedUi.Automation(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.uiIcons",title()));}
+        }
         void Add(string key,string title,string icon,FrameworkElement view)
         {
             if(disposed){Release(view);return;}

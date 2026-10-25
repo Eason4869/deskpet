@@ -79,14 +79,14 @@ namespace Dafeiyu
             // The status line stays outside both surfaces while recording replaces
             // the composer body with a real microphone waveform and explicit controls.
             addAttachment=UiIcons.Button("plus",()=>(TextResources.Get("conversationComposer.conversationComposer.uiIcons.alternativeA")));addAttachment.Name="AddAttachment";addAttachment.Width=addAttachment.Height=addAttachment.MinHeight=32;addAttachment.Padding=new Thickness(5);addAttachment.Margin=new Thickness(0);addAttachment.Content=new TextBlock{Text="+",FontSize=23,Foreground=Ui.Ink,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
-            addAttachment.Click+=delegate{OpenAddMenu();};Hint(addAttachment,TextResources.Get("conversationComposer.conversationComposer.hint"));
+            addAttachment.Click+=delegate{OpenAddMenu();};Hint(addAttachment,()=> (TextResources.Get("conversationComposer.conversationComposer.hint")));
             // Quick chat always uses personal conversation settings. Permissions
             // belong to the full work entry; Tab only accepts predictions.
             if(!conversationOnly)
             {
                 modeLabel=Ui.Text("",13,Ui.Muted);modeLabel.Name="AgentPermissionLabel";modeLabel.Height=18;modeLabel.LineHeight=18;modeLabel.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;modeLabel.VerticalAlignment=VerticalAlignment.Center;
                 var modeContent=new StackPanel{Orientation=Orientation.Horizontal};modeIcon=new Border{Name="ConversationModeGlyph",Width=16,Height=18,Margin=new Thickness(0,0,6,0),VerticalAlignment=VerticalAlignment.Center};modeContent.Children.Add(modeIcon);modeContent.Children.Add(modeLabel);
-                modePicker=SmallText("","AgentPermissionPicker");modePicker.Content=modeContent;modePicker.Width=118;modePicker.Height=32;modePicker.MinHeight=32;modePicker.Padding=new Thickness(5,3,5,3);modePicker.HorizontalAlignment=HorizontalAlignment.Left;modePicker.VerticalAlignment=VerticalAlignment.Center;modePicker.Click+=delegate{OpenPermissions();};Hint(modePicker,TextResources.Get("conversationComposer.conversationComposer.hint.alternativeA"));
+                modePicker=SmallText("","AgentPermissionPicker");modePicker.Content=modeContent;modePicker.Width=118;modePicker.Height=32;modePicker.MinHeight=32;modePicker.Padding=new Thickness(5,3,5,3);modePicker.HorizontalAlignment=HorizontalAlignment.Left;modePicker.VerticalAlignment=VerticalAlignment.Center;modePicker.Click+=delegate{OpenPermissions();};Hint(modePicker,()=> (TextResources.Get("conversationComposer.conversationComposer.hint.alternativeA")));
             }
             attachmentArea=new ScrollViewer{Content=attachmentChips,MaxHeight=compact?124:146,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,Visibility=Visibility.Collapsed};
             var modelControls=CreateContextControls();
@@ -107,7 +107,7 @@ namespace Dafeiyu
             status.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=status});
             aiNotice=Ui.Text("",10,Ui.Brush("#969BA2"));aiNotice.Name="AiAccuracyNotice";aiNotice.TextAlignment=TextAlignment.Right;aiNotice.TextWrapping=TextWrapping.NoWrap;aiNotice.TextTrimming=TextTrimming.CharacterEllipsis;aiNotice.LineHeight=12;aiNotice.Margin=new Thickness(8,0,0,0);aiNotice.VerticalAlignment=VerticalAlignment.Center;aiNotice.SetBinding(TextBlock.ToolTipProperty,new System.Windows.Data.Binding("Text"){Source=aiNotice});Grid.SetColumn(aiNotice,1);if(!conversationOnly)footer.Children.Add(aiNotice);Children.Add(footer);
             footer.SizeChanged+=delegate{status.MaxWidth=Math.Max(80,footer.ActualWidth*(conversationOnly?1:.4));};
-            Hint(record,TextResources.Get("conversationComposer.conversationComposer.hint.alternativeB"));Hint(stopDictation,TextResources.Get("conversationComposer.conversationComposer.hint.alternativeC"));Hint(finishDictation,TextResources.Get("conversationComposer.conversationComposer.hint.alternativeD"));record.Click+=delegate{Try(delegate{dictation.Start(this);recordingTime.Restart();waveform.Clear();});};
+            Hint(record,()=> (TextResources.Get("conversationComposer.conversationComposer.hint.alternativeB")));Hint(stopDictation,()=> (TextResources.Get("conversationComposer.conversationComposer.hint.alternativeC")));Hint(finishDictation,()=> (TextResources.Get("conversationComposer.conversationComposer.hint.alternativeD")));record.Click+=delegate{Try(delegate{dictation.Start(this);recordingTime.Restart();waveform.Clear();});};
             meter.Tick+=async delegate{if(!dictation.Owns(this)){meter.Stop();return;}waveform.Push(dictation.InputLevel);if(dictation.Stage==DictationStage.Recording && recordingTime.Elapsed.TotalSeconds>=60)await FinishDictation(false);};
             host.PreviewKeyDown+=async delegate(object sender,KeyEventArgs e){if(e.Key==Key.Escape && dictation.Owns(this)){e.Handled=true;try{await dictation.CancelAsync(this);}catch(Exception error){Error(error);}}};
             LocalizedUi.Set(input,"ToolTip",()=>(TextResources.Get("conversationComposer.conversationComposer.inputToolTip")));
@@ -187,7 +187,7 @@ namespace Dafeiyu
             var color=shownMode==AgentApprovalMode.Full?Ui.Brush("#F36C21"):AgentUi.Muted;
             if(modeLabel!=null){modeLabel.Foreground=color;modeLabel.RenderTransform=null;}
             if(modeIcon!=null){modeIcon.Child=PermissionGlyph(shownMode,color);modeIcon.Tag="permissions";}
-            if(modePicker!=null){modePicker.Width=Double.NaN;modePicker.MaxWidth=170;modePicker.Padding=new Thickness(6,0,8,0);modePicker.Margin=new Thickness(0,0,8,0);modePicker.Background=Brushes.Transparent;modePicker.BorderBrush=Brushes.Transparent;modePicker.Visibility=work?Visibility.Visible:Visibility.Collapsed;Hint(modePicker,TextResources.Get("conversationComposer.refreshMode.hint"));LocalizedUi.Automation(modePicker,()=>(TextResources.Format("conversationComposer.refreshMode.automationAutomationPropertiesSetName",AgentAccessPolicy.Label(cfg))));}
+            if(modePicker!=null){modePicker.Width=Double.NaN;modePicker.MaxWidth=170;modePicker.Padding=new Thickness(6,0,8,0);modePicker.Margin=new Thickness(0,0,8,0);modePicker.Background=Brushes.Transparent;modePicker.BorderBrush=Brushes.Transparent;modePicker.Visibility=work?Visibility.Visible:Visibility.Collapsed;Hint(modePicker,()=> (TextResources.Get("conversationComposer.refreshMode.hint")));LocalizedUi.Automation(modePicker,()=>(TextResources.Format("conversationComposer.refreshMode.automationAutomationPropertiesSetName",AgentAccessPolicy.Label(cfg))));}
         }
         void OpenModels()
         {
@@ -233,13 +233,13 @@ namespace Dafeiyu
             if(target!=null){snapshots.Icon=SnapshotIcon(target);snapshots.Click+=async delegate{await CaptureApplication(target);};}menu.Items.Add(snapshots);
             if(!conversationOnly && WorkSettings.AgentEnabled)
             {
-                var goal=new MenuItem{Header=AddMenuLabel(TextResources.Get("conversationComposer.openAddMenu.addMenuLabel"),String.IsNullOrWhiteSpace(WorkSettings.AgentGoal)?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeA"):WorkSettings.AgentGoal),Name="SetAgentGoal",Icon=UiIcons.Image("target",Ui.Muted),IsEnabled=!pet.DialogueBusy};goal.Click+=delegate{ShowGoal();};menu.Items.Add(goal);
-                var plan=new MenuItem{Header=AddMenuLabel(TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeB"),WorkSettings.AgentPlanMode?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeC"):TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeD")),Name="AgentPlanMode",IsCheckable=true,IsChecked=WorkSettings.AgentPlanMode,IsEnabled=!pet.DialogueBusy};plan.Click+=delegate{SetPlanMode(plan.IsChecked);};menu.Items.Add(plan);
+                var goal=new MenuItem{Header=AddMenuLabel(()=> (TextResources.Get("conversationComposer.openAddMenu.addMenuLabel")),()=> (String.IsNullOrWhiteSpace(WorkSettings.AgentGoal)?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeA"):WorkSettings.AgentGoal)),Name="SetAgentGoal",Icon=UiIcons.Image("target",Ui.Muted),IsEnabled=!pet.DialogueBusy};goal.Click+=delegate{ShowGoal();};menu.Items.Add(goal);
+                var plan=new MenuItem{Header=AddMenuLabel(()=> (TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeB")),()=> (WorkSettings.AgentPlanMode?TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeC"):TextResources.Get("conversationComposer.openAddMenu.addMenuLabel.alternativeD"))),Name="AgentPlanMode",IsCheckable=true,IsChecked=WorkSettings.AgentPlanMode,IsEnabled=!pet.DialogueBusy};plan.Click+=delegate{SetPlanMode(plan.IsChecked);};menu.Items.Add(plan);
             }
             addAttachment.ContextMenu=menu;menu.PlacementTarget=addAttachment;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.IsOpen=true;
         }
-        static FrameworkElement AddMenuLabel(string title,string description)
-        {var row=new StackPanel{Orientation=Orientation.Horizontal};row.Children.Add(Ui.InlineText(title,13));var hint=Ui.InlineText(description.Replace("\r"," ").Replace("\n"," "),12,Ui.Brush("#A0A4AB"));hint.MaxWidth=210;hint.TextWrapping=TextWrapping.NoWrap;hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.Margin=new Thickness(9,0,0,0);row.Children.Add(hint);return row;}
+        static FrameworkElement AddMenuLabel(System.Func<string> title,System.Func<string> description)
+        {var row=new StackPanel{Orientation=Orientation.Horizontal};row.Children.Add(LocalizedUi.InlineText(()=> (title()),13));var hint=LocalizedUi.InlineText(()=> (description().Replace("\r"," ").Replace("\n"," ")),12,Ui.Brush("#A0A4AB"));hint.MaxWidth=210;hint.TextWrapping=TextWrapping.NoWrap;hint.TextTrimming=TextTrimming.CharacterEllipsis;hint.Margin=new Thickness(9,0,0,0);row.Children.Add(hint);return row;}
         static FrameworkElement SnapshotIcon(ApplicationSnapshotTarget target)
         {
             if(target.IconPng!=null)try
@@ -525,12 +525,13 @@ namespace Dafeiyu
             if(attachmentPersona!=AttachmentKey)RefreshAttachments();
             input.PlainTextMode=pet.Settings.PlainTextEditor;RefreshMode();RefreshContextUsage();
             bool text=!String.IsNullOrWhiteSpace(input.Text) || Attachments.Count>0,busy=session.IsBusy || queue.IsRunning;string action=text?"send":busy?"stop":"live";
-            string label=text?(busy && pet.Settings.FollowUpBehavior=="steer"?TextResources.Get("conversationComposer.refreshAction.labelText"):busy || queue.Items.Count>0?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeA"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeB")):busy?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeC"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeD");
+            bool steering=busy&&pet.Settings.FollowUpBehavior=="steer",queued=busy||queue.Items.Count>0;
+            Func<string> label=()=>text?(steering?TextResources.Get("conversationComposer.refreshAction.labelText"):queued?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeA"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeB")):busy?TextResources.Get("conversationComposer.refreshAction.labelText.alternativeC"):TextResources.Get("conversationComposer.refreshAction.labelText.alternativeD");
             primary.Tag=action;Hint(primary,label);
             primary.Content=UiIcons.Image(action=="stop"?"stop-solid":action,Brushes.White);((FrameworkElement)primary.Content).Width=18;((FrameworkElement)primary.Content).Height=18;
             primary.IsEnabled=!loadingAttachments && !pet.IsUpdating && (!pet.LiveActive || !text) && (text || busy || !dictation.IsBusy);options.Visibility=text && busy && !pet.LiveActive?Visibility.Visible:Visibility.Collapsed;
             addAttachment.IsEnabled=!loadingAttachments && !pet.IsUpdating && !pet.LiveActive && !dictation.IsBusy;
-            Hint(addAttachment,TextResources.Get("conversationComposer.refreshAction.hint")+(conversationOnly || !WorkSettings.AgentPlanMode?"":TextResources.Get("conversationComposer.refreshAction.hint.alternativeA")));
+            Hint(addAttachment,()=> (TextResources.Get("conversationComposer.refreshAction.hint")+(conversationOnly || !WorkSettings.AgentPlanMode?"":TextResources.Get("conversationComposer.refreshAction.hint.alternativeA"))));
             record.IsEnabled=!pet.IsUpdating && !pet.LiveActive && !dictation.IsBusy && session.Stage!=ConversationStage.Recording;
         }
         void RefreshDictation()
@@ -556,7 +557,7 @@ namespace Dafeiyu
             finally{finishing=false;RefreshAction();RefreshDictation();}
         }
         static Button SmallText(string text,string name){var b=Ui.Button(text);b.Name=name;b.FontSize=11;b.MinHeight=26;b.Padding=new Thickness(6,2,6,2);b.Margin=new Thickness(0);b.Background=Brushes.Transparent;b.BorderBrush=Brushes.Transparent;b.Foreground=Ui.Muted;return b;}
-        static void Hint(Button button,string text)
+        static void Hint(Button button,System.Func<string> text)
         {
             var hint=button.ToolTip as ToolTip;
             if(hint==null)
@@ -565,7 +566,7 @@ namespace Dafeiyu
                 hint.CustomPopupPlacementCallback=delegate(Size popup,Size target,Point offset){return new[]{new System.Windows.Controls.Primitives.CustomPopupPlacement(new Point((target.Width-popup.Width)/2,-popup.Height-6),System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal)};};
                 button.ToolTip=hint;ToolTipService.SetInitialShowDelay(button,350);
             }
-            hint.Content=text;System.Windows.Automation.AutomationProperties.SetName(button,text);
+            LocalizedUi.Set(hint,"Content",()=> (text()));LocalizedUi.Automation(button,()=> (text()));
         }
         static Button SmallIcon(string icon,string label,string name){var b=UiIcons.Button(icon,label);b.Name=name;b.Width=26;b.Height=26;b.MinHeight=26;b.Margin=new Thickness(0);b.Padding=new Thickness(4);var glyph=(FrameworkElement)b.Content;glyph.Width=glyph.Height=14;return b;}
         void Try(Action action){try{action();}catch(Exception e){Error(e);}}

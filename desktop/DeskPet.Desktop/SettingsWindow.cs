@@ -220,14 +220,14 @@ internal sealed class SettingsWindow : Window
     private Control Storage()
     {
         var path=new SelectableTextBlock{Name="LocalDataPath",Text=owner.DataDirectory,TextWrapping=Avalonia.Media.TextWrapping.Wrap,FontSize=12,Foreground=DesktopTheme.Brush("#61738B")};Ui.ReadOnlyMenu(path);
-        var folder=SettingsVisual.Button(TextResources.Get("settingsWindow.storage.text.alternativeB"),()=>owner.Run(async()=>{await Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(owner.DataDirectory));}));folder.Name="OpenLocalDataDirectory";
-        var location=new Expander{Name="LocalDataDirectory",Header=SettingsVisual.Header("folder",TextResources.Get("dataManagement.localDirectory")),Content=path,HorizontalContentAlignment=HorizontalAlignment.Stretch};SettingsVisual.Disclosure(location,folder);
-        var tools=new Expander{Name="ApplicationTools",Header=SettingsVisual.Header("settings",TextResources.Get("dataManagement.tools")),HorizontalContentAlignment=HorizontalAlignment.Stretch,Content=Ui.Column(
-            SettingsVisual.Text(TextResources.Get("dataManagement.toolsNote"),12,true),
-            SettingsVisual.Button(TextResources.Get("onboarding.prepare.network"),()=>{var window=LocalizedUi.Window(()=>(TextResources.Get("onboarding.prepare.network")),new GitHubRoutingView(owner),520,340);window.Show(this);}),
-            SettingsVisual.Button(TextResources.Get("onboarding.prepare.progress"),owner.ShowOfficialPreparation),
-            SettingsVisual.Button(TextResources.Get("settingsWindow.storage.text.alternativeC"),owner.ShowGuide),
-            SettingsVisual.Button(TextResources.Get("settingsWindow.storage.text.alternativeD"),owner.ShowAbout))};SettingsVisual.Disclosure(tools);
+        var folder=SettingsVisual.Button(()=> (TextResources.Get("settingsWindow.storage.text.alternativeB")),()=>owner.Run(async()=>{await Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(owner.DataDirectory));}));folder.Name="OpenLocalDataDirectory";
+        var location=new Expander{Name="LocalDataDirectory",Header=SettingsVisual.Header("folder",()=> (TextResources.Get("dataManagement.localDirectory"))),Content=path,HorizontalContentAlignment=HorizontalAlignment.Stretch};SettingsVisual.Disclosure(location,folder);
+        var tools=new Expander{Name="ApplicationTools",Header=SettingsVisual.Header("settings",()=> (TextResources.Get("dataManagement.tools"))),HorizontalContentAlignment=HorizontalAlignment.Stretch,Content=Ui.Column(
+            SettingsVisual.Text(()=> (TextResources.Get("dataManagement.toolsNote")),12,true),
+            SettingsVisual.Button(()=> (TextResources.Get("onboarding.prepare.network")),()=>{var window=LocalizedUi.Window(()=>(TextResources.Get("onboarding.prepare.network")),new GitHubRoutingView(owner),520,340);window.Show(this);}),
+            SettingsVisual.Button(()=> (TextResources.Get("onboarding.prepare.progress")),owner.ShowOfficialPreparation),
+            SettingsVisual.Button(()=> (TextResources.Get("settingsWindow.storage.text.alternativeC")),owner.ShowGuide),
+            SettingsVisual.Button(()=> (TextResources.Get("settingsWindow.storage.text.alternativeD")),owner.ShowAbout))};SettingsVisual.Disclosure(tools);
         return Ui.Column(new DataManagementView(owner,this,RefreshPreferences),location,tools);
     }
 }

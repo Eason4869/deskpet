@@ -89,16 +89,16 @@ internal sealed partial class ChatWindow : Window
         addAttachment = Ui.Button("+", OpenAttachmentMenu); addAttachment.Name = "AddAttachment"; addAttachment.Width = addAttachment.Height = 32; addAttachment.Padding = new Thickness(0); addAttachment.HorizontalContentAlignment = HorizontalAlignment.Center; addAttachment.VerticalContentAlignment = VerticalAlignment.Center; LocalizedUi.Tooltip(addAttachment,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip")));
         var filesMenu = LocalizedUi.With(new MenuItem { Name = "AttachmentFilesMenu", Header = TextResources.Get("chatWindow.chatWindow.header"), Icon = MenuIcon("M 7,5 L 7,12 Q 7,15 10,15 Q 13,15 13,12 L 13,4 Q 13,1 10,1 Q 7,1 7,4 L 7,11 Q 7,13 9,13 Q 11,13 11,11 L 11,5") },"Header",()=>(TextResources.Get("chatWindow.chatWindow.header"))); filesMenu.Click += (_, _) => owner.Run(PickAttachmentsAsync);
         snapshotMenu = LocalizedUi.With(new MenuItem { Name = "AttachApplicationSnapshot", Header = TextResources.Get("chatWindow.chatWindow.header.alternativeA"), IsEnabled = false },"Header",()=>(TextResources.Get("chatWindow.chatWindow.header.alternativeA"))); snapshotMenu.Click += (_, _) => owner.Run(AttachApplicationSnapshotAsync); SetSnapshotTarget(null);
-        goalMenu = new MenuItem { Name = "SetAgentGoal", Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeA")), Icon = MenuIcon("M 14,9 A 5,5 0 1 1 9,4 M 9,9 L 16,2 M 12,2 L 16,2 L 16,6") }; goalMenu.Click += (_, _) => Try(ShowGoalDialog);
-        planMode = new MenuItem { Name = "AgentPlanMode", Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeB"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeC")), ToggleType = MenuItemToggleType.CheckBox, IsChecked = EffectiveSettings().AgentPlanMode };
+        goalMenu = new MenuItem { Name = "SetAgentGoal", Header = MenuLabel(()=> (TextResources.Get("chatWindow.chatWindow.menuLabel")), ()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeA"))), Icon = MenuIcon("M 14,9 A 5,5 0 1 1 9,4 M 9,9 L 16,2 M 12,2 L 16,2 L 16,6") }; goalMenu.Click += (_, _) => Try(ShowGoalDialog);
+        planMode = new MenuItem { Name = "AgentPlanMode", Header = MenuLabel(()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeB")), ()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeC"))), ToggleType = MenuItemToggleType.CheckBox, IsChecked = EffectiveSettings().AgentPlanMode };
         planMode.Click += (_, _) => { ChangeWorkSetting(settings=>settings.AgentPlanMode=planMode.IsChecked); };
         var addMenu = new ContextMenu { ItemsSource = new object[] { LocalizedUi.With(new MenuItem { Header = TextResources.Get("chatWindow.chatWindow.header.alternativeB"), IsEnabled = false },"Header",()=>(TextResources.Get("chatWindow.chatWindow.header.alternativeB"))), filesMenu, snapshotMenu, goalMenu, planMode } };
-        addMenu.Opening += (_, _) => { planMode.IsChecked = EffectiveSettings().AgentPlanMode; goalMenu.Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel"), string.IsNullOrWhiteSpace(EffectiveSettings().AgentGoal) ? TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeA") : EffectiveSettings().AgentGoal); SetSnapshotTarget(OperatingSystem.IsWindowsVersionAtLeast(6, 1) ? ApplicationSnapshots.Topmost() : null); };
+        addMenu.Opening += (_, _) => { planMode.IsChecked = EffectiveSettings().AgentPlanMode; goalMenu.Header = MenuLabel(()=> (TextResources.Get("chatWindow.chatWindow.menuLabel")), ()=> (string.IsNullOrWhiteSpace(EffectiveSettings().AgentGoal) ? TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeA") : EffectiveSettings().AgentGoal)); SetSnapshotTarget(OperatingSystem.IsWindowsVersionAtLeast(6, 1) ? ApplicationSnapshots.Topmost() : null); };
         addAttachment.ContextMenu = addMenu;
         attachmentChips.Name = "AttachmentCards";
         modeButton = Ui.Button("", OpenModeMenu); modeButton.Name = "ChatModeAction"; modeButton.Width = 104; modeButton.Height = 32; modeButton.Padding = new Thickness(4, 0); modeButton.Background = Brushes.Transparent; modeButton.BorderThickness = new Thickness(0); modeButton.Foreground = DesktopTheme.Brush("#9299A3"); modeButton.HorizontalContentAlignment = HorizontalAlignment.Center; modeButton.VerticalContentAlignment = VerticalAlignment.Center;
-        conversationMode = new MenuItem { Name = "ConversationMode", Icon = ModeIcon(false), Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeD"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeE")), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode" }; conversationMode.Click += (_, _) => SelectMode(false);
-        workMode = new MenuItem { Name = "WorkMode", Icon = ModeIcon(true), Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeF"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeG")), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode", IsEnabled = OperatingSystem.IsWindows() }; workMode.Click += (_, _) => SelectMode(true);
+        conversationMode = new MenuItem { Name = "ConversationMode", Icon = ModeIcon(false), Header = MenuLabel(()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeD")), ()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeE"))), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode" }; conversationMode.Click += (_, _) => SelectMode(false);
+        workMode = new MenuItem { Name = "WorkMode", Icon = ModeIcon(true), Header = MenuLabel(()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeF")), ()=> (TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeG"))), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode", IsEnabled = OperatingSystem.IsWindows() }; workMode.Click += (_, _) => SelectMode(true);
         LocalizedUi.Tooltip(workMode,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeA")));
         var modeMenu = new ContextMenu { ItemsSource = new[] { conversationMode, workMode } }; modeMenu.Opening += (_, _) => RefreshMode(); modeButton.ContextMenu = modeMenu;
         var dictate = Ui.AsyncButton("🎙", DictateAsync, owner.Error); dictate.Name = "ChatDictation"; dictate.Width = dictate.Height = 32; dictate.Padding = new Thickness(0); dictate.HorizontalContentAlignment = HorizontalAlignment.Center; dictate.VerticalContentAlignment = VerticalAlignment.Center; LocalizedUi.Tooltip(dictate,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeB")));
@@ -179,12 +179,12 @@ internal sealed partial class ChatWindow : Window
     }
     private void ConfigureDraftMenu()
     {
-        MenuItem Item(string name, string title, Key key, Action action)
+        MenuItem Item(string name, System.Func<string> title, Key key, Action action)
         {
-            var item = new MenuItem { Name = name, Header = title, InputGesture = new KeyGesture(key, KeyModifiers.Control), Padding = new Thickness(10, 6) }; item.Click += (_, _) => action(); return item;
+            var item = LocalizedUi.With(new MenuItem { Name = name, Header = title(), InputGesture = new KeyGesture(key, KeyModifiers.Control), Padding = new Thickness(10, 6) },"Header",()=> (title())); item.Click += (_, _) => action(); return item;
         }
-        var cut = Item("DraftCut", TextResources.Get("chatWindow.configureDraftMenu.item"), Key.X, draft.Cut); var copy = Item("DraftCopy", TextResources.Get("common.copy"), Key.C, draft.Copy);
-        var paste = Item("DraftPaste", TextResources.Get("chatWindow.configureDraftMenu.item.alternativeA"), Key.V, draft.Paste); var all = Item("DraftSelectAll", TextResources.Get("chatWindow.configureDraftMenu.item.alternativeB"), Key.A, draft.SelectAll);
+        var cut = Item("DraftCut", ()=> (TextResources.Get("chatWindow.configureDraftMenu.item")), Key.X, draft.Cut); var copy = Item("DraftCopy", ()=> (TextResources.Get("common.copy")), Key.C, draft.Copy);
+        var paste = Item("DraftPaste", ()=> (TextResources.Get("chatWindow.configureDraftMenu.item.alternativeA")), Key.V, draft.Paste); var all = Item("DraftSelectAll", ()=> (TextResources.Get("chatWindow.configureDraftMenu.item.alternativeB")), Key.A, draft.SelectAll);
         var menu = new ContextMenu { CornerRadius = new CornerRadius(10), Padding = new Thickness(4), Background = DesktopTheme.Surface, ItemsSource = new object[] { cut, copy, paste, new Separator(), all } };
         menu.Opening += (_, _) => { cut.IsEnabled = !draft.IsReadOnly && draft.SelectionStart != draft.SelectionEnd; copy.IsEnabled = draft.SelectionStart != draft.SelectionEnd; paste.IsEnabled = !draft.IsReadOnly && Clipboard != null; all.IsEnabled = !string.IsNullOrEmpty(draft.Text); }; draft.ContextMenu = menu;
     }
@@ -258,10 +258,10 @@ internal sealed partial class ChatWindow : Window
         icon.Name = work ? "WorkPencilGlyph" : "ConversationBubbleGlyph"; return icon;
     }
     private static Control MenuIcon(string path) => new ShapePath { Width = 18, Height = 18, Data = Geometry.Parse(path), Stroke = DesktopTheme.Brush("#777F89"), StrokeThickness = 1.3 };
-    private static Control MenuLabel(string title, string description)
+    private static Control MenuLabel(System.Func<string> title, System.Func<string> description)
     {
-        var secondary = new TextBlock { Text = description, Foreground = DesktopTheme.Brush("#9CA3AC"), FontSize = 12, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-        return Ui.Row(new TextBlock { Text = title }, secondary);
+        var secondary = LocalizedUi.With(new TextBlock { Text = description(), Foreground = DesktopTheme.Brush("#9CA3AC"), FontSize = 12, MaxWidth = 220, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center },"Text",()=> (description()));
+        return Ui.Row(LocalizedUi.With(new TextBlock { Text = title() },"Text",()=> (title())), secondary);
     }
     private void ShowGoalDialog()
     {

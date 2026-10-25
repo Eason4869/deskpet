@@ -46,6 +46,8 @@ namespace Dafeiyu
         }
         internal static void Enable(object target,bool enabled)
         {Owner owner;if(owners.TryGetValue(target,out owner)){owner.Enabled=enabled;if(enabled)Refresh(owner);}}
+        internal static Func<string> TakeRender(object target,string property,object previous)
+        {Owner owner;Entry entry;if(!owners.TryGetValue(target,out owner)||!owner.Entries.TryGetValue(property,out entry)||!entry.Initialized||!Object.Equals(entry.Last,previous))return null;owner.Entries.Remove(property);return entry.Render;}
         internal static void Bind(object target,string property,Func<string> render)
         {
             if(target==null)throw new ArgumentNullException("target");

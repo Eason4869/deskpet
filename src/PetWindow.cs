@@ -308,9 +308,9 @@ namespace Dafeiyu
             quietItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeA"),Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeA")));quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
             clickThroughItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeB"),Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeB")));clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
             trayMenu.Opening+=delegate {visibilityItem.IsChecked=visibility.UserVisible;quietItem.IsChecked=Settings.QuietMode;clickThroughItem.IsChecked=Settings.ClickThrough;};
-            AddTray(TextResources.Get("petWindow.petWindow.addTray"),ShowQuickChat,"TrayQuickChat","chat");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeA"),ShowChat,"TrayFullChat","full-view");AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeB"),ShowSettings,"TraySettings","settings");
-            AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeC"),ReturnHome,"TrayReturnHome","back");
-            trayMenu.Items.Add(new Separator());AddTray(TextResources.Get("petWindow.petWindow.addTray.alternativeD"),Close,"TrayExit","close");
+            AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray")),ShowQuickChat,"TrayQuickChat","chat");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeA")),ShowChat,"TrayFullChat","full-view");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeB")),ShowSettings,"TraySettings","settings");
+            AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeC")),ReturnHome,"TrayReturnHome","back");
+            trayMenu.Items.Add(new Separator());AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeD")),Close,"TrayExit","close");
             tray=LocalizedUi.With(new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true },"Text",()=>(TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName)));tray.BalloonTipClicked+=OpenImageTaskNotification;
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
@@ -324,8 +324,8 @@ namespace Dafeiyu
             if(IsPetVisible && !closing) { previousTick=watch.Elapsed.TotalSeconds;nextRender=previousTick;CompositionTarget.Rendering+=RenderFrame; }
             else CancelInteraction();
         }
-        private void AddTray(string text,Action action,string name,string icon)
-        {var item=new MenuItem{Header=text,Name=name,Icon=UiIcons.Image(icon,Ui.Muted)};item.Click+=delegate {Dispatcher.BeginInvoke(action);};trayMenu.Items.Add(item);}
+        private void AddTray(System.Func<string> text,Action action,string name,string icon)
+        {var item=LocalizedUi.With(new MenuItem{Header=text(),Name=name,Icon=UiIcons.Image(icon,Ui.Muted)},"Header",()=> (text()));item.Click+=delegate {Dispatcher.BeginInvoke(action);};trayMenu.Items.Add(item);}
         internal void ShowTrayMenu(){if(!closing&&trayMenu.Enabled)trayMenu.ShowMenu();}
         internal void HandleTrayDoubleClick()
         {Dispatcher.BeginInvoke(new Action(delegate{if(closing||IsUpdating||!trayMenu.Enabled||ReturnToGuide())return;RestorePet();ShowChat();}));}
