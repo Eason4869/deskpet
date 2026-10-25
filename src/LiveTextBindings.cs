@@ -21,10 +21,11 @@ namespace Dafeiyu
             internal Action<object,object> Write;
             internal object Last;
             internal bool Initialized;
+            internal bool PreserveChanges=true;
             internal void Refresh(object target)
             {
                 // An ordinary state update or user edit owns a changed value.
-                if(Initialized&&!Object.Equals(Read(target),Last))return;
+                if(PreserveChanges&&Initialized&&!Object.Equals(Read(target),Last))return;
                 string value=Render();Write(target,value);Last=value;Initialized=true;
             }
         }
@@ -52,9 +53,9 @@ namespace Dafeiyu
             if(info==null||!info.CanWrite)throw new ArgumentException("Missing display property: "+property);
             Bind(target,property,render,value=>info.GetValue(value,null),(value,text)=>info.SetValue(value,text,null));
         }
-        internal static void Bind(object target,string identity,Func<string> render,Func<object,object> read,Action<object,object> write)
+        internal static void Bind(object target,string identity,Func<string> render,Func<object,object> read,Action<object,object> write,bool preserveChanges=true)
         {
-            var owner=GetOwner(target);var entry=new Entry{Render=render,Read=read,Write=write};owner.Entries[identity]=entry;entry.Refresh(target);
+            var owner=GetOwner(target);var entry=new Entry{Render=render,Read=read,Write=write,PreserveChanges=preserveChanges};owner.Entries[identity]=entry;entry.Refresh(target);
         }
         static void Changed(object sender,EventArgs args)
         {

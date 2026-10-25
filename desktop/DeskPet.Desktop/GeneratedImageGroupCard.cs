@@ -121,7 +121,7 @@ internal sealed class GeneratedImageGroupCard : Grid, IDisposable
             }
         }
         if (slot.Button.Content is TextBlock text) text.Text = (index + 1).ToString();
-        ToolTip.SetTip(slot.Button, asset != null ? TextResources.Format("generatedImageGroupCard.updateSlot.toolTipSetTip",(index + 1)) : ImageGenerationMotion.Label(owner.ImageTasks.Get((string)slot.Button.Tag!)));
+        LocalizedUi.Tooltip(slot.Button,()=>(asset != null ? TextResources.Format("generatedImageGroupCard.updateSlot.toolTipSetTip",(index + 1)) : ImageGenerationMotion.Label(owner.ImageTasks.Get((string)slot.Button.Tag!))));
     }
 
     void UpdateSelection()

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -75,7 +75,7 @@ namespace Dafeiyu.Tests
         static void ProjectSettings(){var pet=new PetWindow(null,Config(),new SettingsStore(Path.Combine(root,"ui","settings.json")),null);try{
             var a=ProjectCatalogStore.CreateProject(pet.Projects,"A",Project("ui-a").Workspace);var b=ProjectCatalogStore.CreateProject(pet.Projects,"B",Project("ui-b").Workspace);b.FullAccess=false;b.PlanMode=true;b.Goal="B goal";
             pet.OpenProjectConversation(a,a.Conversations[0]);var chat=Application.Current.Windows.OfType<ChatWindow>().Single();var composer=typeof(ChatWindow).GetField("composer",hidden).GetValue(chat);composer.GetType().GetMethod("BuildSlashItems",hidden).Invoke(composer,null);
-            foreach(var item in (System.Collections.IEnumerable)composer.GetType().GetField("triggerItems",hidden).GetValue(composer))if((string)item.GetType().GetField("Title").GetValue(item)=="计划模式")((Action)item.GetType().GetField("Action").GetValue(item))();
+            foreach(var item in (System.Collections.IEnumerable)composer.GetType().GetField("triggerItems",hidden).GetValue(composer))if((string)item.GetType().GetProperty("Title").GetValue(item,null)=="计划模式")((Action)item.GetType().GetField("Action").GetValue(item))();
             var w=pet.Workspaces.OpenWorkspaces.Single();var settings=(Func<PetSettings>)typeof(ConversationQueue).GetField("settings",hidden).GetValue(w.Queue);var cfg=settings();Check(cfg.AgentPlanMode,"menu did not enable project plan mode");
             using(var tools=new AgentWorkspace(cfg.AgentWorkspace){ReadOnly=cfg.AgentPlanMode})Check(Call(tools,"write_file",new{path="forbidden.txt",content="x"}).StartsWith("错误：")&&!File.Exists(Path.Combine(cfg.AgentWorkspace,"forbidden.txt")),"plan mode wrote a file");
             Check(pet.MoveConversation(a,b,a.Conversations[0]),"move failed");cfg=settings();Check(cfg.AgentWorkspace==b.Workspace&&!cfg.AgentFullAccess&&cfg.AgentPlanMode&&cfg.AgentGoal=="B goal","moved queue uses old project settings");chat.Close();

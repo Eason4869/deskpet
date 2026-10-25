@@ -5,6 +5,9 @@ namespace Dafeiyu.Tests
     public static class LiveLanguageTests
     {
         static int checks;
+        sealed class DisplayOwner{public string Text{get;set;}}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static WeakReference RetiredDisplay(){var owner=new DisplayOwner();LiveTextBindings.Bind(owner,"Text",()=>owner.Text??TextResources.Get("common.cancel"));return new WeakReference(owner);}
         static void Check(bool yes,string why){if(!yes)throw new Exception(why);checks++;}
         public static int Main()
         {
@@ -21,6 +24,8 @@ namespace Dafeiyu.Tests
                 TextResources.LanguageChanged-=broken;TextResources.LanguageChanged-=next;
                 Parallel.For(0,1000,i=>{var selection=TextResources.CaptureLanguage();if(String.IsNullOrEmpty(selection.Get("common.cancel")))throw new Exception("incomplete selection");});Check(true,"concurrent complete reads");
                 TextResources.LanguageChanged-=observe;TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
+                var display=new DisplayOwner();LiveTextBindings.Bind(display,"Text",()=>TextResources.Get("common.cancel"));display.Text="external draft";TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));Check(display.Text=="external draft","ordinary edits retain ownership of a changed display value");
+                var retired=RetiredDisplay();for(int i=0;i<3&&retired.IsAlive;i++){GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();}Check(!retired.IsAlive,"weak registrations collect an owner even when its render delegate captures it");TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
                 Console.WriteLine("LiveLanguageTests: "+checks+" passed");return 0;
             }catch(Exception error){Console.Error.WriteLine(error);return 1;}
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,7 +10,7 @@ namespace Dafeiyu
     {
         bool fullTabView,tabsHidden,unifiedLayout,resumeConversation;
         double previewOverdrag;StackPanel previewViewActions;
-        readonly Button fullTabToggle=ShellIcons.Button("expand-tabs",TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons"),null),sideTabsToggle=ShellIcons.Button("collapse-tools",TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons.alternativeA"),null);
+        readonly Button fullTabToggle=ShellIcons.Button("expand-tabs",()=>(TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons")),null),sideTabsToggle=ShellIcons.Button("collapse-tools",()=>(TextResources.Get("chatUnifiedWorkspace.fullTabToggle.shellIcons.alternativeA")),null);
         void InitializeTabViewTools()
         {
             var tools=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,18,16,0)};previewViewActions=tools;Grid.SetColumn(tools,6);Panel.SetZIndex(tools,10);workspaceShell.Children.Add(tools);
@@ -64,12 +64,12 @@ namespace Dafeiyu
             bool canSwitch=ActualWidth>=1200,returnToSplit=canSwitch&&(fullTabView||unifiedLayout);
             fullTabToggle.IsEnabled=canSwitch;
             fullTabToggle.Content=ShellIcons.Image(returnToSplit?"split-panels":"expand-tabs",Ui.Ink);
-            string layoutAction=!canSwitch?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit"):returnToSplit?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeA"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeB");
-            fullTabToggle.ToolTip=layoutAction;System.Windows.Automation.AutomationProperties.SetName(fullTabToggle,layoutAction);
-            System.Windows.Automation.AutomationProperties.SetHelpText(fullTabToggle,(fullTabView||unifiedLayout?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeA"))+(shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeB"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeC")));
+            Func<string> layoutAction=()=>!canSwitch?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit"):returnToSplit?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeA"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.layoutActionCanSwitchReturnToSplit.alternativeB");
+            LocalizedUi.Tooltip(fullTabToggle,layoutAction);LocalizedUi.Automation(fullTabToggle,layoutAction);
+            LocalizedUi.HelpText(fullTabToggle,()=>(fullTabView||unifiedLayout?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeA"))+(shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeB"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeC")));
             var visibilityIcon=ShellIcons.Image("collapse-tools",Ui.Ink);if(!shown){visibilityIcon.RenderTransformOrigin=new Point(.5,.5);visibilityIcon.RenderTransform=new ScaleTransform(-1,1);}sideTabsToggle.Content=visibilityIcon;
-            string visibilityAction=shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown.alternativeA");
-            sideTabsToggle.ToolTip=visibilityAction;System.Windows.Automation.AutomationProperties.SetName(sideTabsToggle,visibilityAction);System.Windows.Automation.AutomationProperties.SetHelpText(sideTabsToggle,shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeD"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeE"));sideTabsToggle.Background=shown?AgentUi.Soft:Brushes.Transparent;
+            Func<string> visibilityAction=()=>shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.visibilityActionShown.alternativeA");
+            LocalizedUi.Tooltip(sideTabsToggle,visibilityAction);LocalizedUi.Automation(sideTabsToggle,visibilityAction);LocalizedUi.HelpText(sideTabsToggle,()=>shown?TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeD"):TextResources.Get("chatUnifiedWorkspace.refreshTabViewTools.automationAutomationPropertiesSetHelpText.alternativeE"));sideTabsToggle.Background=shown?AgentUi.Soft:Brushes.Transparent;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -44,9 +44,12 @@ namespace Dafeiyu
             if(measured)tokens=usage.Tokens;else{var messages=session.History.ForRequest(pet.Settings.SystemPrompt??"",input.Text??"");tokens=AgentContextBudget.EstimateTokens(messages.Select(m=>(object)new{role=m.Role,content=ChatAttachment.Content(m,model.Protocol=="anthropic")}));}
             double ratio=capacity>0?Math.Min(1,(double)tokens/capacity):0;double angle=Math.Max(.01,Math.Min(.999,ratio))*2*Math.PI;var figure=new PathFigure{StartPoint=new Point(7,1)};figure.Segments.Add(new ArcSegment(new Point(7+6*Math.Sin(angle),7-6*Math.Cos(angle)),new Size(6,6),0,ratio>.5,SweepDirection.Clockwise,true));contextArc.Data=new PathGeometry(new[]{figure});contextArc.Visibility=capacity>0?Visibility.Visible:Visibility.Collapsed;
             int used=(int)Math.Round(Math.Max(0,Math.Min(100,100*ratio)));string usedTokens=CompactContextTokens(tokens),totalTokens=CompactContextTokens(capacity);
-            string text=TextResources.Get("composerContextUsage.refreshContextUsage.text.alternativeB")+(capacity>0?TextResources.Format("composerContextUsage.refreshContextUsage.text",used,(100-used),usedTokens,totalTokens):TextResources.Format("composerContextUsage.refreshContextUsage.text.alternativeA",usedTokens));
-            if(measured&&usage.Status=="compacting")text+=TextResources.Get("composerContextUsage.refreshContextUsage.text.alternativeC");
-            contextTip.Content=new TextBlock{Text=text,TextAlignment=TextAlignment.Center,Foreground=Brushes.White,FontSize=12};System.Windows.Automation.AutomationProperties.SetName(contextPreview,text);
+            Func<string> text=delegate{
+            string summary=TextResources.Get("composerContextUsage.refreshContextUsage.text.alternativeB")+(capacity>0?TextResources.Format("composerContextUsage.refreshContextUsage.text",used,(100-used),usedTokens,totalTokens):TextResources.Format("composerContextUsage.refreshContextUsage.text.alternativeA",usedTokens));
+            if(measured&&usage.Status=="compacting")summary+=TextResources.Get("composerContextUsage.refreshContextUsage.text.alternativeC");
+                return summary;
+            };
+            contextTip.Content=LocalizedUi.With(new TextBlock{Text=text(),TextAlignment=TextAlignment.Center,Foreground=Brushes.White,FontSize=12},"Text",text);LocalizedUi.Automation(contextPreview,text);
         }
     }
 }

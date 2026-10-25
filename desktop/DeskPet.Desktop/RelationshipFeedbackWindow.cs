@@ -63,7 +63,7 @@ internal sealed class RelationshipFeedbackWindow : Window
         WindowDecorations=WindowDecorations.None;CanResize=false;LocalizedUi.Set(this,"Title",()=>(TextResources.Get("relationship.card.title")));Background=Brushes.Transparent;
         TransparencyLevelHint=new[]{WindowTransparencyLevel.Transparent};
         var body=Ui.Column();var header=new DockPanel();
-        var close=Ui.Button("×",Close);close.Name="DismissRelationshipFeedback";ToolTip.SetTip(close,TextResources.Get("relationship.feedback.dismiss"));close.MinWidth=26;close.Padding=new Thickness(6,0,6,0);DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
+        var close=Ui.Button("×",Close);close.Name="DismissRelationshipFeedback";LocalizedUi.Tooltip(close,()=>(TextResources.Get("relationship.feedback.dismiss")));close.MinWidth=26;close.Padding=new Thickness(6,0,6,0);DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
         close.VerticalAlignment=VerticalAlignment.Center;close.Margin=new Thickness(8,0,0,0);
         var avatar=new AvatarView{Assets=assets,Skin=owner.Skin,Width=42,Height=42,Margin=new Thickness(0,0,10,0),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(avatar,Dock.Left);header.Children.Add(avatar);
         var name=Ui.Text(()=>(owner.Skin.DisplayName),14);name.TextWrapping=TextWrapping.NoWrap;name.TextTrimming=TextTrimming.CharacterEllipsis;name.VerticalAlignment=VerticalAlignment.Center;ToolTip.SetTip(name,owner.Skin.DisplayName);header.Children.Add(name);body.Children.Add(header);

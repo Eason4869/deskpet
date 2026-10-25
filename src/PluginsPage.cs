@@ -44,7 +44,7 @@ namespace Dafeiyu
             header.ColumnDefinitions.Add(new ColumnDefinition());header.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
             header.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});header.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var titles=new StackPanel{Margin=new Thickness(0,0,18,0)};
-            var heading=Ui.PageHeading(TextResources.Get("pluginsPage.pluginsPage.pageHeading"));titles.Children.Add(heading);
+            var heading=LocalizedUi.PageHeading(()=> (TextResources.Get("pluginsPage.pluginsPage.pageHeading")));titles.Children.Add(heading);
             titles.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("pluginsPage.pluginsPage.text")),12,Ui.Muted));header.Children.Add(titles);
             add=ActionButton(()=>(TextResources.Get("pluginsPage.pluginsPage.actionButton")),"ImportManagedSkill",ChooseImport);add.Background=ThemeManager.ActionSurface;add.Foreground=Brushes.White;add.BorderBrush=add.Background;
             searchSurface.Width=260;searchSurface.Margin=new Thickness(0,0,12,5);searchSurface.VerticalAlignment=VerticalAlignment.Center;actions.Children.Add(searchSurface);actions.Children.Add(add);Grid.SetColumn(actions,1);actions.VerticalAlignment=VerticalAlignment.Center;header.Children.Add(actions);layout.Children.Add(header);

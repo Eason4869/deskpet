@@ -7,7 +7,7 @@ namespace Dafeiyu
     public sealed partial class ChatWindow
     {
         readonly Grid historyOverlay=new Grid{VerticalAlignment=VerticalAlignment.Bottom,MaxWidth=920,Margin=new Thickness(0,0,18,12)};
-        readonly Button jumpToLatest=UiIcons.Button("arrow-down",TextResources.Get("chatHistoryNavigation.jumpToLatest.uiIcons"));
+        readonly Button jumpToLatest=UiIcons.Button("arrow-down",()=>(TextResources.Get("chatHistoryNavigation.jumpToLatest.uiIcons")));
         void InitializeHistoryNavigation()
         {
             jumpToLatest.Name="JumpToLatestMessage";jumpToLatest.Width=jumpToLatest.Height=jumpToLatest.MinHeight=34;jumpToLatest.Padding=new Thickness(8);jumpToLatest.Margin=new Thickness(0);jumpToLatest.HorizontalAlignment=HorizontalAlignment.Center;LocalizedUi.Set(jumpToLatest,"ToolTip",()=>(TextResources.Get("chatHistoryNavigation.initializeHistoryNavigation.jumpToLatestToolTip")));jumpToLatest.Visibility=Visibility.Collapsed;

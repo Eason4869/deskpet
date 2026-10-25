@@ -45,7 +45,7 @@ namespace Dafeiyu
             var root=new Grid {Background=ThemeManager.Surface,Margin=new Thickness(22,18,22,6)};
             root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition {Height=GridLength.Auto});
             var header=new DockPanel {Margin=new Thickness(0,0,78,16)};conversationHeader=header;entryHeader.Content=new ConversationEntryTabs(SwitchEntry,true);DockPanel.SetDock(entryHeader,Dock.Left);header.Children.Add(entryHeader);
-            var settings=UiIcons.Button("settings",TextResources.Get("chatWindow.chatWindow.uiIcons"));chatSettings=settings;settings.Name="ChatSettings";settings.Margin=new Thickness(10,0,0,0);settings.VerticalAlignment=VerticalAlignment.Center;
+            var settings=UiIcons.Button("settings",()=>(TextResources.Get("chatWindow.chatWindow.uiIcons")));chatSettings=settings;settings.Name="ChatSettings";settings.Margin=new Thickness(10,0,0,0);settings.VerticalAlignment=VerticalAlignment.Center;
             settings.Click+=delegate {pet.ShowSettings(true);};DockPanel.SetDock(settings,Dock.Right);
             avatar=new Image {Name="ChatAvatar",Width=34,Height=34,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,34,34),6.8,6.8),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,10,0)};RenderOptions.SetBitmapScalingMode(avatar,BitmapScalingMode.HighQuality);DockPanel.SetDock(avatar,Dock.Left);header.Children.Add(avatar);
             var identity=new DockPanel{VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,78,0)};conversationIdentity=identity;var speech=UiIcons.Speech(pet);speech.Margin=new Thickness(0,0,8,0);DockPanel.SetDock(speech,Dock.Left);identity.Children.Add(speech);conversationTitle.Name="ConversationTitle";conversationTitle.FontWeight=FontWeights.SemiBold;conversationTitle.TextWrapping=TextWrapping.NoWrap;conversationTitle.TextTrimming=TextTrimming.CharacterEllipsis;conversationTitle.VerticalAlignment=VerticalAlignment.Center;identity.Children.Add(conversationTitle);header.Children.Add(identity);root.Children.Add(header);
@@ -58,7 +58,7 @@ namespace Dafeiyu
             Grid.SetRow(scroll,2);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,2);atmosphere.ArtworkOpacity=.20;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
             input=new MarkdownEditor();input.Name="MessageInput";input.MaxLength=8000;
-            record=UiIcons.Button("mic",TextResources.Get("chatWindow.chatWindow.uiIcons.alternativeA"));record.Name="VoiceRecord";
+            record=UiIcons.Button("mic",()=>(TextResources.Get("chatWindow.chatWindow.uiIcons.alternativeA")));record.Name="VoiceRecord";
 
             workspaceShell=new Grid();for(int column=0;column<7;column++)workspaceShell.ColumnDefinitions.Add(new ColumnDefinition{Width=column==2?new GridLength(1,GridUnitType.Star):new GridLength(0)});
             Grid.SetColumn(root,2);Grid.SetColumnSpan(root,3);workspaceShell.Children.Add(root);
@@ -175,7 +175,7 @@ namespace Dafeiyu
         {
             if(closed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshState));return;}
             RefreshAppearance();if(pet.DictationActive)return;
-            if(pet.LiveActive){ShowStatus(pet.Live.Status);return;}
+            if(pet.LiveActive){ShowStatus(()=>pet.Live.Status);return;}
             ShowStatus(()=>(session.Stage==ConversationStage.Recognizing?TextResources.Get("chatWindow.refreshState.showStatus"):session.Stage==ConversationStage.Thinking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeA"):session.Stage==ConversationStage.Speaking?TextResources.Get("chatWindow.refreshState.showStatus.alternativeB"):String.IsNullOrEmpty(session.AgentTaskWarning)?String.IsNullOrEmpty(session.HistoryWarning)?(String.IsNullOrEmpty(session.LastNotice)?ChatUi.SendHint(pet.Settings):session.LastNotice):session.HistoryWarning:session.AgentTaskWarning));
         }
         private void ShowStatus(Func<string> text){if(!closed)LocalizedUi.Set(status,"Text",text);}

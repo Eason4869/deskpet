@@ -68,9 +68,9 @@ internal sealed class ChatMessageView : Border
         if (IsUser) { userBubble = new Border { Name = "UserBubble", Background = DesktopTheme.Brush("#E8F2FF"), CornerRadius = new CornerRadius(18), Padding = new Thickness(15, 10), HorizontalAlignment = HorizontalAlignment.Right, Child = body }; panel.Children.Add(userBubble); }
         else panel.Children.Add(body); if (!IsUser) { generatedImages.Name = "MessageGeneratedImages"; panel.Children.Add(generatedImages); panel.Children.Add(jobHost); panel.Children.Add(status); }
         Ui.ReadOnlyMenu(reasoning);
-        var copy = IconButton("CopyReply", TextResources.Get("chatMessageView.chatMessageView.iconButton"), "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false)));
-        readReply = IconButton("ReadReply", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeA"), "M 3,7 L 6,7 L 10,3 L 10,15 L 6,11 L 3,11 Z M 13,5 Q 18,9 13,13", ReadReply);
-        var more = IconButton("MoreReply", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeB"), "M 3,9 L 4,9 M 8,9 L 9,9 M 13,9 L 14,9", () => { });
+        var copy = IconButton("CopyReply", ()=>(TextResources.Get("chatMessageView.chatMessageView.iconButton")), "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false)));
+        readReply = IconButton("ReadReply", ()=>(TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeA")), "M 3,7 L 6,7 L 10,3 L 10,15 L 6,11 L 3,11 Z M 13,5 Q 18,9 13,13", ReadReply);
+        var more = IconButton("MoreReply", ()=>(TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeB")), "M 3,9 L 4,9 M 8,9 L 9,9 M 13,9 L 14,9", () => { });
         regenerate = LocalizedUi.With(new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header") },"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header")));
         regenerate.Click += (_, _) => owner.Run(async () => { EnsureIdle(); queue.Hold(); await session.RegenerateAsync(current.Id, settings(), owner.Skin.Name); });
         var copyPlain = LocalizedUi.With(new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeA") },"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeA"))); copyPlain.Click += (_, _) => owner.Run(() => CopyAsync(true));
@@ -88,7 +88,7 @@ internal sealed class ChatMessageView : Border
             var userActions = new StackPanel { Name = "UserMessageActions", Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 5, Opacity = 0 };
             var sent = new TextBlock { Name = "UserMessageTime", Text = message.Timestamp.ToLocalTime().ToString("HH:mm"), Foreground = DesktopTheme.Brush("#969BA3"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
             ToolTip.SetTip(sent, message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")); userActions.Children.Add(sent);
-            userActions.Children.Add(IconButton("CopyUserMessage", TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeC"), "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false))));
+            userActions.Children.Add(IconButton("CopyUserMessage", ()=>(TextResources.Get("chatMessageView.chatMessageView.iconButton.alternativeC")), "M 6,3 L 14,3 L 14,12 L 6,12 Z M 3,6 L 3,15 L 11,15", () => owner.Run(() => CopyAsync(false))));
             panel.Children.Add(userActions);
             PropertyChanged += (_, e) => { if (e.Property == Avalonia.Input.InputElement.IsPointerOverProperty || e.Property == Avalonia.Input.InputElement.IsKeyboardFocusWithinProperty) userActions.Opacity = IsPointerOver || IsKeyboardFocusWithin ? 1 : 0; };
         }
@@ -205,7 +205,7 @@ internal sealed class ChatMessageView : Border
         status.IsVisible = !string.IsNullOrEmpty(status.Text);
         replyActions.IsVisible = !IsUser && message.Status == "complete" && !string.IsNullOrWhiteSpace(message.Content);
         regenerate.IsEnabled = CanStart(); readReply.IsEnabled = reading || CanStart();
-        ToolTip.SetTip(readReply, reading ? TextResources.Get("chatMessageView.update.toolTipSetTip") : TextResources.Get("chatMessageView.update.toolTipSetTip.alternativeA"));
+        LocalizedUi.Tooltip(readReply,()=>(reading ? TextResources.Get("chatMessageView.update.toolTipSetTip") : TextResources.Get("chatMessageView.update.toolTipSetTip.alternativeA")));
         showReasoning.IsVisible = !string.IsNullOrWhiteSpace(message.Reasoning) || events.Count > 0;
         LocalizedUi.Set(showReasoning,"Header",()=>(showHistory ? TextResources.Get("chatMessageView.update.showReasoningHeaderShowHistory") : TextResources.Get("chatMessageView.update.showReasoningHeaderShowHistory.alternativeA")));
     }
@@ -224,4 +224,4 @@ internal sealed class ChatMessageView : Border
             running.Name is "run_command" or "exec_command" or "shell" or "open_directory" ? TextResources.Get("chatMessageView.updateProcess.stageRunningNull.alternativeC") : TextResources.Get("chatMessageView.updateProcess.stageRunningNull");
         LocalizedUi.Set(thinkingLabel,"Text",()=>(active ? stage : TextResources.Get("chatMessageView.updateProcess.thinkingLabelActiveStage")));
     }
-private static Button IconButton(System.Func<string> name, string tip, string geometry, Action action){return LocalizedUi.With(IconButton(name(),tip,geometry,action),"Content",name);}}
+private static Button IconButton(string name, System.Func<string> tip, string geometry, Action action){return LocalizedUi.Caption(IconButton(name,tip(),geometry,action),tip);}}

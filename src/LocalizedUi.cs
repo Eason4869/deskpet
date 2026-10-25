@@ -15,6 +15,9 @@ namespace Dafeiyu
         }
         internal static T With<T>(T target,string property,Func<string> render) where T:class
         {var info=target.GetType().GetProperty(property);var label=info==null?null:info.GetValue(target,null) as TextBlock;if((property=="Content"||property=="Header")&&label!=null)Set(label,"Text",render);else Set(target,property,render);return target;}
+        internal static void Tooltip(FrameworkElement target,Func<string> render){var tip=target.ToolTip as ToolTip;if(tip!=null)With(tip,"Content",render);else Set(target,"ToolTip",render);}
+        internal static Button Caption(Button button,Func<string> render){if(button.ToolTip!=null)Tooltip(button,render);Automation(button,render);return button;}
+        internal static void HelpText(DependencyObject target,Func<string> render){TrackLifetime(target);LiveTextBindings.Bind(target,"AutomationHelpText",render,value=>System.Windows.Automation.AutomationProperties.GetHelpText((DependencyObject)value),(value,text)=>System.Windows.Automation.AutomationProperties.SetHelpText((DependencyObject)value,(string)text));}
         internal static void Automation(DependencyObject target,Func<string> render){TrackLifetime(target);LiveTextBindings.Bind(target,"AutomationName",render,value=>System.Windows.Automation.AutomationProperties.GetName((DependencyObject)value),(value,text)=>System.Windows.Automation.AutomationProperties.SetName((DependencyObject)value,(string)text));}
         internal static string Set(object target,string property,Func<string> render)
         {TrackLifetime(target);LiveTextBindings.Bind(target,property,render);return render();}
@@ -34,6 +37,7 @@ namespace Dafeiyu
             binding.Bindings.Add(new System.Windows.Data.Binding());binding.Bindings.Add(new System.Windows.Data.Binding("Code"){Source=LiveTextBindings.Revision});text.SetBinding(TextBlock.TextProperty,binding);control.ItemTemplate=new DataTemplate{VisualTree=text};return control;
         }
         internal static TextBlock Text(Func<string> render,double size=13,Brush color=null){return With(Ui.Text(render(),size,color),"Text",render);}
+        internal static TextBlock PageHeading(Func<string> render){return With(Ui.PageHeading(render()),"Text",render);}
         internal static TextBlock InlineText(Func<string> render,double size=13,Brush color=null){return With(Ui.InlineText(render(),size,color),"Text",render);}
         internal static Button Button(Func<string> render,bool primary=false){return With(Ui.Button(render(),primary),"Content",render);}
         internal static CheckBox Toggle(Func<string> render,bool value,Action<bool> changed){return With(Ui.Toggle(render(),value,changed),"Content",render);}

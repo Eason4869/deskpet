@@ -47,7 +47,7 @@ namespace Dafeiyu
         public string PersonaId { get { lock(gate)return personaId; } }
         string lastNotice;
         LocalizedMessage localizedNotice;
-        public string LastNotice { get{return localizedNotice==null?lastNotice:localizedNotice.Value;} private set{localizedNotice=null;lastNotice=value;} }
+        public string LastNotice { get{var notice=localizedNotice;return notice==null?lastNotice:notice.Value;} private set{lastNotice=value;localizedNotice=null;} }
         void SetLocalizedNotice(LocalizedMessage message){localizedNotice=message;lastNotice=null;}
         string imageHistoryWarning="";
         public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
@@ -59,7 +59,7 @@ namespace Dafeiyu
         {
             public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
             public readonly TaskCompletionSource<bool> Complete=new TaskCompletionSource<bool>();
-            public IDisposable Maintenance;public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
+            public LanguageSelection Language;public IDisposable Maintenance;public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
             public Action<string> RecordingFailure;public Action AgentStarted;
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
@@ -131,7 +131,7 @@ namespace Dafeiyu
             {
                 if(disposed) throw new ObjectDisposedException("ConversationSession");
                 if(active!=null) throw new InvalidOperationException(TextResources.Get("conversationSession.begin.text"));
-                var admission=Maintenance.EnterActivity();try{op=new Operation { Maintenance=admission,Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);op.RelationshipCompanionId=CaptureRelationshipCompanion();op.RelationshipEventId="turn-"+Guid.NewGuid().ToString("N");op.RelationshipWork=settings.AgentEnabled;active=op; LastNotice="";CancelPredictions();}catch{admission.Dispose();throw;}
+                var admission=Maintenance.EnterActivity();try{op=new Operation { Language=LanguageRequestScope.Capture(),Maintenance=admission,Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);op.RelationshipCompanionId=CaptureRelationshipCompanion();op.RelationshipEventId="turn-"+Guid.NewGuid().ToString("N");op.RelationshipWork=settings.AgentEnabled;active=op; LastNotice="";CancelPredictions();}catch{admission.Dispose();throw;}
             }
             SetStage(stage); return op;
         }
@@ -233,11 +233,13 @@ namespace Dafeiyu
             op.Cancel.Token.ThrowIfCancellationRequested();op.Source="asr";await RequestReply(op,text,petName).ConfigureAwait(false);
         }
         private async Task RequestReply(Operation op,string text,string petName)
+        {using(LanguageRequestScope.Enter(op.Language))await RequestReplyCore(op,text,petName).ConfigureAwait(false);}
+        private async Task RequestReplyCore(Operation op,string text,string petName)
         {
             using(UsageTracking.BeginScope(op.Snapshot.AgentEnabled?"work":"chat",kernelSession==null?null:kernelSession.ConversationId,kernelSession==null?null:kernelSession.ProjectId))
             {
             CancellationToken token=op.Cancel.Token; token.ThrowIfCancellationRequested();
-            string persona=PersonaProfiles.LocalizeDefaultPrompt(op.Snapshot.AgentEnabled?op.Snapshot.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt:op.Snapshot.SystemPrompt??"").Replace("{pet_name}",op.Snapshot.AgentEnabled?TextResources.Get("conversationSession.requestReply.text"):petName??TextResources.Get("app.displayName"));
+            string persona=PersonaProfiles.LocalizeDefaultPrompt(op.Snapshot.AgentEnabled?op.Snapshot.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt:op.Snapshot.SystemPrompt??"",op.Language).Replace("{pet_name}",op.Snapshot.AgentEnabled?TextResources.Get("conversationSession.requestReply.text",op.Language):petName??TextResources.Get("app.displayName",op.Language));
             if(op.Snapshot.AgentEnabled)persona+="\n若最终交付本地文件，请在最终回复使用 [文件名](<文件完整绝对路径>) 链接，路径尽量使用正斜杠，便于用户打开交付卡片。只列明确交付的文件，不把所有改动或读取的文件当作附件，不虚构文件。";
             if(!op.Snapshot.AgentEnabled)persona+="\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
             if(op.Snapshot.AgentEnabled && !String.IsNullOrWhiteSpace(op.Snapshot.AgentGoal))persona+="\n用户设置的持续目标（在当前请求范围内推进，不能声称未完成的操作成功）：\n"+op.Snapshot.AgentGoal;

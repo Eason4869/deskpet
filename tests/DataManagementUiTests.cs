@@ -106,8 +106,9 @@ namespace Dafeiyu.Tests
                     var busyRetry=pet.FlushDeferredSettingsAsync();Wait(busyRetry);
                     Check(busyRetry.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.X==555,"busy retry retains latest unsaved position");
                 }
-                // Close/activation can enqueue relationship and keepsake work. Settle
-                // those fixture-owned producers before asserting a durable idle retry.
+                // Visible frames enqueue keepsake probes while Wait pumps the dispatcher.
+                // End this fixture's visible encounter before draining its producers.
+                pet.Hide();
                 Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
                 var retryErrors=new System.Collections.Generic.List<string>();int recordingRetryError=0;
                 EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> retryDiagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs eventArgs){
@@ -125,6 +126,7 @@ namespace Dafeiyu.Tests
                 finally{AppDomain.CurrentDomain.FirstChanceException-=retryDiagnostic;}
                 var retryDisk=new SettingsStore(Path.Combine(root,"settings.json")).Load();bool retrySaved=retryDisk.X==555&&cfg.Scale==1.7;
                 Check(retrySaved,"failed WPF reset retains latest position for retry: actual="+cfg.X+" durable="+retryDisk.X+" scale="+cfg.Scale+" warning="+retryWarning.Result+(retrySaved?"":" firstChance="+(retryErrors.Count==0?"none":String.Join(" | ",retryErrors))));
+                pet.Show();
                 CaptureStates(host,root,"data",false);
                 foreach(var action in new[]{clear,reset})Dialog(action,d=>{CaptureStates(d,root,action==clear?"clear-confirm":"reset-confirm",true);foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+name);Check(!button.IsDefault,"maintenance confirmation has no Enter default "+name);}});
                 Check(pet.IsVisible,"successful maintenance leaves pet alive");Console.WriteLine("DataManagementUiTests: "+checks+" passed; captures="+root);host.Close();page.Dispose();return 0;

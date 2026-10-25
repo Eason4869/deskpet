@@ -506,17 +506,17 @@ namespace Dafeiyu
                     string raw=File.ReadAllText(path,new UTF8Encoding(false,true));
                     using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(raw)))
                         if(new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream)==null)throw new InvalidDataException("Empty settings.");
-                    values=json.DeserializeObject(raw) as Dictionary<string,object>;
-                    if(values==null)throw new InvalidDataException("Expected a settings object.");
+                    values=ReadLanguageSettings(raw,json);
                 }catch(FileNotFoundException){values=DefaultLanguageSettings(json);}
                 catch(DirectoryNotFoundException){values=DefaultLanguageSettings(json);}
                 catch(Exception error){if(!(error is SerializationException||error is ArgumentException||error is InvalidOperationException||error is DecoderFallbackException))throw;throw new InvalidDataException("Cannot read existing settings; language was not changed.",error);}
-                string normalized=UiLanguages.Normalize(code);values["UiLanguage"]=normalized;
-                if(guide){values["OnboardingLessonId"]="welcome";values["OnboardingStep"]=0;values["OnboardingState"]="deferred";}
+                string normalized=UiLanguages.Normalize(code);values["UiLanguage"]=json.Serialize(normalized);
+                if(guide){values["OnboardingLessonId"]=json.Serialize("welcome");values["OnboardingStep"]="0";values["OnboardingState"]=json.Serialize("deferred");}
                 Directory.CreateDirectory(DirectoryPath);string temporary=path+".tmp";
                 // Never delete a temporary file owned/locked by another writer on failure.
                 using(var stream=new FileStream(temporary,FileMode.Create,FileAccess.Write,FileShare.None)){
-                    var bytes=new UTF8Encoding(false).GetBytes(json.Serialize(values));stream.Write(bytes,0,bytes.Length);stream.Flush(true);
+                    string output="{"+String.Join(",",values.Select(pair=>json.Serialize(pair.Key)+":"+(string)pair.Value))+"}";
+                    var bytes=new UTF8Encoding(false).GetBytes(output);stream.Write(bytes,0,bytes.Length);stream.Flush(true);
                 }
                 AtomicFile.Commit(temporary,path);
                 committedLanguage=normalized;settings.UiLanguage=normalized;
@@ -525,7 +525,41 @@ namespace Dafeiyu
             }finally{writes.Release();}
         }
         static Dictionary<string,object> DefaultLanguageSettings(System.Web.Script.Serialization.JavaScriptSerializer json)
-        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,new PetSettings());return (Dictionary<string,object>)json.DeserializeObject(Encoding.UTF8.GetString(stream.ToArray()));}}
+        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,new PetSettings());return ReadLanguageSettings(Encoding.UTF8.GetString(stream.ToArray()),json);}}
+        // Settings were validated above. Keep each value's JSON bytes as text rather
+        // than round-tripping unknown future fields through a numeric CLR type.
+        static Dictionary<string,object> ReadLanguageSettings(string raw,System.Web.Script.Serialization.JavaScriptSerializer json)
+        {
+            if(raw.Length>json.MaxJsonLength)throw new InvalidDataException("Settings exceed the language-save limit.");
+            var values=new Dictionary<string,object>();int position=0;
+            Action whitespace=delegate{while(position<raw.Length&&Char.IsWhiteSpace(raw[position]))position++;};
+            whitespace();if(position==raw.Length||raw[position++]!='{')throw new InvalidDataException("Expected a settings object.");
+            while(true){
+                whitespace();if(position<raw.Length&&raw[position]=='}'){position++;break;}
+                int keyStart=position;if(position==raw.Length||raw[position++]!='"')throw new InvalidDataException("Expected a settings key.");
+                bool escaped=false,closed=false;
+                while(position<raw.Length){char c=raw[position++];if(escaped){escaped=false;continue;}if(c=='\\'){escaped=true;continue;}if(c=='"'){closed=true;break;}}
+                if(!closed)throw new InvalidDataException("Unterminated settings key.");
+                string key=json.Deserialize<string>(raw.Substring(keyStart,position-keyStart));
+                whitespace();if(position==raw.Length||raw[position++]!=':')throw new InvalidDataException("Expected a settings value.");whitespace();
+                int start=position,depth=0;bool quoted=false;escaped=false;
+                while(position<raw.Length){
+                    char c=raw[position];
+                    if(quoted){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')quoted=false;}
+                    else if(c=='"')quoted=true;
+                    else if(c=='{'||c=='['){if(++depth>json.RecursionLimit)throw new InvalidDataException("Settings exceed the depth limit.");}
+                    else if(c=='}'||c==']'){if(depth==0)break;depth--;}
+                    else if(c==','&&depth==0)break;
+                    position++;
+                }
+                if(quoted||depth!=0||position==start||values.ContainsKey(key))throw new InvalidDataException("Invalid or duplicate settings member.");
+                values.Add(key,raw.Substring(start,position-start));whitespace();
+                if(position<raw.Length&&raw[position]==','){position++;continue;}
+                if(position<raw.Length&&raw[position]=='}'){position++;break;}
+                throw new InvalidDataException("Unterminated settings object.");
+            }
+            whitespace();if(position!=raw.Length)throw new InvalidDataException("Unexpected settings suffix.");return values;
+        }
         public void Save(PetSettings settings)
         {
             if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));

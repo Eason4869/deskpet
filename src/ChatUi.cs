@@ -93,5 +93,5 @@ namespace Dafeiyu
             button.BorderBrush=Ui.Brush(icon=="send"?"#DBE4FC":"#F5DCE1");button.Margin=new Thickness(0);
             return button;
         }
-public static Button Action(System.Func<string> icon,string label){return LocalizedUi.With(Action(icon(),label),"Content",icon);}    }
+public static Button Action(string icon,System.Func<string> label){return LocalizedUi.Caption(Action(icon,label()),label);}}
 }

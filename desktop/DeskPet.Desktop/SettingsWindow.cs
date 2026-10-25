@@ -134,7 +134,7 @@ internal sealed class SettingsWindow : Window
         if (skin == null) return new TextBlock();
         var name = Ui.Text(()=>(skin.DisplayName)); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
         var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1 && skin.OfficialCharacterId != "e-bao", IsVisible = false };
-        ToolTip.SetTip(button, skin.OfficialCharacterId == "e-bao" ? TextResources.Get("settingsWindow.partnerRow.toolTipSetTip") : TextResources.Get("settingsWindow.partnerRow.toolTipSetTip.alternativeA"));
+        LocalizedUi.Tooltip(button,()=>(skin.OfficialCharacterId == "e-bao" ? TextResources.Get("settingsWindow.partnerRow.toolTipSetTip") : TextResources.Get("settingsWindow.partnerRow.toolTipSetTip.alternativeA")));
         button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();
         button.Click += (_, e) => { e.Handled = true; choices.IsDropDownOpen = false; owner.Run(() => remove(skin)); };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("40,*,32") };

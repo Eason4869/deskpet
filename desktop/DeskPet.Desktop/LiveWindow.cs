@@ -55,7 +55,7 @@ internal sealed class LiveWindow : Window
         if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
         await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt+"\n"+context);
     }
-    private void Refresh() => Dispatcher.UIThread.Post(() => status.Text = owner.Live.Status);
+    private void Refresh() => Dispatcher.UIThread.Post(() => LocalizedUi.Set(status,"Text",()=>owner.Live.Status));
     private void RefreshPartner()
     {
         if (!ReferenceEquals(avatar.Skin, owner.Skin)) avatar.Skin = owner.Skin;

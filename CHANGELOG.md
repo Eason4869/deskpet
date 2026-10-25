@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.0-dev.2 — 开发中（未发布）
+
+- 语言保存后立即刷新 Windows WPF 与 Avalonia 原有界面，保留草稿、未保存设置、窗口、选项与运行中的任务。
+- 引导语言页改为“应用并继续”，删除语言切换专用重启按钮和提示；保留关系恢复和更新所需的重启。
+- 单独保存语言，避免连带保存其他编辑；已有配置读取或写入失败时保留原配置及当前语言。
+- 当前回复、Agent 子请求及语音连接保留启动时语言，新任务使用新语言；系统活动提示随界面刷新，历史和自定义文本保持原文。
+- 分阶段 Draft PR 验证；实际验收范围与平台限制见[热切换验收](docs/localization/live-language-acceptance.md)。
+
 ## 0.11.0-dev.1 — 源码预览（未发布二进制 Release）
 
 以用户指定的 v0.10.5-dev.3 为固定基线。本节记录源码预览功能；Windows 本地候选与完整回归见[验收摘要](docs/companion-relationship/acceptance.md)，macOS 实机尚未验收。源码标签不代表已有可下载的二进制 Release。

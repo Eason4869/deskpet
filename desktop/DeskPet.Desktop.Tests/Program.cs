@@ -52,8 +52,9 @@ try
     if(args.Contains("--heart-home")){Console.WriteLine("HeartHome: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"heart-home"),"zh_CN",Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native-home"))+" passed");return;}
     if(args.Contains("--maintenance-default-sequence")){
         TextResources.ConfigureStartupLanguage("zh_CN");TextResources.Get("common.cancel");
-        bool frozen=false;try{TextResources.ConfigureStartupLanguage("en_US");}catch(InvalidOperationException){frozen=true;}
-        Check(frozen&&TextResources.CurrentLanguage=="zh_CN","production language freeze still rejects a different locale");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));
+        Check(TextResources.CurrentLanguage=="en_US","language changes before maintenance fixtures without restarting");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
         int sequence=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-sequence"),TextResources.CurrentLanguage)
             +DataManagementUiChecks.Run(Path.Combine(directory,"data-management-sequence"),TextResources.CurrentLanguage)
             +CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-sequence"),TextResources.CurrentLanguage);

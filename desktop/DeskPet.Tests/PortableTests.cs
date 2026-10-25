@@ -13,7 +13,7 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
-            if(args.Length==1&&args[0]=="--live-language-core-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return LiveLanguageTests.Main() | UiLanguageChangeTests.Main();}
+            if(args.Length==1&&args[0]=="--live-language-core-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return LiveLanguageTests.Main() | UiLanguageChangeTests.Main() | RequestLanguageSnapshotTests.Main();}
             if(args.Length==1&&args[0]=="--data-admission-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataMaintenanceAdmissionTests.Main();}
             if(args.Length==1&&args[0]=="--data-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataManagementTests.Main();}
             if(args.Length==1&&args[0]=="--relationship-maintenance-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryMaintenanceTests.RelationshipPreservationOnly();}

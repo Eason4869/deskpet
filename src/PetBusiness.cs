@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -34,7 +34,7 @@ namespace Dafeiyu
     public sealed class AnimationPlayer
     {
         public static readonly string[] States = { "idle", "running-right", "running-left", "waving", "jumping", "failed", "waiting", "running", "review" };
-        public static readonly string[] Labels = { TextResources.Get("petBusiness.labels.labels"), TextResources.Get("petBusiness.labels.labels.alternativeA"), TextResources.Get("petBusiness.labels.labels.alternativeB"), TextResources.Get("petBusiness.labels.labels.alternativeC"), TextResources.Get("petBusiness.labels.labels.alternativeD"), TextResources.Get("petBusiness.labels.labels.alternativeE"), TextResources.Get("petBusiness.labels.labels.alternativeF"), TextResources.Get("petBusiness.labels.labels.alternativeG"), TextResources.Get("petBusiness.labels.labels.alternativeH") };
+        public static string[] Labels {get{return new[]{ TextResources.Get("petBusiness.labels.labels"), TextResources.Get("petBusiness.labels.labels.alternativeA"), TextResources.Get("petBusiness.labels.labels.alternativeB"), TextResources.Get("petBusiness.labels.labels.alternativeC"), TextResources.Get("petBusiness.labels.labels.alternativeD"), TextResources.Get("petBusiness.labels.labels.alternativeE"), TextResources.Get("petBusiness.labels.labels.alternativeF"), TextResources.Get("petBusiness.labels.labels.alternativeG"), TextResources.Get("petBusiness.labels.labels.alternativeH") };}}
         public static readonly int[] Counts = { 6, 8, 8, 4, 5, 8, 6, 6, 6 };
         private static readonly double[] Periods = { .17, .11, .11, .16, .13, .16, .19, .18, .18 };
         private double elapsed;

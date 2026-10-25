@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -65,6 +65,7 @@ namespace Dafeiyu
         {
             using(UsageTracking.BeginScope("greeting"))
             {
+            var language=LanguageRequestScope.Capture();
             cancel.ThrowIfCancellationRequested();
             var snapshot=settings.Copy();var previous=recent==null?new List<string>():recent.ToList();
             string fallback=Fallback(id,name,time,phrase,previous,holiday,stageWelcome);
@@ -76,9 +77,9 @@ namespace Dafeiyu
                 if(message==null || (message.Role!="user" && message.Role!="assistant") || message.Status!="complete")continue;
                 context.Append(message.Role=="user"?"用户：":"伙伴：").AppendLine(message.Content);
             }
-            string persona=PersonaProfiles.LocalizeDefaultPrompt(snapshot.SystemPrompt??"").Replace("{pet_name}",name??TextResources.Get("app.displayName"));
+            string persona=PersonaProfiles.LocalizeDefaultPrompt(snapshot.SystemPrompt??"",language).Replace("{pet_name}",name??TextResources.Get("app.displayName",language));
             var messages=new List<ChatMessage> {
-                new ChatMessage("system",ReplyLanguagePolicy.Apply(persona+"\n"+TextResources.Get("greetingService.instructions.greeting"))),
+                new ChatMessage("system",ReplyLanguagePolicy.Apply(persona+"\n"+TextResources.Get("greetingService.instructions.greeting",language),language)),
                 new ChatMessage("user","当前本地时间："+time.ToString("HH:mm")+HolidayGreetingPhrases.ContextText(holiday,time)+(String.IsNullOrEmpty(stageContext)?"":"\n"+stageContext)+"\n最近聊天背景：\n"+(context.Length==0?"（暂无）":context.ToString())+"\n最近已显示的问候（避免重复）：\n"+String.Join("\n",previous)+"\n请以当前伙伴的语气写一句新的主动问候。")
             };
             using(var bounded=CancellationTokenSource.CreateLinkedTokenSource(cancel))

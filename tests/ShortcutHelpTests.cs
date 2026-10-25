@@ -19,7 +19,7 @@ namespace Dafeiyu.Tests
         static System.Collections.Generic.IEnumerable<DependencyObject> Walk(DependencyObject node){yield return node;for(int i=0;i<VisualTreeHelper.GetChildrenCount(node);i++)foreach(var child in Walk(VisualTreeHelper.GetChild(node,i)))yield return child;}
         static string[] Titles(Window dialog){return Walk(dialog).OfType<TextBlock>().Where(t=>t.Name=="ShortcutCommandTitle").Select(t=>t.Text).ToArray();}
         static object Command(Type type,string group,string title,string gesture)
-        {var command=Activator.CreateInstance(type,true);var flags=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;type.GetField("Group",flags).SetValue(command,group);type.GetField("Title",flags).SetValue(command,title);type.GetField("GestureLabel",flags).SetValue(command,gesture);return command;}
+        {var command=Activator.CreateInstance(type,true);var flags=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;type.GetField("Group",flags).SetValue(command,group);type.GetField("TitleProvider",flags).SetValue(command,(Func<string>)(()=>title));type.GetField("GestureLabel",flags).SetValue(command,gesture);return command;}
         static void ShortcutConfiguration()
         {
             var catalog=typeof(PetWindow).Assembly.GetType("Dafeiyu.ShortcutCatalog");

@@ -86,7 +86,7 @@ internal sealed partial class ChatWindow : Window
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (BoundSession.IsBusy) owner.Run(StopBoundAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
-        addAttachment = Ui.Button("+", OpenAttachmentMenu); addAttachment.Name = "AddAttachment"; addAttachment.Width = addAttachment.Height = 32; addAttachment.Padding = new Thickness(0); addAttachment.HorizontalContentAlignment = HorizontalAlignment.Center; addAttachment.VerticalContentAlignment = VerticalAlignment.Center; ToolTip.SetTip(addAttachment, TextResources.Get("chatWindow.chatWindow.toolTipSetTip"));
+        addAttachment = Ui.Button("+", OpenAttachmentMenu); addAttachment.Name = "AddAttachment"; addAttachment.Width = addAttachment.Height = 32; addAttachment.Padding = new Thickness(0); addAttachment.HorizontalContentAlignment = HorizontalAlignment.Center; addAttachment.VerticalContentAlignment = VerticalAlignment.Center; LocalizedUi.Tooltip(addAttachment,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip")));
         var filesMenu = LocalizedUi.With(new MenuItem { Name = "AttachmentFilesMenu", Header = TextResources.Get("chatWindow.chatWindow.header"), Icon = MenuIcon("M 7,5 L 7,12 Q 7,15 10,15 Q 13,15 13,12 L 13,4 Q 13,1 10,1 Q 7,1 7,4 L 7,11 Q 7,13 9,13 Q 11,13 11,11 L 11,5") },"Header",()=>(TextResources.Get("chatWindow.chatWindow.header"))); filesMenu.Click += (_, _) => owner.Run(PickAttachmentsAsync);
         snapshotMenu = LocalizedUi.With(new MenuItem { Name = "AttachApplicationSnapshot", Header = TextResources.Get("chatWindow.chatWindow.header.alternativeA"), IsEnabled = false },"Header",()=>(TextResources.Get("chatWindow.chatWindow.header.alternativeA"))); snapshotMenu.Click += (_, _) => owner.Run(AttachApplicationSnapshotAsync); SetSnapshotTarget(null);
         goalMenu = new MenuItem { Name = "SetAgentGoal", Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeA")), Icon = MenuIcon("M 14,9 A 5,5 0 1 1 9,4 M 9,9 L 16,2 M 12,2 L 16,2 L 16,6") }; goalMenu.Click += (_, _) => Try(ShowGoalDialog);
@@ -99,9 +99,9 @@ internal sealed partial class ChatWindow : Window
         modeButton = Ui.Button("", OpenModeMenu); modeButton.Name = "ChatModeAction"; modeButton.Width = 104; modeButton.Height = 32; modeButton.Padding = new Thickness(4, 0); modeButton.Background = Brushes.Transparent; modeButton.BorderThickness = new Thickness(0); modeButton.Foreground = DesktopTheme.Brush("#9299A3"); modeButton.HorizontalContentAlignment = HorizontalAlignment.Center; modeButton.VerticalContentAlignment = VerticalAlignment.Center;
         conversationMode = new MenuItem { Name = "ConversationMode", Icon = ModeIcon(false), Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeD"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeE")), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode" }; conversationMode.Click += (_, _) => SelectMode(false);
         workMode = new MenuItem { Name = "WorkMode", Icon = ModeIcon(true), Header = MenuLabel(TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeF"), TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeG")), ToggleType = MenuItemToggleType.Radio, GroupName = "ChatMode", IsEnabled = OperatingSystem.IsWindows() }; workMode.Click += (_, _) => SelectMode(true);
-        ToolTip.SetTip(workMode, TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeA"));
+        LocalizedUi.Tooltip(workMode,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeA")));
         var modeMenu = new ContextMenu { ItemsSource = new[] { conversationMode, workMode } }; modeMenu.Opening += (_, _) => RefreshMode(); modeButton.ContextMenu = modeMenu;
-        var dictate = Ui.AsyncButton("🎙", DictateAsync, owner.Error); dictate.Name = "ChatDictation"; dictate.Width = dictate.Height = 32; dictate.Padding = new Thickness(0); dictate.HorizontalContentAlignment = HorizontalAlignment.Center; dictate.VerticalContentAlignment = VerticalAlignment.Center; ToolTip.SetTip(dictate, TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeB"));
+        var dictate = Ui.AsyncButton("🎙", DictateAsync, owner.Error); dictate.Name = "ChatDictation"; dictate.Width = dictate.Height = 32; dictate.Padding = new Thickness(0); dictate.HorizontalContentAlignment = HorizontalAlignment.Center; dictate.VerticalContentAlignment = VerticalAlignment.Center; LocalizedUi.Tooltip(dictate,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeB")));
         var toolbar = new Grid { Name = "ComposerToolbar", ColumnDefinitions = new ColumnDefinitions("36,104,*,Auto"), Margin = new Thickness(2, 8, 2, 0) };
         toolbar.Children.Add(addAttachment); Grid.SetColumn(modeButton, 1); toolbar.Children.Add(modeButton); models.Name = "ChatModels"; models.MinWidth = 0; models.MaxWidth = 260; models.Margin = new Thickness(0, 0, 4, 0); models.RenderTransform = new TranslateTransform(0, 4); models.HorizontalAlignment = HorizontalAlignment.Right; Grid.SetColumn(models, 2); toolbar.Children.Add(models);
         var actions = Ui.Row(dictate, primary); Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
@@ -115,8 +115,8 @@ internal sealed partial class ChatWindow : Window
         }
         root.Children.Add(history); chatPage = root; imageWorkspace = new ImageWorkspacePage(owner, this);
         var shell = new DockPanel();
-        routeBack = Ui.Button("‹", () => NavigateHistory(-1)); routeBack.Name = "PageBack"; ToolTip.SetTip(routeBack, TextResources.Get("common.back"));
-        routeForward = Ui.Button("›", () => NavigateHistory(1)); routeForward.Name = "PageForward"; ToolTip.SetTip(routeForward, TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeC"));
+        routeBack = Ui.Button("‹", () => NavigateHistory(-1)); routeBack.Name = "PageBack"; LocalizedUi.Tooltip(routeBack,()=>(TextResources.Get("common.back")));
+        routeForward = Ui.Button("›", () => NavigateHistory(1)); routeForward.Name = "PageForward"; LocalizedUi.Tooltip(routeForward,()=>(TextResources.Get("chatWindow.chatWindow.toolTipSetTip.alternativeC")));
         var imagesNav = LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeG")), () => Navigate("images")); imagesNav.Name = "ImagesNavigation";
         var nav = Ui.Row(routeBack, routeForward, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeH")), () => Navigate("chat")), imagesNav); nav.Margin = new Thickness(16, 8, 16, 0); DockPanel.SetDock(nav, Dock.Top); shell.Children.Add(nav); shell.Children.Add(pageHost); Content = shell; ApplyRoute();
         models.SelectionChanged += (_, _) =>
@@ -167,7 +167,7 @@ internal sealed partial class ChatWindow : Window
             catch (Exception e) when (e is ArgumentException or IOException) { }
         }
         snapshotMenu.IsEnabled = snapshotTarget != null && !owner.Live.IsActive && !owner.Dictation.IsBusy;
-        ToolTip.SetTip(snapshotMenu, !OperatingSystem.IsWindows() ? TextResources.Get("chatWindow.setSnapshotTarget.toolTipSetTip") : snapshotTarget == null ? TextResources.Get("chatWindow.setSnapshotTarget.toolTipSetTip.alternativeA") : snapshotTarget.Title);
+        LocalizedUi.Tooltip(snapshotMenu,()=>(!OperatingSystem.IsWindows() ? TextResources.Get("chatWindow.setSnapshotTarget.toolTipSetTip") : snapshotTarget == null ? TextResources.Get("chatWindow.setSnapshotTarget.toolTipSetTip.alternativeA") : snapshotTarget.Title));
     }
     private async Task AttachApplicationSnapshotAsync()
     {
@@ -250,7 +250,7 @@ internal sealed partial class ChatWindow : Window
         var label = LocalizedUi.With(new TextBlock { Text = work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA"), FontSize = 12, Foreground = DesktopTheme.Brush("#9299A3"), VerticalAlignment = VerticalAlignment.Center, RenderTransform = new TranslateTransform(0, 4) },"Text",()=>(work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA")));
         var content = Ui.Row(ModeIcon(work), label); content.RenderTransform = new TranslateTransform(-4, 0); modeButton.Content = content;
         conversationMode.IsChecked = !work; workMode.IsChecked = work;
-        ToolTip.SetTip(modeButton, OperatingSystem.IsWindows() ? (work ? TextResources.Get("chatWindow.refreshMode.toolTipSetTip") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeA")) + TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeB") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeC"));
+        LocalizedUi.Tooltip(modeButton,()=>(OperatingSystem.IsWindows() ? (work ? TextResources.Get("chatWindow.refreshMode.toolTipSetTip") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeA")) + TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeB") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeC")));
     }
     private static Control ModeIcon(bool work)
     {
@@ -339,7 +339,7 @@ internal sealed partial class ChatWindow : Window
             }
             var label = new TextBlock { Text = file.Name, FontSize = 11, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 5, 8, 4) };
             var grid = new Grid(); var content = new StackPanel { Spacing = 0 }; content.Children.Add(preview); content.Children.Add(label); grid.Children.Add(content);
-            var remove = Ui.Button("×", () => { Files.Remove(file); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); ToolTip.SetTip(remove, TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name)); grid.Children.Add(remove);
+            var remove = Ui.Button("×", () => { Files.Remove(file); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
             var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = DesktopTheme.Brush("#E5E7EB"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
         }
     }
@@ -348,7 +348,7 @@ internal sealed partial class ChatWindow : Window
         RefreshMode();
         bool hasDraft = !string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0;
         primary.Content = hasDraft ? "↑" : BoundSession.IsBusy ? "■" : "≋";
-        ToolTip.SetTip(primary, hasDraft ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip") : BoundSession.IsBusy ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeA") : TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeB"));
+        LocalizedUi.Tooltip(primary,()=>(hasDraft ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip") : BoundSession.IsBusy ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeA") : TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeB")));
         addAttachment.IsEnabled = !owner.Live.IsActive && !owner.Dictation.IsBusy;
     }
     private void ResizeBubbles() { foreach (var view in rendered.Values) if (view.IsUser) view.MaxWidth = Math.Max(1, history.Bounds.Width / 2); }

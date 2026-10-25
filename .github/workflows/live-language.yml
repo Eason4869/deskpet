@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Build shared language tests
         run: dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1 -nr:false
-      - name: Prepared catalogs and durable language save
+      - name: Catalogs, durable saves and request language snapshots
         run: dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only
   ui:
     strategy:

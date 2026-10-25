@@ -180,7 +180,7 @@ namespace Dafeiyu
         }
         UIElement ModelContent(string id)
         {
-            var row=new DockPanel();var edit=UiIcons.Button("settings",TextResources.Get("textProviderEditor.modelContent.uiIcons"));edit.Name="EditConfiguredModel";edit.Width=edit.Height=26;edit.MinHeight=26;edit.Padding=new Thickness(4);edit.Margin=new Thickness(6,0,0,0);edit.Click+=delegate{OpenModelEditor(id);};DockPanel.SetDock(edit,Dock.Right);row.Children.Add(edit);
+            var row=new DockPanel();var edit=UiIcons.Button("settings",()=>(TextResources.Get("textProviderEditor.modelContent.uiIcons")));edit.Name="EditConfiguredModel";edit.Width=edit.Height=26;edit.MinHeight=26;edit.Padding=new Thickness(4);edit.Margin=new Thickness(6,0,0,0);edit.Click+=delegate{OpenModelEditor(id);};DockPanel.SetDock(edit,Dock.Right);row.Children.Add(edit);
             if(id==selected.Connection.Model){var badge=new Border{Child=LocalizedUi.Text(()=>(TextResources.Get("textProviderEditor.modelContent.text")),10,Ui.Blue),Background=Ui.Pale,CornerRadius=new CornerRadius(5),Padding=new Thickness(6,3,6,3),Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center};DockPanel.SetDock(badge,Dock.Right);row.Children.Add(badge);}
             var labels=new StackPanel();var title=Ui.Text(selected.DisplayName(id),12);title.FontWeight=FontWeights.SemiBold;title.TextWrapping=TextWrapping.NoWrap;title.TextTrimming=TextTrimming.CharacterEllipsis;labels.Children.Add(title);
             if(selected.DisplayName(id)!=id){var identifier=Ui.Text(id,11,Ui.Muted);identifier.Margin=new Thickness(0,3,0,0);identifier.TextWrapping=TextWrapping.NoWrap;identifier.TextTrimming=TextTrimming.CharacterEllipsis;labels.Children.Add(identifier);}

@@ -337,18 +337,18 @@ namespace Dafeiyu
             // and WPF drops mouse capture. Keep the existing foreground owner;
             // normal popup capture still dismisses the menu on an outside click.
             menu.StaysOpen=false;menu.Opened+=delegate {Dispatcher.BeginInvoke(DispatcherPriority.Input,new Action(delegate {if(menu.IsOpen && !GuideActive && !DesktopInterop.ForegroundBelongsToPet())DesktopInterop.ForegroundMenu(menu);}));};
-            AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"},"Header",()=>(TextResources.Get("petWindow.createMenu.header")));menu.Items.Add(appearance);
+            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"},"Header",()=>(TextResources.Get("petWindow.createMenu.header")));menu.Items.Add(appearance);
             menu.Opened+=delegate{RefreshAppearanceMenu(appearance);};RefreshAppearanceMenu(appearance);
-            AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings); menu.Items.Add(new Separator());
+            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings); menu.Items.Add(new Separator());
             var actions=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeA") },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeA")));
             for(int i=0;i<AnimationPlayer.States.Length;i++)
             {
-                string state=AnimationPlayer.States[i]; var item=new MenuItem { Header=AnimationPlayer.Labels[i] };
+                int labelIndex=i;string state=AnimationPlayer.States[i]; var item=LocalizedUi.With(new MenuItem { Header=AnimationPlayer.Labels[i] },"Header",()=>AnimationPlayer.Labels[labelIndex]);
                 item.Click+=delegate { PlayUserAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
             }
             menu.Items.Add(actions);
             var interactions=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeB")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeB")));
-            AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu"),"petting");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeA"),"poked");AddInteractionMenu(interactions,TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeB"),"feeding");
+            AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu"),"petting");AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeA"),"poked");AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeB"),"feeding");
             var sleep=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeC")));sleep.Click+=delegate {PlayUserInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
             var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayUserInteraction("special");};interactions.Items.Add(firstSkill);
             var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayUserInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
@@ -363,7 +363,7 @@ namespace Dafeiyu
             var top=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeG"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeG")));
             top.Click+=delegate { Settings.Topmost=top.IsChecked; ApplySettings(); }; menu.Items.Add(top);
             menu.Opened+=delegate { pause.IsChecked=Paused; follow.IsChecked=Settings.FollowCursor; wander.IsChecked=Settings.Wander; top.IsChecked=Settings.Topmost; };
-            menu.Items.Add(new Separator()); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeC"),ReturnHome); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeD"),HidePet); AddMenu(menu,TextResources.Get("petWindow.createMenu.addMenu.alternativeE"),Close);
+            menu.Items.Add(new Separator()); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeC"),ReturnHome); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeD"),HidePet); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeE"),Close);
             return menu;
         }
         private void RefreshAppearanceMenu(MenuItem menu)
@@ -377,10 +377,10 @@ namespace Dafeiyu
                 item.Click+=async delegate{await RequestSkinAsync(selected,CompanionSelectionOrigin.PassiveMenu,null);foreach(MenuItem entry in menu.Items)entry.IsChecked=(string)entry.Tag==Skin.PickerKey;};menu.Items.Add(item);
             }
         }
-        private static void AddMenu(ContextMenu menu,string text,Action action)
-        { var item=new MenuItem { Header=text }; item.Click+=delegate { action(); }; menu.Items.Add(item); }
-        private void AddInteractionMenu(MenuItem menu,string text,string action)
-        {var item=new MenuItem {Header=text};item.Click+=delegate {PlayUserInteraction(action);};menu.Items.Add(item);}
+        private static void AddMenu(ContextMenu menu,Func<string> text,Action action)
+        { var item=LocalizedUi.With(new MenuItem { Header=text() },"Header",text); item.Click+=delegate { action(); }; menu.Items.Add(item); }
+        private void AddInteractionMenu(MenuItem menu,Func<string> text,string action)
+        {var item=LocalizedUi.With(new MenuItem {Header=text()},"Header",text);item.Click+=delegate {PlayUserInteraction(action);};menu.Items.Add(item);}
         private void Tick(object sender,EventArgs args)
         {
             ProbeKeepsakeFrame();

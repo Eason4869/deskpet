@@ -116,10 +116,12 @@ namespace Dafeiyu
         public static bool IsToolError(string result)
         {if(result==null)return false;foreach(string prefix in errorPrefixes.Value)if(result.StartsWith(prefix,StringComparison.Ordinal))return true;return false;}
         public static string Get(string key){return Selection.Get(key);}
+        public static string Get(string key,LanguageSelection language){if(language==null)throw new ArgumentNullException("language");return language.Get(key);}
         public static LocalizedMessage Message(string key,params object[] args){return new LocalizedMessage(key,args);}
         // Explicit catalog reads retain one requested locale without changing startup selection.
         internal static string Get(string key,TextCatalog source){if(source==null)throw new ArgumentNullException("source");return source.Get(key);}
         internal static string FormatForCatalog(TextCatalog source,string key,params object[] args){if(source==null)throw new ArgumentNullException("source");return source.Format(key,args);}
+        public static string FormatForLanguage(LanguageSelection language,string key,params object[] args){if(language==null)throw new ArgumentNullException("language");return language.Format(key,args);}
         public static string Format(string key,params object[] args){return Selection.Format(key,args);}
         public static string Format(IFormatProvider provider,string key,params object[] args){return String.Format(provider,Selection.Get(key),args);}
         // Error reporting must never recursively require a broken embedded catalog.

@@ -87,5 +87,6 @@ namespace Dafeiyu
             toggle.Checked+=delegate {pet.SetReplySpeech(true);sync();};toggle.Unchecked+=delegate {pet.SetReplySpeech(false);sync();};
             toggle.Loaded+=delegate {sync();pet.ReplySpeechChanged+=sync;};toggle.Unloaded+=delegate {pet.ReplySpeechChanged-=sync;};sync();return toggle;
         }
-public static Button Button(System.Func<string> icon,string label,bool primary=false){return LocalizedUi.With(Button(icon(),label,primary),"Content",icon);}    }
+        public static Button Button(string icon,System.Func<string> label,bool primary=false){var button=Button(icon,label(),primary);LocalizedUi.Automation(button,label);return button;}
+    }
 }

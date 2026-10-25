@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.0-dev.2 — In development (unreleased)
+
+- Apply language changes to existing WPF and Avalonia controls while preserving drafts, unsaved settings, window state, selections and running work.
+- Replace the guide language restart action with Apply and continue; retain recovery and update restarts that are still needed.
+- Save only language preferences. Existing configuration read/write failures preserve the prior configuration and effective language.
+- Keep an in-flight reply, Agent subrequests and Live connection in their original language; new requests use the new language. Live system notices refresh while history and custom text remain unchanged.
+- Validate through a staged draft PR. See the [acceptance record](docs/localization/live-language-acceptance.md) for evidence and platform limitations.
+
 ## 0.11.0-dev.1 — Source preview (no binary Release published)
 
 Based on the explicitly selected v0.10.5-dev.3. See the [local acceptance snapshot](docs/companion-relationship/acceptance.md) for Windows candidates and complete regressions; macOS hardware remains unverified. A source tag does not announce a downloadable binary Release.

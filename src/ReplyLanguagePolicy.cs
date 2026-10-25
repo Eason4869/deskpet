@@ -17,6 +17,8 @@ namespace Dafeiyu
             return prompt;
         }
         public static string Apply(string systemPrompt)
-        {return WithoutInstruction(systemPrompt)+Begin+TextResources.Get("languages.replyInstruction")+End;}
+        {return Apply(systemPrompt,LanguageRequestScope.Capture());}
+        public static string Apply(string systemPrompt,LanguageSelection language)
+        {return WithoutInstruction(systemPrompt)+Begin+TextResources.Get("languages.replyInstruction",language)+End;}
     }
 }
