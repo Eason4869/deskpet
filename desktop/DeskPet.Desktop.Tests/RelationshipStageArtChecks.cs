@@ -18,11 +18,15 @@ internal static class RelationshipStageArtChecks
         var saved=new RelationshipSnapshot{State=new CompanionRelationshipState{CompanionId="official:"+character,FirstLocalDate="2026-07-18",Milestones=new List<RelationshipMilestone>{new RelationshipMilestone{StageId=stage,EarnedLocalDate="2026-10-25"}}}};
         return RelationshipCardData.FromSnapshot(saved,stage,character=="e-bao"?"E包":character=="dafeiyu"?"大肥鱼":character=="marfu"?"玛尔芙":character=="xiaobei"?"小贝":"咕嘎");
     }
-    internal static int Run(string locale,bool resources,bool quick=false)
+    internal static int Run(string locale,bool resources,bool quick=false,bool titleCorpus=false)
     {
         TextResources.ConfigureStartupLanguage(locale);
+        string scalar=RelationshipContent.StageName("first_meeting").Substring(0,1);
+        var threeLines=new TextBlock{Text=scalar+"\n"+scalar+"\n"+scalar,FontFamily=RelationshipTitleFont.FontForLocale(locale,scalar),FontSize=32,Width=312,Height=300};
+        threeLines.Measure(new Size(312,300));threeLines.Arrange(new Rect(0,0,312,300));
+        Check(threeLines.TextLayout.TextLines.Count==3,"actual text-line detector distinguishes a three-line title");
         if(resources)count+=RelationshipStageArtContractChecks.Run(RelationshipStageArtSource.OpenResource);
-        string directory=Path.GetFullPath("work/f4b/cards/avalonia/"+locale);Directory.CreateDirectory(directory);
+        string directory=Path.GetFullPath("work/localization-completion/stage-art/cards/avalonia/"+locale);Directory.CreateDirectory(directory);
         using(var scenes=new RelationshipStageArtSource()){
             if(resources){
                 foreach(var character in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}){
@@ -35,9 +39,9 @@ internal static class RelationshipStageArtChecks
                 }
                 CacheOwnership();RasterOrnaments();
             }
-            var characters=(locale=="zh_CN"||locale=="de_DE")?new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}:new[]{"e-bao"};
+            var characters=!titleCorpus&&(locale=="zh_CN"||locale=="de_DE")?new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}:new[]{"e-bao"};
             foreach(string character in characters)foreach(string stage in RelationshipRules.Stages)foreach(bool dark in new[]{false,true}){
-                if(quick&&(character!="e-bao"||(stage!="first_meeting"&&stage!="best_friend")))continue;
+                if(quick&&!titleCorpus&&(character!="e-bao"||(stage!="first_meeting"&&stage!="best_friend")))continue;
                 var data=Data(character,stage);var image=scenes.Get(data);Check(image!=null,"selected own scene");
                 var visual=RelationshipCardRenderer.Create(data,new CompanionPortraitSource(null),dark,image);
                 visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));
@@ -47,7 +51,7 @@ internal static class RelationshipStageArtChecks
                     var probe=new TextBlock{Text=text.Text,Width=text.Width,FontSize=text.FontSize,FontFamily=text.FontFamily,TextWrapping=text.TextWrapping};
                     probe.Measure(new Size(text.Width,Double.PositiveInfinity));Check(probe.DesiredSize.Height<=text.Height+.5,"whole text fits "+locale+" "+stage+" "+text.Name);
                 }
-                Check(title.TextLayout.Height<=title.FontSize*2.7,"title at most two native lines");
+                Check(title.TextLayout.TextLines.Count>=1&&title.TextLayout.TextLines.Count<=2,"title at most two actual text lines");
                 var ornament=visual.Children.OfType<Avalonia.Controls.Shapes.Path>().Single();
                 Check(Canvas.GetTop(ornament)>=Canvas.GetTop(title)+(double)title.Tag!+8&&ornament.Height>=20&&ornament.Height<=26,"ornament is separate strip with gap");
                 var ink=ornament.RenderedGeometry!.Bounds;Check(ink.X>=0&&ink.Y>=0&&ink.Right<=210&&ink.Bottom<=26,"actual native ornament geometry stays within 210x26 strip");
@@ -76,7 +80,7 @@ internal static class RelationshipStageArtChecks
             for(int y=0;y<60;y++)for(int x=0;x<400;x++)if(bytes[y*buffer.RowBytes+x*4+3]>0){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);}
             Console.WriteLine("GEOMETRY "+style+" raw="+Geometry.Parse(RelationshipCardDecoration.PathFor(style)).Bounds+" transformed="+ornament.Data!.Bounds+" rendered="+ornament.RenderedGeometry!.Bounds+" matrix="+ornament.Data.Transform);
             Console.WriteLine("RASTER "+style+" "+dark+" "+left+","+top+".."+right+","+bottom);
-            var directory=Path.GetFullPath("work/f4b/ornament-proofs/avalonia");Directory.CreateDirectory(directory);image.Save(Path.Combine(directory,style+(dark?"-dark":"-light")+".png"),new PngBitmapEncoderOptions());
+            var directory=Path.GetFullPath("work/localization-completion/stage-art/ornament-proofs/avalonia");Directory.CreateDirectory(directory);image.Save(Path.Combine(directory,style+(dark?"-dark":"-light")+".png"),new PngBitmapEncoderOptions());
             if(style=="heartfelt")Check(bytes[14*buffer.RowBytes+195*4+3]>0,"trailing horizontal line survives actual raster rendering");
             bool valid=right>=left&&left>=0&&right<210&&top>=0&&bottom<26;allValid&=valid;if(valid)Check(true,"actual transparent raster ornament ink bounds "+style+" "+dark);
         }
@@ -88,7 +92,7 @@ internal static class RelationshipStageArtChecks
             var source=RelationshipStageArtSource.CreateProvider().Capture("official:e-bao","e-bao","halloween","halloween-2026","1.0.0");byte[] raw;
             using(var stream=source.OpenRead())raw=RelationshipStageArt.ReadVerified(stream,source.Descriptor);
             using var memory=new MemoryStream(raw);using var holiday=Bitmap.DecodeToWidth(memory,800);
-            string directory=Path.GetFullPath("work/f4b/ornament-full-cards/avalonia");Directory.CreateDirectory(directory);
+            string directory=Path.GetFullPath("work/localization-completion/stage-art/ornament-full-cards/avalonia");Directory.CreateDirectory(directory);
             foreach(string style in RelationshipRules.Stages.Concat(new[]{"halloween"}))foreach(bool dark in new[]{false,true}){
                 var data=Data("e-bao",style=="halloween"?"first_meeting":style);var visual= RelationshipCardRenderer.Create(data,new CompanionPortraitSource(null),dark,style=="halloween"?holiday:scenes.Get(data));
                 if(style=="halloween"){
@@ -133,7 +137,7 @@ internal static class RelationshipStageArtChecks
     }
     internal static int Sample(string locale)
     {
-        TextResources.ConfigureStartupLanguage(locale);string directory=Path.GetFullPath("work/f4b/title-samples/avalonia/"+locale);Directory.CreateDirectory(directory);
+        TextResources.ConfigureStartupLanguage(locale);string directory=Path.GetFullPath("work/localization-completion/stage-art/title-samples/avalonia/"+locale);Directory.CreateDirectory(directory);
         using(var scenes=new RelationshipStageArtSource())foreach(bool dark in new[]{false,true}){
             var data=Data("e-bao","first_meeting");var image=scenes.Get(data);
             var visual= RelationshipCardRenderer.Create(data,new CompanionPortraitSource(null),dark,image);

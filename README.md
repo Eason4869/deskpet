@@ -1,5 +1,7 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
+开发中：0.11.0-dev.1 的[伙伴主页、关系与数据管理说明](docs/companion-relationship/user-guide.md)。该源码版本尚未发布；下方下载入口继续指向实际已发布版本。
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">

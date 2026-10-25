@@ -1,5 +1,7 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
+In development: the 0.11.0-dev.1 [companion, relationship and maintenance guide](docs/companion-relationship/user-guide.en.md). This source version is not released; download links below continue to refer to published versions.
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">

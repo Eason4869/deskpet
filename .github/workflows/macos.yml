@@ -9,6 +9,10 @@ on:
       - 'installer/macos/**'
       - 'tools/mac_package.py'
       - 'tools/build_official_companions.py'
+      - 'tools/fonts/**'
+      - 'tools/verify_localization.py'
+      - 'tools/verify_language_packs.py'
+      - 'docs/localization/**'
       - 'Build.ps1'
       - 'tests/**'
       - '.github/workflows/macos.yml'
@@ -84,6 +88,8 @@ jobs:
       REPORT_ROOT: work/macos-reports-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: desktop/global.json
@@ -102,6 +108,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tests/AgentJobRegistrationTests.py | tee "$REPORT_ROOT/agent-jobs-registration.log"
+          python3 tests/FeatureResourceProvenanceTests.py
+          python3 -m pip install -r tools/fonts/requirements.txt
+          python3 tools/fonts/relationship_title_fonts.py --check
+          python3 tools/fonts/test_relationship_title_fonts.py
           python3 tests/LocalizationAuditTests.py
           python3 tests/HelperResourceTests.py
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"

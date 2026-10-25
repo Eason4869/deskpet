@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
         static readonly string[] Names={"简体中文","繁體中文","English","日本語","한국어","Français (France)","Deutsch (Deutschland)","हिन्दी (भारत)","Bahasa Indonesia","Italiano (Italia)","Português (Brasil)","Español (Latinoamérica)","Español (España)"};
         static readonly string[] MenuLabels={"语言","語言","Language","言語","언어","Langue","Sprache","भाषा","Bahasa","Lingua","Idioma","Idioma","Idioma"};
         static readonly string[] CompanionLabels={"桌面伙伴","桌面夥伴","Desktop Companion","デスクトップコンパニオン","데스크톱 동반자","Compagnon de bureau","Desktopbegleiter","डेस्कटॉप साथी","Teman desktop","Compagno desktop","Companhia de desktop","Compañía de escritorio","Compañero de escritorio"};
-        static readonly string[] Hashes={"6a16d9c95daeb40013c6bc26d3c3012923673e043a81d9d0c587d332a2d07b11","113d4335f34c511f094598bde9c7ff76c3b8922c3c91bf6c2aa02463f53b17e7","7a35b2941fffff9a1551026cda47f91bcb201fcba412c394c32b4d27de42c758","80964f823fbde3e3b2f1e729fba7e47fe96931e5454b5ef956b2de4788429c21","a80d68bf55ee5e5d4f8bdbdcdf8785f4f5bc9038aa7d8f534714cc86bc754e5f","ae3f2a9d8fda100575234a31a79cbfb62c651aa1df3d3f1110c925ea74041e66","d1776d8ea5c6c09660ebb2417df49fb86eb1f4ef13fa8755ba20e12a4ccb536b","236d1d68cdf31457b58cb00ae866a2a8589fa9eb0f94f989d6276d692299ba9d","1cc54d9a8069fe952016b6c0f97ed0dda335782a468ceb727a128e2b3a4023f2","d6c042e2e9c56a5feabbbfb76b014540ebf0425126689988f598efc08029879c","715164a808342a4f6ff52645531619a6370f40099b6cc859a38820eb60fdb074","90ac6511598b96f262ae488e6a8670549e9fc2cae7081e7932c61b948b5ca62b","f7e0b729c1233bff58d56c377607f8a6413e8cb14355625e2d404b6574c1ed89"};
+        static readonly string[] Hashes={"5b48d1031abb11cba313b4063d3a334b6c71ef804d1bee8ca0ca476ca3836bb1","7c41c1093bad7f8760eda10e0242e76a07c00faa15e93eaf0afeda2125c44faa","94aaa0606400629f1a6a09d6fed5dfef4e36337f2cbc2218ab937e098e9f02b4","23b4df487e79de1628e2fb6487b0a59d241242198d6d64875cce69a0bcce2c36","c9d613be519d243068d0202a7d7d809e53ab9dd6a4dcfdc6e3f7b51e1a9b4c95","8e731268035c91a5ef16773fdc8119e0f12a2ccfce51f11d920422befc256a3a","6c0621b9f19404fcfda4f415dd46cc2237a58beb2de192b423c4d65ed9b47990","caf86b16cd8adb021fab41faf35462e2b63e5ba59f428f279a23e1657f502a1b","abe6a982f61e1368be1eb58b561f683c392c0cb631bf4f80dea632b499160d96","d345ba29daf8e12b38b81c85929b515accf76de4cec37e7ceaa56ee206dc2289","c9e5542f734a6ffc6ff7da02155ea896c9d148158cbbf2e9cffc2bea07b1cb34","73d0a831fda6fb6aa130259b9e81b069d4dfacac8f6ab23bb84a638592e07011","12b65ac5fe45bb4e7f2b785a5f9170c65f277c980d1e96c2cd0069b117cf0b3d"};
         static void Check(bool yes,string why){if(!yes)throw new Exception(why);checks++;Console.WriteLine("PASS "+why);}
         static object Call(Type type,string method,params object[] args)
         {
@@ -35,12 +35,38 @@ namespace Dafeiyu.Tests
             for(int i=0;i<Codes.Length;i++)using(var stream=typeof(TextResources).Assembly.GetManifestResourceStream("Dafeiyu.Locales."+Codes[i]+".json"))
             {
                 Check(stream!=null,"embedded language exists: "+Codes[i]);
-                if(Hashes[i]!=null)using(var hash=SHA256.Create())Check(BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant()==Hashes[i],"embedded bytes match reviewed translation supplement: "+Codes[i]);
+                if(Hashes[i]!=null)using(var hash=SHA256.Create())Check(BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant()==Hashes[i],"embedded bytes match versioned translation provenance: "+Codes[i]);
                 stream.Position=0;using(var reader=new StreamReader(stream))
                 {
                     var entries=new JavaScriptSerializer{MaxJsonLength=4*1024*1024}.Deserialize<Dictionary<string,string>>(reader.ReadToEnd());
                     Check(entries.Keys.OrderBy(key=>key,StringComparer.Ordinal).SequenceEqual(canonicalKeys),"raw locale has every canonical key without relying on fallback: "+Codes[i]);
                 }
+            }
+        }
+        static void ExplicitCatalogReadsPreserveRequestedLocale()
+        {
+            string global=TextResources.CurrentLanguage,requested=global=="en_US"?"ja_JP":"en_US";var catalog=Catalog(requested);
+            var get=typeof(TextResources).GetMethod("Get",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic,null,new[]{typeof(string),typeof(TextCatalog)},null);
+            var format=typeof(TextResources).GetMethod("FormatForCatalog",BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic,null,new[]{typeof(TextCatalog),typeof(string),typeof(object[])},null);
+            Check(get!=null&&format!=null,"literal resource calls support an explicit typed catalog");
+            Check((string)get.Invoke(null,new object[]{"relationship.stage.firstMeeting",catalog})==catalog.Get("relationship.stage.firstMeeting"),"typed Get reads requested catalog");
+            string stage=RelationshipContent.StageName("first_meeting");
+            Check((string)format.Invoke(null,new object[]{catalog,"relationship.aiContext",new object[]{stage}})==catalog.Format("relationship.aiContext",stage),"typed Format reads requested catalog");
+            Check(RelationshipContent.Welcome("first_meeting",null,requested)==catalog.Get("relationship.welcome.firstMeeting")&&RelationshipContent.Interaction("best_friend",null,requested)==catalog.Get("relationship.interaction.bestFriend"),"generic lines preserve explicit locale distinct from process locale");
+            Check(RelationshipContent.StageContext("first_meeting",requested)==catalog.Format("relationship.aiContext",catalog.Get("relationship.stage.firstMeeting")),"stage context uses explicit title and template catalog");
+            Check(TextResources.CurrentLanguage==global,"explicit resource reads do not mutate frozen process language");
+            Check(TextResources.Format(null,"relationship.home.today",12)==String.Format(null,TextResources.Get("relationship.home.today"),12),"original null-provider overload remains unambiguous and preserves formatting");
+        }
+        static void IndependentFeatureTextAndFormats()
+        {
+            using(var stream=typeof(LanguagePackTests).Assembly.GetManifestResourceStream("Dafeiyu.Tests.FeatureLocalizationBaseline"))
+            {
+                Check(stream!=null,"independent feature text/format baseline is embedded");
+                string json;using(var reader=new StreamReader(stream))json=reader.ReadToEnd();
+                var fixture=(Dictionary<string,object>)new JavaScriptSerializer().DeserializeObject(json);
+                var rows=((object[])fixture["resources"]).Cast<Dictionary<string,object>>().ToArray();
+                foreach(var row in rows)Check(Catalog("zh_CN").Get((string)row["key"])==(string)row["expected"],"independent feature text "+row["key"]);
+                foreach(string code in Codes){foreach(var row in rows.Where(x=>(bool)x["format"]))Catalog(code).Format((string)row["key"],Enumerable.Range(0,(int)row["argument_count"]).Select(i=>(object)3).ToArray());Check(true,"all independent new feature formats render: "+code);}
             }
         }
         static void ChoicesAndSavedSelection()
@@ -157,7 +183,7 @@ namespace Dafeiyu.Tests
         {return args.Length==0?RunAll():args.Length==3&&args[0]=="--language-startup-fixture"?RunStartupFixture(args[1],args[2]):2;}
         public static int RunAll()
         {
-            checks=0;int failures=0;foreach(var test in new Action[]{EmbeddedPacksMatchReviewedSupplement,ChoicesAndSavedSelection,MissingKeysAndFormatsUseTheCanonicalFallback,TranslatedErrorsRetainTheirFailureMeaning,SavedSelectionAppliesInANewProcess})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
+            checks=0;int failures=0;foreach(var test in new Action[]{ExplicitCatalogReadsPreserveRequestedLocale,IndependentFeatureTextAndFormats,EmbeddedPacksMatchReviewedSupplement,ChoicesAndSavedSelection,MissingKeysAndFormatsUseTheCanonicalFallback,TranslatedErrorsRetainTheirFailureMeaning,SavedSelectionAppliesInANewProcess})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("LanguagePackTests: "+checks+" passed");return failures==0?0:1;
         }
     }

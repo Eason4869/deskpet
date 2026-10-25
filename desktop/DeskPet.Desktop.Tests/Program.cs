@@ -56,8 +56,8 @@ try
     if(args.Any(a=>a.StartsWith("--holiday-keepsake-ui="))){Console.WriteLine("HolidayKeepsakeUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.Run(args.Single(a=>a.StartsWith("--holiday-keepsake-ui=")).Split('=')[1],args.Contains("--sample"))+" passed");return;}
     if(args.Contains("--relationship-ornament-only")){Console.WriteLine("OrnamentOnly: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.OrnamentOnly()+" passed");return;}
     if(args.Any(a=>a.StartsWith("--relationship-stage-art-sample="))){Console.WriteLine("RelationshipStageArtSample: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Sample(args.Single(a=>a.StartsWith("--relationship-stage-art-sample=")).Split('=')[1])+" passed");return;}
-    if(args.Any(a=>a.StartsWith("--relationship-stage-art="))){Console.WriteLine("RelationshipStageArtChecks: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(args.Single(a=>a.StartsWith("--relationship-stage-art=")).Substring(25),args.Contains("--resources"),args.Contains("--quick"))+" passed");return;}
-    if(args.Contains("--relationship-title-font-only")){Console.WriteLine("RelationshipTitleFontChecks: "+DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/f4a/title-proofs"))+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--relationship-stage-art="))){Console.WriteLine("RelationshipStageArtChecks: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(args.Single(a=>a.StartsWith("--relationship-stage-art=")).Substring(25),args.Contains("--resources"),args.Contains("--quick"),args.Contains("--title-corpus"))+" passed");return;}
+    if(args.Contains("--relationship-title-font-only")){Console.WriteLine("RelationshipTitleFontChecks: "+DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"))+" passed");return;}
     if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
     if(args.Contains("--first-home-visit")){Console.WriteLine("FirstHomeVisitUi: "+CompanionHomeUiChecks.RunFirstVisit(Path.Combine(directory,"first-home"))+" passed");return;}
@@ -106,6 +106,8 @@ try
     if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
+    if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"));
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"));
@@ -765,6 +767,23 @@ finally
     // Only remove this run's newly created GUID directory.
     if (Directory.Exists(directory)) Directory.Delete(directory, true);
 }
+
+int CompanionLifecycleSmoke(string root)
+{
+    Directory.CreateDirectory(root);
+    int total=DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"));
+    total+=DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(TextResources.CurrentLanguage,true,true);
+    // Core negative cases deliberately retain read-only/reparse fixtures. Keep their
+    // owned GUID evidence outside the generic native UI temporary-root teardown.
+    string core=Path.GetFullPath(Path.Combine("work","localization-completion","holiday-core-default",Guid.NewGuid().ToString("N")));
+    Console.WriteLine("OWNED_HOLIDAY_CORE_RETAINED "+core);
+    total+=Result(Task.Run(()=>Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run(core,new HolidayKeepsakeSceneValidator())));
+    total+=Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.Combine(root,"holiday-read-boundary"),new HolidayKeepsakeSceneValidator())));
+    total+=DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle();
+    total+=CompanionHomeUiChecks.Run(Path.Combine(root,"home"),TextResources.CurrentLanguage);
+    return total;
+}
+
 
 sealed class DelayedFileTransfer : IAsyncDataTransfer, IAsyncDataTransferItem
 {

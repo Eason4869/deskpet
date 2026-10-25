@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
             try
             {
                 folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"about-smoke-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
-                pet=new PetWindow(null,new PetSettings{AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false,HideOnFullscreen=false},new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowSettings();Pump();var settings=app.Windows.Cast<Window>().SelectMany(w=>All<SettingsPage>(w)).Single();settings.SelectNavigation(4);Pump();
+                pet=new PetWindow(null,new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false,HideOnFullscreen=false},new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowSettings();Pump();var settings=app.Windows.Cast<Window>().SelectMany(w=>All<SettingsPage>(w)).Single();settings.SelectNavigation(4);Pump();
                 var network=Find<Expander>(settings,"UpdateNetwork");Check((string)network.Header=="网络加速" && !network.IsExpanded,"network acceleration stays collapsed by default");
                 Check(Find<Button>(settings,"UninstallApplication")!=null && UpdateInstall.GetUninstallerPath(AppDomain.CurrentDomain.BaseDirectory)==null,"uninstall entry exists and portable test directory has no registered uninstaller");Save(settings,"about-collapsed.png");
                 network.IsExpanded=true;Pump();var direct=Find<RadioButton>(settings,"UpdateDirect");var mirror=Find<RadioButton>(settings,"UpdateMirror");var proxy=Find<RadioButton>(settings,"UpdateProxy");
@@ -37,12 +37,18 @@ namespace Dafeiyu.Tests
                 settings.HostWindow.Close();pet.ShowSettings();Pump();settings=app.Windows.Cast<Window>().SelectMany(w=>All<SettingsPage>(w)).Single();settings.SelectNavigation(4);Pump();network=Find<Expander>(settings,"UpdateNetwork");network.IsExpanded=true;Pump();
                 Check(Find<RadioButton>(settings,"UpdateProxy").IsChecked==true && Find<TextBox>(settings,"UpdateProxyAddress").Text=="http://localhost:17894","reopening restores the visible selected mode and address");
                 settings.HostWindow.Width=700;settings.HostWindow.Height=430;Pump();var button=Find<Button>(settings,"UninstallApplication");var bounds=button.TransformToAncestor(settings).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0 && bounds.Right<=settings.ActualWidth && bounds.Top>=0 && bounds.Bottom<=settings.ActualHeight,"uninstall entry is visible without scrolling at minimum size");Save(settings,"about-minimum.png");
-                settings.HostWindow.Close();pet.ShowOnboarding();Pump();var guide=app.Windows.OfType<OnboardingWindow>().Single();Check(guide.Title.StartsWith("配置引导") && (string)Find<Button>(guide,"GuideLater").Content=="跳过本步","configuration guide uses updated labels");
-                var skip=Find<Button>(guide,"GuideSkip");var step=Find<Button>(guide,"GuideLater");Check(step.TransformToAncestor(guide).Transform(new Point()).X<skip.TransformToAncestor(guide).Transform(new Point()).X && (string)skip.Content=="结束引导","step skip and explicit guide finish have separate reachable actions");Save(guide,"configuration-guide.png");guide.Close();
+                settings.HostWindow.Close();WaitUntil(()=>!pet.DialogueBusy,"settings owner workspace close must drain before guide entry");pet.ShowOnboarding();Pump();var guide=app.Windows.OfType<OnboardingWindow>().Single();
+                Check(guide.IsVisible&&guide.Title.StartsWith("配置引导")&&guide.CurrentLessonId=="language"&&Find<ComboBox>(guide,"GuideLanguagePicker").IsVisible,"configuration guide opens the actual current language page");
+                Find<Button>(guide,"GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(guide.CurrentLessonId=="welcome"&&Find<Button>(guide,"GuideExplore").IsVisible&&(string)Find<Button>(guide,"GuideNext").Content=="开始引导","current guide offers formal setup and independent exploration");
+                Find<Button>(guide,"GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check((string)Find<Button>(guide,"GuideLater").Content=="跳过本步","configuration guide uses updated labels");
+                var skip=Find<Button>(guide,"GuideSkip");var step=Find<Button>(guide,"GuideLater");Check(step.IsVisible&&skip.IsVisible&&step.TransformToAncestor(guide).Transform(new Point()).X<skip.TransformToAncestor(guide).Transform(new Point()).X&&(string)skip.Content=="结束引导","step skip and explicit guide finish have separate reachable actions");Save(guide,"configuration-guide.png");guide.Close();
                 Console.WriteLine("About smoke: "+passed+" passed; screenshots: "+folder);return 0;
             }
             catch(Exception e){Console.WriteLine(e);return 1;}finally{if(pet!=null)pet.Close();Pump();app.Shutdown();}
         }
+        static void WaitUntil(Func<bool> ready,string failure){var deadline=DateTime.UtcNow.AddSeconds(5);while(!ready()){if(DateTime.UtcNow>deadline)throw new TimeoutException(failure);Pump();}}
         static void Blur(TextBox field){field.RaiseEvent(new RoutedEventArgs(UIElement.LostFocusEvent));}
         static System.Collections.Generic.IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}
         internal static void TestMirrors(SettingsPage settings)

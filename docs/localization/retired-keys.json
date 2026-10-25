@@ -4,5 +4,22 @@
   "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
   "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeA": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
   "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeB": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
-  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history."
+  "petOfficialCompanions.downloadAllOfficialAsync.dialogFailure.alternativeC": "S16a replaces the per-window bulk download dialog with application-owned preparation and its shared retry/cancel status. Retain the original translated resources and independent baseline for migration history.",
+  "aboutPanel.uninstall.updatesReportValidation": "The explicit uninstall confirmation and trusted helper handoff replace this old inline uninstall result text; original translation retained.",
+  "aboutPanel.uninstall.updatesReportValidation.alternativeA": "Uninstall preparation failures now use uninstall.prepareFailed; original inline text retained.",
+  "aboutPanel.uninstall.updatesReportValidation.alternativeC": "Portable/unregistered copies now use uninstall.portable with data preservation guidance; original text retained.",
+  "quietPanel.quietPanel.headerSettingsPageHeader.alternativeD": "The dedicated Data management page now uses dataManagement.title; original heading retained.",
+  "quietPanel.quietPanel.text.alternativeE": "History scope now comes from dataManagement.historyScope in the dedicated management page; original hint retained.",
+  "quietPanel.quietPanel.text.alternativeF": "Preference reset scope now comes from dataManagement.preferenceScope; original hint retained.",
+  "settingsWindow.settingsWindow.text.alternativeG": "The reorganized settings landing and dedicated data management description replace this older navigation hint; original text retained.",
+  "settingsWindow.storage.text": "The dedicated data-management page now provides its local history and preservation description; original storage hint retained.",
+  "settingsWindow.storage.text.alternativeA": "Retained attachments and safe maintenance pages replace this older storage instruction; original text retained.",
+  "chatAppShell.openProfileMenu.companionLabel": "The current avatar/home header uses the selected companion name and description; the former generic subtitle is preserved for original-value compatibility.",
+  "relationship.home.achievement": "Timeline visuals now render stage title and earned date as separate fields instead of this temporary joined template.",
+  "relationship.home.acquaintanceDays": "Current stats use acquaintanceDaysLabel plus daysValue; temporary prefixed template retained.",
+  "relationship.home.activeDays": "Current stats use activeDaysLabel plus daysValue; temporary prefixed template retained.",
+  "relationship.home.profile": "The current profile heading displays the actual selected companion name rather than this temporary generic heading.",
+  "relationship.home.rulesBody": "Current growth rules show the separate ruleVisit/ruleInteraction/ruleConversation/ruleWork and ruleLimit strings; the former aggregate template is retained as feature history.",
+  "relationship.home.today": "Current stats use todayLabel and the numeric score/limit as separate fields.",
+  "relationship.card.footer": "Final keepsake cards display stage-specific memory text and saved acquaintance facts instead of this temporary generic footer."
 }

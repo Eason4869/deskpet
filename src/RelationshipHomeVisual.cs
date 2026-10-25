@@ -98,7 +98,7 @@ namespace Dafeiyu
                 try{
                     string destination=await (chooseDestination==null?PickDestinationAsync(capture.Data):chooseDestination());
                     if(String.IsNullOrEmpty(destination)){if(current())status.Text=TextResources.Get("relationship.home.saveCancelled");return;}if(!sameIdentity())return;
-                    var result=await RelationshipCardFile.SaveAsync(destination,capture.Png);if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");
+                    var result=await RelationshipCardFile.SaveAsync(destination,capture.Png);if(current())status.Text=(result==RelationshipCardSaveResult.Saved?TextResources.Get("relationship.card.saved"):TextResources.Get("relationship.card.failed"));
                 }catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException||error is InvalidOperationException||error is ArgumentException))throw;if(current())status.Text=TextResources.Get("relationship.card.failed");}finally{save.IsEnabled=current();}
             };Children.Add(save);Children.Add(status);
         }

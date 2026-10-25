@@ -16,7 +16,7 @@ internal static class RelationshipTitleFontChecks
         directory=Path.Combine(directory,"avalonia");Directory.CreateDirectory(directory);
         int count=0;
         void Check(bool value,string label){if(!value)throw new Exception("FAIL "+label);count++;Console.WriteLine("PASS "+label);}
-        var keys=RelationshipRules.Stages.Select(s=>"relationship.stage."+s).Concat(new[]{"relationship.card.title","relationship.card.halloweenTitle"}).ToArray();
+        var keys=new[]{"relationship.stage.firstMeeting","relationship.stage.familiar","relationship.stage.close","relationship.stage.trusted","relationship.stage.heartfelt","relationship.stage.bestFriend"}.Concat(new[]{"relationship.card.title","relationship.card.halloweenTitle","holidayKeepsake.historyTitle"}).ToArray();
         foreach(var locale in UiLanguages.Choices.Where(c=>c.Code!="system")) {
             var asset=RelationshipTitleFonts.ForLocale(locale.Code);
             using(var resource=AssetLoader.Open(new Uri("avares://DeskPet/Assets/fonts/relationships/"+asset.FileName))) {

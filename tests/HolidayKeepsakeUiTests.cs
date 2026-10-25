@@ -20,7 +20,7 @@ namespace Dafeiyu.Tests
         static void Capture(FrameworkElement visual,string path){visual.UpdateLayout();var bitmap=new RenderTargetBitmap((int)visual.ActualWidth,(int)visual.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var file=File.Create(path))png.Save(file);Console.WriteLine("SCREENSHOT "+path);}
         static async Task Run(string language,bool sample)
         {
-            string output=Path.GetFullPath("work/h1b/wpf/"+language);Directory.CreateDirectory(output);string root=Path.Combine(output,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            string output=Path.GetFullPath("work/localization-completion/holiday-ui/wpf/"+language);Directory.CreateDirectory(output);string root=Path.Combine(output,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             var settings=new PetSettings{UiLanguage=language,OnboardingState="completed",QuietMode=true,GreetingEnabled=false,ReadReplies=false,AutoUpdate=false};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
             var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.SetPaused(true);pet.InitializeHoliday(new HolidayController(new HolidayCalendar(),Catalog(),new HolidayState(),_=>{}));
             var earned=new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.FromHours(8));var time=earned.AddSeconds(-86400);pet.KeepsakeTime=()=>time;
@@ -98,7 +98,7 @@ namespace Dafeiyu.Tests
         }
         static async Task BetweenReadUi()
         {
-            foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/h1b/r1/wpf-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
+            foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/localization-completion/holiday-ui/r1/wpf-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
             using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>fixture.CapturedCatalog,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
                 var window=new Window{Width=900,Height=760,Content=new ScrollViewer{Content=view}};window.Show();
                 try{
@@ -149,8 +149,8 @@ namespace Dafeiyu.Tests
         [STAThread]public static int Main(string[] args)
         {
             if(args.Contains("--compile-only"))return 0;
-            if(args.Contains("--between-reads")){try{Console.WriteLine("HolidayBetweenReads: "+HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/wpf-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
-            if(args.Contains("--contracts")){try{Console.WriteLine("HolidayPresentation: "+HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-wpf/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}string language=args.FirstOrDefault(x=>x.StartsWith("--locale="));language=language==null?"zh_CN":language.Substring(9);TextResources.ConfigureStartupLanguage(language);
+            if(args.Contains("--between-reads")){try{Console.WriteLine("HolidayBetweenReads: "+HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/localization-completion/holiday-ui/r1/wpf-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
+            if(args.Contains("--contracts")){try{Console.WriteLine("HolidayPresentation: "+HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/localization-completion/holiday-ui/contracts-wpf/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())+" passed");return 0;}catch(Exception error){Console.Error.WriteLine(error);return 1;}}string language=args.FirstOrDefault(x=>x.StartsWith("--locale="));language=language==null?"zh_CN":language.Substring(9);TextResources.ConfigureStartupLanguage(language);
             app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;
             app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Contains("--folder-failure"))await FolderFailureUi();else if(args.Contains("--between-read-ui"))await BetweenReadUi();else await Run(language,args.Contains("--sample"));code=0;}catch(Exception error){Console.Error.WriteLine(error);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();app.Shutdown();}}));app.Run();return code;
         }

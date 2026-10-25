@@ -53,12 +53,12 @@ namespace Dafeiyu
             if(pack!=null && pack.Stages!=null && pack.Stages.TryGetValue(Stage(stage),out content) && content!=null){var lines=welcome?content.Welcome:content.Interaction;if(lines!=null && (lines.TryGetValue(locale??TextResources.CurrentLanguage,out text) || (!String.IsNullOrEmpty(pack.FallbackLocale)&&lines.TryGetValue(pack.FallbackLocale,out text))))return text;}
             var catalog=TextResources.CatalogFor(locale??TextResources.CurrentLanguage);
             switch(Stage(stage)){
-                case "familiar":return welcome?catalog.Get("relationship.welcome.familiar"):catalog.Get("relationship.interaction.familiar");
-                case "close":return welcome?catalog.Get("relationship.welcome.close"):catalog.Get("relationship.interaction.close");
-                case "trusted":return welcome?catalog.Get("relationship.welcome.trusted"):catalog.Get("relationship.interaction.trusted");
-                case "heartfelt":return welcome?catalog.Get("relationship.welcome.heartfelt"):catalog.Get("relationship.interaction.heartfelt");
-                case "best_friend":return welcome?catalog.Get("relationship.welcome.best_friend"):catalog.Get("relationship.interaction.best_friend");
-                default:return welcome?catalog.Get("relationship.welcome.first_meeting"):catalog.Get("relationship.interaction.first_meeting");
+                case "familiar":return welcome?TextResources.Get("relationship.welcome.familiar",catalog):TextResources.Get("relationship.interaction.familiar",catalog);
+                case "close":return welcome?TextResources.Get("relationship.welcome.close",catalog):TextResources.Get("relationship.interaction.close",catalog);
+                case "trusted":return welcome?TextResources.Get("relationship.welcome.trusted",catalog):TextResources.Get("relationship.interaction.trusted",catalog);
+                case "heartfelt":return welcome?TextResources.Get("relationship.welcome.heartfelt",catalog):TextResources.Get("relationship.interaction.heartfelt",catalog);
+                case "best_friend":return welcome?TextResources.Get("relationship.welcome.bestFriend",catalog):TextResources.Get("relationship.interaction.bestFriend",catalog);
+                default:return welcome?TextResources.Get("relationship.welcome.firstMeeting",catalog):TextResources.Get("relationship.interaction.firstMeeting",catalog);
             }
         }
         public static string Welcome(string stage,RelationshipPackContent pack=null,string locale=null){return Line(stage,pack,locale,true);}
@@ -66,8 +66,8 @@ namespace Dafeiyu
         public static string Action(string stage,RelationshipPackContent pack=null){RelationshipStageContent content;return pack!=null&&pack.Stages!=null&&pack.Stages.TryGetValue(Stage(stage),out content)&&content!=null?content.Action:null;}
         public static string StageName(string stage){return StageName(stage,null);}
         static string StageName(string stage,string locale){var catalog=TextResources.CatalogFor(locale??TextResources.CurrentLanguage);switch(Stage(stage)){
-            case "familiar":return catalog.Get("relationship.stage.familiar");case "close":return catalog.Get("relationship.stage.close");case "trusted":return catalog.Get("relationship.stage.trusted");case "heartfelt":return catalog.Get("relationship.stage.heartfelt");case "best_friend":return catalog.Get("relationship.stage.best_friend");default:return catalog.Get("relationship.stage.first_meeting");}}
+            case "familiar":return TextResources.Get("relationship.stage.familiar",catalog);case "close":return TextResources.Get("relationship.stage.close",catalog);case "trusted":return TextResources.Get("relationship.stage.trusted",catalog);case "heartfelt":return TextResources.Get("relationship.stage.heartfelt",catalog);case "best_friend":return TextResources.Get("relationship.stage.bestFriend",catalog);default:return TextResources.Get("relationship.stage.firstMeeting",catalog);}}
         public static string StageContext(string stage){return StageContext(stage,null);}
-        public static string StageContext(string stage,string locale){return TextResources.CatalogFor(locale??TextResources.CurrentLanguage).Format("relationship.aiContext",StageName(stage,locale));}
+        public static string StageContext(string stage,string locale){return TextResources.FormatForCatalog(TextResources.CatalogFor(locale??TextResources.CurrentLanguage),"relationship.aiContext",StageName(stage,locale));}
     }
 }

@@ -30,7 +30,7 @@ namespace Dafeiyu.Tests
                 // The pet is a nonactivating tool window. Own the actual normal
                 // foreground fixture instead of depending on the user's desktop.
                 foreground=new Window{Width=320,Height=180,ShowInTaskbar=false,Title="DeskPet owned admission fixture"};foreground.Show();foreground.Activate();Wait(Task.Delay(20));
-                if(GetForegroundWindow()!=new WindowInteropHelper(foreground).Handle)throw new Exception("Owned admission fixture could not safely obtain foreground; environment precondition unavailable");
+                if(GetForegroundWindow()!=new WindowInteropHelper(foreground).Handle){bool fullscreen=DesktopInterop.ForegroundIsFullScreen();Console.WriteLine("Owned inactive desktop admission fixture: foreground equality unavailable; production fullscreen="+fullscreen);if(fullscreen)throw new Exception("Actual production fullscreen detector prevents the idle admission fixture");}
                 if(!pet.CanApplyUpdate(true))throw new Exception("Update admission fixture was not initially idle: fullscreen="+DesktopInterop.ForegroundIsFullScreen()+", jobs="+pet.HasActiveAgentJobs+", saveWarning="+pet.HasHistorySaveWarning+", conversation="+pet.Conversation.IsBusy+", workspace="+pet.Workspaces.Busy);
                 var acquired=gate.BeginAsync();Wait(acquired);using(acquired.Result)
                 {

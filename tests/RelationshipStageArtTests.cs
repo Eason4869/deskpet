@@ -17,7 +17,7 @@ public static class RelationshipStageArtTests
         var saved=new RelationshipSnapshot{State=new CompanionRelationshipState{CompanionId="official:"+character,FirstLocalDate="2026-07-18",Milestones=new List<RelationshipMilestone>{new RelationshipMilestone{StageId=stage,EarnedLocalDate="2026-10-25"}}}};
         return RelationshipCardData.FromSnapshot(saved,stage,character=="e-bao"?"E包":character=="dafeiyu"?"大肥鱼":character=="marfu"?"玛尔芙":character=="xiaobei"?"小贝":"咕嘎");
     }
-    [STAThread] public static int Main(string[] args){try{if(!args.Contains("--proof")){Console.WriteLine("F4b shared contracts="+RelationshipStageArtContractChecks.Run(RelationshipStageArtSource.OpenResource));return 0;}new Application();System.Threading.SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());if(args.Contains("--ornament-only")){TextResources.ConfigureStartupLanguage("zh_CN");RasterOrnaments();WholeOrnamentCards();return 0;}string locale=args.FirstOrDefault(a=>a.StartsWith("--locale="));if(args.Contains("--sample")){Sample(locale==null?"zh_CN":locale.Substring(9));return 0;}string production=args.FirstOrDefault(a=>a.StartsWith("--production="));if(production!=null)CheckProduction(production.Substring(13));Run(locale==null?"zh_CN":locale.Substring(9),args.Contains("--resources"),args.Contains("--quick"));return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
+    [STAThread] public static int Main(string[] args){try{if(!args.Contains("--proof")){Console.WriteLine("F4b shared contracts="+RelationshipStageArtContractChecks.Run(RelationshipStageArtSource.OpenResource));return 0;}new Application();System.Threading.SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());if(args.Contains("--ornament-only")){TextResources.ConfigureStartupLanguage("zh_CN");RasterOrnaments();WholeOrnamentCards();return 0;}string locale=args.FirstOrDefault(a=>a.StartsWith("--locale="));if(args.Contains("--sample")){Sample(locale==null?"zh_CN":locale.Substring(9));return 0;}string production=args.FirstOrDefault(a=>a.StartsWith("--production="));if(production!=null)CheckProduction(production.Substring(13));Run(locale==null?"zh_CN":locale.Substring(9),args.Contains("--resources"),args.Contains("--quick"),args.Contains("--title-corpus"));return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
     static void CheckProduction(string path)
     {
         var assembly=System.Reflection.Assembly.LoadFrom(Path.GetFullPath(path));
@@ -31,11 +31,15 @@ public static class RelationshipStageArtTests
             }
         }
     }
-    static void Run(string locale,bool resources,bool quick)
+    static void Run(string locale,bool resources,bool quick,bool titleCorpus=false)
     {
         TextResources.ConfigureStartupLanguage(locale);
+        string scalar=RelationshipContent.StageName("first_meeting").Substring(0,1);
+        var threeLines=new TextBlock{Text=scalar+"\n"+scalar+"\n"+scalar,FontFamily=RelationshipTitleFont.FontForLocale(locale,scalar),FontSize=32,Width=312,Height=300};
+        threeLines.Measure(new Size(312,300));threeLines.Arrange(new Rect(0,0,312,300));threeLines.UpdateLayout();
+        Check(TitleGlyphs(VisualTreeHelper.GetDrawing(threeLines)).Select(g=>Math.Round(g.BaselineOrigin.Y,2)).Distinct().Count()==3,"actual glyph-line detector distinguishes a three-line title");
         if(resources)count+=RelationshipStageArtContractChecks.Run(RelationshipStageArtSource.OpenResource);
-        string directory=Path.GetFullPath("work/f4b/cards/wpf/"+locale);Directory.CreateDirectory(directory);
+        string directory=Path.GetFullPath("work/localization-completion/stage-art/cards/wpf/"+locale);Directory.CreateDirectory(directory);
         using(var scenes=new RelationshipStageArtSource()){
             if(resources){
                 foreach(var character in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}){
@@ -48,9 +52,9 @@ public static class RelationshipStageArtTests
                 }
                 CacheOwnership();
             }
-            var characters=(locale=="zh_CN"||locale=="de_DE")?new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}:new[]{"e-bao"};
+            var characters=!titleCorpus&&(locale=="zh_CN"||locale=="de_DE")?new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}:new[]{"e-bao"};
             foreach(string character in characters)foreach(string stage in RelationshipRules.Stages)foreach(bool dark in new[]{false,true}){
-                if(quick&&(character!="e-bao"||(stage!="first_meeting"&&stage!="best_friend")))continue;
+                if(quick&&!titleCorpus&&(character!="e-bao"||(stage!="first_meeting"&&stage!="best_friend")))continue;
                 var data=Data(character,stage);var image=scenes.Get(data);Check(image!=null,"selected own scene");
                 var visual=(Canvas)RelationshipCardRenderer.Create(data,null,dark,image);
                 visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));visual.UpdateLayout();
@@ -60,7 +64,9 @@ public static class RelationshipStageArtTests
                     var probe=new TextBlock{Text=text.Text,Width=text.Width,FontSize=text.FontSize,FontFamily=text.FontFamily,TextWrapping=text.TextWrapping};probe.Language=text.Language;
                     probe.Measure(new Size(text.Width,Double.PositiveInfinity));Check(probe.DesiredSize.Height<=text.Height+.5,"whole text fits "+locale+" "+stage+" "+text.Name);
                 }
-                Check(title.DesiredSize.Height<=title.FontSize*2.7,"title at most two native lines");
+                var baselines=TitleGlyphs(VisualTreeHelper.GetDrawing(title)).Select(g=>Math.Round(g.BaselineOrigin.Y,2)).Distinct().ToArray();
+                Console.WriteLine("TITLE_LAYOUT locale="+locale+" stage="+stage+" size="+title.FontSize+" height="+title.DesiredSize.Height+" measured="+title.Tag+" baselines="+String.Join(",",baselines));
+                Check(baselines.Length>=1&&baselines.Length<=2,"title at most two actual glyph lines");
                 var ornament=visual.Children.OfType<System.Windows.Shapes.Path>().Single();
                 Check(Canvas.GetTop(ornament)>=Canvas.GetTop(title)+(double)title.Tag+8&&ornament.Height>=20&&ornament.Height<=26,"ornament is separate strip with gap");
                 var ink=ornament.RenderedGeometry.Bounds;Check(ink.X>=0&&ink.Y>=0&&ink.Right<=210&&ink.Bottom<=26,"actual native ornament geometry stays within 210x26 strip");
@@ -74,6 +80,11 @@ public static class RelationshipStageArtTests
         }
         Console.WriteLine("F4b wpf "+locale+" assertions="+count+" originals="+directory);
     }
+    static IEnumerable<GlyphRun> TitleGlyphs(Drawing drawing)
+    {
+        var run=drawing as GlyphRunDrawing;if(run!=null)yield return run.GlyphRun;
+        var group=drawing as DrawingGroup;if(group!=null)foreach(var child in group.Children)foreach(var glyph in TitleGlyphs(child))yield return glyph;
+    }
     static void RasterOrnaments()
     {
         foreach(string style in RelationshipRules.Stages.Concat(new[]{"halloween"}))foreach(bool dark in new[]{false,true}){
@@ -82,7 +93,7 @@ public static class RelationshipStageArtTests
             int left=400,top=60,right=-1,bottom=-1;
             for(int y=0;y<60;y++)for(int x=0;x<400;x++)if(bytes[(y*400+x)*4+3]>0){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);}
             Console.WriteLine("RASTER "+style+" "+dark+" "+left+","+top+".."+right+","+bottom);
-            var directory=Path.GetFullPath("work/f4b/ornament-proofs/wpf");Directory.CreateDirectory(directory);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create(Path.Combine(directory,style+(dark?"-dark":"-light")+".png")))png.Save(file);
+            var directory=Path.GetFullPath("work/localization-completion/stage-art/ornament-proofs/wpf");Directory.CreateDirectory(directory);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var file=File.Create(Path.Combine(directory,style+(dark?"-dark":"-light")+".png")))png.Save(file);
             if(style=="heartfelt")Check(bytes[(14*400+195)*4+3]>0,"trailing horizontal line survives actual raster rendering");
             Check(right>=left&&left>=0&&right<210&&top>=0&&bottom<26,"actual transparent raster ornament ink bounds "+style+" "+dark);
         }
@@ -93,7 +104,7 @@ public static class RelationshipStageArtTests
             var source=RelationshipStageArtSource.CreateProvider().Capture("official:e-bao","e-bao","halloween","halloween-2026","1.0.0");byte[] raw;
             using(var stream=source.OpenRead())raw=RelationshipStageArt.ReadVerified(stream,source.Descriptor);
             var holiday=new BitmapImage();using(var memory=new MemoryStream(raw)){holiday.BeginInit();holiday.CacheOption=BitmapCacheOption.OnLoad;holiday.DecodePixelWidth=800;holiday.StreamSource=memory;holiday.EndInit();holiday.Freeze();}
-            string directory=Path.GetFullPath("work/f4b/ornament-full-cards/wpf");Directory.CreateDirectory(directory);
+            string directory=Path.GetFullPath("work/localization-completion/stage-art/ornament-full-cards/wpf");Directory.CreateDirectory(directory);
             foreach(string style in RelationshipRules.Stages.Concat(new[]{"halloween"}))foreach(bool dark in new[]{false,true}){
                 var data=Data("e-bao",style=="halloween"?"first_meeting":style);var visual=(Canvas) RelationshipCardRenderer.Create(data,null,dark,style=="halloween"?holiday:scenes.Get(data));
                 if(style=="halloween"){
@@ -138,7 +149,7 @@ public static class RelationshipStageArtTests
     }
     static void Sample(string locale)
     {
-        TextResources.ConfigureStartupLanguage(locale);string directory=Path.GetFullPath("work/f4b/title-samples/wpf/"+locale);Directory.CreateDirectory(directory);
+        TextResources.ConfigureStartupLanguage(locale);string directory=Path.GetFullPath("work/localization-completion/stage-art/title-samples/wpf/"+locale);Directory.CreateDirectory(directory);
         using(var scenes=new RelationshipStageArtSource())foreach(bool dark in new[]{false,true}){
             var data=Data("e-bao","first_meeting");var image=scenes.Get(data);
             var visual=(Canvas) RelationshipCardRenderer.Create(data,null,dark,image);

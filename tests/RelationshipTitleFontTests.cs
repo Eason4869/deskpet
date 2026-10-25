@@ -27,7 +27,7 @@ namespace Dafeiyu.Tests
         }
         static int count;
         static void Check(bool value,string label){if(!value)throw new Exception("FAIL: "+label);count++;Console.WriteLine("PASS "+label);}
-        static string[] Keys(){return RelationshipRules.Stages.Select(s=>"relationship.stage."+s).Concat(new[]{"relationship.card.title","relationship.card.halloweenTitle"}).ToArray();}
+        static string[] Keys(){return new[]{"relationship.stage.firstMeeting","relationship.stage.familiar","relationship.stage.close","relationship.stage.trusted","relationship.stage.heartfelt","relationship.stage.bestFriend"}.Concat(new[]{"relationship.card.title","relationship.card.halloweenTitle","holidayKeepsake.historyTitle"}).ToArray();}
         static IEnumerable<GlyphRun> Glyphs(Drawing drawing)
         {
             var run=drawing as GlyphRunDrawing;if(run!=null)yield return run.GlyphRun;
@@ -58,7 +58,7 @@ namespace Dafeiyu.Tests
         }
         static void Run()
         {
-            var output=Path.GetFullPath("work/f4a/title-proofs/wpf");Directory.CreateDirectory(output);
+            var output=Path.GetFullPath("work/localization-completion/title-proofs/wpf");Directory.CreateDirectory(output);
             var assembly=typeof(RelationshipTitleFont).Assembly;
             using(var stream=assembly.GetManifestResourceStream(assembly.GetName().Name+".g.resources")) {
                 Check(stream!=null,"actual fixture assembly has correctly named .g.resources");

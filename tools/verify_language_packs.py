@@ -13,7 +13,8 @@ def audit(directory):
     files = sorted(directory.glob("*.json"))
     canonical = load_catalog((directory / "zh_CN.json").read_text(encoding="utf-8"))
     baseline = json.loads((ROOT / "tests/fixtures/localization/text-baseline.json").read_text(encoding="utf-8"))
-    formatted = {item["key"] for item in baseline["resources"] if item["format"]}
+    feature = json.loads((ROOT / "tests/fixtures/localization/feature-text-baseline.json").read_text(encoding="utf-8"))
+    formatted = {item["key"] for item in baseline["resources"] + feature['resources'] if item["format"]}
     errors, packs = [], []
     for path in files:
         try:

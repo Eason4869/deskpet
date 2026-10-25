@@ -19,11 +19,11 @@ internal static class HolidayKeepsakeUiChecks
     static readonly string[] Characters={"e-bao","dafeiyu","marfu","xiaobei","gugugaga"};
     static HolidayCatalog Catalog()=>new(Characters.Select(c=>new OutfitDefinition(c,"halloween-2026","halloween","fixture", "1.0.0",true,false,Array.Empty<OutfitClipDefinition>(),null,null,null,null)));
     static readonly RelationshipTime Earned=new(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.FromHours(8));
-    internal static int RunLifecycle(){TextResources.ConfigureStartupLanguage("zh_CN");string output=Path.GetFullPath("work/h1b/lifecycle-only");Directory.CreateDirectory(output);Frames(output);return count;}
+    internal static int RunLifecycle(){TextResources.ConfigureStartupLanguage("zh_CN");string output=Path.GetFullPath("work/localization-completion/holiday-ui/lifecycle-only");Directory.CreateDirectory(output);Frames(output);return count;}
     internal static int Run(string language="zh_CN",bool sample=false)
     {
         TextResources.ConfigureStartupLanguage(language);
-        string output=Path.GetFullPath("work/h1b/avalonia/"+language);Directory.CreateDirectory(output);
+        string output=Path.GetFullPath("work/localization-completion/holiday-ui/avalonia/"+language);Directory.CreateDirectory(output);
         string root=Path.Combine(output,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
         new SettingsStore(Path.Combine(root,"settings.json")).Save(new PetSettings{UiLanguage=language,OnboardingState="completed",AutoUpdate=false,QuietMode=true,GreetingEnabled=false});
         var holidays=new HolidayController(new HolidayCalendar(),Catalog(),new HolidayState(),_=>{});
@@ -114,7 +114,7 @@ internal static class HolidayKeepsakeUiChecks
     internal static int BetweenReadUi()
     {
         TextResources.ConfigureStartupLanguage("zh_CN");
-        foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/h1b/r1/native-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
+        foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/localization-completion/holiday-ui/r1/native-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
         using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>fixture.CapturedCatalog,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
             var window=new Window{Width=900,Height=760,Content=new ScrollViewer{Content=view}};window.Show();
             try{

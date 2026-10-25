@@ -158,7 +158,7 @@ namespace DeskPet.Desktop
                 if(!current())return;
                 if(String.IsNullOrEmpty(path)){status.Text=TextResources.Get("relationship.home.saveCancelled");return;}
                 var result=await RelationshipCardFile.SaveAsync(path,capture.Png);
-                if(current())status.Text=TextResources.Get(result==RelationshipCardSaveResult.Saved?"relationship.card.saved":"relationship.card.failed");
+                if(current())status.Text=(result==RelationshipCardSaveResult.Saved?TextResources.Get("relationship.card.saved"):TextResources.Get("relationship.card.failed"));
             }catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is OperationCanceledException||error is System.Security.SecurityException))throw;if(current())status.Text=TextResources.Get("relationship.card.failed");}
             finally{if(current())save.IsEnabled=true;}
         }

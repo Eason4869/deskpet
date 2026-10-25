@@ -20,6 +20,8 @@ namespace Dafeiyu.Tests
     // checked-in originals. No host clock, real wardrobe, settings or UI changes.
     public static class HolidayKeepsakeContractChecks
     {
+        [System.Runtime.InteropServices.DllImport("kernel32.dll",CharSet=System.Runtime.InteropServices.CharSet.Unicode,SetLastError=true)]
+        static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string path,uint access,uint share,IntPtr security,uint creation,uint flags,IntPtr template);
         static int assertions;static string root;static IHolidayKeepsakeSceneValidator native;
         static void Check(bool condition,string message){assertions++;if(!condition)throw new Exception(message);}
         static string Fresh(string name){return Path.Combine(root,name+"-"+Guid.NewGuid().ToString("N"));}
@@ -209,6 +211,12 @@ namespace Dafeiyu.Tests
                 }
                 Check(Observe(Runtime(path),"2026-10-31").Status==HolidayKeepsakeObservationStatus.StorageUnavailable,"Reparse root blocks acquisition");
                 Check(Directory.GetFiles(outside).Length==1&&File.ReadAllText(Path.Combine(outside,"marker"))=="untouched","Reparse rejection writes nothing to linked target");
+                string junction=Path.Combine(path,"commemorations");Console.WriteLine("OWNED_JUNCTION path="+junction+" target="+outside+" attributes="+File.GetAttributes(junction));
+                using(var probe=CreateFile(junction,0x80,0,IntPtr.Zero,3,0x02200000,IntPtr.Zero)){
+                    int error=System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    Console.WriteLine("OWNED_JUNCTION_AFTER_OBSERVATION exclusiveReadAttributes="+!probe.IsInvalid+" win32="+error);
+                    Check(!probe.IsInvalid,"Completed reparse rejection leaves no competing directory handle");
+                }
             }
         }
         static void Corruption()
@@ -235,7 +243,13 @@ namespace Dafeiyu.Tests
         {
             var inputType=typeof(HolidayKeepsakePng).GetNestedType("ExactDeflateInput",System.Reflection.BindingFlags.NonPublic);
             using(var bounded=(Stream)Activator.CreateInstance(inputType,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic,null,new object[]{new byte[]{1},0,1},CultureInfo.InvariantCulture)){
+#if NET10_0
+#pragma warning disable CA2022 // Intentionally invalid count proves Stream argument validation; no read is expected.
+#endif
                 Reject(()=>bounded.Read(new byte[1],0,2),"Bounded inflater input preserves Stream argument checks before clipping");
+#if NET10_0
+#pragma warning restore CA2022
+#endif
                 Check(bounded.Read(new byte[1],0,1)==1&&bounded.Read(new byte[0],0,0)==0,"Zero-length read at compressed EOF remains legal");
             }
             byte[] opaque=Png(800,480,0);native.Validate(opaque,800,480);Check(true,"Opaque static original accepted");

@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HAN = re.compile(r"[\u3400-\u9fff]")
+ORIGINAL_LOCALE_BASE = 'fde04835ffce544c334205d881a232c579ded4df'
 
 
 def digest(value):
@@ -138,7 +139,7 @@ def context_at(source, start):
     return digest(source[first:len(source) if last<0 else last].strip())
 
 
-def resource_calls(source):
+def resource_call_details(source):
     tokens=list(string_tokens(source))
     masked=list(source)
     for start,end,_,_ in tokens:
@@ -146,7 +147,7 @@ def resource_calls(source):
     # Comments must also be blanked before looking for executable calls.
     code=''.join(masked)
     code=re.sub(r'//[^\n]*|/\*[\s\S]*?\*/',lambda m:' '*(m.end()-m.start()),code)
-    for match in re.finditer(r'\bTextResources\s*\.\s*(Get|Format|StartupMessage)\s*\(',code):
+    for match in re.finditer(r'\bTextResources\s*\.\s*(Get|Format|FormatForCatalog|StartupMessage)\s*\(',code):
         depth=1;first=match.end();i=first;args=[]
         while i<len(code) and depth:
             c=code[i]
@@ -156,7 +157,136 @@ def resource_calls(source):
             if depth==0:args.append((first,i))
             i+=1
         if depth:raise ValueError('Unterminated resource call')
-        yield match.group(1),[source[a:b].strip() for a,b in args]
+        yield ('Format' if match.group(1)=='FormatForCatalog' else match.group(1)),[source[a:b].strip() for a,b in args],match.start(),i
+
+
+def resource_calls(source):
+    for method,args,_,_ in resource_call_details(source):
+        yield method,args
+
+
+def canonical_digest(value):
+    return hashlib.sha256((json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode('utf8')).hexdigest()
+
+
+def feature_resources(catalog, baseline):
+    """Bind each post-migration key to separate text, Git and callsite evidence.
+
+    This is technical provenance, not a claim of human/native translation review.
+    Historical expectations and migrated rows remain independently enforced.
+    """
+    errors=[]; exclusions=collections.Counter()
+    prefix='Feature provenance: '
+    base_keys={row['key'] for row in baseline['resources']}
+    new_keys=set(catalog)-base_keys
+    paths=['tests/fixtures/localization/protected-originals.json',
+           'tests/fixtures/localization/feature-text-baseline.json',
+           'docs/localization/feature-resource-provenance.json']
+    if not all((ROOT/path).is_file() for path in paths):
+        return [prefix+'missing independent feature/protected-original evidence'],exclusions
+    try:
+        def evidence_pairs(items):
+            result={}
+            for key,value in items:
+                if key in result:raise ValueError('duplicate evidence field: '+key)
+                result[key]=value
+            return result
+        protected,contract,provenance=[json.loads((ROOT/path).read_text(encoding='utf8'),object_pairs_hook=evidence_pairs) for path in paths]
+        if any(data.get('schemaVersion')!=1 for data in (protected,contract,provenance)):raise ValueError('unknown evidence schema')
+        if set(protected)!={'schemaVersion','baseCommit','catalogs'} or set(contract)!={'schemaVersion','resources'}:raise ValueError('unknown independent contract field')
+        if set(provenance)!={'schemaVersion','protectedBaseCommit','resourceCommit','translationMethod','nativeHumanReview','technicalReview','resources','sourceExclusions'}:raise ValueError('unknown or missing provenance field')
+        if provenance['translationMethod']!='assistant-authored' or provenance['nativeHumanReview']!='not_performed' or provenance['technicalReview']!='pending_parent_review':raise ValueError('unsupported review declaration; do not invent review approval')
+        cache={}
+        def git(*args):
+            return subprocess.check_output(['git',*args],cwd=ROOT,stderr=subprocess.PIPE)
+        def commit(value):
+            if not re.fullmatch('[a-f0-9]{40}',value):raise ValueError('invalid commit anchor')
+            git('cat-file','-e',value+'^{commit}')
+            git('merge-base','--is-ancestor',value,'HEAD')
+        def at(sha,path):
+            if (sha,path) not in cache:cache[sha,path]=git('show',sha+':'+path).decode('utf-8-sig')
+            return cache[sha,path]
+        def json_at(sha,path):return json.loads(at(sha,path))
+        original=protected['baseCommit'];source_commit=provenance['resourceCommit']
+        if original!=ORIGINAL_LOCALE_BASE:raise ValueError('protected original commit is fixed; evidence cannot redefine it')
+        if provenance['protectedBaseCommit']!=original:raise ValueError('protected base anchor mismatch')
+        commit(original);commit(source_commit)
+        original_zh=json_at(original,'assets/locales/zh_CN.json')
+        if set(original_zh)!=base_keys:raise ValueError('historical key set changed')
+        if json_at(original,'tests/fixtures/localization/text-baseline.json')!=baseline:raise ValueError('historical independent baseline changed')
+        old_inventory=[json.loads(line) for line in at(original,'docs/localization/migration-inventory.jsonl').splitlines()]
+        inventory=[json.loads(line) for line in (ROOT/'docs/localization/migration-inventory.jsonl').read_text(encoding='utf8').splitlines()]
+        def immutable_rows(rows):return [{k:v for k,v in row.items() if k!='retired_reason'} for row in rows]
+        if immutable_rows(old_inventory)!=immutable_rows(inventory):raise ValueError('historical migration provenance changed')
+        locales={'zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES'}
+        if set(protected['catalogs'])!=locales:raise ValueError('protected locale set changed')
+        current={};anchored={}
+        for locale in sorted(locales):
+            path='assets/locales/'+locale+'.json';old=json_at(original,path);entry=protected['catalogs'][locale]
+            if set(old)!=base_keys or entry!={'keyCount':len(old),'valuesSha256':canonical_digest(old)}:raise ValueError('invalid protected snapshot '+locale)
+            current[locale]=load_catalog((ROOT/path).read_text(encoding='utf8'));anchored[locale]=load_catalog(at(source_commit,path))
+            if canonical_digest({key:current[locale].get(key) for key in base_keys})!=entry['valuesSha256']:errors.append(prefix+'original translation drift: '+locale)
+            if set(current[locale])!=set(catalog):errors.append(prefix+'locale key set differs: '+locale)
+        def indexed(rows,label):
+            result={}
+            for row in rows:
+                key=row['key']
+                if key in result:raise ValueError('duplicate '+label+' key '+key)
+                result[key]=row
+            if set(result)!=new_keys:raise ValueError(label+' must cover exactly every nonhistorical key')
+            return result
+        contracts=indexed(contract['resources'],'independent feature contract');records=indexed(provenance['resources'],'source provenance')
+        files={p.relative_to(ROOT).as_posix():p for p in production_files()}
+        references=collections.defaultdict(collections.Counter);pinned_references=collections.defaultdict(collections.Counter);methods=collections.defaultdict(set)
+        def references_in(source,file,result,actual=False):
+            for method,args,start,_ in resource_call_details(source):
+                key_at=1 if method=='Format' and not re.fullmatch(r'"[^"\n]*"',args[0]) else 0
+                if len(args)<=key_at or not re.fullmatch(r'"[^"\n]*"',args[key_at]):continue
+                key=args[key_at][1:-1]
+                if key not in new_keys:continue
+                result[key][file,context_at(source,start)]+=1
+                if actual:methods[key].add(method)
+        for file,path in files.items():references_in(path.read_text(encoding='utf-8-sig'),file,references,True)
+        pinned_files={ref['file'] for row in records.values() for ref in row['sourceReferences']}
+        for file in pinned_files:
+            if file not in files:raise ValueError('source reference outside production files: '+file)
+            references_in(at(source_commit,file),file,pinned_references)
+        renames={('relationship.'+kind+'.'+old):('relationship.'+kind+'.'+new) for kind in ('stage','welcome','interaction') for old,new in [('first_meeting','firstMeeting'),('best_friend','bestFriend')]}
+        for key,row in records.items():
+            if set(row)!={'key','originCommit','originKey','originValueSha256','textSha256','sourceReferences','translations'}:raise ValueError('unknown resource provenance field: '+key)
+            expected=contracts[key]
+            if set(expected)!={'key','expected','format','argument_count'} or type(expected['format']) is not bool or type(expected['argument_count']) is not int or expected['argument_count']<0:raise ValueError('invalid text/format contract: '+key)
+            if catalog[key]!=expected['expected'] or digest(catalog[key])!=row['textSha256']:errors.append(prefix+'new text drift: '+key)
+            origin=row['originCommit'];commit(origin);git('merge-base','--is-ancestor',origin,source_commit)
+            origin_key=row['originKey'];origin_catalog=json_at(origin,'assets/locales/zh_CN.json')
+            if origin_key in base_keys or (origin_key!=key and renames.get(origin_key)!=key):raise ValueError('invalid new-key origin mapping: '+key)
+            if origin_key not in origin_catalog or digest(origin_catalog[origin_key])!=row['originValueSha256']:raise ValueError('origin text/hash mismatch: '+key)
+            declared=collections.Counter()
+            for ref in row['sourceReferences']:
+                if set(ref)!={'file','contextHash','count'} or type(ref['count']) is not int or ref['count']<1 or not re.fullmatch('[a-f0-9]{64}',ref['contextHash']):raise ValueError('invalid source reference: '+key)
+                item=(ref['file'],ref['contextHash'])
+                if item in declared:raise ValueError('duplicate source reference: '+key)
+                declared[item]=ref['count']
+            if declared!=references[key] or declared!=pinned_references[key]:errors.append(prefix+'literal callsite drift: '+key)
+            if set(row['translations'])!=locales:raise ValueError('missing locale text hashes: '+key)
+            for locale in sorted(locales):
+                value=current[locale].get(key);pinned=anchored[locale].get(key)
+                if value is None or digest(value)!=row['translations'][locale] or pinned!=value:errors.append(prefix+'translation/commit drift: '+locale+' '+key)
+                if expected['format'] and value is not None and placeholders(value)!=set(range(expected['argument_count'])):errors.append(prefix+'placeholder drift: '+locale+' '+key)
+            if expected['format'] and methods[key]-{'Format'}:errors.append(prefix+'formatted key read without Format: '+key)
+            if not expected['format'] and 'Format' in methods[key]:errors.append(prefix+'missing independent Format contract: '+key)
+        for row in provenance['sourceExclusions']:
+            if set(row)!={'file','value','literalHash','sourceContextHash','sourceCommit','reason'} or not row['reason'].strip() or row['sourceCommit']!=source_commit or row['literalHash']!=digest(row['value']):raise ValueError('invalid feature source exclusion')
+            file=row['file']
+            if file not in files:raise ValueError('excluded source outside production')
+            def matching(text):return sum(value==row['value'] and context_at(text,start)==row['sourceContextHash'] for start,_,value,_ in string_tokens(text))
+            if matching(files[file].read_text(encoding='utf-8-sig'))!=1 or matching(at(source_commit,file))!=1:raise ValueError('excluded source context drift: '+file)
+            item=(file,row['literalHash'],row['sourceContextHash'])
+            if item in exclusions:raise ValueError('duplicate feature source exclusion')
+            exclusions[item]=1
+    except (KeyError,TypeError,ValueError,OSError,subprocess.CalledProcessError) as error:
+        errors.append(prefix+str(error))
+    return errors,exclusions
 
 
 def check_references(source,catalog):
@@ -226,14 +356,15 @@ def check(phase="complete"):
             if item["resource_key"] not in catalog: errors.append("Inventory resource absent: " + item["resource_key"])
         else: errors.append("Unclassified candidate")
     if phase == "complete":
+        baseline = json.loads((ROOT / "tests/fixtures/localization/text-baseline.json").read_text(encoding="utf-8"))
+        feature_errors,feature_exclusions=feature_resources(catalog,baseline)
+        errors.extend(feature_errors);expected.update(feature_exclusions)
         for (file, hashed, context), count in (residual - expected).items(): errors.append(file + ": new/unclassified C# text " + hashed[:12] + " x" + str(count))
         for (file, hashed, context), count in (expected - residual).items(): errors.append(file + ": excluded text/context changed " + hashed[:12] + " x" + str(count))
-        baseline = json.loads((ROOT / "tests/fixtures/localization/text-baseline.json").read_text(encoding="utf-8"))
         baseline_keys={item['key'] for item in baseline['resources']}
         migrated_keys={item['resource_key'] for item in inventory if item['decision']=='migrate' and item.get('reviewed')}
         for key in catalog:
-            if key not in baseline_keys:errors.append('Resource lacks independent text baseline: '+key)
-            if key not in migrated_keys:errors.append('Resource lacks reviewed inventory provenance: '+key)
+            if key in baseline_keys and key not in migrated_keys:errors.append('Resource lacks reviewed inventory provenance: '+key)
         for item in baseline["resources"]:
             key = item["key"]
             if catalog.get(key) != item["expected"]: errors.append("Original text drift: " + key)
