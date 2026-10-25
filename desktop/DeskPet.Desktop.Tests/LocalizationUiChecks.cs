@@ -21,7 +21,11 @@ internal static class LocalizationUiChecks
         {
             DesktopTheme.Apply(mode);
             var settings=new SettingsWindow(owner);settings.Show();Dispatcher.UIThread.RunJobs();
-            Check(settings.GetLogicalDescendants().OfType<TabItem>().Any(t=>t.Header as string=="工作设置"),mode+" settings independent Chinese tab expectation");
+            var navigation=settings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
+            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作设置"));
+            Check(work!=null,mode+" settings independent Chinese navigation expectation");
+            navigation.SelectedItem=work;Dispatcher.UIThread.RunJobs();
+            Check(settings.GetLogicalDescendants().Any(x=>x.GetType().Name=="WorkSettingsView"),mode+" actual work navigation displays work settings");
             Check(!settings.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text?.StartsWith("[settings",StringComparison.Ordinal)==true),mode+" no missing resource marker");
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             using(var image=settings.CaptureRenderedFrame()){Check(image!=null,"settings rendered");image!.Save(Path.Combine(artifacts,"settings-"+mode+".png"),new PngBitmapEncoderOptions());}

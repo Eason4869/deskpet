@@ -41,7 +41,7 @@ internal static class LanguageUiChecks
             DesktopTheme.Apply(mode);var chat=new ChatWindow(owner,false);chat.Show();chat.Width=390;Dispatcher.UIThread.RunJobs();
             var avatar=chat.GetLogicalDescendants().OfType<Button>().Single(item=>item.Name=="ShellAvatar");
             avatar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));var menu=avatar.ContextMenu!;
-            var items=menu.ItemsSource!.Cast<MenuItem>().ToArray();var language=items.Single(item=>item.Name=="ProfileLanguage");
+            var items=menu.ItemsSource!.OfType<MenuItem>().ToArray();var language=items.Single(item=>item.Name=="ProfileLanguage");
             Check(Array.IndexOf(items,language)+1==Array.IndexOf(items,items.Single(item=>item.Name=="ProfileSettings")),mode+" language is immediately above settings");
             Check(language.ItemsSource==null,mode+" language entry opens a separate scrolling selector");
             void Select(string previous,string selected)
@@ -56,7 +56,11 @@ internal static class LanguageUiChecks
             Check(owner.Settings.UiLanguage==pending&&new SettingsStore(Path.Combine(directory,"settings.json")).Load().UiLanguage==pending&&TextResources.CurrentLanguage==code,mode+" selection persists without changing the running window language");
             Check(owner.Session.LastNotice==TextResources.Get("languages.restartRequired"),mode+" selection explains the restart requirement");Select(pending,code);menu.Close();chat.Close();
             var settings=new SettingsWindow(owner);settings.Show();Dispatcher.UIThread.RunJobs();
-            Check(settings.GetLogicalDescendants().OfType<TabItem>().Any(item=>item.Header as string==TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")),mode+" settings use the selected language");
+            var navigation=settings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
+            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")));
+            Check(work!=null,mode+" settings use the selected language");
+            navigation.SelectedItem=work;Dispatcher.UIThread.RunJobs();
+            Check(settings.GetLogicalDescendants().Any(x=>x.GetType().Name=="WorkSettingsView"),mode+" translated work navigation displays work settings");
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var image=settings.CaptureRenderedFrame()){Check(image!=null,mode+" settings rendered");image!.Save(Path.Combine(artifacts,"settings-"+mode+".png"),new PngBitmapEncoderOptions());}settings.Close();
         }
         owner.Pet.Close();owner.Dispose();Until(()=>owner.ImageServicesShutdown.IsCompleted);owner.ImageServicesShutdown.GetAwaiter().GetResult();return checks;
