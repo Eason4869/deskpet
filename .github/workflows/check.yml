@@ -134,6 +134,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Saved-stage native experience checks failed' }
           dotnet $testDll --relationship-experience-crossing
           if ($LASTEXITCODE) { throw 'Saved-stage native crossing checks failed' }
+          dotnet $testDll --relationship-experience-visibility-only
+          if ($LASTEXITCODE) { throw 'Saved-stage native fullscreen visibility checks failed' }
           foreach ($arguments in @('', '--data-management-ui-only', '--agent-job-native-ui-only', '--agent-job-exit-ui-only', '--image-writer-exit-ui-only', '--image-held-exit-ui-only', '--image-exit-ui-only')) {
             if ($arguments) { dotnet $testDll $arguments } else { dotnet $testDll }
             if ($LASTEXITCODE) { throw ('Desktop acceptance failed: ' + $arguments) }

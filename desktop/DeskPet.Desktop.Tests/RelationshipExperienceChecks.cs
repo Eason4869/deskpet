@@ -8,7 +8,7 @@ using Dafeiyu;
 using DeskPet.Desktop;
 internal static class RelationshipExperienceChecks
 {
-    internal static int Run(string directory,bool crossing=false,string? language=null)
+    internal static int Run(string directory,bool crossing=false,string? language=null,bool visibilityOnly=false)
     {
         int count=0;void Check(bool ok,string reason){if(!ok)throw new Exception(reason);count++;Console.WriteLine("PASS "+reason);}
         void Complete(Task task){var watch=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(watch.ElapsedMilliseconds>15000)throw new TimeoutException("S1 native fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
@@ -24,6 +24,30 @@ internal static class RelationshipExperienceChecks
         void Record(RelationshipEventType kind,string id,RelationshipTime time){var result=owner.RelationshipService.Record(owner.RelationshipCompanionId,kind,id,time);if(!result.Success)throw new Exception(result.Error);}
         RelationshipFeedbackWindow? Notice()=>(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);
         owner.Pet.Show();Complete(owner.Relationships.FlushAsync());Pause(700);Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==(crossing?79:80),"actual native visible visit gives exact80");Notice()?.Close();
+        if(visibilityOnly){
+            var apply=typeof(PetWindow).GetMethod("ApplyFullscreenVisibility",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+            void Fullscreen(bool hidden)=>apply.Invoke(owner.Pet,new object[]{hidden});
+            var visibilitySkin=owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao");Complete(owner.SelectSkinAsync(visibilitySkin,CompanionSelectionOrigin.PetMenu));Complete(owner.Relationships.FlushAsync());Pause(700);Notice()?.Close();
+            string visibleReply=RelationshipContent.Interaction("first_meeting",owner.RelationshipPack);int beforeScore=owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score;
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+            InteractionPlayback Playback()=>(InteractionPlayback)typeof(PetWindow).GetField("playback",flags)!.GetValue(owner.Pet)!;
+            int Revision()=>(int)typeof(PetWindow).GetField("relationshipActionRevision",flags)!.GetValue(owner.Pet)!;
+            int Epoch()=>(int)typeof(PetWindow).GetField("relationshipContentEpoch",flags)!.GetValue(owner.Pet)!;
+            bool HasReply()=>Notice()?.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Name=="RelationshipInteraction"&&t.Text==visibleReply)==true;
+            void AwaitReply(int limit){var deadline=System.Diagnostics.Stopwatch.StartNew();while(!HasReply()&&deadline.ElapsedMilliseconds<limit)Pause(10);}
+            void State(string phase){var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;Console.WriteLine("VISIBILITY_STATE phase="+phase+" epoch="+typeof(PetWindow).GetField("relationshipContentEpoch",flags)!.GetValue(owner.Pet)+" revision="+typeof(PetWindow).GetField("relationshipActionRevision",flags)!.GetValue(owner.Pet)+" action="+typeof(PetWindow).GetProperty("action",flags)!.GetValue(owner.Pet)+" loop="+((InteractionPlayback)typeof(PetWindow).GetField("playback",flags)!.GetValue(owner.Pet)!).Clip.Loop+" visible="+owner.Pet.IsPetVisible);}
+            using(new RelationshipStore(directory).Acquire()){
+                int priorRevision=Revision();owner.Pet.UserInteract("sleeping");Check(Revision()>priorRevision&&Playback().Action=="sleeping"&&Playback().Clip.Loop&&!owner.Relationships.FlushAsync().IsCompleted,"actual admitted official sleep changes revision and loops while real store is held");Check((bool)typeof(PetWindow).GetMethod("RelationshipInteractionAllowed",flags)!.Invoke(owner.Pet,new object[]{owner.RelationshipCompanionId})!,"current official interaction presentation is allowed before visibility loss");State("started");int priorEpoch=Epoch();Fullscreen(true);State("hidden");Check(owner.Pet.IsVisible&&!owner.Pet.IsPetVisible&&owner.Pet.Opacity==0,"actual fullscreen-result policy hides owned shown window through opacity");Check(Epoch()==priorEpoch+1,"entering fullscreen-hidden advances content epoch exactly once");Fullscreen(true);Check(Epoch()==priorEpoch+1,"unchanged fullscreen-hidden policy does not repeatedly invalidate");
+                Pause(1100);State("before-restore");Fullscreen(false);State("restored");Check(owner.Pet.IsPetVisible&&owner.Pet.Opacity==1,"actual fullscreen-result policy restores owned window");
+            }
+            // Model a late UI continuation: both actual admitted producers settle
+            // before dispatching the interaction's already-queued UI continuation.
+            var drained=owner.Relationships.FlushAsync();Check(drained.Wait(15000),"actual interaction and restore visit drain before late UI callbacks");drained.GetAwaiter().GetResult();Console.WriteLine("LATE_UI_DRAIN pending="+owner.Relationships.PendingCount+" worker="+drained.Status);Dispatcher.UIThread.RunJobs();AwaitReply(2000);State("after-flush");Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==beforeScore+1,"held actual interaction persists exactly once across fullscreen restore");
+            Check(!HasReply(),"pending pre-fullscreen interaction response is discarded after restore");Notice()?.Close();
+            using(new RelationshipStore(directory).Acquire()){int priorRevision=Revision();owner.Pet.UserInteract("sleeping");Check(Revision()>priorRevision&&Playback().Action=="sleeping"&&Playback().Clip.Loop&&!owner.Relationships.FlushAsync().IsCompleted,"visible slow comparison is another admitted looping action");Fullscreen(false);Pause(1200);Fullscreen(false);}
+            Complete(owner.Relationships.FlushAsync());AwaitReply(2000);State("after-visible-flush");Check(HasReply(),"unchanged visible policy and periodic probes retain current slow looping-action response");
+            return count;
+        }
         var maintenance=owner.DataMaintenance.BeginAsync();Complete(maintenance);using(maintenance.Result){owner.Pet.UserInteract("petting");Pause(500);Check(Notice()==null,"actual native maintenance refusal produces no stage response");}Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==(crossing?79:80),"native refused interaction adds no points");
         owner.Pet.UserInteract("petting");Complete(owner.Relationships.FlushAsync());Pause(700);Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==(crossing?80:81),"actual native petting gives exact81");var notice=Notice()!;
         Check(notice!=null&&notice.IsVisible&&notice.GetLogicalDescendants().OfType<TextBlock>().Count(t=>t.Text==reply)==1,"actual native petting displays unique imported stage reply once");

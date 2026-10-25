@@ -222,11 +222,7 @@ internal sealed partial class PetWindow : Window
         if (hasNativeWindow && IsVisible && now >= policyAt)
         {
             policyAt = now + 1;
-            var wasHidden=fullscreenHidden;
-            fullscreenHidden = owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen();
-            Opacity = fullscreenHidden ? 0 : 1;
-            if(wasHidden && IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
-            if (fullscreenHidden) CancelHoliday();
+            ApplyFullscreenVisibility(owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen());
         }
         if (now >= greetingProbeAt) { greetingProbeAt = now + 1; ProbeGreeting(); }
         if (fullscreenHidden || !sessionInteractive) { if (!nativeIgnored) ConfigureNative(true); return; }
@@ -296,6 +292,14 @@ internal sealed partial class PetWindow : Window
         return new Point(point.X, point.Y);
     }
     private double greetingProbeAt;
+    private void ApplyFullscreenVisibility(bool hidden)
+    {
+        var wasHidden=fullscreenHidden;
+        if(hidden&&!wasHidden)DismissGreeting();
+        fullscreenHidden=hidden;Opacity=hidden?0:1;
+        if(wasHidden&&IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
+        if(fullscreenHidden)CancelHoliday();
+    }
     public void ConfigureGreetings()
     {
         greetingSchedule = new GreetingSchedule(DateTime.UtcNow, owner.Settings.GreetingMinMinutes, owner.Settings.GreetingMaxMinutes, random.NextDouble);
