@@ -72,6 +72,12 @@ internal static class CompanionHomeUiChecks
         void Complete(Task task,int timeout=15000){var timer=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(timer.ElapsedMilliseconds>timeout)throw new TimeoutException("Companion fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
         T Named<T>(Control root,string name) where T:Control=>root.GetLogicalDescendants().OfType<T>().Single(x=>x.Name==name);
         void Click(Button b)=>b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        void CaptureRecovery(Window window,string state)
+        {
+            string output=Path.GetFullPath("work/ui-consistency/final");Directory.CreateDirectory(output);
+            Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();using var image=window.CaptureRenderedFrame();
+            image!.Save(Path.Combine(output,language+"-"+state+".png"),new PngBitmapEncoderOptions());
+        }
         void CaptureFeedback(RelationshipFeedbackWindow window,string kind)
         {
             var captures=Path.GetFullPath(Path.Combine("work","relationship-validation","f3","avalonia"));Directory.CreateDirectory(captures);
@@ -198,7 +204,12 @@ internal static class CompanionHomeUiChecks
             Complete(owner.Relationships.FlushAsync());Complete(page.RefreshAsync());string file=Path.Combine(directory,"relationships","state.json");byte[] original=File.ReadAllBytes(file);using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllText(file,"{broken");var feedback=Named<ToggleSwitch>(page,"RelationshipFeedbackEnabled");feedback.IsChecked=false;feedback.RaiseEvent(new RoutedEventArgs(ToggleSwitch.ClickEvent));Complete(page.PendingSettings);Complete(page.RefreshAsync());Check(Named<ToggleSwitch>(page,"RelationshipFeedbackEnabled").IsChecked==true&&File.ReadAllText(file)=="{broken","failed setting preserves checkbox and ledger bytes");
             var retained=page.View;var retainedState=retained?.Snapshot?.State;
             Check(retained?.ReadFailed==true&&retainedState!=null&&retainedState.Score==156&&Named<TextBlock>(page,"RelationshipWarning").IsVisible,"corruption retains saved score and retry warning");Check(Named<TextBlock>(page,"CompanionCurrentWelcome").Text==RelationshipContent.Welcome(retained!.Snapshot.StageId,owner.RelationshipPack),"cached saved welcome remains alongside explicit read warning");
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var failed=chat.CaptureRenderedFrame())failed!.Save(Path.Combine(captures,language+"-read-failure.png"),new PngBitmapEncoderOptions());using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllBytes(file,original);Complete(page.RefreshAsync());
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();using(var failed=chat.CaptureRenderedFrame())failed!.Save(Path.Combine(captures,language+"-read-failure.png"),new PngBitmapEncoderOptions());
+            chat.Width=1100;DesktopTheme.Apply("dark");Dispatcher.UIThread.RunJobs();((Control)Named<Button>(page,"RelationshipRetry").Parent!).BringIntoView();CaptureRecovery(chat,"read-failure-dark");
+            var focusedRetry=Named<Button>(page,"RelationshipRetry");focusedRetry.Focus(NavigationMethod.Tab);Dispatcher.UIThread.RunJobs();
+            Check(focusedRetry.IsFocused&&ReferenceEquals(chat.FocusManager!.GetFocusedElement(),focusedRetry),"actual headless keyboard focus belongs to recovery retry");CaptureRecovery(chat,"retry-keyboard-focus-dark");
+            chat.Width=520;DesktopTheme.Apply("light");Dispatcher.UIThread.RunJobs();((Control)Named<Button>(page,"RelationshipRetry").Parent!).BringIntoView();CaptureRecovery(chat,"read-failure-light-narrow");
+            chat.Width=1320;DesktopTheme.Apply("dark");Dispatcher.UIThread.RunJobs();using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllBytes(file,original);Complete(page.RefreshAsync());
             var context=Named<ToggleSwitch>(page,"RelationshipAiContextEnabled");var priorSave=page.PendingSettings;
             using(var lease=new FileStream(Path.Combine(directory,"relationships",".transaction.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
                 Click(Named<Button>(page,"RelationshipRetry"));
@@ -236,6 +247,7 @@ internal static class CompanionHomeUiChecks
                 var blockedWindow=new Window{Width=900,Height=780,Content=blockedPage};blockedWindow.Show();
                 try{Complete(blockedPage.RefreshAsync());Check(Named<Button>(blockedPage,"RelationshipRestart").IsVisible&&!Named<Button>(blockedPage,"RelationshipRetry").IsVisible,"blocked queue offers truthful restart recovery rather than unusable retry");Check(File.ReadAllText(blockedFile)=="{broken","blocked recovery view preserves the original queue");
                     foreach(string blockedTheme in new[]{"light","dark"}){DesktopTheme.Apply(blockedTheme);Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();using var blockedImage=blockedWindow.CaptureRenderedFrame();blockedImage!.Save(Path.Combine(captures,language+"-blocked-outbox-"+blockedTheme+".png"),new PngBitmapEncoderOptions());}
+                    ((Control)Named<Button>(blockedPage,"RelationshipRestart").Parent!).BringIntoView();CaptureRecovery(blockedWindow,"restart-required-dark");
                 }finally{blockedWindow.Close();blockedOwner.Pet.Close();}
             }
         }finally{chat.Close();owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
