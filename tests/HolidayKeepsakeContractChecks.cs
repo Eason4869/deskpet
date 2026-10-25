@@ -290,7 +290,7 @@ namespace Dafeiyu.Tests
         static void ProcessRace()
         {
             string path=Fresh("process-race");string host=Process.GetCurrentProcess().MainModule.FileName,assembly=typeof(HolidayKeepsakeContractChecks).Assembly.Location;
-            string prefix=host.EndsWith("dotnet.exe",StringComparison.OrdinalIgnoreCase)?"\""+assembly+"\" ":"";
+            string prefix=Path.GetFileNameWithoutExtension(host).Equals("dotnet",StringComparison.OrdinalIgnoreCase)?"\""+assembly+"\" ":"";
             var children=new List<Process>();
             foreach(string version in new[]{"race-v1","race-v2"}){
                 var start=new ProcessStartInfo(host,prefix+"--holiday-keepsake-child \""+path+"\" "+version){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};children.Add(Process.Start(start));
