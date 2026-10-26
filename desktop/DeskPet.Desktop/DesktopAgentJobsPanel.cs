@@ -35,8 +35,8 @@ internal sealed class DesktopAgentJobsPanel:UserControl,IDisposable
         this.services=services;this.projectId=projectId;this.conversationId=conversationId;this.replyId=replyId;
         this.openPreview=openPreview??(async uri=>{if(TopLevel.GetTopLevel(this) is { } top)await top.Launcher.LaunchUriAsync(uri);});
         Name="AgentJobsPanel";Background=DesktopTheme.Surface;
-        filter.ItemsSource=new[]{TextResources.Get("agent.jobs.ui.all"),TextResources.Get("agent.jobs.ui.active"),TextResources.Get("agent.jobs.ui.finished")};
-        sort.ItemsSource=new[]{TextResources.Get("agent.jobs.ui.latest"),TextResources.Get("agent.jobs.ui.oldest")};filter.SelectedIndex=0;sort.SelectedIndex=0;
+        LocalizedUi.SetOptions(filter,()=>(new[]{TextResources.Get("agent.jobs.ui.all"),TextResources.Get("agent.jobs.ui.active"),TextResources.Get("agent.jobs.ui.finished")}));
+        LocalizedUi.SetOptions(sort,()=>(new[]{TextResources.Get("agent.jobs.ui.latest"),TextResources.Get("agent.jobs.ui.oldest")}));filter.SelectedIndex=0;sort.SelectedIndex=0;
         var controls=new WrapPanel{IsVisible=!compact,Margin=new Thickness(0,0,0,8)};controls.Children.Add(filter);controls.Children.Add(sort);
         var root=new DockPanel();var header=Ui.Column(controls,notice);DockPanel.SetDock(header,Dock.Top);root.Children.Add(header);root.Children.Add(list);Content=root;
         list.ItemsPanel=new FuncTemplate<Panel?>(()=>new VirtualizingStackPanel());
@@ -60,12 +60,12 @@ internal sealed class DesktopAgentJobsPanel:UserControl,IDisposable
     private async void Attach()
     {
         if(disposed||manager!=null||!IsEffectivelyVisible||host?.IsVisible==false)return;
-        int current=++generation;notice.Text=TextResources.Get("agent.jobs.ui.recovering");
+        int current=++generation;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.recovering")));
         bool ready=await services.InitializeAsync().ConfigureAwait(false);
         await Dispatcher.UIThread.InvokeAsync(()=>
         {
             if(disposed||current!=generation||!IsEffectivelyVisible||host?.IsVisible==false)return;
-            if(!ready||services.Manager==null){notice.Text=TextResources.Get("agent.jobs.ui.unavailable");return;}
+            if(!ready||services.Manager==null){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.unavailable")));return;}
             manager=services.Manager;reading=new CancellationTokenSource();RefreshRows();timer.Start();
         });
     }
@@ -78,7 +78,7 @@ internal sealed class DesktopAgentJobsPanel:UserControl,IDisposable
         var visible=new List<Row>();foreach(var job in jobs){if(!rows.TryGetValue(job.Id,out var row)){row=new Row{Job=job,Manager=manager,OpenPreview=openPreview};rows.Add(job.Id,row);}row.Job=job;row.View?.Update();visible.Add(row);}
         foreach(string id in rows.Keys.Where(id=>!jobs.Any(job=>job.Id==id)).ToArray())rows.Remove(id);
         string next=string.Join("|",jobs.Select(job=>job.Id));if(next!=order||list.ItemsSource==null){order=next;list.ItemsSource=visible;}
-        notice.Text=jobs.Count==0?TextResources.Get("agent.jobs.ui.empty"):"";
+        LocalizedUi.Set(notice,"Text",()=>(jobs.Count==0?TextResources.Get("agent.jobs.ui.empty"):""));
     }
     internal async Task RetryAsync(){Detach();await services.RetryInitializationAsync();Attach();}
     public void Dispose(){if(disposed)return;disposed=true;DetachHost();Detach();list.ItemsSource=null;rows.Clear();}
@@ -89,7 +89,7 @@ internal sealed class DesktopAgentJobCard:Border
     private readonly DesktopAgentJobsPanel.Row row;
     private readonly TextBlock title=Ui.Text("",15),status=Ui.Text("",12),owner=Ui.Text("",11),directory=Ui.Text("",11),notice=Ui.Text("",12),gap=Ui.Text("",11);
     private readonly TextBox command=Ui.Input(),log=Ui.Input();
-    private readonly Button stop;private readonly Expander details=new(){Name="AgentJobLogExpander",Header=TextResources.Get("agent.jobs.ui.openLog"),HorizontalContentAlignment=HorizontalAlignment.Stretch};
+    private readonly Button stop;private readonly Expander details=LocalizedUi.With(new Expander(){Name="AgentJobLogExpander",Header=TextResources.Get("agent.jobs.ui.openLog"),HorizontalContentAlignment=HorizontalAlignment.Stretch},"Header",()=>(TextResources.Get("agent.jobs.ui.openLog")));
     private readonly WrapPanel previews=new();private string previewSignature="";
     internal DesktopAgentJobCard(DesktopAgentJobsPanel.Row row)
     {
@@ -97,16 +97,16 @@ internal sealed class DesktopAgentJobCard:Border
         title.Name="AgentJobTitle";status.Name="AgentJobStatus";owner.Name="AgentJobOwner";directory.Name="AgentJobDirectory";
         command.Name="AgentJobCommand";command.IsReadOnly=true;command.AcceptsReturn=true;command.TextWrapping=TextWrapping.Wrap;command.MinWidth=0;command.MaxHeight=100;
         log.Name="AgentJobLog";log.IsReadOnly=true;log.AcceptsReturn=true;log.TextWrapping=TextWrapping.Wrap;log.MinWidth=0;log.MaxHeight=240;log.FontFamily=FontFamily.Parse("Consolas, Menlo, monospace");log.Text=row.Log;
-        stop=Ui.Button(TextResources.Get("agent.jobs.ui.stop"),()=>_ =StopAsync());stop.Name="AgentJobStop";
-        details.Content=Ui.Column(gap,log,Ui.Text(TextResources.Get("agent.jobs.ui.preview"),12),Ui.Text(TextResources.Get("agent.jobs.ui.previewUnchecked"),11),previews);ProcessExpander.Apply(details);
-        Child=Ui.Column(title,status,Ui.Text(TextResources.Get("agent.jobs.ui.command"),11),command,directory,owner,stop,notice,details);
+        stop=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.stop")),()=>_ =StopAsync());stop.Name="AgentJobStop";
+        details.Content=Ui.Column(gap,log,LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.preview")),12),LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.previewUnchecked")),11),previews);ProcessExpander.Apply(details);
+        Child=Ui.Column(title,status,LocalizedUi.Text(()=>(TextResources.Get("agent.jobs.ui.command")),11),command,directory,owner,stop,notice,details);
         AttachedToVisualTree+=(_,_)=>{row.View=this;Update();};DetachedFromVisualTree+=(_,_)=>{if(ReferenceEquals(row.View,this))row.View=null;};Update();
     }
     internal void Update()
     {
-        var job=row.Job;title.Text=job.Spec.Title;status.Text=AgentJobUiText.State(job.State)+" / "+TextResources.Format("agent.jobs.ui.timeout",job.Spec.TimeoutSeconds)+(job.RootExitCode.HasValue?" / "+TextResources.Format("agent.jobs.ui.exitCode",job.RootExitCode.Value):"");
-        if(command.Text!=job.Spec.Command)command.Text=job.Spec.Command;directory.Text=TextResources.Get("agent.jobs.ui.directory")+": "+job.Spec.WorkingDirectory;owner.Text=TextResources.Get("agent.jobs.ui.owner")+": "+job.Owner.ProjectId+" / "+job.Owner.ConversationId;
-        stop.Content=job.State==AgentJobState.CleanupFailed?TextResources.Get("agent.jobs.ui.retryStop"):TextResources.Get("agent.jobs.ui.stop");stop.IsEnabled=!row.Stopping&&AgentJobUiText.IsActive(job)&&job.State!=AgentJobState.Stopping;
+        var job=row.Job;LocalizedUi.Set(title,"Text",()=>(job.Spec.Title));status.Text=AgentJobUiText.State(job.State)+" / "+TextResources.Format("agent.jobs.ui.timeout",job.Spec.TimeoutSeconds)+(job.RootExitCode.HasValue?" / "+TextResources.Format("agent.jobs.ui.exitCode",job.RootExitCode.Value):"");
+        if(command.Text!=job.Spec.Command)command.Text=job.Spec.Command;LocalizedUi.Set(directory,"Text",()=>(TextResources.Get("agent.jobs.ui.directory")+": "+job.Spec.WorkingDirectory));LocalizedUi.Set(owner,"Text",()=>(TextResources.Get("agent.jobs.ui.owner")+": "+job.Owner.ProjectId+" / "+job.Owner.ConversationId));
+        LocalizedUi.Set(stop,"Content",()=>(job.State==AgentJobState.CleanupFailed?TextResources.Get("agent.jobs.ui.retryStop"):TextResources.Get("agent.jobs.ui.stop")));stop.IsEnabled=!row.Stopping&&AgentJobUiText.IsActive(job)&&job.State!=AgentJobState.Stopping;
     }
     private async Task StopAsync()
     {
@@ -114,7 +114,7 @@ internal sealed class DesktopAgentJobCard:Border
         try
         {
             var stopped=await row.Manager.StopAsync(row.Job.Owner,row.Job.Id,AgentJobStopReason.User,CancellationToken.None).ConfigureAwait(false);
-            await Dispatcher.UIThread.InvokeAsync(()=>{row.Job=stopped;notice.Text=stopped.CleanupConfirmed?"":TextResources.Get("agent.jobs.ui.stopError");});
+            await Dispatcher.UIThread.InvokeAsync(()=>{row.Job=stopped;LocalizedUi.Set(notice,"Text",()=>(stopped.CleanupConfirmed?"":TextResources.Get("agent.jobs.ui.stopError")));});
         }
         catch(Exception error){await Dispatcher.UIThread.InvokeAsync(()=>notice.Text=AgentJobUiText.Error(error));}
         finally{await Dispatcher.UIThread.InvokeAsync(()=>{row.Stopping=false;Update();});}
@@ -132,17 +132,17 @@ internal sealed class DesktopAgentJobCard:Border
                 row.Cursor=page.NextCursor;row.Candidates.Add(added);row.Log+=added;if(page.Gap!=null)row.Gap=TextResources.Format("agent.jobs.ui.logGap",page.Gap.DroppedBytes);
                 if(row.Log.Length>131072){int removed=row.Log.Length-131072;row.Log=row.Log.Substring(removed);row.Gap=TextResources.Format("agent.jobs.ui.logGap",removed);}
                 var scroll=log.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();var offset=scroll?.Offset??default;bool follow=scroll==null||scroll.Extent.Height-scroll.Viewport.Height-offset.Y<20;int start=log.SelectionStart,end=log.SelectionEnd;
-                log.Text=row.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):row.Log;log.SelectionStart=Math.Min(start,log.Text.Length);log.SelectionEnd=Math.Min(end,log.Text.Length);gap.Text=row.Gap;
+                LocalizedUi.Set(log,"Text",()=>(row.Log.Length==0?TextResources.Get("agent.jobs.ui.logEmpty"):row.Log));int textLength=log.Text?.Length??0;log.SelectionStart=Math.Min(start,textLength);log.SelectionEnd=Math.Min(end,textLength);gap.Text=row.Gap;
                 if(scroll!=null){if(follow)scroll.ScrollToEnd();else scroll.Offset=offset;}RefreshPreviews();
             });
         }
         catch(OperationCanceledException){}
-        catch(Exception){await Dispatcher.UIThread.InvokeAsync(()=>{if(IsEffectivelyVisible)notice.Text=TextResources.Get("agent.jobs.ui.logError");});}
+        catch(Exception){await Dispatcher.UIThread.InvokeAsync(()=>{if(IsEffectivelyVisible)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("agent.jobs.ui.logError")));});}
         finally{row.Loading=false;}
     }
     private void RefreshPreviews()
     {
         var candidates=row.Candidates.Candidates;string signature=string.Join("|",candidates.Select(uri=>uri.AbsoluteUri));if(signature==previewSignature)return;previewSignature=signature;previews.Children.Clear();
-        foreach(var uri in candidates){var target=uri;var button=Ui.AsyncButton(TextResources.Get("agent.jobs.ui.openPreview"),()=>row.OpenPreview(target),error=>notice.Text=AgentJobUiText.Error(error));button.Name="AgentJobPreview";ToolTip.SetTip(button,target.AbsoluteUri);previews.Children.Add(button);}
+        foreach(var uri in candidates){var target=uri;var button=LocalizedUi.AsyncButton(()=>(TextResources.Get("agent.jobs.ui.openPreview")),()=>row.OpenPreview(target),error=>notice.Text=AgentJobUiText.Error(error));button.Name="AgentJobPreview";ToolTip.SetTip(button,target.AbsoluteUri);previews.Children.Add(button);}
     }
 }

@@ -14,10 +14,11 @@ internal sealed class MacSpeechOutput(ApiClient api) : IReplySpeech
     public void SetVolume(int value) { lock (gate) { volume = Math.Clamp(value, 0, 100); if (wave != IntPtr.Zero) Native.WaveVolume(wave, volume / 100f); } }
     public async Task SpeakAsync(string reply, PetSettings settings, CancellationToken cancel)
     {
+        var language=LanguageRequestScope.Capture();
         MacServices.EnsureMac();
-        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", TextResources.Get("speech.codeOmitted"));
+        var text = Regex.Replace(reply ?? "", "```[\\s\\S]*?```", TextResources.Get("speech.codeOmitted",language));
         text = Regex.Replace(text, "[\\*#`]|https?://\\S+", "").Trim();
-        if (text.Length > 1800) text = TextResources.Format("macSpeechOutput.speakAsync.textText",text[..1800]);
+        if (text.Length > 1800) text = TextResources.FormatForLanguage(language,"macSpeechOutput.speakAsync.textText",text[..1800]);
         if (text.Length == 0 || settings.Volume == 0) return;
         using var reading = CancellationTokenSource.CreateLinkedTokenSource(cancel);
         lock (gate) { ObjectDisposedException.ThrowIf(disposed, this); if (active != null) throw new InvalidOperationException(TextResources.Get("macSpeechOutput.speakAsync.text")); active = reading; volume = Math.Clamp(settings.Volume, 0, 100); }

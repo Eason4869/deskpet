@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -34,10 +34,10 @@ namespace Dafeiyu
         public static ContextMenu EditorMenu(Control editor,bool readOnly)
         {
             var menu=Menu();
-            if(!readOnly)menu.Items.Add(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header"),InputGestureText="Ctrl+X",Command=System.Windows.Input.ApplicationCommands.Cut,CommandTarget=editor});
-            menu.Items.Add(new MenuItem{Header=TextResources.Get("common.copy"),InputGestureText="Ctrl+C",Command=System.Windows.Input.ApplicationCommands.Copy,CommandTarget=editor});
-            if(!readOnly)menu.Items.Add(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header.alternativeA"),InputGestureText="Ctrl+V",Command=System.Windows.Input.ApplicationCommands.Paste,CommandTarget=editor});
-            menu.Items.Add(new Separator());menu.Items.Add(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header.alternativeB"),InputGestureText="Ctrl+A",Command=System.Windows.Input.ApplicationCommands.SelectAll,CommandTarget=editor});return menu;
+            if(!readOnly)menu.Items.Add(LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header"),InputGestureText="Ctrl+X",Command=System.Windows.Input.ApplicationCommands.Cut,CommandTarget=editor},"Header",()=>(TextResources.Get("chatUi.editorMenu.header"))));
+            menu.Items.Add(LocalizedUi.With(new MenuItem{Header=TextResources.Get("common.copy"),InputGestureText="Ctrl+C",Command=System.Windows.Input.ApplicationCommands.Copy,CommandTarget=editor},"Header",()=>(TextResources.Get("common.copy"))));
+            if(!readOnly)menu.Items.Add(LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header.alternativeA"),InputGestureText="Ctrl+V",Command=System.Windows.Input.ApplicationCommands.Paste,CommandTarget=editor},"Header",()=>(TextResources.Get("chatUi.editorMenu.header.alternativeA"))));
+            menu.Items.Add(new Separator());menu.Items.Add(LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatUi.editorMenu.header.alternativeB"),InputGestureText="Ctrl+A",Command=System.Windows.Input.ApplicationCommands.SelectAll,CommandTarget=editor},"Header",()=>(TextResources.Get("chatUi.editorMenu.header.alternativeB"))));return menu;
         }
         public static string SendHint(PetSettings settings){return settings.SendOnEnter?TextResources.Get("chatUi.sendHint.text"):TextResources.Get("chatUi.sendHint.text.alternativeA");}
         public static FrameworkElement Composer(MarkdownEditor input,UIElement leading,UIElement trailing,TextBlock status,bool compact,UIElement attachments=null)
@@ -49,11 +49,11 @@ namespace Dafeiyu
             input.Padding=new Thickness(4,6,4,6);input.FontSize=14;input.VerticalContentAlignment=VerticalAlignment.Top;
             input.MinHeight=48;input.MaxHeight=compact?92:140;
             input.VerticalScrollBarVisibility=ScrollBarVisibility.Auto;
-            System.Windows.Automation.AutomationProperties.SetName(input,TextResources.Get("chatUi.composer.automationAutomationPropertiesSetName"));
+            LocalizedUi.Automation(input,()=>(TextResources.Get("chatUi.composer.automationAutomationPropertiesSetName")));
             var field=new Grid();int inputRow=0;
             if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.Children.Add(attachments);inputRow=1;}
             field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,inputRow);field.Children.Add(input);
-            var placeholder=new TextBlock{Name="ComposerPlaceholder",Text=TextResources.Get("chatUi.composer.text"),FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false};Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
+            var placeholder=LocalizedUi.With(new TextBlock{Name="ComposerPlaceholder",Text=TextResources.Get("chatUi.composer.text"),FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false},"Text",()=>(TextResources.Get("chatUi.composer.text")));Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
             SetComposerPlaceholder(input,placeholder);
             Action syncPlaceholder=delegate {
                 bool show=input.Text.Length==0;
@@ -93,5 +93,5 @@ namespace Dafeiyu
             button.BorderBrush=Ui.Brush(icon=="send"?"#DBE4FC":"#F5DCE1");button.Margin=new Thickness(0);
             return button;
         }
-    }
+public static Button Action(string icon,System.Func<string> label){return LocalizedUi.Caption(Action(icon,label()),label);}}
 }

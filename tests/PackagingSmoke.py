@@ -136,7 +136,9 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     probe=root/'GuideTitles.exe'
     compiler=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     subprocess.run([str(compiler),'/nologo','/codepage:65001','/target:exe','/out:'+str(probe),str(checkout/'tools/localization/VerifyArtifacts.cs')],capture_output=True,check=True,timeout=30)
-    result=subprocess.run([str(probe),'--onboarding-titles',str(runtime/'桌面伙伴.exe')],capture_output=True,check=True,timeout=30)
+    result=subprocess.run([str(probe),'--onboarding-titles',str(runtime/'桌面伙伴.exe')],capture_output=True,timeout=30)
+    if result.returncode != 0:
+        raise RuntimeError('Compiled onboarding-title probe failed: ' + (result.stdout + result.stderr).decode('utf-8', errors='replace'))
     lesson_titles=base64.b64decode(result.stdout).decode('utf8').split('\n')
     assert lesson_titles and all(lesson_titles), 'application lesson titles must be extracted from the actual compiled application'
     assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'

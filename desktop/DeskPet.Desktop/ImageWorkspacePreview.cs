@@ -21,7 +21,7 @@ internal sealed class ImageWorkspacePreview : Border, IDisposable
     {
         owner = controller; host = window; repeat = regenerate;
         Name = "ImageWorkspacePreview"; Background = DesktopTheme.Brush("#F2F4F7"); CornerRadius = new CornerRadius(18); Padding = new Thickness(14); ClipToBounds = true;
-        Child = new TextBlock { Text = TextResources.Get("imageWorkspacePreview.imageWorkspacePreview.text"), FontSize = 20, Foreground = DesktopTheme.Brush("#777F89"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        Child = LocalizedUi.With(new TextBlock { Text = TextResources.Get("imageWorkspacePreview.imageWorkspacePreview.text"), FontSize = 20, Foreground = DesktopTheme.Brush("#777F89"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },"Text",()=>(TextResources.Get("imageWorkspacePreview.imageWorkspacePreview.text")));
         AttachedToVisualTree += (_, _) => { if (disposed) return; attached = true; owner.ImageTasks.Changed += Changed; Update(); };
         DetachedFromVisualTree += (_, _) => { attached = false; owner.ImageTasks.Changed -= Changed; ReleaseCard(); };
     }
@@ -47,7 +47,7 @@ internal sealed class ImageWorkspacePreview : Border, IDisposable
         }
         catch (Exception error) when (error is IOException or ArgumentException or InvalidOperationException)
         {
-            Child = Ui.Text(TextResources.Get("imageWorkspacePreview.update.text"));
+            Child = LocalizedUi.Text(()=>(TextResources.Get("imageWorkspacePreview.update.text")));
         }
     }
     private void ReleaseCard() { if (card == null) return; Child = null; card.Dispose(); card = null; displayedAsset = null; }

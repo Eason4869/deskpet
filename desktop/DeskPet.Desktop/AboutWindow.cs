@@ -49,13 +49,13 @@ internal sealed class AboutWindow : Window
     private readonly Button download;
     public AboutWindow(DesktopController controller)
     {
-        owner = controller; Title = TextResources.Get("aboutWindow.aboutWindow.title"); Width = 570; Height = 490;
+        owner = controller; LocalizedUi.Set(this,"Title",()=>(TextResources.Get("aboutWindow.aboutWindow.title"))); Width = 570; Height = 490;
         var version = typeof(App).Assembly.GetName().Version;
         repository = Ui.Input(owner.Settings.RepositoryUrl);
-        download = Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton"), async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
+        download = LocalizedUi.AsyncButton(()=>(TextResources.Get("aboutWindow.aboutWindow.asyncButton")), async () => { if (releaseDownload != null) await Launcher.LaunchUriAsync(releaseDownload); }, owner.Error); download.IsEnabled = false;
         repository.TextChanged += (_, _) => { releaseDownload = null; download.IsEnabled = false; };
-        var cache=Ui.Button(TextResources.Get("cache.title"),()=>{_ = new CacheMaintenanceWindow(owner.DataDirectory).ShowDialog(this);});cache.Name="ClearCache";
-        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(Ui.Text(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion), 24), Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text")), Ui.Field(TextResources.Get("aboutWindow.aboutWindow.field"), repository), Ui.AsyncButton(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA"), CheckAsync, owner.Error), download, notice, Ui.Text(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA")), Ui.Row(cache,Ui.Button(TextResources.Get("common.close"), Close))) };
+        var cache=LocalizedUi.Button(()=>(TextResources.Get("cache.title")),()=>{_ = new CacheMaintenanceWindow(owner.DataDirectory).ShowDialog(this);});cache.Name="ClearCache";
+        Content = new Border { Padding = new Thickness(24), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion)), 24), LocalizedUi.Text(()=>(TextResources.Get("aboutWindow.aboutWindow.text"))), LocalizedUi.Field(()=>(TextResources.Get("aboutWindow.aboutWindow.field")), repository), LocalizedUi.AsyncButton(()=>(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA")), CheckAsync, owner.Error), download, notice, LocalizedUi.Text(()=>(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA"))), Ui.Row(cache,LocalizedUi.Button(()=>(TextResources.Get("common.close")), Close))) };
         Closed += (_, _) => { cancel.Cancel(); cancel.Dispose(); };
     }
     private async Task CheckAsync()
@@ -64,7 +64,7 @@ internal sealed class AboutWindow : Window
         var requestedRepository = repository.Text?.Trim() ?? "";
         var repo = GitHubUpdates.Repository(repository.Text ?? "");
         owner.Settings.RepositoryUrl = repository.Text!.Trim(); owner.Save();
-        notice.Text = TextResources.Get("aboutWindow.checkAsync.notice"); releaseDownload = null; download.IsEnabled = false;
+        LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("aboutWindow.checkAsync.notice"))); releaseDownload = null; download.IsEnabled = false;
         using var client = owner.Settings.UpdateUseProxy ? ProxyConfiguration.CreateHttpClient(owner.Settings.UpdateProxyAddress, true) : new HttpClient(new HttpClientHandler { UseProxy = false });
         client.Timeout = TimeSpan.FromSeconds(30); client.DefaultRequestHeaders.UserAgent.ParseAdd("DeskPet/" + typeof(App).Assembly.GetName().Version?.ToString(3));
         using var response = await client.GetAsync("https://api.github.com/repos/" + repo + "/releases/latest", token);
@@ -74,13 +74,13 @@ internal sealed class AboutWindow : Window
         using var json = JsonDocument.Parse(data); var root = json.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
         token.ThrowIfCancellationRequested();
-        if (repository.Text?.Trim() != requestedRepository) { notice.Text = TextResources.Get("aboutWindow.checkAsync.notice.alternativeA"); return; }
+        if (repository.Text?.Trim() != requestedRepository) { LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("aboutWindow.checkAsync.notice.alternativeA"))); return; }
         var next = Version.TryParse(tag.TrimStart('v', 'V'), out var v) ? v : null;
         var current = typeof(App).Assembly.GetName().Version!;
         var newer = next != null && new Version(next.Major, next.Minor, Math.Max(0, next.Build)) > new Version(current.Major, current.Minor, current.Build);
         var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString();
         var selected = SelectMacAsset(root, repo, arch);
         releaseDownload = selected?.DownloadUrl; download.IsEnabled = selected != null;
-        notice.Text = (newer ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeB") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeC")) + tag + "。\n" + (selected != null ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeD") + selected.Name + (selected.Preview ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeE") : "") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeF"));
+        LocalizedUi.Set(notice,"Text",()=>((newer ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeB") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeC")) + tag + "。\n" + (selected != null ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeD") + selected.Name + (selected.Preview ? TextResources.Get("aboutWindow.checkAsync.notice.alternativeE") : "") : TextResources.Get("aboutWindow.checkAsync.notice.alternativeF"))));
     }
 }

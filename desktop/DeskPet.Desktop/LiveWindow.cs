@@ -20,14 +20,14 @@ internal sealed class LiveWindow : Window
     private bool closing;
     public LiveWindow(DesktopController controller)
     {
-        owner = controller; Title = TextResources.Get("liveWindow.liveWindow.title"); Width = 560; Height = 490;
+        owner = controller; LocalizedUi.Set(this,"Title",()=>(TextResources.Get("liveWindow.liveWindow.title"))); Width = 560; Height = 490;
         avatar = new AvatarView { Assets = avatarAssets, Skin = owner.Skin, Width = 36, Height = 36 };
         partnerName.VerticalAlignment = VerticalAlignment.Center;
-        Content = new Border { Padding = new Thickness(20), Child = Ui.Column(Ui.Text(TextResources.Get("liveWindow.liveWindow.text"), 22), Ui.Row(avatar, partnerName), status,
-            Ui.Text(TextResources.Get("liveWindow.liveWindow.text.alternativeA")), input, Ui.Text(TextResources.Get("liveWindow.liveWindow.text.alternativeB")), output,
-            new ScrollViewer { Content = Ui.Column(Ui.Text(TextResources.Get("liveWindow.liveWindow.text.alternativeC"), 12), user, Ui.Text(TextResources.Get("liveWindow.liveWindow.text.alternativeD"), 12), reply), MaxHeight = 200 },
-            Ui.Row(Ui.AsyncButton(TextResources.Get("liveWindow.liveWindow.asyncButton"), StartAsync, owner.Error), Ui.AsyncButton(TextResources.Get("liveWindow.liveWindow.asyncButton.alternativeA"), owner.Live.StopAsync, owner.Error), Ui.Button(TextResources.Get("liveWindow.liveWindow.text.alternativeE"), () => owner.ShowSettingsSection("live"))),
-            Ui.Text(TextResources.Get("liveWindow.liveWindow.text.alternativeF"))) };
+        Content = new Border { Padding = new Thickness(20), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text")), 22), Ui.Row(avatar, partnerName), status,
+            LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeA"))), input, LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeB"))), output,
+            new ScrollViewer { Content = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeC")), 12), user, LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeD")), 12), reply), MaxHeight = 200 },
+            Ui.Row(LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton")), StartAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton.alternativeA")), owner.Live.StopAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeE")), () => owner.ShowSettingsSection("live"))),
+            LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeF")))) };
         owner.Live.StateChanged += Refresh; owner.Live.PartialTranscript += Transcript; owner.Changed += RefreshPartner;
         Closing += async (_, e) =>
         {
@@ -55,11 +55,11 @@ internal sealed class LiveWindow : Window
         if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
         await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt+"\n"+context);
     }
-    private void Refresh() => Dispatcher.UIThread.Post(() => status.Text = owner.Live.Status);
+    private void Refresh() => Dispatcher.UIThread.Post(() => LocalizedUi.Set(status,"Text",()=>owner.Live.Status));
     private void RefreshPartner()
     {
         if (!ReferenceEquals(avatar.Skin, owner.Skin)) avatar.Skin = owner.Skin;
-        partnerName.Text = owner.Skin.DisplayName;
+        LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName));
     }
     private void Transcript(string role, string text) => Dispatcher.UIThread.Post(() => { if (role == "user") user.Text = text; else reply.Text = text; });
 }

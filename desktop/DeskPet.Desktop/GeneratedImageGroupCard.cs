@@ -121,7 +121,7 @@ internal sealed class GeneratedImageGroupCard : Grid, IDisposable
             }
         }
         if (slot.Button.Content is TextBlock text) text.Text = (index + 1).ToString();
-        ToolTip.SetTip(slot.Button, asset != null ? TextResources.Format("generatedImageGroupCard.updateSlot.toolTipSetTip",(index + 1)) : ImageGenerationMotion.Label(owner.ImageTasks.Get((string)slot.Button.Tag!)));
+        LocalizedUi.Tooltip(slot.Button,()=>(asset != null ? TextResources.Format("generatedImageGroupCard.updateSlot.toolTipSetTip",(index + 1)) : ImageGenerationMotion.Label(owner.ImageTasks.Get((string)slot.Button.Tag!))));
     }
 
     void UpdateSelection()
@@ -144,7 +144,7 @@ internal sealed class GeneratedImageGroupCard : Grid, IDisposable
         displayedId = state.SelectedId; displayedAssetId = asset?.Id; displayedHasTask = hasTask;
         if (asset != null) { selected = new(owner, host, asset); main.Content = selected; }
         else if (state.SelectedId != null)
-            main.Content = hasTask ? (Control)new ImageGenerationPendingCard(owner, host, state.SelectedId) : Ui.Text(TextResources.Get("generatedImageGroupCard.showSelected.text"), 12);
+            main.Content = hasTask ? (Control)new ImageGenerationPendingCard(owner, host, state.SelectedId) : LocalizedUi.Text(()=>(TextResources.Get("generatedImageGroupCard.showSelected.text")), 12);
     }
 
     void Layout()

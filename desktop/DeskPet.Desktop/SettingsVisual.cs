@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
@@ -36,13 +36,13 @@ internal static class SettingsVisual
             _ => "M4,3 L16,3 L21,8 L21,22 L4,22 Z M16,3 L16,9 L21,9 M8,13 L17,13 M8,17 L17,17"};
         return new Viewbox{Width=size,Height=size,VerticalAlignment=VerticalAlignment.Center,Child=new Path{Data=Geometry.Parse(data),Stroke=Accent,StrokeThickness=1.6,StrokeJoin=PenLineJoin.Round,Width=24,Height=24,Stretch=Stretch.Uniform},Focusable=false};
     }
-    internal static Control Header(string icon,string title)
+    internal static Control Header(string icon,System.Func<string> title)
     {
-        var grid=new Grid{ColumnDefinitions=new ColumnDefinitions("24,*")};grid.Children.Add(Icon(icon,19));var text=Text(title,14);text.FontWeight=FontWeight.SemiBold;text.Margin=new Thickness(10,0,0,0);Grid.SetColumn(text,1);grid.Children.Add(text);return grid;
+        var grid=new Grid{ColumnDefinitions=new ColumnDefinitions("24,*")};grid.Children.Add(Icon(icon,19));var text=Text(()=> (title()),14);text.FontWeight=FontWeight.SemiBold;text.Margin=new Thickness(10,0,0,0);Grid.SetColumn(text,1);grid.Children.Add(text);return grid;
     }
-    internal static Control Note(string icon,string text)
+    internal static Control Note(string icon,System.Func<string> text)
     {
-        var row=new Grid{ColumnDefinitions=new ColumnDefinitions("22,*")};row.Children.Add(Icon(icon,18));var copy=Text(text,12,true);copy.Margin=new Thickness(10,0,0,0);Grid.SetColumn(copy,1);row.Children.Add(copy);return row;
+        var row=new Grid{ColumnDefinitions=new ColumnDefinitions("22,*")};row.Children.Add(Icon(icon,18));var copy=Text(()=> (text()),12,true);copy.Margin=new Thickness(10,0,0,0);Grid.SetColumn(copy,1);row.Children.Add(copy);return row;
     }
     internal static Button Button(string label,Action action,bool danger=false)
     {
@@ -50,7 +50,7 @@ internal static class SettingsVisual
     }
     internal static void StyleButton(Button button,bool danger=false)
     {
-        button.Content=Text(button.Content?.ToString()??"",13);button.Foreground=danger?DesktopTheme.Brush("#AC4A57"):Ink;
+        var previous=button.Content;var caption=previous as TextBlock??Text(previous?.ToString()??"",13);caption.FontSize=13;button.Content=caption;LocalizedUi.TransferContent(button,previous);button.Foreground=danger?DesktopTheme.Brush("#AC4A57"):Ink;
         ((TextBlock)button.Content).Foreground=button.Foreground;
         button.MinHeight=36;button.Padding=new Thickness(12,8);button.CornerRadius=new CornerRadius(9);button.BorderThickness=new Thickness(1);button.BorderBrush=DesktopTheme.Brush(danger?"#F5DCE1":"#D5E1ED");button.Background=DesktopTheme.Brush(danger?"#FFF3F5":"#FFFFFF");button.HorizontalAlignment=HorizontalAlignment.Left;
         foreach(string state in new[]{":pointerover",":pressed",":focus-visible"}) {
@@ -62,12 +62,12 @@ internal static class SettingsVisual
         var row=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var control in controls){control.Margin=new Thickness(0,0,8,8);row.Children.Add(control);}return row;
     }
     internal static Border Card(Control child) => new(){Child=child,Padding=new Thickness(18),CornerRadius=new CornerRadius(14),Background=DesktopTheme.CardSurface,BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(1)};
-    internal static Control ActionRow(string icon,string title,string description,Control action)
+    internal static Control ActionRow(string icon,System.Func<string> title,System.Func<string> description,Control action)
     {
         var grid=new Grid{ColumnDefinitions=new ColumnDefinitions("38,*,Auto"),RowDefinitions=new RowDefinitions("Auto,Auto")};
         if(icon.Length>0)grid.Children.Add(new Border{Width=32,Height=32,CornerRadius=new CornerRadius(10),Background=DesktopTheme.Brush("#EDF3FF"),Child=Icon(icon,20),VerticalAlignment=VerticalAlignment.Top});
         else grid.ColumnDefinitions[0].Width=new GridLength(0);
-        var words=new StackPanel{Spacing=5,Margin=new Thickness(icon.Length>0?10:0,0,12,0)};var heading=Text(title,15);heading.FontWeight=FontWeight.SemiBold;words.Children.Add(heading);words.Children.Add(Text(description,12,true));Grid.SetColumn(words,1);grid.Children.Add(words);grid.Children.Add(action);
+        var words=new StackPanel{Spacing=5,Margin=new Thickness(icon.Length>0?10:0,0,12,0)};var heading=Text(()=> (title()),15);heading.FontWeight=FontWeight.SemiBold;words.Children.Add(heading);words.Children.Add(Text(()=> (description()),12,true));Grid.SetColumn(words,1);grid.Children.Add(words);grid.Children.Add(action);
         void Reflow(){bool narrow=grid.Bounds.Width<490;Grid.SetRow(action,narrow?1:0);Grid.SetColumn(action,narrow?1:2);action.Margin=new Thickness(narrow&&icon.Length>0?10:0,narrow?14:0,0,0);Grid.SetColumnSpan(words,narrow?2:1);action.VerticalAlignment=narrow?VerticalAlignment.Top:VerticalAlignment.Center;}
         grid.SizeChanged+=(_,_)=>Reflow();Reflow();return grid;
     }
@@ -93,4 +93,5 @@ internal static class SettingsVisual
             control.PropertyChanged+=(_,e)=>{if(e.Property==ListBoxItem.IsSelectedProperty||e.Property==InputElement.IsPointerOverProperty||e.Property==InputElement.IsKeyboardFocusWithinProperty)Refresh();};Refresh();return border;
         });
     }
-}
+internal static TextBlock Text(System.Func<string> text,double size=14,bool muted=false){return LocalizedUi.With(Text(text(),size,muted),"Text",text);}
+        internal static Button Button(System.Func<string> label,Action action,bool danger=false){return LocalizedUi.With(Button(label(),action,danger),"Content",label);}}

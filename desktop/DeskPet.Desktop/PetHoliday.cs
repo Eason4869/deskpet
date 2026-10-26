@@ -99,7 +99,7 @@ internal sealed partial class PetWindow
                 var notice = owner.Holidays.TakeUnlockNotice();
                 if (!string.IsNullOrEmpty(notice))
                 {
-                    var bubble = Ui.Window(TextResources.Get("petHoliday.refreshHoliday.window"), Ui.Text(notice), 350, 150);
+                    var bubble = LocalizedUi.Window(()=>(TextResources.Get("petHoliday.refreshHoliday.window")), Ui.Text(notice), 350, 150);
                     bubble.ShowActivated = false; bubble.ShowInTaskbar = false; bubble.Topmost = owner.Settings.Topmost; bubble.Show();
                     var dismiss = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
                     dismiss.Tick += (_, _) => { dismiss.Stop(); bubble.Close(); }; bubble.Closed += (_, _) => dismiss.Stop(); dismiss.Start();

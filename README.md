@@ -1,6 +1,6 @@
 [简体中文](README.md) | [English](README.en.md)
 
-源码预览：0.11.0-dev.1 的[伙伴主页、关系与数据管理说明](docs/companion-relationship/user-guide.md)及[本地验收摘要](docs/companion-relationship/acceptance.md)。尚无对应的二进制 Release；下方下载入口继续指向实际已发布版本。
+源码开发：0.11.0-dev.2 支持[语言即时切换](docs/localization/live-language-acceptance.md)，并包含 0.11.0-dev.1 的伙伴、关系与数据管理功能。尚未发布对应二进制 Release；下方下载入口保持指向已发布版本。
 
 <div align="center">
   <picture>

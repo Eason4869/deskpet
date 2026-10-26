@@ -1,0 +1,71 @@
+name: Live language stage checks
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'desktop/**'
+      - '.github/workflows/live-language.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build shared language tests
+        run: dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1 -nr:false
+      - name: Catalogs, durable saves and request language snapshots
+        run: dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only
+  ui:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build existing desktop UI and live language checks
+        run: dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 -nr:false
+      - name: Existing windows and unsaved state in all locales
+        run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --live-language-ui-only
+      - name: Apply and continue without process restart
+        run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --onboarding-preparation-ui=en_US
+      - name: Feedback exit after a delayed UI dispatcher
+        run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --relationship-feedback-motion
+      - name: Native Windows preview and exit ownership
+        if: runner.os == 'Windows'
+        run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --agent-job-native-ui-only
+      - name: Native wardrobe selection and deferred settings retry
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          ./Build.ps1 -Target HolidayVisualSmoke
+          if ($LASTEXITCODE) { throw 'Native holiday animation checks failed' }
+          ./Build.ps1 -Target HolidaySettingsSmoke
+          if ($LASTEXITCODE) { throw 'Native wardrobe selection checks failed' }
+          ./Build.ps1 -Target DataManagementUiTests
+          if ($LASTEXITCODE) { throw 'Deferred settings retry checks failed' }
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.x'
+      - name: Compiled guide property and runtime package contract
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force work | Out-Null
+          python tests/RuntimePackageTests.py

@@ -27,7 +27,7 @@ namespace Dafeiyu
             var face=new Image{Name="ProcessAvatarImage",Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,20,20),4,4)};
             RenderOptions.SetBitmapScalingMode(face,BitmapScalingMode.HighQuality);
             processAvatarGlow=new DropShadowEffect{Color=Color.FromRgb(0x70,0x92,0xC0),BlurRadius=6,ShadowDepth=0,Opacity=0};
-            processAvatar=new Border{Name="ProcessAvatar",Width=20,Height=20,CornerRadius=new CornerRadius(4),Background=Ui.Brush("#F0F3F7"),Child=face,Effect=processAvatarGlow,ToolTip=skin.DisplayName,Tag=skin.Id,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,7,0)};
+            processAvatar=LocalizedUi.With(new Border{Name="ProcessAvatar",Width=20,Height=20,CornerRadius=new CornerRadius(4),Background=Ui.Brush("#F0F3F7"),Child=face,Effect=processAvatarGlow,ToolTip=skin.DisplayName,Tag=skin.Id,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,7,0)},"ToolTip",()=>(skin.DisplayName));
             processRecordSummary=Ui.Text("",11,AgentUi.Muted);processRecordSummary.Name="ProcessRecordSummary";processRecordSummary.Margin=new Thickness(27,2,0,5);processRecordSummary.Visibility=Visibility.Collapsed;processDetails.Children.Add(processRecordSummary);
         }
 

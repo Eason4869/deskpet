@@ -16,16 +16,16 @@ namespace Dafeiyu
         readonly DispatcherTimer lifetime;
         public GreetingBubbleWindow(PetWindow companion)
         {
-            pet=companion;Title=TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.title");Icon=Ui.ApplicationIcon();Width=320;Height=166;
+            pet=companion;LocalizedUi.Set(this,"Title",()=>(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.title")));Icon=Ui.ApplicationIcon();Width=320;Height=166;
             AllowsTransparency=true;WindowStyle=WindowStyle.None;ResizeMode=ResizeMode.NoResize;
             ShowInTaskbar=false;ShowActivated=false;Topmost=pet.Settings.Topmost;Background=Brushes.Transparent;
             FontFamily=new FontFamily("Microsoft YaHei UI");Foreground=Ui.Ink;
             var root=new Grid();root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(14)});
             var body=new Grid{Margin=new Thickness(17,12,17,10)};body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});body.RowDefinitions.Add(new RowDefinition());body.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var header=new DockPanel();var close=Ui.Button("×");close.Name="DismissGreeting";close.MinHeight=24;close.Padding=new Thickness(7,0,7,0);close.Margin=new Thickness(0);close.ToolTip=TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.closeToolTip");close.Click+=delegate {Hide();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
+            var header=new DockPanel();var close=Ui.Button("×");close.Name="DismissGreeting";close.MinHeight=24;close.Padding=new Thickness(7,0,7,0);close.Margin=new Thickness(0);LocalizedUi.Set(close,"ToolTip",()=>(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.closeToolTip")));close.Click+=delegate {Hide();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
             name=Ui.Text("",12,Ui.Blue);name.FontWeight=FontWeights.SemiBold;header.Children.Add(name);body.Children.Add(header);
             message=Ui.Text("",13);message.Name="GreetingMessage";message.VerticalAlignment=VerticalAlignment.Center;message.Margin=new Thickness(0,3,0,3);Grid.SetRow(message,1);body.Children.Add(message);
-            var talk=Ui.Button(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text"));talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();pet.ShowQuickChat();};Grid.SetRow(talk,2);body.Children.Add(talk);
+            var talk=LocalizedUi.Button(()=>(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text")));talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();pet.ShowQuickChat();};Grid.SetRow(talk,2);body.Children.Add(talk);
             root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});
             tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             lifetime=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};lifetime.Tick+=delegate {Hide();};
@@ -34,7 +34,7 @@ namespace Dafeiyu
         }
         public void ShowGreeting(string text)
         {
-            name.Text=TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName);message.Text=text;Topmost=pet.Settings.Topmost;
+            LocalizedUi.Set(name,"Text",()=>(TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName)));message.Text=text;Topmost=pet.Settings.Topmost;
             if(!IsVisible)Show();FollowPet();lifetime.Stop();lifetime.Start();
         }
         public void FollowPet(){BubblePlacement.Follow(this,pet,tail);}

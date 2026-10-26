@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Dafeiyu
@@ -10,13 +10,14 @@ namespace Dafeiyu
     }
     internal static class OnboardingLessons
     {
-        internal static readonly string[] Chapters = { TextResources.Get("onboardingLessons.chapters.chapters"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeA"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeB"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeC"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeD"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeE"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeF"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeG"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeH"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeI"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeJ"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeK"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeL"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeM"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeN"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeO"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeP") };
-        internal static readonly OnboardingLesson[] All = Build();
+        internal static string[] Chapters {get{return new[]{ TextResources.Get("onboardingLessons.chapters.chapters"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeA"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeB"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeC"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeD"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeE"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeF"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeG"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeH"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeI"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeJ"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeK"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeL"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeM"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeN"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeO"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeP") };}}
+        static string cachedLanguage;static OnboardingLesson[] cachedLessons;
+        internal static OnboardingLesson[] All {get{if(cachedLessons==null||cachedLanguage!=TextResources.CurrentLanguage){cachedLessons=Build();cachedLanguage=TextResources.CurrentLanguage;}return cachedLessons;}}
         static OnboardingLesson[] Build()
         {
             var items = new List<OnboardingLesson>();
             Action<int, string, string, string, string, string, string> add = (chapter, id, title, text, target, action, branch) => items.Add(new OnboardingLesson { Chapter = chapter, Id = id, Title = title, Text = text, Target = target, Action = action, Branch = branch });
-            add(0, "language", TextResources.Get("onboarding.language.title"), TextResources.Get("onboarding.language.detail"), "", "language", "");
+            add(0, "language", TextResources.Get("onboarding.language.title"), TextResources.Get("onboarding.language.liveDetail"), "", "language", "");
             add(0, "welcome", TextResources.Get("onboardingLessons.build.add"), TextResources.Get("onboarding.timeEstimate") + "\n\n" + TextResources.Get("onboardingLessons.build.add.alternativeA"), "", "intro", "");
             add(0, "network.intro", TextResources.Get("onboardingLessons.build.add.alternativeIP"), TextResources.Get("onboardingLessons.build.add.alternativeIQ"), "UpdateNetwork", "read", "");
             add(0, "network.route", TextResources.Get("onboardingLessons.build.add.alternativeIR"), TextResources.Get("onboardingLessons.build.add.alternativeIS"), "UpdateNetwork", "read", "");

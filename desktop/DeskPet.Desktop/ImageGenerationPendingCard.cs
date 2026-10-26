@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -18,7 +18,7 @@ internal sealed class ImageGenerationPendingCard : Grid
     internal ImageGenerationPendingCard(DesktopController controller,Window window,string taskId,Action<GeneratedImage>? repeat=null)
     {
         regenerate=repeat;owner=controller;host=window;id=taskId;Name="ImageGenerationPendingCard";HorizontalAlignment=HorizontalAlignment.Left;MaxWidth=224;
-        cancel=Ui.Button(TextResources.Get("imageGenerationPendingCard.imageGenerationPendingCard.text"),()=>{_=owner.ImageTasks.CancelAsync(id);});Children.Add(Ui.Column(dots,label,elapsed,cancel));
+        cancel=LocalizedUi.Button(()=>(TextResources.Get("imageGenerationPendingCard.imageGenerationPendingCard.text")),()=>{_=owner.ImageTasks.CancelAsync(id);});Children.Add(Ui.Column(dots,label,elapsed,cancel));
         frames.Tick+=(_,_)=>Draw();seconds.Tick+=(_,_)=>UpdateClock();AttachedToVisualTree+=(_,_)=>Attach();DetachedFromVisualTree+=(_,_)=>Detach();PropertyChanged+=(_,e)=>{if(e.Property==IsVisibleProperty)UpdateClock();};
     }
     void Attach(){if(attached)return;attached=true;foreach(var parent in this.GetVisualAncestors()){ancestors.Add(parent);parent.PropertyChanged+=HostChanged;}owner.ImageTasks.Changed+=Changed;host.PropertyChanged+=HostChanged;snapshot=owner.ImageTasks.Get(id);Update();}
@@ -28,7 +28,7 @@ internal sealed class ImageGenerationPendingCard : Grid
     void Update()
     {
         label.Text=ImageGenerationMotion.Label(snapshot);if(snapshot!=null&&snapshot.State==ImageGenerationTaskState.Queued){int position=1;foreach(var task in owner.ImageTasks.List())if(task.State==ImageGenerationTaskState.Queued&&task.QueuedUtc<snapshot.QueuedUtc)position++;label.Text+=TextResources.Format("imageGenerationPendingCard.update.labelPosition",position);}cancel.IsVisible=snapshot!=null&&!snapshot.IsTerminal;
-        if(snapshot?.State==ImageGenerationTaskState.Succeeded&&!replaced&&!string.IsNullOrEmpty(snapshot.ResultImageId))try{result=new GeneratedImageCard(owner,host,owner.ImageStore.Get(snapshot.ResultImageId)??throw new FileNotFoundException(),regenerate);Children.Clear();Children.Add(result);if(MotionEnabled&&owner.Settings.ImageGenerationMotionEnabled&&!ReducedMotion&&!ImageGenerationMotion.SystemReducedMotion){result.Opacity=0;result.Transitions=new Avalonia.Animation.Transitions{new Avalonia.Animation.DoubleTransition{Property=OpacityProperty,Duration=TimeSpan.FromMilliseconds(180)}};var view=result;Dispatcher.UIThread.Post(()=>{if(attached)view.Opacity=1;});}replaced=true;frames.Stop();seconds.Stop();return;}catch(IOException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label");}catch(ArgumentException){label.Text=TextResources.Get("imageGenerationPendingCard.update.label.alternativeA");}
+        if(snapshot?.State==ImageGenerationTaskState.Succeeded&&!replaced&&!string.IsNullOrEmpty(snapshot.ResultImageId))try{result=new GeneratedImageCard(owner,host,owner.ImageStore.Get(snapshot.ResultImageId)??throw new FileNotFoundException(),regenerate);Children.Clear();Children.Add(result);if(MotionEnabled&&owner.Settings.ImageGenerationMotionEnabled&&!ReducedMotion&&!ImageGenerationMotion.SystemReducedMotion){result.Opacity=0;result.Transitions=new Avalonia.Animation.Transitions{new Avalonia.Animation.DoubleTransition{Property=OpacityProperty,Duration=TimeSpan.FromMilliseconds(180)}};var view=result;Dispatcher.UIThread.Post(()=>{if(attached)view.Opacity=1;});}replaced=true;frames.Stop();seconds.Stop();return;}catch(IOException){LocalizedUi.Set(label,"Text",()=>(TextResources.Get("imageGenerationPendingCard.update.label")));}catch(ArgumentException){LocalizedUi.Set(label,"Text",()=>(TextResources.Get("imageGenerationPendingCard.update.label.alternativeA")));}
         UpdateClock();Draw();
     }
     void UpdateClock(bool updateElapsed=true)

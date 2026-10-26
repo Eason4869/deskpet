@@ -49,7 +49,7 @@ internal static class AgentJobExitUiChecks
                     if(mode=="writer")typeof(ConversationSession).GetField("speech",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(window.BoundSession,new HeldSpeech(Path.Combine(root,"cleanup.allow")));
                     var owned=owner;lifetime.Exit+=(_,_)=>
                     {
-                        if(owned.WorkBindings.Jobs.Manager!=null)File.WriteAllText(Path.Combine(root,"fixture.error"),"Native lifetime exited before confirming job/storage ownership");
+                        if(owned.WorkBindings.Jobs.Manager!=null)File.AppendAllText(Path.Combine(root,"fixture.error"),Environment.NewLine+"Native lifetime exited before confirming job/storage ownership");
                         else File.WriteAllText(Path.Combine(root,"exit.complete"),"confirmed");
                         owned.Dispose();
                     };

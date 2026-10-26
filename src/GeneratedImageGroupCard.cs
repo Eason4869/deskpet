@@ -160,7 +160,7 @@ namespace Dafeiyu
                     if (chat != null) chat.ShowImagesPage(selected); else pet.OpenImageWorkspace(selected);
                 });
             else if (state.SelectedId != null)
-                main.Content = hasTask ? (FrameworkElement)ImageGenerationPendingCard.Create(pet, host, state.SelectedId) : Ui.Text(TextResources.Get("generatedImageGroupCard.showSelected.text"), 12, Ui.Muted);
+                main.Content = hasTask ? (FrameworkElement)ImageGenerationPendingCard.Create(pet, host, state.SelectedId) : LocalizedUi.Text(()=>(TextResources.Get("generatedImageGroupCard.showSelected.text")), 12, Ui.Muted);
             else main.Content = null;
         }
 

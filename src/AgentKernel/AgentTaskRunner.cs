@@ -20,6 +20,8 @@ namespace Dafeiyu
         readonly IAgentConversationApi api;
         public AgentTaskRunner(IAgentConversationApi api){if(api==null)throw new ArgumentNullException("api");this.api=api;}
         public async Task<AgentRunResult> RunAsync(AgentRunRequest request,CancellationToken cancel)
+        {using(LanguageRequestScope.Enter(LanguageRequestScope.Capture()))return await RunCoreAsync(request,cancel).ConfigureAwait(false);}
+        async Task<AgentRunResult> RunCoreAsync(AgentRunRequest request,CancellationToken cancel)
         {
             if(request==null||request.Model==null||request.Messages==null||request.Workspace==null)throw new ArgumentException(TextResources.Get("agentTaskRunner.runAsync.text"));
             var model=request.Model.Copy();var messages=request.Messages.Select(m=>m.Copy()).ToArray();var workspace=request.Workspace;var text=request.Text;var reasoning=request.Reasoning;var tool=request.Tool;bool stream=request.Stream;int count=0;

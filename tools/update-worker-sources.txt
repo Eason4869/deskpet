@@ -8,4 +8,6 @@ RetiredRuntimeFiles.cs
 Maintenance/CacheResourceLease.cs
 Maintenance/CacheUpdateRetirement.cs
 TextResources.cs
+LanguageSelection.cs
+LocalizedMessage.cs
 UiLanguages.cs

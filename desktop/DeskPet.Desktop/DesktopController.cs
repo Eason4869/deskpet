@@ -132,9 +132,9 @@ internal sealed partial class DesktopController : IDisposable
         tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.DisplayName, IsVisible = true };
         tray.Clicked += (_, _) => ShowPet();
         var menu = new NativeMenu();
-        void Add(string text, Action action) { var item = new NativeMenuItem(text); item.Click += (_, _) => action(); menu.Items.Add(item); }
-        Add(TextResources.Get("desktopController.desktopController.text"), ShowPet); Add(TextResources.Get("desktopController.desktopController.text.alternativeA"), () => ShowChat(true)); Add(TextResources.Get("desktopController.desktopController.text.alternativeB"), () => ShowChat(false));
-        Add(TextResources.Get("desktopController.desktopController.text.alternativeC"), () => Pet.ShowPalette()); Add(TextResources.Get("desktopController.desktopController.text.alternativeD"), ShowSettings); Add(TextResources.Get("desktopController.desktopController.text.alternativeE"), ShowGuide); Add(TextResources.Get("desktopController.desktopController.text.alternativeF"), ShowAbout); Add(TextResources.Get("desktopController.desktopController.text.alternativeG"), () => Run(ExitAsync));
+        void Add(Func<string> text, Action action) { var item = LocalizedUi.With(new NativeMenuItem(text()),"Header",text); item.Click += (_, _) => action(); menu.Items.Add(item); }
+        Add(()=>TextResources.Get("desktopController.desktopController.text"), ShowPet); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeA"), () => ShowChat(true)); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeB"), () => ShowChat(false));
+        Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeC"), () => Pet.ShowPalette()); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeD"), ShowSettings); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeE"), ShowGuide); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeF"), ShowAbout); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeG"), () => Run(ExitAsync));
         tray.Menu = menu;
         TrayIcon.SetIcons(Application.Current!, new TrayIcons { tray });
     }
@@ -154,7 +154,7 @@ internal sealed partial class DesktopController : IDisposable
             if(imageNotification==null)
             {
                 imageNotificationText=Ui.Text("");
-                imageNotification=Ui.Window(TextResources.Get("desktopController.imageTaskCompleted.window"),Ui.Column(imageNotificationText,Ui.Row(Ui.Button(TextResources.Get("desktopController.imageTaskCompleted.text"),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),Ui.Button(TextResources.Get("common.close"),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
+                imageNotification=LocalizedUi.Window(()=>(TextResources.Get("desktopController.imageTaskCompleted.window")),Ui.Column(imageNotificationText,Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("desktopController.imageTaskCompleted.text")),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),LocalizedUi.Button(()=>(TextResources.Get("common.close")),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
                 imageNotification.Name="ImageTaskCompletionNotification";imageNotification.ShowActivated=false;imageNotification.ShowInTaskbar=false;
                 imageNotification.Closed+=(_,_)=>{imageNotification=null;imageNoticeTimer.Stop();};
             }
@@ -185,10 +185,7 @@ internal sealed partial class DesktopController : IDisposable
     }
     public void SetUiLanguage(string code)
     {
-        store.SaveUiLanguage(Settings,code);
-        string restart=TextResources.Get("languages.restartRequired");
-        if(UiLanguages.Resolve(Settings.UiLanguage)!=TextResources.CurrentLanguage)Session.ReportNotice(restart);
-        else if(Session.LastNotice==restart)Session.ReportNotice("");
+        UiLanguageChange.Apply(store,Settings,code);
         Notify();
     }
     public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible); }
@@ -210,7 +207,7 @@ internal sealed partial class DesktopController : IDisposable
     }
     public void ShowSettingsSection(string section) { ShowSettings(); settingsWindow!.SelectSection(section); }
     internal Window? GuideMainWindow => settingsWindow?.IsVisible==true&&settingsWindow.WindowState!=WindowState.Minimized?settingsWindow:fullChat?.IsVisible==true&&fullChat.WindowState!=WindowState.Minimized?fullChat:null;
-    internal Task RestartForOnboardingAsync()=>RestartApplicationAsync(true);
+    internal void ApplyGuideLanguage(string code)=>UiLanguageChange.ApplyAndContinueGuide(store,Settings,code);
     internal Task RestartForRelationshipRecoveryAsync()=>RestartApplicationAsync(false);
     async Task RestartApplicationAsync(bool resumeOnboarding)
     {
@@ -280,7 +277,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         if (!Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(() => Error(e)); return; }
         var localized=AgentJobUiText.Error(e);var text=localized!=e.Message?localized:e is ApiException or InvalidOperationException or InvalidDataException or PlatformNotSupportedException ? e.Message : TextResources.Format("desktopController.error.messageEGetType",e.GetType().Name);
-        var window = Ui.Window(TextResources.Get("desktopController.error.window"), Ui.Text(text), 460, 250); window.Show();
+        var window = LocalizedUi.Window(()=>(TextResources.Get("desktopController.error.window")), Ui.Text(text), 460, 250); window.Show();
     }
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()

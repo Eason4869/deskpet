@@ -42,7 +42,7 @@ namespace Dafeiyu
         void InitializeFeatureNavigation(TextBox search,TextBlock hint,StackPanel searchHeader)
         {
             featureSearch=search;features=SettingsFeatureNavigation.Destinations();
-            var empty=Ui.Text(TextResources.Get("settingsSearch.noResults"),12,Ui.Muted);empty.Name="SettingsSearchEmpty";empty.Margin=new Thickness(8,10,8,0);empty.Visibility=Visibility.Collapsed;searchHeader.Children.Add(empty);
+            var empty=LocalizedUi.Text(()=>(TextResources.Get("settingsSearch.noResults")),12,Ui.Muted);empty.Name="SettingsSearchEmpty";empty.Margin=new Thickness(8,10,8,0);empty.Visibility=Visibility.Collapsed;searchHeader.Children.Add(empty);
             search.TextChanged+=delegate{
                 string query=search.Text.Trim();hint.Visibility=search.Text.Length==0?Visibility.Visible:Visibility.Collapsed;int visible=0;
                 for(int i=0;i<navigation.Items.Count;i++){

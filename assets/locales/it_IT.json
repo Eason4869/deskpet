@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "La chiusura è stata annullata o le impostazioni sono cambiate. Il compagno è ancora in esecuzione; la disinstallazione è annullata.",
   "settingsSearch.noResults": "Nessuna impostazione o funzione corrispondente",
   "settingsSearch.clearHistoryAlias": "Cancella la cronologia della chat",
-  "settingsSearch.resetAlias": "Ripristina le impostazioni predefinite"
+  "settingsSearch.resetAlias": "Ripristina le impostazioni predefinite",
+  "onboarding.language.applyContinue": "Applica e continua",
+  "onboarding.language.liveDetail": "Scegli la lingua, poi seleziona Applica e continua per applicarla subito e proseguire la configurazione."
 }

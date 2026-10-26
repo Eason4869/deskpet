@@ -28,8 +28,8 @@ namespace Dafeiyu
             back=NavigationButton("‹",TextResources.Get("browserPane.browserPane.navigationButton"),"BrowserBack");forward=NavigationButton("›",TextResources.Get("browserPane.browserPane.navigationButton.alternativeA"),"BrowserForward");reload=NavigationButton("↻",TextResources.Get("browserPane.browserPane.navigationButton.alternativeB"),"BrowserReload");
             back.Click+=delegate{if(view!=null)Observe(view.Back());};forward.Click+=delegate{if(view!=null)Observe(view.Forward());};reload.Click+=delegate{if(view!=null)Observe(view.Reload());};
             bar.Children.Add(back);bar.Children.Add(forward);bar.Children.Add(reload);
-            var go=Ui.Button(TextResources.Get("browserPane.browserPane.text"));go.Name="BrowserGo";go.MinHeight=34;go.Padding=new Thickness(12,4,12,4);go.Margin=new Thickness(8,0,0,0);go.Click+=delegate{Navigate(this.address.Text);};DockPanel.SetDock(go,Dock.Right);bar.Children.Add(go);
-            this.address=Ui.Field();this.address.Name="BrowserAddress";this.address.MinWidth=80;this.address.MinHeight=34;this.address.Padding=new Thickness(11,5,11,5);this.address.ToolTip=TextResources.Get("browserPane.browserPane.thisAddressToolTip");this.address.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Enter){e.Handled=true;Navigate(this.address.Text);}};bar.Children.Add(this.address);
+            var go=LocalizedUi.Button(()=>(TextResources.Get("browserPane.browserPane.text")));go.Name="BrowserGo";go.MinHeight=34;go.Padding=new Thickness(12,4,12,4);go.Margin=new Thickness(8,0,0,0);go.Click+=delegate{Navigate(this.address.Text);};DockPanel.SetDock(go,Dock.Right);bar.Children.Add(go);
+            this.address=Ui.Field();this.address.Name="BrowserAddress";this.address.MinWidth=80;this.address.MinHeight=34;this.address.Padding=new Thickness(11,5,11,5);LocalizedUi.Set(this.address,"ToolTip",()=>(TextResources.Get("browserPane.browserPane.thisAddressToolTip")));this.address.KeyDown+=delegate(object sender,KeyEventArgs e){if(e.Key==Key.Enter){e.Handled=true;Navigate(this.address.Text);}};bar.Children.Add(this.address);
             DockPanel.SetDock(bar,Dock.Top);Children.Add(bar);notice.Name="BrowserNotice";notice.Margin=new Thickness(14,0,14,8);DockPanel.SetDock(notice,Dock.Bottom);Children.Add(notice);Children.Add(content);ShowEmpty();UpdateButtons();
             Loaded+=delegate{if(!String.IsNullOrWhiteSpace(initialAddress)){string next=initialAddress;initialAddress=null;Navigate(next);}};
         }
@@ -40,7 +40,7 @@ namespace Dafeiyu
         }
         void ShowEmpty()
         {
-            var text=Ui.Text(TextResources.Get("browserPane.showEmpty.text"),16,AgentUi.Muted);text.TextAlignment=TextAlignment.Center;text.VerticalAlignment=VerticalAlignment.Center;text.HorizontalAlignment=HorizontalAlignment.Center;text.Margin=new Thickness(24);content.Content=text;
+            var text=LocalizedUi.Text(()=>(TextResources.Get("browserPane.showEmpty.text")),16,AgentUi.Muted);text.TextAlignment=TextAlignment.Center;text.VerticalAlignment=VerticalAlignment.Center;text.HorizontalAlignment=HorizontalAlignment.Center;text.Margin=new Thickness(24);content.Content=text;
         }
         internal static Uri NormalizeAddress(string value)
         {
@@ -66,8 +66,8 @@ namespace Dafeiyu
         {
             if(disposed)return;downloadNotice=false;initialAddress=null;Uri uri;
             try{uri=NormalizeAddress(value);}catch(ArgumentException error){notice.Text=error.Message;return;}
-            if(uri==null){notice.Text=TextResources.Get("browserPane.navigate.notice");return;}
-            address.Text=uri.AbsoluteUri;notice.Text=TextResources.Get("browserPane.navigate.notice.alternativeA");int current=++revision;Ready=NavigateAsync(uri.AbsoluteUri,current);
+            if(uri==null){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("browserPane.navigate.notice")));return;}
+            address.Text=uri.AbsoluteUri;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("browserPane.navigate.notice.alternativeA")));int current=++revision;Ready=NavigateAsync(uri.AbsoluteUri,current);
         }
         async Task NavigateAsync(string uri,int current)
         {
@@ -82,7 +82,7 @@ namespace Dafeiyu
         {
             var next=new BrowserView(OnStarted,OnAddressChanged,OnNotice,OnDownloadNotice,Navigate,UpdateButtons);view=next;content.Content=next;await next.InitializeAsync();
         }
-        void OnStarted(Task task,string uri){if(disposed)return;downloadNotice=false;address.Text=uri;notice.Text=TextResources.Get("browserPane.onStarted.notice");Observe(task);}
+        void OnStarted(Task task,string uri){if(disposed)return;downloadNotice=false;address.Text=uri;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("browserPane.onStarted.notice")));Observe(task);}
         void OnAddressChanged(string uri){if(!disposed){address.Text=uri;UpdateButtons();}}
         void OnNotice(string text){if(!disposed)notice.Text=text;}
         void OnDownloadNotice(string text){downloadNotice=true;OnNotice(text);}
@@ -97,7 +97,7 @@ namespace Dafeiyu
         {
             if(disposed||current!=revision||error is OperationCanceledException)return;
             if(!(error.GetType().FullName=="Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException"||error is NotSupportedException||error is IOException||error is InvalidOperationException||error is ArgumentException||error is UnauthorizedAccessException||error is System.Runtime.InteropServices.COMException||error is DllNotFoundException||error is TypeInitializationException))throw error;
-            if(!downloadNotice)notice.Text=TextResources.Get("browserPane.showError.notice");
+            if(!downloadNotice)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("browserPane.showError.notice")));
         }
         void UpdateButtons(){if(disposed)return;back.IsEnabled=view!=null&&view.CanGoBack;forward.IsEnabled=view!=null&&view.CanGoForward;reload.IsEnabled=view!=null&&view.IsReady;}
         internal Task<string> EvaluateAsync(string script){if(disposed||view==null)throw new InvalidOperationException(TextResources.Get("browserPane.evaluateAsync.text"));return view.EvaluateAsync(script);}
@@ -149,5 +149,5 @@ namespace Dafeiyu
             void CleanupProfile(){if(cleanupScheduled||profile==null)return;cleanupScheduled=true;string root=WebPreviewRuntime.DirectoryPath,target=profile;Task.Run(()=>WebPreviewRuntime.TryDeleteExitedBrowserProfile(root,target));}
             public void Dispose(){if(disposed)return;disposed=true;if(navigation!=null)navigation.TrySetCanceled();try{browser.Dispose();}finally{Children.Clear();if(browserExited)CleanupProfile();}}
         }
-    }
+static Button NavigationButton(System.Func<string> text,string tooltip,string name){return LocalizedUi.With(NavigationButton(text(),tooltip,name),"Content",text);}    }
 }

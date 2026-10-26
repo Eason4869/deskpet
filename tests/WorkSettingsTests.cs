@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,6 +28,7 @@ namespace Dafeiyu.Tests
                 string legacyPath=Path.Combine(scratch,"legacy-settings.json");File.WriteAllText(legacyPath,"{\"ShowPredictedMessages\":false}");var legacy=new SettingsStore(legacyPath).Load();Check(!legacy.PlainTextEditor && legacy.ShowContextUsage && legacy.SendOnEnter && legacy.FollowUpBehavior=="queue" && !legacy.ShowPredictedMessages,"older settings inherit new defaults without overriding an explicit disabled preference");
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(scratch,"settings.json")),null);
                 var panel=(UserControl)Activator.CreateInstance(type,new object[]{pet});
+                string contextDraft=Field(panel,"AgentContextTokenLimit").Text;TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));Check(All<TextBlock>(panel).Any(text=>text.Text==TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeAD"))&&Field(panel,"AgentContextTokenLimit").Text==contextDraft&&!Dirty(panel),"existing work settings labels refresh without changing draft or dirty state");TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
                 Check(!Dirty(panel) && Access(panel).SelectedIndex==0 && Field(panel,"AgentContextTokenLimit").Text=="32768" && !All<TextBox>(panel).Any(t=>t.Name=="AgentMaxTurns" || t.Name=="AgentTimeoutMinutes"),"default form is clean with automatic compression budget and no task duration or round controls");
                 Check(!All<Button>(panel).Any(b=>b.Name.StartsWith("WorkSettingsSection")) && !All<CheckBox>(panel).Any(c=>c.Name=="AgentCommandsEnabled") ,"single-page work settings omit obsolete command grants and section tabs");
                 cfg.AgentCommandsEnabled=true;cfg.AgentCommandRecipes="invalid legacy command data";var runtimeCfg=cfg.Copy();runtimeCfg.AgentWorkspace=project;runtimeCfg.Text.Model="gpt-fixture";runtimeCfg.Text.BaseUrl="http://127.0.0.1";

@@ -85,12 +85,16 @@ namespace Dafeiyu
         }
         public static CheckBox ReplySpeechToggle(PetWindow pet)
         {
-            var toggle=Toggle(TextResources.Get("ui.replySpeechToggle.toggle"),pet.Settings.ReadReplies,pet.SetReplySpeech);toggle.Name="TtsOutput";
-            toggle.ToolTip=TextResources.Get("ui.replySpeechToggle.toggleToolTip");
+            var toggle=Toggle(()=>(TextResources.Get("ui.replySpeechToggle.toggle")),pet.Settings.ReadReplies,pet.SetReplySpeech);toggle.Name="TtsOutput";
+            LocalizedUi.Set(toggle,"ToolTip",()=>(TextResources.Get("ui.replySpeechToggle.toggleToolTip")));
             Action sync=()=>toggle.IsChecked=pet.Settings.ReadReplies;
             toggle.Loaded+=delegate {sync();pet.ReplySpeechChanged+=sync;};
             toggle.Unloaded+=delegate {pet.ReplySpeechChanged-=sync;};return toggle;
         }
         public static ScrollViewer Scroll(UIElement child) { return new ScrollViewer { FocusVisualStyle=null, Content = child, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; }
-    }
+public static TextBlock PageHeading(System.Func<string> title){return LocalizedUi.With(PageHeading(title()),"Text",title);}
+        public static Button Button(System.Func<string> text, bool primary = false){return LocalizedUi.With(Button(text(),primary),"Content",text);}
+        public static TextBlock Text(System.Func<string> text, double size = 13, Brush color = null){return LocalizedUi.With(Text(text(),size,color),"Text",text);}
+        public static TextBlock InlineText(System.Func<string> text, double size = 13, Brush color = null){return LocalizedUi.With(InlineText(text(),size,color),"Text",text);}
+        public static CheckBox Toggle(System.Func<string> label, bool value, Action<bool> changed){return LocalizedUi.With(Toggle(label(),value,changed),"Content",label);}    }
 }

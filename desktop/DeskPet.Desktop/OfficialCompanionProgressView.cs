@@ -8,7 +8,7 @@ namespace DeskPet.Desktop;
 internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<OfficialCompanionProgress>
 {
     private readonly Window window;
-    private readonly TextBlock label = Ui.Text(TextResources.Get("officialCompanionProgressView.label.text"));
+    private readonly TextBlock label = LocalizedUi.Text(()=>(TextResources.Get("officialCompanionProgressView.label.text")));
     private readonly ProgressBar bar = new() { Minimum = 0, Maximum = 100, IsIndeterminate = true, Height = 8 };
     private readonly Button retry;
     private readonly CancellationTokenSource cancel;
@@ -21,14 +21,14 @@ internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<Off
     internal OfficialCompanionProgressView(bool passive, Window? parent, bool topmost, CancellationTokenSource cancel, bool lazy=false, Func<bool>? isCurrent=null)
     {
         this.passive = passive; this.cancel = cancel;this.lazy=lazy;this.parent=parent;this.isCurrent=isCurrent;
-        retry = Ui.Button(TextResources.Get("common.retry"), () => retryAnswer?.TrySetResult(true)); retry.IsVisible = false;
-        window = Ui.Window(passive ? TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window") : TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window.alternativeA"), passive ? label : Ui.Column(label, bar, Ui.Row(retry, Ui.Button(TextResources.Get("common.cancel"), () => { cancel.Cancel(); retryAnswer?.TrySetResult(false); window?.Close(); }))), passive ? 350 : 460, passive ? 140 : 240);
+        retry = LocalizedUi.Button(()=>(TextResources.Get("common.retry")), () => retryAnswer?.TrySetResult(true)); retry.IsVisible = false;
+        window = LocalizedUi.Window(()=>(passive ? TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window") : TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window.alternativeA")), passive ? label : Ui.Column(label, bar, Ui.Row(retry, LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), () => { cancel.Cancel(); retryAnswer?.TrySetResult(false); window?.Close(); }))), passive ? 350 : 460, passive ? 140 : 240);
         window.Name = passive ? "OfficialCompanionDownloadBubble" : "OfficialCompanionProgressDialog";
         if (passive) { window.MinHeight = 0; window.Height = 140; window.CanResize = false; }
         window.ShowInTaskbar = false; window.Topmost = topmost;
         window.ShowActivated = !passive; window.Focusable = !passive;
         window.Closing += (_, _) => { if (!closing) { cancel.Cancel(); retryAnswer?.TrySetResult(false); } };
-        if(passive)label.Text=TextResources.Get("companions.package.updating");
+        if(passive)LocalizedUi.Set(label,"Text",()=>(TextResources.Get("companions.package.updating")));
         if(!lazy){if (parent?.IsVisible == true && !passive) window.Show(parent); else window.Show();shown=true;}
     }
     public void Report(OfficialCompanionProgress progress) => Dispatcher.UIThread.Post(() =>
@@ -50,7 +50,7 @@ internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<Off
         if(!shown)Show();
         var failed = error is AggregateException aggregate ? aggregate.Flatten().InnerExceptions : new[] { error }.AsEnumerable();
         var names = OfficialCompanionProfiles.All.Where(p => failed.Any(e => e.Message.StartsWith(p.Id + "：", StringComparison.Ordinal) || e.Message.StartsWith(p.Id + ":", StringComparison.Ordinal))).Select(p => p.DisplayName).ToArray();
-        label.Text = (names.Length > 0 ? TextResources.Format("officialCompanionProgressView.retryAsync.label",string.Join("、", names)) : TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeA")) + TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeB");
+        LocalizedUi.Set(label,"Text",()=>((names.Length > 0 ? TextResources.Format("officialCompanionProgressView.retryAsync.label",string.Join("、", names)) : TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeA")) + TextResources.Get("officialCompanionProgressView.retryAsync.label.alternativeB")));
         bar.IsIndeterminate = false; retry.IsVisible = true;
         retryAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var registration = cancel.Token.Register(() => retryAnswer.TrySetResult(false));

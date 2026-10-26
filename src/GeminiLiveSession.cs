@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -55,7 +55,8 @@ namespace Dafeiyu
         CancellationTokenSource cancellation;ILiveSocket socket;IPcmMicrophone microphone;ILiveAudioOutput speaker;Task running;TaskCompletionSource<bool> configured;bool disposed;int volume;
         int successfulConnections;
         internal int SuccessfulConnections {get{return Volatile.Read(ref successfulConnections);}}
-        public bool IsActive {get{lock(gate)return running!=null;}} public string Status {get;private set;}
+        public bool IsActive {get{lock(gate)return running!=null;}} string rawStatus;LocalizedMessage localizedStatus;
+        public string Status {get{var status=localizedStatus;return status==null?rawStatus:status.Value;}private set{rawStatus=value;localizedStatus=null;}}
         public event Action StateChanged;public event Action<string,string> PartialTranscript;public event Action<string,string> TurnCompleted;
         public event Action<string,string,string> TurnCommitted;
         public Func<string> RelationshipCompanion {get;set;}
@@ -67,16 +68,17 @@ namespace Dafeiyu
         public GeminiLiveSession() : this(null){}
         public GeminiLiveSession(Dafeiyu.Maintenance.DataMaintenanceGate maintenance) : this(()=>new GeminiLiveSocket(),()=>new AudioRecorder(true),()=>new PcmOutput(),maintenance){}
 #endif
-        public GeminiLiveSession(Func<ILiveSocket> transport,Func<IPcmMicrophone> capture,Func<ILiveAudioOutput> output,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null){Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();sockets=transport;microphones=capture;speakers=output;Status=TextResources.Get("geminiLiveSession.geminiLiveSession.status");}
+        public GeminiLiveSession(Func<ILiveSocket> transport,Func<IPcmMicrophone> capture,Func<ILiveAudioOutput> output,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null){Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();sockets=transport;microphones=capture;speakers=output;SetStatus(TextResources.Message("geminiLiveSession.geminiLiveSession.status"));}
         public async Task StartAsync(PetSettings settings,string persona)
         {
+            var language=LanguageRequestScope.Capture();
             GeminiLiveSocket.Endpoint(settings.Live);
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("GeminiLiveSession");if(running!=null)throw new InvalidOperationException(TextResources.Get("geminiLiveSession.startAsync.text"));
                 var admission=Maintenance.EnterActivity();try{
                 cancellation=new CancellationTokenSource();configured=new TaskCompletionSource<bool>();volume=settings.Volume;
-                var snapshot=settings.Copy();string prompt=ReplyLanguagePolicy.Apply(PersonaProfiles.LocalizeDefaultPrompt(persona));running=Task.Run(async()=>{try{await Run(snapshot,prompt,cancellation.Token).ConfigureAwait(false);}finally{admission.Dispose();}});
+                var snapshot=settings.Copy();string prompt=ReplyLanguagePolicy.Apply(PersonaProfiles.LocalizeDefaultPrompt(persona,language),language);running=Task.Run(async()=>{try{await Run(snapshot,prompt,cancellation.Token).ConfigureAwait(false);}finally{admission.Dispose();}});
                 }catch{admission.Dispose();throw;}
             }
             Task timeout=Task.Delay(TimeSpan.FromSeconds(25));Task first=await Task.WhenAny(configured.Task,timeout);
@@ -84,6 +86,7 @@ namespace Dafeiyu
             Exception failure=null;try{await configured.Task;}catch(Exception e){failure=e;}
             if(failure!=null){await StopAsync();throw failure;}
         }
+        void SetStatus(LocalizedMessage status){localizedStatus=status;rawStatus=null;if(!disposed&&StateChanged!=null)StateChanged();}
         void SetStatus(string status){Status=status;if(!disposed && StateChanged!=null)StateChanged();}
         static string Json(object value){return new JavaScriptSerializer{MaxJsonLength=2*1024*1024}.Serialize(value);}
         async Task Run(PetSettings settings,string persona,CancellationToken token)
@@ -91,7 +94,7 @@ namespace Dafeiyu
             Task sending=null;var queue=new BlockingCollection<byte[]>(32);string user="",reply="",logicalTurnId=null,companionId=null;
             try
             {
-                SetStatus(TextResources.Get("geminiLiveSession.run.setStatus"));socket=sockets();
+                SetStatus(TextResources.Message("geminiLiveSession.run.setStatus"));socket=sockets();
                 using(var connect=CancellationTokenSource.CreateLinkedTokenSource(token)){connect.CancelAfter(TimeSpan.FromSeconds(20));await socket.ConnectAsync(settings.Live,connect.Token).ConfigureAwait(false);}
                 string model=settings.Live.Model.StartsWith("models/",StringComparison.Ordinal) ? settings.Live.Model : "models/"+settings.Live.Model;
                 await socket.SendTextAsync(Json(new {setup=new {model=model,generationConfig=new {responseModalities=new[]{"AUDIO"},speechConfig=new {voiceConfig=new {prebuiltVoiceConfig=new {voiceName=settings.LiveVoice}}}},systemInstruction=new {parts=new[]{new {text=persona}}},inputAudioTranscription=new {},outputAudioTranscription=new {}}}),token).ConfigureAwait(false);
@@ -107,10 +110,10 @@ namespace Dafeiyu
                         ready=true;speaker=speakers();speaker.SetVolume(volume);microphone=microphones();
                         var failures=speaker as ILiveAudioFailureSource;
                         if(failures!=null)failures.Failed+=delegate(string failure){if(token.IsCancellationRequested)return;SetStatus(failure);cancellation.Cancel();socket.Abort();};
-                        microphone.PcmAvailable+=delegate(byte[] bytes){if(token.IsCancellationRequested)return;Volatile.Write(ref inputLevel,AudioLevel.Pcm16(bytes));Interlocked.Exchange(ref inputAt,DateTime.UtcNow.Ticks);if(!queue.TryAdd(bytes)){SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeA"));cancellation.Cancel();socket.Abort();}};
+                        microphone.PcmAvailable+=delegate(byte[] bytes){if(token.IsCancellationRequested)return;Volatile.Write(ref inputLevel,AudioLevel.Pcm16(bytes));Interlocked.Exchange(ref inputAt,DateTime.UtcNow.Ticks);if(!queue.TryAdd(bytes)){SetStatus(TextResources.Message("geminiLiveSession.run.setStatus.alternativeA"));cancellation.Cancel();socket.Abort();}};
                         microphone.Failed+=delegate(string failure){SetStatus(failure);cancellation.Cancel();socket.Abort();};
-                        sending=Task.Run(async delegate {try{foreach(byte[] bytes in queue.GetConsumingEnumerable(token))await socket.SendTextAsync(Json(new {realtimeInput=new {audio=new {data=Convert.ToBase64String(bytes),mimeType="audio/pcm;rate=16000"}}}),token).ConfigureAwait(false);}catch(OperationCanceledException){}catch(Exception){SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeB"));cancellation.Cancel();socket.Abort();}});
-                        microphone.Start();Interlocked.Increment(ref successfulConnections);SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeC"));configured.TrySetResult(true);
+                        sending=Task.Run(async delegate {try{foreach(byte[] bytes in queue.GetConsumingEnumerable(token))await socket.SendTextAsync(Json(new {realtimeInput=new {audio=new {data=Convert.ToBase64String(bytes),mimeType="audio/pcm;rate=16000"}}}),token).ConfigureAwait(false);}catch(OperationCanceledException){}catch(Exception){SetStatus(TextResources.Message("geminiLiveSession.run.setStatus.alternativeB"));cancellation.Cancel();socket.Abort();}});
+                        microphone.Start();Interlocked.Increment(ref successfulConnections);SetStatus(TextResources.Message("geminiLiveSession.run.setStatus.alternativeC"));configured.TrySetResult(true);
                     }
                     object raw;if(!json.TryGetValue("serverContent",out raw))continue;
                     if(!ready)throw new ApiException(TextResources.Get("geminiLiveSession.run.text.alternativeB"));
@@ -134,7 +137,7 @@ namespace Dafeiyu
                             }
                         }
                     }
-                    if(!interrupted && content.ContainsKey("turnComplete") && Object.Equals(content["turnComplete"],true)){Commit(user,reply,"complete",logicalTurnId,companionId);user=reply="";logicalTurnId=companionId=null;SetStatus(TextResources.Get("geminiLiveSession.run.setStatus.alternativeC"));}
+                    if(!interrupted && content.ContainsKey("turnComplete") && Object.Equals(content["turnComplete"],true)){Commit(user,reply,"complete",logicalTurnId,companionId);user=reply="";logicalTurnId=companionId=null;SetStatus(TextResources.Message("geminiLiveSession.run.setStatus.alternativeC"));}
                 }
             }
             catch(OperationCanceledException){configured.TrySetCanceled();}
@@ -178,7 +181,7 @@ namespace Dafeiyu
         public async Task StopAsync()
         {
             Task task;lock(gate){task=running;if(task==null)return;cancellation.Cancel();if(socket!=null)socket.Abort();}
-            await task.ConfigureAwait(false);SetStatus(TextResources.Get("geminiLiveSession.stopAsync.setStatus"));
+            await task.ConfigureAwait(false);SetStatus(TextResources.Message("geminiLiveSession.stopAsync.setStatus"));
         }
         public void Dispose(){lock(gate){if(disposed)return;disposed=true;if(cancellation!=null)cancellation.Cancel();if(socket!=null)socket.Abort();}}
     }

@@ -1,8 +1,8 @@
 # 中文文案资源维护
 
-`0.10.5-dev.1` 已将 WPF、Avalonia、macOS 平台层和共享业务提示集中到中文规范目录 `assets/locales/zh_CN.json`，该版本只做中文资源重构。当前 `0.10.5-dev.2` 增量提供 13 个内嵌语言目录和语言选择弹窗，详见 [多语言设计](multilingual-design.md)。不提供外置语言包加载。
+`0.10.5-dev.1` 已将 WPF、Avalonia、macOS 平台层和共享业务提示集中到中文规范目录 `assets/locales/zh_CN.json`，该版本只做中文资源重构。`0.10.5-dev.2` 增量提供 13 个内嵌语言目录和语言选择弹窗，详见 [多语言设计](multilingual-design.md)。`0.11.0-dev.2` 在此基础上增加语言热切换；开发验收见 [热切换验收](live-language-acceptance.md)。不提供外置语言包加载。
 
-新设置、没有语言字段的旧设置和未知代码默认保存 `system`，启动时按系统界面语言解析一次；手动保存的语言保持不变。切换选项在下次启动生效，本进程不混合语言，也不自动重启。语言名称使用本名，“跟随系统”使用当前界面语言；葡语匹配巴西葡语，西语区分西班牙和拉美，未适配的系统语言使用 English。
+新设置、没有语言字段的旧设置和未知代码默认保存 `system`，启动时按系统界面语言解析一次；手动保存的语言保持不变。保存语言后原位刷新现有界面，无需重启；引导页使用“应用并继续”。现有任务和连接保留启动时的语言快照，新请求使用新语言；历史及用户自定义内容保持原文。语言名称使用本名，“跟随系统”使用当前界面语言；葡语匹配巴西葡语，西语区分西班牙和拉美，未适配的系统语言使用 English。
 
 使用稳定英文功能路径作为 Key。固定文字调用 `TextResources.Get("common.cancel")`；带参数的整句调用 `TextResources.Format("feature.result", value)`，参数使用 `{0}`、`{1}`。需要原有区域规则时调用带 `IFormatProvider` 的重载，不改变线程 Culture。普通大括号文字用 Get；格式模板内的字面大括号写成 `{{` 和 `}}`。JSON 必须为 UTF-8 无 BOM 的扁平字符串对象，不允许重复 Key、空白 Key 或非字符串值。
 
@@ -48,3 +48,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File Build.ps1 -Target ReplyL
 来源声明 `assistant-authored / nativeHumanReview: not_performed` 表示助手生成且没有母语人工审校。`technicalReview: pending_parent_review` 记录元数据生成时的状态；完整技术审阅由本任务的独立父级审查执行并单独记录，不能把结构检查或自查伪称人工语言审核。旧语言包 provenance 的 dev.2/dev.3 哈希仍是历史阶段记录，新版本以独立 feature provenance 和实际成品哈希为准。
 
 新增维护检查：`python tests/FeatureResourceProvenanceTests.py`；离线标题字库检查：`python tools/fonts/relationship_title_fonts.py --check` 及 `python tools/fonts/test_relationship_title_fonts.py`（依赖只用于资产准备/验证）。翻译阶段标题后运行 `--build` 重建全部子集、语料、manifest 和生成的覆盖清单，保留 Devanagari RA/VIRAMA 连写支持及上游/OFL 固定来源。
+
+现有控件请使用 `LocalizedUi` 或接受 `Func<string>` 的显示辅助方法绑定原始资源键及格式参数；不得对译文反查键、重建整个窗口或刷新输入草稿。活动系统通知使用 `TextResources.Message` 保存键和参数。后台模型请求通过 `LanguageRequestScope` 保留一次任务的语言，界面 `TextResources.Get` 始终读取当前有效语言。

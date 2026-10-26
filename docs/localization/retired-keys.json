@@ -21,5 +21,14 @@
   "relationship.home.profile": "The current profile heading displays the actual selected companion name rather than this temporary generic heading.",
   "relationship.home.rulesBody": "Current growth rules show the separate ruleVisit/ruleInteraction/ruleConversation/ruleWork and ruleLimit strings; the former aggregate template is retained as feature history.",
   "relationship.home.today": "Current stats use todayLabel and the numeric score/limit as separate fields.",
-  "relationship.card.footer": "Final keepsake cards display stage-specific memory text and saved acquaintance facts instead of this temporary generic footer."
+  "relationship.card.footer": "Final keepsake cards display stage-specific memory text and saved acquaintance facts instead of this temporary generic footer.",
+  "languages.restartRequired": "Retired in 0.11.0-dev.2: language switching applies in-process; retained only as protected historical translation evidence, never shown by live UI.",
+  "onboarding.language.restart": "Retired in 0.11.0-dev.2: language switching applies in-process; retained only as protected historical translation evidence, never shown by live UI.",
+  "onboarding.language.detail": "Retired in 0.11.0-dev.2: language switching applies in-process; retained only as protected historical translation evidence, never shown by live UI.",
+  "imageGenerationSettings.applyPreset.quality": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
+  "imageGenerationSettings.defaultChoices.concat": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
+  "imageGenerationSettings.imageGenerationSettings.quality": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
+  "imageGenerationSettings.load.qualityStringIsNullOrEmpty": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
+  "imageGenerationSettings.load.sizeStringIsNullOrEmpty": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
+  "imageGenerationSettings.refreshParameters.concat": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence."
 }

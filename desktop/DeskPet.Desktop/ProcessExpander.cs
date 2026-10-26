@@ -18,7 +18,7 @@ internal static class ProcessExpander
         expander.Template = new FuncControlTemplate<Expander>((owner, scope) =>
         {
             var toggle = new ToggleButton { Name = "ProcessToggle", Padding = new Thickness(0, 3), Background = Brushes.Transparent, BorderThickness = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Left };
-            Avalonia.Automation.AutomationProperties.SetName(toggle, TextResources.Get("processExpander.apply.automationAutomationPropertiesSetName"));
+            LocalizedUi.Automation(toggle,()=>(TextResources.Get("processExpander.apply.automationAutomationPropertiesSetName")));
             toggle.Bind(ContentControl.ContentProperty, new Binding(nameof(Expander.Header)) { Source = owner });
             toggle.Bind(ToggleButton.IsCheckedProperty, new Binding(nameof(Expander.IsExpanded)) { Source = owner, Mode = BindingMode.TwoWay });
             toggle.Template = new FuncControlTemplate<ToggleButton>((button, _) =>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Speech.Synthesis;
@@ -28,23 +28,24 @@ namespace Dafeiyu
         }
         public Task SpeakAsync(string reply,PetSettings settings,CancellationToken cancel)
         {
+            var language=LanguageRequestScope.Capture();
             if(!dispatcher.CheckAccess() || !(SynchronizationContext.Current is DispatcherSynchronizationContext))
-                return dispatcher.InvokeAsync(new Func<Task>(delegate {return SpeakOnUiAsync(reply,settings,cancel);})).Task.Unwrap();
-            return SpeakOnUiAsync(reply,settings,cancel);
+                return dispatcher.InvokeAsync(new Func<Task>(delegate {return SpeakOnUiAsync(reply,settings,cancel,language);})).Task.Unwrap();
+            return SpeakOnUiAsync(reply,settings,cancel,language);
         }
-        private async Task SpeakOnUiAsync(string reply,PetSettings settings,CancellationToken cancel)
+        private async Task SpeakOnUiAsync(string reply,PetSettings settings,CancellationToken cancel,LanguageSelection language)
         {
             if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException(TextResources.Get("speechOutput.speakOnUiAsync.text"));
             currentVolume=Math.Max(0,Math.Min(100,settings.Volume));
-            string text=Regex.Replace(reply??"","```[\\s\\S]*?```",TextResources.Get("speech.codeOmitted"));text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
-            if(text.Length>1800)text=TextResources.Format("speechOutput.speakOnUiAsync.textTextSubstring",text.Substring(0,1800));if(text.Length==0 || settings.Volume==0)return;
+            string text=Regex.Replace(reply??"","```[\\s\\S]*?```",TextResources.Get("speech.codeOmitted",language));text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
+            if(text.Length>1800)text=TextResources.FormatForLanguage(language,"speechOutput.speakOnUiAsync.textTextSubstring",text.Substring(0,1800));if(text.Length==0 || settings.Volume==0)return;
             using(var reading=CancellationTokenSource.CreateLinkedTokenSource(cancel))
             {
                 active=reading;reading.CancelAfter(TimeSpan.FromMinutes(4));
                 try
                 {
                     if(settings.UseCloudVoice){var wav=await api.SpeechAsync(settings.SpeechConnection(),settings.VoiceName,text,reading.Token);await PlayWave(wav,currentVolume,reading.Token);}
-                    else await SpeakSystem(text,currentVolume,reading.Token);
+                    else await SpeakSystem(text,currentVolume,reading.Token,language);
                 }
                 finally {if(Object.ReferenceEquals(active,reading))active=null;}
             }
@@ -54,7 +55,7 @@ namespace Dafeiyu
             completion.TrySetCanceled();
             if(!dispatcher.HasShutdownStarted)dispatcher.BeginInvoke(new Action(delegate {if(token.IsCancellationRequested)stop();}));
         }
-        private async Task SpeakSystem(string text,int volume,CancellationToken token)
+        private async Task SpeakSystem(string text,int volume,CancellationToken token,LanguageSelection language)
         {
             token.ThrowIfCancellationRequested();SpeechSynthesizer voice;
             try{voice=new SpeechSynthesizer();}
@@ -65,7 +66,7 @@ namespace Dafeiyu
             try
             {
                 var enabledVoices=voice.GetInstalledVoices().Where(v=>v.Enabled).ToArray();
-                string culture=SpeechLanguagePolicy.SelectCulture(TextResources.CurrentLanguage,enabledVoices.Select(v=>v.VoiceInfo.Culture.Name));
+                string culture=SpeechLanguagePolicy.SelectCulture(language.Code,enabledVoices.Select(v=>v.VoiceInfo.Culture.Name));
                 var selectedVoice=enabledVoices.FirstOrDefault(v=>String.Equals(v.VoiceInfo.Culture.Name,culture,StringComparison.Ordinal));
                 if(selectedVoice!=null)voice.SelectVoice(selectedVoice.VoiceInfo.Name);
                 voice.SetOutputToDefaultAudioDevice();voice.Volume=Math.Max(0,Math.Min(100,volume));

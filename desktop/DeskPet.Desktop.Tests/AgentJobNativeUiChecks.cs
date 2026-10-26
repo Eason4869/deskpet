@@ -21,13 +21,29 @@ internal static class AgentJobNativeUiChecks
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Native Avalonia preview: "+label);checks++;Console.WriteLine("PASS "+label);}
         string output=Path.GetFullPath(Path.Combine("work","agent-jobs-ui","avalonia-native"));Directory.CreateDirectory(output);
         int port=Port();string ready=Path.Combine(root,"server.ready"),requests=Path.Combine(root,"server.requests");
-        string command="$listener=New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback,"+port+"); $listener.Start(); [IO.File]::WriteAllText("+Quote(ready)+",'ready'); Write-Output 'http://user:secret@127.0.0.1:"+port+"/fixture?token=secret#part'; while($true){$client=$listener.AcceptTcpClient(); try{$stream=$client.GetStream(); $reader=New-Object IO.StreamReader($stream); $line=$reader.ReadLine(); [IO.File]::AppendAllText("+Quote(requests)+",$line+[Environment]::NewLine); while($reader.ReadLine()){}; $body='<html><body><p id=fixture>DeskPet Avalonia native preview</p></body></html>'; $bytes=[Text.Encoding]::UTF8.GetBytes($body); $header=[Text.Encoding]::ASCII.GetBytes(('HTTP/1.1 200 OK'+[char]13+[char]10+'Content-Type: text/html; charset=utf-8'+[char]13+[char]10+'Content-Length: '+$bytes.Length+[char]13+[char]10+'Connection: close'+[char]13+[char]10+[char]13+[char]10)); $stream.Write($header,0,$header.Length); $stream.Write($bytes,0,$bytes.Length); $stream.Flush()}finally{$client.Close()}}";
+        string command="$listener=New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback,"+port+"); $listener.Start(); [IO.File]::WriteAllText("+Quote(ready)+",'ready'); Write-Output 'http://user:secret@127.0.0.1:"+port+"/fixture?token=secret#part'; $pending=New-Object 'Collections.Generic.List[Net.Sockets.TcpClient]'; while($true){while($listener.Pending()){$pending.Add($listener.AcceptTcpClient())}; $client=$null; foreach($candidate in $pending){if($candidate.Available -gt 0){$client=$candidate;break}}; if($null -eq $client){Start-Sleep -Milliseconds 10;continue}; [void]$pending.Remove($client); try{$stream=$client.GetStream(); $reader=New-Object IO.StreamReader($stream); $line=$reader.ReadLine(); [IO.File]::AppendAllText("+Quote(requests)+",$line+[Environment]::NewLine); while($reader.ReadLine()){}; $body='<html><body><p id=fixture>DeskPet Avalonia native preview</p></body></html>'; $bytes=[Text.Encoding]::UTF8.GetBytes($body); $header=[Text.Encoding]::ASCII.GetBytes(('HTTP/1.1 200 OK'+[char]13+[char]10+'Content-Type: text/html; charset=utf-8'+[char]13+[char]10+'Content-Length: '+$bytes.Length+[char]13+[char]10+'Connection: close'+[char]13+[char]10+[char]13+[char]10)); $stream.Write($header,0,$header.Length); $stream.Write($bytes,0,$bytes.Length); $stream.Flush()}finally{$client.Close()}}";
         var browser=new Browser(root);var panel=new DesktopAgentJobsPanel(owner.WorkBindings.Jobs,project.Id,openPreview:browser.OpenAsync);var window=Ui.Window(TextResources.Get("agent.jobs.ui.title"),panel,720,700);window.Show(host);
         try
         {
             Check(window.TryGetPlatformHandle()?.HandleDescriptor=="HWND","task panel uses an actual native Avalonia Windows window");
             var watch=Stopwatch.StartNew();var job=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-preview",command);Check(watch.ElapsedMilliseconds<2000,"native server task hands off within two seconds");
-            await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");AgentJobUiChecks.All<Expander>(panel).Single().IsExpanded=true;
+            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");}
+            catch(TimeoutException error)
+            {
+                string diagnostic;
+                try
+                {
+                    var page=await owner.WorkBindings.Jobs.Manager.GetAsync(job.Owner,job.Id,"",16384,CancellationToken.None);
+                    diagnostic=JsonSerializer.Serialize(new{ready=File.Exists(ready),attached=panel.Attached,cards=AgentJobUiChecks.All<Expander>(panel).Count(),state=page.Snapshot.State.ToString(),exitCode=page.Snapshot.RootExitCode,shell=AgentCommandExecutor.PowerShellPath(),output=page.Records.Select(record=>new{record.Stream,record.Text})});
+                }
+                catch(Exception failure){diagnostic="Could not read fixture job: "+failure;}
+                File.WriteAllText(Path.Combine(output,"server-readiness-failure.json"),diagnostic);
+                throw new TimeoutException(error.Message+": "+diagnostic,error);
+            }
+            AgentJobUiChecks.All<Expander>(panel).Single().IsExpanded=true;
+            // Chromium may open an idle preconnection before its HTTP request.
+            // Keep one open throughout the browser check so it cannot starve GET.
+            using var idleConnection=new TcpClient();await idleConnection.ConnectAsync(IPAddress.Loopback,port);
             await WaitAsync(()=>AgentJobUiChecks.All<Button>(panel).Any(button=>button.Name=="AgentJobPreview"),7000,"native preview candidate");Check(!File.Exists(requests),"displaying a native preview candidate sends zero HTTP requests");
             var preview=AgentJobUiChecks.All<Button>(panel).Single(button=>button.Name=="AgentJobPreview");Check(ToolTip.GetTip(preview)?.ToString()=="http://127.0.0.1:"+port+"/fixture","native preview candidate removes credentials, query and fragment");
             preview.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await browser.Ready.Task.WaitAsync(TimeSpan.FromSeconds(30));
@@ -35,6 +51,7 @@ internal static class AgentJobNativeUiChecks
             await browser.CaptureAsync(Path.Combine(output,"native-browser.png"));using(var capture=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96))){capture.Render(window);capture.Save(Path.Combine(output,"native-panel.png"));}
             AgentJobUiChecks.All<Button>(panel).Single(button=>button.Name=="AgentJobStop").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await WaitAsync(()=>owner.WorkBindings.Jobs.Manager.ListForProject(project.Id).Single(value=>value.Id==job.Id).CleanupConfirmed,6000,"native UI stop confirmation");
             var reuse=new TcpListener(IPAddress.Loopback,port);reuse.Start();reuse.Stop();Check(true,"native stop button confirms cleanup and releases the real listening port");
+            await WaitAsync(()=>idleConnection.Client.Poll(0,SelectMode.SelectRead)&&idleConnection.Available==0,1000,"native idle preconnection cleanup");Check(true,"native stop closes the owned server's idle preconnection");
             var timings=new List<object>();foreach(int code in new[]{0,7})
             {
                 watch.Restart();var terminal=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-exit-"+code,"exit "+code);string expected=AgentJobUiText.State(code==0?AgentJobState.Succeeded:AgentJobState.Failed);
@@ -67,7 +84,20 @@ internal static class AgentJobNativeUiChecks
                 }
                 if(address==null)throw new TimeoutException("Actual Edge debugger did not expose the fixture page");socket=new ClientWebSocket();await socket.ConnectAsync(new Uri(address),CancellationToken.None);
                 bool body=false;for(int attempt=0;attempt<50&&!body;attempt++){using var result=await CallAsync("Runtime.evaluate",new{expression="document.querySelector('#fixture')?.textContent",returnByValue=true});body=result.RootElement.GetProperty("result").GetProperty("result").TryGetProperty("value",out var value)&&value.GetString()=="DeskPet Avalonia native preview";if(!body)await Task.Delay(100);}
-                if(!body)throw new Exception("Actual Edge did not render the fixture body");Ready.TrySetResult(true);
+                if(!body)
+                {
+                    string evidence=Path.GetFullPath(Path.Combine("work","agent-jobs-ui","avalonia-native"));Directory.CreateDirectory(evidence);
+                    try
+                    {
+                        using var state=await CallAsync("Runtime.evaluate",new{expression="JSON.stringify({url:location.href,ready:document.readyState,body:document.body?.innerText,html:document.documentElement?.outerHTML})",returnByValue=true});
+                        File.WriteAllText(Path.Combine(evidence,"browser-failure.json"),state.RootElement.ToString());
+                        string requests=Path.Combine(root,"server.requests");File.WriteAllText(Path.Combine(evidence,"browser-failure-requests.txt"),File.Exists(requests)?File.ReadAllText(requests):"No request received");
+                        await CaptureAsync(Path.Combine(evidence,"browser-failure.png"));
+                    }
+                    catch(Exception diagnostic){File.WriteAllText(Path.Combine(evidence,"browser-failure-diagnostic.txt"),diagnostic.ToString());}
+                    throw new Exception("Actual Edge did not render the fixture body");
+                }
+                Ready.TrySetResult(true);
             }
             catch(Exception error){Ready.TrySetException(error);throw;}
         }

@@ -18,9 +18,9 @@ internal static class VerifyArtifacts
             if(args.Length==2&&args[0]=="--onboarding-titles")
             {
                 var source=Assembly.LoadFrom(Path.GetFullPath(args[1]));
-                var lessons=source.GetType("Dafeiyu.OnboardingLessons",true).GetField("All",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
+                var lessons=source.GetType("Dafeiyu.OnboardingLessons",true).GetProperty("All",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static);
                 var titles=new List<string>();
-                foreach(object lesson in (Array)lessons.GetValue(null))titles.Add((string)lesson.GetType().GetField("Title").GetValue(lesson));
+                foreach(object lesson in (Array)lessons.GetValue(null,null))titles.Add((string)lesson.GetType().GetField("Title").GetValue(lesson));
                 Console.Write(Convert.ToBase64String(Encoding.UTF8.GetBytes(String.Join("\n",titles.ToArray()))));
                 return 0;
             }

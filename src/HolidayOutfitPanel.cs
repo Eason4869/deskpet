@@ -25,11 +25,11 @@ namespace Dafeiyu
         {
             if(holidays==null)throw new ArgumentNullException("holidays");controller=holidays;currentSkin=character;Name="HolidayOutfitPanel";
             outfits=new ComboBox{Name="HolidayOutfitPicker",MinHeight=36,Padding=new Thickness(8,4,8,4),HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalAlignment=VerticalAlignment.Top,ItemTemplate=ThumbnailTemplate()};
-            System.Windows.Automation.AutomationProperties.SetName(outfits,TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.automationAutomationPropertiesSetName"));outfits.ToolTip=TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.outfitsToolTip");
+            LocalizedUi.Automation(outfits,()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.automationAutomationPropertiesSetName")));LocalizedUi.Set(outfits,"ToolTip",()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.outfitsToolTip")));
             outfits.SelectionChanged+=delegate {if(refreshing)return;var selected=outfits.SelectedItem as Choice;if(selected==null)return;if(!selected.Available){RefreshState();return;}controller.SelectOwnedOutfit(selected.Id);};Children.Add(outfits);
             // Keep the host's exact themed item style, including its disabled state.
             outfits.ItemContainerGenerator.StatusChanged+=delegate {foreach(Choice choice in outfits.Items){var container=outfits.ItemContainerGenerator.ContainerFromItem(choice) as ComboBoxItem;if(container!=null)container.IsEnabled=choice.Available;}};
-            enabled=Ui.Toggle(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.toggle"),true,value=>{if(!refreshing)controller.SetEnabled(value);});enabled.Name="HolidayOutfitEnabled";enabled.FontSize=11;enabled.Foreground=Ui.Muted;enabled.Margin=new Thickness(0,3,0,0);Children.Add(enabled);
+            enabled=LocalizedUi.Toggle(()=>(TextResources.Get("holidayOutfitPanel.holidayOutfitPanel.toggle")),true,value=>{if(!refreshing)controller.SetEnabled(value);});enabled.Name="HolidayOutfitEnabled";enabled.FontSize=11;enabled.Foreground=Ui.Muted;enabled.Margin=new Thickness(0,3,0,0);Children.Add(enabled);
             status=Ui.Text("",11,Ui.Muted);status.TextWrapping=TextWrapping.Wrap;Children.Add(status);
             controller.Changed+=Changed;RefreshState();
         }
@@ -45,8 +45,8 @@ namespace Dafeiyu
                 enabled.IsEnabled=skin==null || !String.IsNullOrEmpty(skin.BuiltinCharacterId);
                 var owned=controller.OwnedOutfits;
                 outfits.Items.Clear();
-                var original=OriginalThumbnail();outfits.Items.Add(new Choice{Id=null,Available=true,Text=TextResources.Get("holidayOutfitPanel.refreshState.text"),Thumbnail=original});
-                foreach(var outfit in owned)outfits.Items.Add(new Choice{Id=outfit.OutfitId,Available=outfit.Ready,Text=outfit.Name+(outfit.Ready?"":TextResources.Get("holidayOutfitPanel.refreshState.outfitName")),Thumbnail=OutfitThumbnail(outfit)??original});
+                var original=OriginalThumbnail();outfits.Items.Add(LocalizedUi.With(new Choice{Id=null,Available=true,Text=TextResources.Get("holidayOutfitPanel.refreshState.text"),Thumbnail=original},"Text",()=>(TextResources.Get("holidayOutfitPanel.refreshState.text"))));
+                foreach(var outfit in owned)outfits.Items.Add(LocalizedUi.With(new Choice{Id=outfit.OutfitId,Available=outfit.Ready,Text=outfit.Name+(outfit.Ready?"":TextResources.Get("holidayOutfitPanel.refreshState.outfitName")),Thumbnail=OutfitThumbnail(outfit)??original},"Text",()=>(outfit.Name+(outfit.Ready?"":TextResources.Get("holidayOutfitPanel.refreshState.outfitName")))));
                 var effective=controller.EffectiveOutfit;string selectedId=effective==null?null:effective.OutfitId;
                 outfits.SelectedItem=outfits.Items.Cast<Choice>().FirstOrDefault(choice=>choice.Id==selectedId);
                 outfits.IsEnabled=owned.Count==0 || controller.Enabled;

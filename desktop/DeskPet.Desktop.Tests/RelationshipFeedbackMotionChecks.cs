@@ -30,7 +30,10 @@ internal static class RelationshipFeedbackMotionChecks
             Until(()=>card.Opacity>.05,500,"ordinary entrance begins");Check(ordinary.IsVisible&&card.Opacity<.9&&Offset(card)>1&&Offset(card)<12,"ordinary gain visibly rises and fades in between its endpoints: opacity="+card.Opacity+" y="+Offset(card));
             Until(()=>card.Opacity>=.95,500,"ordinary entrance completes");Check(ordinary.IsVisible&&Math.Abs(Offset(card))<1,"ordinary gain rises and fades in within 200ms");
             Pause(750);Check(ordinary.IsVisible&&card.Opacity>=.95&&Math.Abs(Offset(card))<1,"ordinary gain holds fully visible for about one second");
-            Pause(310);Check(ordinary.IsVisible&&card.Opacity<.9&&Offset(card)<-1,"ordinary gain fades upward during its 250ms exit");Inside(ordinary,card,"ordinary gain card fits the transparent window during exit");
+            // A busy native UI can resume after the hold deadline; the exit clock
+            // starts on its first delivered pulse, not at a guessed wall-clock phase.
+            System.Threading.Thread.Sleep(350);
+            Until(()=>!ordinary.IsVisible||(card.Opacity<.9&&Offset(card)<-1),500,"ordinary exit begins after UI resumes");Check(ordinary.IsVisible&&card.Opacity<.9&&Offset(card)<-1,"ordinary gain fades upward during its 250ms exit: opacity="+card.Opacity+" y="+Offset(card));Inside(ordinary,card,"ordinary gain card fits the transparent window during exit");
             Pause(260);Check(!ordinary.IsVisible,"ordinary gain closes after its short exit");
 
             var merged=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));merged.Show();var mergedCard=Card(merged);

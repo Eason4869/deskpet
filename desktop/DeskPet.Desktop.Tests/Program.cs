@@ -52,8 +52,9 @@ try
     if(args.Contains("--heart-home")){Console.WriteLine("HeartHome: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"heart-home"),"zh_CN",Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native-home"))+" passed");return;}
     if(args.Contains("--maintenance-default-sequence")){
         TextResources.ConfigureStartupLanguage("zh_CN");TextResources.Get("common.cancel");
-        bool frozen=false;try{TextResources.ConfigureStartupLanguage("en_US");}catch(InvalidOperationException){frozen=true;}
-        Check(frozen&&TextResources.CurrentLanguage=="zh_CN","production language freeze still rejects a different locale");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));
+        Check(TextResources.CurrentLanguage=="en_US","language changes before maintenance fixtures without restarting");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
         int sequence=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-sequence"),TextResources.CurrentLanguage)
             +DataManagementUiChecks.Run(Path.Combine(directory,"data-management-sequence"),TextResources.CurrentLanguage)
             +CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-sequence"),TextResources.CurrentLanguage);
@@ -91,6 +92,7 @@ try
     if(args.Contains("--agent-job-exit-ui-only")){Console.WriteLine("AgentJobExitUiChecks: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--agent-job-ui="))){string language=args.Single(arg=>arg.StartsWith("--agent-job-ui=")).Substring("--agent-job-ui=".Length);Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"),language)+" passed");return;}
     if(args.Contains("--agent-job-ui-only")){Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"))+" passed");return;}
+    if(args.Contains("--live-language-ui-only")){Console.WriteLine("LiveLanguageUiChecks: "+LiveLanguageUiChecks.Run(Path.Combine(directory,"live-language-ui"))+" passed");return;}
     if(args.Contains("--onboarding-preparation-ui-only")){Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--onboarding-preparation-ui="))){string language=args.Single(arg=>arg.StartsWith("--onboarding-preparation-ui=")).Substring("--onboarding-preparation-ui=".Length);Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"),language)+" passed");return;}
     if(args.Contains("--work-binding-ui-only")||args.Contains("--agent-job-binding-ui-only")){Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"))+" passed");return;}

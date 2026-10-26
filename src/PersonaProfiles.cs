@@ -44,6 +44,12 @@ namespace Dafeiyu
             string key,name;if(!RecognizeDefault(prompt,out key,out name))return prompt;
             string result=CurrentDefault(key);return name==null?result:result.Replace("{pet_name}",name);
         }
+        public static string LocalizeDefaultPrompt(string prompt,LanguageSelection language)
+        {
+            if(language==null)throw new ArgumentNullException("language");
+            string key,name;if(!RecognizeDefault(prompt,out key,out name))return prompt;
+            string result=language.Get(key);return name==null?result:result.Replace("{pet_name}",name);
+        }
         static string CurrentDefault(string key)
         {
             switch(key)

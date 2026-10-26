@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,21 +27,21 @@ namespace Dafeiyu
         public ActionPaletteWindow(PetWindow companion)
         {
             pet=companion;
-            Ui.Window(this,TextResources.Format("actionPaletteWindow.actionPaletteWindow.window",pet.Skin.DisplayName),360,394);
+            LocalizedUi.Window(this,()=>(TextResources.Format("actionPaletteWindow.actionPaletteWindow.window",pet.Skin.DisplayName)),360,394);
             Owner=pet;ShowInTaskbar=false;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;
             MinWidth=0;MinHeight=0;Topmost=pet.Topmost;WindowStartupLocation=WindowStartupLocation.Manual;Focusable=true;
             var layout=new Grid{Width=448,Height=490};layout.RowDefinitions.Add(new RowDefinition{Height=new GridLength(440)});layout.RowDefinitions.Add(new RowDefinition());
             actions=new Canvas{Width=Diameter,Height=Diameter,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};layout.Children.Add(actions);
             var center=new StackPanel{VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10)};
-            var title=Ui.Text(pet.Skin.DisplayName,15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
+            var title=Ui.Text(()=>(pet.Skin.DisplayName),15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
             var tabs=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,8)};
-            interactionsTab=Ui.Button(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text"));interactionsTab.Name="PaletteInteractionsTab";
-            basicTab=Ui.Button(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeA"));basicTab.Name="PaletteBasicTab";
+            interactionsTab=LocalizedUi.Button(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text")));interactionsTab.Name="PaletteInteractionsTab";
+            basicTab=LocalizedUi.Button(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeA")));basicTab.Name="PaletteBasicTab";
             foreach(var tab in new[]{interactionsTab,basicTab}){tab.Width=58;tab.MinHeight=30;tab.Padding=new Thickness(8,3,8,3);tab.Margin=new Thickness(2,0,2,0);tab.FontSize=11;tabs.Children.Add(tab);}
             interactionsTab.Click+=delegate {SelectSection(false);};basicTab.Click+=delegate {SelectSection(true);};center.Children.Add(tabs);
-            selection=Ui.Text(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeB"),12,Ui.Muted);selection.Name="PaletteSelection";selection.TextAlignment=TextAlignment.Center;center.Children.Add(selection);var dismiss=UiIcons.Button("close",TextResources.Get("actionPaletteWindow.actionPaletteWindow.uiIcons"));dismiss.Name="CloseActionWheel";dismiss.Width=28;dismiss.Height=28;dismiss.MinHeight=28;dismiss.Padding=new Thickness(5);dismiss.Margin=new Thickness(0,4,0,0);dismiss.HorizontalAlignment=HorizontalAlignment.Center;dismiss.Click+=delegate{Close();};center.Children.Add(dismiss);
+            selection=LocalizedUi.Text(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeB")),12,Ui.Muted);selection.Name="PaletteSelection";selection.TextAlignment=TextAlignment.Center;center.Children.Add(selection);var dismiss=UiIcons.Button("close",()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.uiIcons")));dismiss.Name="CloseActionWheel";dismiss.Width=28;dismiss.Height=28;dismiss.MinHeight=28;dismiss.Padding=new Thickness(5);dismiss.Margin=new Thickness(0,4,0,0);dismiss.HorizontalAlignment=HorizontalAlignment.Center;dismiss.Click+=delegate{Close();};center.Children.Add(dismiss);
             var hub=new Border{Width=174,Height=174,CornerRadius=new CornerRadius(87),Background=Glass(true),BorderBrush=Ui.Brush("#EFFFFFFF"),BorderThickness=new Thickness(1.5),Child=center,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};layout.Children.Add(hub);
-            hint=Ui.Text(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeC"),11,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.VerticalAlignment=VerticalAlignment.Center;
+            hint=LocalizedUi.Text(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeC")),11,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.VerticalAlignment=VerticalAlignment.Center;
             var help=new Border{Child=hint,Background=Glass(true),BorderBrush=Ui.Brush("#BFFFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(14),Padding=new Thickness(12,4,12,4),Margin=new Thickness(18,4,18,4)};Grid.SetRow(help,1);layout.Children.Add(help);
             Content=new Viewbox{Child=layout,Stretch=Stretch.Uniform};
             PreviewKeyDown+=delegate(object sender,KeyEventArgs e)
@@ -77,16 +77,16 @@ namespace Dafeiyu
             SetTab(interactionsTab,!basic);SetTab(basicTab,basic);
             if(basic)
             {
-                for(int index=0;index<AnimationPlayer.States.Length;index++)
-                    AddAction(AnimationPlayer.Labels[index],AnimationPlayer.States[index],false);
+                for(int index=0;index<AnimationPlayer.States.Length;index++){int labelIndex=index;
+                    AddAction(()=>AnimationPlayer.Labels[labelIndex],AnimationPlayer.States[index],false);}
             }
             else
             {
-                AddAction(TextResources.Get("actionPaletteWindow.selectSection.addAction"),"feeding",true);
-                AddAction(pet.IsSleeping?TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeA"):TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeB"),"sleeping",true);AddAction(pet.Skin.SpecialAction,"special",true);
-                if(AdditionalInteractions.Supports(pet.Skin))AddAction(AdditionalInteractions.SpecialName(pet.Skin),"special2",true);
+                AddAction(()=>TextResources.Get("actionPaletteWindow.selectSection.addAction"),"feeding",true);
+                AddAction(()=>pet.IsSleeping?TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeA"):TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeB"),"sleeping",true);AddAction(()=>pet.Skin.SpecialAction,"special",true);
+                if(AdditionalInteractions.Supports(pet.Skin))AddAction(()=>AdditionalInteractions.SpecialName(pet.Skin),"special2",true);
             }
-            selection.Text=basic?TextResources.Get("actionPaletteWindow.selectSection.selectionBasic"):TextResources.Get("actionPaletteWindow.selectSection.selectionBasic.alternativeA");hint.Text=TextResources.Get("actionPaletteWindow.selectSection.hint");
+            LocalizedUi.Set(selection,"Text",()=>(basic?TextResources.Get("actionPaletteWindow.selectSection.selectionBasic"):TextResources.Get("actionPaletteWindow.selectSection.selectionBasic.alternativeA")));LocalizedUi.Set(hint,"Text",()=>(TextResources.Get("actionPaletteWindow.selectSection.hint")));
             RefreshAvailability();
             if(IsVisible){UpdateLayout();PlaceNearPet();}
         }
@@ -98,7 +98,7 @@ namespace Dafeiyu
             System.Windows.Automation.AutomationProperties.SetHelpText(button,selected?TextResources.Get("actionPaletteWindow.setTab.automationAutomationPropertiesSetHelpText"):TextResources.Get("actionPaletteWindow.setTab.automationAutomationPropertiesSetHelpText.alternativeA"));
         }
 
-        void AddAction(string label,string action,bool interaction)
+        void AddAction(Func<string> label,string action,bool interaction)
         {
             int count=basic?AnimationPlayer.States.Length:AdditionalInteractions.Supports(pet.Skin)?4:3,index=actionButtons.Count;
             double angle=-90+index*360.0/count,radians=angle*Math.PI/180;
@@ -108,11 +108,11 @@ namespace Dafeiyu
             var caption=Ui.Text(label,13.5);caption.HorizontalAlignment=HorizontalAlignment.Center;tile.Children.Add(caption);
             var content=new Canvas{Width=Diameter,Height=Diameter,IsHitTestVisible=false};content.Children.Add(tile);
             Canvas.SetLeft(tile,Center+153*Math.Cos(radians)-38);Canvas.SetTop(tile,Center+153*Math.Sin(radians)-(basic?39:48));
-            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
             var button=new Button{Template=sectorTemplate,Width=Diameter,Height=Diameter,Background=Glass(false),BorderBrush=Ui.Brush("#DBFFFFFF"),Cursor=Cursors.Hand,Content=content,Tag=Sector(angle,360.0/count)};
-            button.Name=(interaction?"PaletteInteraction_":"PaletteAction_")+action.Replace('-','_');button.ToolTip=Description(action);
-            System.Windows.Automation.AutomationProperties.SetName(button,label);
-            button.MouseEnter+=delegate{selection.Text=label;hint.Text=Description(action);};button.GotKeyboardFocus+=delegate{selection.Text=label;hint.Text=Description(action);};
+            button.Name=(interaction?"PaletteInteraction_":"PaletteAction_")+action.Replace('-','_');LocalizedUi.Tooltip(button,()=>Description(action));
+            LocalizedUi.Automation(button,label);
+            button.MouseEnter+=delegate{LocalizedUi.Set(selection,"Text",label);LocalizedUi.Set(hint,"Text",()=>Description(action));};button.GotKeyboardFocus+=delegate{LocalizedUi.Set(selection,"Text",label);LocalizedUi.Set(hint,"Text",()=>Description(action));};
             button.Click+=delegate
             {
                 if(pet.IsUpdating){RefreshAvailability();return;}
@@ -171,7 +171,7 @@ namespace Dafeiyu
         {
             bool enabled=!pet.IsUpdating;
             foreach(var button in actionButtons)button.IsEnabled=enabled;
-            if(!enabled)hint.Text=TextResources.Get("actionPaletteWindow.refreshAvailability.hint");
+            if(!enabled)LocalizedUi.Set(hint,"Text",()=>(TextResources.Get("actionPaletteWindow.refreshAvailability.hint")));
         }
 
         void PlaceNearPet()

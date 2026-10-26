@@ -34,11 +34,11 @@ namespace Dafeiyu
         internal void ShowAgentJobs(string projectId,string conversationId=null)
         {
             if(closing||String.IsNullOrWhiteSpace(projectId))return;
-            var window=new Window{MinWidth=360,MinHeight=420};Ui.Window(window,TextResources.Get("agent.jobs.ui.title"),720,680);window.MinWidth=360;
+            var window=new Window{MinWidth=360,MinHeight=420};LocalizedUi.Window(window,()=>(TextResources.Get("agent.jobs.ui.title")),720,680);window.MinWidth=360;
             var root=new System.Windows.Controls.DockPanel{Margin=new Thickness(16)};window.Content=root;
             var actions=new System.Windows.Controls.WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};System.Windows.Controls.DockPanel.SetDock(actions,System.Windows.Controls.Dock.Bottom);root.Children.Add(actions);
-            var panel=new AgentJobsPanel(AgentJobs,projectId,conversationId,null,false,OpenChatBrowserLink);var retry=Ui.Button(TextResources.Get("agent.jobs.ui.retry"));retry.Click+=delegate{panel.Retry();};actions.Children.Add(retry);
-            var close=Ui.Button(TextResources.Get("agent.jobs.ui.close"));close.Click+=delegate{window.Close();};actions.Children.Add(close);root.Children.Add(panel);
+            var panel=new AgentJobsPanel(AgentJobs,projectId,conversationId,null,false,OpenChatBrowserLink);var retry=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.retry")));retry.Click+=delegate{panel.Retry();};actions.Children.Add(retry);
+            var close=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.close")));close.Click+=delegate{window.Close();};actions.Children.Add(close);root.Children.Add(panel);
             agentJobWindows.Add(window);window.Closed+=delegate{panel.Dispose();agentJobWindows.Remove(window);};window.Show();
         }
         void AgentJobCompleted(AgentJobSnapshot job)

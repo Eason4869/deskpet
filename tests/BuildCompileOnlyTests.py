@@ -5,6 +5,9 @@ import tempfile
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
+# CI uses Windows PowerShell 5.1, whose default for BOM-less scripts is ANSI.
+# Preserve the Unicode executable filename literals before invoking that host.
+assert (ROOT/'Build.ps1').read_bytes().startswith(b'\xef\xbb\xbf'),'Build.ps1 requires a UTF-8 BOM for Windows PowerShell 5.1'
 scratch=ROOT/'work/compile-only-probe'
 scratch.mkdir(parents=True,exist_ok=True)
 with tempfile.TemporaryDirectory(dir=scratch) as folder:

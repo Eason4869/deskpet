@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -67,23 +67,23 @@ namespace Dafeiyu
             if(preview!=null&&preview.Availability==HolidayKeepsakeAvailability.Available)wanted.Add(HolidayKeepsakeCardData.Preview(id,companionName,year,preview,HolidayKeepsakeRegistry.BuiltIn).CaptureKey(ThemeManager.IsDark));
             var keep=new HashSet<string>();Children.Clear();cardAreas.Clear();
             foreach(var key in captures.Keys.Where(x=>!wanted.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}
-            var title=Text(TextResources.Get("holidayKeepsake.albumTitle"),18);Children.Add(title);
-            if(readStatus==HolidayKeepsakeReadStatus.Available)Children.Add(Text(TextResources.Format("holidayKeepsake.savedCount",result.Album.Records.Count),13));
+            var title=Text(()=>(TextResources.Get("holidayKeepsake.albumTitle")),18);Children.Add(title);
+            if(readStatus==HolidayKeepsakeReadStatus.Available)Children.Add(Text(()=>(TextResources.Format("holidayKeepsake.savedCount",result.Album.Records.Count)),13));
             folderStatus=null;
-            if(readStatus!=HolidayKeepsakeReadStatus.Available){Children.Add(Text(TextResources.Get("holidayKeepsake.readError"),13));Children.Add(Button(TextResources.Get("relationship.home.openDataFolder"),OpenDataFolder));folderStatus=Text("",13);folderStatus.Name="HolidayFolderStatus";Children.Add(folderStatus);}
-            else if(result.Album.Records.Count==0)Children.Add(Text(TextResources.Get("holidayKeepsake.empty"),13));
+            if(readStatus!=HolidayKeepsakeReadStatus.Available){Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.readError")),13));Children.Add(Button(()=>(TextResources.Get("relationship.home.openDataFolder")),OpenDataFolder));folderStatus=Text("",13);folderStatus.Name="HolidayFolderStatus";Children.Add(folderStatus);}
+            else if(result.Album.Records.Count==0)Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.empty")),13));
             cards=new WrapPanel();cardAreas.Add(cards);Children.Add(cards);
             foreach(var item in result.Scenes){
                 if(item.Record==null)continue;
                 var data=HolidayKeepsakeCardData.Owned(item.Record,HolidayKeepsakeRegistry.BuiltIn);
-                if(item.Status!=HolidayKeepsakeReadStatus.Available){var details=Text(data.Title+" · "+data.YearText+" · "+data.Name+" · "+data.DateText,16);details.Name="HolidayCardErrorMetadata";details.Tag=data.Identity;Children.Add(details);Children.Add(Text(TextResources.Get("holidayKeepsake.sceneError"),13));var unavailableSave=Button(TextResources.Get("relationship.card.save"),delegate{});unavailableSave.Name="SaveHolidayCard";unavailableSave.IsEnabled=false;Children.Add(unavailableSave);continue;}
+                if(item.Status!=HolidayKeepsakeReadStatus.Available){var details=Text(data.Title+" · "+data.YearText+" · "+data.Name+" · "+data.DateText,16);details.Name="HolidayCardErrorMetadata";details.Tag=data.Identity;Children.Add(details);Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.sceneError")),13));var unavailableSave=Button(()=>(TextResources.Get("relationship.card.save")),delegate{});unavailableSave.Name="SaveHolidayCard";unavailableSave.IsEnabled=false;Children.Add(unavailableSave);continue;}
                 AddCard(data,item.CopyPngBytes(),keep,version,id);
             }
             if(result.PageCount>1){
                 var pager=new StackPanel{Orientation=Orientation.Horizontal};
-                var back=Button(TextResources.Get("holidayKeepsake.previous"),async delegate{page--;await RefreshAsync();});back.IsEnabled=page>0;back.Name="HolidayPreviousPage";
-                var next=Button(TextResources.Get("holidayKeepsake.next"),async delegate{page++;await RefreshAsync();});next.IsEnabled=page+1<result.PageCount;next.Name="HolidayNextPage";
-                pager.Children.Add(back);pager.Children.Add(Text(TextResources.Format("holidayKeepsake.pageNumber",page+1,result.PageCount),13));pager.Children.Add(next);Children.Add(pager);
+                var back=Button(()=>(TextResources.Get("holidayKeepsake.previous")),async delegate{page--;await RefreshAsync();});back.IsEnabled=page>0;back.Name="HolidayPreviousPage";
+                var next=Button(()=>(TextResources.Get("holidayKeepsake.next")),async delegate{page++;await RefreshAsync();});next.IsEnabled=page+1<result.PageCount;next.Name="HolidayNextPage";
+                pager.Children.Add(back);pager.Children.Add(Text(()=>(TextResources.Format("holidayKeepsake.pageNumber",page+1,result.PageCount)),13));pager.Children.Add(next);Children.Add(pager);
             }
             if(definitions.Length>1){
                 var choice=new ComboBox{Name="HolidayPreviewChoice",ItemsSource=definitions.Select(x=>x.HolidayId).ToArray(),SelectedItem=selectedHoliday};
@@ -91,12 +91,12 @@ namespace Dafeiyu
                 Children.Add(choice);
             }
             if(preview!=null){
-                Children.Add(Text(TextResources.Get("holidayKeepsake.locked"),13));
+                Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.locked")),13));
                 cards=new WrapPanel();cardAreas.Add(cards);Children.Add(cards);
                 if(preview.Availability==HolidayKeepsakeAvailability.Available)AddCard(HolidayKeepsakeCardData.Preview(id,companionName,year,preview,HolidayKeepsakeRegistry.BuiltIn),preview.CopyPngBytes(),keep,version,id);
-                else Children.Add(Text(TextResources.Get("holidayKeepsake.unavailable"),13));
+                else Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.unavailable")),13));
             }
-            var retry=Button(TextResources.Get("holidayKeepsake.retry"),async delegate{await retryEncounter();if(!disposed)await RefreshAsync();});retry.Name="HolidayRetry";Children.Add(retry);
+            var retry=Button(()=>(TextResources.Get("holidayKeepsake.retry")),async delegate{await retryEncounter();if(!disposed)await RefreshAsync();});retry.Name="HolidayRetry";Children.Add(retry);
             foreach(var key in captures.Keys.Where(x=>!keep.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}
             if(focus!=null){var replacement=HomeVisual.ResolveFocus(this,focus);if(replacement!=null)replacement.Focus();}
         }
@@ -107,12 +107,13 @@ namespace Dafeiyu
             var card=new HolidayCardPreview(capture,delegate{return Current(version,id)&&captures.ContainsKey(key)&&IsVisible;},null,ResizeCards);cards.Children.Add(card);ResizeCards();
         }
         void ResizeCards(){if(cards==null)return;double available=ActualWidth;if(available<=0)available=520;double width=available>=820?(available-22)/2:available;foreach(var area in cardAreas)foreach(var card in area.Children.OfType<HolidayCardPreview>())card.Width=Math.Max(120,(card.Capture.Expanded?available:width)-18);}
-        void OpenDataFolder(){try{openFolder(runtimeDataDirectory);if(folderStatus!=null)folderStatus.Text="";}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.ComponentModel.Win32Exception||error is InvalidOperationException))throw;if(folderStatus!=null)folderStatus.Text=TextResources.Get("relationship.home.folderFailed");}}
+        void OpenDataFolder(){try{openFolder(runtimeDataDirectory);if(folderStatus!=null)folderStatus.Text="";}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.ComponentModel.Win32Exception||error is InvalidOperationException))throw;if(folderStatus!=null)LocalizedUi.Set(folderStatus,"Text",()=>(TextResources.Get("relationship.home.folderFailed")));}}
         void ClearCaptures(){foreach(var capture in captures.Values)capture.Dispose();captures.Clear();Children.Clear();}
         public void Dispose(){if(disposed)return;disposed=true;revision++;runtime.Changed-=Changed;ClearCaptures();loaded=null;expandedCards.Clear();cardAreas.Clear();}
         static TextBlock Text(string value,double size){return Ui.Text(value,size,AgentUi.Ink);}
         static Button Button(string label,Action action){var button=Ui.Button(label);button.Click+=delegate{action();};return button;}
-    }
+static TextBlock Text(System.Func<string> value,double size){return LocalizedUi.With(Text(value(),size),"Text",value);}
+        static Button Button(System.Func<string> label,Action action){return LocalizedUi.With(Button(label(),action),"Content",label);}    }
 
     internal sealed class HolidayCardCapture:IDisposable
     {
@@ -142,7 +143,7 @@ namespace Dafeiyu
             Children.Add(image);Children.Add(disclosure);
             if(capture.Data.Record==null)return;
             var status=Ui.Text("",12,AgentUi.Muted);status.Name="HolidayCardStatus";
-            var save=Ui.Button(TextResources.Get("relationship.card.save"));save.Name="SaveHolidayCard";save.HorizontalAlignment=HorizontalAlignment.Left;
+            var save=LocalizedUi.Button(()=>(TextResources.Get("relationship.card.save")));save.Name="SaveHolidayCard";save.HorizontalAlignment=HorizontalAlignment.Left;
             save.Click+=delegate{PendingSave=SaveAsync(capture,current,chooseDestination,save,status);};
             Children.Add(save);Children.Add(status);
         }
@@ -152,15 +153,15 @@ namespace Dafeiyu
             try{
                 string path=await (chooseDestination==null?PickAsync(capture.Data.FileName):chooseDestination());
                 if(!current())return;
-                if(String.IsNullOrEmpty(path)){status.Text=TextResources.Get("relationship.home.saveCancelled");return;}
+                if(String.IsNullOrEmpty(path)){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("relationship.home.saveCancelled")));return;}
                 var result=await RelationshipCardFile.SaveAsync(path,capture.Png);
-                if(current())status.Text=(result==RelationshipCardSaveResult.Saved?TextResources.Get("relationship.card.saved"):TextResources.Get("relationship.card.failed"));
-            }catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is OperationCanceledException||error is System.Security.SecurityException))throw;if(current())status.Text=TextResources.Get("relationship.card.failed");}
+                if(current())LocalizedUi.Set(status,"Text",()=>((result==RelationshipCardSaveResult.Saved?TextResources.Get("relationship.card.saved"):TextResources.Get("relationship.card.failed"))));
+            }catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is OperationCanceledException||error is System.Security.SecurityException))throw;if(current())LocalizedUi.Set(status,"Text",()=>(TextResources.Get("relationship.card.failed")));}
             finally{if(current())save.IsEnabled=true;}
         }
         Task<string> PickAsync(string fileName)
         {
-            var picker=new Microsoft.Win32.SaveFileDialog{Title=TextResources.Get("relationship.card.save"),Filter=TextResources.Get("relationship.card.pngFilter")+"|*.png",DefaultExt=".png",AddExtension=true,OverwritePrompt=true,FileName=fileName};
+            var picker=LocalizedUi.With(new Microsoft.Win32.SaveFileDialog{Title=TextResources.Get("relationship.card.save"),Filter=TextResources.Get("relationship.card.pngFilter")+"|*.png",DefaultExt=".png",AddExtension=true,OverwritePrompt=true,FileName=fileName},"Title",()=>(TextResources.Get("relationship.card.save")));
             return Task.FromResult(picker.ShowDialog(Window.GetWindow(this))==true?picker.FileName:null);
         }
     }

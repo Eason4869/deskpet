@@ -63,7 +63,7 @@ internal sealed partial class PetWindow : Window
         WindowDecorations = WindowDecorations.None;
         TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
-        Title = TextResources.Get("petWindow.petWindow.title");
+        LocalizedUi.Set(this,"Title",()=>(TextResources.Get("petWindow.petWindow.title")));
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
         playback = new InteractionPlayback(ResolveHolidayAction);
         InitializeHoliday();
@@ -123,26 +123,26 @@ internal sealed partial class PetWindow : Window
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu(); var items = new List<object>();
-        void Add(string label, Action command) { var item = new MenuItem { Header = label }; item.Click += (_, _) => command(); items.Add(item); }
-        Add(TextResources.Get("petWindow.buildMenu.text"), () => owner.ShowChat(true)); Add(TextResources.Get("petWindow.buildMenu.text.alternativeA"), () => owner.ShowChat(false));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeB"), ShowPalette); Add(TextResources.Get("petWindow.buildMenu.text.alternativeC"), () => UserInteract("feeding")); Add(TextResources.Get("petWindow.buildMenu.text.alternativeD"), () => UserInteract("petting"));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeE"), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
-        Add(owner.Skin.SpecialAction, () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(owner.Skin.SpecialAction2, () => UserInteract("special2"));
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeF"), () => Paused = !Paused); Add(TextResources.Get("petWindow.buildMenu.text.alternativeG"), Hide);
+        void Add(System.Func<string> label, Action command) { var item = LocalizedUi.With(new MenuItem { Header = label() },"Header",()=> (label())); item.Click += (_, _) => command(); items.Add(item); }
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text")), () => owner.ShowChat(true)); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeA")), () => owner.ShowChat(false));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
+        Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), Hide);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
-            var item = new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
+            var item = LocalizedUi.With(new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } },"Header",()=>(TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName)));
             item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
-        Add(TextResources.Get("petWindow.buildMenu.text.alternativeH"), owner.ShowSettings); Add(TextResources.Get("petWindow.buildMenu.text.alternativeI"), owner.ShowGuide); Add(TextResources.Get("petWindow.buildMenu.text.alternativeJ"), owner.ShowAbout); Add(TextResources.Get("petWindow.buildMenu.text.alternativeK"), () => owner.Run(owner.ExitAsync));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeH")), owner.ShowSettings); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeI")), owner.ShowGuide); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeJ")), owner.ShowAbout); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeK")), () => owner.Run(owner.ExitAsync));
         menu.ItemsSource = items; return menu;
     }
     public void ShowPalette()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), RowDefinitions = new RowDefinitions("*,*") };
         var choices = new (string, Action)[] { (TextResources.Get("petWindow.showPalette.choices"), () => owner.ShowChat(true)), (TextResources.Get("petWindow.showPalette.choices.alternativeA"), () => UserInteract("feeding")), (TextResources.Get("petWindow.showPalette.choices.alternativeB"), () => UserInteract("sleeping")), (TextResources.Get("petWindow.showPalette.choices.alternativeC"), () => UserInteract(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
-        var window = Ui.Window(TextResources.Get("petWindow.showPalette.window"), grid, 290, 280); window.Topmost = true;
+        var window = LocalizedUi.Window(()=>(TextResources.Get("petWindow.showPalette.window")), grid, 290, 280); window.Topmost = true;
         for (int i = 0; i < choices.Length; i++) { var c = choices[i]; var b = Ui.Button(c.Item1, () => { c.Item2(); window.Close(); }); b.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch; b.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch; b.Margin = new Thickness(5); Grid.SetColumn(b, i % 2); Grid.SetRow(b, i / 2); grid.Children.Add(b); }
         window.Show();
     }
@@ -353,7 +353,7 @@ internal sealed partial class PetWindow : Window
             RefreshHoliday(true);
             if (cancellation.IsCancellationRequested || epoch!=relationshipContentEpoch||!ReferenceEquals(capturedSkin,owner.Skin)||relationshipId!=owner.RelationshipCompanionId||settingsVersion!=owner.Relationships.SettingsVersion||settings.SystemPrompt!=owner.Settings.SystemPrompt||!SameGreetingConnection(settings.Text,owner.Settings.Text)||owner.Skin.Id != id || !GreetingAllowed || HolidayLocalNow().Date != date || owner.Holidays.Revision != revision || owner.Settings.AiGreetingEnabled != aiEnabled || holiday != null && !owner.Holidays.IsGreetingCurrent(holiday)) return;
             recentGreetings.Add(text); if (recentGreetings.Count > 6) recentGreetings.RemoveAt(0);
-            var message=Ui.Text(text);message.Name="GreetingMessage";var bubble = new Window { Width = 320, Height = 115, CanResize = false, ShowActivated=false,ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = TextResources.Format("petWindow.showGreetingAsync.titleName",name), Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(message, Ui.Button(TextResources.Get("petWindow.showGreetingAsync.text"), () => { DismissGreeting(); owner.ShowChat(true); })) } };
+            var message=Ui.Text(text);message.Name="GreetingMessage";var bubble = LocalizedUi.With(new Window { Width = 320, Height = 115, CanResize = false, ShowActivated=false,ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = TextResources.Format("petWindow.showGreetingAsync.titleName",name), Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(message, LocalizedUi.Button(()=>(TextResources.Get("petWindow.showGreetingAsync.text")), () => { DismissGreeting(); owner.ShowChat(true); })) } },"Title",()=>(TextResources.Format("petWindow.showGreetingAsync.titleName",name)));
             greetingBubble = bubble;
             var area = WorkArea(); bubble.Position = new PixelPoint(Math.Clamp(Position.X - 50, area.X, Math.Max(area.X, area.Right - (int)(320 * RenderScaling))), Math.Max(area.Y, Position.Y - (int)(120 * RenderScaling)));
             bubble.Show();

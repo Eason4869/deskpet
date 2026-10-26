@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "Das Schließen wurde abgebrochen oder Einstellungen wurden geändert. Der Begleiter läuft weiter; die Deinstallation wurde abgebrochen.",
   "settingsSearch.noResults": "Keine passenden Einstellungen oder Funktionen",
   "settingsSearch.clearHistoryAlias": "Chatverlauf löschen",
-  "settingsSearch.resetAlias": "Standardeinstellungen wiederherstellen"
+  "settingsSearch.resetAlias": "Standardeinstellungen wiederherstellen",
+  "onboarding.language.applyContinue": "Anwenden und fortfahren",
+  "onboarding.language.liveDetail": "Wählen Sie die Sprache und anschließend Anwenden und fortfahren, um sie sofort anzuwenden und die Einrichtung fortzusetzen."
 }

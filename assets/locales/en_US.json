@@ -4660,5 +4660,7 @@
   "uninstall.closeCanceled": "The close was canceled or settings changed. The companion is still running; uninstall was canceled.",
   "settingsSearch.noResults": "No matching settings or features",
   "settingsSearch.clearHistoryAlias": "Clear chat history",
-  "settingsSearch.resetAlias": "Restore default settings"
+  "settingsSearch.resetAlias": "Restore default settings",
+  "onboarding.language.applyContinue": "Apply and continue",
+  "onboarding.language.liveDetail": "Choose the interface language, then select Apply and continue to apply it immediately and continue setup."
 }

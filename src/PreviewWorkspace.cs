@@ -20,7 +20,7 @@ namespace Dafeiyu
         internal PreviewWorkspace(Action empty,Action openTerminal,Action<string> warning=null)
         {
             this.empty=empty;this.openTerminal=openTerminal;this.warning=warning;Name="PreviewWorkspace";Background=Ui.Brush("#F8F9FB");
-            var add=UiIcons.Button("add",TextResources.Get("previewWorkspace.previewWorkspace.uiIcons"));add.Name="NewPreviewTab";add.Width=add.Height=add.MinHeight=36;add.Padding=new Thickness(9);add.ToolTip=TextResources.Get("previewWorkspace.previewWorkspace.addToolTip");add.Margin=new Thickness(3,0,4,4);add.VerticalAlignment=VerticalAlignment.Top;add.Click+=delegate{openTerminal();};
+            var add=UiIcons.Button("add",()=>(TextResources.Get("previewWorkspace.previewWorkspace.uiIcons")));add.Name="NewPreviewTab";add.Width=add.Height=add.MinHeight=36;add.Padding=new Thickness(9);LocalizedUi.Set(add,"ToolTip",()=>(TextResources.Get("previewWorkspace.previewWorkspace.addToolTip")));add.Margin=new Thickness(3,0,4,4);add.VerticalAlignment=VerticalAlignment.Top;add.Click+=delegate{openTerminal();};
             var rail=new StackPanel{Orientation=Orientation.Horizontal};rail.Children.Add(headers);rail.Children.Add(add);
             bar.Children.Add(new ScrollViewer{Name="PreviewTabScroll",Content=rail,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,VerticalScrollBarVisibility=ScrollBarVisibility.Disabled,Padding=new Thickness(1,1,1,1)});DockPanel.SetDock(bar,Dock.Top);Children.Add(bar);Children.Add(body);SizeChanged+=delegate{FitTabWidths();};
 
@@ -32,9 +32,11 @@ namespace Dafeiyu
             string key=Path.GetFullPath(path);var found=tabs.FirstOrDefault(t=>String.Equals(t.Key,key,StringComparison.OrdinalIgnoreCase));if(found!=null){Select(found);return;}
             FilePreviewPane pane=null;pane=new FilePreviewPane(key,()=>Close(pane));Add(key,Path.GetFileName(path),String.Equals(Path.GetExtension(path),".html",StringComparison.OrdinalIgnoreCase)||String.Equals(Path.GetExtension(path),".htm",StringComparison.OrdinalIgnoreCase)?"globe":"file",pane);
         }
-        internal void AddTerminal(TerminalPane pane,int number){Add("terminal:"+Guid.NewGuid().ToString("N"),TextResources.Format("previewWorkspace.addTerminal.template",number),"terminal",pane);}
+        internal void AddTerminal(TerminalPane pane,int number){Add("terminal:"+Guid.NewGuid().ToString("N"),()=>TextResources.Format("previewWorkspace.addTerminal.template",number),"terminal",pane);}
         internal void AddPage(string title,string icon,FrameworkElement view){Add("page:"+Guid.NewGuid().ToString("N"),title,icon,view);}
+        internal void AddPage(Func<string> title,string icon,FrameworkElement view){Add("page:"+Guid.NewGuid().ToString("N"),title,icon,view);}
         internal void Replace(FrameworkElement previous,string title,string icon,FrameworkElement view){var old=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,previous));if(old==null){Release(view);return;}AddPage(title,icon,view);Close(previous);}
+        internal void Replace(FrameworkElement previous,Func<string> title,string icon,FrameworkElement view){var old=tabs.FirstOrDefault(t=>ReferenceEquals(t.View,previous));if(old==null){Release(view);return;}AddPage(title,icon,view);Close(previous);}
         internal void AttachConversation(FrameworkElement view,string title)
         {
             if(view==null)throw new ArgumentNullException("view");if(disposed)throw new ObjectDisposedException("PreviewWorkspace");
@@ -45,6 +47,7 @@ namespace Dafeiyu
             if(pinned==null){pinned=CreateTab("conversation",ConversationTitle(title),"chat",view,true);tabs.Insert(0,pinned);headers.Children.Insert(0,pinned.Header);}
             else{body.Children.Remove(pinned.View);pinned.View.Visibility=Visibility.Visible;pinned.View=view;UpdateConversationTitle(title);}
             body.Children.Add(view);Select(selected??pinned);
+            UpdateConversationTitle(title);
         }
         internal FrameworkElement DetachConversation()
         {
@@ -56,11 +59,19 @@ namespace Dafeiyu
             return pinned.View;
         }
         internal void UpdateConversationTitle(string title)
+        {UpdateConversationTitle(()=>ConversationTitle(title));}
+        internal void UpdateConversationTitle(Func<string> title)
         {
-            var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned==null)return;string text=ConversationTitle(title);pinned.Title.Text=text;pinned.Title.ToolTip=text;pinned.Header.ToolTip=text;
+            var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned==null)return;LocalizedUi.Set(pinned.Title,"Text",title);LocalizedUi.Tooltip(pinned.Title,title);LocalizedUi.Tooltip(pinned.Header,title);
         }
         internal void SelectConversation(){var pinned=tabs.FirstOrDefault(t=>t.Pinned);if(pinned!=null)Select(pinned);}
         static string ConversationTitle(string title){return String.IsNullOrWhiteSpace(title)?TextResources.Get("previewWorkspace.conversationTitle.text"):title;}
+        void Add(string key,Func<string> title,string icon,FrameworkElement view)
+        {
+            Add(key,title(),icon,view);var tab=tabs.FirstOrDefault(value=>ReferenceEquals(value.View,view));if(tab==null)return;
+            LocalizedUi.Set(tab.Title,"Text",title);LocalizedUi.Tooltip(tab.Header,title);
+            if(tab.Close!=null){LocalizedUi.Tooltip(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.closeToolTipTitle",title()));LocalizedUi.Automation(tab.Close,()=>TextResources.Format("previewWorkspace.createTab.uiIcons",title()));}
+        }
         void Add(string key,string title,string icon,FrameworkElement view)
         {
             if(disposed){Release(view);return;}
@@ -69,7 +80,7 @@ namespace Dafeiyu
         Tab CreateTab(string key,string title,string icon,FrameworkElement view,bool pinned)
         {
             var tab=new Tab{Key=key,View=view,Pinned=pinned};var row=new DockPanel();
-            if(!pinned){var close=UiIcons.Button("close",TextResources.Format("previewWorkspace.createTab.uiIcons",title));close.Name="ClosePreviewTab";tab.Close=close;close.Width=close.Height=24;close.MinHeight=24;close.Padding=new Thickness(4);close.ToolTip=TextResources.Format("previewWorkspace.createTab.closeToolTipTitle",title);close.Margin=new Thickness(8,0,0,0);close.VerticalAlignment=VerticalAlignment.Center;close.Click+=delegate{Close(view);};DockPanel.SetDock(close,Dock.Right);row.Children.Add(close);}
+            if(!pinned){var close=UiIcons.Button("close",()=>(TextResources.Format("previewWorkspace.createTab.uiIcons",title)));close.Name="ClosePreviewTab";tab.Close=close;close.Width=close.Height=24;close.MinHeight=24;close.Padding=new Thickness(4);LocalizedUi.Set(close,"ToolTip",()=>(TextResources.Format("previewWorkspace.createTab.closeToolTipTitle",title)));close.Margin=new Thickness(8,0,0,0);close.VerticalAlignment=VerticalAlignment.Center;close.Click+=delegate{Close(view);};DockPanel.SetDock(close,Dock.Right);row.Children.Add(close);}
             var glyph=UiIcons.Image(icon,AgentUi.Muted);glyph.Width=glyph.Height=16;glyph.VerticalAlignment=VerticalAlignment.Center;glyph.RenderTransform=new TranslateTransform(0,-.5);glyph.Margin=new Thickness(0,0,7,0);DockPanel.SetDock(glyph,Dock.Left);row.Children.Add(glyph);var label=new TextBlock{Text=title,FontSize=13,Foreground=AgentUi.Ink,Height=18,LineHeight=18,LineStackingStrategy=LineStackingStrategy.BlockLineHeight};label.VerticalAlignment=VerticalAlignment.Center;label.TextWrapping=TextWrapping.NoWrap;label.TextTrimming=TextTrimming.CharacterEllipsis;label.MaxWidth=165;row.Children.Add(label);
             tab.Glyph=glyph;tab.Title=label;if(pinned){label.Name="ConversationPreviewTitle";label.ToolTip=title;}
             tab.Header=new Border{Name=pinned?"ConversationPreviewTab":"PreviewTab",Tag=key,Child=row,CornerRadius=new CornerRadius(9),BorderThickness=new Thickness(1),Height=36,Width=230,VerticalAlignment=VerticalAlignment.Top,Padding=new Thickness(12,4,pinned?12:7,4),Margin=new Thickness(2,0,4,4),Cursor=System.Windows.Input.Cursors.Hand,Focusable=true,ToolTip=pinned||key.StartsWith("terminal:")||key.StartsWith("page:")?title:key};tab.Header.MouseLeftButtonDown+=delegate{Select(tab);};tab.Header.MouseEnter+=delegate{PaintTab(tab);};tab.Header.MouseLeave+=delegate{PaintTab(tab);};tab.Header.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){Select(tab);e.Handled=true;}};return tab;

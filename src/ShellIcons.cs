@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -56,5 +56,6 @@ namespace Dafeiyu
             var b=new Button{Content=Image(icon),Template=buttonTemplate,Width=32,Height=32,MinHeight=0,Padding=new Thickness(0),Margin=new Thickness(2),Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Focusable=true,Cursor=Cursors.Hand,ToolTip=label,FocusVisualStyle=null};
             System.Windows.Automation.AutomationProperties.SetName(b,label);if(click!=null)b.Click+=delegate{click();};return b;
         }
+        internal static Button Button(string icon,Func<string> label,Action click){var button=Button(icon,label(),click);LocalizedUi.Set(button,"ToolTip",label);LocalizedUi.Automation(button,label);return button;}
     }
 }
