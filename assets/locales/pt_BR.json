@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Cinco estrelas douradas celebram a fundação da China.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Sob a Via Láctea, nossos caminhos se encontram.",
-  "composerDraft.storageError": "Não foi possível salvar o rascunho. O texto continua nesta janela. Verifique o acesso à pasta e o espaço livre."
+  "composerDraft.storageError": "Não foi possível salvar o rascunho. O texto continua nesta janela. Verifique o acesso à pasta e o espaço livre.",
+  "shortcutCapture.title": "Gravar atalho",
+  "shortcutCapture.prompt": "Pressione as teclas e salve. Esc cancela.",
+  "shortcutCapture.clear": "Limpar",
+  "shortcutCapture.record": "Clique para gravar",
+  "shortcutCapture.help": "Clique no campo e pressione as teclas. Salve para aplicar; limpe para desativar.",
+  "companionImport.space": "Espaço insuficiente. Reserve espaço para extração, uma nova cópia instalada e mais 64 MiB.",
+  "companionImport.title": "Importar companheiro completo",
+  "companionImport.progress": "Validando imagens e movimentos e instalando o companheiro. Pacotes grandes podem demorar.",
+  "companionImport.cancelled": "Importação cancelada. Seu companheiro anterior continua disponível."
 }

@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Lima bintang emas menyambut hari berdirinya Tiongkok.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Di bawah Bima Sakti, malam ini kita bertemu.",
-  "composerDraft.storageError": "Draf tidak dapat disimpan. Teks tetap ada di jendela ini. Periksa izin folder data dan ruang disk."
+  "composerDraft.storageError": "Draf tidak dapat disimpan. Teks tetap ada di jendela ini. Periksa izin folder data dan ruang disk.",
+  "shortcutCapture.title": "Rekam pintasan",
+  "shortcutCapture.prompt": "Tekan kombinasi tombol, lalu simpan. Esc membatalkan.",
+  "shortcutCapture.clear": "Hapus",
+  "shortcutCapture.record": "Klik untuk merekam pintasan",
+  "shortcutCapture.help": "Klik kolom pintasan lalu tekan tombol. Simpan untuk menerapkan; hapus untuk menonaktifkan.",
+  "companionImport.space": "Ruang disk tidak cukup. Sediakan ruang untuk ekstraksi, salinan instalasi baru, dan tambahan 64 MiB.",
+  "companionImport.title": "Impor paket pendamping lengkap",
+  "companionImport.progress": "Memvalidasi gambar dan gerakan, lalu memasang pendamping. Paket besar memerlukan waktu.",
+  "companionImport.cancelled": "Impor dibatalkan. Pendamping sebelumnya tetap tersedia."
 }

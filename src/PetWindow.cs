@@ -600,7 +600,7 @@ namespace Dafeiyu
         }
         private IntPtr WindowMessage(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
         {
-            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
+            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || hotkeyCaptureDepth>0 || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
             if(message==0x21) { handled=true; return new IntPtr(3); }
             if(message==0x84 && !dragging)
             {

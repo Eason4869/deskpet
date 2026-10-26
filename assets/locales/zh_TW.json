@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "五星紅旗迎風，與你同慶祖國華誕。",
   "holidayKeepsake.qixiTitle": "七夕節",
   "holidayKeepsake.qixiMessage": "鵲橋映星河，今夜與你相逢。",
-  "composerDraft.storageError": "草稿儲存失敗，目前文字仍保留在視窗中。請檢查資料目錄權限或磁碟空間。"
+  "composerDraft.storageError": "草稿儲存失敗，目前文字仍保留在視窗中。請檢查資料目錄權限或磁碟空間。",
+  "shortcutCapture.title": "錄製快捷鍵",
+  "shortcutCapture.prompt": "請直接按下組合鍵，然後點擊儲存。Esc 取消。",
+  "shortcutCapture.clear": "清除",
+  "shortcutCapture.record": "點擊錄製快捷鍵",
+  "shortcutCapture.help": "點擊快捷鍵框後直接按鍵識別，儲存後生效；清除可停用。",
+  "companionImport.space": "磁碟可用空間不足。請為解壓暫存、新安裝副本及額外64 MiB預留空間後重試。",
+  "companionImport.title": "匯入完整角色包",
+  "companionImport.progress": "正在驗證圖像與動作並安裝角色包。大包可能需要一些時間。",
+  "companionImport.cancelled": "匯入已取消，原有角色仍可使用。"
 }

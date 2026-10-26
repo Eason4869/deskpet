@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -174,10 +174,11 @@ namespace Dafeiyu
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             try
             {
-                var skin=await System.Threading.Tasks.Task.Run(()=>pet.Catalog.Import(dialog.FileName));
+                var skin=await LocalCompanionImportWindow.RunAsync(HostWindow,cancel=>pet.Catalog.Import(dialog.FileName,cancel));
                 refreshing=true; skins.ItemsSource=null; skins.ItemsSource=pet.Catalog.Skins; refreshing=false;
                 skins.SelectedItem=skin; ShowNotice(()=>(TextResources.Format("settingsPage.importSkin.showNotice",skin.DisplayName)));
             }
+            catch(OperationCanceledException){refreshing=false;ShowNotice(()=>TextResources.Get("companionImport.cancelled"));}
             catch(Exception e)
             {
                 refreshing=false;

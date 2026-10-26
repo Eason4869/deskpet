@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
@@ -88,7 +88,7 @@ internal sealed class SettingsWindow : Window
                 if (owner.ExplainGuideCompanions()) return;
                 var file = files.FirstOrDefault(); if (file == null) return;
                 var local = file.TryGetLocalPath() ?? throw new InvalidOperationException(TextResources.Get("settingsWindow.partner.localFileTryGetLocalPath"));
-                var skin = await Task.Run(() => SpriteAssets.Import(local, owner.DataDirectory));
+                PetSkin skin;try{skin=await LocalCompanionImportWindow.RunAsync(this,cancel=>SpriteAssets.Import(local,owner.DataDirectory,cancel));}catch(OperationCanceledException){return;}
                 if (owner.ExplainGuideCompanions()) return;
                 var existing = owner.Skins.FindIndex(s => s.PickerKey == skin.PickerKey);
                 if (existing >= 0) owner.Skins[existing] = skin; else owner.Skins.Add(skin);

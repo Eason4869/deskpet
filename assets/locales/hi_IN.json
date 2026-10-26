@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "पाँच सुनहरे तारों के साथ चीन का स्थापना उत्सव।",
   "holidayKeepsake.qixiTitle": "छीशी",
   "holidayKeepsake.qixiMessage": "आकाशगंगा के पार आज रात हमारा मिलन।",
-  "composerDraft.storageError": "ड्राफ़्ट सहेजा नहीं जा सका। आपका पाठ इस विंडो में मौजूद है। फ़ोल्डर की अनुमति और खाली डिस्क स्थान जाँचें।"
+  "composerDraft.storageError": "ड्राफ़्ट सहेजा नहीं जा सका। आपका पाठ इस विंडो में मौजूद है। फ़ोल्डर की अनुमति और खाली डिस्क स्थान जाँचें।",
+  "shortcutCapture.title": "शॉर्टकट रिकॉर्ड करें",
+  "shortcutCapture.prompt": "कुंजियाँ दबाएँ, फिर सहेजें। Esc से रद्द करें।",
+  "shortcutCapture.clear": "हटाएँ",
+  "shortcutCapture.record": "शॉर्टकट रिकॉर्ड करने के लिए क्लिक करें",
+  "shortcutCapture.help": "फ़ील्ड पर क्लिक करके कुंजियाँ दबाएँ। सहेजकर लागू करें; हटाकर बंद करें।",
+  "companionImport.space": "डिस्क स्थान कम है। फ़ाइलें खोलने, नई स्थापना और अतिरिक्त 64 MiB के लिए जगह खाली करें।",
+  "companionImport.title": "पूरा साथी पैक आयात करें",
+  "companionImport.progress": "चित्रों और गतिविधियों की जाँच करके पैक स्थापित किया जा रहा है। बड़े पैक में समय लग सकता है।",
+  "companionImport.cancelled": "आयात रद्द हुआ। पिछला साथी उपलब्ध है।"
 }

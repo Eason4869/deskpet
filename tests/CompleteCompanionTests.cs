@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -21,6 +21,8 @@ namespace Dafeiyu.Tests
                 Check(CompanionPackagePolicy.MaximumPngBytes==26214400,"PNG boundary retained");
                 Check(CompanionPackagePolicy.MaximumAppearanceBytes==268435456,"appearance boundary retained");
                 Check(CompanionPackagePolicy.MaximumManifestBytes==65536,"manifest boundary retained");
+                CompanionPackStorage.CheckSpace(100,100+64L*1024*1024);
+                Reject(()=>CompanionPackStorage.CheckSpace(100,99+64L*1024*1024),"free space includes reserved margin");
                 string root=Path.Combine(Environment.CurrentDirectory,"work","complete-companion-fixtures",Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(root);
                 try {
@@ -44,6 +46,14 @@ namespace Dafeiyu.Tests
                         using(var writer=new StreamWriter(archive.CreateEntry("animations\\idle.png").Open()))writer.Write("legacy");
                     }
                     Check(CompanionPackStorage.ReadZip(zip,Path.Combine(root,"data"),path=>File.Exists(Path.Combine(Path.GetDirectoryName(path),"animations","idle.png"))),"Windows Framework ZIP separators remain compatible");
+                    var probe=CompanionPackStorage.FreeSpaceProbe;
+                    try{CompanionPackStorage.FreeSpaceProbe=_=>0;Reject(()=>CompanionPackStorage.ReadZip(zip,Path.Combine(root,"low-space"),path=>true),"low disk preflight rejects before extraction");Check(!Directory.GetDirectories(Path.Combine(root,"low-space","companion-packs")).Any(),"low space leaves no extraction directory");}finally{CompanionPackStorage.FreeSpaceProbe=probe;}
+                    string storage=Path.Combine(root,"transaction");var installed=CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png"},_=>{});
+                    File.AppendAllText(Path.Combine(root,"preview.png"),"changed");
+                    using(var cancellation=new CancellationTokenSource()) {
+                        bool cancelled=false;try{CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png"},_=>cancellation.Cancel(),cancellation.Token);}catch(OperationCanceledException){cancelled=true;}
+                        Check(cancelled&&CompanionPackStorage.Installed(storage).Single().Value==installed,"cancel before pointer publication preserves prior installation");
+                    }
                     string aliases=Path.Combine(root,"aliases.zip");
                     using(var output=File.Create(aliases))using(var archive=new System.IO.Compression.ZipArchive(output,System.IO.Compression.ZipArchiveMode.Create)) {
                         archive.CreateEntry("a\\b.png");archive.CreateEntry("a/b.png");

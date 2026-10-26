@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -81,6 +81,8 @@ namespace Dafeiyu
         {
             if(skin==null||!CanRequestCompanion())return false;
             if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.selectSkin.notice");return false;}
+            if(!skin.IsOfficial&&!skin.PackageHolidaysChecked &&
+                (skin.PackageHolidayCatalog!=null || !skin.Illustrated || skin.Manifest==null || !OfficialCompanionRules.Ids.Contains(skin.Manifest.PackageId) || !Directory.Exists(Path.Combine(skin.Source,"holidays"))))skin.PackageHolidaysChecked=true;
             if(!skin.IsOfficial&&!skin.PackageHolidaysChecked||skin.IsPlaceholder||skin.Embedded&&ShouldRefreshOfficial(skin)){var ignored=RequestSkinAsync(skin,CompanionSelectionOrigin.PassiveMenu,null);return false;}
             BeginCompanionSelection(skin);
             bool changed=ActivateSkin(skin);if(changed){Catalog.PreserveActive(skin);MergeOfficialHoliday(skin);}if(changed&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}

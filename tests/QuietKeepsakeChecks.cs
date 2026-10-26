@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using Dafeiyu;
@@ -23,12 +23,12 @@ public static class QuietKeepsakeChecks
             check(again.Status==HolidayKeepsakeStatus.AlreadyOwned&&again.Record.OutfitVersion=="1.0.0","same year upgrade never rewrites old receipt "+role);
             var next=new HolidayKeepsakeEncounter(companion,role,"Next "+role,new RelationshipTime(new DateTime(2027,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero));
             var revised=runtime.ObserveAsync(next,currentCatalog).GetAwaiter().GetResult().Results.Single();
-            check(revised.Status==HolidayKeepsakeStatus.Saved&&revised.Record.OutfitVersion=="1.0.3","actual current catalog acquisition records1.0.3 "+role);
+            check(revised.Status==HolidayKeepsakeStatus.Saved&&revised.Record.OutfitVersion=="1.0.4","actual current catalog acquisition records1.0.4 "+role);
             runtime.ShutdownAsync().GetAwaiter().GetResult();
             var unavailable=new RelationshipSceneProvider(a=>{throw new IOException("Removed source fixture");});
             var reopened=new HolidayKeepsakeRuntime(directory,new DataMaintenanceGate(),new HolidayCalendar(),new HolidayKeepsakeRegistry(new HolidayKeepsakeDefinition[0]),unavailable,validator);
             var records=reopened.LoadAsync(companion).GetAwaiter().GetResult().Records;
-            check(records.Count==2&&records.Any(r=>r.OutfitVersion=="1.0.0")&&records.Any(r=>r.OutfitVersion=="1.0.3"),"both historic revisions survive registry/source removal "+role);
+            check(records.Count==2&&records.Any(r=>r.OutfitVersion=="1.0.0")&&records.Any(r=>r.OutfitVersion=="1.0.4"),"both historic revisions survive registry/source removal "+role);
             check(reopened.ReadSceneAsync(companion,"halloween","halloween:20261031").GetAwaiter().GetResult().CopyPngBytes().SequenceEqual(saved),"old scene export bytes remain exact "+role);
             check(reopened.ReadSceneAsync(companion,"halloween","halloween:20271031").GetAwaiter().GetResult().CopyPngBytes().SequenceEqual(saved),"new costume binds same original scene "+role);
             reopened.ShutdownAsync().GetAwaiter().GetResult();

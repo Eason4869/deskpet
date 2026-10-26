@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Cinco estrellas doradas celebran la fundación de China.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Bajo la Vía Láctea, esta noche nos encontramos.",
-  "composerDraft.storageError": "No se pudo guardar el borrador. Tu texto sigue en esta ventana. Revisa el acceso a la carpeta y el espacio libre."
+  "composerDraft.storageError": "No se pudo guardar el borrador. Tu texto sigue en esta ventana. Revisa el acceso a la carpeta y el espacio libre.",
+  "shortcutCapture.title": "Grabar atajo",
+  "shortcutCapture.prompt": "Presiona las teclas y guarda. Esc cancela.",
+  "shortcutCapture.clear": "Borrar",
+  "shortcutCapture.record": "Haz clic para grabar",
+  "shortcutCapture.help": "Haz clic en el campo y presiona las teclas. Guarda para aplicar; borra para desactivar.",
+  "companionImport.space": "No hay espacio suficiente. Reserva espacio para extraer, instalar una copia nueva y otros 64 MiB.",
+  "companionImport.title": "Importar compañero completo",
+  "companionImport.progress": "Validando imágenes y movimientos e instalando el compañero. Los paquetes grandes pueden tardar.",
+  "companionImport.cancelled": "Importación cancelada. Tu compañero anterior sigue disponible."
 }

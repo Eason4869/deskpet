@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Fünf goldene Sterne zur Feier Chinas.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Unter der Milchstraße begegnen wir uns heute Nacht.",
-  "composerDraft.storageError": "Entwurf konnte nicht gespeichert werden. Der Text bleibt im Fenster. Bitte Ordnerzugriff und freien Speicher prüfen."
+  "composerDraft.storageError": "Entwurf konnte nicht gespeichert werden. Der Text bleibt im Fenster. Bitte Ordnerzugriff und freien Speicher prüfen.",
+  "shortcutCapture.title": "Tastenkürzel erfassen",
+  "shortcutCapture.prompt": "Tastenkombination drücken, dann speichern. Esc bricht ab.",
+  "shortcutCapture.clear": "Leeren",
+  "shortcutCapture.record": "Zum Erfassen klicken",
+  "shortcutCapture.help": "Klicken und Tasten drücken. Speichern übernimmt das Kürzel, Leeren deaktiviert es.",
+  "companionImport.space": "Nicht genügend Speicherplatz. Platz für Entpacken, eine neue Installation und zusätzliche 64 MiB freigeben.",
+  "companionImport.title": "Vollständigen Begleiter importieren",
+  "companionImport.progress": "Bilder und Animationen werden geprüft und installiert. Große Pakete benötigen etwas Zeit.",
+  "companionImport.cancelled": "Import abgebrochen. Der bisherige Begleiter bleibt verfügbar."
 }

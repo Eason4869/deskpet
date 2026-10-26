@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Cinque stelle dorate per celebrare la Cina.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Sotto la Via Lattea, stanotte ci ritroviamo.",
-  "composerDraft.storageError": "Impossibile salvare la bozza. Il testo resta in questa finestra. Controlla i permessi della cartella e lo spazio libero."
+  "composerDraft.storageError": "Impossibile salvare la bozza. Il testo resta in questa finestra. Controlla i permessi della cartella e lo spazio libero.",
+  "shortcutCapture.title": "Registra scorciatoia",
+  "shortcutCapture.prompt": "Premi i tasti, poi salva. Esc annulla.",
+  "shortcutCapture.clear": "Cancella",
+  "shortcutCapture.record": "Clicca per registrare",
+  "shortcutCapture.help": "Clicca sul campo e premi i tasti. Salva per applicare; cancella per disattivare.",
+  "companionImport.space": "Spazio insufficiente. Libera spazio per l’estrazione, una nuova copia installata e altri 64 MiB.",
+  "companionImport.title": "Importa compagno completo",
+  "companionImport.progress": "Verifica di immagini e animazioni, poi installazione. I pacchetti grandi richiedono tempo.",
+  "companionImport.cancelled": "Importazione annullata. Il compagno precedente resta disponibile."
 }

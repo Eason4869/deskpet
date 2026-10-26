@@ -144,6 +144,7 @@ namespace Dafeiyu
                 // notifies settings and greeting observers. Their context and the
                 // already-published bitmap/hit frame must agree at that boundary.
                 holidayFailedKey=outfit==null?null:HolidayKey(outfit);holidayCommitted=holidayTarget=null;
+                interaction.ConfigureClips(Skin,originalInteraction,null);Animation.RefreshClip();
                 holidayPlayback.Cancel();holidayTransition.FinishImmediately();holidayTransition.TakeCommit();
                 if(Holidays!=null)Holidays.CancelHover();holidayAssets.Clear();
                 UpdateFrame();

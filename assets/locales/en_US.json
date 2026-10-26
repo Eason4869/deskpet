@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Five golden stars fly as we celebrate China.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Across a river of stars, we meet tonight.",
-  "composerDraft.storageError": "Draft could not be saved. Your text is still in this window. Check data folder access and free disk space."
+  "composerDraft.storageError": "Draft could not be saved. Your text is still in this window. Check data folder access and free disk space.",
+  "shortcutCapture.title": "Record shortcut",
+  "shortcutCapture.prompt": "Press a key combination, then Save. Esc cancels.",
+  "shortcutCapture.clear": "Clear",
+  "shortcutCapture.record": "Click to record shortcut",
+  "shortcutCapture.help": "Click a shortcut field and press the keys. Save to apply; clear to disable.",
+  "companionImport.space": "Not enough free disk space. Allow space for extraction, a new installed copy and an extra 64 MiB, then retry.",
+  "companionImport.title": "Import complete companion",
+  "companionImport.progress": "Validating images and actions, then installing the companion. Large packs may take a while.",
+  "companionImport.cancelled": "Import cancelled. Your previous companion remains available."
 }

@@ -4681,5 +4681,14 @@
   "holidayKeepsake.nationalDayMessage": "Cinq étoiles dorées pour célébrer la Chine.",
   "holidayKeepsake.qixiTitle": "Qixi",
   "holidayKeepsake.qixiMessage": "Sous la Voie lactée, nos chemins se rejoignent.",
-  "composerDraft.storageError": "Impossible d’enregistrer le brouillon. Votre texte reste dans cette fenêtre. Vérifiez les droits du dossier et l’espace disque."
+  "composerDraft.storageError": "Impossible d’enregistrer le brouillon. Votre texte reste dans cette fenêtre. Vérifiez les droits du dossier et l’espace disque.",
+  "shortcutCapture.title": "Enregistrer un raccourci",
+  "shortcutCapture.prompt": "Appuyez sur les touches, puis enregistrez. Échap annule.",
+  "shortcutCapture.clear": "Effacer",
+  "shortcutCapture.record": "Cliquer pour enregistrer",
+  "shortcutCapture.help": "Cliquez sur un raccourci et appuyez sur les touches. Enregistrez pour appliquer ou effacez pour désactiver.",
+  "companionImport.space": "Espace disque insuffisant. Prévoyez l’extraction, une nouvelle copie installée et 64 Mio supplémentaires.",
+  "companionImport.title": "Importer un compagnon complet",
+  "companionImport.progress": "Vérification des images et animations, puis installation. Les gros packs peuvent prendre du temps.",
+  "companionImport.cancelled": "Import annulé. Votre ancien compagnon reste disponible."
 }

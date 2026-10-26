@@ -1,4 +1,4 @@
-using Avalonia.LogicalTree;
+﻿using Avalonia.LogicalTree;
 using Avalonia.Controls;
 using Dafeiyu;
 using DeskPet.Desktop;
@@ -527,8 +527,9 @@ internal static class OfficialCompanionUiChecks
         Check(player.Action == "jumping" && player.Frame == 4, "appearance refresh preserves elapsed hold");
         player.Advance(.05);
         Check(player.Action == "idle", "one second completes jump exactly once");
-        var visual = SpriteAssets.MatchSourceTiming(new ClipSpec("holiday", 8, 8, 8, false), clip);
-        Check(Math.Abs(visual.Frames / visual.Fps - .65) < 1e-8 && visual.HoldLastSeconds == .35, "holiday pose duration and hold remain separate");
+        var reviewed=new HolidayCatalog(Path.GetFullPath("assets/holidays")).Outfits.First(o=>o.CharacterId=="e-bao"&&o.HolidayId=="christmas");
+        var visual=SpriteAssets.OutfitClip(reviewed,reviewed.FindClip("jumping","default"));
+        Check(visual.Frames==8&&Math.Abs(visual.Frames/visual.Fps-.9)<1e-8&&visual.HoldLastSeconds==0,"holiday jump cadence stays independent of the default skin dwell");
         var alternate = new ClipSpec("alternate", 8, 8, 8, false);
         player = new InteractionPlayback((action, _) => action == "jumping" ? alternate : clip);
         player.Play("jumping", false);

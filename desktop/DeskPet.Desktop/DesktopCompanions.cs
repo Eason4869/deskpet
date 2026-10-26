@@ -44,14 +44,6 @@ internal sealed partial class DesktopController
     }
     private PetSkin RestoreCachedStartupCompanion(PetSkin requested)
     {
-        if(requested.OfficialCharacterId==null && requested.PackageId!=null && requested.Folder!=null && OfficialCompanionRules.Ids.Contains(requested.PackageId)) {
-            try {
-                var inventory=Task.Run(()=>OfficialCompanionNativeValidator.ValidateLocalPackage(requested.Folder,companionLifetime.Token)).GetAwaiter().GetResult();
-                requested.PackageHolidayCatalog=inventory.HolidayCatalog;
-                RebuildCompanionCatalogFor(requested);
-            }catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException or AggregateException){requested.PackageHolidayCatalog=null;}
-            return requested;
-        }
         if(requested.OfficialCharacterId == null||!requested.IsPlaceholder)return requested;
         try
         {
@@ -156,7 +148,6 @@ internal sealed partial class DesktopController
                     if (!string.IsNullOrEmpty(result.Warning) || result.Outfits.Any(o => !o.Ready || o.CharacterId != requested.PackageId)) throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
                     return result;
                 }, cancellation.Token);
-                next.PackageHolidayCatalog = nextCatalog;
             }
             if (!Owns()) return;
             await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
@@ -176,6 +167,7 @@ internal sealed partial class DesktopController
             using var admission=DataMaintenance.EnterActivity();
             if (next.OfficialCharacterId != null && !CanPublishOfficial(next)) return;
             Pet.CancelHolidayForSkinChange();
+            if(next.OfficialCharacterId==null)next.PackageHolidayCatalog=nextCatalog;
             PersonaProfiles.SaveVoices(Settings); Skin = next;
             PersonaProfiles.Activate(Settings, next.Id, next.Prompt, next.Voices, next.OfficialCharacterId ?? next.BuiltinCharacterId); Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey = next.PickerKey; Settings.PendingOfficialCompanionId = "";
@@ -300,7 +292,15 @@ internal sealed partial class DesktopController
         if (GuideLocked || companionSelection != null || showAutomaticGuide && Settings.OnboardingState is not ("completed" or "skipped")) return;
         if (Skin.OfficialCharacterId == null && Skin.PackageId != null && Skin.Folder != null && OfficialCompanionRules.Ids.Contains(Skin.PackageId))
         {
-            await SelectSkinAsync(Skin, CompanionSelectionOrigin.StartupRestore); return;
+            var captured=Skin;
+            var catalog=await Task.Run(()=>{
+                string root=Path.Combine(captured.Folder,"holidays");if(!Directory.Exists(root))return null;
+                var loaded=new HolidayCatalog(root);
+                if(!string.IsNullOrEmpty(loaded.Warning)||loaded.Outfits.Any(o=>!o.Ready||o.CharacterId!=captured.PackageId))throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
+                return loaded;
+            },companionLifetime.Token);
+            if(!exiting&&ReferenceEquals(Skin,captured)){captured.PackageHolidayCatalog=catalog;RebuildCompanionCatalog();Notify();}
+            return;
         }
         var pending = Settings.PendingOfficialCompanionId;
         if (pending.Length != 0)

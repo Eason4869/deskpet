@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -242,12 +242,14 @@ namespace Dafeiyu
         {
             using(var x=File.OpenRead(IllustratedPack.AssetPath(left,a)))using(var y=File.OpenRead(IllustratedPack.AssetPath(right,b)))using(var sha=SHA256.Create())return x.Length==y.Length && sha.ComputeHash(x).SequenceEqual(sha.ComputeHash(y));
         }
-        public SkinDefinition Import(string path)
+        public SkinDefinition Import(string path){return Import(path,CancellationToken.None);}
+        public SkinDefinition Import(string path,CancellationToken cancel)
         {
-            if(String.Equals(Path.GetExtension(path),".zip",StringComparison.OrdinalIgnoreCase))return CompanionPackStorage.ReadZip(path,dataRoot,Import);
+            cancel.ThrowIfCancellationRequested();
+            if(String.Equals(Path.GetExtension(path),".zip",StringComparison.OrdinalIgnoreCase))return CompanionPackStorage.ReadZip(path,dataRoot,manifest=>Import(manifest,cancel),cancel);
             string atlas,name,prompt=null,description=null;SkinManifest legacy=null;
             if(String.Equals(Path.GetExtension(path),".json",StringComparison.OrdinalIgnoreCase))
-            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m); legacy=m;atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
+            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m,cancel); legacy=m;atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
             else
             { if(!String.Equals(Path.GetExtension(path),".png",StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException(TextResources.Get("skinCatalog.import.text")); atlas=path; name=CleanName(Path.GetFileNameWithoutExtension(path)); }
             ValidatePng(atlas);
@@ -276,16 +278,16 @@ namespace Dafeiyu
                 Directory.Delete(destination); throw;
             }
         }
-        private SkinDefinition ImportIllustrated(string path,SkinManifest manifest)
+        private SkinDefinition ImportIllustrated(string path,SkinManifest manifest,CancellationToken cancel)
         {
             string source=Path.GetDirectoryName(Path.GetFullPath(path));
             var files=IllustratedPack.Validate(source,manifest,true);
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
                 if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("skinCatalog.importIllustrated.text"));
-                var inventory=WpfOfficialNativeValidator.ValidateLocalPackage(source,CancellationToken.None);
+                var inventory=WpfOfficialNativeValidator.ValidateLocalPackage(source,cancel);
                 CompanionPackageInventory installedInventory=null;
                 string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,inventory.AllReferences,
-                    folder=>{installedInventory=WpfOfficialNativeValidator.ValidateLocalPackage(folder,CancellationToken.None);});
+                    folder=>{installedInventory=WpfOfficialNativeValidator.ValidateLocalPackage(folder,cancel);},cancel);
                 return OnOwner(()=>{
                 bool existing=customPackageIds.Contains(manifest.PackageId);
                 string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);

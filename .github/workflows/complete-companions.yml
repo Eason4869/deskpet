@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -43,8 +43,10 @@ jobs:
       - name: Encrypted drafts and ten reviewed keepsake sets
         run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --dev3-features-only
       - name: All fifty native Avalonia action clocks
-        run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -- --complete-companions
-      - name: Native Windows card exports and draft restart
+        run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -p:BuildInParallel=false -- --complete-companions
+      - name: Installed local wardrobe restart and source isolation
+        run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-build -- --complete-local-only
+      - name: Native Windows card exports, draft restart and key capture
         if: runner.os == 'Windows'
         shell: powershell
         run: |
@@ -52,6 +54,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Card exports failed' }
           ./Build.ps1 -Target DraftConversationTests
           if ($LASTEXITCODE) { throw 'Draft restart failed' }
+          ./Build.ps1 -Target ShortcutCaptureUiTests
+          if ($LASTEXITCODE) { throw 'Key capture failed' }
+          ./Build.ps1 -Target LocalImportUiTests
+          if ($LASTEXITCODE) { throw 'Import cancellation failed' }
       - uses: actions/upload-artifact@v4
         if: always() && runner.os == 'Windows'
         with:

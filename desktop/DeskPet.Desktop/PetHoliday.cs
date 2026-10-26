@@ -52,13 +52,15 @@ internal sealed partial class PetWindow
     }
     private void HolidayChanged(object? sender, EventArgs args)
     {
-        if (disposedHoliday || rejectingHoliday) return;
+        // Source replacement publishes its controller/catalog before Pet.SelectSkin.
+        // Ignore callbacks until the sprite and controller share the same source.
+        if (disposedHoliday || rejectingHoliday || !ReferenceEquals(sprite.Skin, owner.Skin)) return;
         if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) { Avalonia.Threading.Dispatcher.UIThread.Post(() => HolidayChanged(sender, args)); return; }
         SynchronizeHolidayAppearance();
     }
     private void HolidayBusinessChanged()
     {
-        if (disposedHoliday) return;
+        if (disposedHoliday || !ReferenceEquals(sprite.Skin, owner.Skin)) return;
         ApplyHolidayBusinessAction();
         if (!HolidaySafe) CancelHoliday();
         RefreshHoliday(true);
