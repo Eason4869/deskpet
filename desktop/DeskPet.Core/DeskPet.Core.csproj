@@ -7,6 +7,8 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/CompanionPackagePolicy.cs;../../src/CompanionPackageInventory.cs" Link="Shared/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../assets/official/companion-package-policy.json" LogicalName="Dafeiyu.CompanionPackagePolicy" />
     <Compile Include="../../src/CompanionQuietClips.cs" Link="Shared/CompanionQuietClips.cs" />
     <Compile Include="../../src/Maintenance/*.cs" Link="Shared/Maintenance/%(Filename)%(Extension)" />
     <Compile Include="../../src/Relationships/*.cs" Link="Shared/Relationships/%(Filename)%(Extension)" />
@@ -20,9 +22,10 @@
     <EmbeddedResource Include="../../assets/official/holiday-catalog.json" LogicalName="Dafeiyu.Holidays.catalog.json" />
     <Compile Include="../../src/Holidays/*.cs" Link="Shared/Holidays/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/holidays/calendar/solar-terms.json" LogicalName="Dafeiyu.Holidays.SolarTerms" />
-    <EmbeddedResource Include="../../assets/holidays/**/*.json;../../assets/holidays/**/*.png" Exclude="../../assets/holidays/calendar/solar-terms.json;../../assets/holidays/catalog.json;../../assets/holidays/**/dafeiyu/**/*;../../assets/holidays/**/marfu/**/*;../../assets/holidays/**/xiaobei/**/*;../../assets/holidays/**/gugugaga/**/*">
-      <LogicalName>Dafeiyu.Holidays.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\','.').Replace('/','.'))</LogicalName>
+    <EmbeddedResource Include="../../assets/holidays/halloween/e-bao/**/*.json;../../assets/holidays/halloween/e-bao/**/*.png">
+      <LogicalName>Dafeiyu.Holidays.halloween.e-bao.$([System.String]::Copy('%(RecursiveDir)%(Filename)%(Extension)').Replace('\','.').Replace('/','.'))</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="../../assets/holidays/halloween/greetings.json" LogicalName="Dafeiyu.Holidays.halloween.greetings.json" />
     <Compile Include="../../src/GeneratedImageStore.Management.cs;../../src/ImageAssetReferenceResolver.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ImageTaskCenterState.cs" Link="Shared/ImageTaskCenterState.cs" />
     <Compile Include="../../src/GeneratedImageGroupState.cs" Link="Shared/GeneratedImageGroupState.cs" />

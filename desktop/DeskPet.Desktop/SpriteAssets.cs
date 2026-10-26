@@ -20,6 +20,8 @@ internal sealed class PetSkin
     public bool IsPlaceholder { get; set; }
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
     public string? BuiltinCharacterId { get; set; }
+    internal HolidayCatalog? PackageHolidayCatalog { get; set; }
+    internal string? OutfitCharacterId => OfficialCharacterId ?? BuiltinCharacterId ?? (PackageHolidayCatalog != null ? PackageId : null);
     public required string Name { get; init; }
     public string DisplayName => OfficialCompanionProfiles.GetDisplayName(OfficialCharacterId ?? BuiltinCharacterId, Name);
     public string DisplayDescription => OfficialCompanionProfiles.Find(OfficialCharacterId ?? BuiltinCharacterId)?.Description ?? Description;
@@ -310,10 +312,11 @@ internal sealed class SpriteAssets : IDisposable
         if (skin.PackageId is { } packageId)
         {
             if (!string.Equals(Path.GetFileName(manifestPath), "pet.json", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text.alternativeA"));
+            var inventory = OfficialCompanionNativeValidator.ValidateLocalPackage(root, CancellationToken.None);
             var before = LoadSkins(data);
             bool canonical = OfficialCompanionLegacy.MatchImport(root, packageId, CancellationToken.None) != null;
             if (!canonical) OfficialCompanionIdentity.ResolveCustom(data, packageId, before.Where(s => s.OfficialCharacterId != null).Select(s => s.Id), !before.Any(s => s.PickerKey == "custom-pack:" + packageId));
-            CompanionPackStorage.Install(root, data, packageId, references, copied => { using var input = File.OpenRead(Path.Combine(copied, "pet.json")); ValidateSkin(ReadManifest(input, packageId, copied)); });
+            CompanionPackStorage.Install(root, data, packageId, inventory.AllReferences, copied => { OfficialCompanionNativeValidator.ValidateLocalPackage(copied, CancellationToken.None); });
             CompanionPackStorage.SetHidden(data, packageId, false);
             CompanionPackStorage.SetHidden(data, (canonical ? "official:" : "custom-pack:") + packageId, false);
             return LoadSkins(data).Single(s => s.PickerKey == (canonical ? "official:" : "custom-pack:") + packageId);

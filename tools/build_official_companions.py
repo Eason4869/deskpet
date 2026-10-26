@@ -16,6 +16,8 @@ import zipfile
 
 from PIL import Image
 
+POLICY = json.loads((Path(__file__).resolve().parents[1] / 'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
+
 IDS = ('e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga')
 BASE = ('idle', 'running-right', 'running-left', 'waving', 'jumping', 'failed', 'waiting', 'running', 'review')
 INTERACTIONS = ('lifted', 'landing', 'petting', 'poked', 'feeding', 'happy', 'sleeping', 'special')
@@ -210,11 +212,11 @@ def collect_role(repository, defaults, destination, role, version):
 
 def write_archive(source, references, path):
     files = {file.relative_to(source).as_posix() for file in source.rglob('*') if file.is_file()}
-    if files != set(references) or len(files) > 512:
+    if files != set(references) or len(files) > POLICY['maximum_entries']:
         raise ValueError('Package contains missing or unreferenced files')
     paths = [(name, safe_path(source, name)) for name in sorted(files)]
     unpacked = sum(file.stat().st_size for _, file in paths)
-    if unpacked > 256 * 1024 * 1024:
+    if unpacked > POLICY['maximum_expanded_bytes']:
         raise ValueError('Official package exceeds unpacked size limit')
     with zipfile.ZipFile(path, 'x', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for name, file in paths:

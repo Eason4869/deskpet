@@ -59,6 +59,8 @@ namespace Dafeiyu
         public bool Embedded { get; private set; }
         // Trusted registration metadata; imported manifests cannot assign this.
         public string BuiltinCharacterId {get;internal set;}
+        internal HolidayCatalog PackageHolidayCatalog {get;set;}
+        internal string OutfitCharacterId {get{return BuiltinCharacterId??(PackageHolidayCatalog!=null&&Manifest!=null?Manifest.PackageId:null);}}
         string pickerKey;
         public string PickerKey {get{return pickerKey??(!String.IsNullOrEmpty(BuiltinCharacterId)?"official:"+BuiltinCharacterId:Illustrated&&!String.IsNullOrEmpty(Manifest.PackageId)?"custom-pack:"+Manifest.PackageId:"legacy-skin:"+Id);}internal set{pickerKey=value;}}
         public bool IsPlaceholder {get;internal set;}
@@ -277,10 +279,12 @@ namespace Dafeiyu
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
                 if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("skinCatalog.importIllustrated.text"));
                 bool existing=customPackageIds.Contains(manifest.PackageId);
+                var inventory=WpfOfficialNativeValidator.ValidateLocalPackage(source,CancellationToken.None);
+                CompanionPackageInventory installedInventory=null;
+                string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,inventory.AllReferences,
+                    folder=>{installedInventory=WpfOfficialNativeValidator.ValidateLocalPackage(folder,CancellationToken.None);});
                 string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);
-                string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,files,
-                    folder=>IllustratedPack.Validate(folder,ReadManifest(Path.Combine(folder,"pet.json")),true));
-                var updated=new SkinDefinition(persona,installedFolder,manifest);customPackageIds.Add(manifest.PackageId);
+                var updated=new SkinDefinition(persona,installedFolder,manifest){PackageHolidayCatalog=installedInventory.HolidayCatalog};customPackageIds.Add(manifest.PackageId);
                 CompanionPackStorage.SetHidden(dataRoot,manifest.PackageId,false);
                 CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;
             }
