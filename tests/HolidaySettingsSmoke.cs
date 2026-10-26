@@ -67,10 +67,10 @@ namespace Dafeiyu.Tests
                 Capture(window,Path.Combine(folder,"wpf-unlocked-light.png"));AssertThumbnails(wardrobe);
                 wardrobe.IsDropDownOpen=true;Pump();var popup=wardrobe.Template.FindName("PART_Popup",wardrobe) as Popup;Check(popup!=null && popup.IsOpen,"wardrobe options use the existing themed dropdown popup");Capture((FrameworkElement)popup.Child,Path.Combine(folder,"wpf-wardrobe-options-light.png"));wardrobe.IsDropDownOpen=false;
                 var prompt=(TextBox)window.FindControl("PersonaPrompt");string saved=prompt.Text;prompt.Text="衣柜更换不覆盖人格草稿";Choose(wardrobe,null);Check(prompt.Text=="衣柜更换不覆盖人格草稿" && state.ForCharacter("e-bao").PreferredOutfitId==null,"wardrobe selection preserves an unsaved persona draft");prompt.Text=saved;Choose(wardrobe,"halloween-ui");
-                skins.SelectedItem=pet.Catalog.Find("marfu");Pump();Check(pet.Skin.BuiltinCharacterId=="marfu" && wardrobe.Items.Count==1 && Text(wardrobe.SelectedItem)=="默认" && wardrobe.IsEnabled,"another builtin without ownership keeps only 默认");EqualRow(window,skins,wardrobe,import,"unowned character");Capture(window,Path.Combine(folder,"wpf-unowned-companion.png"));
-                state.Unlock("dafeiyu","halloween-ui");skins.SelectedItem=pet.Catalog.Find("dafeiyu");Pump();Choose(wardrobe,"halloween-ui");Check(state.ForCharacter("dafeiyu").PreferredOutfitId=="halloween-ui","second companion saves its own outfit preference");
-                skins.SelectedItem=pet.Catalog.Find("e-bao");Pump();Check(Id(wardrobe.SelectedItem)=="halloween-ui","returning to first companion restores its outfit");Choose(wardrobe,null);
-                skins.SelectedItem=pet.Catalog.Find("dafeiyu");Pump();Check(Id(wardrobe.SelectedItem)=="halloween-ui" && state.ForCharacter("e-bao").PreferredOutfitId==null,"choosing 默认 for one companion leaves the other companion preference intact");
+                ChooseSkin(pet,skins,pet.Catalog.Find("marfu"));Check(pet.Skin.BuiltinCharacterId=="marfu" && wardrobe.Items.Count==1 && Text(wardrobe.SelectedItem)=="默认" && wardrobe.IsEnabled,"another builtin without ownership keeps only 默认");EqualRow(window,skins,wardrobe,import,"unowned character");Capture(window,Path.Combine(folder,"wpf-unowned-companion.png"));
+                state.Unlock("dafeiyu","halloween-ui");ChooseSkin(pet,skins,pet.Catalog.Find("dafeiyu"));Choose(wardrobe,"halloween-ui");Check(state.ForCharacter("dafeiyu").PreferredOutfitId=="halloween-ui","second companion saves its own outfit preference");
+                ChooseSkin(pet,skins,pet.Catalog.Find("e-bao"));Check(Id(wardrobe.SelectedItem)=="halloween-ui","returning to first companion restores its outfit");Choose(wardrobe,null);
+                ChooseSkin(pet,skins,pet.Catalog.Find("dafeiyu"));Check(Id(wardrobe.SelectedItem)=="halloween-ui" && state.ForCharacter("e-bao").PreferredOutfitId==null,"choosing 默认 for one companion leaves the other companion preference intact");
                 var persisted=store.Load();Check(persisted.WardrobeDiscovered && persisted.ForCharacter("e-bao").PreferredOutfitId==null && persisted.ForCharacter("dafeiyu").PreferredOutfitId=="halloween-ui","global discovery and independent preferences persist to app data");
                 foreach(string theme in new[]{"light","dark"}) {
                     ThemeManager.Apply(theme);window.Width=820;window.Height=650;Pump();EqualRow(window,skins,wardrobe,import,"narrow "+theme);Check(Inside(skins,window) && Inside(wardrobe,window) && Inside(import,window),"both selectors and import stay inside narrow "+theme+" window");
@@ -81,9 +81,21 @@ namespace Dafeiyu.Tests
                 Capture((FrameworkElement)((Popup)wardrobe.Template.FindName("PART_Popup",wardrobe)).Child,Path.Combine(folder,"wpf-wardrobe-options-dark-unavailable.png"));wardrobe.IsDropDownOpen=false;
                 ThemeManager.Apply("light");window.Width=1180;window.Height=850;Pump();
                 string custom=Path.Combine(data,"E包.png");using(var input=typeof(SkinCatalog).Assembly.GetManifestResourceStream("Dafeiyu.EbaoAtlas"))using(var output=File.Create(custom))input.CopyTo(output);var imported=pet.Catalog.Import(custom);
-                typeof(SettingsPage).GetMethod("RefreshSkinChoices",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(window.Page,null);skins.SelectedItem=imported;Pump();Check(pet.Skin.BuiltinCharacterId==null && wardrobe.Items.Count==1 && Text(wardrobe.SelectedItem)=="默认","same-named custom companion cannot borrow builtin wardrobe ownership");AssertThumbnails(wardrobe);
+                typeof(SettingsPage).GetMethod("RefreshSkinChoices",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(window.Page,null);ChooseSkin(pet,skins,imported);Check(pet.Skin.BuiltinCharacterId==null && wardrobe.Items.Count==1 && Text(wardrobe.SelectedItem)=="默认","same-named custom companion cannot borrow builtin wardrobe ownership");AssertThumbnails(wardrobe);
                 Capture(window,Path.Combine(folder,"wpf-custom-companion.png"));
             }finally{if(window!=null)window.Close();if(pet!=null)pet.Close();Pump();}
+        }
+        static void ChooseSkin(PetWindow pet,ComboBox picker,SkinDefinition target)
+        {
+            // Exercise the selection event on the dispatcher, as native input does.
+            // Calling it directly outside Application.Run loses the await context.
+            var selection=picker.Dispatcher.BeginInvoke(new Action(()=>picker.SelectedItem=target));
+            var deadline=DateTime.UtcNow.AddSeconds(10);
+            while(selection.Status!=DispatcherOperationStatus.Completed||pet.Skin.PickerKey!=target.PickerKey||!ReferenceEquals(picker.SelectedItem,pet.Skin)){
+                if(DateTime.UtcNow>deadline)throw new TimeoutException("Companion selection did not complete: "+target.PickerKey);
+                Pump();
+            }
+            Pump();
         }
         static OutfitDefinition Outfit(string character,string name)
         {var clips=IllustratedPack.Actions.Concat(new[]{"stumble","special2"}).Select(action=>new OutfitClipDefinition(action+".png",8,8,4,action=="idle" || action=="sleeping" || action=="lifted",480,520,0,0,action,"default"));return new OutfitDefinition(character,"halloween-ui","halloween",name,"1",true,false,clips,null,new OutfitClipDefinition("egg.png",8,8,4,false,480,520,0,0,"egg","default"),"halloween/"+character+"/preview.png","夹具彩蛋");}

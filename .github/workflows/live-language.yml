@@ -49,6 +49,14 @@ jobs:
       - name: Native Windows preview and exit ownership
         if: runner.os == 'Windows'
         run: dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --agent-job-native-ui-only
+      - name: Native wardrobe selection and deferred settings retry
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          ./Build.ps1 -Target HolidaySettingsSmoke
+          if ($LASTEXITCODE) { throw 'Native wardrobe selection checks failed' }
+          ./Build.ps1 -Target DataManagementUiTests
+          if ($LASTEXITCODE) { throw 'Deferred settings retry checks failed' }
       - uses: actions/setup-python@v5
         if: runner.os == 'Windows'
         with:

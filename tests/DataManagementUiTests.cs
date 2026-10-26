@@ -88,9 +88,16 @@ namespace Dafeiyu.Tests
                     Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=444;pet.SaveSettings();Check(!Operation(d).IsCompleted,"arriving WPF position autosave does not block UI during held commit");locked.Dispose();Wait(Operation(d));
                     Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==444&&cfg.Scale==1.25,"successful WPF reset flushes latest position after publication");
                 });
+                // Isolate the disk-failure/retry scenario from visible-frame producers.
+                pet.Hide();Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
                 var reservation=pet.DataMaintenance.BeginAsync();Wait(reservation);using(reservation.Result){cfg.X=666;pet.SaveSettings();}
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){var flush=pet.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.Scale==1.25&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Scale==1.25,"later WPF autosave failure never reports durable reset rolled back");}
-                Wait(pet.FlushDeferredSettingsAsync());Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==666,"later WPF autosave failure remains retryable");
+                using(pet.DataMaintenance.EnterActivity()){
+                    var busyRetry=pet.FlushDeferredSettingsAsync();Wait(busyRetry);
+                    Check(busyRetry.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.X==666,"later WPF autosave retry rejects an active producer without losing pending position");
+                }
+                var idleRetry=pet.FlushDeferredSettingsAsync();Wait(idleRetry);Check(String.IsNullOrEmpty(idleRetry.Result)&&new SettingsStore(Path.Combine(root,"settings.json")).Load().X==666,"later WPF autosave failure remains retryable");
+                pet.Show();
                 cfg.Scale=1.7;var resetEntered=new TaskCompletionSource<bool>();var releaseReset=new TaskCompletionSource<bool>();
                 using(pet.DataMaintenance.Register(()=>{resetEntered.TrySetResult(true);return releaseReset.Task;}))
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){
