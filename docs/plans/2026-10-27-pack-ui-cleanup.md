@@ -18,26 +18,26 @@ Approved design: prior chat's 2026-10-26 character-pack-and-ui-cleanup design. I
 
 Files: tools/build_official_companions.py, assets/official/companion-versions.json, src/OfficialCompanion{Models,Feed,Storage,Downloads}.cs, tests/OfficialCompanion{AuthoringTests.py,Tests.cs}, 13 locale catalogs, both UI entry points, release/character-pack documentation, ReleaseInfo and changelogs.
 
-- [ ] Add failing authoring tests for independent release/material/minimum versions and semantic change gates; add C# regressions for content reuse/conflicts and 1024 file inventory.
-- [ ] Implement shared filename/content decisions, immutable receipt reuse and independent version registry.
-- [ ] Retire obsolete active copy, add accurate multilingual capability/download copy; update localization provenance.
-- [ ] Run directed Python/shared/WPF/UI and localization checks; review before integration.
-- [ ] Commit, fast-forward dev without overwriting concurrent changes, tag v0.11.1-dev.1; verify remote refs and CI. No Release.
+- [x] Add failing authoring tests for independent release/material/minimum versions and semantic change gates; add C# regressions for content reuse/conflicts and 1024 file inventory.
+- [x] Implement shared filename/content decisions, immutable receipt reuse and independent version registry.
+- [x] Retire obsolete active copy, add accurate multilingual capability/download copy; update localization provenance.
+- [x] Run directed Python/shared/WPF/UI and localization checks; review before integration.
+- [x] Commit, fast-forward dev without overwriting concurrent changes, tag v0.11.1-dev.1; verify remote refs and CI. No Release.
 
 ## Task 2 — 0.11.1-dev.2
 
 Files: official storage transaction/maintenance policy, cache service and both cache views, tests and docs.
 
-- [ ] Add failing transaction tests preserving current/previous on commit failure and restart recovery.
-- [ ] Implement transaction metadata and safe scan protection; manual cleanup only where exclusive shared-reader ownership can be proved.
-- [ ] Verify malformed paths, changed scans, corrupt pointers, unknown/old reader protection, migration and failure counts.
-- [ ] Review, commit and push dev, tag v0.11.1-dev.2, verify refs/CI, no Release.
+- [x] Add failing transaction tests preserving current/previous on commit failure and restart recovery.
+- [x] Implement transaction metadata and safe scan protection; manual cleanup only where exclusive shared-reader ownership can be proved.
+- [x] Verify malformed paths, changed scans, corrupt pointers, unknown/old reader protection, migration and failure counts.
+- [x] Review and commit version2 implementation and CI repairs. Delivery target: dev and v0.11.1-dev.2, with consolidated final CI permitted by the user; no Release.
 
-## Task 3 — 0.11.1-dev.3, if required
+## Task 3 — 0.11.1-dev.3
 
-- [ ] Enable automatic maintenance only with the same verified exclusive policy and seven-day grace; test failures do not turn a successful install into failure.
-- [ ] Measure repeated validation before changing performance behavior; document evidence and any safe deferral.
-- [ ] Complete build/UI/localization regression, review, push dev and tag the final planned version; no Release.
+- [x] Enable automatic maintenance only with the same verified exclusive policy and seven-day grace; test failures do not turn a successful install into failure.
+- [x] Measure repeated validation before changing performance behavior; document evidence and any safe deferral.
+- [x] Complete local build/UI/localization regression and final review. Delivery target: push dev, verify final CI, then tag both remaining version commits; no Release.
 
 Execution is authorized by the user's request; no extra approval pause. Each phase records concrete verification and rulings in work/pack-ui-cleanup/progress.md. A safety condition that cannot be proven stays protected and is reported explicitly.
 
@@ -49,4 +49,22 @@ Execution is authorized by the user's request; no extra approval pause. Each pha
 - Publication/readers wait for the lifecycle lock with cancellation and a 90-second sharing-violation bound; maintenance scans skip busy roles. Native Windows path pinning uses extended absolute paths for nested resource trees.
 
 - dev.3 uses one verified read per normal managed offline query (measured2 before/1 after on the same fixture); every new query still rejects byte tampering. Automatic history sweeps are asynchronous, history-only, serialized per service, cancelable and drained with a five-second shutdown bound. Partial/unverifiable leftovers stay protected rather than expanding deletion authority.
-- CI dev.1 revealed stale whole-catalog byte pins. Versioned pins were explicitly refreshed without rewriting historical source hashes; a Python preflight now catches raw-byte drift before native test loops. Every dev push is inspected and CI repaired; final tags follow green source commits, historical tags remain immutable.
+- CI dev.1 revealed stale whole-catalog byte pins. Versioned pins were explicitly refreshed without rewriting historical source hashes; a Python preflight now catches raw-byte drift before native test loops. Every dev push is inspected and CI repaired; the user permits consolidated final CI. Remaining version tags follow final validation, historical tags remain immutable.
+
+## 最终范围与验收记录
+
+用户已授权逐版实施、推送 dev 并打标签；不推送 main，不创建 Release。附件中的“未授权实施”属于原计划状态，已由用户后续明确指令更新。
+
+| 版本 | 最终内容 | 验收依据 |
+| --- | --- | --- |
+| 0.11.1-dev.1 | 独立素材版本、摘要复用、并发下载去重、1024 文件清单上限、踉跄能力说明及两端下载引导修正 | 两个应用版本实际构建的五份 ZIP 摘要均相同；两组五角色原生完整包安装验证通过 |
+| 0.11.1-dev.2 | 安装事务、前版恢复、历史副本手动清理、13 语言缓存与列表移除文案 | 生命周期定向 19 项；共享官方包 119 项；WPF 官方包 120 项；两端缓存与伙伴界面回归通过 |
+| 0.11.1-dev.3 | 安装后后台自动维护、取消与退出收尾、每次查询完整校验由两遍降为一遍 | 自动维护及校验优化定向 7 项；共享官方包 126 项、WPF 127 项；后续字节篡改仍被拒绝 |
+
+额外发现并修复：独立更新器编译不应依赖角色包维护模块；macOS/Linux 的文件锁占用错误码应进入有界重试；本系列新增文案需要同步嵌入语言包的字节快照并在 CI 提前检查。
+
+安全边界：受管新格式保留 current、一个恢复前版、正在使用和未知状态副本；退役七天后才具备回收资格。旧格式安装、自定义包历史及无法复验的部分副本不在本轮删除范围，部分读租约需退出进程后释放。不会承诺磁盘始终只剩两份。
+
+CI 记录：dev.1 已有标签保持不变，其语言快照失败由后继版本修复。dev.2 的 64e3255 已通过完整 macOS 两架构 CI 和 Windows 全量测试循环；Windows 后续打包验收仍假定素材与应用同版本而失败，由 ff3d37a 修复。最终按用户许可将修复合入 dev.3，集中验证完整 CI 后补齐 dev.2/dev.3 标签，不重写已发布标签。最终交付状态以远端引用与 GitHub Checks 为准。
+
+导出源码打包继续逐角色校验 registry 与 payload 摘要，但不会误借用父目录的 Git 历史；CI 的显式历史门禁仍要求完整 Git checkout，浅克隆不能以源码导出模式绕过。新增边界测试 6 项和实际五 ZIP 的新版打包断言均通过。

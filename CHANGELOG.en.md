@@ -7,10 +7,12 @@
 - Schedule protected managed-history cleanup after successful installation, with the same seven-day grace, integrity and reader safeguards as manual maintenance. Update/download caches are excluded.
 - Support cancellation and bounded shutdown. Maintenance/reporting failures never change committed installation success; unverifiable legacy or partial leftovers remain protected.
 - Verify managed offline queries once instead of twice, retaining full per-file verification under the lifecycle lock and a read lease. Later tampering is still rejected.
-- Refresh intentional catalog byte snapshots and check them early in Windows/macOS CI while preserving independent historical translation evidence.
 
 ## 0.11.1-dev.2 — Source tag (no Release)
 
+- Refresh intentional catalog byte snapshots and check them early in Windows/macOS CI while preserving independent historical translation evidence.
+- Keep the standalone updater independent of companion maintenance and recognize Unix file-lock contention during bounded retries.
+- Validate material asset versions independently in packaging smoke tests, and retain pinned source-export builds alongside the strict CI history gate.
 - Add transactional current/recovery-version publication and interrupted-state recovery. Maintenance errors do not hide verified installed resources.
 - Add managed character history cleanup after seven retirement days. Protect current, recovery, active, unknown and legacy roots; legacy lazy readers cannot select managed roots.
 - Clarify cache preservation and list removal across both UIs and all 13 languages, and update current usage guidance.
