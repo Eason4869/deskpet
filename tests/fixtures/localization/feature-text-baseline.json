@@ -32,8 +32,20 @@
       "argument_count": 0
     },
     {
+      "key": "cache.packVersionCategory",
+      "expected": "角色包历史副本",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "cache.preserved",
       "expected": "保留设置、API 密钥、聊天记录、角色、所有图片及附件、关系数据和项目。使用中或状态不明的文件会跳过；仅清理已确认归属且超过七天的缓存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.preservedPackVersions",
+      "expected": "保留聊天、设置、附件、关系和项目资料。角色包保留当前、一个可恢复前版本，以及使用中或状态不明的素材；旧格式副本继续保护。仅清理确认退役超过七天的历史副本和过期缓存。",
       "format": false,
       "argument_count": 0
     },
@@ -130,6 +142,12 @@
     {
       "key": "companions.package.metadataConflict",
       "expected": "已保留安装的素材；远端角色包元数据不一致，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.removeFromList",
+      "expected": "从列表移除",
       "format": false,
       "argument_count": 0
     },
