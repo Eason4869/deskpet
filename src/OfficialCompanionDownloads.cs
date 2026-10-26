@@ -117,10 +117,10 @@ namespace Dafeiyu
         }
         async Task<InstallResult> InstallCoreAsync(OfficialCompanionAsset asset,OfficialDownloadRouting routing,Work<InstallResult> work,CancellationToken cancel)
         {
-            var contentSlot=ContentSlot(asset);await slots.WaitAsync(cancel).ConfigureAwait(false);bool characterHeld=false;string stage=null,transfer=null;IDisposable stageLease=null,transferLease=null,spaceLease=null;
+            var contentSlot=ContentSlot(asset);await contentSlot.WaitAsync(cancel).ConfigureAwait(false);bool transferHeld=false;string stage=null,transfer=null;IDisposable stageLease=null,transferLease=null,spaceLease=null;
             Action<string,long,double> report=(step,bytes,percent)=>work.Report(new OfficialCompanionProgress(asset.Id,step,"",bytes,asset.Size,percent),gate);
             try {
-                await contentSlot.WaitAsync(cancel).ConfigureAwait(false);characterHeld=true;
+                await slots.WaitAsync(cancel).ConfigureAwait(false);transferHeld=true;
                 CheckAlive();cancel.ThrowIfCancellationRequested();var existing=Usable(asset.Id);
                 if(existing!=null&&(ReuseExisting(existing.Asset,asset))) {
                     await NativeAsync(existing,cancel).ConfigureAwait(false);report("install",existing.Asset.Size,100);return new InstallResult{Installation=existing,Installed=false};
@@ -141,7 +141,7 @@ namespace Dafeiyu
                     else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}});stage=null;lock(gate)nativeValidated.Add(installed.RootDirectory+":"+asset.Sha256);installedNow=true;}
                 }
                 if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);return new InstallResult{Installation=installed,Installed=installedNow};
-            }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();if(characterHeld)contentSlot.Release();slots.Release();}}
+            }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();if(transferHeld)slots.Release();contentSlot.Release();}}
         }
         static bool ReuseExisting(OfficialCompanionAsset existing,OfficialCompanionAsset remote)
         {
