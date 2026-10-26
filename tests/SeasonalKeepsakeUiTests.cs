@@ -1,0 +1,10 @@
+using System;using System.IO;using System.Linq;using System.Windows;using System.Windows.Controls;using System.Windows.Media;using System.Windows.Media.Imaging;
+namespace Dafeiyu.Tests {public static class SeasonalKeepsakeUiTests {
+[STAThread] public static int Main(){try{var app=new Application();int checks=0;string output=Path.GetFullPath("work/festive-scenes/native-cards");Directory.CreateDirectory(output);
+foreach(string locale in new[]{"zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"}){TextResources.ConfigureStartupLanguage(locale);
+foreach(var scene in RelationshipStageArt.All.Where(a=>a.HolidayId!=null&&(locale=="zh_CN"||a.CharacterId=="e-bao"))){
+var bytes=File.ReadAllBytes(Path.Combine("assets",scene.RelativePath));var record=new HolidayKeepsakeRecord{CompanionId=scene.CompanionId,HolidayId=scene.HolidayId,CompanionName=scene.CharacterId=="xiaobei"?"小贝":scene.CharacterId,OccurrenceYear=2026,EarnedLocalDate="2026-10-26"};var data=HolidayKeepsakeCardData.Owned(record,HolidayKeepsakeRegistry.BuiltIn);
+foreach(bool dark in new[]{false,true}){using(var capture=HolidayCardCapture.Create(data,bytes,dark)){if(capture.Png.Length<10000)throw new Exception("empty export");checks++;if(locale=="zh_CN")File.WriteAllBytes(Path.Combine(output,scene.HolidayId+"-"+scene.CharacterId+(dark?"-dark":"-light")+".png"),capture.Png);}
+var visual=RelationshipCardRenderer.CreateHoliday(data,HolidayCardCapture.Decode(bytes),dark);visual.Measure(new Size(800,480));visual.Arrange(new Rect(0,0,800,480));visual.UpdateLayout();foreach(var text in visual.Children.OfType<TextBlock>()){var probe=new TextBlock{Text=text.Text,Width=text.Width,FontFamily=text.FontFamily,FontSize=text.FontSize,TextWrapping=text.TextWrapping,Language=text.Language};probe.Measure(new Size(text.Width,Double.PositiveInfinity));if(probe.DesiredSize.Height>text.Height+.5)throw new Exception("Text overflow "+locale+" "+scene.HolidayId+" "+text.Name);checks++;}}
+}}
+Console.WriteLine("PASS: "+checks+" native seasonal card export/text checks; "+output);return 0;}catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}}}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -8,8 +8,8 @@ public static class RelationshipStageArtContractChecks
     public static int Run(Func<RelationshipStageArtAsset,Stream> resource)
     {
         int count=0;Action<bool,string> check=delegate(bool ok,string label){if(!ok)throw new Exception("FAIL "+label);count++;Console.WriteLine("PASS "+label);};
-        check(RelationshipStageArt.All.Count==35,"controlled manifest has thirty stages plus five holiday scenes");
-        check(RelationshipStageArt.All.Select(x=>x.RelativePath).Distinct().Count()==35,"all controlled paths distinct");
+        check(RelationshipStageArt.All.Count==80,"controlled manifest has thirty stages plus fifty holiday scenes");
+        check(RelationshipStageArt.All.Select(x=>x.RelativePath).Distinct().Count()==80,"all controlled paths distinct");
         foreach(var asset in RelationshipStageArt.All){
             RelationshipStageArtAsset found;
             check(RelationshipStageArt.TryGet(asset.CompanionId,asset.StageId,out found)==(asset.HolidayId==null),"stage selection exact "+asset.SceneId);

@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 namespace Dafeiyu
 {
@@ -44,9 +45,9 @@ namespace Dafeiyu
             HolidayId=stage=="halloween"?"halloween":null;OutfitId=HolidayId==null?null:"halloween-2026";OutfitVersion=HolidayId==null?null:"1.0.0";
         }
     }
-    public static class RelationshipStageArt
+    public static partial class RelationshipStageArt
     {
-        public const string Version="relationship-scenes-1";
+        public const string Version="relationship-scenes-2";
         public const int MaximumBytes=12*1024*1024;
         static readonly ReadOnlyCollection<RelationshipStageArtAsset> all=Array.AsReadOnly(new[]{
             new RelationshipStageArtAsset("official:dafeiyu","first_meeting","relationships/dafeiyu/first_meeting.png",1619,971,2342411,"c694c4243075c7a58c5a2348eac32110361f5c3cb0cce985c1bdd9e7b5ac6759"),
@@ -84,19 +85,20 @@ namespace Dafeiyu
             new RelationshipStageArtAsset("official:e-bao","trusted","relationships/e-bao/trusted.png",1619,971,2083166,"99df95ad412041d97351015d4d62c2d52deb5e1550bf0d0285191d2fad6f5f26"),
             new RelationshipStageArtAsset("official:e-bao","heartfelt","relationships/e-bao/heartfelt.png",1619,971,2397412,"3f96a61de1138de3bfd75e9927eeee49addf85e64af2010bacc407986859f0b0"),
             new RelationshipStageArtAsset("official:e-bao","best_friend","relationships/e-bao/best_friend.png",1619,971,2491441,"576c2b0eb334d1891536148019bf0b6e3cb6aec96e059bfba12ec50d1be029f2"),
-        });
+        }.Concat(FestivalAssets).ToArray());
         public static IList<RelationshipStageArtAsset> All {get{return all;}}
         public static bool TryGet(string companionId,string stageId,out RelationshipStageArtAsset asset)
         {
             asset=null;if(stageId=="halloween")return false;
-            foreach(var item in all)if(item.CompanionId==companionId&&item.StageId==stageId){asset=item;return true;}return false;
+            foreach(var item in all)if(item.CompanionId==companionId&&item.StageId==stageId&&item.HolidayId==null){asset=item;return true;}return false;
         }
         internal static RelationshipStageArtAsset Holiday(string companionId,string verifiedCharacterId,string holidayId,string outfitId,string outfitVersion)
         {
             if(companionId!="official:"+verifiedCharacterId)return null;
             // Both reviewed costume revisions share the original scene. Bind the
             // actual selected revision without changing old receipts or art inventory.
-            if(holidayId!="halloween" || outfitId!="halloween-2026" || outfitVersion!="1.0.0"&&outfitVersion!="1.0.3"&&outfitVersion!="1.0.4")return null;
+            if(holidayId!="halloween")return all.FirstOrDefault(item=>item.CompanionId==companionId&&item.HolidayId==holidayId&&item.OutfitId==outfitId&&item.OutfitVersion==outfitVersion);
+            if(outfitId!="halloween-2026" || outfitVersion!="1.0.0"&&outfitVersion!="1.0.3"&&outfitVersion!="1.0.4")return null;
             foreach(var item in all)if(item.CompanionId==companionId&&item.HolidayId==holidayId&&item.OutfitId==outfitId&&item.HolidayId!=null){
                 if(item.OutfitVersion==outfitVersion)return item;
                 return new RelationshipStageArtAsset(item.CompanionId,item.HolidayId,item.OutfitId,outfitVersion,item.SceneId,item.SceneVersion,item.RelativePath,item.PixelWidth,item.PixelHeight,item.ByteLength,item.Sha256,item.StageId);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using Dafeiyu;
@@ -40,8 +40,8 @@ namespace Dafeiyu.Tests
             var current=provider.Capture("official:e-bao","e-bao","halloween","halloween-2026","1.0.3");
             Check(current!=null&&current.Descriptor.OutfitVersion=="1.0.3","reviewed current outfit binding is exact 1.0.3");
             Check(old!=null&&current!=null&&old.Descriptor.Sha256==current.Descriptor.Sha256&&old.Descriptor.SceneVersion==current.Descriptor.SceneVersion,"old and current outfit keep original scene identity");
-            Check(RelationshipStageArt.All.Count==35,"original scene inventory remains35");
-            foreach(var version in new[]{"1.0.1","1.0.2","1.0.4","2.0.0"})Check(provider.Capture("official:e-bao","e-bao","halloween","halloween-2026",version)==null,"unreviewed version rejected "+version);
+            Check(RelationshipStageArt.All.Count==80,"original scenes plus reviewed festival scenes total80");
+            foreach(var version in new[]{"1.0.1","1.0.2","1.0.5","2.0.0"})Check(provider.Capture("official:e-bao","e-bao","halloween","halloween-2026",version)==null,"unreviewed version rejected "+version);
             passed+=QuietKeepsakeChecks.Run(Path.GetFullPath("work/hdskin-validation/integration/keepsake-wpf-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator());
             Console.WriteLine("QuietMotion: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }

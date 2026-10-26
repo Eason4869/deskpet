@@ -66,7 +66,7 @@ SceneText(content,TextResources.Get("relationship.card.title"),32,24,15,15,dark,
             var content=SceneBackground(scene,dark);
             SceneText(content,TextResources.Get("holidayKeepsake.albumTitle"),32,24,15,15,dark,"HolidayCardHeading",false);
             SceneText(content,data.Name,62,38,27,22,dark,"HolidayCardName",false);
-            double titleHeight=SceneText(content,data.Title,108,104,44,32,dark,"HolidayCardTitle",true);
+            double titleHeight=SceneText(content,data.Title,108,104,44,24,dark,"HolidayCardTitle",true);
             var ornament=OrnamentFor(data.Style,dark);Canvas.SetLeft(ornament,456);Canvas.SetTop(ornament,108+titleHeight+12);content.Children.Add(ornament);
             SceneText(content,data.Message,270,92,24,18,dark,"HolidayCardMessage",false);
             SceneText(content,data.DateText,378,52,20,16,dark,"HolidayCardDate",false);

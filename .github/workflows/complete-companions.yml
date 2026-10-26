@@ -40,3 +40,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./Build.ps1 -Target CompleteCompanionClockTests
+      - name: Ten reviewed holiday keepsake sets
+        run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --dev3-features-only
+      - name: Native card export and all language layouts
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./Build.ps1 -Target SeasonalKeepsakeUiTests

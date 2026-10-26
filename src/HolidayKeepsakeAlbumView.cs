@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -50,7 +50,7 @@ namespace Dafeiyu
             else if(loaded!=null)result=loaded;
             page=result.Page;
             var definitions=HolidayKeepsakeRegistry.BuiltIn.Definitions.Where(x=>x.EnabledForAcquisition).ToArray();
-            if(!definitions.Any(x=>x.HolidayId==selectedHoliday))selectedHoliday=definitions.Length==0?null:definitions[0].HolidayId;
+            if(!definitions.Any(x=>x.HolidayId==selectedHoliday)){var available=definitions.FirstOrDefault(d=>catalog().Outfits.Any(o=>o.Ready&&o.CharacterId==character&&o.HolidayId==d.HolidayId));selectedHoliday=available!=null?available.HolidayId:definitions.Length==0?null:definitions[0].HolidayId;}
             var now=RelationshipTime.Current();int year=now.UtcNow.Add(now.LocalOffset).Year;
             HolidayKeepsakePreviewResult preview=null;
             if(readStatus==HolidayKeepsakeReadStatus.Available&&selectedHoliday!=null&&!result.Album.Records.Any(x=>x.HolidayId==selectedHoliday&&x.OccurrenceYear==year))
@@ -86,8 +86,9 @@ namespace Dafeiyu
                 pager.Children.Add(back);pager.Children.Add(Text(()=>(TextResources.Format("holidayKeepsake.pageNumber",page+1,result.PageCount)),13));pager.Children.Add(next);Children.Add(pager);
             }
             if(definitions.Length>1){
-                var choice=new ComboBox{Name="HolidayPreviewChoice",ItemsSource=definitions.Select(x=>x.HolidayId).ToArray(),SelectedItem=selectedHoliday};
-                choice.SelectionChanged+=async delegate{if(choice.SelectedItem is string){selectedHoliday=(string)choice.SelectedItem;await RefreshAsync();}};
+                var items=definitions.Select(x=>new ComboBoxItem{Tag=x.HolidayId,Content=Text(()=>HolidayKeepsakeCardData.Owned(new HolidayKeepsakeRecord{HolidayId=x.HolidayId},HolidayKeepsakeRegistry.BuiltIn).Title,13)}).ToArray();
+                var choice=new ComboBox{Name="HolidayPreviewChoice",ItemsSource=items,SelectedItem=items.FirstOrDefault(x=>(string)x.Tag==selectedHoliday)};
+                choice.SelectionChanged+=async delegate{if(choice.SelectedItem is ComboBoxItem){selectedHoliday=(string)((ComboBoxItem)choice.SelectedItem).Tag;await RefreshAsync();}};
                 Children.Add(choice);
             }
             if(preview!=null){
