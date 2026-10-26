@@ -32,6 +32,14 @@ namespace Dafeiyu.Tests
             typeof(PetWindow).GetMethod("SavePosition",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(pet,null);
             Check(pet.Settings.X==x&&DesktopInterop.Bounds(handle).Left==x,"pending position autosave captures actual WPF window location");
         }
+        static void QuiesceVisibleProducers(PetWindow pet)
+        {
+            pet.HidePet();
+            // Exercise the visibility reconciliation performed by the 250ms pet tick.
+            typeof(PetWindow).GetMethod("PollVisibility",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(pet,null);
+            Check(!pet.IsPetVisible,"maintenance fixture remains hidden after native visibility reconciliation");
+            Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
+        }
         static int SpeechVolume(PetWindow pet)
         {
             const System.Reflection.BindingFlags fields=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
@@ -46,7 +54,9 @@ namespace Dafeiyu.Tests
             Check(TextResources.CurrentLanguage==(args.Length==0?"zh_CN":args[0]),"actual WPF startup catalog matches requested locale");
             try{
                 var cfg=new PetSettings{UiLanguage=args.Length==0?"zh_CN":args[0],AutoUpdate=false,OnboardingState="completed",AgentWorkspace=Path.Combine(root,"agent-workspace"),GreetingEnabled=false,GreetingMinMinutes=90,GreetingMaxMinutes=120,PlainTextEditor=true,FollowCursor=false,Wander=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
-                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();
+                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                // This data fixture owns its embedded companion; package acquisition has separate coverage.
+                pet.Skin.FixtureEmbedded=true;pet.Show();
                 var page=new SettingsPage(pet);host=new Window{Content=page,Width=620,Height=680};host.Show();page.SelectWorkSettings();Pump();var workGoal=(TextBox)page.FindControl("AgentGoal");workGoal.Text="unsaved project goal";page.SelectGeneralSection(2);Pump();
                 var clear=Find<Button>(page,"ClearAllHistory");var reset=Find<Button>(page,"RestoreDefaultPreferences");var attachments=Find<Button>(page,"OpenPreservedAttachments");
                 Check(clear!=null&&reset!=null&&attachments!=null&&Find<CheckBox>(page,"SaveChatHistory")!=null,"real General Data management exposes independent actions and SaveChatHistory");
@@ -89,7 +99,7 @@ namespace Dafeiyu.Tests
                     Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X==444&&cfg.Scale==1.25,"successful WPF reset flushes latest position after publication");
                 });
                 // Isolate the disk-failure/retry scenario from visible-frame producers.
-                pet.Hide();Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
+                QuiesceVisibleProducers(pet);
                 var reservation=pet.DataMaintenance.BeginAsync();Wait(reservation);using(reservation.Result){cfg.X=666;pet.SaveSettings();}
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){var flush=pet.FlushDeferredSettingsAsync();Wait(flush);Check(flush.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.Scale==1.25&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Scale==1.25,"later WPF autosave failure never reports durable reset rolled back");}
                 using(pet.DataMaintenance.EnterActivity()){
@@ -97,7 +107,10 @@ namespace Dafeiyu.Tests
                     Check(busyRetry.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.X==666,"later WPF autosave retry rejects an active producer without losing pending position");
                 }
                 var idleRetry=pet.FlushDeferredSettingsAsync();Wait(idleRetry);Check(String.IsNullOrEmpty(idleRetry.Result)&&new SettingsStore(Path.Combine(root,"settings.json")).Load().X==666,"later WPF autosave failure remains retryable");
-                pet.Show();
+                pet.RestorePet();
+                // HidePet synchronously saves position, so stop visible producers before
+                // creating the failed save, never while its position is pending retry.
+                QuiesceVisibleProducers(pet);
                 cfg.Scale=1.7;var resetEntered=new TaskCompletionSource<bool>();var releaseReset=new TaskCompletionSource<bool>();
                 using(pet.DataMaintenance.Register(()=>{resetEntered.TrySetResult(true);return releaseReset.Task;}))
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read)){
@@ -114,10 +127,8 @@ namespace Dafeiyu.Tests
                     var busyRetry=pet.FlushDeferredSettingsAsync();Wait(busyRetry);
                     Check(busyRetry.Result==TextResources.Get("dataManagement.pendingSaveFailed")&&cfg.X==555,"busy retry retains latest unsaved position");
                 }
-                // Visible frames enqueue keepsake probes while Wait pumps the dispatcher.
-                // End this fixture's visible encounter before draining its producers.
-                pet.Hide();
-                Wait(pet.Relationships.FlushAsync());Wait(pet.HolidayKeepsakes.FlushAsync());
+                Check(!pet.IsPetVisible,"failed reset stays hidden while awaiting retry");
+                Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().X!=555,"failed reset position remains uncommitted until the explicit retry");
                 var retryErrors=new System.Collections.Generic.List<string>();int recordingRetryError=0;
                 EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> retryDiagnostic=delegate(object sender,System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs eventArgs){
                     if(System.Threading.Interlocked.Exchange(ref recordingRetryError,1)!=0)return;
@@ -134,7 +145,7 @@ namespace Dafeiyu.Tests
                 finally{AppDomain.CurrentDomain.FirstChanceException-=retryDiagnostic;}
                 var retryDisk=new SettingsStore(Path.Combine(root,"settings.json")).Load();bool retrySaved=retryDisk.X==555&&cfg.Scale==1.7;
                 Check(retrySaved,"failed WPF reset retains latest position for retry: actual="+cfg.X+" durable="+retryDisk.X+" scale="+cfg.Scale+" warning="+retryWarning.Result+(retrySaved?"":" firstChance="+(retryErrors.Count==0?"none":String.Join(" | ",retryErrors))));
-                pet.Show();
+                pet.RestorePet();
                 CaptureStates(host,root,"data",false);
                 foreach(var action in new[]{clear,reset})Dialog(action,d=>{CaptureStates(d,root,action==clear?"clear-confirm":"reset-confirm",true);foreach(string name in new[]{"ConfirmDataAction","CancelDataAction"}){var button=Find<Button>(d,name);var bounds=button.TransformToAncestor(d).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=d.ActualWidth&&bounds.Bottom<=d.ActualHeight,"confirmation action bounds "+name);Check(!button.IsDefault,"maintenance confirmation has no Enter default "+name);}});
                 Check(pet.IsVisible,"successful maintenance leaves pet alive");Console.WriteLine("DataManagementUiTests: "+checks+" passed; captures="+root);host.Close();page.Dispose();return 0;
