@@ -92,6 +92,30 @@
       "argument_count": 1
     },
     {
+      "key": "companionImport.cancelled",
+      "expected": "导入已取消，原有角色仍可使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.progress",
+      "expected": "正在校验图像与动作并安装角色包。大包可能需要一些时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.space",
+      "expected": "磁盘可用空间不足。请为解压暂存、新安装副本和额外64 MiB预留空间后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.title",
+      "expected": "导入完整角色包",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "composerDraft.storageError",
       "expected": "草稿保存失败，当前文字仍保留在窗口中。请检查数据目录权限或磁盘空间。",
       "format": false,
@@ -1018,6 +1042,36 @@
     {
       "key": "settingsSearch.resetAlias",
       "expected": "恢复默认设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.clear",
+      "expected": "清除",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.help",
+      "expected": "点击快捷键框后直接按键识别，保存后生效；清除可停用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.prompt",
+      "expected": "请直接按下组合键，然后点击保存。Esc 取消。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.record",
+      "expected": "点击录制快捷键",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.title",
+      "expected": "录制快捷键",
       "format": false,
       "argument_count": 0
     },
