@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -15,11 +15,12 @@ namespace Dafeiyu
         internal string InputDraft {get{return inputDraft;}set{value=value??"";if(inputDraft==value)return;inputDraft=value;if(draftStore!=null&&draftPersistence())draftStore.Set(draftScope,value);var changed=InputDraftChanged;if(changed!=null)changed();}}
         internal event Action InputDraftChanged;
         ComposerDraftStore draftStore;string draftScope;Func<bool> draftPersistence;
+        readonly Dictionary<string,string> memoryDrafts=new Dictionary<string,string>();
         internal void BindDraft(ComposerDraftStore store,string scope,Func<bool> enabled)
         {
-            if(draftStore!=null)draftStore.WarningChanged-=OnWarningChanged;
+            if(draftStore!=null){memoryDrafts[draftScope]=inputDraft;draftStore.Flush();draftStore.WarningChanged-=OnWarningChanged;}
             draftStore=store;draftScope=scope;draftPersistence=enabled??(()=>true);
-            inputDraft=draftPersistence()?store.Get(scope):"";store.WarningChanged+=OnWarningChanged;
+            string remembered;inputDraft=draftPersistence()?store.Get(scope):memoryDrafts.TryGetValue(scope,out remembered)?remembered:"";store.WarningChanged+=OnWarningChanged;
             var changed=InputDraftChanged;if(changed!=null)changed();
         }
         internal void FinishDraft()

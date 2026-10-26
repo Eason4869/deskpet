@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Buffers.Binary;
 using System.Text.Json;
 using Avalonia;
@@ -476,15 +476,19 @@ internal sealed class SpriteView : Control
     public required PetSkin Skin { get; set; }
     private ClipSpec? clip;
     private IDisposable? currentFramePin;
-    private readonly List<IDisposable> previousFramePins=new();
+    private IDisposable? displayedFramePin;
     public new ClipSpec? Clip { get=>clip;set{
         if(ReferenceEquals(clip,value))return;
         var next=value==null?null:Assets.Pin(Skin,value);
-        if(currentFramePin!=null)previousFramePins.Add(currentFramePin);
+        // Only the last drawn image needs to survive until the next render.
+        // An intermediate candidate never submitted for drawing can be released now.
+        if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();
         currentFramePin=next;clip=value;
     }}
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e){base.OnDetachedFromVisualTree(e);currentFramePin?.Dispose();currentFramePin=null;ReleasePreviousFrames();}
-    private void ReleasePreviousFrames(){foreach(var pin in previousFramePins)pin.Dispose();previousFramePins.Clear();}
+    private void ReleasePins(){if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();displayedFramePin?.Dispose();currentFramePin=displayedFramePin=null;}
+    internal void ResetFrames(){ReleasePins();clip=null;}
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e){base.OnDetachedFromVisualTree(e);ReleasePins();}
+    private void CommitDisplayedFrame(){if(!ReferenceEquals(displayedFramePin,currentFramePin))displayedFramePin?.Dispose();displayedFramePin=currentFramePin;}
     public int Frame { get; set; }
     public bool MirrorX { get; set; }
     public event Action? FrameRendered;
@@ -492,10 +496,10 @@ internal sealed class SpriteView : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        if (Clip == null) return;
+        if (Clip == null) { ReleasePins();return; }
         try { DrawFrame(context); }
         catch (Exception error) when (CanRecover(error)) { HolidayFrameFailed!(error); if (Clip == null || SpriteAssets.IsHolidayClip(Clip)) return; DrawFrame(context); }
-        ReleasePreviousFrames();FrameRendered?.Invoke();
+        CommitDisplayedFrame();FrameRendered?.Invoke();
     }
     private bool CanRecover(Exception error) => Clip != null && SpriteAssets.IsHolidayClip(Clip) && HolidayFrameFailed != null && (error is InvalidDataException or IOException or ArgumentException or InvalidOperationException or ExternalException);
     private void DrawFrame(DrawingContext context)

@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -52,8 +52,10 @@ internal sealed partial class ChatWindow : Window
     private bool nativePaste, closed;
     private int uploadEpoch;
     private readonly record struct UploadContext(string Persona, int Epoch);
-    private string LoadDraft(){if(owner.Drafts.TryGetValue(DraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+DraftKey):"";owner.Drafts[DraftKey]=value;return value;}
-    private void SaveDraft(){var value=draft.Text??"";owner.Drafts[DraftKey]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+DraftKey,value);}
+    private string? activeDraftKey;
+    private string LoadDraft(){activeDraftKey=DraftKey;if(owner.Drafts.TryGetValue(activeDraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+activeDraftKey):"";owner.Drafts[activeDraftKey]=value;return value;}
+    private void SaveDraft(){var key=activeDraftKey??DraftKey;var value=draft.Text??"";owner.Drafts[key]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);}
+    private void SynchronizeDraftScope(){if(activeDraftKey==DraftKey)return;SaveDraft();draft.Text=LoadDraft();uploadEpoch++;RefreshAttachments();}
     private List<ChatAttachment> Files => attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new();
     private string persona;
     private sealed record ModelChoice(string Provider, string Model, string Label) { public override string ToString() => Label; }
@@ -244,7 +246,8 @@ internal sealed partial class ChatWindow : Window
     private void SelectMode(bool work)
     {
         if (work && !OperatingSystem.IsWindows()) return;
-        if(binding!=null){if(!work)owner.Run(()=>BindWorkAsync(null,null));return;} owner.Settings.AgentEnabled=work;owner.Save();RefreshMode();
+        if(binding!=null){if(!work){owner.Settings.AgentEnabled=false;owner.Save();owner.Run(()=>BindWorkAsync(null,null));}return;}
+        SaveDraft();owner.Settings.AgentEnabled=work;SynchronizeDraftScope();owner.Save();RefreshMode();
     }
     private void RefreshMode()
     {
@@ -374,6 +377,7 @@ internal sealed partial class ChatWindow : Window
         draft.IsEnabled=!owner.IsExiting;models.IsEnabled=!owner.IsExiting;
         partnerAvatar.Skin = owner.Skin; LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName));
         if (binding==null && persona != owner.Skin.Id) { uploadEpoch++; SaveDraft(); persona = owner.Skin.Id; draft.Text = LoadDraft(); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
+        SynchronizeDraftScope();
         LocalizedUi.Set(status,"Text",()=>(BoundSession.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + BoundSession.LastNotice + " " + owner.Dictation.LastNotice + " " + BoundQueue.Notice + " " + BoundSession.HistoryWarning+" "+owner.ComposerDrafts.Warning));
         LocalizedUi.Set(this,"Title",()=>(TextResources.Get("chatWindow.refresh.ownerSkinName") + owner.Skin.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"))));
         var followBottom = history.Offset.Y + history.Viewport.Height + 80 >= history.Extent.Height;

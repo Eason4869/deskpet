@@ -9,7 +9,16 @@ import subprocess
 IDS = {'e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga'}
 REPOSITORY = 'Eason4869/deskpet'
 ROOT = Path(__file__).resolve().parents[1]
+POLICY = json.loads((ROOT / 'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
 
+
+
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
 
 def identity(root, tag):
     source = (root / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
@@ -46,9 +55,12 @@ def prepare(root, tag, directory):
         path = directory / name
         if path.is_symlink() or not path.is_file():
             raise ValueError('A regular package file is required')
-        digest, size = hashlib.sha256(path.read_bytes()).hexdigest(), path.stat().st_size
+        size = path.stat().st_size
+        if size <= 0 or size > POLICY['maximum_archive_bytes']:
+            raise ValueError('Package exceeds the shared archive size policy')
+        digest = file_digest(path)
         check = checks[entry['id']]
-        if size <= 0 or size > 256 * 1024 * 1024 or entry['sha256'] != digest or entry['size'] != size or check.get('sha256') != digest or check.get('size') != size or check.get('nativeValidated') is not True or check.get('finalRootValidated') is not True:
+        if entry['sha256'] != digest or entry['size'] != size or check.get('sha256') != digest or check.get('size') != size or check.get('nativeValidated') is not True or check.get('finalRootValidated') is not True:
             raise ValueError('Package changed after authoring or native validation')
         assets.append({'name': name, 'sha256': digest, 'size': size})
     if index_path.is_symlink() or index_path.stat().st_size > 1024 * 1024:

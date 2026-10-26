@@ -46,6 +46,8 @@ jobs:
         run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -p:BuildInParallel=false -- --complete-companions
       - name: Installed local wardrobe restart and source isolation
         run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-build -- --complete-local-only
+      - name: Native quick/full and mode draft isolation
+        run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-build -- --composer-drafts-only
       - name: Native Windows card exports, draft restart and key capture
         if: runner.os == 'Windows'
         shell: powershell
@@ -63,4 +65,11 @@ jobs:
         with:
           name: dev3-native-cards
           path: work/festive-scenes/native-cards
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dev3-performance-${{ runner.os }}
+          path: work/dev3-validation/*.json
           if-no-files-found: ignore

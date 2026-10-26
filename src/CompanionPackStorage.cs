@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -82,6 +82,23 @@ namespace Dafeiyu
                 throw new InvalidDataException(TextResources.Get("companionImport.space"));
         }
         internal static Func<string,long> FreeSpaceProbe=path=>new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))).AvailableFreeSpace;
+        static readonly object diskGate=new object();
+        static readonly Dictionary<string,long> diskReservations=new Dictionary<string,long>(StringComparer.OrdinalIgnoreCase);
+        internal static IDisposable ReserveDiskSpace(string path,long bytes)
+        {
+            string volume=Path.GetPathRoot(Path.GetFullPath(path));
+            lock(diskGate) {
+                long reserved;diskReservations.TryGetValue(volume,out reserved);
+                CheckDiskSpace(path,checked(reserved+bytes));diskReservations[volume]=checked(reserved+bytes);
+                return new DiskReservation(volume,bytes);
+            }
+        }
+        sealed class DiskReservation:IDisposable
+        {
+            string volume;readonly long bytes;
+            internal DiskReservation(string key,long size){volume=key;bytes=size;}
+            public void Dispose(){lock(diskGate){if(volume==null)return;long remaining=diskReservations[volume]-bytes;if(remaining==0)diskReservations.Remove(volume);else diskReservations[volume]=remaining;volume=null;}}
+        }
         static void CheckDiskSpace(string path,long bytes)
         {
             long available;
@@ -160,7 +177,14 @@ namespace Dafeiyu
             var files=references.Concat(new[]{"pet.json"}).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             if(files.Length>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException("Too many package files.");
             string current=Current(root);
-            if(current!=null && files.All(p=>Same(AssetPath(source,p),AssetPath(current,p)))) { validate(current);return current; }
+            if(current!=null) {
+                try {
+                    var actual=new List<string>();InstalledFiles(current,current,actual);
+                    if(actual.Count==files.Length && !actual.Except(files,StringComparer.OrdinalIgnoreCase).Any() && files.All(p=>Same(AssetPath(source,p),AssetPath(current,p)))) {
+                        validate(current);cancel.ThrowIfCancellationRequested();return current;
+                    }
+                }catch(InvalidDataException){}catch(IOException){}catch(UnauthorizedAccessException){}
+            }
             long plannedBytes=0;
             foreach(string relative in files){cancel.ThrowIfCancellationRequested();long length=new FileInfo(AssetPath(source,relative)).Length;if(length>CompanionPackagePolicy.FileLimit(relative,false))throw new InvalidDataException("Package file exceeds limit.");plannedBytes=checked(plannedBytes+length);CompanionPackagePolicy.CheckExpanded(plannedBytes);}
             CheckDiskSpace(root,plannedBytes);
@@ -182,6 +206,16 @@ namespace Dafeiyu
             } finally {
                 if(File.Exists(temporary))File.Delete(temporary);
                 if(!published && Directory.Exists(destination)){DirectorySafe(destination);Directory.Delete(destination,true);}
+            }
+        }
+        static void InstalledFiles(string root,string current,List<string> result)
+        {
+            DirectorySafe(current);
+            foreach(string path in Directory.GetFileSystemEntries(current)) {
+                DirectorySafe(path);
+                if(Directory.Exists(path))InstalledFiles(root,path,result);
+                else result.Add(path.Substring(root.Length+1).Replace(Path.DirectorySeparatorChar,'/'));
+                if(result.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException();
             }
         }
         static bool Same(string left,string right)

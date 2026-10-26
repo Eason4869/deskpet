@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -77,6 +77,7 @@ namespace Dafeiyu.Tests
                 }
                 Check(samples.Last()<=samples.Skip(20).Min()+32L*1024*1024,"Thirty-round stable managed memory");
                 string report=Path.Combine(root,"work","dev3-validation","wpf-performance.json");Directory.CreateDirectory(Path.GetDirectoryName(report));File.WriteAllText(report,new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{appearances=55,rounds=30,elapsedSeconds=elapsed.Elapsed.TotalSeconds,retainedPixelPeakBytes=peak,lastTenPrivateRangeBytes=privateSamples.Skip(20).Max()-privateSamples.Skip(20).Min(),postWarmupHighWaterGrowthBytes=Math.Max(0,privateSamples.Skip(20).Max()-privateSamples.Take(20).Max()),allRetiredFramesReleased=true,samples=processSamples}));
+                Console.WriteLine("NATIVE_PERFORMANCE_REPORT="+File.ReadAllText(report));
                 Check(privateSamples.Skip(20).Max()<=privateSamples.Take(20).Max()+32L*1024*1024,"Native private high-water growth stays within32MiB after warmup");
                 Check(privateSamples.Skip(20).Max()<=privateSamples.Skip(20).Min()+32L*1024*1024,"Last ten released private-memory samples stay within32MiB");
                 Check(assets.RetainedPixelBytes==0,"Closing/releases remove retained pixels");

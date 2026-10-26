@@ -59,6 +59,36 @@ class CompanionReleaseTests(unittest.TestCase):
         report.write_text(json.dumps({'schema_version': 1, 'status': 'passed', 'companions': checks}), encoding='utf-8')
         return directory, index, report
 
+    def test_complete_package_above_old_limit_can_be_published(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True, 'commit': 'fixture'}):
+            directory, index, report = self.fixture(Path(temp))
+            catalog = json.loads(index.read_text())
+            receipt = json.loads(report.read_text())
+            entry = catalog['companions'][0]
+            package = directory / entry['asset_name']
+            with package.open('wb') as stream:
+                stream.truncate(257 * 1024 * 1024)
+            digest = hashlib.sha256(package.read_bytes()).hexdigest()
+            entry.update(size=package.stat().st_size, sha256=digest)
+            receipt['companions'][0].update(size=entry['size'], sha256=digest)
+            index.write_text(json.dumps(catalog), encoding='utf-8')
+            report.write_text(json.dumps(receipt), encoding='utf-8')
+            self.assertEqual(6, len(release.prepare(ROOT, TAG, directory)['assets']))
+            for size in (release.POLICY['maximum_archive_bytes'],):
+                with package.open('wb') as stream:
+                    stream.truncate(size)
+                digest = release.file_digest(package)
+                entry.update(size=size, sha256=digest)
+                receipt['companions'][0].update(size=size, sha256=digest)
+                index.write_text(json.dumps(catalog), encoding='utf-8')
+                report.write_text(json.dumps(receipt), encoding='utf-8')
+                self.assertEqual(6, len(release.prepare(ROOT, TAG, directory)['assets']))
+            with package.open('wb') as stream:
+                stream.truncate(release.POLICY['maximum_archive_bytes'] + 1)
+            with patch.object(release, 'file_digest', side_effect=AssertionError('must reject before reading oversized bytes')):
+                with self.assertRaises(ValueError):
+                    release.prepare(ROOT, TAG, directory)
+
     def test_native_receipt_binds_all_bytes_and_roles(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True, 'commit': 'fixture'}):
             directory, index, report = self.fixture(Path(temp))

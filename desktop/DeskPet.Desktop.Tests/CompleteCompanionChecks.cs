@@ -2,11 +2,19 @@ using Dafeiyu;
 using DeskPet.Desktop;
 using Avalonia;using Avalonia.Media.Imaging;
 internal static class CompleteCompanionChecks {
+internal static int RunDeferred(string root){int count=0;void Check(bool ok,string label){if(!ok)throw new Exception(label);count++;}
+var catalog=new HolidayCatalog(Path.GetFullPath("assets/holidays"));var skins=SpriteAssets.LoadSkins(root);
+using(var deferred=new SpriteAssets()) {
+var pending=new SpriteView{Assets=deferred,Skin=skins.First(s=>s.OfficialCharacterId=="e-bao")};
+foreach(var outfit in catalog.Outfits.Take(12)){pending.Clip=deferred.Resolve(pending.Skin,"idle",true,outfit);Check(deferred.RetainedPixelBytes<=64L*1024*1024,"render-deferred wardrobe remains within cache budget");}
+pending.Clip=null;
+}
+return count;}
 internal static int Run(string root){int count=0;
 void Check(bool ok,string label){if(!ok)throw new Exception(label);count++;}
 var catalog=new HolidayCatalog(Path.GetFullPath("assets/holidays"));
 var skins=SpriteAssets.LoadSkins(root);
-Check(catalog.Outfits.Count==50,"fifty reviewed outfits");
+Check(catalog.Outfits.Count==50,"fifty reviewed outfits");count+=RunDeferred(root);
 using var wardrobe=new SpriteAssets();
 foreach(var outfit in catalog.Outfits){
 var skin=skins.First(s=>s.OfficialCharacterId==outfit.CharacterId);

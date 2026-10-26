@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -62,6 +62,8 @@ try
     }
     if(args.Any(a=>a.StartsWith("--stage-track-layout="))){Console.WriteLine("StageTrackLayout: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"stage-track"),args.Single(a=>a.StartsWith("--stage-track-layout=")).Split('=')[1])+" passed");return;}
     if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
+    if(args.Contains("--deferred-cache-only")){Console.WriteLine("PASS: "+CompleteCompanionChecks.RunDeferred(Path.Combine(directory,"deferred"))+" render-deferred cache checks");return;}
+    if(args.Contains("--composer-drafts-only")){Console.WriteLine("PASS: "+ComposerDraftUiChecks.Run(Path.Combine(directory,"composer-drafts"))+" native composer draft isolation checks");return;}
     if(args.Contains("--complete-local-only")){Console.WriteLine("PASS: "+CompleteCompanionLocalUiChecks.Run(Path.Combine(directory,"complete-local"))+" installed local wardrobe/restart/source checks");return;}
     if(args.Contains("--complete-companions")){Console.WriteLine("PASS: "+CompleteCompanionChecks.Run(Path.Combine(directory,"complete"))+" native complete companion clock/pose checks");return;}
     if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}

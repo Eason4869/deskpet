@@ -59,7 +59,7 @@ namespace Dafeiyu
         }
         static void Walk(string root,string current,List<string> result)
         {
-            SafeDirectory(current);foreach(string path in Directory.GetFileSystemEntries(current)){SafeDirectory(path);if(Directory.Exists(path))Walk(root,path,result);else {string relative=path.Substring(root.Length+1).Replace(Path.DirectorySeparatorChar,'/');if(relative!="receipt.json")result.Add(relative);if(result.Count>512)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.walk.text"));}}
+            SafeDirectory(current);foreach(string path in Directory.GetFileSystemEntries(current)){SafeDirectory(path);if(Directory.Exists(path))Walk(root,path,result);else {string relative=path.Substring(root.Length+1).Replace(Path.DirectorySeparatorChar,'/');if(relative!="receipt.json")result.Add(relative);if(result.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.walk.text"));}}
         }
         internal void WriteReceipt(string stage,OfficialCompanionAsset asset,CancellationToken cancel)
         {

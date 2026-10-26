@@ -144,7 +144,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "5967a0de9bc4c2cd0960590c18c0be67076a72308e6797a73db07468d62a3747",
+    "v0_11_0_dev3_sha256": "24791526ca7c7ccd5ad980e3b9baf61d110e9804f615fb208d9b40ebfd1e81ac",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -292,7 +292,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "79d46ad32c50b8dbc8212fa63f734cfcbb9fce9b1a8ee25b8fff5999f508c6a1",
+    "v0_11_0_dev3_sha256": "4bb05c5be66545d5ec3d342b89433ff99d65283fb7679b6b7330744d6026cd5d",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -440,7 +440,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "3460ad58325874087126981e430834f5b57b16d1987e7eb97f84a3a0c33c5cd0",
+    "v0_11_0_dev3_sha256": "f1d1681698442cceff4b6ec885b0334b35c0639ae9f300f22a20ba3000e0da7a",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -588,7 +588,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "c9344698c96cded6a809a27574a4af17592a330aaaf713ee8f3d1125bc6032a9",
+    "v0_11_0_dev3_sha256": "e5d4c31f86c8f91533ce61f7385c9efe90138e04ec07057ea8004e5e3cc8a1f1",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -736,7 +736,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "c6ca16988f4e832f5cee583469676c3e118e22a769c0f5a0b5bd909f61271811",
+    "v0_11_0_dev3_sha256": "14aa75a91a64058d8c11fde9150544096d6dd50f8e5c9fdb9e6910f32a6d2dcb",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -884,7 +884,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "c763a15a1c91e33276fee5302168c56f01cc3ab6592ada236eb98a8daeb0ab45",
+    "v0_11_0_dev3_sha256": "68ada240b40340eb8996e966b00372a931676c30dcce49e0809711b3ebf0ec8f",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -1032,7 +1032,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "7dd35707ae9377ca2cc75d4ecde40fdc8e538bb15a6e0dbd89d56a2738e2e30c",
+    "v0_11_0_dev3_sha256": "b553d184f83743c738bed542127429b527563994f13cf74e1ea503896238dd11",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   },
   {
@@ -1180,7 +1180,7 @@
       "shortcutCapture.record",
       "shortcutCapture.title"
     ],
-    "v0_11_0_dev3_sha256": "1c2da44de5a40e9a23b02a69b154ad1132b6bd1b819cef9cd31ff3deef37a1f9",
+    "v0_11_0_dev3_sha256": "41610f9801d643ce2ebbe195974f536cef726c7e8fecc6190e3a6cd7225bbc7c",
     "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
   }
 ]

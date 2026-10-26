@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -54,6 +54,26 @@ namespace Dafeiyu.Tests
                         bool cancelled=false;try{CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png"},_=>cancellation.Cancel(),cancellation.Token);}catch(OperationCanceledException){cancelled=true;}
                         Check(cancelled&&CompanionPackStorage.Installed(storage).Single().Value==installed,"cancel before pointer publication preserves prior installation");
                     }
+                    string replacement=CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png","animations/idle.png"},_=>{});
+                    string trimmed=CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png"},_=>{});
+                    Check(trimmed!=replacement&&!File.Exists(Path.Combine(trimmed,"animations/idle.png")),"removed resources publish an exact replacement rather than retaining old extras");
+                    File.WriteAllText(Path.Combine(trimmed,"corrupt-extra.txt"),"bad");
+                    string repaired=CompanionPackStorage.Install(root,storage,"fixture-pet",new[]{"preview.png"},path=>{if(File.Exists(Path.Combine(path,"corrupt-extra.txt")))throw new InvalidDataException();});
+                    Check(repaired!=trimmed&&!File.Exists(Path.Combine(repaired,"corrupt-extra.txt")),"valid source repairs damaged previous installation");
+                    string inventoryRoot=Path.Combine(root,"official-inventory");Directory.CreateDirectory(inventoryRoot);
+                    for(int n=0;n<600;n++)File.WriteAllText(Path.Combine(inventoryRoot,"file"+n+".json"),"{}");
+                    Check(OfficialCompanionStorage.Inventory(inventoryRoot).Count==600,"official installed inventory uses the shared entry limit above512");
+                    string receiptData=Path.Combine(Environment.CurrentDirectory,"work","receipt-"+Guid.NewGuid().ToString("N").Substring(0,8));
+                    try {
+                        var official=new OfficialCompanionStorage(receiptData);string roleRoot=official.CharacterRoot("dafeiyu");Directory.CreateDirectory(roleRoot);
+                        string stage=Path.Combine(roleRoot,".stage");Directory.Move(inventoryRoot,stage);
+                        foreach(string required in new[]{"pet.json","companions.json","holidays/catalog.json"}){string path=OfficialCompanionStorage.SafePath(stage,required);Directory.CreateDirectory(Path.GetDirectoryName(path));File.WriteAllText(path,"{}");}
+                        var asset=new OfficialCompanionAsset("dafeiyu","fixture","0.11.0-dev.3","0.11.0-dev.3","companions-v0.11.0-dev.3","DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-classic","1.0.0")});
+                        official.WriteReceipt(stage,asset,CancellationToken.None);official.Publish(stage,asset,CancellationToken.None,()=>{},action=>action());
+                        Check(official.Installed("dafeiyu")!=null,"official603-file receipt publishes and reads back under the shared entry limit");
+                    }finally{if(Directory.Exists(receiptData))Directory.Delete(receiptData,true);}
+                    probe=CompanionPackStorage.FreeSpaceProbe;
+                    try {CompanionPackStorage.FreeSpaceProbe=_=>64L*1024*1024+150;using(CompanionPackStorage.ReserveDiskSpace(root,100)){Reject(()=>{using(CompanionPackStorage.ReserveDiskSpace(root,60)){}},"concurrent downloads cannot reserve the same remaining disk bytes");}using(CompanionPackStorage.ReserveDiskSpace(root,150)){}Check(true,"finished downloads release volume reservations");}finally{CompanionPackStorage.FreeSpaceProbe=probe;}
                     string aliases=Path.Combine(root,"aliases.zip");
                     using(var output=File.Create(aliases))using(var archive=new System.IO.Compression.ZipArchive(output,System.IO.Compression.ZipArchiveMode.Create)) {
                         archive.CreateEntry("a\\b.png");archive.CreateEntry("a/b.png");

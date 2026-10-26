@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Dafeiyu;
 
 namespace DeskPet.Desktop;
@@ -9,7 +9,9 @@ internal sealed partial class ChatWindow
     private ConversationSession? boundSession;private ConversationQueue? boundQueue;
     private int bindingEpoch;
     private Button? workBindingButton,workJobsButton;
-    private string DraftKey=>binding==null?persona:"work:"+binding.Id;
+    private string DraftKey=>(quick?"quick:":"full:")+ComposerDraftStore.Scope(persona,
+        !quick&&(binding!=null||OperatingSystem.IsWindows()&&owner.Settings.AgentEnabled)?"work":"chat",
+        binding?.ProjectId??"",binding?.Id??"");
     internal ConversationSession BoundSession=>boundSession??owner.Session;
     internal ConversationQueue BoundQueue=>boundQueue??owner.Queue;
     internal PetSettings EffectiveSettings()=>binding?.EffectiveSettings()??owner.Settings;

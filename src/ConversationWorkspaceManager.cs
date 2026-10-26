@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -20,6 +20,7 @@ namespace Dafeiyu
         {
             if(composerDrafts==null)composerDrafts=new ComposerDraftStore(dataRoot,Maintenance);
             workspace.DraftOwner=role;
+            workspace.DraftProjectChanged=delegate{if(workspace.IsDraft)BindDraft(workspace,workspace.DraftOwner);};
             workspace.Session.BindDraft(composerDrafts,ComposerDraftStore.Scope(role,workspace.Definition.Mode,workspace.ProjectId,workspace.Definition.SectionId),saveHistory);
         }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}
