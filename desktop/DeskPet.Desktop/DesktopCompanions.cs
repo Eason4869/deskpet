@@ -44,6 +44,14 @@ internal sealed partial class DesktopController
     }
     private PetSkin RestoreCachedStartupCompanion(PetSkin requested)
     {
+        if(requested.OfficialCharacterId==null && requested.PackageId!=null && requested.Folder!=null && OfficialCompanionRules.Ids.Contains(requested.PackageId)) {
+            try {
+                var inventory=Task.Run(()=>OfficialCompanionNativeValidator.ValidateLocalPackage(requested.Folder,companionLifetime.Token)).GetAwaiter().GetResult();
+                requested.PackageHolidayCatalog=inventory.HolidayCatalog;
+                RebuildCompanionCatalogFor(requested);
+            }catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException or AggregateException){requested.PackageHolidayCatalog=null;}
+            return requested;
+        }
         if(requested.OfficialCharacterId == null||!requested.IsPlaceholder)return requested;
         try
         {
@@ -84,12 +92,13 @@ internal sealed partial class DesktopController
     {
         officialHolidayCatalogs[id]=catalog;RebuildCompanionCatalog();
     }
-    private void RebuildCompanionCatalog()
+    private void RebuildCompanionCatalog()=>RebuildCompanionCatalogFor(Skin);
+    private void RebuildCompanionCatalogFor(PetSkin? selected)
     {
         embeddedHolidayCatalog??=Holidays.Catalog;
         var merged=embeddedHolidayCatalog;
         foreach(var item in officialHolidayCatalogs)merged=merged.WithCharacter(item.Key,item.Value);
-        if(Skin?.PackageHolidayCatalog is { } local)merged=merged.WithCharacter(Skin.OutfitCharacterId!,local);
+        if(selected?.PackageHolidayCatalog is { } local)merged=merged.WithCharacter(selected.OutfitCharacterId!,local);
         Holidays.ReplaceCatalog(merged);
     }
     private async Task WaitForGuideAsync(long token, CancellationToken cancel)
