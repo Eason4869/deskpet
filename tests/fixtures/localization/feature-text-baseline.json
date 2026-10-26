@@ -284,6 +284,30 @@
       "argument_count": 0
     },
     {
+      "key": "holidayKeepsake.christmasMessage",
+      "expected": "炉火与礼物，暖暖地陪你过冬。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.christmasTitle",
+      "expected": "圣诞节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.dragonBoatMessage",
+      "expected": "粽叶飘香，愿你一路顺风。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.dragonBoatTitle",
+      "expected": "端午节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "holidayKeepsake.empty",
       "expected": "尚未留下节日纪念。",
       "format": false,
@@ -308,8 +332,44 @@
       "argument_count": 0
     },
     {
+      "key": "holidayKeepsake.lanternMessage",
+      "expected": "一盏花灯，留住今夜的团圆。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.lanternTitle",
+      "expected": "元宵节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "holidayKeepsake.locked",
       "expected": "未获得 · 在节日当天相见，留下这一年的纪念。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.midAutumnMessage",
+      "expected": "月光与桂香，陪你共度团圆夜。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.midAutumnTitle",
+      "expected": "中秋节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.nationalDayMessage",
+      "expected": "五星红旗迎风，与你同庆祖国华诞。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.nationalDayTitle",
+      "expected": "国庆节",
       "format": false,
       "argument_count": 0
     },
@@ -328,6 +388,30 @@
     {
       "key": "holidayKeepsake.previous",
       "expected": "上一页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qingmingMessage",
+      "expected": "柳色与细雨，一同记住春天。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qingmingTitle",
+      "expected": "清明节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qixiMessage",
+      "expected": "鹊桥映星河，今夜与你相逢。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qixiTitle",
+      "expected": "七夕节",
       "format": false,
       "argument_count": 0
     },
@@ -362,8 +446,32 @@
       "argument_count": 0
     },
     {
+      "key": "holidayKeepsake.springFestivalMessage",
+      "expected": "灯火照归途，与你共迎新岁。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.springFestivalTitle",
+      "expected": "春节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "holidayKeepsake.unavailable",
       "expected": "节日场景暂不可用，请检查伙伴资源后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.valentinesDayMessage",
+      "expected": "把心意藏进花束，送给此刻的你。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.valentinesDayTitle",
+      "expected": "情人节",
       "format": false,
       "argument_count": 0
     },
