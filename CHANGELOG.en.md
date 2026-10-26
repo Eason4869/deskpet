@@ -13,6 +13,7 @@
 - Refresh intentional catalog byte snapshots and check them early in Windows/macOS CI while preserving independent historical translation evidence.
 - Keep the standalone updater independent of companion maintenance and recognize Unix file-lock contention during bounded retries.
 - Validate material asset versions independently and compare guide numbering and titles with the compiled application. Retain pinned source-export builds alongside the strict CI history gate.
+- Keep idle connections from blocking the native preview test server; preserve real-browser checks and the original navigation timeout, with retained failure diagnostics.
 - Add transactional current/recovery-version publication and interrupted-state recovery. Maintenance errors do not hide verified installed resources.
 - Add managed character history cleanup after seven retirement days. Protect current, recovery, active, unknown and legacy roots; legacy lazy readers cannot select managed roots.
 - Clarify cache preservation and list removal across both UIs and all 13 languages, and update current usage guidance.
