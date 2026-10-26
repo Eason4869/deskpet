@@ -42,7 +42,11 @@ namespace Dafeiyu.Tests
             string folder=Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"holiday-ui"));Directory.CreateDirectory(folder);PetWindow pet=null;SettingsWindow window=null;
             try {
                 var settings=new PetSettings{SkinId="e-bao",GreetingEnabled=false,Wander=false,FollowCursor=false,AutoUpdate=false,HideOnFullscreen=false,SaveChatHistory=false,ThemeMode="light"};foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-                string data=Path.Combine(folder,"data-"+Guid.NewGuid().ToString("N"));pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);pet.Show();Pump();
+                string data=Path.Combine(folder,"data-"+Guid.NewGuid().ToString("N"));pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
+                // This artificial wardrobe owns its catalog; official startup/hot reload
+                // has separate coverage and must not replace its e-bao definitions.
+                pet.Skin.FixtureEmbedded=true;pet.Show();Pump();
+                Check(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null,"artificial wardrobe startup does not acquire official companion packages");
                 var definitions=new[]{Outfit("e-bao","绯夜小伯爵"),Outfit("dafeiyu","南瓜海盗船长")};var state=new HolidayState();var store=new HolidayStateStore(Path.Combine(data,"holiday-state.json"));var controller=new HolidayController(new HolidayCalendar(),new HolidayCatalog(definitions),state,store.Save);
                 byte[] png=Sheet();pet.HolidayLocalTime=()=>new DateTime(2026,11,2,12,0,0);pet.InitializeHoliday(controller,clip=>new MemoryStream(png,false));
                 window=new SettingsWindow(pet){Width=1180,Height=850};window.Show();Pump();
@@ -82,6 +86,7 @@ namespace Dafeiyu.Tests
                 ThemeManager.Apply("light");window.Width=1180;window.Height=850;Pump();
                 string custom=Path.Combine(data,"E包.png");using(var input=typeof(SkinCatalog).Assembly.GetManifestResourceStream("Dafeiyu.EbaoAtlas"))using(var output=File.Create(custom))input.CopyTo(output);var imported=pet.Catalog.Import(custom);
                 typeof(SettingsPage).GetMethod("RefreshSkinChoices",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(window.Page,null);ChooseSkin(pet,skins,imported);Check(pet.Skin.BuiltinCharacterId==null && wardrobe.Items.Count==1 && Text(wardrobe.SelectedItem)=="默认","same-named custom companion cannot borrow builtin wardrobe ownership");AssertThumbnails(wardrobe);
+                Check(controller.Catalog.Outfits.SequenceEqual(definitions),"artificial wardrobe catalog survives every companion selection");
                 Capture(window,Path.Combine(folder,"wpf-custom-companion.png"));
             }finally{if(window!=null)window.Close();if(pet!=null)pet.Close();Pump();}
         }
@@ -89,6 +94,7 @@ namespace Dafeiyu.Tests
         {
             // Exercise the selection event on the dispatcher, as native input does.
             // Calling it directly outside Application.Run loses the await context.
+            Check(!target.IsPlaceholder && (!target.IsOfficial || target.FixtureEmbedded),"wardrobe selection uses a local fixture companion");
             var selection=picker.Dispatcher.BeginInvoke(new Action(()=>picker.SelectedItem=target));
             var deadline=DateTime.UtcNow.AddSeconds(10);
             while(selection.Status!=DispatcherOperationStatus.Completed||pet.Skin.PickerKey!=target.PickerKey||!ReferenceEquals(picker.SelectedItem,pet.Skin)){
@@ -96,6 +102,9 @@ namespace Dafeiyu.Tests
                 Pump();
             }
             Pump();
+            Check(ReferenceEquals(pet.Skin,target),"wardrobe selection retains its fixture source");
+            var wardrobe=(ComboBox)((SettingsWindow)Window.GetWindow(picker)).FindControl("HolidayOutfitPicker");
+            Console.WriteLine("WARDROBE selected="+Id(wardrobe.SelectedItem)+" skin="+pet.Skin.BuiltinCharacterId+" source="+pet.Skin.NativeSourceKey+" preferred="+pet.Holidays.PreferredOutfitId+" effective="+(pet.Holidays.EffectiveOutfit==null?"<none>":pet.Holidays.EffectiveOutfit.OutfitId)+" owned="+String.Join(",",pet.Holidays.OwnedOutfits.Select(o=>o.CharacterId+":"+o.OutfitId+":"+o.Ready))+" notice="+pet.Notice);
         }
         static OutfitDefinition Outfit(string character,string name)
         {var clips=IllustratedPack.Actions.Concat(new[]{"stumble","special2"}).Select(action=>new OutfitClipDefinition(action+".png",8,8,4,action=="idle" || action=="sleeping" || action=="lifted",480,520,0,0,action,"default"));return new OutfitDefinition(character,"halloween-ui","halloween",name,"1",true,false,clips,null,new OutfitClipDefinition("egg.png",8,8,4,false,480,520,0,0,"egg","default"),"halloween/"+character+"/preview.png","夹具彩蛋");}
