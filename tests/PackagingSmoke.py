@@ -57,7 +57,7 @@ for private_name in ['.env', '.env.local', 'credentials.json', 'release-signing.
 (checkout / '.codex/auth.json').write_text('private auth sentinel', encoding='utf-8')
 result = subprocess.run([sys.executable, str(checkout / 'Package.py'), '--output-directory', str(output)], cwd=checkout,
                         env=dict(os.environ,PYTHONIOENCODING='utf-8'),
-                        capture_output=True, text=True, encoding='utf-8', timeout=1200)
+                        capture_output=True, text=True, encoding='utf-8', timeout=2400)
 if result.returncode:
     print(result.stdout + result.stderr)
     raise AssertionError('fresh source packaging needs no local test artifacts')

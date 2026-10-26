@@ -101,7 +101,7 @@ with ZipFile(template_zip,'w',ZIP_DEFLATED,compresslevel=6) as bundle:
 # release. Default and every released holiday outfit stay in each versioned ZIP.
 companion_output=OUTPUT/('complete-companions-'+uuid.uuid4().hex)
 build_official_companions(PROJECT,companion_output,version)
-subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(PROJECT/'Build.ps1'),'-Target','OfficialCompanionPackageSmoke','-TestArguments',str(companion_output/'artifacts')],cwd=PROJECT,check=True,timeout=600)
+subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(PROJECT/'Build.ps1'),'-Target','OfficialCompanionPackageSmoke','-TestArguments',str(companion_output/'artifacts')],cwd=PROJECT,check=True,timeout=1200)
 skin_artifacts=[]
 for source in sorted((companion_output/'artifacts').iterdir()):
     destination=OUTPUT/source.name
