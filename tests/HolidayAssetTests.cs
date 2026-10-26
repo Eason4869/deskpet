@@ -56,10 +56,12 @@ namespace Dafeiyu.Tests
                 }
                 catalog=new HolidayCatalog(Path.Combine(repository,"assets","holidays"));
 #endif
-                if(catalog.Outfits.Count!=5 || catalog.Outfits.Any(x=>!x.Ready))throw new Exception("Five complete authored holiday outfits must be Ready.");
+                string authored=Environment.CurrentDirectory;while(!Directory.Exists(Path.Combine(authored,"assets","holidays"))){authored=Path.GetDirectoryName(authored);if(String.IsNullOrEmpty(authored))throw new Exception("Missing authored source root.");}
+                catalog=new HolidayCatalog(Path.Combine(authored,"assets","holidays"));
+                if(catalog.Outfits.Count!=50 || catalog.Outfits.Any(x=>!x.Ready))throw new Exception("Fifty complete authored holiday outfits must be Ready.");
                 foreach(var outfit in catalog.Outfits){if(outfit.EasterEgg.Loop || outfit.EasterEgg.FrameCount!=8 || outfit.Gaze.FrameCount!=16)throw new Exception("Invalid egg/gaze.");if(outfit.Clips.GroupBy(x=>x.Action+":"+x.Variant).Any(x=>x.Count()!=1))throw new Exception("duplicate clip");}
                 var empty=new HolidayCatalog(Path.Combine(Path.GetTempPath(),"missing-holiday-catalog-"+Guid.NewGuid().ToString("N")));if(empty.Outfits.Any(x=>x.Ready))throw new Exception("Missing assets must never be ready.");
-                Console.WriteLine("Holiday asset tests: "+passed+" fixture checks and five complete authored outfits passed");return 0;
+                Console.WriteLine("Holiday asset tests: "+passed+" fixture checks and fifty complete authored outfits passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL holiday assets: "+e);return 1;}
         }
     }

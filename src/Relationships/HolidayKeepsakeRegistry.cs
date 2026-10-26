@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -33,7 +33,16 @@ namespace Dafeiyu
     {
         static readonly HolidayKeepsakeRegistry builtIn=new HolidayKeepsakeRegistry(new[]{
             new HolidayKeepsakeDefinition("halloween","halloween",2026,"relationship.card.halloweenTitle",
-                "holidayKeepsake.halloweenMessage","halloween","halloween",true)});
+                "holidayKeepsake.halloweenMessage","halloween","halloween",true),
+            new HolidayKeepsakeDefinition("christmas","christmas",2026,"holidayKeepsake.christmasTitle","holidayKeepsake.christmasMessage","christmas","christmas",true),
+            new HolidayKeepsakeDefinition("spring-festival","spring-festival",2026,"holidayKeepsake.springFestivalTitle","holidayKeepsake.springFestivalMessage","spring-festival","spring-festival",true),
+            new HolidayKeepsakeDefinition("lantern","lantern",2026,"holidayKeepsake.lanternTitle","holidayKeepsake.lanternMessage","lantern","lantern",true),
+            new HolidayKeepsakeDefinition("valentines-day","valentines-day",2026,"holidayKeepsake.valentinesDayTitle","holidayKeepsake.valentinesDayMessage","valentines-day","valentines-day",true),
+            new HolidayKeepsakeDefinition("qingming","qingming",2026,"holidayKeepsake.qingmingTitle","holidayKeepsake.qingmingMessage","qingming","qingming",true),
+            new HolidayKeepsakeDefinition("dragon-boat","dragon-boat",2026,"holidayKeepsake.dragonBoatTitle","holidayKeepsake.dragonBoatMessage","dragon-boat","dragon-boat",true),
+            new HolidayKeepsakeDefinition("mid-autumn","mid-autumn",2026,"holidayKeepsake.midAutumnTitle","holidayKeepsake.midAutumnMessage","mid-autumn","mid-autumn",true),
+            new HolidayKeepsakeDefinition("national-day","national-day",2026,"holidayKeepsake.nationalDayTitle","holidayKeepsake.nationalDayMessage","national-day","national-day",true),
+            new HolidayKeepsakeDefinition("qixi","qixi",2026,"holidayKeepsake.qixiTitle","holidayKeepsake.qixiMessage","qixi","qixi",true)});
         public static HolidayKeepsakeRegistry BuiltIn {get{return builtIn;}}
         public ReadOnlyCollection<HolidayKeepsakeDefinition> Definitions {get;private set;}
         internal HolidayKeepsakeRegistry(IEnumerable<HolidayKeepsakeDefinition> definitions)

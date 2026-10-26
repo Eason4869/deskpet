@@ -94,7 +94,7 @@ namespace Dafeiyu
                 var matching=release.Assets.Where(a=>StringValue(a,"name")==filename).ToArray();long actualSize;string actualHash;
                 if(matching.Length!=1||!AssetIdentity(release,matching[0],filename,OfficialCompanionRules.MaximumPackage,out actualSize,out actualHash)||size!=actualSize||hash!=actualHash)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeC"));
                 var outfits=new List<OfficialCompanionOutfit>();var seen=new HashSet<string>(StringComparer.Ordinal);
-                var list=OfficialJson.Array(OfficialJson.Required(item,"outfits"));if(list.Length>32)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeD"));
+                var list=OfficialJson.Array(OfficialJson.Required(item,"outfits"));if(list.Length>CompanionPackagePolicy.MaximumHolidayOutfits)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeD"));
                 foreach(var entry in list){var outfit=OfficialJson.Object(entry);string outfitId=OfficialJson.Text(outfit,"outfit_id",64);if(!Regex.IsMatch(outfitId,@"\A[a-z0-9][a-z0-9-]{0,63}\z")||!seen.Add(outfitId))throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeE"));outfits.Add(new OfficialCompanionOutfit(outfitId,OfficialCompanionRules.Version(OfficialJson.Text(outfit,"version",64))));}
                 result.Add(id,new OfficialCompanionAsset(id,name,version,minimum,release.Tag,filename,size,hash,outfits));
             }

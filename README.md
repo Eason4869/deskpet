@@ -1,6 +1,6 @@
 [简体中文](README.md) | [English](README.en.md)
 
-源码开发：0.11.0-dev.2 支持[语言即时切换](docs/localization/live-language-acceptance.md)，并包含 0.11.0-dev.1 的伙伴、关系与数据管理功能。尚未发布对应二进制 Release；下方下载入口保持指向已发布版本。
+源码开发：0.11.0-dev.3 集成五角色完整节日包、独立节日服饰解锁与纪念卡片，并支持新建对话草稿重启恢复、快捷键按键录制。保留[语言即时切换](docs/localization/live-language-acceptance.md)等既有功能。尚未发布对应二进制 Release；下方下载入口保持指向已发布版本。
 
 <div align="center">
   <picture>

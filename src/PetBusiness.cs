@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -39,6 +39,15 @@ namespace Dafeiyu
         private static readonly double[] Periods = { .17, .11, .11, .16, .13, .16, .19, .18, .18 };
         private double elapsed;
         private double duration;
+        private double requestedDuration;
+        private OutfitClipDefinition activeClip;
+        public Func<string,OutfitClipDefinition> ClipOverride {get;set;}
+        public void RefreshClip()
+        {
+            double previousElapsed=elapsed;
+            string state=State;double requested=requestedDuration;Play(state,requested);
+            elapsed=previousElapsed;
+        }
         public double Elapsed {get{return elapsed;}}
         private readonly double runningFramePeriod;
         private readonly double[] naturalDurations;
@@ -58,13 +67,24 @@ namespace Dafeiyu
         public void Play(string state, double seconds)
         {
             if (Array.IndexOf(States, state) < 0) throw new ArgumentException("Unknown animation state.");
-            State = state; Frame = 0; elapsed = 0; duration = naturalDurations!=null && naturalDurations[Row]>0 ? naturalDurations[Row] : Math.Max(0, seconds);
+            State = state; Frame = 0; elapsed = 0;requestedDuration=Math.Max(0,seconds);
+            activeClip=ClipOverride==null?null:ClipOverride(state);
+            duration=naturalDurations!=null && naturalDurations[Row]>0 ? naturalDurations[Row] : requestedDuration;
+            if(activeClip!=null) {
+                double cycle=activeClip.FrameCount/activeClip.Fps;
+                duration=activeClip.Loop?(requestedDuration>0?Math.Max(1,Math.Ceiling(requestedDuration/cycle))*cycle:0):
+                    (requestedDuration>0 || state=="jumping"?cycle:0);
+            }
         }
         public void Advance(double seconds)
         {
             if (seconds < 0 || Double.IsNaN(seconds) || Double.IsInfinity(seconds)) return;
             elapsed += seconds;
             if (duration > 0 && elapsed >= duration) { Play("idle", 0); return; }
+            if(activeClip!=null) {
+                int sample=(int)Math.Floor((elapsed+1e-9)*activeClip.Fps);
+                Frame=activeClip.Loop?sample%activeClip.FrameCount:Math.Min(activeClip.FrameCount-1,sample);return;
+            }
             double period=Row==1 || Row==2 ? runningFramePeriod : Periods[Row];
             double phase=elapsed / period * FrameMultiplier;
             int count=Counts[Row]*FrameMultiplier;

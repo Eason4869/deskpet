@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -155,7 +155,7 @@ namespace Dafeiyu.Tests
 
             var settings=new PetSettings{UiLanguage=locale,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",ShowPredictedMessages=false};foreach(var key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
             pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);await Task.Run(()=>RelationshipHomeFixtures.Seed156(pet.RelationshipService,pet.RelationshipCompanionId));pet.SetPaused(true);pet.ShowChat();pet.Show();
-            var deadline=System.Diagnostics.Stopwatch.StartNew();while(!app.Windows.OfType<RelationshipFeedbackWindow>().Any()){if(deadline.ElapsedMilliseconds>10000)throw new TimeoutException("Actual feedback not displayed");await Task.Delay(10);}
+            var deadline=System.Diagnostics.Stopwatch.StartNew();while(!app.Windows.OfType<RelationshipFeedbackWindow>().Any()){if(deadline.ElapsedMilliseconds>10000){Console.WriteLine("FEEDBACK_TIMEOUT visible="+pet.IsPetVisible+" fullscreen="+DesktopInterop.ForegroundIsFullScreen()+" allowed="+pet.RelationshipFeedbackAllowed(pet.RelationshipCompanionId));throw new TimeoutException("Actual feedback not displayed");}await Task.Delay(10);}
             var feedbackWindow=app.Windows.OfType<RelationshipFeedbackWindow>().Single();
             Check(!feedbackWindow.ShowActivated&&!feedbackWindow.ShowInTaskbar,"actual saved stage window does not request focus or taskbar entry");
             Check(pet.Animation.State=="idle","paused pet is not interrupted by automatic celebration");

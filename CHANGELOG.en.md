@@ -2,6 +2,15 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.0-dev.3 — In development (unreleased)
+
+- Integrate five complete companion packages, each with the default outfit and ten holiday outfits. Preserve original artwork, actual action poses, blinking, petting and body-poke reactions.
+- Recognize holidays using system local time, automatically restore the selected outfit afterwards, and keep permanent unlocks separate for each holiday and companion source.
+- Add 45 distinct keepsake illustrations for the nine additional holidays, with native localized text and export.
+- Persist unsent new-chat drafts across window closure and restart, isolating roles, modes, projects and temporary quick-chat inputs.
+- Record shortcut combinations from actual key presses, with conflict checks and temporary suspension of global hotkeys.
+- Support complete packages up to 512 MiB with 1024 entries, atomic installation, cancellation, disk-space preflight and bounded image ownership. Candidate resources require a compatible client and a separate verified resource publication.
+
 ## 0.11.0-dev.2 — In development (unreleased)
 
 - Apply language changes to existing WPF and Avalonia controls while preserving drafts, unsaved settings, window state, selections and running work.

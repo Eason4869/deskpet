@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -33,7 +33,7 @@ namespace Dafeiyu
     }
     public sealed class HolidayKeepsakeCardData
     {
-        public const string LayoutVersion="holiday-card-1";
+        public const string LayoutVersion="holiday-card-2";
         public HolidayKeepsakeRecord Record {get;private set;}
         public string CompanionId {get;private set;}
         public string HolidayId {get;private set;}
@@ -41,21 +41,44 @@ namespace Dafeiyu
         public string Name {get;private set;}
         public int Year {get;private set;}
         public string Style {get;private set;}
-        readonly bool halloween;
+        readonly string reviewedHoliday;
         HolidayKeepsakeCardData(string id,string holiday,string instance,string name,int year,HolidayKeepsakeRegistry registry)
         {
             CompanionId=id;HolidayId=holiday;InstanceKey=instance;Name=name;Year=year;
             var definition=registry.Find(holiday);
-            halloween=definition!=null&&definition.TitleKey=="relationship.card.halloweenTitle"&&definition.MessageKey=="holidayKeepsake.halloweenMessage";
-            Style=definition!=null&&definition.StyleKey=="halloween"?"halloween":"history";
+            var reviewed=HolidayKeepsakeRegistry.BuiltIn.Find(holiday);
+            reviewedHoliday=definition!=null&&reviewed!=null&&definition.TitleKey==reviewed.TitleKey&&definition.MessageKey==reviewed.MessageKey&&definition.StyleKey==reviewed.StyleKey?holiday:null;
+            Style=reviewedHoliday??"history";
         }
         public static HolidayKeepsakeCardData Owned(HolidayKeepsakeRecord record,HolidayKeepsakeRegistry registry)
         {var data=new HolidayKeepsakeCardData(record.CompanionId,record.HolidayId,record.InstanceKey,record.CompanionName,record.OccurrenceYear,registry);data.Record=record;return data;}
         public static HolidayKeepsakeCardData Preview(string id,string name,int year,HolidayKeepsakePreviewResult preview,HolidayKeepsakeRegistry registry)
         {return new HolidayKeepsakeCardData(id,preview.HolidayId,preview.InstanceKey,name,year,registry);}
         // Literal cases deliberately keep localization review/checking bounded.
-        public string Title {get{return halloween?TextResources.Get("relationship.card.halloweenTitle"):TextResources.Get("holidayKeepsake.historyTitle");}}
-        public string Message {get{return halloween?TextResources.Get("holidayKeepsake.halloweenMessage"):TextResources.Get("holidayKeepsake.historyMessage");}}
+        public string Title {get{switch(reviewedHoliday){
+            case "halloween":return TextResources.Get("relationship.card.halloweenTitle");
+            case "christmas":return TextResources.Get("holidayKeepsake.christmasTitle");
+            case "spring-festival":return TextResources.Get("holidayKeepsake.springFestivalTitle");
+            case "lantern":return TextResources.Get("holidayKeepsake.lanternTitle");
+            case "valentines-day":return TextResources.Get("holidayKeepsake.valentinesDayTitle");
+            case "qingming":return TextResources.Get("holidayKeepsake.qingmingTitle");
+            case "dragon-boat":return TextResources.Get("holidayKeepsake.dragonBoatTitle");
+            case "mid-autumn":return TextResources.Get("holidayKeepsake.midAutumnTitle");
+            case "national-day":return TextResources.Get("holidayKeepsake.nationalDayTitle");
+            case "qixi":return TextResources.Get("holidayKeepsake.qixiTitle");
+            default:return TextResources.Get("holidayKeepsake.historyTitle");}}}
+        public string Message {get{switch(reviewedHoliday){
+            case "halloween":return TextResources.Get("holidayKeepsake.halloweenMessage");
+            case "christmas":return TextResources.Get("holidayKeepsake.christmasMessage");
+            case "spring-festival":return TextResources.Get("holidayKeepsake.springFestivalMessage");
+            case "lantern":return TextResources.Get("holidayKeepsake.lanternMessage");
+            case "valentines-day":return TextResources.Get("holidayKeepsake.valentinesDayMessage");
+            case "qingming":return TextResources.Get("holidayKeepsake.qingmingMessage");
+            case "dragon-boat":return TextResources.Get("holidayKeepsake.dragonBoatMessage");
+            case "mid-autumn":return TextResources.Get("holidayKeepsake.midAutumnMessage");
+            case "national-day":return TextResources.Get("holidayKeepsake.nationalDayMessage");
+            case "qixi":return TextResources.Get("holidayKeepsake.qixiMessage");
+            default:return TextResources.Get("holidayKeepsake.historyMessage");}}}
         public string DateText {get{return Record==null?"":RelationshipCardData.FormatDate(Record.EarnedLocalDate);}}
         public string YearText {get{return Year.ToString(CultureInfo.InvariantCulture);}}
         public string Identity {get{return CompanionId+"|"+HolidayId+"|"+InstanceKey;}}

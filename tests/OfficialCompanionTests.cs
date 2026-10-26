@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -50,6 +50,12 @@ namespace Dafeiyu.Tests
         }
         static async Task Run()
         {
+            using(var low=new OfficialCompanionFixture())using(var transport=low.Transport())using(var service=new OfficialCompanionDownloads(low.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))) {
+                var probe=CompanionPackStorage.FreeSpaceProbe;
+                try{CompanionPackStorage.FreeSpaceProbe=_=>0;await Reject(async()=>{await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);},"official low space rejects before downloading");Check(low.Packages==0,"official disk preflight starts no package transfer");}
+                finally{CompanionPackStorage.FreeSpaceProbe=probe;}
+            }
+
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))) {
                 var result=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                 Check(result.InstalledNow&&result.MetadataChecked&&!result.UsedOfflineFallback&&File.Exists(result.Installation.PetManifestPath),"verified complete package is published and returned");

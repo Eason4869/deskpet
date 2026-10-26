@@ -114,7 +114,7 @@ namespace Dafeiyu
         }
         async Task<InstallResult> InstallCoreAsync(OfficialCompanionAsset asset,OfficialDownloadRouting routing,Work<InstallResult> work,CancellationToken cancel)
         {
-            await slots.WaitAsync(cancel).ConfigureAwait(false);string stage=null,transfer=null;IDisposable stageLease=null,transferLease=null;
+            await slots.WaitAsync(cancel).ConfigureAwait(false);string stage=null,transfer=null;IDisposable stageLease=null,transferLease=null,spaceLease=null;
             Action<string,long,double> report=(step,bytes,percent)=>work.Report(new OfficialCompanionProgress(asset.Id,step,"",bytes,asset.Size,percent),gate);
             try {
                 CheckAlive();cancel.ThrowIfCancellationRequested();var existing=Usable(asset.Id);
@@ -122,6 +122,9 @@ namespace Dafeiyu
                     await NativeAsync(existing,cancel).ConfigureAwait(false);report("install",existing.Asset.Size,100);return new InstallResult{Installation=existing,Installed=false};
                 }
                 string root=store.CharacterRoot(asset.Id);System.IO.Directory.CreateDirectory(root);stage=OfficialCompanionStorage.SafePath(root,".stage-"+Guid.NewGuid().ToString("N"));transfer=OfficialCompanionStorage.SafePath(root,".transfer-"+Guid.NewGuid().ToString("N"));
+                // The transfer ZIP remains until publication. Reserve its bytes plus
+                // the bounded expanded staging tree; concurrent roles share the volume budget.
+                spaceLease=CompanionPackStorage.ReserveDiskSpace(root,checked(asset.Size+CompanionPackagePolicy.MaximumExpandedBytes));
                 string dataRoot=System.IO.Path.GetDirectoryName(store.Root);stageLease=Maintenance.CacheResourceLease.Acquire(dataRoot,stage);transferLease=Maintenance.CacheResourceLease.Acquire(dataRoot,transfer);
                 string route="";var routeKind=OfficialCompanionRoute.Unknown;var routeProgress=new OfficialProgress<string>(message=>{route=message;work.Report(new OfficialCompanionProgress(asset.Id,"download",route,0,asset.Size,0,routeKind),gate);});
                 string zip=await transport.OfficialAssetAsync(asset.AssetUrl,asset.AssetName,asset.Size,asset.Sha256,OfficialCompanionRules.MaximumPackage,transfer,routing,new OfficialProgress<double>(p=>work.Report(new OfficialCompanionProgress(asset.Id,"download",route,(long)(Math.Min(p,99)*asset.Size/100),asset.Size,Math.Min(90,p*.9),routeKind),gate)),routeProgress,cancel,kind=>routeKind=kind).ConfigureAwait(false);
@@ -134,7 +137,7 @@ namespace Dafeiyu
                     else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}});stage=null;lock(gate)nativeValidated.Add(installed.RootDirectory+":"+asset.Sha256);installedNow=true;}
                 }
                 if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);return new InstallResult{Installation=installed,Installed=installedNow};
-            }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();slots.Release();}}
+            }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();slots.Release();}}
         }
         // Package version wins first; for replacement bytes at the same version the owning feed version wins.
         static int CompareContent(OfficialCompanionAsset left,OfficialCompanionAsset right){int value=ReleaseVersion.Parse(left.Version).CompareTo(ReleaseVersion.Parse(right.Version));if(value!=0)return value;string a=left.Tag.StartsWith("companions-v",StringComparison.Ordinal)?left.Tag.Substring(12):left.Tag.Substring(1),b=right.Tag.StartsWith("companions-v",StringComparison.Ordinal)?right.Tag.Substring(12):right.Tag.Substring(1);return ReleaseVersion.Parse(a).CompareTo(ReleaseVersion.Parse(b));}

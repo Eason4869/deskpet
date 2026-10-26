@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,7 +15,7 @@ namespace Dafeiyu
         internal ProjectDefinition Project {get{return project;}}
         internal bool UiObserved;
         internal bool IsDisposed {get{return disposed;}}
-        internal bool IsDraft;internal ConversationDefinition Definition;
+        internal bool IsDraft;internal Action DraftProjectChanged;internal string DraftOwner;internal ConversationDefinition Definition;
         AgentJobApplicationService jobServices;
         internal void ConfigureJobServices(AgentJobApplicationService services)
         {
@@ -61,7 +61,7 @@ namespace Dafeiyu
         // Rebinds an open workspace to another project after a drag-and-drop move.
         public void FollowProject(ProjectDefinition project)
         {
-            if(project==null)return;if(project.Id!=ProjectId && (Session.IsBusy || Queue.IsRunning))throw new InvalidOperationException(TextResources.Get("conversationWorkspace.followProject.text"));this.project=project;ProjectId=project.Id;ProjectWorkspace=project.Workspace;KernelSession.ProjectId=project.Id;
+            if(project==null)return;bool changed=project.Id!=ProjectId;if(changed && (Session.IsBusy || Queue.IsRunning))throw new InvalidOperationException(TextResources.Get("conversationWorkspace.followProject.text"));this.project=project;ProjectId=project.Id;ProjectWorkspace=project.Workspace;KernelSession.ProjectId=project.Id;if(changed&&IsDraft&&DraftProjectChanged!=null)DraftProjectChanged();
         }
         public PetSettings EffectiveSettings()
         {
@@ -95,6 +95,7 @@ namespace Dafeiyu
         public async Task CloseAsync()
         {
             if(disposed)return;
+            Session.FlushDraft();
             await Queue.PauseAsync().ConfigureAwait(false);
             await Session.StopAsync().ConfigureAwait(false);
             await Session.SaveHistoryForCloseAsync().ConfigureAwait(false);

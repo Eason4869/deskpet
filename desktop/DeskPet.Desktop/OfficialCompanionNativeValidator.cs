@@ -54,6 +54,23 @@ internal sealed class OfficialCompanionNativeValidator : IDisposable
             finally { pinned.Free(); }
         }
     }
+    internal static CompanionPackageInventory ValidateLocalPackage(string root, CancellationToken cancel)
+    {
+        var inventory = CompanionPackageInventory.Read(root, cancel);
+        using var input = File.OpenRead(Path.Combine(root, "pet.json"));
+        var skin = SpriteAssets.ReadManifest(input, inventory.PackageId, root);
+        SpriteAssets.ValidateNativeDefault(skin, cancel);
+        if (inventory.HolidayCatalog != null) foreach (var outfit in inventory.HolidayCatalog.Outfits)
+        {
+            foreach (var definition in outfit.Clips.Concat(new[] { outfit.Gaze, outfit.EasterEgg }).GroupBy(c => c.Path).Select(g => g.OrderByDescending(c => c.FrameCount).First()))
+            {
+                using var assets = new SpriteAssets(); var clip = SpriteAssets.OutfitClip(outfit, definition);
+                for (int frame = 0; frame < clip.Frames; frame++) { cancel.ThrowIfCancellationRequested(); assets.PrepareFrame(skin, clip, frame); }
+            }
+            using var previews = new SpriteAssets(); _ = previews.GetPreview(outfit);
+        }
+        return inventory;
+    }
     // Semaphore remains alive until outstanding cancelled validators release it.
     public void Dispose() { }
 }

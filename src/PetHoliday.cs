@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,6 +16,15 @@ namespace Dafeiyu
         readonly Dictionary<OutfitClipDefinition,MotionClip> clips=new Dictionary<OutfitClipDefinition,MotionClip>();
         readonly LinkedList<OutfitClipDefinition> recent=new LinkedList<OutfitClipDefinition>();
         OutfitClipDefinition gazeSource;MotionClip gaze;
+        internal int DecodeCount {get;private set;}
+        internal long RetainedPixelBytes {
+            get {
+                long bytes=0;
+                foreach(var clip in clips.Values)bytes=checked(bytes+(long)clip.Count*clip.Width*clip.Height*5);
+                if(gaze!=null)bytes=checked(bytes+(long)gaze.Count*gaze.Width*gaze.Height*5);
+                return bytes;
+            }
+        }
         internal HolidayVisualAssets(Func<OutfitClipDefinition,Stream> source)
         {open=source??(clip=>clip.OpenResource());}
         internal MotionClip Get(OutfitClipDefinition source)
@@ -27,6 +36,7 @@ namespace Dafeiyu
                 if(stream==null)throw new InvalidDataException(TextResources.Get("petHoliday.get.text.alternativeA"));
                 var image=BitmapDecoder.Create(stream,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
                 clip=new MotionClip(image,source.FrameCount,source.FrameCount/source.Fps,source.Loop,source.FrameWidth,source.FrameHeight,source.Columns);
+                DecodeCount++;
             }
             // WIC may recover invalid compressed PNG data as empty pixels rather
             // than throwing. A usable costume frame must still meet the same
@@ -61,7 +71,7 @@ namespace Dafeiyu
         OutfitDefinition holidayCommitted,holidayTarget;
         string holidaySourceKey,holidayFailedKey,holidayWarningShown;
         bool holidayRefreshing;
-        internal Func<DateTime> HolidayLocalTime=()=>DateTime.Now;
+        internal Func<DateTime> HolidayLocalTime=()=>HolidayLocalClock.Now;
         internal bool HolidayPlaying {get{return holidayPlayback.Active;}}
         internal void InitializeHoliday(HolidayController controller=null,Func<OutfitClipDefinition,Stream> open=null)
         {
@@ -72,7 +82,7 @@ namespace Dafeiyu
             Holidays=controller??new HolidayController(new HolidayCalendar(),new HolidayCatalog(),new HolidayStateStore(Path.Combine(Store.DirectoryPath,"holiday-state.json")));
             Holidays.Changed+=HolidayChanged;
             var surface=image as HolidayPetImage;if(surface!=null){surface.DrawClouds=DrawHolidayClouds;surface.FrameRendered=HolidayFrameRendered;}
-            RefreshHoliday();
+            RefreshHoliday();if(!Skin.IsOfficial){var restore=RestoreLocalOutfitsAsync();}
         }
         bool HolidayBusinessBusy
         {get{return DialogueBusy || DictationActive || LiveActive || HasQueuedMessages || ConversationSessions.Any(s=>s.IsBusy || s.NeedsExecutionReconciliation) || watch.Elapsed.TotalSeconds<completionUntil;}}
@@ -81,10 +91,11 @@ namespace Dafeiyu
         internal void RefreshHoliday()
         {
             if(Holidays==null || holidayRefreshing)return;
+            Animation.ClipOverride=ResolveHolidayActionClip;
             holidayRefreshing=true;
             try {
                 bool can=HolidayCanAnimate;
-                Holidays.Refresh(new HolidayContext{PersonaId=Skin.Id,CharacterId=Skin.BuiltinCharacterId,LocalTime=HolidayLocalTime(),MonotonicSeconds=watch.Elapsed.TotalSeconds,CanPlayEasterEgg=can && Animation.State=="idle" && !holidayTransition.Active && holidayFailedKey==null,CanAnimateTransition=can,ResourceVersion=Skin.BuiltinCharacterId+":"+Skin.NativeSourceKey});
+                Holidays.Refresh(new HolidayContext{PersonaId=Skin.Id,CharacterId=Skin.OutfitCharacterId,StateKey=Skin.PickerKey,LocalTime=HolidayLocalTime(),MonotonicSeconds=watch.Elapsed.TotalSeconds,CanPlayEasterEgg=can && Animation.State=="idle" && !holidayTransition.Active && holidayFailedKey==null,CanAnimateTransition=can,ResourceVersion=Skin.BuiltinCharacterId+":"+Skin.NativeSourceKey});
                 if(!can || (holidayPlayback.Active && (holidayPlayback.Ticket==null || holidayPlayback.Ticket.Revision!=Holidays.Revision)))CancelHolidayPlayback();
                 RefreshHolidayAppearance(can);
                 if(!String.IsNullOrEmpty(Holidays.PersistenceWarning) && Holidays.PersistenceWarning!=holidayWarningShown){holidayWarningShown=Holidays.PersistenceWarning;Notice=TextResources.Format("petHoliday.refreshHoliday.noticeHolidaysPersistenceWarning",Holidays.PersistenceWarning);if(preferences!=null)preferences.ShowNotice(Notice);}
@@ -101,7 +112,7 @@ namespace Dafeiyu
         void RefreshHolidayAppearance(bool animate)
         {
             var desired=Holidays.EffectiveOutfit;string desiredKey=HolidayKey(desired);
-            if(holidaySourceKey!=Skin.BuiltinCharacterId){holidayAssets.Clear();holidaySourceKey=Skin.BuiltinCharacterId;holidayFailedKey=null;holidayCommitted=null;}
+            if(holidaySourceKey!=Skin.PickerKey+":"+Skin.NativeSourceKey){holidayAssets.Clear();holidaySourceKey=Skin.PickerKey+":"+Skin.NativeSourceKey;holidayFailedKey=null;holidayCommitted=null;}
             if(HolidayKey(holidayTarget)!=desiredKey) {
                 CancelHolidayPlayback();holidayTarget=desired;
                 if(holidayFailedKey!=desiredKey)holidayFailedKey=null;
@@ -113,7 +124,10 @@ namespace Dafeiyu
             if(!holidayTransition.Active && HolidayKey(holidayCommitted)!=desiredKey && holidayFailedKey!=desiredKey)CommitHolidayAppearance();
         }
         void CommitHolidayAppearance()
-        {holidayCommitted=holidayTarget;if(image!=null)image.InvalidateVisual();}
+        {holidayCommitted=holidayTarget;
+            interaction.ConfigureClips(Skin,originalInteraction,action=>ResolveHolidayClip(action,originalInteraction));
+            Animation.ClipOverride=ResolveHolidayActionClip;Animation.RefreshClip();
+            if(image!=null)image.InvalidateVisual();}
         void CancelHolidayPlayback()
         {if(Holidays!=null)Holidays.CancelHover();if(holidayPlayback.Active || holidayPlayback.Completed)holidayPlayback.Cancel();}
         void CancelHolidayEffects()
@@ -130,6 +144,7 @@ namespace Dafeiyu
                 // notifies settings and greeting observers. Their context and the
                 // already-published bitmap/hit frame must agree at that boundary.
                 holidayFailedKey=outfit==null?null:HolidayKey(outfit);holidayCommitted=holidayTarget=null;
+                interaction.ConfigureClips(Skin,originalInteraction,null);Animation.RefreshClip();
                 holidayPlayback.Cancel();holidayTransition.FinishImmediately();holidayTransition.TakeCommit();
                 if(Holidays!=null)Holidays.CancelHover();holidayAssets.Clear();
                 UpdateFrame();
@@ -183,9 +198,7 @@ namespace Dafeiyu
                         bool alternate=!original && outfit.FindClip(action,"alternate")!=null && (AdditionalInteractions.Has(Skin,action));
                         spec=outfit.FindClip(action,alternate?"alternate":"default");
                         var clip=holidayAssets.Get(spec);double elapsed=interaction.Active?interaction.Elapsed:Animation.Elapsed;
-                        double sourceDuration=HolidaySourceDuration(action,interaction.Active,original);
-                        double phase=sourceDuration>0?elapsed/sourceDuration:0;
-                        sample=clip.Sample(phase*clip.Duration);
+                        sample=clip.Sample(elapsed);
                     }
                 }
                 var visual=holidayAssets.Get(spec);sample=Math.Max(0,Math.Min(visual.Count-1,sample));
@@ -199,17 +212,17 @@ namespace Dafeiyu
                 RejectHolidayOutfit(outfit??(Holidays==null?null:Holidays.EffectiveOutfit));return true;
             }
         }
-        double HolidaySourceDuration(string action,bool interacting,bool original)
+        OutfitClipDefinition ResolveHolidayClip(string action,bool original)
         {
-            var quiet=AdditionalInteractions.Quiet(Skin,action,original);if(quiet!=null)return quiet.Duration;
-            IllustratedAnimation specification;
-            if(AdditionalInteractions.Specification(Skin,action,original,out specification))return specification.Frames/specification.Fps;
-            if(original && AdditionalInteractions.HasOriginal(Skin,action))return AdditionalInteractions.OriginalFrameCount(Skin,action)/8.0;
-            if(AdditionalInteractions.Has(Skin,action))return 1;
-            if(Skin.Illustrated){IllustratedAnimation clip;if(Skin.Manifest.Animations.TryGetValue(action,out clip))return clip.Frames/clip.Fps;}
-            if(interacting){int i=Array.IndexOf(new[]{"lifted","landing","petting","poked","feeding","happy","sleeping","special"},action);if(i>=0)return new[]{1,.64,1.6,.8,1.6,1.2,3.2,2}[i];}
-            int row=Array.IndexOf(AnimationPlayer.States,action);if(row<0)return 1;
-            return AnimationPlayer.Counts[row]*new[]{.17,.22,.22,.16,.13,.16,.19,.18,.18}[row];
+            var outfit=holidayCommitted;if(outfit==null || HolidayKey(outfit)==holidayFailedKey)return null;
+            bool alternate=!original && AdditionalInteractions.Has(Skin,action) && outfit.FindClip(action,"alternate")!=null;
+            return outfit.FindClip(action,alternate?"alternate":"default");
+        }
+        OutfitClipDefinition ResolveHolidayActionClip(string action){return ResolveHolidayClip(action,originalAction);}
+        double HolidayActionDelta(string action,bool original,double delta)
+        {
+            var clip=ResolveHolidayClip(action,original);
+            return clip==null?delta:Math.Min(delta,1/clip.Fps);
         }
         ImageSource HolidayPreview(string action,bool isInteraction)
         {

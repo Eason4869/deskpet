@@ -18,8 +18,8 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
-    <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" />
-    <ProjectReference Include="../DeskPet.Platform.Mac/DeskPet.Platform.Mac.csproj" />
+    <ProjectReference Include="../DeskPet.Core/DeskPet.Core.csproj" GlobalPropertiesToRemove="DeskPetFullResourceFixtures" />
+    <ProjectReference Include="../DeskPet.Platform.Mac/DeskPet.Platform.Mac.csproj" GlobalPropertiesToRemove="DeskPetFullResourceFixtures" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' == 'true'" Include="../../assets/*.png" Link="Assets/%(Filename)%(Extension)" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/e-bao-*.png;../../assets/deskpet-logo.png;../../assets/pet-icon.png" Link="Assets/%(Filename)%(Extension)" />
     <AvaloniaResource Condition="'$(DeskPetFullResourceFixtures)' != 'true'" Include="../../assets/additional/e-bao.png" Link="Assets/additional/e-bao.png" />

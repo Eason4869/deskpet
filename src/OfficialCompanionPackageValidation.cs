@@ -17,7 +17,7 @@ namespace Dafeiyu
         {
             OfficialCompanionStorage.SafeDirectory(stage);Directory.CreateDirectory(stage);
             using(var input=File.OpenRead(zip))using(var archive=new ZipArchive(input,ZipArchiveMode.Read)) {
-                if(archive.Entries.Count>512)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text"));
+                if(archive.Entries.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text"));
                 var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);long total=0;
                 // Validate the whole directory before creating any file. No path normalization.
                 foreach(var entry in archive.Entries) {
@@ -25,7 +25,7 @@ namespace Dafeiyu
                     OfficialCompanionStorage.SafePath(stage,relative);
                     if(!names.Add(relative)||((entry.ExternalAttributes>>16)&0xf000)==0xa000||(entry.ExternalAttributes&0x400)!=0||relative.Equals("receipt.json",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeA"));
                     if(directory){if(entry.Length!=0)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeB"));continue;}
-                    long limit=FileLimit(relative);if(entry.Length<0||entry.Length>limit)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeC"));total=checked(total+entry.Length);if(total>OfficialCompanionRules.MaximumPackage)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeD"));
+                    long limit=FileLimit(relative);if(entry.Length<0||entry.Length>limit)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeC"));total=checked(total+entry.Length);if(total>CompanionPackagePolicy.MaximumExpandedBytes)throw new InvalidDataException(TextResources.Get("officialCompanionPackageValidation.extract.text.alternativeD"));
                 }
                 foreach(var entry in archive.Entries) {
                     cancel.ThrowIfCancellationRequested();string relative=entry.FullName;if(relative.EndsWith("/",StringComparison.Ordinal)){Directory.CreateDirectory(OfficialCompanionStorage.SafePath(stage,relative.Substring(0,relative.Length-1)));continue;}

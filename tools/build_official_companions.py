@@ -16,6 +16,8 @@ import zipfile
 
 from PIL import Image
 
+POLICY = json.loads((Path(__file__).resolve().parents[1] / 'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
+
 IDS = ('e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga')
 BASE = ('idle', 'running-right', 'running-left', 'waving', 'jumping', 'failed', 'waiting', 'running', 'review')
 INTERACTIONS = ('lifted', 'landing', 'petting', 'poked', 'feeding', 'happy', 'sleeping', 'special')
@@ -185,6 +187,12 @@ def collect_role(repository, defaults, destination, role, version):
     identity = {'schema_version': 1, 'id': role, 'name': manifest['name'], 'version': version, 'min_app_version': version}
     write_json(destination / 'companions.json', identity)
     references = manifest_references(manifest) | {'companions.json', 'holidays/catalog.json'}
+    entries = collect_holidays(repository, destination, role, references)
+    check_manifest(destination, manifest, role, version)
+    return identity, entries, references
+
+
+def collect_holidays(repository, destination, role, references):
     holiday_source = repository / 'assets/holidays'
     catalog = read_json(holiday_source / 'catalog.json')
     entries = [entry for entry in catalog['outfits'] if entry['character_id'] == role]
@@ -204,17 +212,33 @@ def collect_role(repository, defaults, destination, role, version):
             copy_reference(holiday_source, destination / 'holidays', name)
             references.add('holidays/' + name)
     write_json(destination / 'holidays/catalog.json', {'schema_version': catalog['schema_version'], 'outfits': entries})
+    return entries
+
+
+def collect_reviewed_role(repository, reviewed, destination, role, version):
+    source = safe_path(reviewed, role)
+    manifest = read_json(source / 'pet.json')
+    if manifest.get('id') != role:
+        raise ValueError('Reviewed role identity mismatch')
+    references = manifest_references(manifest) | {'companions.json', 'holidays/catalog.json'}
+    for name in sorted(manifest_references(manifest)):
+        copy_reference(source, destination, name)
+    manifest.update(id=role, pack_version=version)
+    write_json(destination / 'pet.json', manifest)
+    identity = {'schema_version': 1, 'id': role, 'name': manifest['name'], 'version': version, 'min_app_version': version}
+    write_json(destination / 'companions.json', identity)
+    entries = collect_holidays(repository, destination, role, references)
     check_manifest(destination, manifest, role, version)
     return identity, entries, references
 
 
 def write_archive(source, references, path):
     files = {file.relative_to(source).as_posix() for file in source.rglob('*') if file.is_file()}
-    if files != set(references) or len(files) > 512:
+    if files != set(references) or len(files) > POLICY['maximum_entries']:
         raise ValueError('Package contains missing or unreferenced files')
     paths = [(name, safe_path(source, name)) for name in sorted(files)]
     unpacked = sum(file.stat().st_size for _, file in paths)
-    if unpacked > 256 * 1024 * 1024:
+    if unpacked > POLICY['maximum_expanded_bytes']:
         raise ValueError('Official package exceeds unpacked size limit')
     with zipfile.ZipFile(path, 'x', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for name, file in paths:
@@ -232,10 +256,13 @@ def write_archive(source, references, path):
     return unpacked
 
 
-def build(repository, output, version, defaults=None):
+def build(repository, output, version, defaults=None, complete_materials=None):
     repository = Path(repository).resolve()
     output = create_output(repository, output, version)
-    if defaults is None:
+    reviewed = Path(complete_materials).resolve() if complete_materials else (repository / 'assets/complete-defaults' if defaults is None and (repository / 'assets/complete-defaults').is_dir() else None)
+    if reviewed is not None:
+        defaults = reviewed
+    elif defaults is None:
         defaults = output / 'defaults'
         subprocess.run(['powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(repository / 'Build.ps1'), '-Target', 'SkinPackExport', '-OutputDirectory', str(output / 'export-tool'), '-TestArguments', str(defaults)], cwd=repository, check=True, timeout=300)
     else:
@@ -246,7 +273,7 @@ def build(repository, output, version, defaults=None):
     descriptors, measurements = [], []
     for role in IDS:
         source = materials / role
-        identity, outfits, references = collect_role(repository, defaults, source, role, version)
+        identity, outfits, references = (collect_reviewed_role if reviewed is not None else collect_role)(repository, defaults, source, role, version)
         name = 'DeskPet-Companion-' + role + '-' + version + '.zip'
         path = artifacts / name
         unpacked = write_archive(source, references, path)
@@ -264,8 +291,9 @@ def main():
     parser.add_argument('--output', type=Path, required=True, help='New owned output directory; must not already exist')
     parser.add_argument('--version', required=True)
     parser.add_argument('--defaults', type=Path, help='Explicit pixel-verified SkinPackExport output; otherwise build it now')
+    parser.add_argument('--complete-materials', type=Path, help='Reviewed complete role folders; preserve default PNG bytes')
     args = parser.parse_args()
-    print(json.dumps(build(args.repository, args.output, args.version, args.defaults), indent=2))
+    print(json.dumps(build(args.repository, args.output, args.version, args.defaults, args.complete_materials), indent=2))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,7 @@
+using Avalonia.Controls;using Dafeiyu;
+namespace DeskPet.Desktop;
+internal sealed class LocalCompanionImportWindow:Window {
+private readonly CancellationTokenSource cancellation=new();private bool finished;
+private LocalCompanionImportWindow(){Width=440;Height=210;CanResize=false;WindowStartupLocation=WindowStartupLocation.CenterOwner;Background=DesktopTheme.Surface;LocalizedUi.Set(this,"Title",()=>TextResources.Get("companionImport.title"));var panel=new StackPanel{Margin=new Avalonia.Thickness(22)};panel.Children.Add(LocalizedUi.Text(()=>TextResources.Get("companionImport.progress")));panel.Children.Add(new ProgressBar{IsIndeterminate=true,Height=5,Margin=new Avalonia.Thickness(0,20,0,18)});var cancel=LocalizedUi.Button(()=>TextResources.Get("common.cancel"),()=>cancellation.Cancel());cancel.Name="CancelCompanionImport";cancel.Click+=(_,_)=>cancel.IsEnabled=false;panel.Children.Add(cancel);Content=panel;Closing+=(_,e)=>{if(!finished){cancellation.Cancel();cancel.IsEnabled=false;e.Cancel=true;}};}
+internal static async Task<T> RunAsync<T>(Window owner,Func<CancellationToken,T> import){var dialog=new LocalCompanionImportWindow();Task<T>? task=null;dialog.Opened+=async(_,_)=>{task=Task.Run(()=>import(dialog.cancellation.Token));try{await task;}catch(Exception){/* The caller observes the original task below. */}finally{dialog.finished=true;dialog.Close();}};try{await dialog.ShowDialog(owner);return await task!;}finally{dialog.cancellation.Dispose();}}
+}

@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -32,6 +32,8 @@ internal sealed partial class DesktopController : IDisposable
     internal bool ShouldShowAutomaticGuide => showAutomaticGuide;
     internal bool IsExiting=>exiting;
     public Dictionary<string, string> Drafts { get; } = new();
+    private ComposerDraftStore? composerDrafts;
+    internal ComposerDraftStore ComposerDrafts=>composerDrafts??=new ComposerDraftStore(DataDirectory,DataMaintenance);
     public PetSettings Settings { get; }
     public List<PetSkin> Skins { get; }
     public PetSkin Skin { get; private set; }
@@ -298,11 +300,12 @@ internal sealed partial class DesktopController : IDisposable
     private async Task DrainApplicationForExitAsync()
     {
         await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
-        Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();await HolidayKeepsakes.FlushAsync();
+        composerDrafts?.Flush();Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();await HolidayKeepsakes.FlushAsync();
     }
     private void FinalizeConversationServices()
     {
         if(Interlocked.Exchange(ref conversationServicesFinalized,1)!=0)return;
+        composerDrafts?.Dispose();
         Queue.Dispose();
         Dictation.Dispose();
         Live.Dispose();

@@ -45,6 +45,20 @@ internal static class ImageTaskCenterUiChecks
             new ImageGenerationTaskStore(data).Save(records);var manager=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),assets,client,usage);Complete(manager.RestoreAsync(CancellationToken.None));typeof(DesktopController).GetField("<ImageTasks>k__BackingField",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner,manager);
             session.ImageTasks=manager;session.ImageStore=assets;session.ImageUsage=usage;
             var management=new ImageAssetManagementService(assets,usage,new ImageAssetReferenceResolver(data,assets,manager));
+            ImagePurgeResult PurgeAfterThumbnailReads(string id)
+            {
+                var wait=System.Diagnostics.Stopwatch.StartNew();
+                while(true)
+                {
+                    var result=Result(management.PurgeAsync(new[]{id},CancellationToken.None));
+                    if(result.DeletedIds.Contains(id))return result;
+                    // A visible row can precede its asynchronous thumbnail decode.
+                    // Retry only that temporary usage refusal, never a reference or storage error.
+                    if(!result.Blocked.TryGetValue(id,out var reason) || reason!=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId") || wait.Elapsed.TotalSeconds>6)
+                        throw new Exception("Unexpected purge refusal after "+wait.ElapsedMilliseconds+"ms: "+string.Join(",",result.Blocked.Values));
+                    Complete(Pause());
+                }
+            }
             var page=new ImageWorkspacePage(owner,new Window());var host=new Window{Content=page,Width=900,Height=740};host.Show();page.SelectedIndex=2;Dispatcher.UIThread.RunJobs();
             Complete(Pause());Complete(Until(()=>All<Border>(page).Count(b=>b.Name=="ImageTaskRow")==4));
             if(scenario=="recovery")
@@ -92,7 +106,15 @@ internal static class ImageTaskCenterUiChecks
                 Complete(Until(()=>filter.Items.Count>2));filter.SelectedItem=scenario=="service"?filter.Items.OfType<ImageGalleryProviderChoice>().Single(p=>p.Id=="service-a"):(object)"model-a";
                 Complete(Until(()=>((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==1&&((IList<GeneratedImage>)Field(page,"loadedGallery"))[0].Id==first.Id));
                 ((ImageGallerySelection)Field(page,"gallerySelection")).Toggle(first.Id);
-                var purged=Result(management.PurgeAsync(new[]{first.Id},CancellationToken.None));Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");
+                // Exercise the same in-flight thumbnail lease that can still be active
+                // after the asynchronously loaded gallery row becomes visible.
+                IDisposable? pendingReader=scenario=="model"?usage.Acquire(first.Id,"fixture-thumbnail"):null;
+                var releaseReader=pendingReader==null?null:new System.Threading.Timer(_=>pendingReader.Dispose(),null,1000,Timeout.Infinite);
+                try {
+                    var purged=PurgeAfterThumbnailReads(first.Id);
+                    Console.WriteLine("PURGE_RESULT scenario="+scenario+" deleted="+purged.DeletedIds.Count+" blocked="+string.Join(",",purged.Blocked.Values));
+                    Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");
+                }finally{releaseReader?.Dispose();pendingReader?.Dispose();}
                 Complete(Until(()=>filter.SelectedIndex==0));Complete(Pause());
                 var loaded=(IList<GeneratedImage>)Field(page,"loadedGallery");Check(loaded.Count==1&&loaded[0].Id==other.Id&&(int)Field(page,"galleryTotal")==1,"All "+scenario+" control renders the normalized page and count");
                 Check(((ImageGallerySelection)Field(page,"gallerySelection")).Count==0,"effective "+scenario+" filter change clears explicit selection");

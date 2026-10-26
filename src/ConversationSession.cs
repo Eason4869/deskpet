@@ -12,8 +12,23 @@ namespace Dafeiyu
     public sealed partial class ConversationSession : IDisposable
     {
         string inputDraft="";
-        internal string InputDraft {get{return inputDraft;}set{value=value??"";if(inputDraft==value)return;inputDraft=value;var changed=InputDraftChanged;if(changed!=null)changed();}}
+        internal string InputDraft {get{return inputDraft;}set{value=value??"";if(inputDraft==value)return;inputDraft=value;if(draftStore!=null&&draftPersistence())draftStore.Set(draftScope,value);var changed=InputDraftChanged;if(changed!=null)changed();}}
         internal event Action InputDraftChanged;
+        ComposerDraftStore draftStore;string draftScope;Func<bool> draftPersistence;
+        readonly Dictionary<string,string> memoryDrafts=new Dictionary<string,string>();
+        internal void BindDraft(ComposerDraftStore store,string scope,Func<bool> enabled)
+        {
+            if(draftStore!=null){memoryDrafts[draftScope]=inputDraft;draftStore.Flush();draftStore.WarningChanged-=OnWarningChanged;}
+            draftStore=store;draftScope=scope;draftPersistence=enabled??(()=>true);
+            string remembered;inputDraft=draftPersistence()?store.Get(scope):memoryDrafts.TryGetValue(scope,out remembered)?remembered:"";store.WarningChanged+=OnWarningChanged;
+            var changed=InputDraftChanged;if(changed!=null)changed();
+        }
+        internal void FinishDraft()
+        {
+            if(draftStore==null)return;
+            draftStore.Set(draftScope,"");draftStore.Flush();draftStore.WarningChanged-=OnWarningChanged;draftStore=null;
+        }
+        internal void FlushDraft(){if(draftStore!=null)draftStore.Flush();}
         private readonly IConversationApi api;
         private readonly IReplySpeech speech;
         private readonly Func<IAudioRecorder> microphone;
@@ -50,7 +65,7 @@ namespace Dafeiyu
         public string LastNotice { get{var notice=localizedNotice;return notice==null?lastNotice:notice.Value;} private set{lastNotice=value;localizedNotice=null;} }
         void SetLocalizedNotice(LocalizedMessage message){localizedNotice=message;lastNotice=null;}
         string imageHistoryWarning="";
-        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning}.Where(s=>!String.IsNullOrEmpty(s))); } }
+        public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning,draftStore==null?"":draftStore.Warning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
         public event Action<ChatMessage> MessageAdded;
         public event Action<ChatMessage> MessageUpdated;
@@ -508,6 +523,7 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
+            FlushDraft();if(draftStore!=null)draftStore.WarningChanged-=OnWarningChanged;
             Operation op;lock(gate){if(disposed)return;disposed=true;CancelPredictions();op=active;if(op!=null && op.ReplyId!=null){var current=op.History.Messages.FirstOrDefault(m=>m.Id==op.ReplyId);if(current!=null && current.Status=="pending")op.History.Update(op.ReplyId,current.Content,"interrupted",processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);Save(op.PersonaId,op.History);}}
             if(Relationships!=null)Relationships.Changed-=OnWarningChanged;
             if(store!=null)store.WarningChanged-=OnWarningChanged;

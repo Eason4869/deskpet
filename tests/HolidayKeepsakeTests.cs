@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace Dafeiyu.Tests
                 if(type==null)throw new Exception("Holiday acquisition registry is missing.");
                 var registry=type.GetProperty("BuiltIn").GetValue(null,null);
                 var definitions=(IList)type.GetProperty("Definitions").GetValue(registry,null);
-                if(definitions.Count!=1)throw new Exception("Only the implemented holiday may be offered.");
+                if(definitions.Count!=10)throw new Exception("All ten reviewed holidays must be offered.");
                 string root=Path.GetFullPath("work/h1a/tests/"+Guid.NewGuid().ToString("N"));
                 var provider=new RelationshipSceneProvider(asset=>File.OpenRead(Path.Combine("assets",asset.RelativePath)));
                 var catalog=new HolidayCatalog(new[]{new OutfitDefinition("e-bao","halloween-2026","halloween","fixture","1.0.0",true,false,new OutfitClipDefinition[0],null,null,null,null)});

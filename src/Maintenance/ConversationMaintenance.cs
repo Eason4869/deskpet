@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +15,7 @@ namespace Dafeiyu
         internal async Task SaveForUninstallAsync(UninstallOwner owner)
         {
             owner.Require(Maintenance);
+            FlushDraft();
             await WaitForIdleAsync().ConfigureAwait(false);
             // The owner blocks all writers. Save cached personas as well as the visible one.
             KeyValuePair<string,ConversationLog>[] logs;lock(gate)logs=histories.ToArray();

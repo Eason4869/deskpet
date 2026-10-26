@@ -27,6 +27,16 @@ namespace Dafeiyu
                 if(original && AdditionalInteractions.HasOriginal(skin,Names[i])){counts[i]=AdditionalInteractions.OriginalFrameCount(skin,Names[i]);durations[i]=counts[i]/8.0;}
             }
         }
+        public void ConfigureClips(SkinDefinition skin,bool original,Func<string,OutfitClipDefinition> resolve)
+        {
+            double phase=Active?elapsed/durations[row]:0;
+            Configure(skin,original);
+            if(resolve!=null)for(int i=0;i<Names.Length;i++) {
+                var clip=resolve(Names[i]);if(clip==null)continue;
+                durations[i]=clip.FrameCount/clip.Fps;counts[i]=clip.FrameCount;loops[i]=clip.Loop;
+            }
+            if(Active)elapsed=Math.Min(1-1e-12,phase)*durations[row];
+        }
         public double Elapsed {get{return elapsed;}}
         private int row = -1;
 

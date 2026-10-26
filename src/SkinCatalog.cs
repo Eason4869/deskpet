@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -59,6 +59,9 @@ namespace Dafeiyu
         public bool Embedded { get; private set; }
         // Trusted registration metadata; imported manifests cannot assign this.
         public string BuiltinCharacterId {get;internal set;}
+        internal HolidayCatalog PackageHolidayCatalog {get;set;}
+        internal bool PackageHolidaysChecked {get;set;}
+        internal string OutfitCharacterId {get{return BuiltinCharacterId??(PackageHolidayCatalog!=null&&Manifest!=null?Manifest.PackageId:null);}}
         string pickerKey;
         public string PickerKey {get{return pickerKey??(!String.IsNullOrEmpty(BuiltinCharacterId)?"official:"+BuiltinCharacterId:Illustrated&&!String.IsNullOrEmpty(Manifest.PackageId)?"custom-pack:"+Manifest.PackageId:"legacy-skin:"+Id);}internal set{pickerKey=value;}}
         public bool IsPlaceholder {get;internal set;}
@@ -105,6 +108,9 @@ namespace Dafeiyu
     }
     public sealed class SkinCatalog
     {
+        readonly System.Windows.Threading.Dispatcher ownerDispatcher=System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        T OnOwner<T>(Func<T> publish){return ownerDispatcher.CheckAccess()?publish():ownerDispatcher.Invoke(publish);}
+
         private static readonly Dictionary<string,BitmapSource> avatars=new Dictionary<string,BitmapSource>();
         private readonly string directory;
         private readonly string dataRoot;
@@ -236,12 +242,14 @@ namespace Dafeiyu
         {
             using(var x=File.OpenRead(IllustratedPack.AssetPath(left,a)))using(var y=File.OpenRead(IllustratedPack.AssetPath(right,b)))using(var sha=SHA256.Create())return x.Length==y.Length && sha.ComputeHash(x).SequenceEqual(sha.ComputeHash(y));
         }
-        public SkinDefinition Import(string path)
+        public SkinDefinition Import(string path){return Import(path,CancellationToken.None);}
+        public SkinDefinition Import(string path,CancellationToken cancel)
         {
-            if(String.Equals(Path.GetExtension(path),".zip",StringComparison.OrdinalIgnoreCase))return CompanionPackStorage.ReadZip(path,dataRoot,Import);
+            cancel.ThrowIfCancellationRequested();
+            if(String.Equals(Path.GetExtension(path),".zip",StringComparison.OrdinalIgnoreCase))return CompanionPackStorage.ReadZip(path,dataRoot,manifest=>Import(manifest,cancel),cancel);
             string atlas,name,prompt=null,description=null;SkinManifest legacy=null;
             if(String.Equals(Path.GetExtension(path),".json",StringComparison.OrdinalIgnoreCase))
-            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m); legacy=m;atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
+            { var m=ReadManifest(path); if(m.Version==2)return ImportIllustrated(path,m,cancel); legacy=m;atlas=AtlasPath(Path.GetDirectoryName(Path.GetFullPath(path)),m.Atlas); name=CleanName(m.Name); prompt=m.SystemPrompt; description=m.Description; }
             else
             { if(!String.Equals(Path.GetExtension(path),".png",StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException(TextResources.Get("skinCatalog.import.text")); atlas=path; name=CleanName(Path.GetFileNameWithoutExtension(path)); }
             ValidatePng(atlas);
@@ -261,7 +269,7 @@ namespace Dafeiyu
                 var manifest=new SkinManifest { Version=1,Name=name,Atlas="spritesheet.png",SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? PersonaProfiles.Generic(name) : prompt,Description=description,Relationship=legacy==null?null:legacy.Relationship };
                 using(var stream=File.Create(Path.Combine(destination,"pet.json"))) Serializer().WriteObject(stream,manifest);
                 var skin=new SkinDefinition(id,name,Path.Combine(destination,"spritesheet.png"),manifest.SystemPrompt,description,manifest);
-                skins.Add(skin); return skin;
+                return OnOwner(()=>{skins.Add(skin);return skin;});
             }
             catch
             {
@@ -270,19 +278,22 @@ namespace Dafeiyu
                 Directory.Delete(destination); throw;
             }
         }
-        private SkinDefinition ImportIllustrated(string path,SkinManifest manifest)
+        private SkinDefinition ImportIllustrated(string path,SkinManifest manifest,CancellationToken cancel)
         {
             string source=Path.GetDirectoryName(Path.GetFullPath(path));
             var files=IllustratedPack.Validate(source,manifest,true);
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
                 if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("skinCatalog.importIllustrated.text"));
+                var inventory=WpfOfficialNativeValidator.ValidateLocalPackage(source,cancel);
+                CompanionPackageInventory installedInventory=null;
+                string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,inventory.AllReferences,
+                    folder=>{installedInventory=WpfOfficialNativeValidator.ValidateLocalPackage(folder,cancel);},cancel);
+                return OnOwner(()=>{
                 bool existing=customPackageIds.Contains(manifest.PackageId);
                 string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);
-                string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,files,
-                    folder=>IllustratedPack.Validate(folder,ReadManifest(Path.Combine(folder,"pet.json")),true));
-                var updated=new SkinDefinition(persona,installedFolder,manifest);customPackageIds.Add(manifest.PackageId);
+                var updated=new SkinDefinition(persona,installedFolder,manifest){PackageHolidayCatalog=installedInventory.HolidayCatalog};customPackageIds.Add(manifest.PackageId);
                 CompanionPackStorage.SetHidden(dataRoot,manifest.PackageId,false);
-                CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;
+                CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;});
             }
             string id="skin-"+Guid.NewGuid().ToString("N"),destination=Path.Combine(directory,id);
             Directory.CreateDirectory(destination);
@@ -296,7 +307,7 @@ namespace Dafeiyu
                 IllustratedPack.Validate(destination,manifest,true);
                 manifest.Name=CleanName(manifest.Name);
                 using(var stream=File.Create(Path.Combine(destination,"pet.json"))) Serializer().WriteObject(stream,manifest);
-                var skin=new SkinDefinition(id,destination,manifest);skins.Add(skin);ReconcileLegacy(true);return Find(skin.Id);
+                var skin=new SkinDefinition(id,destination,manifest);return OnOwner(()=>{skins.Add(skin);ReconcileLegacy(true);return Find(skin.Id);});
             } catch { Directory.Delete(destination,true);throw; }
         }
         internal static DataContractJsonSerializer Serializer()

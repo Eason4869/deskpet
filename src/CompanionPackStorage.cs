@@ -6,13 +6,14 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Dafeiyu
 {
     // Data-only packages: validation belongs to the frontend before activation.
     public static class CompanionPackStorage
     {
-        const long Maximum=256L*1024*1024;
+        static long Maximum {get{return CompanionPackagePolicy.MaximumExpandedBytes;}}
         public static HashSet<string> Hidden(string data)
         {
             string path=AssetPath(Path.Combine(data,"companion-packs"),"removed.txt");
@@ -62,7 +63,7 @@ namespace Dafeiyu
         }
         public static void CheckRelative(string relative)
         {
-            if(String.IsNullOrWhiteSpace(relative) || relative.Length>200 || relative.IndexOfAny(new[]{'\\',':','\0'})>=0 || relative.StartsWith("/") || relative.Split('/').Any(p=>p.Length==0 || p=="." || p==".." || p.EndsWith(".") || p.EndsWith(" ") || p.IndexOfAny(Path.GetInvalidFileNameChars())>=0))throw new InvalidDataException(TextResources.Get("companionPackStorage.checkRelative.text"));
+            if(String.IsNullOrWhiteSpace(relative) || relative.Length>200 || relative.IndexOfAny(new[]{'\\',':','\0'})>=0 || relative.StartsWith("/") || relative.Split('/').Any(p=>p.Length==0 || p=="." || p==".." || p.EndsWith(".") || p.EndsWith(" ") || p.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || p.Any(c=>c<32 || "<>\"|?*".IndexOf(c)>=0) || Regex.IsMatch(p,"^(con|prn|aux|nul|com[0-9]|lpt[0-9])([.]|$)",RegexOptions.IgnoreCase)))throw new InvalidDataException(TextResources.Get("companionPackStorage.checkRelative.text"));
         }
         public static string AssetPath(string root,string relative)
         {
@@ -75,28 +76,73 @@ namespace Dafeiyu
             }
             return current;
         }
-        public static T ReadZip<T>(string zip,string data,Func<string,T> consume)
+        internal static void CheckSpace(long payloadBytes,long availableBytes)
         {
+            if(payloadBytes<0 || availableBytes>=0 && availableBytes<checked(payloadBytes+64L*1024*1024))
+                throw new InvalidDataException(TextResources.Get("companionImport.space"));
+        }
+        internal static Func<string,long> FreeSpaceProbe=path=>new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))).AvailableFreeSpace;
+        static readonly object diskGate=new object();
+        static readonly Dictionary<string,long> diskReservations=new Dictionary<string,long>(StringComparer.OrdinalIgnoreCase);
+        internal static IDisposable ReserveDiskSpace(string path,long bytes)
+        {
+            string volume=Path.GetPathRoot(Path.GetFullPath(path));
+            lock(diskGate) {
+                long reserved;diskReservations.TryGetValue(volume,out reserved);
+                CheckDiskSpace(path,checked(reserved+bytes));diskReservations[volume]=checked(reserved+bytes);
+                return new DiskReservation(volume,bytes);
+            }
+        }
+        sealed class DiskReservation:IDisposable
+        {
+            string volume;readonly long bytes;
+            internal DiskReservation(string key,long size){volume=key;bytes=size;}
+            public void Dispose(){lock(diskGate){if(volume==null)return;long remaining=diskReservations[volume]-bytes;if(remaining==0)diskReservations.Remove(volume);else diskReservations[volume]=remaining;volume=null;}}
+        }
+        static void CheckDiskSpace(string path,long bytes)
+        {
+            long available;
+            try{available=FreeSpaceProbe(path);}catch(IOException){available=-1;}catch(UnauthorizedAccessException){available=-1;}
+            CheckSpace(bytes,available);
+        }
+        public static T ReadZip<T>(string zip,string data,Func<string,T> consume)
+        {return ReadZip(zip,data,consume,CancellationToken.None);}
+        public static T ReadZip<T>(string zip,string data,Func<string,T> consume,CancellationToken cancel)
+        {
+            cancel.ThrowIfCancellationRequested();
+            CompanionPackagePolicy.CheckArchive(new FileInfo(zip).Length,0);
             string parent=Path.Combine(data,"companion-packs");DirectorySafe(parent);Directory.CreateDirectory(parent);
-            string stage=Path.Combine(parent,".extract-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(stage);
+            string stage=Path.Combine(parent,".extract-"+Guid.NewGuid().ToString("N"));
             try {
                 using(var file=File.OpenRead(zip))using(var archive=new ZipArchive(file,ZipArchiveMode.Read)) {
-                    if(archive.Entries.Count>128)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text"));
+                    if(archive.Entries.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text"));
+                    long planned=0;var plannedNames=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach(var entry in archive.Entries) {
+                        cancel.ThrowIfCancellationRequested();string relative=entry.FullName.Replace('\\','/');bool directory=relative.EndsWith("/");if(directory)relative=relative.Substring(0,relative.Length-1);
+                        CheckRelative(relative);
+                        if(!plannedNames.Add(relative)||((entry.ExternalAttributes>>16)&0xF000)==0xA000||(entry.ExternalAttributes&0x400)!=0)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeA"));
+                        if(directory){if(entry.Length!=0)throw new InvalidDataException("Invalid directory entry.");continue;}
+                        if(entry.Length>CompanionPackagePolicy.FileLimit(relative,false))throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeC"));
+                        planned=checked(planned+entry.Length);CompanionPackagePolicy.CheckExpanded(planned);
+                    }
+                    // The ZIP stays in its original location. Reserve extraction + new installation;
+                    // old installed versions already occupy space and remain untouched.
+                    CheckDiskSpace(parent,checked(planned*2));Directory.CreateDirectory(stage);
                     long total=0;var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach(var entry in archive.Entries) {
-                        string relative=entry.FullName.Replace('\\','/');
+                        cancel.ThrowIfCancellationRequested();string relative=entry.FullName.Replace('\\','/');
                         bool directory=relative.EndsWith("/");if(directory)relative=relative.Substring(0,relative.Length-1);
                         string target=AssetPath(stage,relative);
-                        if(!names.Add(relative) || ((entry.ExternalAttributes>>16)&0xF000)==0xA000)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeA"));
-                        if(directory){Directory.CreateDirectory(target);continue;}
+                        if(!names.Add(relative) || ((entry.ExternalAttributes>>16)&0xF000)==0xA000 || (entry.ExternalAttributes&0x400)!=0)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeA"));
+                        if(directory){if(entry.Length!=0)throw new InvalidDataException("Invalid directory entry.");Directory.CreateDirectory(target);continue;}
                         string extension=Path.GetExtension(relative).ToLowerInvariant();
-                        if(extension!=".png" && extension!=".json" && extension!=".txt" && extension!=".md")throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeB"));
-                        long limit=relative=="pet.json"?65536:extension==".png"?25L*1024*1024:1024L*1024;
-                        total+=entry.Length;if(entry.Length>limit || total>Maximum)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeC"));
+                        if(extension!=".png" && extension!=".json" && extension!=".txt" && extension!=".md" && relative!="LICENSE")throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeB"));
+                        long limit=CompanionPackagePolicy.FileLimit(relative,false);
+                        total=checked(total+entry.Length);if(entry.Length>limit || total>Maximum)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeC"));
                         Directory.CreateDirectory(Path.GetDirectoryName(target));
                         using(var input=entry.Open())using(var output=new FileStream(target,FileMode.CreateNew)) {
                             var buffer=new byte[65536];int count;long written=0;
-                            while((count=input.Read(buffer,0,buffer.Length))!=0){written+=count;if(written>limit || written>entry.Length)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeD"));output.Write(buffer,0,count);}
+                            while((count=input.Read(buffer,0,buffer.Length))!=0){cancel.ThrowIfCancellationRequested();written=checked(written+count);if(written>limit || written>entry.Length)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeD"));output.Write(buffer,0,count);}
                             if(written!=entry.Length)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeE"));
                         }
                     }
@@ -122,28 +168,54 @@ namespace Dafeiyu
             string path=AssetPath(root,version);return Directory.Exists(path)?path:null;
         }
         public static string Install(string source,string data,string id,IEnumerable<string> references,Action<string> validate)
+        {return Install(source,data,id,references,validate,CancellationToken.None);}
+        public static string Install(string source,string data,string id,IEnumerable<string> references,Action<string> validate,CancellationToken cancel)
         {
+            cancel.ThrowIfCancellationRequested();
             if(!ValidId(id))throw new InvalidDataException(TextResources.Get("companionPackStorage.install.text"));
             string root=Path.Combine(data,"companion-packs",id);DirectorySafe(root);Directory.CreateDirectory(root);
             var files=references.Concat(new[]{"pet.json"}).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if(files.Length>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException("Too many package files.");
             string current=Current(root);
-            if(current!=null && files.All(p=>Same(AssetPath(source,p),AssetPath(current,p)))) { validate(current);return current; }
+            if(current!=null) {
+                try {
+                    var actual=new List<string>();InstalledFiles(current,current,actual);
+                    if(actual.Count==files.Length && !actual.Except(files,StringComparer.OrdinalIgnoreCase).Any() && files.All(p=>Same(AssetPath(source,p),AssetPath(current,p)))) {
+                        validate(current);cancel.ThrowIfCancellationRequested();return current;
+                    }
+                }catch(InvalidDataException){}catch(IOException){}catch(UnauthorizedAccessException){}
+            }
+            long plannedBytes=0;
+            foreach(string relative in files){cancel.ThrowIfCancellationRequested();long length=new FileInfo(AssetPath(source,relative)).Length;if(length>CompanionPackagePolicy.FileLimit(relative,false))throw new InvalidDataException("Package file exceeds limit.");plannedBytes=checked(plannedBytes+length);CompanionPackagePolicy.CheckExpanded(plannedBytes);}
+            CheckDiskSpace(root,plannedBytes);
             string version="v-"+Guid.NewGuid().ToString("N"),destination=Path.Combine(root,version),pointer=Path.Combine(root,"current.txt"),temporary=Path.Combine(root,".current-"+Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(destination);bool published=false;
             try {
                 long total=0;
                 foreach(string relative in files) {
-                    string from=AssetPath(source,relative),to=AssetPath(destination,relative);total+=new FileInfo(from).Length;
+                    cancel.ThrowIfCancellationRequested();string from=AssetPath(source,relative),to=AssetPath(destination,relative);long length=new FileInfo(from).Length;
+                    if(length>CompanionPackagePolicy.FileLimit(relative,false))throw new InvalidDataException("Package file exceeds limit.");total=checked(total+length);
                     if(total>Maximum)throw new InvalidDataException(TextResources.Get("companionPackStorage.install.text.alternativeA"));
                     Directory.CreateDirectory(Path.GetDirectoryName(to));File.Copy(from,to,false);
                 }
                 validate(destination);
+                cancel.ThrowIfCancellationRequested();
                 File.WriteAllText(temporary,version,new UTF8Encoding(false));
                 AtomicFile.Commit(temporary,pointer);
                 published=true;return destination;
             } finally {
                 if(File.Exists(temporary))File.Delete(temporary);
                 if(!published && Directory.Exists(destination)){DirectorySafe(destination);Directory.Delete(destination,true);}
+            }
+        }
+        static void InstalledFiles(string root,string current,List<string> result)
+        {
+            DirectorySafe(current);
+            foreach(string path in Directory.GetFileSystemEntries(current)) {
+                DirectorySafe(path);
+                if(Directory.Exists(path))InstalledFiles(root,path,result);
+                else result.Add(path.Substring(root.Length+1).Replace(Path.DirectorySeparatorChar,'/'));
+                if(result.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException();
             }
         }
         static bool Same(string left,string right)

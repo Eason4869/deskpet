@@ -82,6 +82,7 @@ namespace Dafeiyu
                 Add(result,date,"qingming",terms.Qingming,terms.Qingming.AddDays(1),"day");
                 Add(result,date,"winter-solstice",terms.WinterSolstice,terms.WinterSolstice.AddDays(1),"day");
             }
+            Fixed(result,date,"valentines-day",2,14,1,"day");
             Fixed(result,date,"national-day",10,1,7,"day");
             Fixed(result,date,"christmas",12,24,2,date.Day==24?"eve":"day");
             Fixed(result,date,"halloween",10,31,1,"day");

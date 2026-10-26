@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -448,9 +448,9 @@ namespace Dafeiyu
             }
             bool interacting=interaction.Active;
             // New eight-pose actions must show every pose even if a UI frame is late.
-            interaction.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta);
+            interaction.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(interaction.Name,originalInteraction,AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta));
             if(interacting && !interaction.Active){fallbackInteraction="";Animation.Play("idle",0);ConversationChanged();nextWalk=WanderSchedule.Next(now,random.NextDouble());}
-            Animation.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta); UpdateFrame(delta);
+            Animation.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(Animation.State,originalAction,AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta)); UpdateFrame(delta);
         }
         internal void UpdateHover(Point cursor)
         {
@@ -600,7 +600,7 @@ namespace Dafeiyu
         }
         private IntPtr WindowMessage(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
         {
-            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
+            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || hotkeyCaptureDepth>0 || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
             if(message==0x21) { handled=true; return new IntPtr(3); }
             if(message==0x84 && !dragging)
             {
@@ -666,7 +666,7 @@ namespace Dafeiyu
         {
             interactionRevision++;
             originalInteraction=AdditionalInteractions.HasOriginal(Skin,name) && (originalStyle??random.Next(2)==0);
-            interaction.Configure(Skin,originalInteraction);
+            interaction.ConfigureClips(Skin,originalInteraction,action=>ResolveHolidayClip(action,originalInteraction));
             CancelPendingClick();DismissGreeting();walking=false;Paused=false;fallbackInteraction="";
             Animation.Play("idle",0);interaction.Start(name);nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());UpdateFrame();
             if(AdditionalInteractions.Has(Skin,name))previousTick=watch.Elapsed.TotalSeconds;
@@ -942,10 +942,10 @@ namespace Dafeiyu
         {
             project=work?(project??ProjectCatalogStore.UnassignedProject(Projects,Settings)):ProjectCatalogStore.UnassignedProject(Projects,Settings);
             string targetSection=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId;
-            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
+            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.DraftOwner==Skin.PickerKey&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
             if(pending!=null)return pending;
             var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name=TextResources.Get("petWindow.createDraftConversation.name"),Mode=work?"work":"chat",PetId=work?"":Skin.Id,SectionId=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
-            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;WatchConversationTitle(project,definition,workspace);return workspace;
+            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;Workspaces.BindDraft(workspace,Skin.PickerKey);WatchConversationTitle(project,definition,workspace);return workspace;
         }
         void BeginDraftConversation(ProjectDefinition project,bool? workEntry=null,string sectionId=null)
         {
@@ -965,7 +965,7 @@ namespace Dafeiyu
             try{ProjectStore.Save(Projects);}catch{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;throw;}
             return delegate{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;ProjectStore.Save(Projects);};
         }
-        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.IsDraft=false;NotifyProjectsChanged();}}
+        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.Session.FinishDraft();workspace.IsDraft=false;NotifyProjectsChanged();}}
         internal ProjectDefinition CreateProjectForConversation()
         {
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return null;var previous=Projects.Copy();try{var project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);project.Conversations.Clear();ProjectStore.Save(Projects);NotifyProjectsChanged();return project;}catch{RestoreProjectCatalog(previous);throw;}

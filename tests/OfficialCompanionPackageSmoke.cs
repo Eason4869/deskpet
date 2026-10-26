@@ -12,6 +12,7 @@ namespace Dafeiyu.Tests
     {
         [STAThread] public static int Main(string[] args)
         {
+            string root=null;
             try {
                 if(args.Length!=1)throw new ArgumentException("Supply the generated artifact directory.");
                 string artifacts=Path.GetFullPath(args[0]);
@@ -21,7 +22,7 @@ namespace Dafeiyu.Tests
                 if(OfficialJson.Integer(index,"schema_version")!=1)throw new InvalidDataException("Unknown index schema.");
                 var entries=OfficialJson.Array(index["companions"]);
                 if(entries.Length!=5)throw new InvalidDataException("All five companions are required.");
-                string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"op",Guid.NewGuid().ToString("N").Substring(0,8));
+                root=Path.Combine(Path.GetTempPath(),"dp-"+Guid.NewGuid().ToString("N").Substring(0,12));
                 if(Directory.Exists(root))throw new IOException("Validation root already exists.");
                 Directory.CreateDirectory(root);var store=new OfficialCompanionStorage(root);
                 var seen=new HashSet<string>(StringComparer.Ordinal);var results=new List<object>();
@@ -53,6 +54,7 @@ namespace Dafeiyu.Tests
                 File.WriteAllBytes(report,OfficialJson.Bytes(new{schema_version=1,status="passed",elapsedSeconds=clock.Elapsed.TotalSeconds,companions=results.ToArray()}));
                 Console.WriteLine("PASS all five complete native packages; report: "+report);return 0;
             }catch(Exception error){Console.Error.WriteLine(error);return 1;}
+            finally{if(root!=null&&Directory.Exists(root))OfficialCompanionStorage.DeleteOwned(root);}
         }
     }
 }

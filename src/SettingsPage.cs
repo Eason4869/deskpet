@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -164,7 +164,7 @@ namespace Dafeiyu
             if(min==pet.Settings.GreetingMinMinutes && max==pet.Settings.GreetingMaxMinutes)return;
             pet.Settings.GreetingMinMinutes=min;pet.Settings.GreetingMaxMinutes=max;pet.ConfigureGreetings();ShowNotice(()=>(TextResources.Get("settingsPage.saveGreetingInterval.showNotice.alternativeA")));
         }
-        private void ImportSkin(object sender,RoutedEventArgs args)
+        private async void ImportSkin(object sender,RoutedEventArgs args)
         {
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             if(HasUnsavedEdits){ShowNotice(()=>(TextResources.Get("settingsPage.importSkin.showNotice.alternativeB")));return;}
@@ -174,10 +174,11 @@ namespace Dafeiyu
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             try
             {
-                var skin=pet.Catalog.Import(dialog.FileName);
+                var skin=await LocalCompanionImportWindow.RunAsync(HostWindow,cancel=>pet.Catalog.Import(dialog.FileName,cancel));
                 refreshing=true; skins.ItemsSource=null; skins.ItemsSource=pet.Catalog.Skins; refreshing=false;
                 skins.SelectedItem=skin; ShowNotice(()=>(TextResources.Format("settingsPage.importSkin.showNotice",skin.DisplayName)));
             }
+            catch(OperationCanceledException){refreshing=false;ShowNotice(()=>TextResources.Get("companionImport.cancelled"));}
             catch(Exception e)
             {
                 refreshing=false;

@@ -106,7 +106,7 @@ internal sealed partial class PetWindow : Window
         committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
         var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
-        drop.Cancel(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        drop.Cancel(); sprite.ResetFrames(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
     }

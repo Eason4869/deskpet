@@ -63,7 +63,7 @@ namespace Dafeiyu
     internal static class OfficialCompanionRules
     {
         internal static readonly string[] Ids={"e-bao","dafeiyu","marfu","xiaobei","gugugaga"};
-        internal const long MaximumPackage=256L*1024*1024;
+        internal static long MaximumPackage {get{return CompanionPackagePolicy.MaximumArchiveBytes;}}
         internal static string Repository {get{return GitHubUpdates.Repository(ReleaseInfo.RepositoryUrl);}}
         internal static string AssetUrl(string tag,string filename){return "https://github.com/"+Repository+"/releases/download/"+tag+"/"+filename;}
         internal static void Id(string id){if(!Ids.Contains(id))throw new ArgumentException(TextResources.Get("officialCompanionModels.id.text"),"id");}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ namespace Dafeiyu.Tests
         static object Call(string name,params object[] args){return typeof(PetWindow).GetMethod(name,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(pet,args);}
         static void Capture(FrameworkElement window,string path){window.UpdateLayout();var bmp=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bmp.Render(window);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var output=File.Create(path))png.Save(output);}
         static RelationshipFeedbackWindow Notice(){return app.Windows.OfType<RelationshipFeedbackWindow>().SingleOrDefault(w=>w.IsVisible);}
-        static async Task Until(Func<bool> ready,string reason){var elapsed=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(elapsed.ElapsedMilliseconds>10000)throw new TimeoutException(reason);await Task.Delay(10);}Console.WriteLine("WAIT elapsedMs="+elapsed.ElapsedMilliseconds+" dispatcher="+System.Windows.Threading.Dispatcher.CurrentDispatcher.CheckAccess()+" action="+(pet==null?"none":pet.Animation.State)+" condition="+reason);}
+        static async Task Until(Func<bool> ready,string reason){var elapsed=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(elapsed.ElapsedMilliseconds>10000){Console.WriteLine("FEEDBACK_TIMEOUT visible="+(pet!=null&&pet.IsPetVisible)+" fullscreen="+DesktopInterop.ForegroundIsFullScreen()+" allowed="+(pet!=null&&pet.RelationshipFeedbackAllowed(pet.RelationshipCompanionId)));throw new TimeoutException(reason);}await Task.Delay(10);}Console.WriteLine("WAIT elapsedMs="+elapsed.ElapsedMilliseconds+" dispatcher="+System.Windows.Threading.Dispatcher.CurrentDispatcher.CheckAccess()+" action="+(pet==null?"none":pet.Animation.State)+" condition="+reason);}
         static async Task Composition(string root)
         {
             string id=pet.RelationshipCompanionId;

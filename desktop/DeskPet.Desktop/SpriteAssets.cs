@@ -20,6 +20,8 @@ internal sealed class PetSkin
     public bool IsPlaceholder { get; set; }
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
     public string? BuiltinCharacterId { get; set; }
+    internal HolidayCatalog? PackageHolidayCatalog { get; set; }
+    internal string? OutfitCharacterId => OfficialCharacterId ?? BuiltinCharacterId ?? (PackageHolidayCatalog != null ? PackageId : null);
     public required string Name { get; init; }
     public string DisplayName => OfficialCompanionProfiles.GetDisplayName(OfficialCharacterId ?? BuiltinCharacterId, Name);
     public string DisplayDescription => OfficialCompanionProfiles.Find(OfficialCharacterId ?? BuiltinCharacterId)?.Description ?? Description;
@@ -50,6 +52,26 @@ internal sealed class SpriteAssets : IDisposable
     private readonly Func<string, Stream>? openHoliday;
     internal SpriteAssets(Func<string, Stream>? holidaySource = null) => openHoliday = holidaySource;
     private readonly Dictionary<string, Bitmap> images = new();
+    private readonly LinkedList<string> recentImages = new();
+    private readonly Dictionary<string,int> pins = new(StringComparer.Ordinal);
+    internal long RetainedPixelBytes => images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);
+    internal int DecodeCount {get;private set;}
+    private void TrimImages(string? requested=null)
+    {
+        while(images.Count>5 || RetainedPixelBytes>64L*1024*1024) {
+            var oldest=recentImages.FirstOrDefault(k=>k!=requested&&!pins.ContainsKey(k));if(oldest==null)break;
+            recentImages.Remove(oldest);images[oldest].Dispose();images.Remove(oldest);
+            foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(oldest+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);
+        }
+    }
+    internal IDisposable Pin(PetSkin skin,ClipSpec clip)
+    {
+        string key=ImageKey(skin,clip.File);pins[key]=pins.GetValueOrDefault(key)+1;
+        try{Get(skin,clip);return new ImagePin(this,key);}catch{ReleasePin(key);throw;}
+    }
+    private void ReleasePin(string key){if(pins.TryGetValue(key,out int count)){if(count<=1)pins.Remove(key);else pins[key]=count-1;}TrimImages();}
+    private sealed class ImagePin:IDisposable {private SpriteAssets? owner;private readonly string key;internal ImagePin(SpriteAssets assets,string imageKey){owner=assets;key=imageKey;}public void Dispose(){var assets=owner;owner=null;assets?.ReleasePin(key);}}
+
     private readonly Dictionary<(string, int), byte[]> masks = new();
     public static readonly string[] Interactions = { "lifted", "landing", "petting", "poked", "feeding", "happy", "sleeping", "special" };
     public static Stream OpenAsset(string path) => AssetLoader.Open(new Uri("avares://DeskPet/Assets/" + path.Replace('\\', '/')));
@@ -297,9 +319,10 @@ internal sealed class SpriteAssets : IDisposable
         if (skin.Preview is { } preview && (skin.BuiltIn || skin.PackageId != null || File.Exists(Path.Combine(skin.Folder!, preview))) && assets.Get(skin, preview).PixelSize != new PixelSize(480, 520)) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text.alternativeB"));
         if (skin.Clips.Values.Concat(skin.ExtraClips.Values).Concat(skin.Alternates.Values).Sum(c => c.Frames) > 1024) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text.alternativeC"));
     }
-    public static PetSkin Import(string manifestPath, string data)
+    public static PetSkin Import(string manifestPath, string data, CancellationToken cancel=default)
     {
-        if (string.Equals(Path.GetExtension(manifestPath), ".zip", StringComparison.OrdinalIgnoreCase)) return CompanionPackStorage.ReadZip(manifestPath, data, path => Import(path, data));
+        cancel.ThrowIfCancellationRequested();
+        if (string.Equals(Path.GetExtension(manifestPath), ".zip", StringComparison.OrdinalIgnoreCase)) return CompanionPackStorage.ReadZip(manifestPath, data, path => Import(path, data,cancel),cancel);
         var root = Path.GetDirectoryName(Path.GetFullPath(manifestPath))!;
         if (new FileInfo(manifestPath).Length > 65536) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text"));
         var id = "skin-" + Guid.NewGuid().ToString("N");
@@ -310,10 +333,11 @@ internal sealed class SpriteAssets : IDisposable
         if (skin.PackageId is { } packageId)
         {
             if (!string.Equals(Path.GetFileName(manifestPath), "pet.json", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text.alternativeA"));
+            var inventory = OfficialCompanionNativeValidator.ValidateLocalPackage(root, cancel);
             var before = LoadSkins(data);
             bool canonical = OfficialCompanionLegacy.MatchImport(root, packageId, CancellationToken.None) != null;
+            CompanionPackStorage.Install(root, data, packageId, inventory.AllReferences, copied => { OfficialCompanionNativeValidator.ValidateLocalPackage(copied, cancel); },cancel);
             if (!canonical) OfficialCompanionIdentity.ResolveCustom(data, packageId, before.Where(s => s.OfficialCharacterId != null).Select(s => s.Id), !before.Any(s => s.PickerKey == "custom-pack:" + packageId));
-            CompanionPackStorage.Install(root, data, packageId, references, copied => { using var input = File.OpenRead(Path.Combine(copied, "pet.json")); ValidateSkin(ReadManifest(input, packageId, copied)); });
             CompanionPackStorage.SetHidden(data, packageId, false);
             CompanionPackStorage.SetHidden(data, (canonical ? "official:" : "custom-pack:") + packageId, false);
             return LoadSkins(data).Single(s => s.PickerKey == (canonical ? "official:" : "custom-pack:") + packageId);
@@ -359,13 +383,9 @@ internal sealed class SpriteAssets : IDisposable
             var width = BinaryPrimitives.ReadUInt32BigEndian(header[16..20]); var height = BinaryPrimitives.ReadUInt32BigEndian(header[20..24]);
             if (width == 0 || height == 0 || width > 8192 || height > 33280 || (long)width * height > 55000000) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeB"));
             image = new Bitmap(stream);
-            if (images.Count >= 5)
-            {
-                var oldest = images.Keys.First(); images[oldest].Dispose(); images.Remove(oldest);
-                foreach (var mask in masks.Keys.Where(k => k.Item1.StartsWith(oldest + "/", StringComparison.Ordinal)).ToArray()) masks.Remove(mask);
-            }
-            images[key] = image;
+            DecodeCount++;images[key] = image;
         }
+        recentImages.Remove(key);recentImages.AddLast(key);TrimImages(key);
         return image;
     }
     private static string ImageKey(PetSkin skin, string path) => path.StartsWith("holiday|", StringComparison.Ordinal) ? path : skin.SourceKey + "/" + path;
@@ -377,7 +397,6 @@ internal sealed class SpriteAssets : IDisposable
         if (frame < 0 || frame >= clip.Frames || rect.Right > image.PixelSize.Width || rect.Bottom > image.PixelSize.Height) throw new InvalidDataException(TextResources.Get("spriteAssets.prepareFrame.text"));
         if (IsHolidayClip(clip)) _ = Mask(skin, clip, frame);
     }
-    internal static ClipSpec MatchSourceTiming(ClipSpec visual, ClipSpec source) => visual with { Fps = visual.Frames * source.Fps / source.Frames, Loop = source.Loop, HoldLastSeconds = source.HoldLastSeconds };
     public static string? AvatarPath(PetSkin skin) => skin.Avatar ?? (skin.OfficialCharacterId != null ? "@official/" + skin.OfficialCharacterId : skin.BuiltIn && skin.Id is "e-bao" or "dafeiyu" or "marfu" or "xiaobei" ? "avatars/" + skin.Id + ".png" : null);
     public Bitmap? GetAvatar(PetSkin skin) => AvatarPath(skin) is { } path ? path.StartsWith("@official/", StringComparison.Ordinal) ? GetImage(path, () => OpenAsset("avatars/" + path.Substring(10) + ".png")) : Get(skin, path) : null;
     public static bool HasExtra(PetSkin skin,string action) => skin.ExtraClips.ContainsKey(action) || skin.Alternates.ContainsKey(action) || skin.BuiltIn && skin.PackageId == null && PairedActions.Contains(action);
@@ -390,11 +409,11 @@ internal sealed class SpriteAssets : IDisposable
     public ClipSpec Resolve(PetSkin skin, string action, bool original, OutfitDefinition? outfit = null)
     {
         if (skin.IsPlaceholder) throw new InvalidOperationException(TextResources.Get("spriteAssets.resolve.text"));
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId)
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId)
         {
             var useAlternate = !original && outfit.FindClip(action, "alternate") != null;
             var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException(TextResources.Get("spriteAssets.resolve.clipOutfitFindClip"));
-            return MatchSourceTiming(OutfitClip(outfit, clip), Resolve(skin, action, original));
+            return OutfitClip(outfit, clip);
         }
         var quiet = skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
         if (quiet != null) return new ClipSpec(quiet.Path, quiet.Columns, quiet.Frames, quiet.Fps, quiet.Loop, quiet.Width, quiet.Height);
@@ -418,7 +437,7 @@ internal sealed class SpriteAssets : IDisposable
     }
     public ClipSpec Gaze(PetSkin skin, OutfitDefinition? outfit = null)
     {
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
         if (skin.Gaze != null) return skin.Gaze;
         var atlas = Get(skin, skin.Atlas!); return new ClipSpec(skin.Atlas!, 8, 16, 8, true, atlas.PixelSize.Width / 8, atlas.PixelSize.Height / 11, atlas.PixelSize.Height / 11 * 9);
     }
@@ -436,7 +455,7 @@ internal sealed class SpriteAssets : IDisposable
         // Some native decoders accept broken IDAT as empty pixels rather than
         // throwing. A holiday frame must still have a character and transparency.
         if (IsHolidayClip(spec) && (!result.Any(b => b > 16) || !result.Any(b => b == 0))) throw new InvalidDataException(TextResources.Get("spriteAssets.mask.text"));
-        masks[key] = result; return result;
+        masks[key] = result;TrimImages(ImageKey(skin,spec.File)); return result;
     }
     private void ValidateFrame(PetSkin skin, ClipSpec spec, int frame)
     {
@@ -448,14 +467,28 @@ internal sealed class SpriteAssets : IDisposable
         var px = (int)(x * spec.Width); var py = (int)(y * spec.Height);
         return px >= 0 && py >= 0 && px < spec.Width && py < spec.Height && Mask(skin, spec, frame)[py * spec.Width + px] > 16;
     }
-    public void Dispose() { foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear(); }
+    public void Dispose() { foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear();recentImages.Clear();pins.Clear(); }
 }
 
 internal sealed class SpriteView : Control
 {
     public required SpriteAssets Assets { get; init; }
     public required PetSkin Skin { get; set; }
-    public new ClipSpec? Clip { get; set; }
+    private ClipSpec? clip;
+    private IDisposable? currentFramePin;
+    private IDisposable? displayedFramePin;
+    public new ClipSpec? Clip { get=>clip;set{
+        if(ReferenceEquals(clip,value))return;
+        var next=value==null?null:Assets.Pin(Skin,value);
+        // Only the last drawn image needs to survive until the next render.
+        // An intermediate candidate never submitted for drawing can be released now.
+        if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();
+        currentFramePin=next;clip=value;
+    }}
+    private void ReleasePins(){if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();displayedFramePin?.Dispose();currentFramePin=displayedFramePin=null;}
+    internal void ResetFrames(){ReleasePins();clip=null;}
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e){base.OnDetachedFromVisualTree(e);ReleasePins();}
+    private void CommitDisplayedFrame(){if(!ReferenceEquals(displayedFramePin,currentFramePin))displayedFramePin?.Dispose();displayedFramePin=currentFramePin;}
     public int Frame { get; set; }
     public bool MirrorX { get; set; }
     public event Action? FrameRendered;
@@ -463,15 +496,15 @@ internal sealed class SpriteView : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        if (Clip == null) return;
+        if (Clip == null) { ReleasePins();return; }
         try { DrawFrame(context); }
         catch (Exception error) when (CanRecover(error)) { HolidayFrameFailed!(error); if (Clip == null || SpriteAssets.IsHolidayClip(Clip)) return; DrawFrame(context); }
-        FrameRendered?.Invoke();
+        CommitDisplayedFrame();FrameRendered?.Invoke();
     }
     private bool CanRecover(Exception error) => Clip != null && SpriteAssets.IsHolidayClip(Clip) && HolidayFrameFailed != null && (error is InvalidDataException or IOException or ArgumentException or InvalidOperationException or ExternalException);
     private void DrawFrame(DrawingContext context)
     {
-        var clip = Clip!; Assets.PrepareFrame(Skin, clip, Frame); var r = SpriteAssets.Rect(clip, Frame);
+        var clip = Clip!;currentFramePin??=Assets.Pin(Skin,clip); Assets.PrepareFrame(Skin, clip, Frame); var r = SpriteAssets.Rect(clip, Frame);
         using var transform = context.PushTransform(MirrorX ? new Matrix(-1, 0, 0, 1, Bounds.Width, 0) : Matrix.Identity);
         context.DrawImage(Assets.Get(Skin, clip), new Rect(r.X, r.Y, r.Width, r.Height), new Rect(clip.OffsetX / clip.Width * Bounds.Width, clip.OffsetY / clip.Height * Bounds.Height, Bounds.Width, Bounds.Height));
     }

@@ -10,3 +10,6 @@ assets/locales/zh_TW.json -text
 assets/locales/en_US.json -text
 assets/locales/ja_JP.json -text
 assets/locales/ko_KR.json -text
+
+# Reviewed handoff metadata participates in exact source digests.
+assets/holidays/**/outfit.json -text
