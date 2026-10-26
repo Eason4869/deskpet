@@ -27,12 +27,26 @@ namespace Dafeiyu.Maintenance
             return value;
         }
         static string PathFor(string role,string name){return OfficialCompanionStorage.SafePath(role,name);}
+        internal static void RegisterInstalled(string dataRoot,string resourceDirectory)
+        {
+            string root=CachePaths.Normalize(dataRoot),path=CachePaths.Normalize(resourceDirectory);
+            if(CachePaths.Category(root,path)!="pack-versions"||!Managed(Path.GetFileName(path)))throw new IOException("Not a managed installation.");
+            CachePaths.Check(root);CachePaths.Check(path);if(!Directory.Exists(path))throw new IOException("Published root missing.");
+            string registry=Path.Combine(root,"cache-maintenance");CachePaths.Check(registry);Directory.CreateDirectory(registry);
+            string key=CacheResourceLease.Key(registry,path);CachePaths.Check(key+".lock");CachePaths.Check(key+".owner");
+            using(var handle=new FileStream(key+".lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite)){
+                if(File.Exists(key+".owner")&&!CacheResourceLease.Registered(root,path))throw new IOException("Managed root identity changed.");
+                if(!File.Exists(key+".owner"))File.WriteAllText(key+".owner","DeskPet-cache-1\n"+path+"\n"+CachePaths.Identity(path),new UTF8Encoding(false));
+            }
+        }
         internal static IDisposable Lock(string role)
         {return Lock(role,CancellationToken.None);}
         internal static IDisposable Lock(string role,CancellationToken cancel)
         {
+            // FileShare.None reports raw EWOULDBLOCK errno on Unix (Linux 11, Darwin 35).
+            // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/Microsoft/Win32/SafeHandles/SafeFileHandle.Unix.cs
             var clock=Stopwatch.StartNew();
-            while(true){cancel.ThrowIfCancellationRequested();try{return OpenLock(role);}catch(IOException error){int code=error.HResult&65535;if(code!=32&&code!=33||clock.Elapsed>TimeSpan.FromSeconds(90))throw;cancel.WaitHandle.WaitOne(25);}}
+            while(true){cancel.ThrowIfCancellationRequested();try{return OpenLock(role);}catch(IOException error){int code=error.HResult&65535;bool contention=Environment.OSVersion.Platform==PlatformID.Win32NT?code==32||code==33:code==11||code==35;if(!contention||clock.Elapsed>TimeSpan.FromSeconds(90))throw;cancel.WaitHandle.WaitOne(25);}}
         }
         static IDisposable OpenLock(string role)
         {
@@ -101,7 +115,7 @@ namespace Dafeiyu.Maintenance
             long now=DateTime.UtcNow.Ticks;
             foreach(var record in state.Versions.Values){if(record.Name==next||record.Name==keep)record.Retired=0;else if(record.Retired==0)record.Retired=now;}
             state.Current=next;state.Previous=keep;Save(role,state);
-            CacheResourceLease.RegisterInstalled(Path.GetDirectoryName(store.Root),destination);
+            RegisterInstalled(Path.GetDirectoryName(store.Root),destination);
             File.Delete(path);
         }
         internal static string RetirementProof(string dataRoot,string directory,DateTime now)
