@@ -21,7 +21,7 @@ namespace Dafeiyu.Tests
                 Check(CompanionPackagePolicy.MaximumPngBytes==26214400,"PNG boundary retained");
                 Check(CompanionPackagePolicy.MaximumAppearanceBytes==268435456,"appearance boundary retained");
                 Check(CompanionPackagePolicy.MaximumManifestBytes==65536,"manifest boundary retained");
-                string root=Path.Combine(Path.GetTempPath(),"DeskPet-Complete-"+Guid.NewGuid().ToString("N"));
+                string root=Path.Combine(Environment.CurrentDirectory,"work","complete-companion-fixtures",Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(root);
                 try {
                     Directory.CreateDirectory(Path.Combine(root,"animations"));
