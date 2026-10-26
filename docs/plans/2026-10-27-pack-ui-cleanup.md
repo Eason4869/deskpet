@@ -68,3 +68,6 @@ Execution is authorized by the user's request; no extra approval pause. Each pha
 CI 记录：dev.1 已有标签保持不变，其语言快照失败由后继版本修复。dev.2 的 64e3255 已通过完整 macOS 两架构 CI 和 Windows 全量测试循环；Windows 后续打包验收仍假定素材与应用同版本而失败，由 ff3d37a 修复。最终按用户许可将修复合入 dev.3，集中验证完整 CI 后补齐 dev.2/dev.3 标签，不重写已发布标签。最终交付状态以远端引用与 GitHub Checks 为准。
 
 导出源码打包继续逐角色校验 registry 与 payload 摘要，但不会误借用父目录的 Git 历史；CI 的显式历史门禁仍要求完整 Git checkout，浅克隆不能以源码导出模式绕过。新增边界测试 6 项和实际五 ZIP 的新版打包断言均通过。
+
+
+最终打包验收补充：旧测试还要求引导简介包含固定步骤总数，而当前简介已取消这一冗余表达。编译应用与文档实际均为 134 步、标题逐项完全一致；fe443ee 将验收改为检查连续编号及实际编译标题，保留严格对照。该修复也纳入 dev.2 源码提交。dev.3 本地完整 PackagingSmoke 已从干净源码跑至结束：五角色原生安装、实际更新器应用、教程与清单、嵌入资源、README 图片和准确源码归档均通过，再推送修复并验证完整 CI。
