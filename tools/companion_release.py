@@ -47,10 +47,13 @@ def prepare(root, tag, directory):
     if len(entries) != 5 or {x['id'] for x in entries} != IDS or len(checked) != 5 or {x['id'] for x in checked} != IDS:
         raise ValueError('Both index and native report must cover exactly five roles')
     checks = {x['id']: x for x in checked}
+    registry_path = root / 'assets/official/companion-versions.json'
+    registry = json.loads(registry_path.read_text(encoding='utf-8'))['companions'] if registry_path.exists() else None
     assets = []
     for entry in entries:
-        name = 'DeskPet-Companion-' + entry['id'] + '-' + version + '.zip'
-        if entry['asset_name'] != name or entry['version'] != version or entry['min_app_version'] != version:
+        material = registry[entry['id']] if registry is not None else {'pack_version': version, 'min_app_version': version}
+        name = 'DeskPet-Companion-' + entry['id'] + '-' + material['pack_version'] + '.zip'
+        if entry['asset_name'] != name or entry['version'] != material['pack_version'] or entry['min_app_version'] != material['min_app_version']:
             raise ValueError('Package identity differs from the tagged source')
         path = directory / name
         if path.is_symlink() or not path.is_file():

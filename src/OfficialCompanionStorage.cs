@@ -53,6 +53,8 @@ namespace Dafeiyu
             return new OfficialCompanionInstallation(asset,directory);
         }
         internal static bool SameAsset(OfficialCompanionAsset a,OfficialCompanionAsset b){return a.Id==b.Id&&a.Version==b.Version&&a.Sha256==b.Sha256&&a.Size==b.Size&&a.Name==b.Name&&a.MinimumAppVersion==b.MinimumAppVersion&&a.Outfits.Count==b.Outfits.Count&&a.Outfits.All(x=>b.Outfits.Any(y=>x.OutfitId==y.OutfitId&&x.Version==y.Version));}
+        internal static bool SameContent(OfficialCompanionAsset a,OfficialCompanionAsset b){return a.Id==b.Id&&a.Sha256==b.Sha256&&a.Size==b.Size;}
+        internal static bool ConsistentContent(OfficialCompanionAsset a,OfficialCompanionAsset b){return a.Version==b.Version&&a.MinimumAppVersion==b.MinimumAppVersion&&a.Outfits.Count==b.Outfits.Count&&a.Outfits.All(x=>b.Outfits.Any(y=>x.OutfitId==y.OutfitId&&x.Version==y.Version));}
         internal static List<string> Inventory(string directory)
         {
             var result=new List<string>();Walk(directory,directory,result);return result;
@@ -71,7 +73,7 @@ namespace Dafeiyu
         {
             string id=OfficialJson.Text(record,"id",48);OfficialCompanionRules.Id(id);string version=OfficialCompanionRules.Version(OfficialJson.Text(record,"version",64)),minimum=OfficialCompanionRules.Version(OfficialJson.Text(record,"min_app_version",64)),tag=OfficialJson.Text(record,"tag",90),name=OfficialJson.Text(record,"asset_name",150),hash=OfficialJson.Text(record,"sha256",64);long size=OfficialJson.Integer(record,"size");
             string feed=tag.StartsWith("companions-v",StringComparison.Ordinal)?tag.Substring(12):tag.StartsWith("v",StringComparison.Ordinal)?tag.Substring(1):null;OfficialCompanionRules.Version(feed);
-            if(name!="DeskPet-Companion-"+id+"-"+version+".zip"||!OfficialCompanionRules.Hash(hash)||size<=0||size>OfficialCompanionRules.MaximumPackage)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readAsset.text"));
+            if(!OfficialCompanionRules.PackageName(name,id,version,tag)||!OfficialCompanionRules.Hash(hash)||size<=0||size>OfficialCompanionRules.MaximumPackage)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readAsset.text"));
             var outfits=new List<OfficialCompanionOutfit>();var seen=new HashSet<string>();foreach(var raw in OfficialJson.Array(OfficialJson.Required(record,"outfits"))){var item=OfficialJson.Object(raw);string outfit=OfficialJson.Text(item,"outfit_id",64);if(!Regex.IsMatch(outfit,@"\A[a-z0-9][a-z0-9-]{0,63}\z")||!seen.Add(outfit)||outfits.Count==32)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readAsset.text.alternativeA"));outfits.Add(new OfficialCompanionOutfit(outfit,OfficialCompanionRules.Version(OfficialJson.Text(item,"version",64))));}
             return new OfficialCompanionAsset(id,OfficialJson.Text(record,"name",80),version,minimum,tag,name,size,hash,outfits);
         }

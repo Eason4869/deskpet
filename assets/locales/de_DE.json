@@ -4690,5 +4690,8 @@
   "companionImport.space": "Nicht genügend Speicherplatz. Platz für Entpacken, eine neue Installation und zusätzliche 64 MiB freigeben.",
   "companionImport.title": "Vollständigen Begleiter importieren",
   "companionImport.progress": "Bilder und Animationen werden geprüft und installiert. Große Pakete benötigen etwas Zeit.",
-  "companionImport.cancelled": "Import abgebrochen. Der bisherige Begleiter bleibt verfügbar."
+  "companionImport.cancelled": "Import abgebrochen. Der bisherige Begleiter bleibt verfügbar.",
+  "companions.behavior.stumbleHint": "Nach dem Ziehen und Loslassen besteht eine Stolperchance von 40 % mit 10 Sekunden Abklingzeit. Das aktuelle Aussehen muss diese Aktion anbieten.",
+  "companions.guide.downloadDetail": "Wählen Sie einen Begleiter für seine Vorstellung. Mit Alle herunterladen / aktualisieren werden Ressourcen im Hintergrund vorbereitet, während die Einrichtung weitergeht. Installierte Ressourcen bleiben nutzbar.",
+  "companions.package.metadataConflict": "Installierte Ressourcen wurden beibehalten. Die Metadaten des entfernten Figurenpakets sind widersprüchlich. Bitte später erneut versuchen."
 }

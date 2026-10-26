@@ -18,6 +18,17 @@ TAG = 'companions-v' + VERSION
 
 
 class CompanionReleaseTests(unittest.TestCase):
+    def test_independent_material_version_is_bound_to_registry(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp:
+            root=Path(temp)
+            directory,index,report=self.fixture(root)
+            registry={'schema_version':1,'companions':{role:{'pack_version':VERSION,'min_app_version':VERSION} for role in release.IDS}}
+            (root/'assets/official').mkdir(parents=True)
+            (root/'assets/official/companion-versions.json').write_text(json.dumps(registry))
+            new='0.11.1-dev.1'
+            index.rename(directory/('DeskPet-Companions-'+new+'.json'))
+            with patch.object(release,'identity',return_value={'version':new,'tag':'companions-v'+new,'commit':'a'*40,'prerelease':True}):
+                self.assertEqual(6,len(release.prepare(root,'companions-v'+new,directory)['assets']))
     def test_exact_tag_and_clean_source_required(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp:
             root = Path(temp)
@@ -73,7 +84,7 @@ class CompanionReleaseTests(unittest.TestCase):
             receipt['companions'][0].update(size=entry['size'], sha256=digest)
             index.write_text(json.dumps(catalog), encoding='utf-8')
             report.write_text(json.dumps(receipt), encoding='utf-8')
-            self.assertEqual(6, len(release.prepare(ROOT, TAG, directory)['assets']))
+            self.assertEqual(6, len(release.prepare(directory.parent, TAG, directory)['assets']))
             for size in (release.POLICY['maximum_archive_bytes'],):
                 with package.open('wb') as stream:
                     stream.truncate(size)
@@ -82,17 +93,17 @@ class CompanionReleaseTests(unittest.TestCase):
                 receipt['companions'][0].update(size=size, sha256=digest)
                 index.write_text(json.dumps(catalog), encoding='utf-8')
                 report.write_text(json.dumps(receipt), encoding='utf-8')
-                self.assertEqual(6, len(release.prepare(ROOT, TAG, directory)['assets']))
+                self.assertEqual(6, len(release.prepare(directory.parent, TAG, directory)['assets']))
             with package.open('wb') as stream:
                 stream.truncate(release.POLICY['maximum_archive_bytes'] + 1)
             with patch.object(release, 'file_digest', side_effect=AssertionError('must reject before reading oversized bytes')):
                 with self.assertRaises(ValueError):
-                    release.prepare(ROOT, TAG, directory)
+                    release.prepare(directory.parent, TAG, directory)
 
     def test_native_receipt_binds_all_bytes_and_roles(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True, 'commit': 'fixture'}):
             directory, index, report = self.fixture(Path(temp))
-            self.assertEqual(6, len(release.prepare(ROOT, TAG, directory)['assets']))
+            self.assertEqual(6, len(release.prepare(directory.parent, TAG, directory)['assets']))
             original = report.read_bytes()
             data = json.loads(original)
             for mutation in ('digest', 'final-root', 'missing-role'):
@@ -102,29 +113,29 @@ class CompanionReleaseTests(unittest.TestCase):
                 if mutation == 'missing-role': changed['companions'].pop()
                 report.write_text(json.dumps(changed), encoding='utf-8')
                 with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                    release.prepare(ROOT, TAG, directory)
+                    release.prepare(directory.parent, TAG, directory)
             report.write_bytes(original)
             package = next(directory.glob('*.zip'))
             package.write_bytes(package.read_bytes() + b'tampered')
             with self.assertRaises(ValueError):
-                release.prepare(ROOT, TAG, directory)
+                release.prepare(directory.parent, TAG, directory)
 
     def test_rejects_application_assets_and_index_path_escape(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG}):
             directory, index, _ = self.fixture(Path(temp))
             extra = directory / 'application.exe'
             extra.write_bytes(b'not a resource')
-            with self.assertRaises(ValueError): release.prepare(ROOT, TAG, directory)
+            with self.assertRaises(ValueError): release.prepare(directory.parent, TAG, directory)
             extra.unlink()
             data = json.loads(index.read_text())
             data['companions'][0]['asset_name'] = '../outside.zip'
             index.write_text(json.dumps(data))
-            with self.assertRaises(ValueError): release.prepare(ROOT, TAG, directory)
+            with self.assertRaises(ValueError): release.prepare(directory.parent, TAG, directory)
 
     def test_remote_exact_digest_url_state_and_asset_set(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True}):
             directory, _, _ = self.fixture(Path(temp))
-            expected = release.prepare(ROOT, TAG, directory)
+            expected = release.prepare(directory.parent, TAG, directory)
             remote = {'tag_name': TAG, 'html_url': 'https://github.com/' + release.REPOSITORY + '/releases/tag/' + TAG, 'draft': True, 'prerelease': True, 'assets': []}
             for asset in expected['assets']:
                 remote['assets'].append({'name': asset['name'], 'digest': 'sha256:' + asset['sha256'], 'size': asset['size'], 'state': 'uploaded', 'browser_download_url': 'https://github.com/' + release.REPOSITORY + '/releases/download/' + TAG + '/' + asset['name']})
@@ -143,7 +154,7 @@ class CompanionReleaseTests(unittest.TestCase):
     def test_draft_temporary_urls_remain_bound_to_one_release(self):
         with tempfile.TemporaryDirectory(dir=ROOT / 'work') as temp, patch.object(release, 'identity', return_value={'version': VERSION, 'tag': TAG, 'prerelease': True}):
             directory, _, _ = self.fixture(Path(temp))
-            expected = release.prepare(ROOT, TAG, directory)
+            expected = release.prepare(directory.parent, TAG, directory)
             prefix = 'https://github.com/' + release.REPOSITORY + '/releases/'
 
             def draft(suffix):

@@ -62,6 +62,12 @@ namespace Dafeiyu
     }
     internal static class OfficialCompanionRules
     {
+        internal static bool PackageName(string name,string id,string materialVersion,string tag)
+        {
+            string release=tag.StartsWith("companions-v",StringComparison.Ordinal)?tag.Substring(12):tag.StartsWith("v",StringComparison.Ordinal)?tag.Substring(1):null;
+            ReleaseVersion parsed;if(!ReleaseVersion.TryParse(release,out parsed)||parsed.Canonical!=release)return false;
+            return name=="DeskPet-Companion-"+id+"-"+materialVersion+".zip"||name=="DeskPet-Companion-"+id+"-"+release+".zip";
+        }
         internal static readonly string[] Ids={"e-bao","dafeiyu","marfu","xiaobei","gugugaga"};
         internal static long MaximumPackage {get{return CompanionPackagePolicy.MaximumArchiveBytes;}}
         internal static string Repository {get{return GitHubUpdates.Repository(ReleaseInfo.RepositoryUrl);}}

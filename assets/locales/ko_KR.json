@@ -4690,5 +4690,8 @@
   "companionImport.space": "디스크 공간이 부족합니다. 압축 해제 공간, 새 설치 사본과 추가 64 MiB를 확보하세요.",
   "companionImport.title": "전체 캐릭터 팩 가져오기",
   "companionImport.progress": "이미지와 동작을 검사하고 설치하고 있습니다. 큰 팩은 시간이 걸릴 수 있습니다.",
-  "companionImport.cancelled": "가져오기를 취소했습니다. 이전 캐릭터는 계속 사용할 수 있습니다."
+  "companionImport.cancelled": "가져오기를 취소했습니다. 이전 캐릭터는 계속 사용할 수 있습니다.",
+  "companions.behavior.stumbleHint": "실제로 드래그한 뒤 놓으면 40% 확률로 비틀거리며, 발동 후 대기 시간은 10초입니다. 현재 외형이 해당 동작을 제공할 때만 적용됩니다.",
+  "companions.guide.downloadDetail": "친구를 선택하면 소개를 볼 수 있습니다. 모두 다운로드／업데이트를 누르면 백그라운드에서 리소스를 준비하며 설정을 계속할 수 있습니다. 설치된 리소스는 계속 사용할 수 있습니다.",
+  "companions.package.metadataConflict": "설치된 리소스는 유지되었습니다. 원격 캐릭터 팩 정보가 일치하지 않습니다. 나중에 다시 시도하세요."
 }

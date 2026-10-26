@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -94,7 +94,7 @@ namespace Dafeiyu
             follow=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle")),pet.Settings.FollowCursor,delegate(bool value) { if(!refreshing) { pet.Settings.FollowCursor=value; pet.ApplySettings(); } }); follow.Name="FollowCursor"; behavior.Children.Add(follow);
             wander=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeA")),pet.Settings.Wander,delegate(bool value) { if(!refreshing) { pet.Settings.Wander=value; pet.ApplySettings(); } }); wander.Name="Wander"; behavior.Children.Add(wander);
             stumble=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeB")),pet.Settings.StumbleEnabled,delegate(bool value) {if(!refreshing){pet.Settings.StumbleEnabled=value;pet.ApplySettings();}});stumble.Name="StumbleEnabled";behavior.Children.Add(stumble);
-            behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeI")),11,Ui.Muted));
+            behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("companions.behavior.stumbleHint")),11,Ui.Muted));
             autoSleep=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeC")),pet.Settings.AutoSleepEnabled,delegate(bool value){if(!refreshing){pet.Settings.AutoSleepEnabled=value;pet.ApplySettings();}});autoSleep.Name="AutoSleepEnabled";behavior.Children.Add(autoSleep);
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeJ")),11,Ui.Muted));
             top=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeD")),pet.Settings.Topmost,delegate(bool value) { if(!refreshing) { pet.Settings.Topmost=value; pet.ApplySettings(); } }); top.Name="Topmost"; behavior.Children.Add(top);

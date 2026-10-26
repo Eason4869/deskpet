@@ -55,6 +55,61 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
+def package_name(role, material_version):
+    return 'DeskPet-Companion-' + role + '-' + material_version + '.zip'
+
+
+def payload_digest(root, references):
+    """v1 semantic payload: exclude only fields formerly rewritten per app release."""
+    digest = hashlib.sha256()
+    for name in sorted(references):
+        data = safe_path(root, name).read_bytes()
+        if name in ('pet.json', 'companions.json'):
+            value = read_json(safe_path(root, name))
+            for key in (('pack_version',) if name == 'pet.json' else ('version', 'min_app_version')):
+                value.pop(key, None)
+            data = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+        digest.update(name.encode('utf-8') + b'\0' + str(len(data)).encode('ascii') + b'\0' + hashlib.sha256(data).digest())
+    return digest.hexdigest()
+
+
+def verify_material_record(record, actual):
+    for field in ('pack_version', 'min_app_version'):
+        if not VERSION.fullmatch(record[field]):
+            raise ValueError('Invalid material version record')
+    if record['payload_sha256'] != actual:
+        raise ValueError('Official material changed; review and advance its material version record before building')
+
+
+def material_order(version):
+    match = VERSION.fullmatch(version)
+    if match is None:
+        raise ValueError('Invalid material version')
+    major, minor, patch, revision, preview = match.groups()
+    return (int(major), int(minor), int(patch), int(revision or 0), int(preview is None), int(preview or 0))
+
+
+def verify_material_transition(previous, current):
+    changed = (previous['payload_sha256'], previous['min_app_version']) != (current['payload_sha256'], current['min_app_version'])
+    order = (material_order(current['pack_version']) > material_order(previous['pack_version'])) - (material_order(current['pack_version']) < material_order(previous['pack_version']))
+    if (changed and order <= 0) or (not changed and order != 0):
+        raise ValueError('Changed material requires a higher version; unchanged material must keep its version')
+
+
+def verify_registry_history(repository, registry):
+    if subprocess.check_output(['git', 'rev-parse', '--is-shallow-repository'], cwd=repository, text=True).strip() != 'false':
+        raise ValueError('Material history validation requires fetch-depth: 0')
+    path = 'assets/official/companion-versions.json'
+    commits = subprocess.check_output(['git', 'log', '-2', '--format=%H', '--', path], cwd=repository, text=True).splitlines()
+    for commit in commits:
+        previous = json.loads(subprocess.check_output(['git', 'show', commit + ':' + path], cwd=repository))
+        if previous == registry:
+            continue
+        for role in IDS:
+            verify_material_transition(previous['companions'][role], registry['companions'][role])
+        break
+
+
 def create_output(repository, output, version):
     match = VERSION.fullmatch(version)
     if len(version) > 64 or match is None or any(int(part) > 65534 for part in match.groups()[:4] if part is not None) or (match.group(5) is not None and int(match.group(5)) > 2147483647):
@@ -270,16 +325,26 @@ def build(repository, output, version, defaults=None, complete_materials=None):
     materials, artifacts = output / 'materials', output / 'artifacts'
     materials.mkdir()
     artifacts.mkdir()
+    registry = read_json(repository / 'assets/official/companion-versions.json')
+    if registry.get('schema_version') != 1 or registry.get('payload_algorithm') != 'official-payload-v1' or set(registry['companions']) != set(IDS):
+        raise ValueError('Invalid official material registry')
+    verify_registry_history(repository, registry)
     descriptors, measurements = [], []
     for role in IDS:
         source = materials / role
-        identity, outfits, references = (collect_reviewed_role if reviewed is not None else collect_role)(repository, defaults, source, role, version)
-        name = 'DeskPet-Companion-' + role + '-' + version + '.zip'
+        record = registry['companions'][role]
+        material_version = record['pack_version']
+        identity, outfits, references = (collect_reviewed_role if reviewed is not None else collect_role)(repository, defaults, source, role, material_version)
+        actual_payload = payload_digest(source, references)
+        verify_material_record(record, actual_payload)
+        identity['min_app_version'] = record['min_app_version']
+        write_json(source / 'companions.json', identity)
+        name = package_name(role, material_version)
         path = artifacts / name
         unpacked = write_archive(source, references, path)
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        descriptors.append({'id': role, 'name': identity['name'], 'version': version, 'min_app_version': version, 'asset_name': name, 'size': path.stat().st_size, 'sha256': digest, 'outfits': [{'outfit_id': entry['outfit_id'], 'version': entry['version']} for entry in outfits]})
-        measurements.append({'id': role, 'entries': len(references), 'zip_bytes': path.stat().st_size, 'unpacked_bytes': unpacked, 'sha256': digest})
+        descriptors.append({'id': role, 'name': identity['name'], 'version': material_version, 'min_app_version': identity['min_app_version'], 'asset_name': name, 'size': path.stat().st_size, 'sha256': digest, 'outfits': [{'outfit_id': entry['outfit_id'], 'version': entry['version']} for entry in outfits]})
+        measurements.append({'id': role, 'release_version': version, 'pack_version': material_version, 'min_app_version': identity['min_app_version'], 'payload_sha256': actual_payload, 'entries': len(references), 'zip_bytes': path.stat().st_size, 'unpacked_bytes': unpacked, 'sha256': digest})
     write_json(artifacts / ('DeskPet-Companions-' + version + '.json'), {'schema_version': 1, 'companions': descriptors})
     write_json(output / 'measurements.json', {'status': 'authored-native-validation-required', 'roles': measurements})
     return measurements
@@ -288,11 +353,18 @@ def build(repository, output, version, defaults=None, complete_materials=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository', type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument('--output', type=Path, required=True, help='New owned output directory; must not already exist')
-    parser.add_argument('--version', required=True)
+    parser.add_argument('--output', type=Path, help='New owned output directory; must not already exist')
+    parser.add_argument('--version')
+    parser.add_argument('--check-material-history', action='store_true')
     parser.add_argument('--defaults', type=Path, help='Explicit pixel-verified SkinPackExport output; otherwise build it now')
     parser.add_argument('--complete-materials', type=Path, help='Reviewed complete role folders; preserve default PNG bytes')
     args = parser.parse_args()
+    if args.check_material_history:
+        verify_registry_history(args.repository, read_json(args.repository / 'assets/official/companion-versions.json'))
+        print('Official material history verified')
+        return
+    if args.output is None or args.version is None:
+        parser.error('--output and --version are required for authoring')
     print(json.dumps(build(args.repository, args.output, args.version, args.defaults, args.complete_materials), indent=2))
 
 

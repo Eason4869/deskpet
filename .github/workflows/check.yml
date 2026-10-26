@@ -127,6 +127,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Legacy companion inventory is stale' }
           python tests/CompanionReleaseTests.py
           if ($LASTEXITCODE -ne 0) { throw 'Companion publication guard checks failed' }
+          python tools/build_official_companions.py --check-material-history
+          if ($LASTEXITCODE) { throw 'Material version history failed' }
+          python tests/CompanionMaterialVersionTests.py
+          if ($LASTEXITCODE) { throw 'Material version contract failed' }
           python tests/OfficialCompanionAuthoringTests.py
           if ($LASTEXITCODE -ne 0) { throw 'Official companion authoring checks failed' }
           python tests/RuntimePackageTests.py

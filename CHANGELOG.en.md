@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.1-dev.1 — Source tag (no Release)
+
+- Separate per-character material versions from application releases, with payload digests and independent compatibility requirements. Unchanged materials retain identical ZIP bytes.
+- Reuse verified installed content across releases, reject conflicting metadata, and apply the shared 1024-file receipt limit.
+- Correct stumble capability and setup download copy across all 13 languages while retaining historical translation evidence.
+
 ## 0.11.0-dev.3 — In development (unreleased)
 
 - Integrate five complete companion packages, each with the default outfit and ten holiday outfits. Preserve original artwork, actual action poses, blinking, petting and body-poke reactions.

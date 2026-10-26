@@ -116,6 +116,24 @@
       "argument_count": 0
     },
     {
+      "key": "companions.behavior.stumbleHint",
+      "expected": "实际拖动并放下后，有 40% 概率短暂踉跄，触发后冷却 10 秒；仅在当前外观提供此动作时生效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.guide.downloadDetail",
+      "expected": "选择伙伴可查看介绍；点击全量下载／更新后在后台准备素材，可以继续后续引导。已有素材仍可使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.package.metadataConflict",
+      "expected": "已保留安装的素材；远端角色包元数据不一致，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "composerDraft.storageError",
       "expected": "草稿保存失败，当前文字仍保留在窗口中。请检查数据目录权限或磁盘空间。",
       "format": false,

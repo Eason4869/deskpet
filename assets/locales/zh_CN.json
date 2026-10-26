@@ -4690,5 +4690,8 @@
   "companionImport.space": "磁盘可用空间不足。请为解压暂存、新安装副本和额外64 MiB预留空间后重试。",
   "companionImport.title": "导入完整角色包",
   "companionImport.progress": "正在校验图像与动作并安装角色包。大包可能需要一些时间。",
-  "companionImport.cancelled": "导入已取消，原有角色仍可使用。"
+  "companionImport.cancelled": "导入已取消，原有角色仍可使用。",
+  "companions.behavior.stumbleHint": "实际拖动并放下后，有 40% 概率短暂踉跄，触发后冷却 10 秒；仅在当前外观提供此动作时生效。",
+  "companions.guide.downloadDetail": "选择伙伴可查看介绍；点击全量下载／更新后在后台准备素材，可以继续后续引导。已有素材仍可使用。",
+  "companions.package.metadataConflict": "已保留安装的素材；远端角色包元数据不一致，请稍后重试。"
 }

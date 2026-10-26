@@ -4690,5 +4690,8 @@
   "companionImport.space": "Espace disque insuffisant. Prévoyez l’extraction, une nouvelle copie installée et 64 Mio supplémentaires.",
   "companionImport.title": "Importer un compagnon complet",
   "companionImport.progress": "Vérification des images et animations, puis installation. Les gros packs peuvent prendre du temps.",
-  "companionImport.cancelled": "Import annulé. Votre ancien compagnon reste disponible."
+  "companionImport.cancelled": "Import annulé. Votre ancien compagnon reste disponible.",
+  "companions.behavior.stumbleHint": "Après un déplacement et un relâchement, la probabilité de trébucher est de 40 %, avec un délai de 10 secondes. L’apparence actuelle doit proposer cette action.",
+  "companions.guide.downloadDetail": "Sélectionnez un compagnon pour lire sa présentation. Cliquez sur Tout télécharger / Mettre à jour pour préparer les ressources en arrière-plan et poursuivre la configuration. Les ressources installées restent disponibles.",
+  "companions.package.metadataConflict": "Les ressources installées ont été conservées. Les métadonnées du pack distant sont incohérentes ; réessayez plus tard."
 }

@@ -13,12 +13,45 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
         static void Check(bool result,string name){if(!result)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
         static readonly OfficialDownloadRouting Direct=new OfficialDownloadRouting(false,"",false,"");
+        static void MaterialReusePolicy()
+        {
+            var a=new OfficialCompanionAsset("e-bao","old","0.11.0-dev.3","0.11.0-dev.3","v0.11.1-dev.1","DeskPet-Companion-e-bao-0.11.0-dev.3.zip",100,new string('a',64),new OfficialCompanionOutfit[0]);
+            var b=new OfficialCompanionAsset("e-bao","new display","0.11.0-dev.3","0.11.0-dev.3","v0.11.1-dev.2","DeskPet-Companion-e-bao-0.11.0-dev.3.zip",100,new string('a',64),new OfficialCompanionOutfit[0]);
+            Check(OfficialCompanionStorage.SameContent(a,b),"display metadata does not redownload identical material");
+            var conflicting=new OfficialCompanionAsset(b.Id,b.Name,b.Version,"0.11.1-dev.1",b.Tag,b.AssetName,b.Size,b.Sha256,b.Outfits);
+            Check(!OfficialCompanionStorage.ConsistentContent(a,conflicting),"same bytes cannot claim a different minimum application version");
+            Check(OfficialCompanionRules.PackageName(a.AssetName,a.Id,a.Version,a.Tag),"material-version filename remains compatible");
+            Check(OfficialCompanionRules.PackageName("DeskPet-Companion-e-bao-0.11.1-dev.1.zip",a.Id,a.Version,a.Tag),"release-version filename is strictly bound to its owning tag");
+            Check(!OfficialCompanionRules.PackageName("DeskPet-Companion-e-bao-99.0.0.zip",a.Id,a.Version,a.Tag),"unrelated filename version rejected");
+            using(var fixture=new OfficialCompanionFixture()){
+                string root=Path.Combine(fixture.Root,"inventory");Directory.CreateDirectory(root);
+                for(int i=0;i<1024;i++)File.WriteAllText(Path.Combine(root,i+".json"),"{}");
+                Check(OfficialCompanionStorage.Inventory(root).Count==1024,"official receipt inventory accepts shared 1024-file policy");
+                File.WriteAllText(Path.Combine(root,"overflow.json"),"{}");bool rejected=false;try{OfficialCompanionStorage.Inventory(root);}catch(InvalidDataException){rejected=true;}
+                Check(rejected,"official receipt inventory rejects 1025 files");
+            }
+        }
+        static async Task ConcurrentMaterialReuse()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();var duplicate=new TaskCompletionSource<bool>();int calls=0;
+                fixture.Intercept=async(r,c)=>{if(r.RequestUri.AbsolutePath.EndsWith(".zip")){if(Interlocked.Increment(ref calls)==1)entered.TrySetResult(true);else duplicate.TrySetResult(true);await release.Task;}return null;};
+                string id="dafeiyu",name=OfficialCompanionFixture.PackageName(id);byte[] bytes=fixture.Files[name];
+                var a=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,OfficialCompanionFixture.Tag,name,bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+                var b=new OfficialCompanionAsset(a.Id,a.Name,a.Version,a.MinimumAppVersion,"companions-v0.10.4-dev.1",name,a.Size,a.Sha256,a.Outfits);
+                var method=typeof(OfficialCompanionDownloads).GetMethod("InstallAsync",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+                var first=(Task)method.Invoke(downloads,new object[]{a,Direct,null,CancellationToken.None});await entered.Task;
+                var second=(Task)method.Invoke(downloads,new object[]{b,Direct,null,CancellationToken.None});
+                await Task.WhenAny(duplicate.Task,Task.Delay(200));release.SetResult(true);await Task.WhenAll(first,second);
+                Check(fixture.Packages==1,"concurrent equal material across tags transfers exactly one ZIP");
+            }
+        }
         static void ProgressNoticeGate()
         {
             var property=typeof(OfficialCompanionProgress).GetProperty("RequiresUpdateNotice");
@@ -62,6 +95,12 @@ namespace Dafeiyu.Tests
                 Check(downloads.Installed("dafeiyu")!=null,"published receipt verifies offline");
                 var again=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                 Check(!again.InstalledNow&&!again.MetadataChecked&&fixture.Packages==1&&fixture.Metadata==1,"cached feed and matching receipt skip redundant network and transfer");
+                var changed=OfficialJson.Object(OfficialJson.Parse(fixture.Index(),1024*1024));
+                foreach(var raw in OfficialJson.Array(changed["companions"]))OfficialJson.Object(raw)["min_app_version"]="0.10.2";
+                byte[] conflictIndex=OfficialCompanionFixture.Json(changed);
+                fixture.Intercept=(r,c)=>Task.FromResult(r.RequestUri.Host=="api.github.com"?OfficialCompanionFixture.Response(OfficialCompanionFixture.Json(new[]{fixture.Release(OfficialCompanionFixture.Tag,conflictIndex)})):r.RequestUri.AbsolutePath.EndsWith(".json")?OfficialCompanionFixture.Response(conflictIndex):null);
+                bool warned=false;try{await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);}catch(ApiException error){warned=error.Message==TextResources.Get("companions.package.metadataConflict");}
+                Check(warned&&fixture.Packages==1&&downloads.Installed("dafeiyu").RootDirectory==again.Installation.RootDirectory,"conflicting metadata warns without download or successful update claim");fixture.Intercept=null;
                 fixture.Offline=true;var offline=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);
                 Check(offline.UsedOfflineFallback&&!offline.MetadataChecked&&!String.IsNullOrEmpty(offline.Warning),"failed refresh preserves offline package without claiming newest");
                 fixture.Intercept=(r,c)=>{throw new HttpRequestException("private proxy address");};var disconnected=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);Check(disconnected.UsedOfflineFallback&&!disconnected.MetadataChecked&&!disconnected.Warning.Contains("private"),"network socket failure also retains verified offline package with sanitized warning");fixture.Intercept=null;

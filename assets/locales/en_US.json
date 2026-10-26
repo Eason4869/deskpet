@@ -4690,5 +4690,8 @@
   "companionImport.space": "Not enough free disk space. Allow space for extraction, a new installed copy and an extra 64 MiB, then retry.",
   "companionImport.title": "Import complete companion",
   "companionImport.progress": "Validating images and actions, then installing the companion. Large packs may take a while.",
-  "companionImport.cancelled": "Import cancelled. Your previous companion remains available."
+  "companionImport.cancelled": "Import cancelled. Your previous companion remains available.",
+  "companions.behavior.stumbleHint": "After dragging and releasing, there is a 40% chance of stumbling, with a 10-second cooldown. This requires the current appearance to provide the action.",
+  "companions.guide.downloadDetail": "Select a companion to view their introduction. Click Download / Update All to prepare resources in the background while continuing setup. Installed resources remain usable.",
+  "companions.package.metadataConflict": "Installed resources were retained. Remote character pack metadata is inconsistent; please try again later."
 }

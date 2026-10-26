@@ -90,7 +90,7 @@ namespace Dafeiyu
                 var item=OfficialJson.Object(raw);string id=OfficialJson.Text(item,"id",48);OfficialCompanionRules.Id(id);
                 string name=OfficialJson.Text(item,"name",80),version=OfficialCompanionRules.Version(OfficialJson.Text(item,"version",64)),minimum=OfficialCompanionRules.Version(OfficialJson.Text(item,"min_app_version",64));
                 string filename=OfficialJson.Text(item,"asset_name",150),hash=OfficialJson.Text(item,"sha256",64);long size=OfficialJson.Integer(item,"size");
-                if(filename!="DeskPet-Companion-"+id+"-"+version+".zip"||!OfficialCompanionRules.Hash(hash)||size<=0||size>OfficialCompanionRules.MaximumPackage)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeB"));
+                if(!OfficialCompanionRules.PackageName(filename,id,version,release.Tag)||!OfficialCompanionRules.Hash(hash)||size<=0||size>OfficialCompanionRules.MaximumPackage)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeB"));
                 var matching=release.Assets.Where(a=>StringValue(a,"name")==filename).ToArray();long actualSize;string actualHash;
                 if(matching.Length!=1||!AssetIdentity(release,matching[0],filename,OfficialCompanionRules.MaximumPackage,out actualSize,out actualHash)||size!=actualSize||hash!=actualHash)throw new InvalidDataException(TextResources.Get("officialCompanionFeed.readIndex.text.alternativeC"));
                 var outfits=new List<OfficialCompanionOutfit>();var seen=new HashSet<string>(StringComparer.Ordinal);

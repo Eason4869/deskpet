@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "payload_algorithm": "official-payload-v1",
+  "companions": {
+    "e-bao": {
+      "pack_version": "0.11.0-dev.3",
+      "min_app_version": "0.11.0-dev.3",
+      "payload_sha256": "f9b67c558ede0410fd65e8cf8962c13e8e29853eac81c61080d38fd3fcfc8e18"
+    },
+    "dafeiyu": {
+      "pack_version": "0.11.0-dev.3",
+      "min_app_version": "0.11.0-dev.3",
+      "payload_sha256": "f2149f79f7c55adfd96468eda9b2a189ba06362f5521433506e13a2475db907b"
+    },
+    "marfu": {
+      "pack_version": "0.11.0-dev.3",
+      "min_app_version": "0.11.0-dev.3",
+      "payload_sha256": "1eedffd23df248c41d94be0ee64c879f7fd3742a434ea6a9d171041a78b3bb21"
+    },
+    "xiaobei": {
+      "pack_version": "0.11.0-dev.3",
+      "min_app_version": "0.11.0-dev.3",
+      "payload_sha256": "9ffbabc9f89d1931d2e61b1c1573e8d8af29b58cb2b1dcee19338fa4370efe20"
+    },
+    "gugugaga": {
+      "pack_version": "0.11.0-dev.3",
+      "min_app_version": "0.11.0-dev.3",
+      "payload_sha256": "fe6c7366e5b578df4cca23a4e921263f460f1724af9d643dd14f7d9f9ec635f4"
+    }
+  }
+}

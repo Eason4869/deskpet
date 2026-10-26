@@ -4690,5 +4690,8 @@
   "companionImport.space": "空き容量が不足しています。展開用領域、新しいインストール先、追加64 MiBを確保してください。",
   "companionImport.title": "完全なキャラクターパックを読み込む",
   "companionImport.progress": "画像と動作を検証してインストールしています。大きなパックには時間がかかります。",
-  "companionImport.cancelled": "読み込みを中止しました。以前のキャラクターは引き続き使用できます。"
+  "companionImport.cancelled": "読み込みを中止しました。以前のキャラクターは引き続き使用できます。",
+  "companions.behavior.stumbleHint": "ドラッグして離すと40%の確率でよろめき、発動後は10秒間待機します。現在の外見にこの動作がある場合のみ有効です。",
+  "companions.guide.downloadDetail": "仲間を選ぶと紹介を表示します。「すべてダウンロード／更新」を押すと素材をバックグラウンドで準備し、設定を続けられます。インストール済み素材は引き続き使えます。",
+  "companions.package.metadataConflict": "インストール済み素材は保持されました。配信元のキャラクターパック情報に不整合があります。後で再試行してください。"
 }

@@ -26,7 +26,7 @@ internal sealed class GuideWindow : Window
     private static (string Title, string Detail, string Section)[] LegacySteps => new (string Title, string Detail, string Section)[]
     {
         (TextResources.Get("guideWindow.steps.steps"), TextResources.Get("guideWindow.steps.steps.alternativeA"), "partner"),
-        (TextResources.Get("guideWindow.steps.steps.alternativeB"), TextResources.Get("guideWindow.steps.steps.alternativeC"), "partner"),
+        (TextResources.Get("guideWindow.steps.steps.alternativeB"), TextResources.Get("companions.guide.downloadDetail"), "partner"),
         (TextResources.Get("guideWindow.steps.steps.alternativeD"), TextResources.Get("guideWindow.steps.steps.alternativeE"), "behavior"),
         (TextResources.Get("guideWindow.steps.steps.alternativeF"), TextResources.Get("guideWindow.steps.steps.alternativeG"), "behavior"),
         (TextResources.Get("guideWindow.steps.steps.alternativeH"), TextResources.Get("guideWindow.steps.steps.alternativeI"), "text"),

@@ -4690,5 +4690,8 @@
   "companionImport.space": "Ruang disk tidak cukup. Sediakan ruang untuk ekstraksi, salinan instalasi baru, dan tambahan 64 MiB.",
   "companionImport.title": "Impor paket pendamping lengkap",
   "companionImport.progress": "Memvalidasi gambar dan gerakan, lalu memasang pendamping. Paket besar memerlukan waktu.",
-  "companionImport.cancelled": "Impor dibatalkan. Pendamping sebelumnya tetap tersedia."
+  "companionImport.cancelled": "Impor dibatalkan. Pendamping sebelumnya tetap tersedia.",
+  "companions.behavior.stumbleHint": "Setelah diseret dan dilepas, ada peluang 40% untuk tersandung dengan jeda 10 detik. Penampilan saat ini harus menyediakan aksi tersebut.",
+  "companions.guide.downloadDetail": "Pilih teman untuk melihat pengantarnya. Klik Unduh / Perbarui Semua untuk menyiapkan sumber daya di latar belakang sambil melanjutkan pengaturan. Sumber daya terpasang tetap dapat digunakan.",
+  "companions.package.metadataConflict": "Sumber daya terpasang dipertahankan. Metadata paket karakter jarak jauh tidak konsisten; coba lagi nanti."
 }

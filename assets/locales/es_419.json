@@ -4690,5 +4690,8 @@
   "companionImport.space": "No hay espacio suficiente. Reserva espacio para extraer, instalar una copia nueva y otros 64 MiB.",
   "companionImport.title": "Importar compañero completo",
   "companionImport.progress": "Validando imágenes y movimientos e instalando el compañero. Los paquetes grandes pueden tardar.",
-  "companionImport.cancelled": "Importación cancelada. Tu compañero anterior sigue disponible."
+  "companionImport.cancelled": "Importación cancelada. Tu compañero anterior sigue disponible.",
+  "companions.behavior.stumbleHint": "Después de arrastrar y soltar, hay un 40% de probabilidad de tropezar, con una espera de 10 segundos. La apariencia actual debe incluir esta acción.",
+  "companions.guide.downloadDetail": "Selecciona un compañero para ver su presentación. Pulsa Descargar / Actualizar todo para preparar los recursos en segundo plano y seguir con la configuración. Los recursos instalados siguen disponibles.",
+  "companions.package.metadataConflict": "Se conservaron los recursos instalados. Los metadatos del paquete remoto son inconsistentes; inténtalo más tarde."
 }
