@@ -89,7 +89,7 @@ namespace Dafeiyu
                     if(archive.Entries.Count>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text"));
                     long total=0;var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach(var entry in archive.Entries) {
-                        cancel.ThrowIfCancellationRequested();string relative=entry.FullName;
+                        cancel.ThrowIfCancellationRequested();string relative=entry.FullName.Replace('\\','/');
                         bool directory=relative.EndsWith("/");if(directory)relative=relative.Substring(0,relative.Length-1);
                         string target=AssetPath(stage,relative);
                         if(!names.Add(relative) || ((entry.ExternalAttributes>>16)&0xF000)==0xA000 || (entry.ExternalAttributes&0x400)!=0)throw new InvalidDataException(TextResources.Get("companionPackStorage.readZip.text.alternativeA"));

@@ -38,6 +38,17 @@ namespace Dafeiyu.Tests
                     File.Delete(Path.Combine(root,"unreferenced.png"));
                     File.Delete(Path.Combine(root,"gaze.png"));
                     Reject(()=>CompanionPackageInventory.Read(root,CancellationToken.None),"missing referenced file");
+                    string zip=Path.Combine(root,"legacy.zip");
+                    using(var output=File.Create(zip))using(var archive=new System.IO.Compression.ZipArchive(output,System.IO.Compression.ZipArchiveMode.Create)) {
+                        using(var writer=new StreamWriter(archive.CreateEntry("pet.json").Open()))writer.Write("{}");
+                        using(var writer=new StreamWriter(archive.CreateEntry("animations\\idle.png").Open()))writer.Write("legacy");
+                    }
+                    Check(CompanionPackStorage.ReadZip(zip,Path.Combine(root,"data"),path=>File.Exists(Path.Combine(Path.GetDirectoryName(path),"animations","idle.png"))),"Windows Framework ZIP separators remain compatible");
+                    string aliases=Path.Combine(root,"aliases.zip");
+                    using(var output=File.Create(aliases))using(var archive=new System.IO.Compression.ZipArchive(output,System.IO.Compression.ZipArchiveMode.Create)) {
+                        archive.CreateEntry("a\\b.png");archive.CreateEntry("a/b.png");
+                    }
+                    Reject(()=>CompanionPackStorage.ReadZip(aliases,Path.Combine(root,"data"),path=>true),"normalized ZIP aliases still rejected");
                 } finally {Directory.Delete(root,true);}
                 if(args.Length==2&&args[0]=="--materials")foreach(string id in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}) {
                     var inventory=CompanionPackageInventory.Read(Path.Combine(args[1],id),CancellationToken.None);
