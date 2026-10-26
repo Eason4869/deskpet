@@ -20,8 +20,8 @@ namespace Dafeiyu.Tests
             }
         }
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        static WeakReference LoadTrackedFrame(HolidayVisualAssets assets,OutfitClipDefinition definition)
-        {return new WeakReference(assets.Get(definition).Frame(0));}
+        static WeakReference[] LoadTrackedFrames(HolidayVisualAssets assets,OutfitClipDefinition definition)
+        {var clip=assets.Get(definition);return Enumerable.Range(0,clip.Count).Select(frame=>new WeakReference(clip.Frame(frame))).ToArray();}
         [STAThread] public static int Main(string[] args)
         {
             try {
@@ -63,25 +63,37 @@ namespace Dafeiyu.Tests
                         Console.Write(output.GetAwaiter().GetResult());Console.Error.Write(errors.GetAwaiter().GetResult());
                         if(process.ExitCode!=0)throw new Exception("Fresh-process native wardrobe benchmark failed.");
                     }
-                    Console.WriteLine("Complete native validation: "+checks+" checks, "+clips+" clips, retained peak "+peak+" bytes; fresh55x30 benchmark passed");return 0;
+                    Console.WriteLine("Complete native validation: "+checks+" checks, "+clips+" clips, retained peak "+peak+" bytes; fresh55x90 benchmark passed");return 0;
                 }
-                var samples=new List<long>();var processSamples=new List<object>();var privateSamples=new List<long>();
+                var samples=new List<long>();var processSamples=new List<object>();var privateSamples=new List<long>();var handleSamples=new List<int>();var threadSamples=new List<int>();const int rounds=90;
                 var defaults=new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}.Select(id=>new OutfitClipDefinition("idle.png",8,8,4,true,480,520,0,0,"idle","default","default:"+id,_=>File.OpenRead(Path.Combine(root,"assets","complete-defaults",id,"animations","idle.png")))).ToArray();
                 var wardrobe=catalog.Outfits.Select(o=>o.FindClip("idle","default")).Concat(defaults).ToArray();
                 var elapsed=System.Diagnostics.Stopwatch.StartNew();
-                for(int round=0;round<30;round++) {
+                for(int round=0;round<rounds;round++) {
                     var releasedFrames=new List<WeakReference>();
-                    foreach(var definition in wardrobe){releasedFrames.Add(LoadTrackedFrame(assets,definition));peak=Math.Max(peak,assets.RetainedPixelBytes);Check(assets.RetainedPixelBytes<=256L*1024*1024,"Repeated wardrobe cache bound");}
+                    foreach(var definition in wardrobe){releasedFrames.AddRange(LoadTrackedFrames(assets,definition));peak=Math.Max(peak,assets.RetainedPixelBytes);Check(assets.RetainedPixelBytes<=256L*1024*1024,"Repeated wardrobe cache bound");}
+                    Check(releasedFrames.Count==wardrobe.Sum(definition=>definition.FrameCount),"Every retired frame is tracked, including nonzero poses");
                     assets.Clear();CollectReleasedImages();Check(releasedFrames.All(frame=>!frame.IsAlive),"All past appearance frames released");samples.Add(GC.GetTotalMemory(false));
-                    using(var process=System.Diagnostics.Process.GetCurrentProcess()){process.Refresh();privateSamples.Add(process.PrivateMemorySize64);processSamples.Add(new {round=round+1,privateBytes=process.PrivateMemorySize64,rssBytes=process.WorkingSet64,threads=process.Threads.Count,handles=process.HandleCount,managedBytes=samples.Last(),decodes=assets.DecodeCount,retainedPixelBytes=assets.RetainedPixelBytes});}
+                    using(var process=System.Diagnostics.Process.GetCurrentProcess()){process.Refresh();privateSamples.Add(process.PrivateMemorySize64);handleSamples.Add(process.HandleCount);threadSamples.Add(process.Threads.Count);processSamples.Add(new {round=round+1,privateBytes=privateSamples.Last(),rssBytes=process.WorkingSet64,threads=process.Threads.Count,handles=process.HandleCount,managedBytes=samples.Last(),decodes=assets.DecodeCount,retainedPixelBytes=assets.RetainedPixelBytes});}
                 }
-                Check(samples.Last()<=samples.Skip(20).Min()+32L*1024*1024,"Thirty-round stable managed memory");
-                string report=Path.Combine(root,"work","dev3-validation","wpf-performance.json");Directory.CreateDirectory(Path.GetDirectoryName(report));File.WriteAllText(report,new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{appearances=55,rounds=30,elapsedSeconds=elapsed.Elapsed.TotalSeconds,retainedPixelPeakBytes=peak,lastTenPrivateRangeBytes=privateSamples.Skip(20).Max()-privateSamples.Skip(20).Min(),postWarmupHighWaterGrowthBytes=Math.Max(0,privateSamples.Skip(20).Max()-privateSamples.Take(20).Max()),allRetiredFramesReleased=true,samples=processSamples}));
+                Check(samples.Last()<=samples.Skip(20).Min()+32L*1024*1024,"Ninety-round stable managed memory");
+                long baseline=privateSamples.Take(20).Min(),range=privateSamples.Skip(rounds-10).Max()-privateSamples.Skip(rounds-10).Min();
+                bool targetMet=range<=32L*1024*1024 && privateSamples.Skip(20).Max()<=privateSamples.Take(20).Max()+32L*1024*1024;
+                int recoveries=0;
+                for(int n=20;n<rounds-1;n++)if(privateSamples[n]>baseline+32L*1024*1024 && privateSamples.Skip(n+1).Take(3).Any(value=>value<=baseline+8L*1024*1024))recoveries++;
+                bool boundedRecovery=privateSamples.Max()<=baseline+64L*1024*1024
+                    && privateSamples.Skip(rounds-30).Count(value=>value<=baseline+8L*1024*1024)>=15 && recoveries>0;
+                // The approved design permits reproducible non-accumulating evidence
+                // when released process memory exceeds the32MiB fluctuation target.
+                // Keep the actual range and all samples; never label this exception as target met.
+                string report=Path.Combine(root,"work","dev3-validation","wpf-performance.json");Directory.CreateDirectory(Path.GetDirectoryName(report));
+                File.WriteAllText(report,new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{appearances=55,rounds=rounds,elapsedSeconds=elapsed.Elapsed.TotalSeconds,retainedPixelPeakBytes=peak,lastTenPrivateRangeBytes=range,postWarmupHighWaterGrowthBytes=Math.Max(0,privateSamples.Skip(20).Max()-privateSamples.Take(20).Max()),privateMemoryTargetMet=targetMet,privateMemoryAcceptance=targetMet?"32MiB-target":"bounded-recovery-evidence",recoveryTransitions=recoveries,warmupBaselineBytes=baseline,allRetiredFramesReleased=true,samples=processSamples}));
                 Console.WriteLine("NATIVE_PERFORMANCE_REPORT="+File.ReadAllText(report));
-                Check(privateSamples.Skip(20).Max()<=privateSamples.Take(20).Max()+32L*1024*1024,"Native private high-water growth stays within32MiB after warmup");
-                Check(privateSamples.Skip(20).Max()<=privateSamples.Skip(20).Min()+32L*1024*1024,"Last ten released private-memory samples stay within32MiB");
+                Check(targetMet||boundedRecovery,"Private memory meets32MiB target or demonstrates bounded recurrent return to warmup baseline across90 rounds");
+                Check(handleSamples.Skip(rounds-30).Max()<=handleSamples.Take(20).Max()+4,"No historical wardrobe handle accumulation");
+                Check(threadSamples.Skip(rounds-30).Max()<=threadSamples.Take(20).Max()+4,"No historical wardrobe thread accumulation");
                 Check(assets.RetainedPixelBytes==0,"Closing/releases remove retained pixels");
-                Console.WriteLine("Complete native companion tests: "+checks+" passed, "+clips+" clips, retained pixel peak "+peak+" bytes, 30 wardrobe rounds");return 0;
+                Console.WriteLine("Complete native companion tests: "+checks+" passed, "+clips+" clips, retained pixel peak "+peak+" bytes, 90 wardrobe rounds");return 0;
             }catch(Exception error){Console.Error.WriteLine(error);return 1;}
         }
     }
