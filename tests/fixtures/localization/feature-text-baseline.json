@@ -92,6 +92,12 @@
       "argument_count": 1
     },
     {
+      "key": "composerDraft.storageError",
+      "expected": "草稿保存失败，当前文字仍保留在窗口中。请检查数据目录权限或磁盘空间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "dataMaintenance.busy",
       "expected": "当前有任务或数据维护正在进行。请结束发送、录音、Live 通话及排队任务后重试。",
       "format": false,
