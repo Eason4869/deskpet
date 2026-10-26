@@ -44,10 +44,9 @@ namespace Dafeiyu
         public Func<string,OutfitClipDefinition> ClipOverride {get;set;}
         public void RefreshClip()
         {
-            double oldCycle=activeClip==null?0:activeClip.FrameCount/activeClip.Fps;
-            double phase=oldCycle>0?elapsed/oldCycle:0;
+            double previousElapsed=elapsed;
             string state=State;double requested=requestedDuration;Play(state,requested);
-            if(oldCycle>0 && activeClip!=null)elapsed=phase*activeClip.FrameCount/activeClip.Fps;
+            elapsed=previousElapsed;
         }
         public double Elapsed {get{return elapsed;}}
         private readonly double runningFramePeriod;
