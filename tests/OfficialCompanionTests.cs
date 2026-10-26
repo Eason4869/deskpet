@@ -13,10 +13,48 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
+        public static int OptimizationOnly()
+        {
+            try{SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();Console.WriteLine("Official optimization tests: "+passed+" passed");return 0;}
+            catch(Exception error){Console.WriteLine("FAIL Official optimization: "+error);return 1;}
+        }
+        static void SingleVerifiedRead()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                Revision(new OfficialCompanionStorage(fixture.Root),fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    var clock=System.Diagnostics.Stopwatch.StartNew();var current=service.Installed("dafeiyu");long count=service.Storage.VerificationCount;
+                    Check(current!=null&&count==1,"managed offline query fully verifies once; reads="+count+" elapsedMs="+clock.ElapsedMilliseconds);
+                    File.AppendAllText(current.PetManifestPath," ");Check(service.Installed("dafeiyu")==null,"single-pass verification still rejects subsequently tampered material");
+                }
+            }
+        }
+        static async Task AutomaticHistorySweep()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);var second=Revision(store,fixture,2);var third=Revision(store,fixture,3);
+                string update=Path.Combine(fixture.Root,"updates",Guid.NewGuid().ToString("N"));using(Maintenance.CacheResourceLease.Acquire(fixture.Root,update))File.WriteAllBytes(Path.Combine(update,"keep.zip"),new byte[64]);
+                string tag="companions-v0.10.4-dev.4",name=OfficialCompanionFixture.PackageName("dafeiyu");fixture.Files[name]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{4});
+                fixture.Intercept=(r,c)=>Task.FromResult(r.RequestUri.Host=="api.github.com"?OfficialCompanionFixture.Response(OfficialCompanionFixture.Json(new[]{fixture.Release(tag,fixture.Index())})):null);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    service.UtcNow=()=>DateTime.UtcNow.AddDays(8);var fourth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var sweep=await service.HistoryMaintenance;
+                    Check(fourth.InstalledNow&&sweep.DeletedItems==2&&!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory),"successful install automatically reclaims expired unused managed history");
+                    Check(Directory.Exists(third.RootDirectory)&&Directory.Exists(fourth.Installation.RootDirectory)&&Directory.Exists(update),"automatic sweep retains recovery active resources and unrelated update caches");
+                    string summary=Path.Combine(fixture.Root,"cache-maintenance","last-companion-history.json");Check(File.Exists(summary),"automatic maintenance retains a numeric diagnostic summary");
+                    string savedSummary=summary+".saved";File.Move(summary,savedSummary);Directory.CreateDirectory(summary);
+                    try{
+                        tag="companions-v0.10.4-dev.5";fixture.Files[name]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{5});
+                        var fifth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var failed=await service.HistoryMaintenance;
+                        Check(fifth.InstalledNow&&failed.FailedItems>0&&service.Installed("dafeiyu").RootDirectory==fifth.Installation.RootDirectory,"maintenance reporting failure cannot turn a committed update into failure");
+                    }finally{Directory.Delete(summary);File.Move(savedSummary,summary);}
+                    using(var cancel=new CancellationTokenSource()){cancel.Cancel();var cancelled=Maintenance.OfficialCompanionMaintenance.MaintainHistory(fixture.Root,DateTime.UtcNow.AddDays(8),cancel.Token);Check(cancelled.SkippedItems>0&&service.Installed("dafeiyu")!=null,"cancelled history maintenance leaves current material usable");}
+                }
+            }
+        }
         public static int MaintenanceOnly()
         {
             try{ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();Console.WriteLine("Official maintenance tests: "+passed+" passed");return 0;}

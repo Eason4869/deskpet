@@ -13,6 +13,22 @@ namespace Dafeiyu.Maintenance
     // Their lazy readers can never select a managed root; legacy v-* is never adopted.
     internal static class OfficialCompanionMaintenance
     {
+        internal static CacheCleanResult MaintainHistory(string dataRoot,DateTime now,CancellationToken cancel)
+        {
+            CacheCleanResult result;int protectedItems=0;
+            try{
+                cancel.ThrowIfCancellationRequested();var service=new CacheMaintenanceService(dataRoot);
+                var scan=service.ScanPackHistory(now,cancel);protectedItems=scan.ProtectedItems;
+                cancel.ThrowIfCancellationRequested();result=service.Clean(scan,now,cancel);result.FailedItems+=scan.FailedItems;
+            }catch(OperationCanceledException){result=new CacheCleanResult{SkippedItems=1};}
+            catch(Exception){Trace.TraceWarning("Official companion history maintenance could not complete.");result=new CacheCleanResult{FailedItems=1};}
+            if(!cancel.IsCancellationRequested)try{
+                CachePaths.Check(dataRoot);if(!Directory.Exists(dataRoot))throw new IOException("Data root is unavailable.");
+                string registry=OfficialCompanionStorage.SafePath(dataRoot,"cache-maintenance");Directory.CreateDirectory(registry);
+                Write(registry,"last-companion-history.json",new{schema_version=1,checked_utc_ticks=now.Ticks,finished_utc_ticks=DateTime.UtcNow.Ticks,freed_bytes=result.FreedBytes,deleted_items=result.DeletedItems,skipped_items=result.SkippedItems,failed_items=result.FailedItems,protected_items=protectedItems});
+            }catch(Exception){result.FailedItems++;Trace.TraceWarning("Official companion history summary could not be written.");}
+            return result;
+        }
         sealed class VersionRecord { internal string Name,Identity;internal long Retired; }
         sealed class State
         {
@@ -104,15 +120,16 @@ namespace Dafeiyu.Maintenance
             CacheResourceLease.RegisterInstalled(Path.GetDirectoryName(store.Root),destination);
             File.Delete(path);
         }
-        internal static string RetirementProof(string dataRoot,string directory,DateTime now)
+        internal static string RetirementProof(string dataRoot,string directory,DateTime now,CancellationToken cancel)
         {
+            cancel.ThrowIfCancellationRequested();
             if(!Managed(Path.GetFileName(directory)))return null;
             string role=Path.GetDirectoryName(directory),transaction=PathFor(role,"version-transaction.json");if(File.Exists(transaction))return null;
             var state=Read(role);string current=Pointer(role),name=Path.GetFileName(directory);VersionRecord record;
             if(current.Length==0||state.Current!=current||name==current||name==state.Previous||!state.Versions.TryGetValue(name,out record)||record.Retired==0||record.Retired>now.AddDays(-7).Ticks||record.Identity!=CachePaths.Identity(directory))return null;
             var store=new OfficialCompanionStorage(dataRoot);string id=Path.GetFileName(role);
             // If recovery resources are damaged, older material may be the only usable copy.
-            if(store.Installed(id)==null||state.Previous.Length!=0&&store.ReadVersion(PathFor(role,state.Previous),id,null)==null||store.ReadVersion(directory,id,null)==null)return null;
+            if(store.InstalledCancelable(id,cancel)==null||state.Previous.Length!=0&&store.ReadVersionCancelable(PathFor(role,state.Previous),id,null,cancel)==null||store.ReadVersionCancelable(directory,id,null,cancel)==null)return null;
             return OfficialCompanionStorage.HashFile(PathFor(role,"versions.json"))+"|"+current+"|"+record.Identity;
         }
     }

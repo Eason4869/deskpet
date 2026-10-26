@@ -14,6 +14,7 @@ namespace Dafeiyu.Tests
         public static int Main(string[] args)
         {
             if(args.Length==1&&args[0]=="--official-maintenance-only")return OfficialCompanionTests.MaintenanceOnly();
+            if(args.Length==1&&args[0]=="--official-optimization-only")return OfficialCompanionTests.OptimizationOnly();
             if(args.Length==1&&args[0]=="--dev3-features-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ComposerDraftStoreTests.Main() | SeasonalKeepsakeTests.Main();}
             if(args.Length==1&&args[0]=="--seasonal-integration-only")return SeasonalIntegrationTests.Main();
             if(args.Length>0&&args[0]=="--complete-companion-only")return CompleteCompanionTests.Main(args.Skip(1).ToArray());

@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.1-dev.3 — Source tag (no Release)
+
+- Schedule protected managed-history cleanup after successful installation, with the same seven-day grace, integrity and reader safeguards as manual maintenance. Update/download caches are excluded.
+- Support cancellation and bounded shutdown. Maintenance/reporting failures never change committed installation success; unverifiable legacy or partial leftovers remain protected.
+- Verify managed offline queries once instead of twice, retaining full per-file verification under the lifecycle lock and a read lease. Later tampering is still rejected.
+- Refresh intentional catalog byte snapshots and check them early in Windows/macOS CI while preserving independent historical translation evidence.
+
 ## 0.11.1-dev.2 — Source tag (no Release)
 
 - Add transactional current/recovery-version publication and interrupted-state recovery. Maintenance errors do not hide verified installed resources.
