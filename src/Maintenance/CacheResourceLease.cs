@@ -46,18 +46,6 @@ namespace Dafeiyu.Maintenance
             string key=Key(Path.Combine(root,"cache-maintenance"),path);CachePaths.Check(key+".lock");
             return new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None);
         }
-        internal static void RegisterInstalled(string dataRoot,string resourceDirectory)
-        {
-            string root=CachePaths.Normalize(dataRoot),path=CachePaths.Normalize(resourceDirectory);
-            if(CachePaths.Category(root,path)!="pack-versions"||!OfficialCompanionMaintenance.Managed(Path.GetFileName(path)))throw new IOException("Not a managed installation.");
-            CachePaths.Check(root);CachePaths.Check(path);if(!Directory.Exists(path))throw new IOException("Published root missing.");
-            string registry=Path.Combine(root,"cache-maintenance");CachePaths.Check(registry);Directory.CreateDirectory(registry);
-            string key=Key(registry,path);CachePaths.Check(key+".lock");CachePaths.Check(key+".owner");
-            using(var handle=new FileStream(key+".lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite)){
-                if(File.Exists(key+".owner")&&!Registered(root,path))throw new IOException("Managed root identity changed.");
-                if(!File.Exists(key+".owner"))File.WriteAllText(key+".owner","DeskPet-cache-1\n"+path+"\n"+CachePaths.Identity(path),new UTF8Encoding(false));
-            }
-        }
         internal static bool Registered(string root,string path)
         {
             string record=Key(Path.Combine(root,"cache-maintenance"),path)+".owner";CachePaths.Check(record);
