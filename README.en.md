@@ -1,6 +1,8 @@
 [简体中文](README.md) | [English](README.en.md)
 
-Source development: 0.11.0-dev.3 integrates complete companion wardrobes, holiday keepsakes, durable new-chat drafts and shortcut key recording on top of the 0.11.0-dev.2 live language switching. No corresponding binary Release is published; download links below still refer to published versions.
+> `0.11.1-dev.x` is a staged source-only maintenance series on dev. These tags do not create Releases. It separates material versions, adds protected pack-history maintenance and corrects UI copy; see the [implementation record](docs/plans/2026-10-27-pack-ui-cleanup.md). Downloadable releases remain those listed on the release page.
+
+This series builds on 0.11.0-dev.3 and retains its complete companion wardrobes, holiday keepsakes, durable new-chat drafts and shortcut key recording on top of the 0.11.0-dev.2 live language switching. No corresponding binary Release is published; download links below still refer to published versions.
 
 <div align="center">
   <picture>

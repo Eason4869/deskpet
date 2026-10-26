@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "가져오기를 취소했습니다. 이전 캐릭터는 계속 사용할 수 있습니다.",
   "companions.behavior.stumbleHint": "실제로 드래그한 뒤 놓으면 40% 확률로 비틀거리며, 발동 후 대기 시간은 10초입니다. 현재 외형이 해당 동작을 제공할 때만 적용됩니다.",
   "companions.guide.downloadDetail": "친구를 선택하면 소개를 볼 수 있습니다. 모두 다운로드／업데이트를 누르면 백그라운드에서 리소스를 준비하며 설정을 계속할 수 있습니다. 설치된 리소스는 계속 사용할 수 있습니다.",
-  "companions.package.metadataConflict": "설치된 리소스는 유지되었습니다. 원격 캐릭터 팩 정보가 일치하지 않습니다. 나중에 다시 시도하세요."
+  "companions.package.metadataConflict": "설치된 리소스는 유지되었습니다. 원격 캐릭터 팩 정보가 일치하지 않습니다. 나중에 다시 시도하세요.",
+  "cache.packVersionCategory": "캐릭터 팩 이전 버전",
+  "cache.preservedPackVersions": "채팅, 설정, 첨부 파일, 관계 및 프로젝트를 유지합니다. 현재 팩과 복구용 이전 버전 하나, 사용 중이거나 상태가 불확실한 리소스를 보관합니다. 이전 형식의 사본도 보호합니다. 퇴역 후 7일이 지난 확인된 이전 버전과 만료된 캐시만 정리합니다.",
+  "companions.removeFromList": "목록에서 제거"
 }

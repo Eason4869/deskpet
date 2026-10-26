@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "読み込みを中止しました。以前のキャラクターは引き続き使用できます。",
   "companions.behavior.stumbleHint": "ドラッグして離すと40%の確率でよろめき、発動後は10秒間待機します。現在の外見にこの動作がある場合のみ有効です。",
   "companions.guide.downloadDetail": "仲間を選ぶと紹介を表示します。「すべてダウンロード／更新」を押すと素材をバックグラウンドで準備し、設定を続けられます。インストール済み素材は引き続き使えます。",
-  "companions.package.metadataConflict": "インストール済み素材は保持されました。配信元のキャラクターパック情報に不整合があります。後で再試行してください。"
+  "companions.package.metadataConflict": "インストール済み素材は保持されました。配信元のキャラクターパック情報に不整合があります。後で再試行してください。",
+  "cache.packVersionCategory": "キャラクターパックの履歴",
+  "cache.preservedPackVersions": "チャット、設定、添付、関係、プロジェクトを保持します。現在のパックと復旧用の前バージョン、使用中または状態不明の素材を残します。旧形式のコピーも保護します。退役から7日を超えた確認済み履歴と期限切れキャッシュのみ削除します。",
+  "companions.removeFromList": "一覧から外す"
 }

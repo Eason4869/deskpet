@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "Importación cancelada. Tu compañero anterior sigue disponible.",
   "companions.behavior.stumbleHint": "Tras arrastrar y soltar, hay un 40% de probabilidad de tropezar, con una espera de 10 segundos. La apariencia actual debe incluir esta acción.",
   "companions.guide.downloadDetail": "Selecciona un compañero para ver su presentación. Pulsa Descargar / Actualizar todo para preparar los recursos en segundo plano y continuar la configuración. Los recursos instalados siguen disponibles.",
-  "companions.package.metadataConflict": "Se han conservado los recursos instalados. Los metadatos del paquete remoto son incoherentes; vuelve a intentarlo más tarde."
+  "companions.package.metadataConflict": "Se han conservado los recursos instalados. Los metadatos del paquete remoto son incoherentes; vuelve a intentarlo más tarde.",
+  "cache.packVersionCategory": "Historial de paquetes",
+  "cache.preservedPackVersions": "Se conservan chats, ajustes, adjuntos, relaciones y proyectos. Los paquetes mantienen la versión actual, una versión de recuperación y los recursos en uso o con estado desconocido. Las copias de formato antiguo siguen protegidas. Solo se eliminan versiones verificadas retiradas hace más de siete días y cachés caducadas.",
+  "companions.removeFromList": "Quitar de la lista"
 }

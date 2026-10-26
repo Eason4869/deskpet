@@ -13,12 +13,86 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
+        public static int MaintenanceOnly()
+        {
+            try{ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();Console.WriteLine("Official maintenance tests: "+passed+" passed");return 0;}
+            catch(Exception error){Console.WriteLine("FAIL Official maintenance: "+error);return 1;}
+        }
         static void Check(bool result,string name){if(!result)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
         static readonly OfficialDownloadRouting Direct=new OfficialDownloadRouting(false,"",false,"");
+        static void ReaderLockContention()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                var store=new OfficialCompanionStorage(fixture.Root);var current=Revision(store,fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    Task<bool> lockWait;bool lockBlocked;using(var entered=new ManualResetEventSlim()){
+                        using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu"))){lockWait=Task.Factory.StartNew(()=>{entered.Set();using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu")))return true;},CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);entered.Wait();lockBlocked=Task.WhenAny(lockWait,Task.Delay(200)).GetAwaiter().GetResult()!=lockWait;}
+                    }
+                    Check(lockBlocked,"publication lock contention waits instead of throwing sharing violations");Check(Timeout(lockWait).GetAwaiter().GetResult(),"waiting lifecycle lock completes after holder exits");
+                    Task<OfficialCompanionInstallation> pending;bool waited;
+                    using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu"))){pending=Task.Run(()=>service.Installed("dafeiyu"));Thread.Sleep(100);waited=!pending.IsCompleted;}
+                    Check(waited,"offline reader waits for concurrent publication instead of failing");
+                    Check(Timeout(pending).GetAwaiter().GetResult().RootDirectory==current.RootDirectory,"reader revalidates and leases current after publication lock release");
+                }
+            }
+        }
+        static void CommittedPointerOutcome()
+        {
+            using(var fixture=new OfficialCompanionFixture()){
+                var store=new OfficialCompanionStorage(fixture.Root);
+                store.Commit=(from,to)=>{AtomicFile.Commit(from,to);throw new IOException("fixture failure after atomic commit");};
+                var published=Revision(store,fixture,1);
+                Check(store.Installed("dafeiyu").RootDirectory==published.RootDirectory,"verified committed pointer wins over an ambiguous post-commit error");
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                var store=new OfficialCompanionStorage(fixture.Root);
+                store.Commit=(from,to)=>{AtomicFile.Commit(from,to);File.WriteAllText(Path.Combine(Path.GetDirectoryName(to),"version-transaction.json"),"{\"schema_version\":99}");};
+                var published=Revision(store,fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0)))
+                    Check(service.Installed("dafeiyu").RootDirectory==published.RootDirectory,"maintenance recovery failure never hides a verified committed installation");
+                Check(new Maintenance.CacheMaintenanceService(fixture.Root).Scan(DateTime.UtcNow.AddDays(8)).TotalBytes==0,"unknown transaction remains protected from cleanup");
+            }
+        }
+        static OfficialCompanionInstallation Revision(OfficialCompanionStorage store,OfficialCompanionFixture fixture,int revision)
+        {
+            string id="dafeiyu",role=store.CharacterRoot(id);Directory.CreateDirectory(role);
+            string stage=Path.Combine(role,".stage-"+Guid.NewGuid().ToString("N")),zip=Path.Combine(fixture.Root,"revision.zip");
+            byte[] bytes=OfficialCompanionFixture.Package(id,files=>files["README.txt"]=new[]{(byte)revision});File.WriteAllBytes(zip,bytes);
+            var asset=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,"companions-v0.10.4-dev."+revision,OfficialCompanionFixture.PackageName(id),bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+            try{OfficialCompanionPackageValidation.Extract(zip,stage,CancellationToken.None);OfficialCompanionPackageValidation.Validate(stage,asset,CancellationToken.None);store.WriteReceipt(stage,asset,CancellationToken.None);return store.Publish(stage,asset,CancellationToken.None,()=>{},action=>action());}
+            finally{if(Directory.Exists(stage))OfficialCompanionStorage.DeleteOwned(stage);}
+        }
+        static void ManagedVersionLifecycle()
+        {
+            using(var fixture=new OfficialCompanionFixture()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);var second=Revision(store,fixture,2);
+                string role=store.CharacterRoot("dafeiyu"),pointer=Path.Combine(role,"current.txt"),state=Path.Combine(role,"versions.json");
+                Check(Path.GetFileName(first.RootDirectory).StartsWith("v2-",StringComparison.Ordinal),"managed roots use a namespace legacy readers cannot select");
+                Check(OfficialJson.Integer(OfficialJson.File(Path.Combine(first.RootDirectory,"receipt.json"),1024*1024),"schema_version")==2,"managed receipt cannot be silently adopted by old readers");
+                string previous=OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220);Check(previous==Path.GetFileName(first.RootDirectory),"second publication retains verified first version");
+                store.Commit=(a,b)=>{throw new IOException("fixture commit failure");};bool failed=false;try{Revision(store,fixture,3);}catch(IOException){failed=true;}
+                Check(failed&&store.Installed("dafeiyu").RootDirectory==second.RootDirectory&&OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220)==previous,"failed current commit preserves original previous and current");
+                store.Commit=AtomicFile.Commit;using(Maintenance.OfficialCompanionMaintenance.Lock(role))Maintenance.OfficialCompanionMaintenance.Recover(store,"dafeiyu");
+                var fourth=Revision(store,fixture,4);var service=new Maintenance.CacheMaintenanceService(fixture.Root);DateTime future=DateTime.UtcNow.AddDays(8);
+                Check(!service.Scan(DateTime.UtcNow).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"retired root has a seven-day grace period");
+                using(Maintenance.CacheResourceLease.ProtectExisting(fixture.Root,first.RootDirectory))Check(!service.Scan(future).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"active root lease prevents historical cleanup");
+                var scan=service.Scan(future);
+                Check(scan.Candidates.Count(x=>x.Category=="pack-versions")==1&&scan.Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"only retired managed history is reclaimable");
+                File.WriteAllText(pointer,Path.GetFileName(first.RootDirectory));var changed=service.Clean(scan,future);Check(changed.DeletedItems==0&&Directory.Exists(first.RootDirectory),"changed current pointer invalidates historical cleanup scan");
+                File.WriteAllText(pointer,Path.GetFileName(fourth.RootDirectory));string legacy=Path.Combine(role,"v-"+OfficialCompanionFixture.Version+"-"+new string('a',64));Directory.CreateDirectory(legacy);File.WriteAllText(Path.Combine(legacy,"unknown.png"),"legacy");
+                var result=service.Clean(service.Scan(future),future);Check(result.DeletedItems==1&&!Directory.Exists(first.RootDirectory)&&Directory.Exists(second.RootDirectory)&&Directory.Exists(fourth.RootDirectory)&&Directory.Exists(legacy),"cleanup retains current previous and all legacy readers' unknown roots");
+                string legacyCurrent=Path.Combine(role,"v-"+fourth.Asset.Version+"-"+fourth.Asset.Sha256);Directory.CreateDirectory(legacyCurrent);
+                foreach(string file in Directory.GetFiles(fourth.RootDirectory,"*",SearchOption.AllDirectories)){string target=Path.Combine(legacyCurrent,file.Substring(fourth.RootDirectory.Length+1));Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target);}
+                var legacyReceipt=OfficialJson.File(Path.Combine(legacyCurrent,"receipt.json"),1024*1024);legacyReceipt["schema_version"]=1;File.WriteAllBytes(Path.Combine(legacyCurrent,"receipt.json"),OfficialJson.Bytes(legacyReceipt));File.WriteAllText(pointer,Path.GetFileName(legacyCurrent));
+                Check(store.Installed("dafeiyu").RootDirectory==legacyCurrent,"legacy schema-one installation remains readable after old-client rollback");
+                Check(!service.Scan(future).Candidates.Any(x=>x.Category=="pack-versions"),"old-client pointer disagreement protects historical cleanup");
+                var fifth=Revision(store,fixture,5);Check(store.Installed("dafeiyu").RootDirectory==fifth.RootDirectory&&OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220)==Path.GetFileName(legacyCurrent),"new publication resumes from a verified legacy pointer without adopting legacy history");
+            }
+        }
         static void MaterialReusePolicy()
         {
             var a=new OfficialCompanionAsset("e-bao","old","0.11.0-dev.3","0.11.0-dev.3","v0.11.1-dev.1","DeskPet-Companion-e-bao-0.11.0-dev.3.zip",100,new string('a',64),new OfficialCompanionOutfit[0]);

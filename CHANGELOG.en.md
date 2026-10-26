@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.1-dev.2 — Source tag (no Release)
+
+- Add transactional current/recovery-version publication and interrupted-state recovery. Maintenance errors do not hide verified installed resources.
+- Add managed character history cleanup after seven retirement days. Protect current, recovery, active, unknown and legacy roots; legacy lazy readers cannot select managed roots.
+- Clarify cache preservation and list removal across both UIs and all 13 languages, and update current usage guidance.
+
 ## 0.11.1-dev.1 — Source tag (no Release)
 
 - Separate per-character material versions from application releases, with payload digests and independent compatibility requirements. Unchanged materials retain identical ZIP bytes.

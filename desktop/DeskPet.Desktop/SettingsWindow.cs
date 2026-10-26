@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
@@ -134,7 +134,7 @@ internal sealed class SettingsWindow : Window
         if (skin == null) return new TextBlock();
         var name = Ui.Text(()=>(skin.DisplayName)); name.VerticalAlignment = VerticalAlignment.Center; name.TextWrapping = Avalonia.Media.TextWrapping.NoWrap; name.TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis;
         var button = new Button { Name = "DeleteCompanion", Content = "×", FontSize = 20, Width = 28, Height = 28, Padding = new Thickness(0), Background = Avalonia.Media.Brushes.Transparent, Focusable = false, IsEnabled = owner.Skins.Count > 1 && skin.OfficialCharacterId != "e-bao", IsVisible = false };
-        LocalizedUi.Tooltip(button,()=>(skin.OfficialCharacterId == "e-bao" ? TextResources.Get("settingsWindow.partnerRow.toolTipSetTip") : TextResources.Get("settingsWindow.partnerRow.toolTipSetTip.alternativeA")));
+        LocalizedUi.Tooltip(button,()=>(skin.OfficialCharacterId == "e-bao" ? TextResources.Get("settingsWindow.partnerRow.toolTipSetTip") : TextResources.Get("companions.removeFromList")));
         button.AttachedToVisualTree += (_, _) => button.IsVisible = button.GetVisualAncestors().OfType<ComboBoxItem>().Any();
         button.Click += (_, e) => { e.Handled = true; choices.IsDropDownOpen = false; owner.Run(() => remove(skin)); };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("40,*,32") };
@@ -144,12 +144,12 @@ internal sealed class SettingsWindow : Window
     }
     private Task<bool> ConfirmRemoveCompanionAsync(PetSkin target)
     {
-        var dialog = LocalizedUi.Window(()=>(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.window")), Ui.Text(""), 450, 260);
+        var dialog = LocalizedUi.Window(()=>(TextResources.Get("companions.removeFromList")), Ui.Text(""), 450, 260);
         dialog.Name = "RemoveCompanionDialog"; dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         dialog.Content = new Border { Padding = new Thickness(22), Child = Ui.Column(
             LocalizedUi.Text(()=>(TextResources.Format("settingsWindow.confirmRemoveCompanionAsync.template",target.DisplayName)), 19),
             LocalizedUi.Text(()=>(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.text"))),
-            Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), () => dialog.Close(false)), LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.confirmRemoveCompanionAsync.text.alternativeA")), () => dialog.Close(true)))) };
+            Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), () => dialog.Close(false)), LocalizedUi.Button(()=>(TextResources.Get("companions.removeFromList")), () => dialog.Close(true)))) };
         return dialog.ShowDialog<bool>(this);
     }
     private Control Behavior()

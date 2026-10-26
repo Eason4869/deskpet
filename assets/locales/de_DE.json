@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "Import abgebrochen. Der bisherige Begleiter bleibt verfügbar.",
   "companions.behavior.stumbleHint": "Nach dem Ziehen und Loslassen besteht eine Stolperchance von 40 % mit 10 Sekunden Abklingzeit. Das aktuelle Aussehen muss diese Aktion anbieten.",
   "companions.guide.downloadDetail": "Wählen Sie einen Begleiter für seine Vorstellung. Mit Alle herunterladen / aktualisieren werden Ressourcen im Hintergrund vorbereitet, während die Einrichtung weitergeht. Installierte Ressourcen bleiben nutzbar.",
-  "companions.package.metadataConflict": "Installierte Ressourcen wurden beibehalten. Die Metadaten des entfernten Figurenpakets sind widersprüchlich. Bitte später erneut versuchen."
+  "companions.package.metadataConflict": "Installierte Ressourcen wurden beibehalten. Die Metadaten des entfernten Figurenpakets sind widersprüchlich. Bitte später erneut versuchen.",
+  "cache.packVersionCategory": "Figurenpaket-Verlauf",
+  "cache.preservedPackVersions": "Chats, Einstellungen, Anhänge, Beziehungen und Projekte bleiben erhalten. Figurenpakete behalten die aktuelle Version, eine Wiederherstellungsversion sowie verwendete oder unklare Ressourcen. Alte Kopien bleiben geschützt. Nur verifizierte, seit über sieben Tagen ausgemusterte Versionen und abgelaufene Caches werden entfernt.",
+  "companions.removeFromList": "Aus Liste entfernen"
 }

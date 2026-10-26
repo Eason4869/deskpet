@@ -33,5 +33,11 @@
   "imageGenerationSettings.refreshParameters.concat": "0.11.0-dev.2 uses one stable ServiceDefaultChoice identity and imageGenerationSettings.defaultChoices.text display recipe instead of duplicated translated default text; original catalog bytes retained as migration evidence.",
   "shortcutSettingsPanel.shortcutSettingsPanel.text.alternativeA": "Typed shortcut entry replaced by modal physical key capture in 0.11.0-dev.3; retained for historical resource compatibility.",
   "settingsPage.settingsPage.text.alternativeI": "Retired in 0.11.1-dev.1: replaced by capability-aware and background-preparation copy; preserved as historical translation evidence.",
-  "guideWindow.steps.steps.alternativeC": "Retired in 0.11.1-dev.1: replaced by capability-aware and background-preparation copy; preserved as historical translation evidence."
+  "guideWindow.steps.steps.alternativeC": "Retired in 0.11.1-dev.1: replaced by capability-aware and background-preparation copy; preserved as historical translation evidence.",
+  "deleteConversationDialog.deleteConversationDialog.window": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "skinCatalog.avatarTemplate.buttonSetValue": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "settingsWindow.confirmRemoveCompanionAsync.window": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "settingsWindow.confirmRemoveCompanionAsync.text.alternativeA": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "settingsWindow.partnerRow.toolTipSetTip.alternativeA": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "cache.preserved": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained."
 }

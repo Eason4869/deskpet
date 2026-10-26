@@ -40,3 +40,10 @@ Files: official storage transaction/maintenance policy, cache service and both c
 - [ ] Complete build/UI/localization regression, review, push dev and tag the final planned version; no Release.
 
 Execution is authorized by the user's request; no extra approval pause. Each phase records concrete verification and rulings in work/pack-ui-cleanup/progress.md. A safety condition that cannot be proven stays protected and is reported explicitly.
+
+
+## Implementation rulings
+
+- dev.1 shipped to dev at 803e9d9 with v0.11.1-dev.1. Two actual full builds across app release numbers produce identical five ZIP digests, all five native ZIP/install/final-root checks passed.
+- dev.2 only reclaims newly managed v2 cache generations with schema2 receipts; legacy v-* roots remain protected because old processes lack leases. Compact hash-prefix + random generation keeps path lengths comparable; complete digests stay in verified receipts. Managed readers retain leases through service disposal.
+- Publication/readers wait for the lifecycle lock with cancellation and a 90-second sharing-violation bound; maintenance scans skip busy roles. Native Windows path pinning uses extended absolute paths for nested resource trees.

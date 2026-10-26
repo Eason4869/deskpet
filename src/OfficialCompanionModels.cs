@@ -62,6 +62,7 @@ namespace Dafeiyu
     }
     internal static class OfficialCompanionRules
     {
+        internal static int CompareContent(OfficialCompanionAsset left,OfficialCompanionAsset right){int value=ReleaseVersion.Parse(left.Version).CompareTo(ReleaseVersion.Parse(right.Version));if(value!=0)return value;string a=left.Tag.StartsWith("companions-v",StringComparison.Ordinal)?left.Tag.Substring(12):left.Tag.Substring(1),b=right.Tag.StartsWith("companions-v",StringComparison.Ordinal)?right.Tag.Substring(12):right.Tag.Substring(1);return ReleaseVersion.Parse(a).CompareTo(ReleaseVersion.Parse(b));}
         internal static bool PackageName(string name,string id,string materialVersion,string tag)
         {
             string release=tag.StartsWith("companions-v",StringComparison.Ordinal)?tag.Substring(12):tag.StartsWith("v",StringComparison.Ordinal)?tag.Substring(1):null;

@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "Import cancelled. Your previous companion remains available.",
   "companions.behavior.stumbleHint": "After dragging and releasing, there is a 40% chance of stumbling, with a 10-second cooldown. This requires the current appearance to provide the action.",
   "companions.guide.downloadDetail": "Select a companion to view their introduction. Click Download / Update All to prepare resources in the background while continuing setup. Installed resources remain usable.",
-  "companions.package.metadataConflict": "Installed resources were retained. Remote character pack metadata is inconsistent; please try again later."
+  "companions.package.metadataConflict": "Installed resources were retained. Remote character pack metadata is inconsistent; please try again later.",
+  "cache.packVersionCategory": "Character pack history",
+  "cache.preservedPackVersions": "Chat, settings, attachments, relationships and projects are retained. Character packs keep the current and one recovery version, plus resources in use or with unknown status. Legacy copies remain protected. Only verified history retired for over seven days and expired caches are removed.",
+  "companions.removeFromList": "Remove from list"
 }

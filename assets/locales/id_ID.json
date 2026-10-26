@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "Impor dibatalkan. Pendamping sebelumnya tetap tersedia.",
   "companions.behavior.stumbleHint": "Setelah diseret dan dilepas, ada peluang 40% untuk tersandung dengan jeda 10 detik. Penampilan saat ini harus menyediakan aksi tersebut.",
   "companions.guide.downloadDetail": "Pilih teman untuk melihat pengantarnya. Klik Unduh / Perbarui Semua untuk menyiapkan sumber daya di latar belakang sambil melanjutkan pengaturan. Sumber daya terpasang tetap dapat digunakan.",
-  "companions.package.metadataConflict": "Sumber daya terpasang dipertahankan. Metadata paket karakter jarak jauh tidak konsisten; coba lagi nanti."
+  "companions.package.metadataConflict": "Sumber daya terpasang dipertahankan. Metadata paket karakter jarak jauh tidak konsisten; coba lagi nanti.",
+  "cache.packVersionCategory": "Riwayat paket karakter",
+  "cache.preservedPackVersions": "Chat, pengaturan, lampiran, hubungan, dan proyek dipertahankan. Paket menyimpan versi saat ini, satu versi pemulihan, serta sumber daya yang digunakan atau berstatus tidak diketahui. Salinan format lama tetap dilindungi. Hanya riwayat terverifikasi yang pensiun lebih dari tujuh hari dan cache kedaluwarsa yang dihapus.",
+  "companions.removeFromList": "Hapus dari daftar"
 }

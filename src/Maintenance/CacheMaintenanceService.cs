@@ -52,7 +52,7 @@ namespace Dafeiyu.Maintenance
                 CachePaths.Check(root);
                 foreach(string path in Resources())try{
                     if(!CacheResourceLease.Registered(root,path)){result.ProtectedItems++;continue;}
-                    using(CacheResourceLease.TryExclusive(root,path)){
+                    using(OfficialCompanionMaintenance.LockCandidate(root,path))using(CacheResourceLease.TryExclusive(root,path)){
                         var candidate=Read(path,utcNow);if(candidate==null)result.ProtectedItems++;else items.Add(candidate);
                     }
                 }catch(Exception e){if(!CachePaths.StorageError(e))throw;result.ProtectedItems++;}
@@ -66,7 +66,7 @@ namespace Dafeiyu.Maintenance
             string official=Path.Combine(root,"official-companions");CachePaths.Check(official);
             foreach(string id in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"}){
                 string parent=Path.Combine(official,id);CachePaths.Check(parent);
-                if(Directory.Exists(parent))foreach(string path in Directory.GetDirectories(parent))if(CachePaths.Category(root,path)!=null)yield return path;
+                if(Directory.Exists(parent))foreach(string path in Directory.GetDirectories(parent))if(CachePaths.Category(root,path)!=null||Path.GetFileName(path).StartsWith("v-",StringComparison.Ordinal))yield return path;
             }
         }
         public CacheCleanResult Clean(CacheScan scan,DateTime utcNow)
@@ -76,7 +76,7 @@ namespace Dafeiyu.Maintenance
             foreach(var candidate in scan.Candidates){
                 try{
                     CachePaths.Check(candidate.DirectoryPath);
-                    using(CacheResourceLease.TryExclusive(root,candidate.DirectoryPath)){
+                    using(OfficialCompanionMaintenance.LockCandidate(root,candidate.DirectoryPath))using(CacheResourceLease.TryExclusive(root,candidate.DirectoryPath)){
                         var current=Read(candidate.DirectoryPath,utcNow);
                         if(current==null||current.Fingerprint!=candidate.Fingerprint){result.SkippedItems++;continue;}
                         // No recursive delete: every file and directory is independently checked.
@@ -99,10 +99,11 @@ namespace Dafeiyu.Maintenance
         {
             CachePaths.Check(path);string category=CachePaths.Category(root,path);
             if(category==null||!Directory.Exists(path)||!CacheResourceLease.Registered(root,path))return null;
+            string proof=null;if(category=="pack-versions"){proof=OfficialCompanionMaintenance.RetirementProof(root,path,now);if(proof==null)return null;}
             // A completion proof additionally binds the job, successful receipt and installed
             // target version. Unknown old jobs and needed/failed rollback remain protected.
             if(category=="updates"&&!CacheUpdateRetirement.IsCompleted(root,path))foreach(string marker in new[]{"job.json","ready","staging","backup","installer-backup"})if(File.Exists(Path.Combine(path,marker))||Directory.Exists(Path.Combine(path,marker)))return null;
-            var signature=new StringBuilder();long bytes=0;var files=new List<CacheFile>();var directories=new List<string>();if(!Inventory(path,path,now.AddDays(-7),signature,ref bytes,files,directories))return null;
+            var signature=new StringBuilder(proof??"");long bytes=0;var files=new List<CacheFile>();var directories=new List<string>();if(!Inventory(path,path,now.AddDays(-7),signature,ref bytes,files,directories))return null;
             using(var hash=SHA256.Create())return new CacheCandidate(path,category,bytes,Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(signature.ToString()))),files,directories);
         }
         static bool Inventory(string root,string path,DateTime cutoff,StringBuilder signature,ref long bytes,List<CacheFile> files,List<string> directories)

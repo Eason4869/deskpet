@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "Importação cancelada. Seu companheiro anterior continua disponível.",
   "companions.behavior.stumbleHint": "Após arrastar e soltar, há 40% de chance de tropeçar, com intervalo de 10 segundos. A aparência atual precisa oferecer essa ação.",
   "companions.guide.downloadDetail": "Selecione um companheiro para ver sua apresentação. Clique em Baixar / Atualizar tudo para preparar os recursos em segundo plano e continuar a configuração. Os recursos instalados continuam disponíveis.",
-  "companions.package.metadataConflict": "Os recursos instalados foram mantidos. Os metadados do pacote remoto são inconsistentes; tente novamente mais tarde."
+  "companions.package.metadataConflict": "Os recursos instalados foram mantidos. Os metadados do pacote remoto são inconsistentes; tente novamente mais tarde.",
+  "cache.packVersionCategory": "Histórico de pacotes",
+  "cache.preservedPackVersions": "Conversas, configurações, anexos, relações e projetos são mantidos. Os pacotes preservam a versão atual, uma versão de recuperação e recursos em uso ou com estado desconhecido. Cópias antigas continuam protegidas. Apenas versões verificadas retiradas há mais de sete dias e caches expirados são removidos.",
+  "companions.removeFromList": "Remover da lista"
 }

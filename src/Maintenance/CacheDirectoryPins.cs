@@ -45,7 +45,7 @@ namespace Dafeiyu.Maintenance
         void Pin(string path)
         {
             CachePaths.Check(path);SafeFileHandle handle;
-            if(Windows)handle=CreateFile(path,0,3,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
+            if(Windows)handle=CreateFile(CachePaths.NativePath(path),0,3,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
             else{int flags=Mac?0x1100100:0xB0000;string parent=Path.GetDirectoryName(path);int fd=String.IsNullOrEmpty(parent)?open(path,flags):openat(Descriptor(parent),Path.GetFileName(path),flags);if(fd<0)throw IoError();handle=new SafeFileHandle(new IntPtr(fd),true);}
             if(handle.IsInvalid){handle.Dispose();throw IoError();}
             handles.Add(path,handle);CachePaths.Check(path);
@@ -55,7 +55,7 @@ namespace Dafeiyu.Maintenance
         internal void DeleteFile(CacheFile file)
         {
             CachePaths.Check(file.Path);SafeFileHandle handle;
-            if(Windows){handle=CreateFile(file.Path,0x80010000,0,IntPtr.Zero,3,0x00200000,IntPtr.Zero);if(handle.IsInvalid){handle.Dispose();throw IoError();}}
+            if(Windows){handle=CreateFile(CachePaths.NativePath(file.Path),0x80010000,0,IntPtr.Zero,3,0x00200000,IntPtr.Zero);if(handle.IsInvalid){handle.Dispose();throw IoError();}}
             else{int fd=openat(Descriptor(Path.GetDirectoryName(file.Path)),Path.GetFileName(file.Path),Mac?0x1000100:0xA0000);if(fd<0)throw IoError();handle=new SafeFileHandle(new IntPtr(fd),true);if(flock(fd,6)!=0){handle.Dispose();throw IoError();}}
             using(handle)using(var stream=new FileStream(handle,FileAccess.Read))using(var hash=SHA256.Create()){
                 if(stream.Length!=file.Bytes||Convert.ToBase64String(hash.ComputeHash(stream))!=file.Hash)throw new IOException("Cache file changed before deletion.");

@@ -17,6 +17,7 @@ namespace Dafeiyu
         readonly Dictionary<string,Cache> cache=new Dictionary<string,Cache>();
         readonly Dictionary<string,Work<InstallResult>> installs=new Dictionary<string,Work<InstallResult>>();
         readonly HashSet<string> nativeValidated=new HashSet<string>(StringComparer.Ordinal),upgradeChecked=new HashSet<string>(StringComparer.Ordinal);
+        readonly Dictionary<string,IDisposable> installedLeases=new Dictionary<string,IDisposable>(StringComparer.Ordinal);
         readonly string appVersion;bool disposed;long selection;
         internal Func<DateTime> UtcNow=()=>DateTime.UtcNow;
         internal OfficialCompanionStorage Storage {get{return store;}}
@@ -39,7 +40,17 @@ namespace Dafeiyu
         void Alive(){if(disposed)throw new ObjectDisposedException("OfficialCompanionDownloads");}
         void CheckAlive(){lock(gate){Alive();lifetime.Token.ThrowIfCancellationRequested();}}
         bool Compatible(OfficialCompanionInstallation installation){return installation!=null&&ReleaseVersion.Parse(installation.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0;}
-        OfficialCompanionInstallation Usable(string id){var installed=store.Installed(id);return Compatible(installed)?installed:null;}
+        void Retain(OfficialCompanionInstallation installed)
+        {
+            if(!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return;
+            lock(gate){Alive();if(!installedLeases.ContainsKey(installed.RootDirectory))installedLeases.Add(installed.RootDirectory,Maintenance.CacheResourceLease.ProtectExisting(System.IO.Path.GetDirectoryName(store.Root),installed.RootDirectory));}
+        }
+        OfficialCompanionInstallation Usable(string id)
+        {
+            var installed=store.Installed(id);if(!Compatible(installed))return null;
+            if(!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return installed;
+            using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot(id),lifetime.Token)){try{Maintenance.OfficialCompanionMaintenance.Recover(store,id);}catch(Exception error){if(!Maintenance.CachePaths.StorageError(error))throw;}installed=store.Installed(id);if(!Compatible(installed))return null;Retain(installed);return installed;}
+        }
         public OfficialCompanionInstallation Installed(string id){lock(gate)Alive();return Usable(id);}
         public long BeginSelection(){lock(gate){Alive();return ++selection;}}
         public bool OwnsSelection(long token){lock(gate)return !disposed&&token==selection;}
@@ -138,7 +149,7 @@ namespace Dafeiyu
                 lock(characterGates[asset.Id]) {
                     existing=Usable(asset.Id);
                     if(existing!=null&&(ReuseExisting(existing.Asset,asset))){installed=existing;installedNow=false;}
-                    else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}});stage=null;lock(gate)nativeValidated.Add(installed.RootDirectory+":"+asset.Sha256);installedNow=true;}
+                    else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}},appVersion,out installedNow);stage=null;if(installedNow)lock(gate)nativeValidated.Add(installed.RootDirectory+":"+installed.Asset.Sha256);Retain(installed);}
                 }
                 if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);return new InstallResult{Installation=installed,Installed=installedNow};
             }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();if(transferHeld)slots.Release();contentSlot.Release();}}
@@ -149,10 +160,9 @@ namespace Dafeiyu
                 if(!OfficialCompanionStorage.ConsistentContent(existing,remote))throw new MetadataConflictException();
                 return true;
             }
-            return CompareContent(existing,remote)>0;
+            return OfficialCompanionRules.CompareContent(existing,remote)>0;
         }
         // Package version wins first; for replacement bytes at the same version the owning feed version wins.
-        static int CompareContent(OfficialCompanionAsset left,OfficialCompanionAsset right){int value=ReleaseVersion.Parse(left.Version).CompareTo(ReleaseVersion.Parse(right.Version));if(value!=0)return value;string a=left.Tag.StartsWith("companions-v",StringComparison.Ordinal)?left.Tag.Substring(12):left.Tag.Substring(1),b=right.Tag.StartsWith("companions-v",StringComparison.Ordinal)?right.Tag.Substring(12):right.Tag.Substring(1);return ReleaseVersion.Parse(a).CompareTo(ReleaseVersion.Parse(b));}
         async Task NativeAsync(OfficialCompanionInstallation installation,CancellationToken cancel)
         {
             string key=installation.RootDirectory+":"+installation.Asset.Sha256;lock(gate){Alive();if(nativeValidated.Contains(key))return;}
@@ -181,6 +191,6 @@ namespace Dafeiyu
                 await Task.WhenAll(tasks).ConfigureAwait(false);token.ThrowIfCancellationRequested();if(errors.Count!=0)throw new AggregateException(TextResources.Get("officialCompanionDownloads.ensureAllCoreAsync.text"),errors);return new ReadOnlyCollection<OfficialCompanionResult>(results);
             }
         }
-        public void Dispose(){lock(publicationGate)lock(gate){if(disposed)return;disposed=true;lifetime.Cancel();}}
+        public void Dispose(){lock(publicationGate)lock(gate){if(disposed)return;disposed=true;lifetime.Cancel();foreach(var lease in installedLeases.Values)lease.Dispose();installedLeases.Clear();}}
     }
 }

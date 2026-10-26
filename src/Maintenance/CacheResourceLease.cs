@@ -46,6 +46,18 @@ namespace Dafeiyu.Maintenance
             string key=Key(Path.Combine(root,"cache-maintenance"),path);CachePaths.Check(key+".lock");
             return new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None);
         }
+        internal static void RegisterInstalled(string dataRoot,string resourceDirectory)
+        {
+            string root=CachePaths.Normalize(dataRoot),path=CachePaths.Normalize(resourceDirectory);
+            if(CachePaths.Category(root,path)!="pack-versions"||!OfficialCompanionMaintenance.Managed(Path.GetFileName(path)))throw new IOException("Not a managed installation.");
+            CachePaths.Check(root);CachePaths.Check(path);if(!Directory.Exists(path))throw new IOException("Published root missing.");
+            string registry=Path.Combine(root,"cache-maintenance");CachePaths.Check(registry);Directory.CreateDirectory(registry);
+            string key=Key(registry,path);CachePaths.Check(key+".lock");CachePaths.Check(key+".owner");
+            using(var handle=new FileStream(key+".lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite)){
+                if(File.Exists(key+".owner")&&!Registered(root,path))throw new IOException("Managed root identity changed.");
+                if(!File.Exists(key+".owner"))File.WriteAllText(key+".owner","DeskPet-cache-1\n"+path+"\n"+CachePaths.Identity(path),new UTF8Encoding(false));
+            }
+        }
         internal static bool Registered(string root,string path)
         {
             string record=Key(Path.Combine(root,"cache-maintenance"),path)+".owner";CachePaths.Check(record);
@@ -88,7 +100,7 @@ namespace Dafeiyu.Maintenance
         {
             Check(path);
             if(Environment.OSVersion.Platform==PlatformID.Win32NT){
-                using(var handle=CreateFile(path,0,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero)){
+                using(var handle=CreateFile(NativePath(path),0,7,IntPtr.Zero,3,0x02200000,IntPtr.Zero)){
                     FileInformation info;if(handle.IsInvalid||!GetFileInformationByHandle(handle,out info))throw new IOException("Cannot read cache file identity.");
                     return info.Volume+":"+info.IndexHigh+":"+info.IndexLow;
                 }
@@ -105,6 +117,11 @@ namespace Dafeiyu.Maintenance
                 IntPtr buffer=Marshal.AllocHGlobal(512);try{if(Stat(fd,buffer,mac)!=0)throw new IOException("Cannot stat cache file.");return (mac?(long)Marshal.ReadInt32(buffer):Marshal.ReadInt64(buffer))+":"+Marshal.ReadInt64(buffer,8);}finally{Marshal.FreeHGlobal(buffer);}
             }
         }
+        internal static string NativePath(string path)
+        {
+            string full=Path.GetFullPath(path);if(full.StartsWith(@"\\?\",StringComparison.Ordinal))return full;
+            return full.StartsWith(@"\\",StringComparison.Ordinal)?@"\\?\UNC\"+full.Substring(2):@"\\?\"+full;
+        }
         internal static readonly StringComparison Comparison=Environment.OSVersion.Platform==PlatformID.Win32NT?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal;
         internal static string Normalize(string path){return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);}
         internal static string Category(string root,string path)
@@ -113,6 +130,7 @@ namespace Dafeiyu.Maintenance
             string relative=path.Substring(root.Length+1).Replace(Path.DirectorySeparatorChar,'/');
             if(Regex.IsMatch(relative,@"\Aupdates/[a-f0-9]{32}\z"))return "updates";
             if(Regex.IsMatch(relative,@"\Aofficial-companions/(e-bao|dafeiyu|marfu|xiaobei|gugugaga)/\.(stage|transfer)-[a-f0-9]{32}\z"))return "downloads";
+            if(Regex.IsMatch(relative,@"\Aofficial-companions/(e-bao|dafeiyu|marfu|xiaobei|gugugaga)/v2-[a-zA-Z0-9.-]+-[a-f0-9]{32}-[a-f0-9]{32}\z"))return "pack-versions";
             return null;
         }
         internal static void Check(string path)
@@ -123,6 +141,6 @@ namespace Dafeiyu.Maintenance
                 catch(FileNotFoundException){}catch(DirectoryNotFoundException){}
             }
         }
-        internal static bool StorageError(Exception e){return e is IOException||e is UnauthorizedAccessException||e is System.Security.SecurityException;}
+        internal static bool StorageError(Exception e){return e is IOException||e is InvalidDataException||e is UnauthorizedAccessException||e is System.Security.SecurityException;}
     }
 }

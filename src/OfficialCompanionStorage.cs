@@ -26,15 +26,15 @@ namespace Dafeiyu
         internal static void DeleteOwned(string directory){if(!Directory.Exists(directory))return;SafeDirectory(directory);foreach(string path in Directory.GetFileSystemEntries(directory)){SafeDirectory(path);if(Directory.Exists(path))DeleteOwned(path);else File.Delete(path);}Directory.Delete(directory);}
         internal static string HashFile(string path){using(var stream=File.OpenRead(path))using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant();}
         internal string CharacterRoot(string id){OfficialCompanionRules.Id(id);return SafePath(Root,id);}
-        internal static string VersionDirectory(OfficialCompanionAsset asset){return "v-"+asset.Version+"-"+asset.Sha256;}
+        internal static string VersionDirectory(OfficialCompanionAsset asset){return "v2-"+asset.Version+"-"+asset.Sha256.Substring(0,32)+"-"+Guid.NewGuid().ToString("N");}
         internal OfficialCompanionInstallation Installed(string id)
         {
             OfficialCompanionRules.Id(id);
             try {
                 string root=CharacterRoot(id),pointer=SafePath(root,"current.txt");if(!File.Exists(pointer))return null;
-                if(new FileInfo(pointer).Length>200)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.installed.text"));
+                if(new FileInfo(pointer).Length>240)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.installed.text"));
                 string directory=File.ReadAllText(pointer,new UTF8Encoding(false,true));
-                if(directory.Length>150||directory.Trim()!=directory||!Regex.IsMatch(directory,@"\Av-[a-zA-Z0-9.-]+-[a-f0-9]{64}\z"))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.installed.text"));
+                if(directory.Length>200||directory.Trim()!=directory||!Maintenance.OfficialCompanionMaintenance.Managed(directory)&&!Regex.IsMatch(directory,@"\Av-[a-zA-Z0-9.-]+-[a-f0-9]{64}\z"))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.installed.text"));
                 return ReadVersion(SafePath(root,directory),id,null);
             }catch(Exception error){if(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is ArgumentException||error is InvalidOperationException||error is OverflowException)return null;throw;}
         }
@@ -42,9 +42,10 @@ namespace Dafeiyu
         {
             if(!Directory.Exists(directory))return null;SafeDirectory(directory);
             var receipt=OfficialJson.File(SafePath(directory,"receipt.json"),1024*1024);
-            if(OfficialJson.Integer(receipt,"schema_version")!=1||OfficialJson.Text(receipt,"repository",200)!=ReleaseInfo.RepositoryUrl)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text"));
+            long schema=OfficialJson.Integer(receipt,"schema_version");if((schema!=1&&schema!=2)||OfficialJson.Text(receipt,"repository",200)!=ReleaseInfo.RepositoryUrl)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text"));
             var asset=ReadAsset(OfficialJson.Object(OfficialJson.Required(receipt,"asset")));
-            if(asset.Id!=id||Path.GetFileName(directory)!=VersionDirectory(asset)||(expected!=null&&!SameAsset(asset,expected)))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeA"));
+            string versionName=Path.GetFileName(directory);bool nameMatches=schema==1?versionName=="v-"+asset.Version+"-"+asset.Sha256:Maintenance.OfficialCompanionMaintenance.Managed(versionName)&&versionName.StartsWith("v2-"+asset.Version+"-"+asset.Sha256.Substring(0,32)+"-",StringComparison.Ordinal);
+            if(asset.Id!=id||!nameMatches||(expected!=null&&!SameAsset(asset,expected)))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeA"));
             var listed=OfficialJson.Array(OfficialJson.Required(receipt,"files"));if(listed.Length<1||listed.Length>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeB"));
             var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);long total=0;
             foreach(var raw in listed){var item=OfficialJson.Object(raw);string path=OfficialJson.Text(item,"path",220),hash=OfficialJson.Text(item,"sha256",64);long length=OfficialJson.Integer(item,"size");if(path=="receipt.json"||!names.Add(path)||!OfficialCompanionRules.Hash(hash)||length<0||length>OfficialCompanionPackageValidation.FileLimit(path))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeC"));total=checked(total+length);if(total>CompanionPackagePolicy.MaximumExpandedBytes)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeD"));string full=SafePath(directory,path);if(!File.Exists(full)||new FileInfo(full).Length!=length||HashFile(full)!=hash)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeE"));}
@@ -66,7 +67,7 @@ namespace Dafeiyu
         internal void WriteReceipt(string stage,OfficialCompanionAsset asset,CancellationToken cancel)
         {
             var files=new List<object>();foreach(string relative in Inventory(stage).OrderBy(x=>x,StringComparer.Ordinal)){cancel.ThrowIfCancellationRequested();string path=SafePath(stage,relative);files.Add(new {path=relative,size=new FileInfo(path).Length,sha256=HashFile(path)});}
-            File.WriteAllBytes(SafePath(stage,"receipt.json"),OfficialJson.Bytes(new{schema_version=1,repository=ReleaseInfo.RepositoryUrl,asset=AssetRecord(asset),files=files.ToArray()}));
+            File.WriteAllBytes(SafePath(stage,"receipt.json"),OfficialJson.Bytes(new{schema_version=2,repository=ReleaseInfo.RepositoryUrl,asset=AssetRecord(asset),files=files.ToArray()}));
         }
         internal static object AssetRecord(OfficialCompanionAsset asset){return new {id=asset.Id,name=asset.Name,version=asset.Version,min_app_version=asset.MinimumAppVersion,tag=asset.Tag,asset_name=asset.AssetName,size=asset.Size,sha256=asset.Sha256,outfits=asset.Outfits.Select(x=>new{outfit_id=x.OutfitId,version=x.Version}).ToArray()};}
         static OfficialCompanionAsset ReadAsset(Dictionary<string,object> record)
@@ -77,22 +78,44 @@ namespace Dafeiyu
             var outfits=new List<OfficialCompanionOutfit>();var seen=new HashSet<string>();foreach(var raw in OfficialJson.Array(OfficialJson.Required(record,"outfits"))){var item=OfficialJson.Object(raw);string outfit=OfficialJson.Text(item,"outfit_id",64);if(!Regex.IsMatch(outfit,@"\A[a-z0-9][a-z0-9-]{0,63}\z")||!seen.Add(outfit)||outfits.Count==32)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readAsset.text.alternativeA"));outfits.Add(new OfficialCompanionOutfit(outfit,OfficialCompanionRules.Version(OfficialJson.Text(item,"version",64))));}
             return new OfficialCompanionAsset(id,OfficialJson.Text(record,"name",80),version,minimum,tag,name,size,hash,outfits);
         }
+        static bool PointsTo(string pointer,string name)
+        {
+            try{return File.ReadAllText(pointer,new UTF8Encoding(false,true))==name;}
+            catch(FileNotFoundException){return false;}catch(DirectoryNotFoundException){return false;}
+        }
         internal OfficialCompanionInstallation Publish(string stage,OfficialCompanionAsset asset,CancellationToken cancel,Action checkAlive,Action<Action> publication)
         {
-            string root=CharacterRoot(asset.Id),name=VersionDirectory(asset),destination=SafePath(root,name),pointer=SafePath(root,"current.txt"),temporary=SafePath(root,".current-"+Guid.NewGuid().ToString("N")),quarantine=null;bool moved=false,published=false;
+            bool installed;return Publish(stage,asset,cancel,checkAlive,publication,null,out installed);
+        }
+        internal OfficialCompanionInstallation Publish(string stage,OfficialCompanionAsset asset,CancellationToken cancel,Action checkAlive,Action<Action> publication,string appVersion,out bool installed)
+        {
+            installed=false;using(Maintenance.OfficialCompanionMaintenance.Lock(CharacterRoot(asset.Id),cancel)) {
+            Maintenance.OfficialCompanionMaintenance.Recover(this,asset.Id);
+            var existing=Installed(asset.Id);
+            if(appVersion!=null&&existing!=null&&ReleaseVersion.Parse(existing.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0&&(SameContent(existing.Asset,asset)&&ConsistentContent(existing.Asset,asset)||OfficialCompanionRules.CompareContent(existing.Asset,asset)>0)){DeleteOwned(stage);return existing;}
+            string root=CharacterRoot(asset.Id),name=VersionDirectory(asset),destination=SafePath(root,name),pointer=SafePath(root,"current.txt"),temporary=SafePath(root,".current-"+Guid.NewGuid().ToString("N")),quarantine=null;bool moved=false,published=false,commitAttempted=false;
             try {
                 cancel.ThrowIfCancellationRequested();checkAlive();
+                Maintenance.OfficialCompanionMaintenance.Begin(this,asset.Id,name,stage);
                 if(Directory.Exists(destination)){quarantine=SafePath(root,".invalid-"+Guid.NewGuid().ToString("N"));Directory.Move(destination,quarantine);}
                 Directory.Move(stage,destination);moved=true;
                 // Verify with the actual, longer version root before changing the pointer. This also
                 // catches native callbacks modifying files and unsupported platform path lengths.
                 if(ReadVersion(destination,asset.Id,asset)==null)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.publish.text"));
                 File.WriteAllText(temporary,name,new UTF8Encoding(false));
-                publication(()=>{cancel.ThrowIfCancellationRequested();checkAlive();Commit(temporary,pointer);published=true;});
+                try{publication(()=>{cancel.ThrowIfCancellationRequested();checkAlive();commitAttempted=true;Commit(temporary,pointer);published=true;});}
+                catch(Exception error){if(!Maintenance.CachePaths.StorageError(error)||!PointsTo(pointer,name))throw;published=true;}
+                installed=true;
+                // Pointer publication is authoritative. An interrupted metadata finish
+                // leaves a transaction that protects every version until recovery.
+                try{Maintenance.OfficialCompanionMaintenance.Recover(this,asset.Id);}catch(Exception error){if(!Maintenance.CachePaths.StorageError(error))throw;}
                 return new OfficialCompanionInstallation(asset,destination);
             }finally {
                 if(File.Exists(temporary))File.Delete(temporary);
-                if(!published){try{if(moved&&Directory.Exists(destination))Directory.Move(destination,stage);}finally{if(quarantine!=null&&Directory.Exists(quarantine))Directory.Move(quarantine,destination);}}
+                bool rollback=!published;
+                if(rollback&&commitAttempted)try{rollback=!PointsTo(pointer,name);}catch(Exception error){if(!Maintenance.CachePaths.StorageError(error))throw;rollback=false;}
+                if(rollback){try{if(moved&&Directory.Exists(destination))Directory.Move(destination,stage);}finally{if(quarantine!=null&&Directory.Exists(quarantine))Directory.Move(quarantine,destination);}}
+            }
             }
         }
     }

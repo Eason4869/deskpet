@@ -4693,5 +4693,8 @@
   "companionImport.cancelled": "匯入已取消，原有角色仍可使用。",
   "companions.behavior.stumbleHint": "實際拖動並放下後，有 40% 機率短暫踉蹌，觸發後冷卻 10 秒；僅在目前外觀提供此動作時生效。",
   "companions.guide.downloadDetail": "選擇夥伴可查看介紹；點擊全部下載／更新後會在背景準備素材，可繼續後續引導。已有素材仍可使用。",
-  "companions.package.metadataConflict": "已保留安裝的素材；遠端角色包中繼資料不一致，請稍後重試。"
+  "companions.package.metadataConflict": "已保留安裝的素材；遠端角色包中繼資料不一致，請稍後重試。",
+  "cache.packVersionCategory": "角色包歷史副本",
+  "cache.preservedPackVersions": "保留聊天、設定、附件、關係和專案資料。角色包保留目前版本、一個可恢復的前版本，以及使用中或狀態不明的素材；舊格式副本繼續受到保護。僅清理確認退役超過七天的歷史副本和過期快取。",
+  "companions.removeFromList": "從清單移除"
 }
