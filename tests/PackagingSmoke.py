@@ -86,6 +86,7 @@ with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
 print('PASS runtime includes the exact daily-use and voice-preset guides')
 index_path=output/('DeskPet-Companions-'+version+'.json')
 companion_index=json.loads(index_path.read_text(encoding='utf-8'))
+package_policy=json.loads((checkout/'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
 assert companion_index['schema_version']==1
 assert [entry['id'] for entry in companion_index['companions']]==['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
 for entry in companion_index['companions']:
@@ -94,9 +95,10 @@ for entry in companion_index['companions']:
     assert archive.is_file() and entry['asset_name']==archive.name
     assert entry['version']==version and entry['min_app_version']==version
     assert entry['size']==archive.stat().st_size and entry['sha256']==hashlib.sha256(archive.read_bytes()).hexdigest()
+    assert archive.stat().st_size<=package_policy['maximum_archive_bytes']
     with ZipFile(archive) as bundle:
-        assert bundle.testzip() is None and len(bundle.infolist())<=512
-        assert sum(item.file_size for item in bundle.infolist())<=256*1024*1024
+        assert bundle.testzip() is None and len(bundle.infolist())<=package_policy['maximum_entries']
+        assert sum(item.file_size for item in bundle.infolist())<=package_policy['maximum_expanded_bytes']
         skin=json.loads(bundle.read('pet.json'))
         identity=json.loads(bundle.read('companions.json'))
         assert identity['id']==pet and identity['version']==version and identity['name']==skin['name']
