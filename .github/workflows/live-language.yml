@@ -53,6 +53,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          ./Build.ps1 -Target HolidayVisualSmoke
+          if ($LASTEXITCODE) { throw 'Native holiday animation checks failed' }
           ./Build.ps1 -Target HolidaySettingsSmoke
           if ($LASTEXITCODE) { throw 'Native wardrobe selection checks failed' }
           ./Build.ps1 -Target DataManagementUiTests

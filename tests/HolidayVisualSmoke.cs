@@ -60,13 +60,28 @@ namespace Dafeiyu.Tests
                 typeof(PetWindow).GetField("random",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,new ZeroRandom());controller.LeaveHover();pet.RefreshHoliday();
                 var begin=typeof(PetWindow).GetMethod("TryHolidayHover",BindingFlags.Instance|BindingFlags.NonPublic);
                 bool hoverStarted=(bool)begin.Invoke(pet,null);if(!hoverStarted)Console.WriteLine("hover fixture gate: visible="+pet.IsPetVisible+", state="+pet.Animation.State+", can="+typeof(PetWindow).GetProperty("HolidayCanAnimate",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet,null)+", failed="+Field(pet,"holidayFailedKey")+", transition="+transition.Active+", ready="+outfit.Ready+", effective="+(controller.EffectiveOutfit!=null));
-                Check(hoverStarted,"WPF adapter starts fixture egg from hover path");Pump(.1);Check(pet.HolidayPlaying,"egg owns animation until interruption");
+                Check(hoverStarted,"WPF adapter starts fixture egg from hover path");WaitVisual(pet,()=>((HolidayPlayback)Field(pet,"holidayPlayback")).FirstFrameRendered,"interrupted egg first frame");Check(pet.HolidayPlaying,"egg owns animation until interruption");
                 pet.PlayAction("waiting",0);Check(!pet.HolidayPlaying && !controller.WardrobeVisible,"business action immediately cancels egg without unlocking");
                 pet.PlayAction("idle",0);controller.LeaveHover();pet.RefreshHoliday();Check(!(bool)begin.Invoke(pet,null),"interrupted first rendered frame retains sixty second cooldown");
-                controller=new HolidayController(new HolidayCalendar(),new HolidayCatalog(new[]{outfit}),new HolidayState(),s=>{});pet.InitializeHoliday(controller,spec=>new MemoryStream(png,false));Pump(.95);controller.LeaveHover();pet.RefreshHoliday();
-                Check((bool)begin.Invoke(pet,null),"fresh fixture starts complete egg");Pump(2.7);Check(!pet.HolidayPlaying && controller.WardrobeVisible,"only full WPF playback unlocks the wardrobe");
+                controller=new HolidayController(new HolidayCalendar(),new HolidayCatalog(new[]{outfit}),new HolidayState(),s=>{});pet.InitializeHoliday(controller,spec=>new MemoryStream(png,false));
+                // Native frames cap their delta; a delayed dispatcher must not turn
+                // the wall-clock estimate into permission to start a second animation.
+                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Send,new Action(()=>System.Threading.Thread.Sleep(1100)));
+                WaitVisual(pet,()=>!transition.Active,"fresh outfit transition");controller.LeaveHover();pet.RefreshHoliday();
+                Check((bool)begin.Invoke(pet,null),"fresh fixture starts complete egg");WaitVisual(pet,()=>!pet.HolidayPlaying,"complete egg playback");Check(!pet.HolidayPlaying && controller.WardrobeVisible,"only full WPF playback unlocks the wardrobe");
                 VerifyUnavailable(pet,png,root);
             }finally {if(pet!=null)pet.Close();var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);app.Shutdown();}
+        }
+        static void WaitVisual(PetWindow pet,Func<bool> completed,string phase)
+        {
+            var deadline=DateTime.UtcNow.AddSeconds(10);
+            while(!completed()) {
+                if(DateTime.UtcNow>=deadline) {
+                    var transition=(HolidayTransition)Field(pet,"holidayTransition");var playback=(HolidayPlayback)Field(pet,"holidayPlayback");
+                    throw new TimeoutException(phase+": visible="+pet.IsPetVisible+", state="+pet.Animation.State+", transition="+transition.Active+", progress="+transition.Progress+", playing="+pet.HolidayPlaying+", firstFrame="+playback.FirstFrameRendered+", frame="+playback.Frame+", failed="+Field(pet,"holidayFailedKey"));
+                }
+                Pump(.01);
+            }
         }
         static object Field(PetWindow pet,string name){return typeof(PetWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet);}
         static void SetField(PetWindow pet,string name,object value){typeof(PetWindow).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,value);}
@@ -99,7 +114,7 @@ namespace Dafeiyu.Tests
                 pet.Settings.FollowCursor=false;pet.PlayAction("idle",0);
                 string folder=Path.Combine(root,"corrupt-"+broken);var catalog=CorruptFixture(folder,png,broken=="preview" || broken=="active-preview"?"feeding":broken);var outfit=catalog.Find("e-bao","halloween");
                 var state=new HolidayState();bool owned=broken!="egg" && broken!="active-preview";if(owned){state.Unlock("e-bao","halloween");state.ForCharacter("e-bao").PreferredOutfitId="halloween";}
-                int writes=0;var controller=new HolidayController(new HolidayCalendar(),catalog,state,s=>writes++);pet.InitializeHoliday(controller,spec=>File.OpenRead(Path.Combine(folder,spec.Path)));Pump(.95);Render(pet);
+                int writes=0;var controller=new HolidayController(new HolidayCalendar(),catalog,state,s=>writes++);pet.InitializeHoliday(controller,spec=>File.OpenRead(Path.Combine(folder,spec.Path)));WaitVisual(pet,()=>!((HolidayTransition)Field(pet,"holidayTransition")).Active,"valid outfit transition before "+broken);Render(pet);
                 Check(controller.EffectiveOutfit==outfit && Field(pet,"holidayCommitted")==outfit,"valid idle commits before later "+broken+" decoder failure");long revision=controller.Revision;var greeting=controller.CreateGreetingContext(0);int before=writes;HolidayPlaybackTicket oldTicket=null;int notifications=0;
                 controller.Changed+=delegate {if(!outfit.Ready){notifications++;OriginalFrame(pet,controller,broken+" synchronous Changed");}};
                 using(var panel=new HolidayOutfitPanel(controller)) {
@@ -108,7 +123,7 @@ namespace Dafeiyu.Tests
                     else if(broken=="preview")pet.GetActionPreview("feeding",true);
                     else {
                         SetField(pet,"random",new ZeroRandom());controller.LeaveHover();pet.RefreshHoliday();bool started=(bool)typeof(PetWindow).GetMethod("TryHolidayHover",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
-                        if(broken=="active-preview"){Check(started,"valid egg begins before corrupt preview");Pump(.1);oldTicket=((HolidayPlayback)Field(pet,"holidayPlayback")).Ticket;Check(oldTicket!=null && oldTicket.FirstFrameRendered,"egg has rendered before costume rejection");pet.GetActionPreview("feeding",true);}
+                        if(broken=="active-preview"){Check(started,"valid egg begins before corrupt preview");WaitVisual(pet,()=>((HolidayPlayback)Field(pet,"holidayPlayback")).FirstFrameRendered,"active preview egg first frame");oldTicket=((HolidayPlayback)Field(pet,"holidayPlayback")).Ticket;Check(oldTicket!=null && oldTicket.FirstFrameRendered,"egg has rendered before costume rejection");pet.GetActionPreview("feeding",true);}
                         else Check(!started,"corrupt egg preparation never starts playback");
                     }
                     if(outfit.Ready)Console.WriteLine("rejection fixture: "+broken+", revision="+controller.Revision+"/"+revision+", failed="+Field(pet,"holidayFailedKey")+", interaction="+((InteractionAnimation)Field(pet,"interaction")).Name+", committed="+(Field(pet,"holidayCommitted")!=null)+", shown="+(Field(pet,"shownMotion")!=null));
