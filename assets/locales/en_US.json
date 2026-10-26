@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "National Day",
   "holidayKeepsake.nationalDayMessage": "Five golden stars fly as we celebrate China.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Across a river of stars, we meet tonight."
+  "holidayKeepsake.qixiMessage": "Across a river of stars, we meet tonight.",
+  "composerDraft.storageError": "Draft could not be saved. Your text is still in this window. Check data folder access and free disk space."
 }

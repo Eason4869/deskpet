@@ -40,9 +40,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./Build.ps1 -Target CompleteCompanionClockTests
-      - name: Ten reviewed holiday keepsake sets
+      - name: Encrypted drafts and ten reviewed keepsake sets
         run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --dev3-features-only
-      - name: Native card export and all language layouts
+      - name: All fifty native Avalonia action clocks
+        run: dotnet run --project desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -- --complete-companions
+      - name: Native Windows card exports and draft restart
         if: runner.os == 'Windows'
         shell: powershell
-        run: ./Build.ps1 -Target SeasonalKeepsakeUiTests
+        run: |
+          ./Build.ps1 -Target SeasonalKeepsakeUiTests
+          if ($LASTEXITCODE) { throw 'Card exports failed' }
+          ./Build.ps1 -Target DraftConversationTests
+          if ($LASTEXITCODE) { throw 'Draft restart failed' }
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: dev3-native-cards
+          path: work/festive-scenes/native-cards
+          if-no-files-found: ignore

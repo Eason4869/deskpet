@@ -942,10 +942,10 @@ namespace Dafeiyu
         {
             project=work?(project??ProjectCatalogStore.UnassignedProject(Projects,Settings)):ProjectCatalogStore.UnassignedProject(Projects,Settings);
             string targetSection=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId;
-            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
+            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.DraftOwner==Skin.PickerKey&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
             if(pending!=null)return pending;
             var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name=TextResources.Get("petWindow.createDraftConversation.name"),Mode=work?"work":"chat",PetId=work?"":Skin.Id,SectionId=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
-            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;WatchConversationTitle(project,definition,workspace);return workspace;
+            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;Workspaces.BindDraft(workspace,Skin.PickerKey);WatchConversationTitle(project,definition,workspace);return workspace;
         }
         void BeginDraftConversation(ProjectDefinition project,bool? workEntry=null,string sectionId=null)
         {
@@ -965,7 +965,7 @@ namespace Dafeiyu
             try{ProjectStore.Save(Projects);}catch{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;throw;}
             return delegate{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;ProjectStore.Save(Projects);};
         }
-        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.IsDraft=false;NotifyProjectsChanged();}}
+        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.Session.FinishDraft();workspace.IsDraft=false;NotifyProjectsChanged();}}
         internal ProjectDefinition CreateProjectForConversation()
         {
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return null;var previous=Projects.Copy();try{var project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);project.Conversations.Clear();ProjectStore.Save(Projects);NotifyProjectsChanged();return project;}catch{RestoreProjectCatalog(previous);throw;}

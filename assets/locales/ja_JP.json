@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "国慶節",
   "holidayKeepsake.nationalDayMessage": "五星紅旗とともに、中国の建国を祝って。",
   "holidayKeepsake.qixiTitle": "七夕",
-  "holidayKeepsake.qixiMessage": "天の川に架かる橋で、今夜あなたと。"
+  "holidayKeepsake.qixiMessage": "天の川に架かる橋で、今夜あなたと。",
+  "composerDraft.storageError": "下書きを保存できません。文章はウィンドウに残っています。保存先の権限と空き容量を確認してください。"
 }

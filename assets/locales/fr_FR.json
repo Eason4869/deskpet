@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Fête nationale",
   "holidayKeepsake.nationalDayMessage": "Cinq étoiles dorées pour célébrer la Chine.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Sous la Voie lactée, nos chemins se rejoignent."
+  "holidayKeepsake.qixiMessage": "Sous la Voie lactée, nos chemins se rejoignent.",
+  "composerDraft.storageError": "Impossible d’enregistrer le brouillon. Votre texte reste dans cette fenêtre. Vérifiez les droits du dossier et l’espace disque."
 }

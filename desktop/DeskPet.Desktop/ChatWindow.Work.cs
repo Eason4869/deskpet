@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Dafeiyu;
 
 namespace DeskPet.Desktop;
@@ -25,11 +25,11 @@ internal sealed partial class ChatWindow
         if(closed||request!=bindingEpoch)return;
         await owner.Dictation.CancelAsync(this);
         if(closed||request!=bindingEpoch)return;
-        owner.Drafts[DraftKey]=draft.Text??"";
+        SaveDraft();
         string oldSession=QuestionSessionId;binding=next;boundSession=next?.Session;boundQueue=next?.Queue;uploadEpoch++;
         owner.WorkViewChanged(this,oldSession);
         foreach(var view in rendered.Values)view.DisposeImages();rendered.Clear();messages.Children.Clear();queuedEdits.Clear();questionSignature="";
-        draft.Text=owner.Drafts.GetValueOrDefault(DraftKey,"");RefreshAttachments();Refresh();
+        draft.Text=LoadDraft();RefreshAttachments();Refresh();
         if(workBindingButton!=null)workBindingButton.Content=new TextBlock{Text=binding==null?TextResources.Get("agent.work.choose"):TextResources.Format("agent.work.current",owner.WorkBindings.Snapshot.Projects.Single(project=>project.Id==binding.ProjectId).Name,binding.Name),TextTrimming=Avalonia.Media.TextTrimming.CharacterEllipsis,MaxWidth=210};
     }
     private Control CreateWorkBindingActions()

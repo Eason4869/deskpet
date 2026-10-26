@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Día Nacional",
   "holidayKeepsake.nationalDayMessage": "Cinco estrellas doradas celebran la fundación de China.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Bajo la Vía Láctea, esta noche nos encontramos."
+  "holidayKeepsake.qixiMessage": "Bajo la Vía Láctea, esta noche nos encontramos.",
+  "composerDraft.storageError": "No se pudo guardar el borrador. Tu texto sigue en esta ventana. Revisa el acceso a la carpeta y el espacio libre."
 }

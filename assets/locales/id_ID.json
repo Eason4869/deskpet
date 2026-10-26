@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Hari Nasional",
   "holidayKeepsake.nationalDayMessage": "Lima bintang emas menyambut hari berdirinya Tiongkok.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Di bawah Bima Sakti, malam ini kita bertemu."
+  "holidayKeepsake.qixiMessage": "Di bawah Bima Sakti, malam ini kita bertemu.",
+  "composerDraft.storageError": "Draf tidak dapat disimpan. Teks tetap ada di jendela ini. Periksa izin folder data dan ruang disk."
 }

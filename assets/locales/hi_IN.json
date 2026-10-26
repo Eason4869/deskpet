@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "राष्ट्रीय दिवस",
   "holidayKeepsake.nationalDayMessage": "पाँच सुनहरे तारों के साथ चीन का स्थापना उत्सव।",
   "holidayKeepsake.qixiTitle": "छीशी",
-  "holidayKeepsake.qixiMessage": "आकाशगंगा के पार आज रात हमारा मिलन।"
+  "holidayKeepsake.qixiMessage": "आकाशगंगा के पार आज रात हमारा मिलन।",
+  "composerDraft.storageError": "ड्राफ़्ट सहेजा नहीं जा सका। आपका पाठ इस विंडो में मौजूद है। फ़ोल्डर की अनुमति और खाली डिस्क स्थान जाँचें।"
 }

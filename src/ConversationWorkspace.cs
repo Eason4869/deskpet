@@ -15,7 +15,7 @@ namespace Dafeiyu
         internal ProjectDefinition Project {get{return project;}}
         internal bool UiObserved;
         internal bool IsDisposed {get{return disposed;}}
-        internal bool IsDraft;internal ConversationDefinition Definition;
+        internal bool IsDraft;internal string DraftOwner;internal ConversationDefinition Definition;
         AgentJobApplicationService jobServices;
         internal void ConfigureJobServices(AgentJobApplicationService services)
         {
@@ -95,6 +95,7 @@ namespace Dafeiyu
         public async Task CloseAsync()
         {
             if(disposed)return;
+            Session.FlushDraft();
             await Queue.PauseAsync().ConfigureAwait(false);
             await Session.StopAsync().ConfigureAwait(false);
             await Session.SaveHistoryForCloseAsync().ConfigureAwait(false);

@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Nationalfeiertag",
   "holidayKeepsake.nationalDayMessage": "Fünf goldene Sterne zur Feier Chinas.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Unter der Milchstraße begegnen wir uns heute Nacht."
+  "holidayKeepsake.qixiMessage": "Unter der Milchstraße begegnen wir uns heute Nacht.",
+  "composerDraft.storageError": "Entwurf konnte nicht gespeichert werden. Der Text bleibt im Fenster. Bitte Ordnerzugriff und freien Speicher prüfen."
 }

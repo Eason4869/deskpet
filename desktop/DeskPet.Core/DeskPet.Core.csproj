@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../../src/CompanionPackagePolicy.cs;../../src/CompanionPackageInventory.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/official/companion-package-policy.json" LogicalName="Dafeiyu.CompanionPackagePolicy" />
+    <Compile Include="../../src/ComposerDraftStore.cs" Link="Shared/ComposerDraftStore.cs" />
     <Compile Include="../../src/CompanionQuietClips.cs" Link="Shared/CompanionQuietClips.cs" />
     <Compile Include="../../src/Maintenance/*.cs" Link="Shared/Maintenance/%(Filename)%(Extension)" />
     <Compile Include="../../src/Relationships/*.cs" Link="Shared/Relationships/%(Filename)%(Extension)" />

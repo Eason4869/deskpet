@@ -15,6 +15,13 @@ namespace Dafeiyu
         {
             Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
         }
+        ComposerDraftStore composerDrafts;
+        internal void BindDraft(ConversationWorkspace workspace,string role)
+        {
+            if(composerDrafts==null)composerDrafts=new ComposerDraftStore(dataRoot,Maintenance);
+            workspace.DraftOwner=role;
+            workspace.Session.BindDraft(composerDrafts,ComposerDraftStore.Scope(role,workspace.Definition.Mode,workspace.ProjectId,workspace.Definition.SectionId),saveHistory);
+        }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}
         public event Action StateChanged;
         AgentJobApplicationService jobServices;
@@ -162,6 +169,7 @@ namespace Dafeiyu
                 lock(gate){pending=closing.Values.ToArray();var active=workspaces.Where(w=>!closing.ContainsKey(w.Id)).ToArray();sessions=active.Select(w=>w.Session).ToArray();queues=active.Select(w=>w.Queue).ToArray();}
                 await Task.WhenAll(pending.Concat(sessions.Select(session=>session.WaitForIdleAsync()))).ConfigureAwait(false);
                 await Task.WhenAll(sessions.Select(session=>session.FlushHistoryAsync()).Concat(queues.Select(queue=>queue.FlushAsync()))).ConfigureAwait(false);
+                if(composerDrafts!=null)composerDrafts.Flush();
                 if(!Busy)break;
             }
         }
@@ -169,6 +177,7 @@ namespace Dafeiyu
         {
             if(disposed)return;disposed=true;ConversationWorkspace[] snapshot;lock(gate){snapshot=workspaces.Where(w=>!closing.ContainsKey(w.Id)).ToArray();foreach(var workspace in snapshot)workspaces.Remove(workspace);}
             foreach(var workspace in snapshot){workspace.Session.StateChanged-=NotifyState;workspace.Queue.Changed-=NotifyState;workspace.Dispose();}
+            if(composerDrafts!=null)composerDrafts.Dispose();
         }
     }
 }

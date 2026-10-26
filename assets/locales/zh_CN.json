@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "国庆节",
   "holidayKeepsake.nationalDayMessage": "五星红旗迎风，与你同庆祖国华诞。",
   "holidayKeepsake.qixiTitle": "七夕节",
-  "holidayKeepsake.qixiMessage": "鹊桥映星河，今夜与你相逢。"
+  "holidayKeepsake.qixiMessage": "鹊桥映星河，今夜与你相逢。",
+  "composerDraft.storageError": "草稿保存失败，当前文字仍保留在窗口中。请检查数据目录权限或磁盘空间。"
 }

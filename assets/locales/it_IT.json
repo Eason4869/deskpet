@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Festa nazionale",
   "holidayKeepsake.nationalDayMessage": "Cinque stelle dorate per celebrare la Cina.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Sotto la Via Lattea, stanotte ci ritroviamo."
+  "holidayKeepsake.qixiMessage": "Sotto la Via Lattea, stanotte ci ritroviamo.",
+  "composerDraft.storageError": "Impossibile salvare la bozza. Il testo resta in questa finestra. Controlla i permessi della cartella e lo spazio libero."
 }

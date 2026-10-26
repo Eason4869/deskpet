@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "Dia Nacional",
   "holidayKeepsake.nationalDayMessage": "Cinco estrelas douradas celebram a fundação da China.",
   "holidayKeepsake.qixiTitle": "Qixi",
-  "holidayKeepsake.qixiMessage": "Sob a Via Láctea, nossos caminhos se encontram."
+  "holidayKeepsake.qixiMessage": "Sob a Via Láctea, nossos caminhos se encontram.",
+  "composerDraft.storageError": "Não foi possível salvar o rascunho. O texto continua nesta janela. Verifique o acesso à pasta e o espaço livre."
 }

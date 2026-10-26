@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "국경절",
   "holidayKeepsake.nationalDayMessage": "오성홍기 아래 중국의 건국을 축하해요.",
   "holidayKeepsake.qixiTitle": "칠석",
-  "holidayKeepsake.qixiMessage": "은하수의 다리에서 오늘 밤 만나요."
+  "holidayKeepsake.qixiMessage": "은하수의 다리에서 오늘 밤 만나요.",
+  "composerDraft.storageError": "초안을 저장하지 못했습니다. 글은 창에 남아 있습니다. 데이터 폴더 권한과 디스크 공간을 확인하세요."
 }

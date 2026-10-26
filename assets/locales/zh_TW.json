@@ -4680,5 +4680,6 @@
   "holidayKeepsake.nationalDayTitle": "國慶節",
   "holidayKeepsake.nationalDayMessage": "五星紅旗迎風，與你同慶祖國華誕。",
   "holidayKeepsake.qixiTitle": "七夕節",
-  "holidayKeepsake.qixiMessage": "鵲橋映星河，今夜與你相逢。"
+  "holidayKeepsake.qixiMessage": "鵲橋映星河，今夜與你相逢。",
+  "composerDraft.storageError": "草稿儲存失敗，目前文字仍保留在視窗中。請檢查資料目錄權限或磁碟空間。"
 }
