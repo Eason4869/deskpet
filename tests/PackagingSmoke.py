@@ -145,8 +145,9 @@ with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
         raise RuntimeError('Compiled onboarding-title probe failed: ' + (result.stdout + result.stderr).decode('utf-8', errors='replace'))
     lesson_titles=base64.b64decode(result.stdout).decode('utf8').split('\n')
     assert lesson_titles and all(lesson_titles), 'application lesson titles must be extracted from the actual compiled application'
-    assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'
-    guide_titles = re.findall(r'^### \d+\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
+    guide_steps = re.findall(r'^### (\d+)\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
+    assert [int(number) for number, title in guide_steps] == list(range(1, len(lesson_titles) + 1)), 'packaged guide numbers must match current application lessons'
+    guide_titles = [title for number, title in guide_steps]
     assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'
     assert not any('/templates/' in name or '/previews/' in name for name in bundle.namelist())
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
