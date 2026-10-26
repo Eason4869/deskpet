@@ -33,6 +33,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tests/MacPackagingTests.py
+      - name: Verify embedded language byte snapshots
+        run: |
+          python tests/LanguagePackSnapshotTests.py
+          python tools/verify_language_packs.py
       - name: Validate complete holiday artwork
         run: |
           python -m pip install Pillow

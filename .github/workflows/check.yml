@@ -39,6 +39,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Standalone helper resource contract failed' }
           python tools/verify_localization.py check --phase complete --report work/localization-audit.json
           if ($LASTEXITCODE) { throw 'Localization completeness failed' }
+          python tests/LanguagePackSnapshotTests.py
+          if ($LASTEXITCODE) { throw 'Embedded language byte snapshot regression failed' }
           python tools/verify_language_packs.py --report work/language-pack-audit.json
           if ($LASTEXITCODE) { throw 'Translation completeness failed' }
       - name: Build and run tests

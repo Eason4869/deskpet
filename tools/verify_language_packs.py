@@ -2,11 +2,29 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from verify_localization import load_catalog, placeholders
 
 ROOT = Path(__file__).resolve().parents[1]
+LOCALES = {"zh_CN", "zh_TW", "en_US", "ja_JP", "ko_KR", "fr_FR", "de_DE", "hi_IN", "id_ID", "it_IT", "pt_BR", "es_419", "es_ES"}
+
+
+def snapshot_errors(directory, source):
+    """Fail before expensive native builds when the independent byte pins are stale."""
+    try:
+        text=source.read_text(encoding='utf-8-sig')
+        def array(name):
+            match=re.search(r'static readonly string\[\] '+name+r'\s*=\s*\{(.*?)\};',text,re.S)
+            if match is None:raise ValueError('Missing '+name+' snapshot')
+            return json.loads('['+match.group(1)+']')
+        codes,hashes=array('Codes'),array('Hashes')
+        if len(codes)!=13 or set(codes)!=LOCALES or len(hashes)!=13 or any(not isinstance(h,str) or not re.fullmatch('[a-f0-9]{64}',h) for h in hashes):
+            raise ValueError('Expected thirteen independent embedded byte pins')
+        return ['Embedded byte snapshot differs: '+code for code,expected in zip(codes,hashes) if hashlib.sha256((directory/(code+'.json')).read_bytes()).hexdigest()!=expected]
+    except (ValueError,OSError) as error:
+        return ['Embedded byte snapshot: '+str(error)]
 
 
 def audit(directory):
@@ -34,9 +52,10 @@ def audit(directory):
             packs.append(dict(locale=path.stem, keys=len(entries), missing=len(missing), extra=len(extra), sha256=hashlib.sha256(raw).hexdigest()))
         except (ValueError, UnicodeError) as error:
             errors.append(f"{path.name}: {error}")
-    expected = {"zh_CN", "zh_TW", "en_US", "ja_JP", "ko_KR", "fr_FR", "de_DE", "hi_IN", "id_ID", "it_IT", "pt_BR", "es_419", "es_ES"}
-    if {path.stem for path in files} != expected:
+    if {path.stem for path in files} != LOCALES:
         errors.append("Expected exactly the thirteen accepted language packs.")
+    if directory.resolve()==(ROOT/'assets/locales').resolve():
+        errors.extend(snapshot_errors(directory,ROOT/'tests/LanguagePackTests.cs'))
     return dict(success=not errors, canonical_keys=len(canonical), packs=packs, errors=errors)
 
 

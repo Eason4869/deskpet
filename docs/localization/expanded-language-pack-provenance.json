@@ -145,7 +145,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "24791526ca7c7ccd5ad980e3b9baf61d110e9804f615fb208d9b40ebfd1e81ac",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "4c5389a313829b5ab68c96e1776c6e6149065a41a38f2cc3e50d1e51874653ec",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "de_DE",
@@ -293,7 +303,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "4bb05c5be66545d5ec3d342b89433ff99d65283fb7679b6b7330744d6026cd5d",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "9b81e9d415ff60c0ddfec2577d78da8a3afe85a689823f641af1f47691ec787c",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "hi_IN",
@@ -441,7 +461,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "f1d1681698442cceff4b6ec885b0334b35c0639ae9f300f22a20ba3000e0da7a",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "580d2d9e3dad5620ae0b3c1cb7d88812fab5ced2feb1a80da097d9b24940acf7",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "id_ID",
@@ -589,7 +619,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "e5d4c31f86c8f91533ce61f7385c9efe90138e04ec07057ea8004e5e3cc8a1f1",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "c9cc6d1a2f472df3acbbee583c198000950cf42445b6fda0fd5f3cb7ed796edc",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "it_IT",
@@ -737,7 +777,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "14aa75a91a64058d8c11fde9150544096d6dd50f8e5c9fdb9e6910f32a6d2dcb",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "da394e95dbeb8b58d0c808656b600e6f22f74b149c9672590ec4d989f8885a10",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "pt_BR",
@@ -885,7 +935,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "68ada240b40340eb8996e966b00372a931676c30dcce49e0809711b3ebf0ec8f",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "33566c96fe9efd514afe668996222619517637c6b1fe45b9513a1e55a8c313fc",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "es_419",
@@ -1033,7 +1093,17 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "b553d184f83743c738bed542127429b527563994f13cf74e1ea503896238dd11",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "26f8dcd6aea9dfccf9d217565f06fca2c17a4b9453ae555ea3acc871593b00d8",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   },
   {
     "locale": "es_ES",
@@ -1181,6 +1251,16 @@
       "shortcutCapture.title"
     ],
     "v0_11_0_dev3_sha256": "41610f9801d643ce2ebbe195974f536cef726c7e8fecc6190e3a6cd7225bbc7c",
-    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately."
+    "v0_11_0_dev3_translation": "Assistant-authored festival, draft, import and shortcut strings. Native human proofreading not performed; key/format/font/native layout tests recorded separately.",
+    "v0_11_1_dev2_sha256": "51f687835ef358dff505bf613f0c45137066b163307bd4faa976bbe9e1eb409c",
+    "v0_11_1_dev2_added_keys": [
+      "companions.behavior.stumbleHint",
+      "companions.guide.downloadDetail",
+      "companions.package.metadataConflict",
+      "cache.packVersionCategory",
+      "cache.preservedPackVersions",
+      "companions.removeFromList"
+    ],
+    "v0_11_1_dev2_translation": "Assistant-authored maintenance copy; native human review not performed. Historical source hashes remain unchanged."
   }
 ]
