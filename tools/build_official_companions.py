@@ -96,7 +96,14 @@ def verify_material_transition(previous, current):
         raise ValueError('Changed material requires a higher version; unchanged material must keep its version')
 
 
-def verify_registry_history(repository, registry):
+def verify_registry_history(repository, registry, allow_source_export=False):
+    # Exported source has no history. Its payload still must match every registry
+    # pin below; CI separately requires the strict full-checkout history gate.
+    # Never borrow a parent checkout when an export lives inside its work folder.
+    if not (Path(repository) / '.git').exists():
+        if allow_source_export:
+            return
+        raise ValueError('Material history validation requires a Git checkout')
     if subprocess.check_output(['git', 'rev-parse', '--is-shallow-repository'], cwd=repository, text=True).strip() != 'false':
         raise ValueError('Material history validation requires fetch-depth: 0')
     path = 'assets/official/companion-versions.json'
@@ -328,7 +335,7 @@ def build(repository, output, version, defaults=None, complete_materials=None):
     registry = read_json(repository / 'assets/official/companion-versions.json')
     if registry.get('schema_version') != 1 or registry.get('payload_algorithm') != 'official-payload-v1' or set(registry['companions']) != set(IDS):
         raise ValueError('Invalid official material registry')
-    verify_registry_history(repository, registry)
+    verify_registry_history(repository, registry, allow_source_export=True)
     descriptors, measurements = [], []
     for role in IDS:
         source = materials / role

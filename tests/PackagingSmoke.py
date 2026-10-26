@@ -87,13 +87,15 @@ print('PASS runtime includes the exact daily-use and voice-preset guides')
 index_path=output/('DeskPet-Companions-'+version+'.json')
 companion_index=json.loads(index_path.read_text(encoding='utf-8'))
 package_policy=json.loads((checkout/'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
+material_registry=json.loads((checkout/'assets/official/companion-versions.json').read_text(encoding='utf-8'))['companions']
 assert companion_index['schema_version']==1
 assert [entry['id'] for entry in companion_index['companions']]==['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
 for entry in companion_index['companions']:
     pet=entry['id']
-    archive=output/('DeskPet-Companion-'+pet+'-'+version+'.zip')
+    material=material_registry[pet]
+    archive=output/('DeskPet-Companion-'+pet+'-'+material['pack_version']+'.zip')
     assert archive.is_file() and entry['asset_name']==archive.name
-    assert entry['version']==version and entry['min_app_version']==version
+    assert entry['version']==material['pack_version'] and entry['min_app_version']==material['min_app_version']
     assert entry['size']==archive.stat().st_size and entry['sha256']==hashlib.sha256(archive.read_bytes()).hexdigest()
     assert archive.stat().st_size<=package_policy['maximum_archive_bytes']
     with ZipFile(archive) as bundle:
@@ -101,8 +103,8 @@ for entry in companion_index['companions']:
         assert sum(item.file_size for item in bundle.infolist())<=package_policy['maximum_expanded_bytes']
         skin=json.loads(bundle.read('pet.json'))
         identity=json.loads(bundle.read('companions.json'))
-        assert identity['id']==pet and identity['version']==version and identity['name']==skin['name']
-        assert skin['id']==pet and skin['pack_version']==version
+        assert identity['id']==pet and identity['version']==material['pack_version'] and identity['min_app_version']==material['min_app_version'] and identity['name']==skin['name']
+        assert skin['id']==pet and skin['pack_version']==material['pack_version']
         assert skin['version']==2 and len(skin['animations'])==17 and skin['gaze']['frames']==16
         assert skin['system_prompt'] and skin['special_action'] and skin['special_action2']
         assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech'] and skin['voice_presets']['live']
@@ -158,13 +160,14 @@ manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
 manifest_names = [line.split('  ', 1)[1] for line in manifest]
 assert manifest_names.count(app_asset.name) == 1, 'standalone application must appear exactly once in the release manifest'
 assert all('/' not in name and '\\' not in name for name in manifest_names), 'release manifest must contain flat uploadable asset names'
-assert all(version in name for name in manifest_names), 'each release asset must retain the complete release version'
+material_assets={entry['asset_name'] for entry in companion_index['companions']}
+assert all(version in name for name in manifest_names if name not in material_assets), 'application assets must retain the complete release version'
 assert set(manifest_names) == {path.name for path in output.iterdir() if path.is_file() and (path.suffix in {'.exe', '.zip'} or path.name=='DeskPet-Companions-'+version+'.json')}, 'manifest must cover every release asset'
 for line in manifest:
     digest, name = line.split('  ', 1)
     assert digest == hashlib.sha256((output / name).read_bytes()).hexdigest(), 'stale digest: ' + name
 for pet in ['e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga']:
-    assert any(line.endswith('  DeskPet-Companion-' + pet + '-' + version + '.zip') for line in manifest)
+    assert any(line.endswith('  DeskPet-Companion-' + pet + '-' + material_registry[pet]['pack_version'] + '.zip') for line in manifest)
 assert any(line.endswith('  DeskPet-Companions-' + version + '.json') for line in manifest)
 print('PASS versioned ASCII skin names and manifest hashes match release artifacts')
 result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',

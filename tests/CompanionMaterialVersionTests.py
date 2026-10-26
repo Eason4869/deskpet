@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import build_official_companions as authoring
@@ -31,6 +32,23 @@ class MaterialVersionTests(unittest.TestCase):
 
     def test_filename_uses_material_not_application_version(self):
         self.assertEqual('DeskPet-Companion-e-bao-0.11.0-dev.3.zip', authoring.package_name('e-bao', '0.11.0-dev.3'))
+
+    def test_source_export_build_keeps_pins_without_borrowing_parent_git_history(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(authoring.subprocess, 'check_output') as git:
+                authoring.verify_registry_history(root, {}, allow_source_export=True)
+                git.assert_not_called()
+            with self.assertRaisesRegex(ValueError, 'checkout'):
+                authoring.verify_registry_history(root, {})
+
+    def test_shallow_checkout_cannot_skip_history_as_a_source_export(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / '.git').mkdir()
+            with patch.object(authoring.subprocess, 'check_output', return_value='true\n'):
+                with self.assertRaisesRegex(ValueError, 'fetch-depth'):
+                    authoring.verify_registry_history(root, {}, allow_source_export=True)
 
     def test_changed_payload_requires_higher_material_version(self):
         old = {'pack_version': '0.11.0-dev.3', 'min_app_version': '0.11.0-dev.3', 'payload_sha256': 'a' * 64}
