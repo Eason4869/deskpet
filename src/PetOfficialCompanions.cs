@@ -81,9 +81,9 @@ namespace Dafeiyu
         {
             if(skin==null||!CanRequestCompanion())return false;
             if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.selectSkin.notice");return false;}
-            if(skin.IsPlaceholder||skin.Embedded&&ShouldRefreshOfficial(skin)){var ignored=RequestSkinAsync(skin,CompanionSelectionOrigin.PassiveMenu,null);return false;}
+            if(!skin.IsOfficial&&!skin.PackageHolidaysChecked||skin.IsPlaceholder||skin.Embedded&&ShouldRefreshOfficial(skin)){var ignored=RequestSkinAsync(skin,CompanionSelectionOrigin.PassiveMenu,null);return false;}
             BeginCompanionSelection(skin);
-            bool changed=ActivateSkin(skin);if(changed){Catalog.PreserveActive(skin);if(skin.IsOfficial)MergeOfficialHoliday(skin);}if(changed&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}
+            bool changed=ActivateSkin(skin);if(changed){Catalog.PreserveActive(skin);MergeOfficialHoliday(skin);}if(changed&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}
             return changed;
         }
         internal async Task<bool> RequestSkinAsync(SkinDefinition skin,CompanionSelectionOrigin origin,Window owner)
@@ -93,8 +93,9 @@ namespace Dafeiyu
             RecordPetInteraction();long token=BeginCompanionSelection(skin);
             if(skin.Embedded&&ShouldRefreshOfficial(skin))return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
             if(!skin.IsPlaceholder) {
+                await PrepareLocalOutfitsAsync(skin);if(!OwnsOfficial(token))return false;
                 bool selected=ActivateSkin(skin);
-                if(selected){Catalog.PreserveActive(skin);if(skin.IsOfficial)MergeOfficialHoliday(skin);}if(selected&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,token,false,origin,owner,OfficialCompanionCheckMode.Cached);}
+                if(selected){Catalog.PreserveActive(skin);MergeOfficialHoliday(skin);}if(selected&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,token,false,origin,owner,OfficialCompanionCheckMode.Cached);}
                 return selected;
             }
             return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
@@ -235,9 +236,27 @@ namespace Dafeiyu
             motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1;shownOffset=new Point();shownMirrored=false;gazeActive=false;
             Animation=skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday();UpdateFrame();RefreshChatAppearance();
         }
+        async Task PrepareLocalOutfitsAsync(SkinDefinition skin)
+        {
+            if(skin.IsOfficial||skin.PackageHolidaysChecked)return;
+            if(skin.Illustrated&&skin.Manifest!=null&&OfficialCompanionRules.Ids.Contains(skin.Manifest.PackageId)) {
+                var catalog=await Task.Run(()=>{
+                    string root=Path.Combine(skin.Source,"holidays");if(!Directory.Exists(root))return null;
+                    var result=new HolidayCatalog(root);if(!String.IsNullOrEmpty(result.Warning)||result.Outfits.Any(o=>!o.Ready||o.CharacterId!=skin.Manifest.PackageId))throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));return result;
+                });
+                skin.PackageHolidayCatalog=catalog;
+            }
+            skin.PackageHolidaysChecked=true;
+        }
+        async Task RestoreLocalOutfitsAsync()
+        {
+            var captured=Skin;
+            try {await PrepareLocalOutfitsAsync(captured);if(!closing&&Object.ReferenceEquals(Skin,captured)){MergeOfficialHoliday(captured);RefreshHoliday();UpdateFrame();}}
+            catch(Exception error){if(!OfficialError(error))throw;Notice=error.Message;}
+        }
         void MergeOfficialHoliday(SkinDefinition skin)
         {
-            if(Holidays==null||!skin.IsOfficial)return;
+            if(Holidays==null)return;
             if(embeddedHolidayCatalog==null)embeddedHolidayCatalog=Holidays.Catalog;
             var merged=embeddedHolidayCatalog;
             foreach(var pair in officialSources) {
@@ -248,6 +267,7 @@ namespace Dafeiyu
                 HolidayCatalog catalog;if(!officialCatalogs.TryGetValue(source.Source,out catalog))continue;
                 merged=merged.WithCharacter(pair.Key,catalog);
             }
+            if(skin.PackageHolidayCatalog!=null)merged=merged.WithCharacter(skin.OutfitCharacterId,skin.PackageHolidayCatalog);
             Holidays.ReplaceCatalog(merged);
         }
         OfficialCompanionPreparation preparation;

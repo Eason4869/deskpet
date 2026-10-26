@@ -96,7 +96,7 @@ namespace Dafeiyu
             if(companionId!="official:"+verifiedCharacterId)return null;
             // Both reviewed costume revisions share the original scene. Bind the
             // actual selected revision without changing old receipts or art inventory.
-            if(holidayId!="halloween" || outfitId!="halloween-2026" || outfitVersion!="1.0.0"&&outfitVersion!="1.0.3")return null;
+            if(holidayId!="halloween" || outfitId!="halloween-2026" || outfitVersion!="1.0.0"&&outfitVersion!="1.0.3"&&outfitVersion!="1.0.4")return null;
             foreach(var item in all)if(item.CompanionId==companionId&&item.HolidayId==holidayId&&item.OutfitId==outfitId&&item.HolidayId!=null){
                 if(item.OutfitVersion==outfitVersion)return item;
                 return new RelationshipStageArtAsset(item.CompanionId,item.HolidayId,item.OutfitId,outfitVersion,item.SceneId,item.SceneVersion,item.RelativePath,item.PixelWidth,item.PixelHeight,item.ByteLength,item.Sha256,item.StageId);

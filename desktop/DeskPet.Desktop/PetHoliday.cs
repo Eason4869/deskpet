@@ -32,7 +32,7 @@ internal sealed partial class PetWindow
     internal bool KeepsakeInteractive=>sessionInteractive&&!owner.IsExiting;
     private ulong lifecycleRevision;
     private int observedTerminalRevision;
-    internal Func<DateTime> HolidayLocalNow { get; set; } = () => DateTime.Now;
+    internal Func<DateTime> HolidayLocalNow { get; set; } = () => HolidayLocalClock.Now;
     internal Func<double>? HolidayMonotonicNow { get; set; }
     internal Func<double>? HolidayHoverRandom { get; set; }
     private double HolidaySeconds => HolidayMonotonicNow?.Invoke() ?? clock.Elapsed.TotalSeconds;
@@ -88,7 +88,7 @@ internal sealed partial class PetWindow
         try
         {
             owner.Holidays.Refresh(new HolidayContext {
-                PersonaId = owner.Skin.Id, CharacterId = owner.Skin.BuiltinCharacterId,
+                PersonaId = owner.Skin.Id, CharacterId = owner.Skin.OutfitCharacterId, StateKey = owner.Skin.PickerKey,
                 LocalTime = HolidayLocalNow(), MonotonicSeconds = now, ResourceVersion = ResourceVersion,
                 CanPlayEasterEgg = HolidaySafe && OutfitKey(committedOutfit) == OutfitKey(owner.Holidays.EffectiveOutfit) && committedOutfit != null && rejectedOutfit != OutfitKey(committedOutfit),
                 CanAnimateTransition = HolidaySafe

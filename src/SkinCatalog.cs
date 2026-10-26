@@ -60,6 +60,7 @@ namespace Dafeiyu
         // Trusted registration metadata; imported manifests cannot assign this.
         public string BuiltinCharacterId {get;internal set;}
         internal HolidayCatalog PackageHolidayCatalog {get;set;}
+        internal bool PackageHolidaysChecked {get;set;}
         internal string OutfitCharacterId {get{return BuiltinCharacterId??(PackageHolidayCatalog!=null&&Manifest!=null?Manifest.PackageId:null);}}
         string pickerKey;
         public string PickerKey {get{return pickerKey??(!String.IsNullOrEmpty(BuiltinCharacterId)?"official:"+BuiltinCharacterId:Illustrated&&!String.IsNullOrEmpty(Manifest.PackageId)?"custom-pack:"+Manifest.PackageId:"legacy-skin:"+Id);}internal set{pickerKey=value;}}
@@ -107,6 +108,9 @@ namespace Dafeiyu
     }
     public sealed class SkinCatalog
     {
+        readonly System.Windows.Threading.Dispatcher ownerDispatcher=System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        T OnOwner<T>(Func<T> publish){return ownerDispatcher.CheckAccess()?publish():ownerDispatcher.Invoke(publish);}
+
         private static readonly Dictionary<string,BitmapSource> avatars=new Dictionary<string,BitmapSource>();
         private readonly string directory;
         private readonly string dataRoot;
@@ -263,7 +267,7 @@ namespace Dafeiyu
                 var manifest=new SkinManifest { Version=1,Name=name,Atlas="spritesheet.png",SystemPrompt=String.IsNullOrWhiteSpace(prompt) ? PersonaProfiles.Generic(name) : prompt,Description=description,Relationship=legacy==null?null:legacy.Relationship };
                 using(var stream=File.Create(Path.Combine(destination,"pet.json"))) Serializer().WriteObject(stream,manifest);
                 var skin=new SkinDefinition(id,name,Path.Combine(destination,"spritesheet.png"),manifest.SystemPrompt,description,manifest);
-                skins.Add(skin); return skin;
+                return OnOwner(()=>{skins.Add(skin);return skin;});
             }
             catch
             {
@@ -278,15 +282,16 @@ namespace Dafeiyu
             var files=IllustratedPack.Validate(source,manifest,true);
             if(!String.IsNullOrEmpty(manifest.PackageId)) {
                 if(!String.Equals(Path.GetFileName(path),"pet.json",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException(TextResources.Get("skinCatalog.importIllustrated.text"));
-                bool existing=customPackageIds.Contains(manifest.PackageId);
                 var inventory=WpfOfficialNativeValidator.ValidateLocalPackage(source,CancellationToken.None);
                 CompanionPackageInventory installedInventory=null;
                 string installedFolder=CompanionPackStorage.Install(source,dataRoot,manifest.PackageId,inventory.AllReferences,
                     folder=>{installedInventory=WpfOfficialNativeValidator.ValidateLocalPackage(folder,CancellationToken.None);});
+                return OnOwner(()=>{
+                bool existing=customPackageIds.Contains(manifest.PackageId);
                 string persona=OfficialCompanionIdentity.ResolveCustom(dataRoot,manifest.PackageId,skins.Where(s=>s.IsOfficial).Select(s=>s.Id),!existing);
                 var updated=new SkinDefinition(persona,installedFolder,manifest){PackageHolidayCatalog=installedInventory.HolidayCatalog};customPackageIds.Add(manifest.PackageId);
                 CompanionPackStorage.SetHidden(dataRoot,manifest.PackageId,false);
-                CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;
+                CompanionPackStorage.SetHidden(dataRoot,updated.PickerKey,false);Put(updated);return updated;});
             }
             string id="skin-"+Guid.NewGuid().ToString("N"),destination=Path.Combine(directory,id);
             Directory.CreateDirectory(destination);
@@ -300,7 +305,7 @@ namespace Dafeiyu
                 IllustratedPack.Validate(destination,manifest,true);
                 manifest.Name=CleanName(manifest.Name);
                 using(var stream=File.Create(Path.Combine(destination,"pet.json"))) Serializer().WriteObject(stream,manifest);
-                var skin=new SkinDefinition(id,destination,manifest);skins.Add(skin);ReconcileLegacy(true);return Find(skin.Id);
+                var skin=new SkinDefinition(id,destination,manifest);return OnOwner(()=>{skins.Add(skin);ReconcileLegacy(true);return Find(skin.Id);});
             } catch { Directory.Delete(destination,true);throw; }
         }
         internal static DataContractJsonSerializer Serializer()

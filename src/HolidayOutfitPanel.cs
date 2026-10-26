@@ -42,7 +42,7 @@ namespace Dafeiyu
                 Visibility=controller.WardrobeVisible?Visibility.Visible:Visibility.Collapsed;
                 enabled.IsChecked=controller.Enabled;
                 var skin=currentSkin==null?null:currentSkin();if(!Object.ReferenceEquals(skin,thumbnailSkin)){thumbnailSkin=skin;thumbnails.Clear();}
-                enabled.IsEnabled=skin==null || !String.IsNullOrEmpty(skin.BuiltinCharacterId);
+                enabled.IsEnabled=skin==null || !String.IsNullOrEmpty(skin.OutfitCharacterId);
                 var owned=controller.OwnedOutfits;
                 outfits.Items.Clear();
                 var original=OriginalThumbnail();outfits.Items.Add(LocalizedUi.With(new Choice{Id=null,Available=true,Text=TextResources.Get("holidayOutfitPanel.refreshState.text"),Thumbnail=original},"Text",()=>(TextResources.Get("holidayOutfitPanel.refreshState.text"))));

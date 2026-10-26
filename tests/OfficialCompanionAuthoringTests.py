@@ -14,6 +14,24 @@ SPEC.loader.exec_module(authoring)
 
 
 class AuthoringTests(unittest.TestCase):
+    def test_reviewed_default_images_are_copied_without_reencoding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'defaults/e-bao'
+            source.mkdir(parents=True)
+            payload = b'original reviewed PNG bytes'
+            for name in ('idle.png', 'gaze.png', 'preview.png'):
+                (source / name).write_bytes(payload + name.encode())
+            (source / 'pet.json').write_text(json.dumps({'id': 'e-bao', 'name': 'E包', 'preview': 'preview.png', 'gaze': {'file': 'gaze.png'}, 'animations': {'idle': {'file': 'idle.png'}}}), encoding='utf-8')
+            destination = root / 'output'
+            destination.mkdir()
+            with patch.object(authoring, 'collect_holidays', return_value=[]), patch.object(authoring, 'check_manifest'):
+                identity, outfits, references = authoring.collect_reviewed_role(root, root / 'defaults', destination, 'e-bao', '0.11.0-dev.3')
+            self.assertEqual('0.11.0-dev.3', identity['min_app_version'])
+            for name in ('idle.png', 'gaze.png', 'preview.png'):
+                self.assertEqual((source / name).read_bytes(), (destination / name).read_bytes())
+            self.assertIn('companions.json', references)
+
     def test_final_quiet_overlay_wins_over_legacy_export_and_fps_defaults(self):
         # Small authoring fixture exercises collect_role's actual ordering. Full
         # PNG/native validation is a separate integration gate, not mocked there.

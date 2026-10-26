@@ -1,7 +1,7 @@
 name: Complete companion import
 on:
   pull_request:
-    paths: ['src/**', 'tests/**', 'desktop/**', 'tools/build_official_companions.py', 'assets/official/**', '.github/workflows/complete-companions.yml']
+    paths: ['src/**', 'tests/**', 'desktop/**', 'tools/build_official_companions.py', 'assets/official/**', 'assets/holidays/**', 'assets/complete-defaults/**', '.github/workflows/complete-companions.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,10 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Complete package policy and inventory
         run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --complete-companion-only
+      - name: Seasonal boundaries and independent unlocks
+        run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --seasonal-integration-only
+      - name: Reviewed complete fixture and original default bytes
+        run: python tests/CompleteCompanionFixtureTests.py
       - name: Existing official download and atomic publication
         run: dotnet run --project desktop/DeskPet.Tests/DeskPet.Tests.csproj -- --official-companion-only
       - name: Existing source binding
@@ -28,3 +32,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./Build.ps1 -Target CompleteCompanionTests
+      - name: All fifty native outfits and bounded repeated wardrobe cache
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./Build.ps1 -Target CompleteCompanionNativeTests
+      - name: Holiday action clocks preserve all poses
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./Build.ps1 -Target CompleteCompanionClockTests

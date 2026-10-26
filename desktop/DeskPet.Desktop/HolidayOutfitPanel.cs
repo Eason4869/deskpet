@@ -56,7 +56,7 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
         {
             IsVisible = controller.WardrobeVisible; enabled.IsChecked = controller.Enabled;
             var skin = currentSkin(); var owned = controller.OwnedOutfits;
-            enabled.IsEnabled = skin == null || skin.BuiltinCharacterId != null;
+            enabled.IsEnabled = skin == null || skin.OutfitCharacterId != null;
             var options = new List<Choice> { new(null, TextResources.Get("holidayOutfitPanel.refresh.optionsListChoice"), true, skin, null) };
             options.AddRange(owned.Select(x => new Choice(x.OutfitId, x.Name + (x.Ready ? "" : TextResources.Get("holidayOutfitPanel.refresh.ownedSelect")), x.Ready, skin, x)));
             choices.ItemsSource = options;

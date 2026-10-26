@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -448,9 +448,9 @@ namespace Dafeiyu
             }
             bool interacting=interaction.Active;
             // New eight-pose actions must show every pose even if a UI frame is late.
-            interaction.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta);
+            interaction.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(interaction.Name,originalInteraction,AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta));
             if(interacting && !interaction.Active){fallbackInteraction="";Animation.Play("idle",0);ConversationChanged();nextWalk=WanderSchedule.Next(now,random.NextDouble());}
-            Animation.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta); UpdateFrame(delta);
+            Animation.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(Animation.State,originalAction,AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta)); UpdateFrame(delta);
         }
         internal void UpdateHover(Point cursor)
         {
@@ -666,7 +666,7 @@ namespace Dafeiyu
         {
             interactionRevision++;
             originalInteraction=AdditionalInteractions.HasOriginal(Skin,name) && (originalStyle??random.Next(2)==0);
-            interaction.Configure(Skin,originalInteraction);
+            interaction.ConfigureClips(Skin,originalInteraction,action=>ResolveHolidayClip(action,originalInteraction));
             CancelPendingClick();DismissGreeting();walking=false;Paused=false;fallbackInteraction="";
             Animation.Play("idle",0);interaction.Start(name);nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());UpdateFrame();
             if(AdditionalInteractions.Has(Skin,name))previousTick=watch.Elapsed.TotalSeconds;

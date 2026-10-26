@@ -1,4 +1,4 @@
-using Dafeiyu;
+﻿using Dafeiyu;
 using DeskPet.Desktop;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -19,9 +19,9 @@ internal static class QuietMotionChecks
             using var assets=new SpriteAssets();
             Check(installed?!skin.CanonicalBuiltIn&&!skin.BuiltIn:skin.CanonicalBuiltIn,"source provenance is explicit "+skin.Id);
             if(skin.OfficialCharacterId=="gugugaga")Check(skin.PackageId=="gugugaga","gugu keeps original package metadata");
-            var holiday=(installed?new HolidayCatalog(Path.Combine(skin.Folder!,"holidays")):catalog).Outfits.Single(o=>o.CharacterId==skin.OfficialCharacterId);
+            var holiday=(installed?new HolidayCatalog(Path.Combine(skin.Folder!,"holidays")):catalog).Outfits.Single(o=>o.CharacterId==skin.OfficialCharacterId&&o.HolidayId=="halloween");
             foreach(bool dressed in new[]{false,true})foreach(var action in new[]{"idle","sleeping"})foreach(bool original in action=="idle"?new[]{true}:new[]{true,false}){
-                var clip=assets.Resolve(skin,action,original,dressed?holiday:null);double fps=action=="idle"?4:2.5;
+                var clip=assets.Resolve(skin,action,original,dressed?holiday:null);double fps=dressed?holiday.FindClip(action,!original&&holiday.FindClip(action,"alternate")!=null?"alternate":"default").Fps:action=="idle"?4:2.5;
                 var label=skin.Id+"/"+(dressed?"holiday":"normal")+"/"+action+"/"+original;
                 Check(clip.Frames==8&&clip.Fps==fps&&clip.Loop,"selected quiet timing "+label);
                 if(!dressed)Check(installed?!clip.File.StartsWith("companion-quiet/"):clip.File=="companion-quiet/"+skin.OfficialCharacterId+"/"+(action=="idle"?"idle":original?"sleeping":"sleeping-alternate")+".png","selected source belongs to actual provenance "+label);

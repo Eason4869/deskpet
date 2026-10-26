@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Buffers.Binary;
 using System.Text.Json;
 using Avalonia;
@@ -393,11 +393,11 @@ internal sealed class SpriteAssets : IDisposable
     public ClipSpec Resolve(PetSkin skin, string action, bool original, OutfitDefinition? outfit = null)
     {
         if (skin.IsPlaceholder) throw new InvalidOperationException(TextResources.Get("spriteAssets.resolve.text"));
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId)
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId)
         {
             var useAlternate = !original && outfit.FindClip(action, "alternate") != null;
             var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException(TextResources.Get("spriteAssets.resolve.clipOutfitFindClip"));
-            return MatchSourceTiming(OutfitClip(outfit, clip), Resolve(skin, action, original));
+            return OutfitClip(outfit, clip);
         }
         var quiet = skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
         if (quiet != null) return new ClipSpec(quiet.Path, quiet.Columns, quiet.Frames, quiet.Fps, quiet.Loop, quiet.Width, quiet.Height);
@@ -421,7 +421,7 @@ internal sealed class SpriteAssets : IDisposable
     }
     public ClipSpec Gaze(PetSkin skin, OutfitDefinition? outfit = null)
     {
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
         if (skin.Gaze != null) return skin.Gaze;
         var atlas = Get(skin, skin.Atlas!); return new ClipSpec(skin.Atlas!, 8, 16, 8, true, atlas.PixelSize.Width / 8, atlas.PixelSize.Height / 11, atlas.PixelSize.Height / 11 * 9);
     }
