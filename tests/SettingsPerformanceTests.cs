@@ -66,7 +66,13 @@ namespace Dafeiyu.Tests
                 page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");var provider=(TextBox)page.FindControl("TextProviderName");provider.Text="local unsaved provider";
                 page.SelectNavigation(0);page.RefreshTextProviders();page.SelectAiSection(0);Render(host);
                 Check(ReferenceEquals(ai,Field(page,"connections"))&&provider.Text=="local unsaved provider","AI page is reused and provider draft survives refresh");
-                page.SelectWorkSettings();Render(host);var work=Field(page,"work");var goal=(TextBox)page.FindControl("AgentGoal");goal.Text="local unsaved work";
+                var aiHost=(ContentControl)Field(ai,"page");var textScroll=(ScrollViewer)aiHost.Content;
+                page.SelectAiSection(3);Render(host);page.SelectAiSection(0);Render(host);
+                Check(ReferenceEquals(textScroll,aiHost.Content),"AI tab navigation reuses its scroll container");
+                page.SelectWorkSettings();Render(host);var work=Field(page,"work");var goal=(TextBox)page.FindControl("AgentGoal");string previousGoal=goal.Text;
+                page.SelectNavigation(0);cfg.AgentGoal="externally updated goal";page.RefreshState();
+                Check(goal.Text==previousGoal,"hidden work controls are not refreshed by unrelated state updates");
+                page.SelectWorkSettings();Render(host);Check(goal.Text==cfg.AgentGoal,"activating work catches up with committed settings");goal.Text="local unsaved work";
                 page.SelectNavigation(0);page.RefreshState();page.SelectWorkSettings();Render(host);
                 Check(ReferenceEquals(work,Field(page,"work"))&&goal.Text=="local unsaved work","work page is reused and unsaved edits survive activation");
                 page.SelectGeneralSection(2);Render(host);Check(page.FindControl("ClearAllHistory")!=null,"direct general deep link materializes its page");

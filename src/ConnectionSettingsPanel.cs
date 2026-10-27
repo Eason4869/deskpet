@@ -57,7 +57,13 @@ namespace Dafeiyu
             footer.Children.Add(row);
             notice=LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeJ")),11,Ui.Muted);notice.Name="ConnectionNotice";notice.Margin=new Thickness(0,10,0,0);footer.Children.Add(notice);Grid.SetRow(footer,1);Children.Add(footer);
         }
-        public void ShowSection(int index){var previous=page.Content as ScrollViewer;if(previous!=null)previous.Content=null;page.Content=Ui.Scroll(sections[index]);}
+        readonly ScrollViewer[] sectionScrolls=new ScrollViewer[5];
+        public void ShowSection(int index)
+        {
+            if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
+            if(sectionScrolls[index]==null)sectionScrolls[index]=Ui.Scroll(sections[index]);
+            if(!ReferenceEquals(page.Content,sectionScrolls[index]))page.Content=sectionScrolls[index];
+        }
         internal void DisposeImageGeneration(){images.Dispose();}
         static ComboBox VoiceField(string value,string name)
         {return new ComboBox{Name=name,IsEditable=true,IsTextSearchEnabled=true,MinHeight=38,Padding=new Thickness(8),Text=value ?? ""};}
