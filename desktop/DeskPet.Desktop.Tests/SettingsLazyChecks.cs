@@ -27,8 +27,11 @@ internal static class SettingsLazyChecks
             typeof(SettingsWindow).GetMethod("RefreshPreferences",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,null);
             Check(pages[1]==null&&pages[8]==null,"restoring preferences does not create unvisited behavior or storage");
             window.SelectSection("image");Dispatcher.UIThread.RunJobs();var provider=Named<TextBox>(window,"ImageProviderName");provider.Text="unsaved image provider";var models=pages[2];
+            var editors=(IList)typeof(SettingsWindow).GetField("providers",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window)!;
+            Check(editors.Count==0,"direct native image route does not create text editor");
             window.SelectSection("partner");window.SelectSection("image");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(models,pages[2])&&ReferenceEquals(provider,Named<TextBox>(window,"ImageProviderName"))&&provider.Text=="unsaved image provider","model page and draft are reused");
+            window.SelectSection("text");Dispatcher.UIThread.RunJobs();Check(editors.Count==1,"text editor is created once on first text visit");
             window.SelectSection("channels");Dispatcher.UIThread.RunJobs();var channel=Named<TextBox>(window,"ImChannelName");channel.Text="unsaved native channel";var channels=pages[9];
             window.SelectSection("partner");window.SelectSection("channels");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(channels,pages[9])&&channel.Text=="unsaved native channel","channel view and draft are reused");

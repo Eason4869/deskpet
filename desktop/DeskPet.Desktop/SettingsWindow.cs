@@ -17,6 +17,7 @@ internal sealed class SettingsWindow : Window
     private ImageProviderEditor? imageProvider;
     private ImChannelSettingsView? imChannels;
     private readonly TabControl modelTabs = new();
+    private int requestedModelIndex;
     private readonly ListBox navigation = new() { Name = "SettingsNavigation", Background = Avalonia.Media.Brushes.Transparent, BorderThickness = new Thickness(0) };
     private readonly ContentControl pageHost = new() { Name = "SettingsPageHost", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     private readonly List<Control?> pages = new();
@@ -42,8 +43,11 @@ internal sealed class SettingsWindow : Window
         }
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text"),"partner",Partner); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeA"),"settings",Behavior);
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeB"),"model",()=>{
-            var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
-            modelTabs.ItemsSource = new[] { LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header"), Content = textProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header"))), LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"), Content = imageProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"))) }; modelTabs.SelectedIndex = 0;return modelTabs;
+            var textTab=LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header") },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header")));
+            var imageTab=LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA") },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header.alternativeA")));
+            void EnsureModel(){if(modelTabs.SelectedIndex==0&&textTab.Content==null){var editor=new ProviderEditor(owner,"text");providers.Add(editor);textTab.Content=editor;}else if(modelTabs.SelectedIndex==1&&imageTab.Content==null)imageTab.Content=imageProvider=new ImageProviderEditor(owner,this);}
+            modelTabs.ItemsSource=new[]{textTab,imageTab};modelTabs.SelectedIndex=requestedModelIndex;
+            modelTabs.SelectionChanged+=(_,e)=>{if(ReferenceEquals(e.Source,modelTabs))EnsureModel();};EnsureModel();return modelTabs;
         });
         foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { Add(item.Item1,item.Item2,()=>{var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor);return editor;}); }
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",()=>new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage);
@@ -60,7 +64,7 @@ internal sealed class SettingsWindow : Window
     }
     private Control GetPage(int index) => pages[index] ??= WrapPage(pageFactories[index]());
     private Control WrapPage(Control content) => new ScrollViewer { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = new Border { Padding = new Thickness(Bounds.Width>0&&Bounds.Width<680?14:26,24), Child = content } };
-    public void SelectSection(string section) { navigation.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, "channels" => 9, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
+    public void SelectSection(string section) { if(section is "text" or "image")requestedModelIndex=section=="image"?1:0;navigation.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, "channels" => 9, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex=requestedModelIndex; }
     private Control Partner()
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;

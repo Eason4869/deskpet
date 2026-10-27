@@ -154,10 +154,10 @@ namespace Dafeiyu
         }
         // Only routes and explicit guide actions materialize secondary pages.
         // State/dirty queries and background refreshes must never call this method.
-        private void EnsureCategory(int category)
+        private void EnsureCategory(int category,int section=-1)
         {
             if(disposed)throw new ObjectDisposedException("SettingsPage");
-            if(category==1 && aiConfiguration==null){connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);aiConfiguration.SelectionChanged+=delegate{SecondaryChanged(1);};}
+            if(category==1 && aiConfiguration==null){int initial=Math.Max(0,section);connections=new ConnectionSettingsPanel(pet,initial);aiConfiguration=new AiConfigurationPanel(connections,initial);aiConfiguration.SelectionChanged+=delegate{SecondaryChanged(1);};}
             else if(category==2 && work==null){work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;}
             else if(category==3 && quiet==null){quiet=new QuietPanel(pet,RefreshRestoredPreferences);quiet.SelectionChanged+=delegate{SecondaryChanged(3);};}
             else if(category==4 && about==null)about=new AboutPanel(pet);
@@ -316,10 +316,10 @@ namespace Dafeiyu
         public bool ValidateGuideNetwork(out string error){EnsureCategory(4);return about.ValidateNetwork(out error);}
         public bool SaveGuideNetwork(){EnsureCategory(4);return about.SaveNetwork();}
         public bool SaveAiConfiguration(){EnsureCategory(1);return connections.Save();}
-        public bool SaveGuideAiSection(int index){EnsureCategory(1);return connections.SaveGuideSection(index);}
+        public bool SaveGuideAiSection(int index){EnsureCategory(1,index);return connections.SaveGuideSection(index);}
         internal int GuideSpeechTestRevision {get{return connections==null?0:connections.SpeechTestRevision;}}
         internal bool GuideSpeechTestSucceeded {get{return connections!=null && connections.SpeechTestSucceeded;}}
-        public bool ValidateGuideAiSection(int index,out string error){EnsureCategory(1);return connections.ValidateGuideSection(index,out error);}
+        public bool ValidateGuideAiSection(int index,out string error){EnsureCategory(1,index);return connections.ValidateGuideSection(index,out error);}
         public FrameworkElement FindControl(string controlName)
         {
             UpdateLayout();var match=FindVisual(this,controlName);return match??(HostWindow==null?null:FindVisual(HostWindow,controlName));

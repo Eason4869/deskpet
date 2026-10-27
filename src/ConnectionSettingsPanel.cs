@@ -7,11 +7,11 @@ namespace Dafeiyu
 {
     public sealed class ConnectionSettingsPanel : Grid
     {
-        readonly PetWindow pet;readonly TextProviderEditor text,recognition,synthesis,live;readonly ComboBox voice,liveVoice;
-        readonly ImageGenerationSettings images;
-        readonly CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
-        readonly TextBlock speechAdvice,liveAdvice;
-        readonly Slider volume;readonly TextBlock volumeLabel;bool refreshingVolume;
+        readonly PetWindow pet;TextProviderEditor text,recognition,synthesis,live;ComboBox voice,liveVoice;
+        ImageGenerationSettings images;
+        CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
+        TextBlock speechAdvice,liveAdvice;
+        Slider volume;TextBlock volumeLabel;bool refreshingVolume;
         string speechContext,liveContext;
         internal int SpeechTestRevision {get;private set;}
         internal bool SpeechTestSucceeded {get;private set;}
@@ -20,15 +20,32 @@ namespace Dafeiyu
         readonly System.Collections.Generic.Dictionary<string,string> voiceSavedValues=new System.Collections.Generic.Dictionary<string,string>();
         public bool HasUnsavedChanges
         {
-            get{return images.HasUnsavedChanges || !text.Matches(pet.Settings) || !recognition.Matches(pet.Settings) || !synthesis.Matches(pet.Settings) || !live.Matches(pet.Settings) ||
-                (cloud.IsChecked==true)!=pet.Settings.UseCloudVoice ||
-                voice.Text.Trim()!=pet.Settings.VoiceName || liveVoice.Text.Trim()!=pet.Settings.LiveVoice || HasVoiceDraftChanges;}
+            get{return (images!=null && images.HasUnsavedChanges) || (text!=null && !text.Matches(pet.Settings)) || (recognition!=null && !recognition.Matches(pet.Settings)) || (synthesis!=null && !synthesis.Matches(pet.Settings)) || (live!=null && !live.Matches(pet.Settings)) ||
+                (cloud!=null && (cloud.IsChecked==true)!=pet.Settings.UseCloudVoice) ||
+                (voice!=null && voice.Text.Trim()!=pet.Settings.VoiceName) || (liveVoice!=null && liveVoice.Text.Trim()!=pet.Settings.LiveVoice) || HasVoiceDraftChanges;}
         }
         bool HasVoiceDraftChanges {get{foreach(var pair in voiceDrafts){string saved;if(!voiceSavedValues.TryGetValue(pair.Key,out saved) || saved!=pair.Value.Trim())return true;}return false;}}
-        public ConnectionSettingsPanel(PetWindow companion)
+        public ConnectionSettingsPanel(PetWindow companion,int initialSection=0)
         {
             pet=companion;Margin=new Thickness(24,22,24,20);RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Children.Add(page);
-            text=new TextProviderEditor(pet.Settings);text.SaveConnection=SaveTextConnection;recognition=new TextProviderEditor(pet.Settings,"asr");synthesis=new TextProviderEditor(pet.Settings,"speech");live=new TextProviderEditor(pet.Settings,"live");
+            sections=new UIElement[5];ShowSection(initialSection);
+            var footer=new StackPanel{Margin=new Thickness(0,14,0,0)};var row=new WrapPanel();var save=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeI")),true);save.Name="SaveConnections";save.Click+=delegate {Save();};row.Children.Add(save);
+            footer.Children.Add(row);
+            notice=LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeJ")),11,Ui.Muted);notice.Name="ConnectionNotice";notice.Margin=new Thickness(0,10,0,0);footer.Children.Add(notice);Grid.SetRow(footer,1);Children.Add(footer);
+        }
+        void EnsureSection(int index)
+        {
+            if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
+            if(sections[index]!=null)return;
+            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnection=SaveTextConnection;sections[index]=text;}
+            else if(index==1){recognition=new TextProviderEditor(pet.Settings,"asr");sections[index]=recognition;}
+            else if(index==2){CreateSpeechEditor();sections[index]=synthesis;}
+            else if(index==3){CreateLiveEditor();sections[index]=live;}
+            else{images=new ImageGenerationSettings(pet);sections[index]=images;}
+        }
+        void CreateSpeechEditor()
+        {
+            synthesis=new TextProviderEditor(pet.Settings,"speech");
             cloud=LocalizedUi.Toggle(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.toggle")),pet.Settings.UseCloudVoice,v=>SetCloud(v));cloud.Name="UseCloudVoice";synthesis.Options.Children.Add(cloud);
             voice=VoiceField(pet.Settings.VoiceName,"SpeechVoice");LocalizedUi.Label(synthesis.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text")),voice);synthesis.Extras.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeA")),11,Ui.Muted));SetCloud(pet.Settings.UseCloudVoice);
             speechAdvice=Ui.Text("",11,Ui.Muted);speechAdvice.Name="SpeechCharacterRecommendation";synthesis.Extras.Children.Add(speechAdvice);
@@ -37,50 +54,51 @@ namespace Dafeiyu
             volumeLabel=LocalizedUi.Text(()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume)),12,Ui.Blue);sound.Children.Add(volumeLabel);
             volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
             volume.ValueChanged+=delegate {if(refreshingVolume)return;int value=(int)Math.Round(volume.Value);LocalizedUi.Set(volumeLabel,"Text",()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value)));pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.SaveSettings();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
-            liveVoice=VoiceField(pet.Settings.LiveVoice,"LiveVoice");LocalizedUi.Label(live.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeB")),liveVoice);live.Extras.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeC")),12,Ui.Muted));
-            liveAdvice=Ui.Text("",11,Ui.Muted);liveAdvice.Name="LiveCharacterRecommendation";live.Extras.Children.Add(liveAdvice);
-            var modes=LocalizedUi.Options(new ComboBox{Name="VoiceMode",ItemsSource=new[]{TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource"),TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource.alternativeA")},SelectedIndex=pet.Settings.VoiceMode=="live" ? 1 : 0,MinHeight=38,Padding=new Thickness(8)},()=>(new[]{TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource"),TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource.alternativeA")}));
-            bool refreshingMode=false;
-            modes.SelectionChanged+=delegate {if(refreshingMode)return;if(pet.DialogueBusy){refreshingMode=true;modes.SelectedIndex=pet.Settings.VoiceMode=="live"?1:0;refreshingMode=false;if(notice!=null)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.notice")));return;}pet.Settings.VoiceMode=modes.SelectedIndex==1 ? "live" : "pipeline";pet.SaveSettings();pet.RefreshChatAppearance();};LocalizedUi.Label(live.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeD")),modes);
             var testSpeech=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeE")),true);testSpeech.Name="PreviewSpeech";testSpeech.Click+=async delegate{
                 if(pet.DialogueBusy){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.notice.alternativeA")));return;}if(!SaveGuideSection(2))return;testSpeech.IsEnabled=false;
                 int generation=++speechTestGeneration;SpeechTestSucceeded=false;
                 try{bool succeeded=await pet.Conversation.PreviewSpeechAsync(pet.Settings,pet.Skin.Name);notice.Text=pet.Conversation.LastNotice;SpeechTestSucceeded=generation==speechTestGeneration&&succeeded;}catch(Exception e){ShowError(e);}finally{SpeechTestRevision++;testSpeech.IsEnabled=true;}
             };
             var speechTests=new WrapPanel{Margin=new Thickness(0,12,0,0)};speechTests.Children.Add(testSpeech);var stop=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeF")));stop.Name="StopPreviewSpeech";stop.Click+=delegate{speechTestGeneration++;SpeechTestSucceeded=false;pet.StopReplySpeech();};speechTests.Children.Add(stop);synthesis.Extras.Children.Add(speechTests);
+            RefreshVoices(true);synthesis.Changed+=delegate{RefreshVoices(false);};
+        }
+        void CreateLiveEditor()
+        {
+            live=new TextProviderEditor(pet.Settings,"live");
+            liveVoice=VoiceField(pet.Settings.LiveVoice,"LiveVoice");LocalizedUi.Label(live.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeB")),liveVoice);live.Extras.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeC")),12,Ui.Muted));
+            liveAdvice=Ui.Text("",11,Ui.Muted);liveAdvice.Name="LiveCharacterRecommendation";live.Extras.Children.Add(liveAdvice);
+            var modes=LocalizedUi.Options(new ComboBox{Name="VoiceMode",ItemsSource=new[]{TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource"),TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource.alternativeA")},SelectedIndex=pet.Settings.VoiceMode=="live" ? 1 : 0,MinHeight=38,Padding=new Thickness(8)},()=>(new[]{TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource"),TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.itemsSource.alternativeA")}));
+            bool refreshingMode=false;
+            modes.SelectionChanged+=delegate {if(refreshingMode)return;if(pet.DialogueBusy){refreshingMode=true;modes.SelectedIndex=pet.Settings.VoiceMode=="live"?1:0;refreshingMode=false;if(notice!=null)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.notice")));return;}pet.Settings.VoiceMode=modes.SelectedIndex==1 ? "live" : "pipeline";pet.SaveSettings();pet.RefreshChatAppearance();};LocalizedUi.Label(live.Extras,()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeD")),modes);
             var testLive=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeG")),true);testLive.Name="PreviewLive";testLive.HorizontalAlignment=HorizontalAlignment.Left;testLive.Margin=new Thickness(0,12,0,0);
             testLive.Click+=delegate{if(pet.DialogueBusy){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.notice.alternativeB")));return;}if(!SaveGuideSection(3))return;var host=Window.GetWindow(this);if(host!=null)pet.ShowLiveCall(host);};live.Extras.Children.Add(testLive);
             live.Extras.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeH")),11,Ui.Muted));
-            images=new ImageGenerationSettings(pet);sections=new UIElement[]{text,recognition,synthesis,live,images};ShowSection(0);
-            RefreshVoices(true);text.Changed+=delegate {RefreshVoices(false);};synthesis.Changed+=delegate {RefreshVoices(false);};live.Changed+=delegate {RefreshVoices(false);};
-            var footer=new StackPanel{Margin=new Thickness(0,14,0,0)};var row=new WrapPanel();var save=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeI")),true);save.Name="SaveConnections";save.Click+=delegate {Save();};row.Children.Add(save);
-            footer.Children.Add(row);
-            notice=LocalizedUi.Text(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeJ")),11,Ui.Muted);notice.Name="ConnectionNotice";notice.Margin=new Thickness(0,10,0,0);footer.Children.Add(notice);Grid.SetRow(footer,1);Children.Add(footer);
+            RefreshVoices(true);live.Changed+=delegate{RefreshVoices(false);};
         }
         readonly ScrollViewer[] sectionScrolls=new ScrollViewer[5];
         public void ShowSection(int index)
         {
-            if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
+            EnsureSection(index);
             if(sectionScrolls[index]==null)sectionScrolls[index]=Ui.Scroll(sections[index]);
             if(!ReferenceEquals(page.Content,sectionScrolls[index]))page.Content=sectionScrolls[index];
         }
-        internal void DisposeImageGeneration(){images.Dispose();}
+        internal void DisposeImageGeneration(){if(images!=null)images.Dispose();}
         static ComboBox VoiceField(string value,string name)
         {return new ComboBox{Name=name,IsEditable=true,IsTextSearchEnabled=true,MinHeight=38,Padding=new Thickness(8),Text=value ?? ""};}
         void RefreshVoices(bool initial)
         {
-            var speech=synthesis.Preview();
-            FillVoices(voice,"speech",speech,initial,ref speechContext);FillVoices(liveVoice,"live",live.Preview(),initial,ref liveContext);
+            if(synthesis!=null)FillVoices(voice,"speech",synthesis.Preview(),initial,ref speechContext);
+            if(live!=null)FillVoices(liveVoice,"live",live.Preview(),initial,ref liveContext);
         }
-        public void RefreshTextProviders(){text.RefreshSaved(pet.Settings);}
+        public void RefreshTextProviders(){if(text!=null)text.RefreshSaved(pet.Settings);}
         internal void RefreshPreferenceVolume()
         {
-            refreshingVolume=true;
+            if(volume==null)return;refreshingVolume=true;
             try{volume.Value=pet.Settings.Volume;LocalizedUi.Set(volumeLabel,"Text",()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",pet.Settings.Volume)));}
             finally{refreshingVolume=false;}
         }
-        public void ExpandTextConnection(){text.ExpandConnection();}
-        public void ExpandConnectionFor(string name){if(name.StartsWith("TextService"))text.ExpandConnection();else if(name.StartsWith("Transcription"))recognition.ExpandConnection();else if(name.StartsWith("Speech") && name!="SpeechVoice")synthesis.ExpandConnection();else if(name.StartsWith("LiveService"))live.ExpandConnection();}
+        public void ExpandTextConnection(){EnsureSection(0);text.ExpandConnection();}
+        public void ExpandConnectionFor(string name){if(name.StartsWith("TextService")){EnsureSection(0);text.ExpandConnection();}else if(name.StartsWith("Transcription")){EnsureSection(1);recognition.ExpandConnection();}else if(name.StartsWith("Speech") && name!="SpeechVoice"){EnsureSection(2);synthesis.ExpandConnection();}else if(name.StartsWith("LiveService")){EnsureSection(3);live.ExpandConnection();}}
         bool SaveTextConnection()
         {
             try{
@@ -96,7 +114,7 @@ namespace Dafeiyu
         public void RefreshPersonaVoices()
         {
             voiceDrafts.Clear();voiceSavedValues.Clear();speechContext=null;liveContext=null;
-            voice.Text=pet.Settings.VoiceName;liveVoice.Text=pet.Settings.LiveVoice;RefreshVoices(true);
+            if(voice!=null)voice.Text=pet.Settings.VoiceName;if(liveVoice!=null)liveVoice.Text=pet.Settings.LiveVoice;RefreshVoices(true);
         }
         void FillVoices(ComboBox field,string kind,ConnectionSettings settings,bool initial,ref string previousContext)
         {
@@ -121,27 +139,33 @@ namespace Dafeiyu
         {
             foreach(var pair in voiceDrafts){int split=pair.Key.IndexOf(':');string service=pair.Key.Substring(0,split);if(kind==null || service==kind){if(pair.Value.Trim().Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.saveVoiceDrafts.text"));PersonaProfiles.SaveVoiceChoice(pet.Settings,service,pair.Key.Substring(split+1),pair.Value);}}
         }
-        void ClearVoiceDrafts(string kind=null){var keys=new System.Collections.Generic.List<string>(voiceDrafts.Keys);foreach(string key in keys)if(kind==null || key.StartsWith(kind+":")){voiceSavedValues[key]=voiceDrafts[key].Trim();voiceDrafts.Remove(key);}if(kind==null || kind=="speech")voiceSavedValues["speech:"+speechContext]=voice.Text.Trim();if(kind==null || kind=="live")voiceSavedValues["live:"+liveContext]=liveVoice.Text.Trim();}
+        void ClearVoiceDrafts(string kind=null){var keys=new System.Collections.Generic.List<string>(voiceDrafts.Keys);foreach(string key in keys)if(kind==null || key.StartsWith(kind+":")){voiceSavedValues[key]=voiceDrafts[key].Trim();voiceDrafts.Remove(key);}if(voice!=null && (kind==null || kind=="speech"))voiceSavedValues["speech:"+speechContext]=voice.Text.Trim();if(liveVoice!=null && (kind==null || kind=="live"))voiceSavedValues["live:"+liveContext]=liveVoice.Text.Trim();}
         void SetCloud(bool value){if(voice!=null)voice.IsEnabled=value;}
         public bool Save()
         {
             try
             {
-                if(images.HasUnsavedChanges&&!images.Save())return false;
-                var nextProviders=text.ReadProviders();var nextAsrProviders=recognition.ReadProviders();var nextSpeechProviders=synthesis.ReadProviders();var nextLiveProviders=live.ReadProviders();var nextText=text.Read();var nextAsr=recognition.Read();var nextSpeech=synthesis.Read();var nextLive=live.Read();
-                if(voice.Text.Trim().Length>512 || liveVoice.Text.Trim().Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.save.text"));
+                if(images!=null&&images.HasUnsavedChanges&&!images.Save())return false;
+                var nextProviders=text==null?pet.Settings.TextProviders:text.ReadProviders();
+                var nextText=text==null?pet.Settings.Text:text.Read();var nextAsr=recognition==null?pet.Settings.Transcription:recognition.Read();var nextSpeech=synthesis==null?pet.Settings.Speech:synthesis.Read();var nextLive=live==null?pet.Settings.Live:live.Read();
+                string nextVoice=voice==null?pet.Settings.VoiceName:voice.Text.Trim(),nextLiveVoice=liveVoice==null?pet.Settings.LiveVoice:liveVoice.Text.Trim();
+                if(nextVoice.Length>512 || nextLiveVoice.Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.save.text"));
                 foreach(var provider in nextProviders)ValidateAddress(provider.Connection,ApiClient.ChatPath(provider.Connection));ValidateAddress(nextAsr,ApiClient.AsrPath(nextAsr));ValidateAddress(nextSpeech,ApiClient.SpeechPath(nextSpeech));
                 var probe=nextLive.Copy();if(!String.IsNullOrWhiteSpace(probe.BaseUrl)){if(String.IsNullOrWhiteSpace(probe.Model))probe.Model="validation";if(String.IsNullOrEmpty(probe.ApiKey))probe.ApiKey="validation";GeminiLiveSocket.Endpoint(probe);}
                 PersonaProfiles.SaveVoices(pet.Settings);
-                pet.Settings.TextProviders=nextProviders;pet.Settings.ActiveTextProviderId=text.SelectedProviderId;pet.Settings.Text=nextText;pet.Settings.ApplyProviders("asr",nextAsrProviders,recognition.SelectedProviderId,nextAsr);pet.Settings.ApplyProviders("speech",nextSpeechProviders,synthesis.SelectedProviderId,nextSpeech);pet.Settings.ApplyProviders("live",nextLiveProviders,live.SelectedProviderId,nextLive);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=voice.Text.Trim();pet.Settings.LiveVoice=liveVoice.Text.Trim();SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);for(int index=0;index<4;index++)InvalidateGuideTest(index);pet.SaveSettings();ClearVoiceDrafts();text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                if(text!=null){pet.Settings.TextProviders=nextProviders;pet.Settings.ActiveTextProviderId=text.SelectedProviderId;pet.Settings.Text=nextText;}
+                if(recognition!=null)pet.Settings.ApplyProviders("asr",recognition.ReadProviders(),recognition.SelectedProviderId,nextAsr);
+                if(synthesis!=null){pet.Settings.ApplyProviders("speech",synthesis.ReadProviders(),synthesis.SelectedProviderId,nextSpeech);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=nextVoice;}
+                if(live!=null){pet.Settings.ApplyProviders("live",live.ReadProviders(),live.SelectedProviderId,nextLive);pet.Settings.LiveVoice=nextLiveVoice;}SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);for(int index=0;index<4;index++)InvalidateGuideTest(index);pet.SaveSettings();ClearVoiceDrafts();RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }
             catch(Exception e){ShowError(e);return false;}
         }
+        void RefreshCreatedEditors(){if(text!=null)text.RefreshSaved(pet.Settings);if(recognition!=null)recognition.RefreshSaved(pet.Settings);if(synthesis!=null)synthesis.RefreshSaved(pet.Settings);if(live!=null)live.RefreshSaved(pet.Settings);}
         public bool ValidateGuideSection(int index,out string error)
         {
             try
             {
-                var draft=pet.Settings.Copy();ConnectionSettings service;
+                EnsureSection(index);var draft=pet.Settings.Copy();ConnectionSettings service;
                 if(index==0){var provider=text.ReadConnectionProvider();service=provider.Connection;ProxyConfiguration.Endpoint(ProxyConfiguration.Normalize(service.ProxyAddress));var probe=service.Copy();probe.Model="guide-validation";ApiClient.ValidateConnection(probe,ApiClient.ChatPath(probe));if(String.IsNullOrWhiteSpace(service.Model) || !provider.Models.Contains(service.Model))throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.validateGuideSection.text"));}
                 else if(index==1){draft.Transcription=recognition.Read();service=draft.TranscriptionConnection();ApiClient.ValidateConnection(service,ApiClient.AsrPath(service));}
                 else if(index==2 && cloud.IsChecked==true){draft.Speech=synthesis.Read();service=draft.SpeechConnection();ApiClient.ValidateConnection(service,ApiClient.SpeechPath(service));if(String.IsNullOrWhiteSpace(voice.Text) || voice.Text.Trim().Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.validateGuideSection.text.alternativeA"));}
@@ -178,7 +202,7 @@ namespace Dafeiyu
                     draft.Live=live.Read();GeminiLiveSocket.Endpoint(draft.Live);draft.LiveVoice=liveVoice.Text.Trim();if(draft.LiveVoice.Length==0 || draft.LiveVoice.Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.saveGuideSection.text.alternativeA"));
                     pet.Settings.ApplyProviders("live",live.ReadProviders(),live.SelectedProviderId,draft.Live);pet.Settings.LiveVoice=draft.LiveVoice;PersonaProfiles.SaveVoices(pet.Settings);
                 }
-                InvalidateGuideTest(index);if(index==2 || index==3){SaveVoiceDrafts(index==2?"speech":"live");PersonaProfiles.SaveVoices(pet.Settings);}pet.SaveSettings();if(index==2 || index==3)ClearVoiceDrafts(index==2?"speech":"live");text.RefreshSaved(pet.Settings);recognition.RefreshSaved(pet.Settings);synthesis.RefreshSaved(pet.Settings);live.RefreshSaved(pet.Settings);pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.saveGuideSection.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                InvalidateGuideTest(index);if(index==2 || index==3){SaveVoiceDrafts(index==2?"speech":"live");PersonaProfiles.SaveVoices(pet.Settings);}pet.SaveSettings();if(index==2 || index==3)ClearVoiceDrafts(index==2?"speech":"live");RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.saveGuideSection.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }
             catch(Exception e){ShowError(e);return false;}
         }

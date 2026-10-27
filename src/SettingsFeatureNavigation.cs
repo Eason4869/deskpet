@@ -81,7 +81,7 @@ namespace Dafeiyu
             changingRoute=true;
             try{
                 if(category==2&&!CanChangeWorkSettingsProject(pet.CurrentEditingProject))return;
-                EnsureCategory(category);
+                EnsureCategory(category,section);
                 if(clearSearch&&featureSearch!=null)featureSearch.Clear();
                 if(section>=0){if(category==0)companionPage.SelectSection(section);else if(category==1)aiConfiguration.SelectSection(section);else if(category==3)quiet.SelectSection(section);}
                 if(navigation.SelectedIndex==category)ActivateCategory(category);else navigation.SelectedIndex=category;featureAnchor=anchor;

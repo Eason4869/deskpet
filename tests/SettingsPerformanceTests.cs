@@ -42,7 +42,14 @@ namespace Dafeiyu.Tests
                 TextResources.ConfigureStartupLanguage("zh_CN");
                 var cfg=new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,SaveChatHistory=false,OnboardingState="completed"};
                 foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                cfg.Text=new ConnectionSettings{BaseUrl="https://example.com/v1",Model="fixture-model"};
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                if(args.Contains("--profile-ai"))
+                {
+                    var watch=Stopwatch.StartNew();var editor=new ConnectionSettingsPanel(pet);Console.WriteLine("PROFILE ai_panel_constructor_ms="+watch.Elapsed.TotalMilliseconds.ToString("F3",System.Globalization.CultureInfo.InvariantCulture));
+                    foreach(string field in new[]{"text","recognition","synthesis","live","images"})Console.WriteLine("PROFILE initialized_"+field+"="+(Field(editor,field)!=null));
+                    editor.DisposeImageGeneration();return 0;
+                }
                 if(args.Contains("--measure"))
                 {
                     var constructors=new List<double>();var renders=new List<double>();var switches=new List<double>();
@@ -63,12 +70,18 @@ namespace Dafeiyu.Tests
                 Check(!page.HasUnsavedEdits&&!page.HasUnsavedWorkEdits,"dirty queries do not instantiate settings pages");
                 page.RefreshTextProviders();page.RefreshState();page.CanChangeWorkSettingsProject(null);
                 foreach(string field in new[]{"connections","work","quiet","about","imChannels"})Check(Field(page,field)==null,"background refresh does not construct "+field);
-                page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");var provider=(TextBox)page.FindControl("TextProviderName");provider.Text="local unsaved provider";
+                page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");
+                foreach(string field in new[]{"recognition","synthesis","live","images"})Check(Field(ai,field)==null,"text AI route does not create "+field);
+                cfg.Transcription.Model="external-asr-change";
+                Check(((ConnectionSettingsPanel)ai).Save()&&cfg.Transcription.Model=="external-asr-change","saving visited AI editor preserves unopened service settings");
+                foreach(string field in new[]{"recognition","synthesis","live","images"})Check(Field(ai,field)==null,"AI save does not create "+field);
+                var provider=(TextBox)page.FindControl("TextProviderName");provider.Text="local unsaved provider";
                 page.SelectNavigation(0);page.RefreshTextProviders();page.SelectAiSection(0);Render(host);
                 Check(ReferenceEquals(ai,Field(page,"connections"))&&provider.Text=="local unsaved provider","AI page is reused and provider draft survives refresh");
                 var aiHost=(ContentControl)Field(ai,"page");var textScroll=(ScrollViewer)aiHost.Content;
                 page.SelectAiSection(3);Render(host);page.SelectAiSection(0);Render(host);
                 Check(ReferenceEquals(textScroll,aiHost.Content),"AI tab navigation reuses its scroll container");
+                Check(Field(ai,"recognition")==null&&Field(ai,"synthesis")==null&&Field(ai,"images")==null,"direct Live route leaves other editors unopened");
                 page.SelectWorkSettings();Render(host);var work=Field(page,"work");var goal=(TextBox)page.FindControl("AgentGoal");string previousGoal=goal.Text;
                 page.SelectNavigation(0);cfg.AgentGoal="externally updated goal";page.RefreshState();
                 Check(goal.Text==previousGoal,"hidden work controls are not refreshed by unrelated state updates");
@@ -81,6 +94,8 @@ namespace Dafeiyu.Tests
                 Check(ReferenceEquals(channels,Field(page,"imChannels"))&&channelName.Text=="local unsaved channel","channel draft and controls survive navigation");
                 page.SelectNavigation(4);Render(host);Check(Field(page,"about")!=null,"about page materializes on demand");
                 page.Dispose();page.Dispose();Check(true,"disposing all visited pages is idempotent");
+                using(var direct=new SettingsPage(pet)){direct.SelectAiSection(4);var editor=Field(direct,"connections");Check(Field(editor,"images")!=null&&Field(editor,"text")==null,"direct image route does not construct text editor first");}
+                using(var direct=new SettingsPage(pet)){direct.SelectAiSection(3);var editor=Field(direct,"connections");Check(Field(editor,"live")!=null&&Field(editor,"text")==null&&Field(editor,"synthesis")==null,"direct Live route only constructs Live editor");}
                 Console.WriteLine("Settings performance lifecycle: "+checks+" passed");return 0;
             }
             catch(Exception error){Console.Error.WriteLine("FAIL "+error);return 1;}
