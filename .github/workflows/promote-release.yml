@@ -1,4 +1,4 @@
-name: Stage verified Windows release assets
+name: Verify anonymous public release downloads
 on:
   workflow_dispatch:
     inputs:
@@ -17,15 +17,15 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: stage-windows-0.11.1
+  group: verify-public-0.11.1
   cancel-in-progress: false
 jobs:
-  stage-windows:
+  verify-public:
     if: github.repository == 'Eason4869/deskpet'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
       actions: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,133 +34,99 @@ jobs:
       SOURCE_RUN: ${{ inputs.run_id }}
       RELEASE_ID: ${{ inputs.release_id }}
     steps:
-      - name: Verify fixed source and unpublished destination
+      - name: Download every published asset anonymously and verify full content
         shell: bash
         run: |
-          cat > "$RUNNER_TEMP/stage_windows.py" <<'PY'
-          """One-shot verified CI-artifact transfer into an existing unpublished draft."""
-          import base64
-          import hashlib
-          import json
-          import os
+          cat > "$RUNNER_TEMP/verify_public.py" <<'PY'
+          from concurrent.futures import ThreadPoolExecutor,as_completed
+          import datetime,hashlib,json,os,time,urllib.request
           from pathlib import Path
-          import subprocess
-          import sys
           from zipfile import ZipFile
           REPO='Eason4869/deskpet'
           TAG='v0.11.1'
           COMMIT='bec057b0dd90316be4f3be635b0e5f00ef1e8748'
           TAG_OBJECT='f1ae7373612fce28988d296009103c30893a38a0'
-          RUN=40451507993
           RELEASE=425044068
-          ARTIFACT=12710734392
-          ARTIFACT_SHA='sha256:1a41851061c9609e7af1e5aab99550b2ec6756146f3941c4475079526a018c36'
-          VERSION='0.11.1'
-          MATERIAL='0.11.0-dev.3'
-          ROLES=['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
-          WIN={'DeskPet-Windows-Setup-0.11.1.exe','DeskPet-Windows-0.11.1.zip','DeskPet-Windows-App-0.11.1.exe','DeskPet-Source-0.11.1.zip','DeskPet-Skin-Template-v2-0.11.1.zip','DeskPet-Companions-0.11.1.json'}|{'DeskPet-Companion-'+role+'-'+MATERIAL+'.zip' for role in ROLES}
-          MAC={'DeskPet-macOS-0.11.1-'+arch+'-preview.'+suffix for arch in ['arm64','x86_64'] for suffix in ['dmg','zip']}
+          EXPECTED = {'DeskPet-Windows-App-0.11.1.exe': {'size': 269564928, 'sha256': '96c19269de6dce8768577b102e512a23de6cb8d8a8d47b5496b394bc11c373dd'}, 'DeskPet-Windows-0.11.1.zip': {'size': 258106595, 'sha256': '5fb71184f76aadd49d4ee5181632e7d07dd26182be84abfcf93d2747192c8505'}, 'DeskPet-Source-0.11.1.zip': {'size': 1957526481, 'sha256': 'e8ac417c04622e7ea9a2cf2c0b5bf2c6d878a89235cb7754054bbfd7690e0f43'}, 'DeskPet-Skin-Template-v2-0.11.1.zip': {'size': 12802708, 'sha256': '636a415caea85bf0fbf5334b7ebf5ecb4d7f043a4f9dc9c9873f02d4558f040f'}, 'DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip': {'size': 339192074, 'sha256': 'f1b6fca5678751f7a73579b2f3987d380d89ad1a8d7e71953752a0b301225e7d'}, 'DeskPet-Companion-e-bao-0.11.0-dev.3.zip': {'size': 231331428, 'sha256': '5f9dc46142475030c03e10faf1929321e983f2e9348fdae15561076c1a18acf0'}, 'DeskPet-Companion-gugugaga-0.11.0-dev.3.zip': {'size': 349403586, 'sha256': '953f7712f88a9bcab19bcb8ea13763bb3716ff2729b6fc21022072ffede3962d'}, 'DeskPet-Companion-marfu-0.11.0-dev.3.zip': {'size': 281090450, 'sha256': '2568322fee17fa81215e97c2276b49fc7b1f247aa43d4096bae58156a26124ee'}, 'DeskPet-Companion-xiaobei-0.11.0-dev.3.zip': {'size': 307877080, 'sha256': 'fc06dab5478db786726f9f28e2048112187fea6ca753f7e028461b84d609319d'}, 'DeskPet-Companions-0.11.1.json': {'size': 6711, 'sha256': '6e0c45ff68ab90765e53d69cfb26ec3c057a2efef5a84a3e03c9a1a5f26be9cf'}, 'DeskPet-Windows-Setup-0.11.1.exe': {'size': 245992370, 'sha256': '15037f55db1ce67dc22752d787b12e16dc788c173e92af8d05deffedee2ceff6'}, 'DeskPet-macOS-0.11.1-arm64-preview.dmg': {'size': 313786865, 'sha256': '532a40c7c4afc2c86ebda835454160e44887fa916e76fd5bad39769da0608308'}, 'DeskPet-macOS-0.11.1-arm64-preview.zip': {'size': 304797990, 'sha256': '171fa454f980a0a70d4de54a4c5e0e7ac27fd2c60943454def4dddd41f05c50d'}, 'DeskPet-macOS-0.11.1-x86_64-preview.dmg': {'size': 315601930, 'sha256': '9b2c7dce24c1d9e80c6839defa5655635ccabbfb2953ea5c52fb33fd009abd4c'}, 'DeskPet-macOS-0.11.1-x86_64-preview.zip': {'size': 307013636, 'sha256': 'b8f731dfd1fe9d5aff918366f7b2931e3891b0736b30c8bc488dc75c24113909'}, 'SHA256.txt': {'size': 1544, 'sha256': '39bbf40dbdbd162aaad7c013c276d9a8384ce2632f53ef5b5554cf017b3ab976'}}
+          
           def api(path):
-              result=subprocess.run(['gh','api','repos/'+REPO+'/'+path],check=True,stdout=subprocess.PIPE,encoding='utf-8')
-              return json.loads(result.stdout)
-          def validate_inputs(env):
-              expected={'GITHUB_REPOSITORY':REPO,'RELEASE_VERSION':VERSION,'RELEASE_COMMIT':COMMIT,'SOURCE_RUN':str(RUN),'RELEASE_ID':str(RELEASE)}
-              assert all(env.get(k)==v for k,v in expected.items()),'Unexpected operation inputs'
-          def guard():
-              validate_inputs(os.environ)
-              run=api('actions/runs/'+str(RUN))
-              assert run['status']=='completed' and run['conclusion']=='success' and run['head_sha']==COMMIT and run['head_branch']==TAG
-              assert run['event']=='workflow_dispatch' and run['path'].split('@')[0]=='.github/workflows/windows-release.yml'
-              ref=api('git/ref/tags/'+TAG)['object']
-              assert ref['type']=='tag' and ref['sha']==TAG_OBJECT
-              tag=api('git/tags/'+ref['sha'])['object']
-              assert tag['type']=='commit' and tag['sha']==COMMIT
-              draft=api('releases/'+str(RELEASE))
-              assert draft['draft'] and not draft['prerelease'] and draft['tag_name']==TAG
-              assert all(a['name'] in WIN|MAC for a in draft['assets'])
-              artifacts=api('actions/runs/'+str(RUN)+'/artifacts')['artifacts']
-              selected=[a for a in artifacts if a['id']==ARTIFACT and a['name']=='verified-windows-release']
-              assert len(selected)==1 and not selected[0]['expired'] and selected[0]['digest']==ARTIFACT_SHA
-              return draft
-          def hash_stream(stream):
+              request=urllib.request.Request('https://api.github.com/repos/'+REPO+'/'+path,headers={'Accept':'application/vnd.github+json','User-Agent':'DeskPet-Public-Release-Acceptance','X-GitHub-Api-Version':'2026-03-10'})
+              request.add_unredirected_header('Authorization','Bearer '+os.environ['GH_TOKEN'])
+              with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request,timeout=60) as response:return json.load(response)
+          def stream_hash(stream):
               h=hashlib.sha256()
               for chunk in iter(lambda:stream.read(8*1024*1024),b''):h.update(chunk)
               return h.hexdigest()
-          def digest(path):
-              with path.open('rb') as stream:return hash_stream(stream)
-          def metadata_checks(root):
-              files={}
-              for path in root.rglob('*'):
-                  if path.is_file() and path.name in WIN|{'SHA256.txt','release-metadata.json'}:
-                      assert path.name not in files,'Duplicate selected file'
-                      files[path.name]=path
-              assert set(files)==WIN|{'SHA256.txt','release-metadata.json'}
-              metadata=json.loads(files['release-metadata.json'].read_text(encoding='utf-8-sig'))
-              assert metadata==dict(version=VERSION,tag=TAG,branch='main',prerelease=False,make_latest='true',commit=COMMIT)
-              records=[];seen=set()
-              for line in files['SHA256.txt'].read_text(encoding='utf-8-sig').splitlines():
-                  sha,name=line.split('  ',1)
-                  assert name in WIN and name not in seen
-                  assert digest(files[name])==sha,name
-                  seen.add(name);records.append(dict(name=name,sha256=sha,size=files[name].stat().st_size))
-              assert seen==WIN and len(records)==11
-              index=json.loads(files['DeskPet-Companions-0.11.1.json'].read_text(encoding='utf-8'))
-              assert {entry['id'] for entry in index['companions']}==set(ROLES) and len(index['companions'])==5
-              for entry in index['companions']:
-                  record=next(r for r in records if r['name']==entry['asset_name'])
-                  assert entry['version']==MATERIAL and entry['sha256']==record['sha256'] and entry['size']==record['size']
-              with ZipFile(files['DeskPet-Source-0.11.1.zip']) as source:
-                  assert not any('/.git/' in n or '/work/' in n or '/data/' in n or '/.codex/' in n for n in source.namelist())
-                  for relative in ['src/ReleaseInfo.cs','README.md','README.en.md','CHANGELOG.md','CHANGELOG.en.md','docs/character-packs.md','docs/conversation-agent.md','docs/holiday-outfits.md']:
-                      blob=api('contents/'+relative+'?ref='+COMMIT)
-                      assert blob['encoding']=='base64'
-                      normalize=lambda b:b.decode('utf-8-sig').replace('\r\n','\n')
-                      assert normalize(source.read('DafeiyuDeskPet/'+relative))==normalize(base64.b64decode(blob['content'])),relative
-              with ZipFile(files['DeskPet-Windows-0.11.1.zip']) as portable:
-                  with portable.open('DafeiyuDeskPet/桌面伙伴.exe') as exe:
-                      assert hash_stream(exe)==next(r['sha256'] for r in records if r['name']=='DeskPet-Windows-App-0.11.1.exe')
-                  with portable.open('DafeiyuDeskPet/DeskPet.Update.exe') as helper:assert helper.read(2)==b'MZ'
-                  text=portable.read('DafeiyuDeskPet/docs/conversation-agent.md').decode('utf-8-sig')
-                  assert '保存后即时刷新界面' in text and '保存后下次启动生效' not in text
-              return files,records
           def main():
-              draft=guard()
-              if sys.argv[1]=='guard':
-                  print('PASS fixed producer/tag/main/source artifact identity and existing unpublished draft')
-                  return
-              assert sys.argv[1]=='upload'
-              files,records=metadata_checks(Path('work/windows'))
-              for record in records:
-                  draft=guard()
-                  existing=[a for a in draft['assets'] if a['name']==record['name']]
-                  assert len(existing)<=1
-                  if not existing:
-                      subprocess.run(['gh','release','upload',TAG,str(files[record['name']]),'--repo',REPO],check=True)
-                  current=api('releases/'+str(RELEASE))
-                  assert current['draft'] and current['tag_name']==TAG
-                  matches=[a for a in current['assets'] if a['name']==record['name']]
-                  assert len(matches)==1 and matches[0]['size']==record['size'] and matches[0]['digest']=='sha256:'+record['sha256']
-                  print('PASS verified Windows draft asset '+record['name'],flush=True)
-              final=guard()
-              assert len(final['assets'])==15 and {a['name'] for a in final['assets']}==WIN|MAC
-              Path('work/windows-upload-manifest.json').write_text(json.dumps(dict(commit=COMMIT,version=VERSION,assets=records),indent=2)+'\n',encoding='utf-8')
-              print('PASS11 exact-tag Windows assets into unpublished draft; SHA256 finalization remains separate')
+              assert os.environ['GITHUB_REPOSITORY']==REPO
+              assert os.environ['RELEASE_VERSION']=='0.11.1' and os.environ['RELEASE_COMMIT']==COMMIT and os.environ['RELEASE_ID']==str(RELEASE)
+              release=api('releases/tags/'+TAG)
+              assert release['id']==RELEASE and not release['draft'] and not release['prerelease']
+              assert api('releases/latest')['id']==RELEASE
+              ref=api('git/ref/tags/'+TAG)['object'];assert ref['type']=='tag' and ref['sha']==TAG_OBJECT
+              target=api('git/tags/'+TAG_OBJECT)['object'];assert target['type']=='commit' and target['sha']==COMMIT
+              assets=release['assets'];assert len(assets)==16 and {a['name'] for a in assets}==set(EXPECTED)
+              for a in assets:
+                  expected=EXPECTED[a['name']]
+                  assert a['size']==expected['size'] and a['digest']=='sha256:'+expected['sha256']
+                  assert a['browser_download_url']=='https://github.com/'+REPO+'/releases/download/'+TAG+'/'+a['name']
+              folder=Path('work/public');folder.mkdir(parents=True,exist_ok=True)
+              def check(a):
+                  name=a['name'];expected=EXPECTED[name];path=folder/name;start=time.monotonic()
+                  for attempt in range(3):
+                      try:
+                          # This fresh request deliberately carries no authorization or cookies.
+                          request=urllib.request.Request(a['browser_download_url'],headers={'User-Agent':'DeskPet-Anonymous-Public-Download-Acceptance'})
+                          opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                          h=hashlib.sha256();size=0
+                          with opener.open(request,timeout=120) as response,path.open('wb') as output:
+                              assert response.status==200
+                              for chunk in iter(lambda:response.read(8*1024*1024),b''):
+                                  output.write(chunk);h.update(chunk);size+=len(chunk)
+                          assert size==expected['size'] and h.hexdigest()==expected['sha256'],name
+                          break
+                      except Exception as error:
+                          print('Public download retry '+name+': '+type(error).__name__,flush=True)
+                          if attempt==2:raise RuntimeError('Public download failed: '+name) from None
+                  if path.suffix=='.zip':
+                      with ZipFile(path) as archive:
+                          assert archive.testzip() is None,name
+                          if '-macOS-' in name:
+                              infos=[n for n in archive.namelist() if n.endswith('/Resources/build-info.json')];assert len(infos)==1
+                              arch='arm64' if '-arm64-' in name else 'x86_64'
+                              assert json.loads(archive.read(infos[0]))==dict(version='0.11.1',architecture=arch,mode='preview',commit=COMMIT)
+                          elif name=='DeskPet-Windows-0.11.1.zip':
+                              with archive.open('DafeiyuDeskPet/桌面伙伴.exe') as exe:assert stream_hash(exe)==EXPECTED['DeskPet-Windows-App-0.11.1.exe']['sha256']
+                          elif name=='DeskPet-Source-0.11.1.zip':
+                              assert not any('/.git/' in n or '/work/' in n or '/data/' in n or '/.codex/' in n for n in archive.namelist())
+                              assert 'DisplayVersion="0.11.1"' in archive.read('DafeiyuDeskPet/src/ReleaseInfo.cs').decode('utf-8-sig')
+                  elif path.suffix=='.exe':
+                      with path.open('rb') as stream:assert stream.read(2)==b'MZ'
+                  elif path.suffix=='.dmg':
+                      with path.open('rb') as stream:stream.seek(-512,2);assert stream.read(4)==b'koly'
+                  result=dict(name=name,size=expected['size'],sha256=expected['sha256'],anonymous=True,archive_crc_verified=path.suffix=='.zip',seconds=round(time.monotonic()-start,2))
+                  print('PASS anonymous full download '+name,flush=True)
+                  return result
+              results=[]
+              with ThreadPoolExecutor(max_workers=3) as pool:
+                  for future in as_completed([pool.submit(check,a) for a in assets]):results.append(future.result())
+              lines=(folder/'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
+              assert len(lines)==15 and {line.split('  ',1)[1] for line in lines}==set(EXPECTED)-{'SHA256.txt'}
+              for line in lines:
+                  sha,name=line.split('  ',1);assert EXPECTED[name]['sha256']==sha
+              index=json.loads((folder/'DeskPet-Companions-0.11.1.json').read_text(encoding='utf-8'))
+              assert len(index['companions'])==5 and {c['version'] for c in index['companions']}=={'0.11.0-dev.3'}
+              assert api('releases/latest')['id']==RELEASE
+              report=dict(success=True,version='0.11.1',tag=TAG,commit=COMMIT,release_id=RELEASE,latest=True,asset_count=16,hash_entries=15,verification_location='fresh GitHub Actions runner',anonymous_full_downloads=True,checked_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),public_downloads=sorted(results,key=lambda r:r['name']))
+              Path('work/public-verification.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+              print('PASS stable latest0.11.1,all16 anonymous full downloads,ZIP CRC and15 checksum entries',flush=True)
           if __name__=='__main__':main()
           PY
-          python "$RUNNER_TEMP/stage_windows.py" guard
-      - uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ inputs.run_id }}
-          name: verified-windows-release
-          path: work/windows
-      - name: Validate exact source and transfer only verified files to draft
-        shell: bash
-        run: python "$RUNNER_TEMP/stage_windows.py" upload
+          python "$RUNNER_TEMP/verify_public.py"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: windows-upload-manifest-0.11.1
-          path: work/windows-upload-manifest.json
+          name: public-verification-0.11.1
+          path: work/public-verification.json
           if-no-files-found: error
           retention-days: 7
