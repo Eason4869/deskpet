@@ -1,4 +1,4 @@
-name: Build verified Windows release
+name: Build verified Windows release draft
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       publish:
-        description: Publish after verification (default is build only)
+        description: Create a verified draft after building (default is build only)
         default: false
         type: boolean
 permissions:
@@ -93,7 +93,7 @@ jobs:
         with:
           name: verified-windows-release
           path: work/artifacts
-      - name: Verify, create draft, verify uploaded digests, then publish
+      - name: Verify, create draft and verify uploaded digests
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -142,5 +142,4 @@ jobs:
           $latestArguments = @(LatestArguments)
           python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/checked-final.json @latestArguments
           if ($LASTEXITCODE) { throw 'Latest changed; draft retained' }
-          gh release edit $env:RELEASE_TAG --draft=false "--latest=$($expected.make_latest)"
-          if ($LASTEXITCODE) { throw 'Publish failed; inspect draft state' }
+          Write-Output 'Verified Windows assets retained in draft; publish only after cross-platform verification.'
