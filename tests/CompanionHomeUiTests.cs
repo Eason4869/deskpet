@@ -271,10 +271,14 @@ namespace Dafeiyu.Tests
             Check(All<Expander>(page).Single(x=>x.Name=="CompanionGrowthRules").IsExpanded&&All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded&&All<Expander>(page).First(x=>x.Name=="RelationshipCardPreview").IsExpanded,"real saved growth refresh preserves rules, settings and preview expansion");
             Check(Math.Abs(page.VerticalOffset-priorOffset)<2,"real growth refresh preserves reasonable scroll offset");Capture(chat,Path.Combine(captures,locale+"-expanded-refresh.png"));
             deadline.Restart();while(!app.Windows.OfType<RelationshipFeedbackWindow>().Any()){if(deadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");await Task.Delay(10);}
-            var savedNotice=app.Windows.OfType<RelationshipFeedbackWindow>().Single();savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-capture-observation");await CaptureFeedback(savedNotice,captures,locale,"gain");await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
+            var savedNotice=app.Windows.OfType<RelationshipFeedbackWindow>().Single();
+            // Isolate the saved-settings observer from automatic expiry. Motion tests
+            // separately verify the real deadline and that SetInteraction cannot renew it.
+            ((System.Windows.Threading.DispatcherTimer)typeof(RelationshipFeedbackWindow).GetField("lifetime",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(savedNotice)).Stop();
+            savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-capture-observation");await CaptureFeedback(savedNotice,captures,locale,"gain");await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
             byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
-            // Settings dismissal is independent of the short ordinary-gain deadline.
-            // Keep this same saved notice readable before each save operation.
+            await Task.Delay(RelationshipFeedbackPolicy.LifetimeMilliseconds+200);
+            // A failed save must preserve this notice even beyond its ordinary deadline.
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-failure-observation");
             var failedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(failedFeedback,null);await page.PendingSettings;
             Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
