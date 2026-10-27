@@ -14,12 +14,13 @@ internal sealed class SettingsWindow : Window
 {
     private readonly DesktopController owner;
     private readonly List<ProviderEditor> providers = new();
-    private readonly ImageProviderEditor imageProvider;
-    private readonly ImChannelSettingsView imChannels;
+    private ImageProviderEditor? imageProvider;
+    private ImChannelSettingsView? imChannels;
     private readonly TabControl modelTabs = new();
     private readonly ListBox navigation = new() { Name = "SettingsNavigation", Background = Avalonia.Media.Brushes.Transparent, BorderThickness = new Thickness(0) };
     private readonly ContentControl pageHost = new() { Name = "SettingsPageHost", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
-    private readonly List<Control> pages = new();
+    private readonly List<Control?> pages = new();
+    private readonly List<Func<Control>> pageFactories = new();
     internal string SelectedSection => navigation.SelectedIndex switch { 1 => "behavior", 2 => modelTabs.SelectedIndex == 1 ? "image" : "text", 3 => "asr", 4 => "speech", 5 => "live", 6 => "work", 7 => "voice", 8 => "storage", 9 => "channels", _ => "partner" };
     private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
@@ -32,29 +33,32 @@ internal sealed class SettingsWindow : Window
         owner = controller; LocalizedUi.Set(this,"Title",()=>(TextResources.Get("settingsWindow.settingsWindow.title"))); Width = 790; Height = 760; MinWidth = 570; MinHeight = 420;
         Background = DesktopTheme.Surface;
         var entries = new List<ListBoxItem>();
-        void Add(Func<string> title, string icon, Control content) {
-            pages.Add(WrapPage(content));
+        void Add(Func<string> title, string icon, Func<Control> create) {
+            pageFactories.Add(create);pages.Add(null);
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*"), Margin = new Thickness(0,2) };
             row.Children.Add(SettingsVisual.Icon(icon,18)); var label=SettingsVisual.Text(title,13);label.Margin=new Thickness(9,0,0,0);label.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(label,1);row.Children.Add(label);
             var item=new ListBoxItem{Content=row,Padding=new Thickness(10,11),MinHeight=44,HorizontalContentAlignment=HorizontalAlignment.Stretch};
             SettingsVisual.NavigationItem(item);entries.Add(item);
         }
-        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text"),"partner",Partner()); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeA"),"settings",Behavior());
-        var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
-        modelTabs.ItemsSource = new[] { LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header"), Content = textProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header"))), LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"), Content = imageProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"))) }; modelTabs.SelectedIndex = 0; Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeB"),"model",modelTabs);
-        foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1,item.Item2,editor); }
-        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice()); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage());
-        imChannels=new ImChannelSettingsView(owner);Add(()=>TextResources.Get("im.title"),"model",imChannels);
+        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text"),"partner",Partner); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeA"),"settings",Behavior);
+        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeB"),"model",()=>{
+            var textProvider = new ProviderEditor(owner, "text"); providers.Add(textProvider); imageProvider = new ImageProviderEditor(owner, this);
+            modelTabs.ItemsSource = new[] { LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header"), Content = textProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header"))), LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"), Content = imageProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"))) }; modelTabs.SelectedIndex = 0;return modelTabs;
+        });
+        foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { Add(item.Item1,item.Item2,()=>{var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor);return editor;}); }
+        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",()=>new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage);
+        Add(()=>TextResources.Get("im.title"),"model",()=>imChannels=new ImChannelSettingsView(owner));
         navigation.ItemsSource=entries;
-        navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=pages[index];if(index==7)refreshVoice?.Invoke(); };
+        navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=GetPage(index);if(index==7)refreshVoice?.Invoke(); };
         var sideTitle=SettingsVisual.Text(()=>Title??"",21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);
         var sidebar=new Border{Background=DesktopTheme.Brush("#F7F8FA"),BorderBrush=DesktopTheme.Brush("#D5E1ED"),BorderThickness=new Thickness(0,0,1,0),Child=new Grid{RowDefinitions=new RowDefinitions("Auto,*"),Children={sideTitle}}};
         var sideGrid=(Grid)sidebar.Child!;Grid.SetRow(navigation,1);sideGrid.Children.Add(navigation);navigation.Margin=new Thickness(8,0,8,16);
         var layout=new Grid{ColumnDefinitions=new ColumnDefinitions("180,*")};layout.Children.Add(sidebar);Grid.SetColumn(pageHost,1);layout.Children.Add(pageHost);Content=layout;
         SizeChanged+=(_,_)=>{layout.ColumnDefinitions[0].Width=new GridLength(Bounds.Width<680?160:180);foreach(var page in pages.OfType<ScrollViewer>())if(page.Content is Border border)border.Padding=new Thickness(Bounds.Width<680?14:26,24);};
         navigation.SelectedIndex=0;
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); imChannels.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider?.Dispose(); imChannels?.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
     }
+    private Control GetPage(int index) => pages[index] ??= WrapPage(pageFactories[index]());
     private Control WrapPage(Control content) => new ScrollViewer { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = new Border { Padding = new Thickness(Bounds.Width>0&&Bounds.Width<680?14:26,24), Child = content } };
     public void SelectSection(string section) { navigation.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, "channels" => 9, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
@@ -214,7 +218,7 @@ internal sealed class SettingsWindow : Window
     {
         refreshingPreferences=true;
         try{
-            pages[1]=WrapPage(Behavior()); pages[8]=WrapPage(Storage());
+            if(pages[1]!=null)pages[1]=WrapPage(Behavior());if(pages[8]!=null)pages[8]=WrapPage(Storage());
             if(navigation.SelectedIndex is 1 or 8)pageHost.Content=pages[navigation.SelectedIndex];
             refreshVolume?.Invoke();
         }finally{refreshingPreferences=false;}
