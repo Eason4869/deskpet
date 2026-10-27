@@ -300,7 +300,7 @@ namespace Dafeiyu
                 if(Settings.X.HasValue && Settings.Y.HasValue) DesktopInterop.Move(handle,new Point(Settings.X.Value,Settings.Y.Value));
                 else ReturnHome();
                 DesktopInterop.ClampWindow(handle); lastCursor=DesktopInterop.Cursor(); previousTick=watch.Elapsed.TotalSeconds;
-                UpdateFrame(); timer.Start();
+                UpdateFrame(); timer.Start();RestoreImChannels();
             };
             using(Stream stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Icon")) trayIcon=(System.Drawing.Icon)new System.Drawing.Icon(stream).Clone();
             trayMenu=new TrayContextMenu();
@@ -1191,6 +1191,7 @@ namespace Dafeiyu
         }
         void CleanupClosedWindow()
         {
+            if(imChannels!=null)imChannels.Dispose();
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
@@ -1198,6 +1199,7 @@ namespace Dafeiyu
         }
         async void PrepareCloseOnDispatcherAsync()
         {
+            if(imChannels!=null)await imChannels.StopAllAsync();
             if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();return;}
             foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeRelationshipFeedback();await HolidayKeepsakes.ShutdownAsync();DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();

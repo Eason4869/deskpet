@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
@@ -15,11 +15,12 @@ internal sealed class SettingsWindow : Window
     private readonly DesktopController owner;
     private readonly List<ProviderEditor> providers = new();
     private readonly ImageProviderEditor imageProvider;
+    private readonly ImChannelSettingsView imChannels;
     private readonly TabControl modelTabs = new();
     private readonly ListBox navigation = new() { Name = "SettingsNavigation", Background = Avalonia.Media.Brushes.Transparent, BorderThickness = new Thickness(0) };
     private readonly ContentControl pageHost = new() { Name = "SettingsPageHost", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     private readonly List<Control> pages = new();
-    internal string SelectedSection => navigation.SelectedIndex switch { 1 => "behavior", 2 => modelTabs.SelectedIndex == 1 ? "image" : "text", 3 => "asr", 4 => "speech", 5 => "live", 6 => "work", 7 => "voice", 8 => "storage", _ => "partner" };
+    internal string SelectedSection => navigation.SelectedIndex switch { 1 => "behavior", 2 => modelTabs.SelectedIndex == 1 ? "image" : "text", 3 => "asr", 4 => "speech", 5 => "live", 6 => "work", 7 => "voice", 8 => "storage", 9 => "channels", _ => "partner" };
     private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
     private Action? refreshVolume;
@@ -43,6 +44,7 @@ internal sealed class SettingsWindow : Window
         modelTabs.ItemsSource = new[] { LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header"), Content = textProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header"))), LocalizedUi.With(new TabItem { Header = TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"), Content = imageProvider },"Header",()=>(TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"))) }; modelTabs.SelectedIndex = 0; Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeB"),"model",modelTabs);
         foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor); Add(item.Item1,item.Item2,editor); }
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice()); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage());
+        imChannels=new ImChannelSettingsView(owner);Add(()=>TextResources.Get("im.title"),"model",imChannels);
         navigation.ItemsSource=entries;
         navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=pages[index];if(index==7)refreshVoice?.Invoke(); };
         var sideTitle=SettingsVisual.Text(()=>Title??"",21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);
@@ -51,10 +53,10 @@ internal sealed class SettingsWindow : Window
         var layout=new Grid{ColumnDefinitions=new ColumnDefinitions("180,*")};layout.Children.Add(sidebar);Grid.SetColumn(pageHost,1);layout.Children.Add(pageHost);Content=layout;
         SizeChanged+=(_,_)=>{layout.ColumnDefinitions[0].Width=new GridLength(Bounds.Width<680?160:180);foreach(var page in pages.OfType<ScrollViewer>())if(page.Content is Border border)border.Padding=new Thickness(Bounds.Width<680?14:26,24);};
         navigation.SelectedIndex=0;
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider.Dispose(); imChannels.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
     }
     private Control WrapPage(Control content) => new ScrollViewer { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = new Border { Padding = new Thickness(Bounds.Width>0&&Bounds.Width<680?14:26,24), Child = content } };
-    public void SelectSection(string section) { navigation.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
+    public void SelectSection(string section) { navigation.SelectedIndex = section switch { "partner" => 0, "behavior" => 1, "text" or "image" => 2, "asr" => 3, "speech" => 4, "live" => 5, "work" => 6, "voice" => 7, "storage" => 8, "channels" => 9, _ => 0 }; if (section is "text" or "image") modelTabs.SelectedIndex = section == "image" ? 1 : 0; }
     private Control Partner()
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;

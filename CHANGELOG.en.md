@@ -1,4 +1,9 @@
-# Changelog
+﻿# Changelog
+
+## Unreleased
+
+- Add local messaging channels for QQ, WeChat ClawBot DMs, Feishu, DingTalk and WeCom, with encrypted credentials, sender/group allowlists, isolated sessions, pause and reconnect.
+- Add settings on both desktops and locally rendered WeChat login QR codes. No public IP, developer relay or additional bot framework is required. Real-account acceptance remains pending.
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
