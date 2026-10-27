@@ -52,6 +52,11 @@ namespace Dafeiyu.Tests
                 Check(Writes(store)==before+1&&store.Load().Volume==62,"volume pointer release commits once");
                 cfg.Volume=71;Call(pet,"RequestPreferenceSave");cfg.Text.Model="explicit-latest-model";pet.SaveSettings();before=Writes(store);Pump(400);
                 Check(Writes(store)==before&&store.Load().Text.Model=="explicit-latest-model"&&store.Load().Volume==71,"ordinary pending state cannot overwrite explicit model save");
+                cfg.Volume=74;Call(pet,"RequestPreferenceSave");UiLanguageChange.Apply(store,cfg,"en_US");Pump(400);
+                Check(store.Load().UiLanguage=="en_US"&&store.Load().Volume==74,"pending preference commit preserves a newer language selection");
+                before=Writes(store);var maintenance=pet.DataMaintenance.BeginAsync();Wait(maintenance);
+                using(maintenance.Result){cfg.Volume=69;Call(pet,"RequestPreferenceSave");Pump(400);Check(Writes(store)==before,"maintenance blocks ordinary timer writes");}
+                Wait(pet.FlushDeferredSettingsAsync());Check(store.Load().Volume==69,"maintenance drain saves the latest deferred preference");
                 cfg.Scale=1.2;Call(pet,"RequestPreferenceSave");Wait(store.RestoreDefaultPreferencesAsync(cfg,pet.DataMaintenance));pet.ApplyRestoredPreferences();Pump(400);
                 Check(Math.Abs(cfg.Scale-new PetSettings().Scale)<.001&&Math.Abs(store.Load().Scale-cfg.Scale)<.001,"restore defaults supersedes older pending preferences");
                 Directory.CreateDirectory(path+".tmp");cfg.Volume=63;Call(pet,"RequestPreferenceSave");

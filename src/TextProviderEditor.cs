@@ -42,7 +42,7 @@ namespace Dafeiyu
         CancellationTokenSource fetching;
         string fetchingProviderId;
         TextBlock connectionEndpoint;
-        PetSettings baseline;
+        ServiceProviderSettings baseline;
         readonly TextBlock feedback;
         readonly StackPanel modelForm=new StackPanel{Visibility=Visibility.Collapsed};Window modelDialog;FrameworkElement providerDetail;StackPanel providerDetailHost;TextBlock emptyProviderHint;TextBlock modelDialogNotice;
         readonly Button removeProvider;
@@ -55,7 +55,7 @@ namespace Dafeiyu
         {
             kind=serviceKind;prefix=kind=="text"?"TextService":kind=="asr"?"Transcription":kind=="speech"?"Speech":"LiveService";
             Name=N("GuideTextProviderSection");
-            settings=settings.ProviderView(kind);settings.EnsureTextProviders();baseline=settings.Copy();foreach(var provider in settings.TextProviders){drafts.Add(provider.Copy());if(kind=="text"&&String.IsNullOrWhiteSpace(provider.Connection.BaseUrl)&&String.IsNullOrWhiteSpace(provider.Connection.ApiKey)&&provider.Models.Count==0)emptyInitialIds.Add(provider.Id);}
+            settings=settings.ProviderView(kind);settings.EnsureTextProviders();baseline=settings.ProviderSnapshot("text");foreach(var provider in settings.TextProviders){drafts.Add(provider.Copy());if(kind=="text"&&String.IsNullOrWhiteSpace(provider.Connection.BaseUrl)&&String.IsNullOrWhiteSpace(provider.Connection.ApiKey)&&provider.Models.Count==0)emptyInitialIds.Add(provider.Id);}
             ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(138)});
             ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});
             var rail=new StackPanel();var heading=LocalizedUi.Text(()=>(TextResources.Get("textProviderEditor.textProviderEditor.text")),15);heading.FontWeight=FontWeights.SemiBold;rail.Children.Add(heading);
@@ -269,7 +269,7 @@ namespace Dafeiyu
         public void ExpandConnection(){var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=true;}
         public ConnectionSettings Read(){ValidateContextCapacity();Capture();var result=connection.Read();result.ContextWindowTokens=selected.ContextCapacity(result.Model);selected.ApplyModelCapabilities(result);return result;}
         public TextProviderSettings ReadConnectionProvider(){Capture(false);if(String.IsNullOrWhiteSpace(selected.Name))throw new InvalidOperationException(TextResources.Get("textProviderEditor.readConnectionProvider.text"));return selected.Copy();}
-        public void ConnectionSaved(PetSettings settings){baseline=settings.ProviderView(kind).Copy();}
+        public void ConnectionSaved(PetSettings settings){baseline=settings.ProviderSnapshot(kind);}
         public List<TextProviderSettings> ReadProviders()
         {
             ValidateContextCapacity();Capture();var result=new List<TextProviderSettings>();
@@ -288,19 +288,21 @@ namespace Dafeiyu
             return MatchesView(settings.ProviderView(kind));
         }
         bool MatchesView(PetSettings settings)
+        {return MatchesProviders(settings.TextProviders,settings.ActiveTextProviderId);}
+        bool MatchesProviders(System.Collections.Generic.List<TextProviderSettings> saved,string activeProviderId)
         {
-            Capture(false);if(drafts.Count!=settings.TextProviders.Count || SelectedProviderId!=settings.ActiveTextProviderId)return false;
-            for(int i=0;i<drafts.Count;i++) {var a=drafts[i];var b=settings.TextProviders[i];if(a.Id!=b.Id || a.Name!=b.Name || a.BrandId!=b.BrandId || a.Models.Count!=b.Models.Count || !SameConnection(a.Connection,b.Connection))return false;for(int m=0;m<a.Models.Count;m++)if(a.Models[m]!=b.Models[m] || a.DisplayName(a.Models[m])!=b.DisplayName(b.Models[m]) || !SameCapacities(a,b,a.Models[m]))return false;}
+            Capture(false);if(drafts.Count!=saved.Count || SelectedProviderId!=activeProviderId)return false;
+            for(int i=0;i<drafts.Count;i++) {var a=drafts[i];var b=saved[i];if(a.Id!=b.Id || a.Name!=b.Name || a.BrandId!=b.BrandId || a.Models.Count!=b.Models.Count || !SameConnection(a.Connection,b.Connection))return false;for(int m=0;m<a.Models.Count;m++)if(a.Models[m]!=b.Models[m] || a.DisplayName(a.Models[m])!=b.DisplayName(b.Models[m]) || !SameCapacities(a,b,a.Models[m]))return false;}
             return true;
         }
         static bool SameCapacities(TextProviderSettings a,TextProviderSettings b,string model){int ad,bd,am,bm;a.ModelContextWindows.TryGetValue(model,out ad);b.ModelContextWindows.TryGetValue(model,out bd);a.ModelContextOverrides.TryGetValue(model,out am);b.ModelContextOverrides.TryGetValue(model,out bm);return ad==bd&&am==bm;}
         public bool RefreshSaved(PetSettings settings)
         {
             // Saving this draft advances the baseline; external changes only replace a clean draft.
-            settings=settings.ProviderView(kind);if(MatchesView(settings)){baseline=settings.Copy();foreach(var saved in settings.TextProviders)unsavedProviders.Remove(saved.Id);ScheduleFetch();return false;}
-            if(!MatchesView(baseline))return false;
+            settings=settings.ProviderView(kind);if(MatchesView(settings)){baseline=settings.ProviderSnapshot("text");foreach(var saved in settings.TextProviders)unsavedProviders.Remove(saved.Id);ScheduleFetch();return false;}
+            if(!MatchesProviders(baseline.Providers,baseline.ActiveProviderId))return false;
             settings.EnsureTextProviders();drafts.Clear();foreach(var provider in settings.TextProviders)drafts.Add(provider.Copy());
-            baseline=settings.Copy();selected=drafts.Find(p=>p.Id==settings.ActiveTextProviderId) ?? drafts[0];RefreshProviders();Show(selected);RaiseChanged();return true;
+            baseline=settings.ProviderSnapshot("text");selected=drafts.Find(p=>p.Id==settings.ActiveTextProviderId) ?? drafts[0];RefreshProviders();Show(selected);RaiseChanged();return true;
         }
         bool SameConnection(ConnectionSettings a,ConnectionSettings b)
         {

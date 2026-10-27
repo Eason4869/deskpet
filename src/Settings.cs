@@ -416,6 +416,11 @@ namespace Dafeiyu
             var view=new PetSettings{Text=(connection ?? new ConnectionSettings()).Copy(),TextProviders=group.Providers,ActiveTextProviderId=group.ActiveProviderId};view.EnsureTextProviders();
             group.Providers=view.TextProviders;group.ActiveProviderId=view.ActiveTextProviderId;return view;
         }
+        public ServiceProviderSettings ProviderSnapshot(string kind)
+        {
+            var view=ProviderView(kind);view.EnsureTextProviders();
+            return new ServiceProviderSettings{Providers=view.TextProviders,ActiveProviderId=view.ActiveTextProviderId}.Copy();
+        }
         public void ApplyProviders(string kind,List<TextProviderSettings> providers,string active,ConnectionSettings connection)
         {
             if(kind=="text"){TextProviders=providers;ActiveTextProviderId=active;Text=connection;return;}

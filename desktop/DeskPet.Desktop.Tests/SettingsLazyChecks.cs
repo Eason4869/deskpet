@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.LogicalTree;
@@ -9,6 +10,9 @@ using DeskPet.Desktop;
 
 internal static class SettingsLazyChecks
 {
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference TemporaryInstructions(DesktopController owner,out ProviderEditor editor)
+    {string text=new string('x',100000);var weak=new WeakReference(text);owner.Settings.AgentGlobalInstructions=text;editor=new ProviderEditor(owner,"text");owner.Settings.AgentGlobalInstructions="";return weak;}
     internal static int Run(string directory)
     {
         int checks=0;
@@ -39,6 +43,8 @@ internal static class SettingsLazyChecks
             window.SelectSection("behavior");Dispatcher.UIThread.RunJobs();Check(Named<Button>(window,"GeneralDataManagement")!=null,"general route is reachable");
             foreach(string section in new[]{"asr","speech","live","work","voice"}){window.SelectSection(section);Dispatcher.UIThread.RunJobs();Check(window.SelectedSection==section,"lazy page route "+section);}
             Check(pages.Cast<object?>().All(x=>x!=null),"every page can be materialized");
+            var unrelated=TemporaryInstructions(owner,out var memoryEditor);GC.Collect();GC.WaitForPendingFinalizers();GC.Collect();
+            Check(!unrelated.IsAlive,"native provider draft does not retain unrelated global instruction buffer");GC.KeepAlive(memoryEditor);memoryEditor.Dispose();
             return checks;
         }
         finally{window.Close();owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);}
