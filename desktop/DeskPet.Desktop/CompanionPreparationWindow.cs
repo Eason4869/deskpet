@@ -13,13 +13,13 @@ internal sealed class CompanionPreparationWindow:Window
     {
         var preparation=owner.OfficialPreparation;LocalizedUi.Set(this,"Title",()=>TextResources.Get("onboarding.prepare.progress"));Name="OfficialPreparationProgress";Width=580;Height=540;MinWidth=480;MinHeight=430;
         CanResize=false;CanMaximize=false;CanMinimize=true;WindowStartupLocation=WindowStartupLocation.CenterScreen;Background=DesktopTheme.Surface;
-        string Caption()=>TextResources.Get(preparation.State is OfficialCompanionPreparationState.Failed or OfficialCompanionPreparationState.Cancelled?"common.retry":"onboarding.prepare.start");
+        string Caption()=>preparation.State is OfficialCompanionPreparationState.Failed or OfficialCompanionPreparationState.Cancelled?TextResources.Get("common.retry"):TextResources.Get("onboarding.prepare.start");
         string Status()=>preparation.State==OfficialCompanionPreparationState.Idle?TextResources.Get("onboarding.prepare.packs"):preparation.StatusText;
         string Detail(){
             var value=preparation.Progress;if(value==null)return TextResources.Get("onboarding.prepare.progress");
             var profile=OfficialCompanionProfiles.Find(value.CharacterId);
-            string key=value.Stage=="metadata"?"officialCompanionProgressWindow.report.stageValueStage":value.Stage=="download"?"officialCompanionProgressWindow.report.stageValueStage.alternativeA":value.Stage=="validate"?"officialCompanionProgressWindow.report.stageValueStage.alternativeB":value.Stage=="install"?"officialCompanionProgressWindow.report.stageValueStage.alternativeC":"officialCompanionProgressWindow.report.stageValueStage.alternativeD";
-            return (profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.DisplayName)+" · "+TextResources.Get(key);
+            string stage=value.Stage=="metadata"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage"):value.Stage=="download"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeA"):value.Stage=="validate"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeB"):value.Stage=="install"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeC"):TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeD");
+            return (profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.DisplayName)+" · "+stage;
         }
         var root=new Grid{Margin=new Thickness(24),RowDefinitions=new RowDefinitions("*,Auto")};var body=new StackPanel();
         var heading=new Grid{ColumnDefinitions=new ColumnDefinitions("40,12,*"),Margin=new Thickness(0,0,0,14)};

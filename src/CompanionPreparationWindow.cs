@@ -39,14 +39,14 @@ namespace Dafeiyu
             var close=LocalizedUi.Button(()=>TextResources.Get("common.close"));close.Name="CloseOfficialPreparation";close.Click+=delegate{Close();};DockPanel.SetDock(close,Dock.Right);secondary.Children.Add(close);actions.Children.Add(secondary);Grid.SetRow(actions,1);root.Children.Add(actions);Content=root;
             preparation.Changed+=RequestRefresh;Closed+=delegate{closed=true;preparation.Changed-=RequestRefresh;};Refresh();
         }
-        string StartCaption(){return TextResources.Get(preparation.State==OfficialCompanionPreparationState.Failed||preparation.State==OfficialCompanionPreparationState.Cancelled?"common.retry":"onboarding.prepare.start");}
+        string StartCaption(){return preparation.State==OfficialCompanionPreparationState.Failed||preparation.State==OfficialCompanionPreparationState.Cancelled?TextResources.Get("common.retry"):TextResources.Get("onboarding.prepare.start");}
         string StatusText(){return preparation.State==OfficialCompanionPreparationState.Idle?TextResources.Get("onboarding.prepare.packs"):preparation.StatusText;}
         string CurrentDetail()
         {
             var value=preparation.Progress;if(value==null)return TextResources.Get("onboarding.prepare.progress");
             var profile=OfficialCompanionProfiles.Find(value.CharacterId);
-            string key=value.Stage=="metadata"?"officialCompanionProgressWindow.report.stageValueStage":value.Stage=="download"?"officialCompanionProgressWindow.report.stageValueStage.alternativeA":value.Stage=="validate"?"officialCompanionProgressWindow.report.stageValueStage.alternativeB":value.Stage=="install"?"officialCompanionProgressWindow.report.stageValueStage.alternativeC":"officialCompanionProgressWindow.report.stageValueStage.alternativeD";
-            return (profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.DisplayName)+" · "+TextResources.Get(key);
+            string stage=value.Stage=="metadata"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage"):value.Stage=="download"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeA"):value.Stage=="validate"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeB"):value.Stage=="install"?TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeC"):TextResources.Get("officialCompanionProgressWindow.report.stageValueStage.alternativeD");
+            return (profile==null?TextResources.Get("officialCompanionProgressWindow.report.nullProfileName"):profile.DisplayName)+" · "+stage;
         }
         void RequestRefresh()
         {
