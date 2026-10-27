@@ -58,7 +58,7 @@ namespace Dafeiyu.Tests
             var blocked=new TaskCompletionSource<bool>();using(pet.DataMaintenance.Register(()=>blocked.Task))using(var cancel=new CancellationTokenSource()){
                 var preparing=pet.PrepareUninstallAsync(cancel.Token);Pump();Check(pet.DataMaintenance.IsMaintenanceActive&&!preparing.IsCompleted,"actual preparation waits admitted drain");cancel.Cancel();blocked.SetResult(true);rejected=false;try{Wait(preparing);}catch(OperationCanceledException){rejected=true;}Check(rejected,"cancel pending preflight returns without close");
             }Usable(pet,"pending cancel");
-            var writes=(SemaphoreSlim)Field(pet.Store,"writes");writes.Wait();var saving=pet.PrepareUninstallAsync(CancellationToken.None);Pump();pet.Settings.AgentGoal="latest during owned save";pet.SaveSettings();writes.Release();Wait(saving);saving.Result.Dispose();
+            var writes=(SemaphoreSlim)Field(Field(pet.Store,"writeState"),"Gate");writes.Wait();var saving=pet.PrepareUninstallAsync(CancellationToken.None);Pump();pet.Settings.AgentGoal="latest during owned save";pet.SaveSettings();writes.Release();Wait(saving);saving.Result.Dispose();
             Check(new SettingsStore(Path.Combine(root,"settings.json")).Load().AgentGoal=="latest during owned save","latest coalesced settings survive pending async save");
             foreach(bool mutate in new[]{false,true}){
                 owner=Prepare(pet);var ticket=Ticket(root);string commit=Path.Combine(ticket.WorkDirectory,"commit");
