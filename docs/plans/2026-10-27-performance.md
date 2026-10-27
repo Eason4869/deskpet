@@ -104,3 +104,15 @@ dotnet run --project .\desktop\DeskPet.Desktop.Tests\DeskPet.Desktop.Tests.cspro
 ```
 
 此处为应执行命令，实际结果以 results 文档和日志为准。新 fixture 参数注册后才执行。
+
+## 第二批执行（2026-10-27，用户明确要求继续）
+
+基线 dc39043。顺序：B AI 真正二级懒创建 → 内存/订阅生命周期核查 → C 连续普通偏好合并与缩放应用路径 → G 会话动画状态重复分配清理 → 回归、测量、独立审查。
+
+B：ConnectionSettingsPanel 每类独立构造；未创建不脏，显式保存只提交已访问编辑器，使用当前未访问配置进行原有校验；Guide 指定哪类仅创建哪类。移除文字编辑变化触发语音列表刷新的无关订阅。先验证 text-only、Save、Live 直达、语音草稿及界面切换。
+
+C 第一小步：普通偏好调度仅记录 dirty，不排队 PetSettings 快照，仍使用现有 Store 在 UI 串行提交当前状态；连续滑条拖动只预览，结束提交，离散输入250ms debounce。显式保存一并提交并清除 pending；维护沿用现有 deferred 保存；退出先排空，失败取消关闭。该安全分步暂保留最终一次同步写盘，避免在未收拢全部写入入口前引入过期后台快照。
+
+G：限定 PetRuntimeAnimation 的未变化会话集合/状态枚举，按相同优先级保留 waiting/failed/running、终态、排队与reconciliation行为。无可证实热点时不大改动画资源。
+
+第二批状态：B 两端 AI 二级懒加载完成；Provider 专用快照/无关指令可回收回归完成；C 的 WPF 普通偏好 UI 合并、几何更新和失败保护首步完成。最终一次写仍同步，Avalonia 写盘合并、全局后台写入协议、动画/历史/轮询仍未完成，不把路线图整批勾为完成。阶段 G 本批收敛为有直接回归证据的配置副本与重复刷新清理，没有无证据重写运行状态机。见 `docs/performance/2026-10-27-stage2-results.md`。

@@ -17,7 +17,7 @@ namespace Dafeiyu.Tests
             FindIn<Button>(item,"AddDiscoveredModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
   static int passed;
-  [STAThread] public static int Main()
+  [STAThread] public static int Main(string[] args)
   {
    var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
    // Raised test events must resume on the same dispatcher as real WPF input.
@@ -26,7 +26,8 @@ namespace Dafeiyu.Tests
    PetWindow pet=null;SettingsWindow window=null;
    try {
     CheckAudioPages(folder);
-    CheckSeparateVoiceTests(folder);
+    if(!args.Contains("--without-device-playback"))CheckSeparateVoiceTests(folder);
+    else Console.WriteLine("INFO device playback/Live preview is excluded by explicit fixture mode; no real audio acceptance is claimed.");
     CheckCatalog(folder);
     CheckCatalogLifecycle();
     CheckCatalogInvalidation();
@@ -219,7 +220,7 @@ namespace Dafeiyu.Tests
     var session=new GeminiLiveSession(()=>new GeminiLiveSocket(),()=>mic,()=>output);
     typeof(PetWindow).GetField("live",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(pet,session);
     try{
-     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");try{Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));}catch(Exception e){throw new Exception("speech fixture notice: "+Find<TextBlock>(window,"ConnectionNotice").Text,e);}
+     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");try{Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));}catch(Exception e){Console.WriteLine("TTS fixture path="+tts.Path+" busy="+pet.Conversation.IsBusy+" speechRevision="+window.Page.GuideSpeechTestRevision);throw new Exception("speech fixture notice: "+Find<TextBlock>(window,"ConnectionNotice").Text,e);}
      Check(tts.Path=="/v1/audio/speech" && tts.Authorization=="Bearer tts-only-key" && tts.Body.Contains("tts-1") && liveServer.Setup==null && !mic.Started,"speech test performs its own HTTP TTS request and playback without opening Live or a microphone");
      window.SelectAiSection(3);Pump();Click(window,"PreviewLive");Until(()=>mic.Started);
      Check(window.Content is LiveCallView && liveServer.Setup.Contains("models/live-fixture-model") && liveServer.Setup.Contains("Kore"),"Live test uses the actual WebSocket setup with its own model and voice, even with an invalid text draft");
