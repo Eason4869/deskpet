@@ -1,54 +1,166 @@
-name: Promote verified macOS release assets
+name: Stage verified Windows release assets
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release version (X.Y.Z or X.Y.Z-dev.N)
         required: true
-        default: '0.10.0'
+        type: string
       commit:
-        description: Full commit SHA targeted by the release tag
         required: true
+        type: string
       run_id:
-        description: Successful native macOS workflow run ID
         required: true
+        type: string
       release_id:
-        description: Existing draft release numeric ID
         required: true
+        type: string
 permissions:
-  contents: write
-  actions: read
+  contents: read
 concurrency:
-  group: promote-macos-${{ inputs.version }}
+  group: stage-windows-0.11.1
   cancel-in-progress: false
 jobs:
-  promote:
+  stage-windows:
+    if: github.repository == 'Eason4869/deskpet'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_COMMIT: ${{ inputs.commit }}
+      SOURCE_RUN: ${{ inputs.run_id }}
+      RELEASE_ID: ${{ inputs.release_id }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify promotion safety guards
-        run: python tests/PromoteReleaseTests.py
+      - name: Verify fixed source and unpublished destination
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/stage_windows.py" <<'PY'
+          """One-shot verified CI-artifact transfer into an existing unpublished draft."""
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          from zipfile import ZipFile
+          REPO='Eason4869/deskpet'
+          TAG='v0.11.1'
+          COMMIT='bec057b0dd90316be4f3be635b0e5f00ef1e8748'
+          TAG_OBJECT='f1ae7373612fce28988d296009103c30893a38a0'
+          RUN=40451507993
+          RELEASE=425044068
+          ARTIFACT=12710734392
+          ARTIFACT_SHA='sha256:1a41851061c9609e7af1e5aab99550b2ec6756146f3941c4475079526a018c36'
+          VERSION='0.11.1'
+          MATERIAL='0.11.0-dev.3'
+          ROLES=['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
+          WIN={'DeskPet-Windows-Setup-0.11.1.exe','DeskPet-Windows-0.11.1.zip','DeskPet-Windows-App-0.11.1.exe','DeskPet-Source-0.11.1.zip','DeskPet-Skin-Template-v2-0.11.1.zip','DeskPet-Companions-0.11.1.json'}|{'DeskPet-Companion-'+role+'-'+MATERIAL+'.zip' for role in ROLES}
+          MAC={'DeskPet-macOS-0.11.1-'+arch+'-preview.'+suffix for arch in ['arm64','x86_64'] for suffix in ['dmg','zip']}
+          def api(path):
+              result=subprocess.run(['gh','api','repos/'+REPO+'/'+path],check=True,stdout=subprocess.PIPE,encoding='utf-8')
+              return json.loads(result.stdout)
+          def validate_inputs(env):
+              expected={'GITHUB_REPOSITORY':REPO,'RELEASE_VERSION':VERSION,'RELEASE_COMMIT':COMMIT,'SOURCE_RUN':str(RUN),'RELEASE_ID':str(RELEASE)}
+              assert all(env.get(k)==v for k,v in expected.items()),'Unexpected operation inputs'
+          def guard():
+              validate_inputs(os.environ)
+              run=api('actions/runs/'+str(RUN))
+              assert run['status']=='completed' and run['conclusion']=='success' and run['head_sha']==COMMIT and run['head_branch']==TAG
+              assert run['event']=='workflow_dispatch' and run['path'].split('@')[0]=='.github/workflows/windows-release.yml'
+              ref=api('git/ref/tags/'+TAG)['object']
+              assert ref['type']=='tag' and ref['sha']==TAG_OBJECT
+              tag=api('git/tags/'+ref['sha'])['object']
+              assert tag['type']=='commit' and tag['sha']==COMMIT
+              draft=api('releases/'+str(RELEASE))
+              assert draft['draft'] and not draft['prerelease'] and draft['tag_name']==TAG
+              assert all(a['name'] in WIN|MAC for a in draft['assets'])
+              artifacts=api('actions/runs/'+str(RUN)+'/artifacts')['artifacts']
+              selected=[a for a in artifacts if a['id']==ARTIFACT and a['name']=='verified-windows-release']
+              assert len(selected)==1 and not selected[0]['expired'] and selected[0]['digest']==ARTIFACT_SHA
+              return draft
+          def hash_stream(stream):
+              h=hashlib.sha256()
+              for chunk in iter(lambda:stream.read(8*1024*1024),b''):h.update(chunk)
+              return h.hexdigest()
+          def digest(path):
+              with path.open('rb') as stream:return hash_stream(stream)
+          def metadata_checks(root):
+              files={}
+              for path in root.rglob('*'):
+                  if path.is_file() and path.name in WIN|{'SHA256.txt','release-metadata.json'}:
+                      assert path.name not in files,'Duplicate selected file'
+                      files[path.name]=path
+              assert set(files)==WIN|{'SHA256.txt','release-metadata.json'}
+              metadata=json.loads(files['release-metadata.json'].read_text(encoding='utf-8-sig'))
+              assert metadata==dict(version=VERSION,tag=TAG,branch='main',prerelease=False,make_latest='true',commit=COMMIT)
+              records=[];seen=set()
+              for line in files['SHA256.txt'].read_text(encoding='utf-8-sig').splitlines():
+                  sha,name=line.split('  ',1)
+                  assert name in WIN and name not in seen
+                  assert digest(files[name])==sha,name
+                  seen.add(name);records.append(dict(name=name,sha256=sha,size=files[name].stat().st_size))
+              assert seen==WIN and len(records)==11
+              index=json.loads(files['DeskPet-Companions-0.11.1.json'].read_text(encoding='utf-8'))
+              assert {entry['id'] for entry in index['companions']}==set(ROLES) and len(index['companions'])==5
+              for entry in index['companions']:
+                  record=next(r for r in records if r['name']==entry['asset_name'])
+                  assert entry['version']==MATERIAL and entry['sha256']==record['sha256'] and entry['size']==record['size']
+              with ZipFile(files['DeskPet-Source-0.11.1.zip']) as source:
+                  assert not any('/.git/' in n or '/work/' in n or '/data/' in n or '/.codex/' in n for n in source.namelist())
+                  for relative in ['src/ReleaseInfo.cs','README.md','README.en.md','CHANGELOG.md','CHANGELOG.en.md','docs/character-packs.md','docs/conversation-agent.md','docs/holiday-outfits.md']:
+                      blob=api('contents/'+relative+'?ref='+COMMIT)
+                      assert blob['encoding']=='base64'
+                      normalize=lambda b:b.decode('utf-8-sig').replace('\r\n','\n')
+                      assert normalize(source.read('DafeiyuDeskPet/'+relative))==normalize(base64.b64decode(blob['content'])),relative
+              with ZipFile(files['DeskPet-Windows-0.11.1.zip']) as portable:
+                  with portable.open('DafeiyuDeskPet/桌面伙伴.exe') as exe:
+                      assert hash_stream(exe)==next(r['sha256'] for r in records if r['name']=='DeskPet-Windows-App-0.11.1.exe')
+                  with portable.open('DafeiyuDeskPet/DeskPet.Update.exe') as helper:assert helper.read(2)==b'MZ'
+                  text=portable.read('DafeiyuDeskPet/docs/conversation-agent.md').decode('utf-8-sig')
+                  assert '保存后即时刷新界面' in text and '保存后下次启动生效' not in text
+              return files,records
+          def main():
+              draft=guard()
+              if sys.argv[1]=='guard':
+                  print('PASS fixed producer/tag/main/source artifact identity and existing unpublished draft')
+                  return
+              assert sys.argv[1]=='upload'
+              files,records=metadata_checks(Path('work/windows'))
+              for record in records:
+                  draft=guard()
+                  existing=[a for a in draft['assets'] if a['name']==record['name']]
+                  assert len(existing)<=1
+                  if not existing:
+                      subprocess.run(['gh','release','upload',TAG,str(files[record['name']]),'--repo',REPO],check=True)
+                  current=api('releases/'+str(RELEASE))
+                  assert current['draft'] and current['tag_name']==TAG
+                  matches=[a for a in current['assets'] if a['name']==record['name']]
+                  assert len(matches)==1 and matches[0]['size']==record['size'] and matches[0]['digest']=='sha256:'+record['sha256']
+                  print('PASS verified Windows draft asset '+record['name'],flush=True)
+              final=guard()
+              assert len(final['assets'])==15 and {a['name'] for a in final['assets']}==WIN|MAC
+              Path('work/windows-upload-manifest.json').write_text(json.dumps(dict(commit=COMMIT,version=VERSION,assets=records),indent=2)+'\n',encoding='utf-8')
+              print('PASS11 exact-tag Windows assets into unpublished draft; SHA256 finalization remains separate')
+          if __name__=='__main__':main()
+          PY
+          python "$RUNNER_TEMP/stage_windows.py" guard
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.run_id }}
-          pattern: DeskPet-macOS-*-preview-${{ inputs.commit }}
-          path: work/macos
-      - name: Verify tagged app identity and upload to existing draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ inputs.version }}
-          RELEASE_COMMIT: ${{ inputs.commit }}
-          RELEASE_RUN_ID: ${{ inputs.run_id }}
-          RELEASE_ID: ${{ inputs.release_id }}
-        run: |
-          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --release-id "$RELEASE_ID"
-      - name: Preserve verified upload manifest
+          name: verified-windows-release
+          path: work/windows
+      - name: Validate exact source and transfer only verified files to draft
+        shell: bash
+        run: python "$RUNNER_TEMP/stage_windows.py" upload
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: mac-upload-manifest-${{ inputs.version }}
-          path: work/promoted/mac-upload-manifest.json
+          name: windows-upload-manifest-0.11.1
+          path: work/windows-upload-manifest.json
           if-no-files-found: error
           retention-days: 7
