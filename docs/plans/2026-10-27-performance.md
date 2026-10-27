@@ -67,6 +67,8 @@
 
 ## 首批任务 4：报告与审查
 
+追加任务 U（用户明确追加）：先写 `CompanionPreparationUiTests` 验证旧窗口仍可最大化的 RED；提取 WPF `CompanionPreparationWindow`，替换 PetOfficialCompanions 中临时拼装，Avalonia 同步美化并设 CanMaximize=false。复用现有本地化资源，保留后台任务、重试与停止语义。检查两端最大化配置、WPF 原生 style、状态变化，渲染截图并视觉检查。与首批一起纳入最终全分支审查。
+
 - [ ] 在同机器同数据上保存基线/改后样本，分别记录构造、首次 render callback、切页、内存快照。完整新进程/典型压力数据单列未完成。
 - [ ] 确认受影响回归、git diff --check、构建源码链接与新增文件均正确。
 - [ ] 独立全分支代码质量审查；修复实质问题并补能复现问题的测试。

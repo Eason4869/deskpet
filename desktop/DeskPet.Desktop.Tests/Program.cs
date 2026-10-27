@@ -45,6 +45,7 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--preparation-ui")){Console.WriteLine("PreparationUiChecks: "+PreparationUiChecks.Run(Path.Combine(directory,"preparation-ui"))+" passed");return;}
     if(args.Contains("--settings-lazy")){Console.WriteLine("SettingsLazyChecks: "+SettingsLazyChecks.Run(Path.Combine(directory,"settings-lazy"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-fresh="))){Console.WriteLine("ProfileFresh: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-fresh"),args.Single(a=>a.StartsWith("--profile-fresh=")).Split('=')[1],freshOnly:true)+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-art="))){Console.WriteLine("ProfileArtwork: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-art"),args.Single(a=>a.StartsWith("--profile-art=")).Split('=')[1])+" passed");return;}
