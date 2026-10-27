@@ -456,16 +456,17 @@ namespace Dafeiyu
         }
     }
 
-    public sealed class SettingsStore
+    public sealed partial class SettingsStore
     {
         private readonly string path;
-        readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
-        string committedLanguage;
+        readonly WriteState writeState;
+        System.Threading.SemaphoreSlim writes{get{return writeState.Gate;}}
+        string committedLanguage{get{return writeState.Language;}set{writeState.Language=value;}}
         int completedSnapshotWrites;
         internal int CompletedSnapshotWrites{get{return System.Threading.Volatile.Read(ref completedSnapshotWrites);}}
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
-        public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
+        public SettingsStore(string filePath) { path = Path.GetFullPath(filePath);writeState=GetWriteState(path); }
         public PetSettings Load()
         {
             Warning = "";
@@ -505,8 +506,10 @@ namespace Dafeiyu
         }
         internal void SaveLanguageSelection(PetSettings settings,string code,bool guide)
         {
-            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            if(System.Threading.Volatile.Read(ref writeState.Resetting)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            writes.Wait();
             try{
+                if(System.Threading.Volatile.Read(ref writeState.Resetting)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
                 var json=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=16*1024*1024,RecursionLimit=128};
                 Dictionary<string,object> values;
                 try{
@@ -527,6 +530,7 @@ namespace Dafeiyu
                 }
                 AtomicFile.Commit(temporary,path);
                 committedLanguage=normalized;settings.UiLanguage=normalized;
+                if(guide){long order=System.Threading.Interlocked.Increment(ref writeState.Order);foreach(string field in new[]{"OnboardingLessonId","OnboardingStep","OnboardingState"})writeState.Fields[field]=order;}
                 if(guide){settings.OnboardingLessonId="welcome";settings.OnboardingStep=0;settings.OnboardingState="deferred";}
                 Warning="";
             }finally{writes.Release();}
@@ -569,8 +573,9 @@ namespace Dafeiyu
         }
         public void Save(PetSettings settings)
         {
-            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
-            try{settings.Normalize();SaveSnapshot(settings);}finally{writes.Release();}
+            if(System.Threading.Volatile.Read(ref writeState.Resetting)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            writes.Wait();
+            try{if(System.Threading.Volatile.Read(ref writeState.Resetting)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));settings.Normalize();SaveSnapshot(settings,System.Threading.Interlocked.Increment(ref writeState.Order));}finally{writes.Release();}
         }
         // Save a detached candidate before publishing preferences. Deliberately
         // avoid Normalize here: provider migration is outside this operation.
@@ -578,19 +583,23 @@ namespace Dafeiyu
         {
             if(settings==null)throw new ArgumentNullException("settings");
             if(gate==null)throw new ArgumentNullException("gate");
-            using(await gate.BeginAsync()){
-                await writes.WaitAsync();
-                try{var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));CopyPreferences(candidate,settings);}
-                finally{writes.Release();}
-            }
+            if(System.Threading.Interlocked.CompareExchange(ref writeState.Resetting,1,0)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{using(await gate.BeginAsync()){
+                var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);
+                await WriteExactCandidateAsync(candidate);CopyPreferences(candidate,settings);
+            }}finally{System.Threading.Volatile.Write(ref writeState.Resetting,0);}
         }
-        // Snapshot on the caller's UI context; only durable I/O runs on a worker.
-        // Position autosaves must not migrate retained provider configuration.
-        public async System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        // Snapshot on the caller's UI context; lock ownership and durable I/O
+        // stay entirely on the worker, so synchronous saves cannot deadlock UI.
+        public System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        {if(System.Threading.Volatile.Read(ref writeState.Resetting)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));return WriteExactCandidateAsync(Snapshot(settings));}
+        System.Threading.Tasks.Task WriteExactCandidateAsync(PetSettings candidate)
         {
-            await writes.WaitAsync();
-            try{var candidate=Snapshot(settings);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));}
-            finally{writes.Release();}
+            long order=System.Threading.Interlocked.Increment(ref writeState.Order);
+            return System.Threading.Tasks.Task.Run(delegate{
+                if(BeforeExactSave!=null)BeforeExactSave();
+                writes.Wait();try{SaveSnapshot(candidate,order);}finally{writes.Release();}
+            });
         }
         internal static PetSettings Snapshot(PetSettings settings)
         {
@@ -615,8 +624,20 @@ namespace Dafeiyu
             target.ImageGalleryLayout=source.ImageGalleryLayout;
             target.Hotkeys=new Dictionary<string,string>(source.Hotkeys);target.LocalShortcuts=new Dictionary<string,string>(source.LocalShortcuts);
         }
-        void SaveSnapshot(PetSettings settings)
+        void SaveSnapshot(PetSettings settings,long order)
         {
+            if(writeState.LastFull>order)throw new IOException("A newer configuration has already been saved.");
+            if(writeState.Fields.Any(p=>p.Value>order)){
+                PetSettings latest;
+                using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))latest=(PetSettings)new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream);
+                foreach(var item in writeState.Fields.Where(p=>p.Value>order))switch(item.Key){
+                    case "Scale":settings.Scale=latest.Scale;break;case "Volume":settings.Volume=latest.Volume;break;
+                    case "X":settings.X=latest.X;break;case "Y":settings.Y=latest.Y;break;
+                    case "OnboardingLessonId":settings.OnboardingLessonId=latest.OnboardingLessonId;break;
+                    case "OnboardingStep":settings.OnboardingStep=latest.OnboardingStep;break;
+                    case "OnboardingState":settings.OnboardingState=latest.OnboardingState;break;
+                }
+            }
             if(committedLanguage!=null)settings.UiLanguage=committedLanguage;
             Directory.CreateDirectory(DirectoryPath);
             string temporary = path + ".tmp";
@@ -625,6 +646,7 @@ namespace Dafeiyu
                 using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
                 { new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream, settings); stream.Flush(true); }
                 AtomicFile.Commit(temporary,path);
+                writeState.LastFull=Math.Max(writeState.LastFull,order);
                 System.Threading.Interlocked.Increment(ref completedSnapshotWrites);
                 Warning = "";
             }

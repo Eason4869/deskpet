@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -688,7 +688,7 @@ namespace Dafeiyu
         {ApplySettingsCore(true);}
         internal string ApplyRestoredPreferences()
         {
-            if(preferenceSaves!=null)preferenceSaves.MarkSaved();
+            pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();
             Relationships.InvalidateFeedback();
             ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
             if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
@@ -1168,9 +1168,10 @@ namespace Dafeiyu
         {TrySaveSettings();}
         bool TrySaveSettings()
         {
+            settingsSaveRevision++;
             if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return false;}
             CompleteScaleLayout();bool saved=false;
-            try { Store.Save(Settings);saved=true;deferredSettingsSave=false;if(preferenceSaves!=null&&Dispatcher.CheckAccess())preferenceSaves.MarkSaved();if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
+            try { Store.Save(Settings);saved=true;deferredSettingsSave=false;if(preferenceSaves!=null&&Dispatcher.CheckAccess()){pendingPreferences=null;preferenceSaves.MarkSaved();}if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
             catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice=TextResources.Get("petWindow.saveSettings.notice"); }
             if(preferences!=null) preferences.ShowNotice(Notice);
             return saved;
@@ -1183,7 +1184,7 @@ namespace Dafeiyu
             if(!exitPrepared)
             {
                 args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;
-                if(!FlushPreferenceSaves()){ReleaseMaintenanceExit();return;}closing=true;
+                closing=true;
                 // Close can be requested before Application.Run or from a host with
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
@@ -1192,22 +1193,44 @@ namespace Dafeiyu
         }
         void CleanupClosedWindow()
         {
-            if(preferenceSaves!=null)preferenceSaves.Dispose();
+            if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();exitWindowEnabled.Clear();
             if(imChannels!=null)imChannels.Dispose();
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
             DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
         }
+        bool timerRunningBeforeExit;
+        readonly System.Collections.Generic.Dictionary<Window,bool> exitWindowEnabled=new System.Collections.Generic.Dictionary<Window,bool>();
+        void FreezeExitUi()
+        {
+            timerRunningBeforeExit=timer.IsEnabled;timer.Stop();exitWindowEnabled.Clear();
+            if(Application.Current!=null)foreach(Window window in Application.Current.Windows){exitWindowEnabled[window]=window.IsEnabled;window.IsEnabled=false;}
+        }
+        void ResumeCancelledExit()
+        {
+            foreach(var item in exitWindowEnabled)if(item.Key.IsLoaded)item.Key.IsEnabled=item.Value;
+            exitWindowEnabled.Clear();if(timerRunningBeforeExit)timer.Start();ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();
+        }
+        async Task<bool> PersistBeforeExitAsync()
+        {
+            if(!await FlushPreferenceSavesAsync())return false;
+            CompleteScaleLayout();
+            if(handle!=IntPtr.Zero){var bounds=DesktopInterop.Bounds(handle);Settings.X=bounds.Left;Settings.Y=bounds.Top;}
+            try{await Store.SaveExactSnapshotAsync(Settings);pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();deferredSettingsSave=false;return true;}
+            catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.Runtime.Serialization.SerializationException||error is ArgumentException||error is InvalidOperationException))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");if(preferences!=null)preferences.ShowNotice(Notice);return false;}
+        }
         async void PrepareCloseOnDispatcherAsync()
         {
+            FreezeExitUi();
+            if(!await PersistBeforeExitAsync()){ResumeCancelledExit();return;}
             if(imChannels!=null)await imChannels.StopAllAsync();
-            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();return;}
+            if(!await StopAgentJobsForExitAsync()){ResumeCancelledExit();return;}
             foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeRelationshipFeedback();await HolidayKeepsakes.ShutdownAsync();DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
-            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
-            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
+            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}
+            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(),out applicationExitDrain);}
             catch(OperationCanceledException){}finally{exitPrepared=true;Dispatcher.BeginInvoke(new Action(Close));}
         }
 

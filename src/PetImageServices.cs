@@ -80,7 +80,7 @@ namespace Dafeiyu
                 if(!visible)questionController.CancelSession(request.SessionId);
             }
         }
-        async Task DrainApplicationForExitAsync(PetSettings exitSettings)
+        async Task DrainApplicationForExitAsync()
         {
             var owners=ConversationSessions.ToArray();
             imageExitOwners=owners;
@@ -99,7 +99,7 @@ namespace Dafeiyu
                 if(workspaces!=null)await workspaces.SaveAllAsync().ConfigureAwait(false);
                 await Task.WhenAll(owners.Select(s=>s.FlushHistoryAsync())).ConfigureAwait(false);
                 await Relationships.FlushAsync().ConfigureAwait(false);
-                Store.Save(exitSettings);
+                // Configuration was durably saved before destructive exit cleanup.
             }
             finally
             {
