@@ -26,4 +26,22 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(metadata['exit_hex'],f'{code:08X}')
                 self.assertIn('fixture diagnostic',(output/'process.log').read_text(encoding='utf-16'))
 
+    def test_navigation_preserves_both_theme_runs_and_native_failure(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'work') as folder:
+            root=Path(folder)
+            compiler=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+            for failed_theme in ('none','light','dark'):
+                source=root/'navigation.cs';program=root/'navigation.exe';output=root/failed_theme
+                source.write_text('class Fixture{static int Main(string[] args){System.Console.WriteLine(System.String.Join("|",args));foreach(var arg in args)if(arg=="--theme='+failed_theme+'")return unchecked((int)0xC0000409);return 0;}}',encoding='utf-8')
+                subprocess.run([str(compiler),'/nologo','/out:'+str(program),str(source)],capture_output=True,check=True)
+                result=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(ROOT/'tools/run_wpf_navigation_check.ps1'),'-Executable',str(program),'-Locale','ko_KR','-OutputDirectory',str(output)],capture_output=True)
+                self.assertEqual(result.returncode==0,failed_theme=='none')
+                metadata=json.loads((output/'process.json').read_text(encoding='utf-8-sig'))
+                expected=['light'] if failed_theme=='light' else ['light','dark']
+                self.assertEqual([run['theme'] for run in metadata['runs']],expected)
+                self.assertEqual(metadata['exit_hex'],'00000000' if failed_theme=='none' else 'C0000409')
+                log=(output/'process.log').read_text(encoding='utf-16')
+                for theme in expected:self.assertIn('--theme='+theme,log)
+                self.assertIn('--layout-boundary',log)
+
 if __name__=='__main__':unittest.main()
