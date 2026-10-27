@@ -13,7 +13,7 @@
 | WPF ImChannelUiTests | 9 项通过；包含单文件 QR 依赖加载、五平台、密码遮罩、即时语言切换保留草稿、页面往返、固定浏览器入口、浅深主题与窄窗 |
 | Avalonia --im-channels-ui-all-locales | 13 种语言各 7 项通过，共 91 项；导航、遮罩、草稿、五平台、保存、删除、浏览器入口；逐语言截图与窄窗检查 |
 | 既有 SettingsNavigationSmoke | 66 项通过，原导航索引保持稳定 |
-| LanguagePackTests | 356 项通过 |
+| LanguagePackTests | 408 项通过（含新增 52 个渠道文案契约） |
 | 回复语言回归 | 13 个语言，每个 128 项通过 |
 | SpeechLanguagePolicyTests | 34 项通过 |
 | verify_language_packs.py | 13 个语言均 4750 个键，无缺失/多余键，格式参数与独立字节快照通过 |

@@ -71,3 +71,4 @@ Modify: 两端设置导航与 13 个 assets/locales/*.json。
 - Final: fixed stale deletion list — Avalonia 保存/删除后列表为空回归通过，两端均重新加载列表。
 - Final review: independent reviewer completed; all four actionable findings fixed. Deferred review minors: none.
 - Delivery limits: no real-account tests or real Mac acceptance; all thirteen locales now have complete native messaging copy. See docs/im-channels-acceptance.md.
+- 0.11.2-dev.1 audit: 52 new messaging keys translated across all 13 locales; shared explicit resource mapping and immutable feature provenance added. Regression: 35 protocol/storage checks plus lifecycle/cancellation/auth/heartbeat scenarios, 9 WPF UI checks, 13 x 7 Avalonia UI checks, 66 settings navigation, 408 language contracts and 13 x 128 reply-language checks passed. Offline guide packaging and version identity checked. See docs/im-channels-plan-audit.md for the per-requirement matrix and remaining real-account acceptance.
