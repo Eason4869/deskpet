@@ -8,12 +8,15 @@ namespace Dafeiyu
     {
         PreferenceSaveScheduler preferenceSaves;
         bool scaleLayoutPending,scaleSaveRequested;Rect scaleAnchor;
+        PreferenceSaveScheduler EnsurePreferenceSaves()
+        {return preferenceSaves??(preferenceSaves=new PreferenceSaveScheduler(TrySaveSettings,TimeSpan.FromMilliseconds(250)));}
+        internal void BeginPreferenceEdit(){Dispatcher.VerifyAccess();if(!closing)EnsurePreferenceSaves().Suspend();}
+        internal void EndPreferenceEdit(){Dispatcher.VerifyAccess();if(!closing&&preferenceSaves!=null)preferenceSaves.Resume();}
         internal void RequestPreferenceSave()
         {
             Dispatcher.VerifyAccess();if(closing)return;
             if(DataMaintenance.IsMaintenanceActive)deferredSettingsSave=true;
-            if(preferenceSaves==null)preferenceSaves=new PreferenceSaveScheduler(TrySaveSettings,TimeSpan.FromMilliseconds(250));
-            preferenceSaves.Request();
+            EnsurePreferenceSaves().Request();
         }
         internal bool FlushPreferenceSaves()
         {CompleteScaleLayout();return preferenceSaves==null||preferenceSaves.Flush();}

@@ -50,6 +50,11 @@ namespace Dafeiyu.Tests
                 Check(Writes(store)==before,"volume pointer drag stays in preview while held");
                 volume.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});Pump(400);
                 Check(Writes(store)==before+1&&store.Load().Volume==62,"volume pointer release commits once");
+                before=Writes(store);volume.Value=63;
+                volume.RaiseEvent(new DragStartedEventArgs(0,0){RoutedEvent=Thumb.DragStartedEvent});volume.Value=64;Pump(400);
+                Check(Writes(store)==before,"new pointer drag suspends an already pending debounce");
+                volume.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});Pump(400);
+                Check(Writes(store)==before+1&&store.Load().Volume==64,"resumed drag commits newest value once");
                 cfg.Volume=71;Call(pet,"RequestPreferenceSave");cfg.Text.Model="explicit-latest-model";pet.SaveSettings();before=Writes(store);Pump(400);
                 Check(Writes(store)==before&&store.Load().Text.Model=="explicit-latest-model"&&store.Load().Volume==71,"ordinary pending state cannot overwrite explicit model save");
                 cfg.Volume=74;Call(pet,"RequestPreferenceSave");UiLanguageChange.Apply(store,cfg,"en_US");Pump(400);
