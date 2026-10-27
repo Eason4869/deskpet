@@ -43,10 +43,13 @@ namespace Dafeiyu.Tests
                 var cfg=new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,SaveChatHistory=false,OnboardingState="completed"};
                 foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 if(!args.Contains("--measure"))cfg.Text=new ConnectionSettings{BaseUrl="https://example.com/v1",Model="fixture-model"};
+                if(args.Contains("--profile-ai-valid"))cfg.Text.ApiKey="offline-fixture-key";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);
-                if(args.Contains("--profile-ai"))
+                if(args.Contains("--profile-ai")||args.Contains("--trace-ai")||args.Contains("--profile-ai-valid"))
                 {
-                    var watch=Stopwatch.StartNew();var editor=new ConnectionSettingsPanel(pet);Console.WriteLine("PROFILE ai_panel_constructor_ms="+watch.Elapsed.TotalMilliseconds.ToString("F3",System.Globalization.CultureInfo.InvariantCulture));
+                    var watch=Stopwatch.StartNew();double last=0;
+                    if(args.Contains("--trace-ai"))SettingsConstructionTrace.Observer=label=>{double current=watch.Elapsed.TotalMilliseconds;Console.WriteLine("TRACE "+label+" at_ms="+current.ToString("F3",System.Globalization.CultureInfo.InvariantCulture)+" delta_ms="+(current-last).ToString("F3",System.Globalization.CultureInfo.InvariantCulture));last=current;};
+                    var editor=new ConnectionSettingsPanel(pet);SettingsConstructionTrace.Observer=null;Console.WriteLine("PROFILE ai_panel_constructor_ms="+watch.Elapsed.TotalMilliseconds.ToString("F3",System.Globalization.CultureInfo.InvariantCulture));
                     foreach(string field in new[]{"text","recognition","synthesis","live","images"})Console.WriteLine("PROFILE initialized_"+field+"="+(Field(editor,field)!=null));
                     editor.DisposeImageGeneration();return 0;
                 }
@@ -75,6 +78,13 @@ namespace Dafeiyu.Tests
                 foreach(string field in new[]{"connections","work","quiet","about","imChannels"})Check(Field(page,field)==null,"background refresh does not construct "+field);
                 page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");
                 Check(Field(Field(ai,"text"),"modelForm")==null,"unopened model dialog allocates no form controls");
+                var validSettings=new PetSettings{Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:18999/v1",Model="offline-fixture"}};
+                var textEditor=new TextProviderEditor(validSettings);var connection=Field(textEditor,"connection");
+                Check(Field(connection,"address")==null,"collapsed valid connection allocates no detail fields");
+                textEditor.ExpandConnection();Check(Field(connection,"address")!=null,"connection fields materialize when expanded");
+                var emptySettings=new PetSettings();var emptyEditor=new TextProviderEditor(emptySettings);
+                Check(Field(emptyEditor,"providerDetail")==null&&Field(emptyEditor,"connection")==null,"empty provider page allocates no hidden detail controls");
+                Check(emptyEditor.Matches(emptySettings)&&emptyEditor.ReadProviders().Count==0&&Field(emptyEditor,"providerDetail")==null,"empty dirty query and reads do not construct detail controls");
                 foreach(string field in new[]{"recognition","synthesis","live","images"})Check(Field(ai,field)==null,"text AI route does not create "+field);
                 cfg.Transcription.Model="external-asr-change";
                 Check(((ConnectionSettingsPanel)ai).Save()&&cfg.Transcription.Model=="external-asr-change","saving visited AI editor preserves unopened service settings");

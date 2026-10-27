@@ -139,6 +139,19 @@ namespace Dafeiyu
                 if(realUserCompletion && !previousRelationshipSuccess && status=="complete" && !String.IsNullOrWhiteSpace(user) && !String.IsNullOrWhiteSpace(reply) && Relationships!=null)Relationships.Enqueue(companionId,RelationshipEventType.CompletedConversation,logicalTurnId,completedTime??RelationshipTime.Current());
             }
         }}
+        internal Func<IDisposable> RequestActivityAdmission;
+        internal IDisposable EnterRequestActivity()
+        {
+            var ordinary=Maintenance.EnterActivity();
+            try{return RequestActivityAdmission==null?ordinary:new RequestActivity(ordinary,RequestActivityAdmission());}
+            catch{ordinary.Dispose();throw;}
+        }
+        sealed class RequestActivity:IDisposable
+        {
+            IDisposable ordinary,binding;
+            internal RequestActivity(IDisposable ordinary,IDisposable binding){this.ordinary=ordinary;this.binding=binding;}
+            public void Dispose(){var project=Interlocked.Exchange(ref binding,null);try{if(project!=null)project.Dispose();}finally{var activity=Interlocked.Exchange(ref ordinary,null);if(activity!=null)activity.Dispose();}}
+        }
         private Operation Begin(PetSettings settings,ConversationStage stage)
         {
             Operation op;
@@ -146,7 +159,7 @@ namespace Dafeiyu
             {
                 if(disposed) throw new ObjectDisposedException("ConversationSession");
                 if(active!=null) throw new InvalidOperationException(TextResources.Get("conversationSession.begin.text"));
-                var admission=Maintenance.EnterActivity();try{op=new Operation { Language=LanguageRequestScope.Capture(),Maintenance=admission,Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);op.RelationshipCompanionId=CaptureRelationshipCompanion();op.RelationshipEventId="turn-"+Guid.NewGuid().ToString("N");op.RelationshipWork=settings.AgentEnabled;active=op; LastNotice="";CancelPredictions();}catch{admission.Dispose();throw;}
+                var admission=EnterRequestActivity();try{op=new Operation { Language=LanguageRequestScope.Capture(),Maintenance=admission,Snapshot=settings.Copy(),Live=settings,History=History,PersonaId=personaId }; op.Snapshot.Text.RequestContextCapacity=ModelContextCapacity.Budget(op.Snapshot.Text,op.Snapshot.AgentContextTokenLimit);op.RelationshipCompanionId=CaptureRelationshipCompanion();op.RelationshipEventId="turn-"+Guid.NewGuid().ToString("N");op.RelationshipWork=settings.AgentEnabled;active=op; LastNotice="";CancelPredictions();}catch{admission.Dispose();throw;}
             }
             SetStage(stage); return op;
         }

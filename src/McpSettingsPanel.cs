@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -54,7 +55,7 @@ namespace Dafeiyu
             enabled.Foreground=Ui.PageInk;editor.Children.Add(enabled);
             remove.Name="RemoveMcpServer";remove.Foreground=Ui.Brush("#A65050");remove.Background=Brushes.Transparent;remove.BorderBrush=Brushes.Transparent;remove.HorizontalAlignment=HorizontalAlignment.Left;remove.Margin=new Thickness(0,6,0,0);remove.Click+=delegate{RemoveSelected();};editor.Children.Add(remove);body.Children.Add(editor);
             draftHint.Name="McpDraftStatus";draftHint.Margin=new Thickness(8,12,0,0);body.Children.Add(draftHint);
-            save.Name="SaveMcpServers";save.Background=ThemeManager.ActionSurface;save.BorderBrush=save.Background;save.HorizontalAlignment=HorizontalAlignment.Left;save.Margin=new Thickness(0,16,0,0);save.Click+=delegate{Save();};body.Children.Add(save);
+            save.Name="SaveMcpServers";save.Background=ThemeManager.ActionSurface;save.BorderBrush=save.Background;save.HorizontalAlignment=HorizontalAlignment.Left;save.Margin=new Thickness(0,16,0,0);save.Click+=async delegate{await SaveAsync();};body.Children.Add(save);
             status.Name="McpConnectionStatus";status.Margin=new Thickness(0,12,0,0);body.Children.Add(status);Content=Ui.Scroll(body);
             transport.SelectionChanged+=delegate{if(!updating)ShowProtocol();};
             foreach(var field in new[]{name,endpoint,arguments,directory})field.TextChanged+=delegate{Edited();};key.PasswordChanged+=delegate{Edited();};enabled.Checked+=delegate{Edited();};enabled.Unchecked+=delegate{Edited();};
@@ -118,13 +119,14 @@ namespace Dafeiyu
             if(value.WorkingDirectory.Length>0&&(!Path.IsPathRooted(value.WorkingDirectory)||!Directory.Exists(value.WorkingDirectory)))throw new ArgumentException(TextResources.Get("mcpSettingsPanel.validate.text.alternativeC"));
             string raw;string[] parsed;if(!argumentDrafts.TryGetValue(value.Id,out raw)||!ParseArguments(raw,out parsed))throw new ArgumentException(TextResources.Get("mcpSettingsPanel.validate.text.alternativeD"));value.Arguments=parsed;
         }
-        bool Save()
+        internal Task<bool> SaveAsync(){return pet.RunSettingsEditAsync(this,()=>SaveCoreAsync());}
+        async Task<bool> SaveCoreAsync()
         {
             Capture();try{
                 foreach(var value in drafts){try{Validate(value);}catch(ArgumentException){selected=value;Show();SetEditor(true);throw;}}
-                var previous=pet.Settings.McpServers;pet.Settings.McpServers=drafts.Select(c=>c.Copy()).ToList();try{pet.Store.Save(pet.Settings);}catch{pet.Settings.McpServers=previous;throw;}
+                var previous=pet.Settings.McpServers;var submitted=drafts.Select(c=>c.Copy()).ToList();if(!await pet.PersistSettingsAsync(target=>target.McpServers=submitted.Select(c=>c.Copy()).ToList())){status.Text=pet.Notice;return false;}
                 // Persist first, then retire connections that no longer match the saved configuration.
-                foreach(var old in previous??new List<McpServerConfiguration>()){if(old==null)continue;var current=drafts.FirstOrDefault(c=>c.Id==old.Id);if(current==null||Json(old)!=Json(current))pet.McpConnections.Disconnect(old.Id);}
+                foreach(var old in previous??new List<McpServerConfiguration>()){if(old==null)continue;var current=submitted.FirstOrDefault(c=>c.Id==old.Id);if(current==null||Json(old)!=Json(current))pet.McpConnections.Disconnect(old.Id);}
                 SetEditor(false);RenderRows();LocalizedUi.Set(status,"Text",()=>(TextResources.Get("mcpSettingsPanel.save.status")));var handler=Saved;if(handler!=null)handler();return true;
             }catch(ArgumentException e){status.Text=e.Message;return false;}catch(Exception){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("mcpSettingsPanel.save.status.alternativeA")));return false;}
         }

@@ -97,9 +97,10 @@ namespace Dafeiyu
                 // holding the same short writer lease used through atomic replace.
                 using(var writeLease=new FileStream(path+".write.lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
                 {
+                    MergeUnpublishedConfigurations(copy);Validate(copy);
                     if(BeforeSave!=null)BeforeSave(copy);
                     using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(ProjectCatalog)).WriteObject(stream,copy);}
-                    AtomicFile.Commit(temp,path);if(AfterSave!=null)AfterSave(copy);
+                    AtomicFile.Commit(temp,path);ObservePublishedConfigurations(copy);if(AfterSave!=null)AfterSave(copy);
                 }
             }
         }

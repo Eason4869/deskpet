@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.3-dev.1 — 2026-10-28 · Development preview
+
+- Lazily creates settings pages and AI service editors and reuses scroll containers. Empty provider pages skip hidden details; saved connection fields and model dialogs are built when opened.
+- Removes duplicate provider list construction, unrelated voice refreshes and full configuration copies. Scale and volume edits are coalesced, with preview-only pointer dragging.
+- WPF explicit saves for AI, images, global Work/prompt settings, MCP, personas, network, language and model selection commit on workers and publish configuration only after persistence succeeds. Failed saves retain drafts.
+- Project Work settings use a separate background field transaction that preserves concurrent renames, chats and sidebar data. New requests for that project are blocked during publication; existing busy work is refused rather than automatically cancelled.
+- Maintenance and exit drain pending saves. Restoring defaults protects disk commit and in-memory publication; failed exit configuration saves cancel closing and restore the windows.
+- Fixes asynchronous persona saves clearing the wrong conversation, duplicate or late guide actions, and older completion callbacks hiding newer save failures.
+- Refreshes the complete companion download window and disables maximization on both UIs. Closing the progress view preserves application-owned preparation; Stop still cancels it.
+- Adds WPF, shared-core and native settings lifecycle regressions. macOS remains an ad-hoc preview without Developer ID signing or notarization; messaging channels still await real-account acceptance.
+
 ## 0.11.2-dev.2 — 2026-10-27 · Development branch (no Release)
 
 - Affection gains and interaction greetings now last about 0.9 seconds including entrance and exit; merging gains or adding stage/greeting content does not restart the lifetime.

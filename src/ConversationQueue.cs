@@ -37,7 +37,7 @@ namespace Dafeiyu
         public event Action Changed;
         public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path)
         {
-            this.session=session;using(session.Maintenance.EnterActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
+            this.session=session;using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
             queues=new Dictionary<string,List<QueuedMessage>>();
             if(File.Exists(path))try
             {
@@ -88,20 +88,20 @@ namespace Dafeiyu
         }
         void Announce(){if(!disposed && Changed!=null)Changed();}
         public void Enqueue(string text,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
-        {using(session.Maintenance.EnterActivity()){
+        {using(session.EnterRequestActivity()){
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationQueue.enqueue.text");
             text=Validate(text);ApiClient.ValidateConnection(settings().Text,ApiClient.ChatPath(settings().Text));
             lock(gate){Writable();if(Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.enqueue.text.alternativeA"));bool fresh=Current.Count==0 && !running && !session.IsBusy;var entry=new QueuedMessage{Id=Guid.NewGuid().ToString("N"),RelationshipCompanionId=session.CaptureRelationshipCompanion()??"",Text=text,Attachments=files,ConversationOnly=conversationOnly};Current.Add(entry);try{Save();}catch{Current.Remove(entry);throw;}if(fresh)paused.Remove(session.PersonaId);Notice="";}
             Announce();Kick();
         }}
         public void Edit(string id,string text)
-        {using(session.Maintenance.EnterActivity()){text=Validate(text);lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.edit.text"));string previous=entry.Text;int revision=entry.Revision;entry.Text=text;if(entry.IsGuidance)entry.Revision++;try{Save();}catch{entry.Text=previous;entry.Revision=revision;throw;}}Announce();}}
+        {using(session.EnterRequestActivity()){text=Validate(text);lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.edit.text"));string previous=entry.Text;int revision=entry.Revision;entry.Text=text;if(entry.IsGuidance)entry.Revision++;try{Save();}catch{entry.Text=previous;entry.Revision=revision;throw;}}Announce();}}
         public void Remove(string id)
-        {using(session.Maintenance.EnterActivity()){lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)return;int index=Current.IndexOf(entry);Current.Remove(entry);try{Save();}catch{Current.Insert(index,entry);throw;}}Announce();}}
+        {using(session.EnterRequestActivity()){lock(gate){Writable();var entry=Current.SingleOrDefault(m=>m.Id==id);if(entry==null)return;int index=Current.IndexOf(entry);Current.Remove(entry);try{Save();}catch{Current.Insert(index,entry);throw;}}Announce();}}
         // Resolve stable IDs under the same lock as dequeue. A stale drag must
         // never reinsert a request that has started, or target a removed row.
         public bool MoveBefore(string id,string beforeId)
-        {using(session.Maintenance.EnterActivity()){
+        {using(session.EnterRequestActivity()){
             lock(gate)
             {
                 Writable();var list=Current;var entry=list.SingleOrDefault(m=>m.Id==id);
@@ -114,14 +114,14 @@ namespace Dafeiyu
             }
             Announce();return true;
         }}
-        public void Resume(){using(session.Maintenance.EnterActivity()){lock(gate){Writable();paused.Remove(session.PersonaId);Notice="";}Announce();Kick();}}
+        public void Resume(){using(session.EnterRequestActivity()){lock(gate){Writable();paused.Remove(session.PersonaId);Notice="";}Announce();Kick();}}
         public void Hold(){lock(gate)paused.Add(session.PersonaId);Announce();}
         public async Task PauseAsync()
         {
             Task wait;lock(gate){pauseRevision++;paused.Add(session.PersonaId);wait=runTask;}Announce();await session.StopAsync();await wait;
         }
         public Task SteerAsync(string text,string queuedId=null,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
-        {using(session.Maintenance.EnterActivity()){
+        {using(session.EnterRequestActivity()){
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationQueue.steerAsync.text");text=Validate(text);var cfg=settings();ApiClient.ValidateConnection(cfg.Text,ApiClient.ChatPath(cfg.Text));QueuedMessage receipt;string persona;
             lock(gate){Writable();var entry=queuedId==null?new QueuedMessage{Id=Guid.NewGuid().ToString("N"),RelationshipCompanionId=session.CaptureRelationshipCompanion()??"",Text=text,Attachments=files,ConversationOnly=conversationOnly}:Current.SingleOrDefault(m=>m.Id==queuedId);if(entry==null)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeA"));if(queuedId==null && Current.Count>=20)throw new InvalidOperationException(TextResources.Get("conversationQueue.steerAsync.text.alternativeB"));
                 int index=Current.IndexOf(entry);bool previous=entry.IsGuidance;string project=entry.Workspace;entry.IsGuidance=true;entry.Workspace=session.ActiveAgentWorkspace??(cfg.AgentEnabled?cfg.AgentWorkspace:null);
@@ -136,7 +136,7 @@ namespace Dafeiyu
         {lock(gate){List<QueuedMessage> list;if(disposed || !queues.TryGetValue(persona,out list))return;var previous=list.ToList();list.RemoveAll(m=>accepted.Any(g=>g.Id==m.Id && g.Revision==m.Revision));try{Save();}catch{list.Clear();list.AddRange(previous);throw;}}Announce();}
         static bool SameProject(string a,string b){return !String.IsNullOrEmpty(a) && !String.IsNullOrEmpty(b) && String.Equals(Path.GetFullPath(a).TrimEnd('\\','/'),Path.GetFullPath(b).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);}
         public async Task InterruptAsync(string text,string queuedId=null,IList<ChatAttachment> attachments=null,bool conversationOnly=false)
-        {using(session.Maintenance.EnterActivity()){
+        {using(session.EnterRequestActivity()){
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationQueue.interruptAsync.text");
             text=Validate(text);ApiClient.ValidateConnection(settings().Text,ApiClient.ChatPath(settings().Text));
             string persona,activeText;Task wait;QueuedMessage entry;List<ChatMessage> preceding;int revision;
@@ -176,7 +176,7 @@ namespace Dafeiyu
         void SessionChanged(){Announce();Kick();}
         void Kick()
         {
-            lock(gate){if(disposed || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || Current.Count==0)return;IDisposable admission;try{admission=session.Maintenance.EnterActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
+            lock(gate){if(disposed || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || Current.Count==0)return;IDisposable admission;try{admission=session.EnterRequestActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
         }
         async Task RunAsync(string persona,IDisposable admission)
         {

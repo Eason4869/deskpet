@@ -71,7 +71,14 @@ namespace Dafeiyu.Tests
    }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
    finally{if(window!=null)window.Close();if(pet!=null)pet.Close();Pump();app.Shutdown();}
   }
-  static T Find<T>(SettingsWindow w,string name) where T:FrameworkElement {if(name.StartsWith("TextService")){var details=w.FindControl("TextConnectionDetails") as Expander;if(details!=null)details.IsExpanded=true;w.UpdateLayout();}var result=w.FindControl(name) as T;if(result==null)throw new Exception("Missing "+name);return result;}
+  static T Find<T>(SettingsWindow w,string name) where T:FrameworkElement {if(name.StartsWith("TextService")){var details=w.FindControl("TextConnectionDetails") as Expander;if(details!=null)details.IsExpanded=true;w.UpdateLayout();}var result=w.FindControl(name) as T;
+   // These legacy assertions exercise model drafts; modal presentation is covered by ModelConfigurationSmoke.
+   if(result==null&&(name=="TextProviderNewModel"||name=="TextModelDisplayName"||name=="AddTextModel")){
+    var editor=FindEditor(w);var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+    typeof(TextProviderEditor).GetMethod("EnsureModelForm",flags).Invoke(editor,null);
+    result=FindIn<T>((DependencyObject)typeof(TextProviderEditor).GetField("modelForm",flags).GetValue(editor),name);
+   }
+   if(result==null)throw new Exception("Missing "+name);return result;}
   static void CheckCatalog(string folder)
   {
    using(var server=new ApiTests.Fixture("{\"data\":[{\"id\":\"remote-b\"},{\"id\":\" remote-a \"},{\"id\":\"remote-a\"}]}"))
@@ -106,6 +113,7 @@ namespace Dafeiyu.Tests
     } finally{host.Close();Pump();}
    }
   }
+  static TextProviderEditor FindEditor(DependencyObject root){var editor=root as TextProviderEditor;if(editor!=null)return editor;foreach(object item in LogicalTreeHelper.GetChildren(root)){var child=item as DependencyObject;if(child==null)continue;editor=FindEditor(child);if(editor!=null)return editor;}return null;}
   static T FindIn<T>(DependencyObject root,string name) where T:FrameworkElement {var element=root as T;if(element!=null && element.Name==name)return element;foreach(object child in LogicalTreeHelper.GetChildren(root)){var node=child as DependencyObject;if(node==null)continue;var result=FindIn<T>(node,name);if(result!=null)return result;}return null;}
   static void CheckCatalogLifecycle()
   {
@@ -146,6 +154,7 @@ namespace Dafeiyu.Tests
     try {
      host.Show();Until(()=>FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==1);
      Check(FindIn<Button>((ListBoxItem)FindIn<ListBox>(editor,"DiscoveredTextModels").Items[0],"AddDiscoveredModel")!=null,"candidate has an individual add action");
+     editor.ExpandConnection();Pump();
      FindIn<TextBox>(editor,"TextServiceUrl").Text=second.Url+"/v1";Pump();
      Check(FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==0,"changing a connection immediately clears old candidates and checked selections");
      Until(()=>FindIn<TextBlock>(editor,"TextProviderNotice").Text.Contains("401"));
@@ -239,7 +248,10 @@ namespace Dafeiyu.Tests
    Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{try{var picker=Application.Current.Windows.Cast<Window>().Single(w=>w.Title=="选择服务商");if(capture!=null){picker.UpdateLayout();Capture(picker,capture);}FindIn<Button>(picker,"ChooseProvider_"+brand).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}catch(Exception e){failure=e;}}));
    FindIn<Button>(editor,addName).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();if(failure!=null)throw new Exception("adding a provider must open the manufacturer picker",failure);
   }
-  static void Click(SettingsWindow w,string name){if(name=="AddTextProvider"){ChooseProvider(w,"custom");return;}Find<Button>(w,name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}
+  static void Click(SettingsWindow w,string name){if(name=="AddTextProvider"){ChooseProvider(w,"custom");return;}Find<Button>(w,name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+   var owner=(PetWindow)typeof(SettingsPage).GetField("pet",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(w.Page);
+   var pending=(System.Threading.Tasks.Task<bool>)typeof(PetWindow).GetField("explicitSettingsSave",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(owner);
+   if(pending!=null){var deadline=DateTime.UtcNow.AddSeconds(15);while(!pending.IsCompleted){if(DateTime.UtcNow>deadline)throw new TimeoutException("settings save did not complete");Pump();System.Threading.Thread.Sleep(1);}pending.GetAwaiter().GetResult();Pump();}}
   static void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
   static bool Inside(FrameworkElement e,Window w){Rect r=e.TransformToAncestor(w).TransformBounds(new Rect(e.RenderSize));return e.IsVisible && r.Left>=0 && r.Top>=0 && r.Right<=w.ActualWidth && r.Bottom<=w.ActualHeight;}
   static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}

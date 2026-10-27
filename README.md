@@ -1,6 +1,9 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**开发预览 0.11.2-dev.2（dev 源码分支，无二进制 Release）** 新增[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。当前为文字对话，真实账号验收尚未完成。
+**开发预览 [0.11.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3-dev.1)**：减少首次进入 AI 设置的隐藏控件构建；全局与项目配置显式保存改为后台事务，补齐维护、退出和并发编辑保护；美化全量角色包下载窗口并取消最大化。
+
+
+本预览同时包含[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。当前为文字对话，真实账号验收尚未完成。
 
 > **当前正式版：[0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 

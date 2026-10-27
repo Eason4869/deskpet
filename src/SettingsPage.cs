@@ -319,6 +319,9 @@ namespace Dafeiyu
         public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
         public bool ValidateGuideNetwork(out string error){EnsureCategory(4);return about.ValidateNetwork(out error);}
         public bool SaveGuideNetwork(){EnsureCategory(4);return about.SaveNetwork();}
+        public System.Threading.Tasks.Task<bool> SaveGuidePersonaAsync(){return persona.ChangeAsync(false);}
+        public System.Threading.Tasks.Task<bool> SaveGuideNetworkAsync(){EnsureCategory(4);return about.SaveNetworkAsync();}
+        public System.Threading.Tasks.Task<bool> SaveGuideAiSectionAsync(int index){EnsureCategory(1,index);return connections.SaveGuideSectionAsync(index);}
         public bool SaveAiConfiguration(){EnsureCategory(1);return connections.Save();}
         public bool SaveGuideAiSection(int index){EnsureCategory(1,index);return connections.SaveGuideSection(index);}
         internal int GuideSpeechTestRevision {get{return connections==null?0:connections.SpeechTestRevision;}}

@@ -204,7 +204,7 @@ namespace Dafeiyu
                     var label=Ui.Text(displayName,12);label.MaxWidth=360;label.TextWrapping=TextWrapping.NoWrap;label.TextTrimming=TextTrimming.CharacterEllipsis;
                     var item=new MenuItem{Name="SelectTextModel",Header=label,ToolTip=provider.Name+" · "+displayName+(displayName==model?"":"\n"+model),IsCheckable=true,IsChecked=provider.Id==pet.Settings.ActiveTextProviderId && model==pet.Settings.Text.Model,Tag=provider.Id+"/"+model};
                     System.Windows.Automation.AutomationProperties.SetName(item,provider.Name+" · "+displayName+"，"+model);
-                    item.Click+=delegate{Try(delegate{if(!pet.Settings.SelectTextModel(providerId,selectedModel))return;pet.SaveSettings();pet.RefreshChatAppearance();RefreshModels();if(!String.IsNullOrEmpty(pet.Notice))status.Text=pet.Notice;});};modelMenu.Items.Add(item);
+                    item.Click+=async delegate{bool saved=await pet.RunSettingsEditAsync(modelPicker,()=>pet.PersistSettingsAsync(target=>{target.SelectTextModel(providerId,selectedModel);}),"select-model");if(saved){pet.RefreshChatAppearance();RefreshModels();}else status.Text=pet.Notice;};modelMenu.Items.Add(item);
                 }
             }
             if(modelMenu.Items.Count>0)modelMenu.Items.Add(new Separator());
@@ -216,7 +216,7 @@ namespace Dafeiyu
             if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;
             if(TryExecutePermissionCommand(input.Text)){input.Clear();return;}
             if(session.IsBusy && !opposite && pet.Settings.FollowUpBehavior=="steer"){await InterruptDraft();return;}
-            Try(delegate{Action rollback=PrepareSubmission==null?null:PrepareSubmission();try{queue.Enqueue(input.Text,Attachments,conversationOnly);}catch{if(rollback!=null)rollback();throw;}if(Submitted!=null)Submitted();Attachments.Clear();RefreshAttachments();input.Clear();input.Focus();});
+            Try(delegate{using(session.EnterRequestActivity()){Action rollback=PrepareSubmission==null?null:PrepareSubmission();try{queue.Enqueue(input.Text,Attachments,conversationOnly);}catch{if(rollback!=null)rollback();throw;}if(Submitted!=null)Submitted();Attachments.Clear();RefreshAttachments();input.Clear();input.Focus();}});
         }
         internal void AddAttachments(System.Collections.Generic.IEnumerable<ChatAttachment> files)
         {

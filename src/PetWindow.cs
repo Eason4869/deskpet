@@ -1166,8 +1166,9 @@ namespace Dafeiyu
         }
         public void SaveSettings()
         {TrySaveSettings();}
-        bool TrySaveSettings()
+        internal bool TrySaveSettings()
         {
+            if(explicitSettingsSave!=null){deferredSettingsSave=true;return false;}
             settingsSaveRevision++;
             if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return false;}
             CompleteScaleLayout();bool saved=false;
@@ -1193,7 +1194,7 @@ namespace Dafeiyu
         }
         void CleanupClosedWindow()
         {
-            if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();exitWindowEnabled.Clear();
+            if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();if(explicitSettingsMaintenance!=null)explicitSettingsMaintenance.Dispose();exitWindowEnabled.Clear();
             if(imChannels!=null)imChannels.Dispose();
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
@@ -1214,6 +1215,7 @@ namespace Dafeiyu
         }
         async Task<bool> PersistBeforeExitAsync()
         {
+            var pending=explicitSettingsSave;if(pending!=null&&!await pending)return false;
             if(!await FlushPreferenceSavesAsync())return false;
             CompleteScaleLayout();
             if(handle!=IntPtr.Zero){var bounds=DesktopInterop.Bounds(handle);Settings.X=bounds.Left;Settings.Y=bounds.Top;}

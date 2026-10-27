@@ -21,7 +21,7 @@ namespace Dafeiyu
         sealed class WriteState
         {
             internal readonly SemaphoreSlim Gate=new SemaphoreSlim(1,1);
-            internal long Order,LastFull;internal string Language;internal int Resetting;
+            internal long Order,LastFull;internal string Language;internal int Resetting,Publishing;
             internal readonly Dictionary<string,long> Fields=new Dictionary<string,long>();
         }
         static readonly Dictionary<string,WeakReference> writeStates=new Dictionary<string,WeakReference>(StringComparer.OrdinalIgnoreCase);
@@ -32,6 +32,17 @@ namespace Dafeiyu
                 WeakReference reference;var state=writeStates.TryGetValue(path,out reference)?reference.Target as WriteState:null;
                 if(state==null){state=new WriteState();writeStates[path]=new WeakReference(state);}return state;
             }
+        }
+        internal IDisposable TryBeginExplicitSave()
+        {
+            if(Volatile.Read(ref writeState.Resetting)!=0||Interlocked.CompareExchange(ref writeState.Publishing,1,0)!=0)return null;
+            if(Volatile.Read(ref writeState.Resetting)!=0){Volatile.Write(ref writeState.Publishing,0);return null;}
+            return new ExplicitSaveLease(writeState);
+        }
+        sealed class ExplicitSaveLease:IDisposable
+        {
+            WriteState state;internal ExplicitSaveLease(WriteState value){state=value;}
+            public void Dispose(){var current=Interlocked.Exchange(ref state,null);if(current!=null)Volatile.Write(ref current.Publishing,0);}
         }
         // Immutable scalar values only; no live settings graph crosses threads.
         internal PreferenceChangeSet CapturePreferences(PetSettings settings,params string[] fields)
@@ -56,6 +67,7 @@ namespace Dafeiyu
         // Test seam deliberately contains neither configuration nor credentials.
         internal Action BeforePreferenceCommit;
         internal Action BeforeExactSave;
+        internal Action BeforeLanguageCommit;
         internal Task SavePreferencePatchAsync(PreferenceChangeSet patch)
         {
             return Task.Run(delegate{
