@@ -64,9 +64,9 @@ namespace Dafeiyu.Tests
                 Wait(pet.FlushDeferredSettingsAsync());Check(store.Load().Volume==69,"maintenance drain saves the latest deferred preference");
                 cfg.Scale=1.2;Call(pet,"RequestPreferenceSave");Wait(store.RestoreDefaultPreferencesAsync(cfg,pet.DataMaintenance));pet.ApplyRestoredPreferences();Pump(400);
                 Check(Math.Abs(cfg.Scale-new PetSettings().Scale)<.001&&Math.Abs(store.Load().Scale-cfg.Scale)<.001,"restore defaults supersedes older pending preferences");
-                Directory.CreateDirectory(path+".tmp");cfg.Volume=63;Call(pet,"RequestPreferenceSave");
+                Directory.CreateDirectory(path+".tmp");volume.RaiseEvent(new DragStartedEventArgs(0,0){RoutedEvent=Thumb.DragStartedEvent});volume.Value=63;
                 Check(!(bool)Call(pet,"FlushPreferenceSaves"),"disk failure is reported by preference flush");pet.Close();Pump();Check(pet.IsVisible,"failed preference flush cancels window close");
-                Directory.Delete(path+".tmp");Check((bool)Call(pet,"FlushPreferenceSaves")&&store.Load().Volume==63,"retry after disk recovery saves latest value");
+                volume.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});Directory.Delete(path+".tmp");Check((bool)Call(pet,"FlushPreferenceSaves")&&store.Load().Volume==63,"retry after disk recovery saves latest value");
                 Console.WriteLine("Preference saves: "+checks+" passed; evidence="+root);return 0;
             }
             catch(Exception error){Console.Error.WriteLine("FAIL "+error);return 1;}
