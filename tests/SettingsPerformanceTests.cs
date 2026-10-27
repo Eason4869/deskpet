@@ -42,7 +42,7 @@ namespace Dafeiyu.Tests
                 TextResources.ConfigureStartupLanguage("zh_CN");
                 var cfg=new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,SaveChatHistory=false,OnboardingState="completed"};
                 foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
-                cfg.Text=new ConnectionSettings{BaseUrl="https://example.com/v1",Model="fixture-model"};
+                if(!args.Contains("--measure"))cfg.Text=new ConnectionSettings{BaseUrl="https://example.com/v1",Model="fixture-model"};
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);
                 if(args.Contains("--profile-ai"))
                 {
@@ -82,6 +82,10 @@ namespace Dafeiyu.Tests
                 page.SelectAiSection(3);Render(host);page.SelectAiSection(0);Render(host);
                 Check(ReferenceEquals(textScroll,aiHost.Content),"AI tab navigation reuses its scroll container");
                 Check(Field(ai,"recognition")==null&&Field(ai,"synthesis")==null&&Field(ai,"images")==null,"direct Live route leaves other editors unopened");
+                page.SelectAiSection(1);Render(host);var asrDrafts=(System.Collections.Generic.List<TextProviderSettings>)Field(Field(ai,"recognition"),"drafts");
+                var invalidProvider=new TextProviderSettings{Name="invalid hidden service",Connection=new ConnectionSettings{BaseUrl="file:///not-an-api",Model="fixture"}};invalidProvider.Models.Add("fixture");asrDrafts.Add(invalidProvider);
+                string savedName=cfg.TextProviders[0].Name;
+                Check(!((ConnectionSettingsPanel)ai).Save()&&cfg.TextProviders[0].Name==savedName,"invalid inactive provider cannot partially apply text drafts");asrDrafts.Remove(invalidProvider);
                 page.SelectWorkSettings();Render(host);var work=Field(page,"work");var goal=(TextBox)page.FindControl("AgentGoal");string previousGoal=goal.Text;
                 page.SelectNavigation(0);cfg.AgentGoal="externally updated goal";page.RefreshState();
                 Check(goal.Text==previousGoal,"hidden work controls are not refreshed by unrelated state updates");

@@ -151,6 +151,7 @@ namespace Dafeiyu
             {
                 if(images!=null&&images.HasUnsavedChanges&&!images.Save())return false;
                 var nextProviders=text==null?pet.Settings.TextProviders:text.ReadProviders();
+                var nextAsrProviders=recognition==null?null:recognition.ReadProviders();var nextSpeechProviders=synthesis==null?null:synthesis.ReadProviders();var nextLiveProviders=live==null?null:live.ReadProviders();
                 var nextText=text==null?pet.Settings.Text:text.Read();var nextAsr=recognition==null?pet.Settings.Transcription:recognition.Read();var nextSpeech=synthesis==null?pet.Settings.Speech:synthesis.Read();var nextLive=live==null?pet.Settings.Live:live.Read();
                 string nextVoice=voice==null?pet.Settings.VoiceName:voice.Text.Trim(),nextLiveVoice=liveVoice==null?pet.Settings.LiveVoice:liveVoice.Text.Trim();
                 if(nextVoice.Length>512 || nextLiveVoice.Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.save.text"));
@@ -158,9 +159,9 @@ namespace Dafeiyu
                 var probe=nextLive.Copy();if(!String.IsNullOrWhiteSpace(probe.BaseUrl)){if(String.IsNullOrWhiteSpace(probe.Model))probe.Model="validation";if(String.IsNullOrEmpty(probe.ApiKey))probe.ApiKey="validation";GeminiLiveSocket.Endpoint(probe);}
                 PersonaProfiles.SaveVoices(pet.Settings);
                 if(text!=null){pet.Settings.TextProviders=nextProviders;pet.Settings.ActiveTextProviderId=text.SelectedProviderId;pet.Settings.Text=nextText;}
-                if(recognition!=null)pet.Settings.ApplyProviders("asr",recognition.ReadProviders(),recognition.SelectedProviderId,nextAsr);
-                if(synthesis!=null){pet.Settings.ApplyProviders("speech",synthesis.ReadProviders(),synthesis.SelectedProviderId,nextSpeech);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=nextVoice;}
-                if(live!=null){pet.Settings.ApplyProviders("live",live.ReadProviders(),live.SelectedProviderId,nextLive);pet.Settings.LiveVoice=nextLiveVoice;}SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);for(int index=0;index<4;index++)InvalidateGuideTest(index);pet.SaveSettings();ClearVoiceDrafts();RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
+                if(recognition!=null)pet.Settings.ApplyProviders("asr",nextAsrProviders,recognition.SelectedProviderId,nextAsr);
+                if(synthesis!=null){pet.Settings.ApplyProviders("speech",nextSpeechProviders,synthesis.SelectedProviderId,nextSpeech);pet.Settings.UseCloudVoice=cloud.IsChecked==true;pet.Settings.VoiceName=nextVoice;}
+                if(live!=null){pet.Settings.ApplyProviders("live",nextLiveProviders,live.SelectedProviderId,nextLive);pet.Settings.LiveVoice=nextLiveVoice;}SaveVoiceDrafts();PersonaProfiles.SaveVoices(pet.Settings);for(int index=0;index<4;index++)InvalidateGuideTest(index);pet.SaveSettings();ClearVoiceDrafts();RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=String.IsNullOrEmpty(pet.Notice)?TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty"):pet.Notice;return String.IsNullOrEmpty(pet.Notice);
             }
             catch(Exception e){ShowError(e);return false;}
         }
