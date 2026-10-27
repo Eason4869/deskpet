@@ -37,7 +37,7 @@ namespace Dafeiyu
     public sealed partial class SettingsPage
     {
         TextBox featureSearch;SettingsFeatureDestination[] features;bool changingRoute;string featureAnchor;
-        public int SelectedSecondarySection{get{return navigation.SelectedIndex==0?companionPage.SelectedSection:navigation.SelectedIndex==1?aiConfiguration.SelectedSection:navigation.SelectedIndex==3?quiet.SelectedSection:-1;}}
+        public int SelectedSecondarySection{get{return navigation.SelectedIndex==0?companionPage.SelectedSection:navigation.SelectedIndex==1?(aiConfiguration==null?0:aiConfiguration.SelectedSection):navigation.SelectedIndex==3?(quiet==null?0:quiet.SelectedSection):-1;}}
         internal string SelectedFeatureAnchor{get{return featureAnchor;}}
         void InitializeFeatureNavigation(TextBox search,TextBlock hint,StackPanel searchHeader)
         {
@@ -59,7 +59,7 @@ namespace Dafeiyu
             };
             navigation.PreviewKeyDown+=delegate(object sender,KeyEventArgs args){if(args.Key==Key.Enter){args.Handled=true;if(!ActivateSearchCategory(navigation.SelectedIndex))SelectNavigation(navigation.SelectedIndex);}else if(args.Key==Key.Escape){args.Handled=true;search.Clear();search.Focus();}};
             navigation.PreviewMouseLeftButtonDown+=delegate(object sender,MouseButtonEventArgs args){var item=ItemsControl.ContainerFromElement(navigation,args.OriginalSource as DependencyObject) as ListBoxItem;if(item!=null&&ActivateSearchCategory(navigation.Items.IndexOf(item)))args.Handled=true;};
-            companionPage.SelectionChanged+=delegate{SecondaryChanged(0);};aiConfiguration.SelectionChanged+=delegate{SecondaryChanged(1);};quiet.SelectionChanged+=delegate{SecondaryChanged(3);};
+            companionPage.SelectionChanged+=delegate{SecondaryChanged(0);};
         }
         bool ActivateSearchCategory(int index)
         {
@@ -81,9 +81,10 @@ namespace Dafeiyu
             changingRoute=true;
             try{
                 if(category==2&&!CanChangeWorkSettingsProject(pet.CurrentEditingProject))return;
+                EnsureCategory(category);
                 if(clearSearch&&featureSearch!=null)featureSearch.Clear();
                 if(section>=0){if(category==0)companionPage.SelectSection(section);else if(category==1)aiConfiguration.SelectSection(section);else if(category==3)quiet.SelectSection(section);}
-                navigation.SelectedIndex=category;featureAnchor=anchor;
+                if(navigation.SelectedIndex==category)ActivateCategory(category);else navigation.SelectedIndex=category;featureAnchor=anchor;
                 if(!String.IsNullOrEmpty(anchor)){UpdateLayout();var target=FindControl(anchor);if(target!=null){target.BringIntoView();if(target.Focusable&&target.IsEnabled)target.Focus();}}
             }finally{changingRoute=false;}
             NotifyNavigation();

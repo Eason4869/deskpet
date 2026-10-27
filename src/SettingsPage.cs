@@ -25,14 +25,14 @@ namespace Dafeiyu
         private readonly ListBox navigation;
         private readonly ContentControl content;
         private readonly PersonaPanel persona;
-        private readonly ConnectionSettingsPanel connections;
-        private readonly AiConfigurationPanel aiConfiguration;
-        private readonly ImChannelSettingsPanel imChannels;
-        private readonly ScrollViewer imChannelsPage;
+        private ConnectionSettingsPanel connections;
+        private AiConfigurationPanel aiConfiguration;
+        private ImChannelSettingsPanel imChannels;
+        private ScrollViewer imChannelsPage;
         private readonly CompanionConfigurationPanel companionPage;
-        private readonly AboutPanel about;
-        private readonly QuietPanel quiet;
-        private readonly WorkSettingsPanel work;
+        private AboutPanel about;
+        private QuietPanel quiet;
+        private WorkSettingsPanel work;
         private bool refreshing;
         private SkinDefinition displayedSkin;
         private bool disposed;
@@ -43,7 +43,7 @@ namespace Dafeiyu
         public bool HasUnsavedWorkEdits {get{return work!=null && work.HasUnsavedChanges;}}
         public event Action<int> NavigationChanged;
         public event Action GuideRequested;
-        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || imChannels.HasUnsavedChanges || connections.HasUnsavedChanges || about.HasUnsavedChanges || quiet.HasUnsavedChanges || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString();}}
+        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString();}}
         public SettingsPage(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
@@ -125,7 +125,7 @@ namespace Dafeiyu
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeS")),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
-            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);imChannels=new ImChannelSettingsPanel(pet);imChannelsPage=Ui.Scroll(imChannels);about=new AboutPanel(pet);quiet=new QuietPanel(pet,RefreshRestoredPreferences);work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
+            persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(10,0,10,0),Padding=new Thickness(0)};
             ScrollViewer.SetHorizontalScrollBarVisibility(navigation,ScrollBarVisibility.Disabled);
             Func<string[]> navigationLabels=()=>new[]{TextResources.Get("settingsPage.settingsPage.navigationLabels"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeA"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeB"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeC"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeD"),TextResources.Get("im.title")};
@@ -148,8 +148,32 @@ namespace Dafeiyu
             var versionLabel=LocalizedUi.InlineText(()=>(TextResources.Format("settingsPage.settingsPage.inlineText",ReleaseInfo.DisplayVersion)),11,Ui.Muted);sidebarFooter.Children.Add(versionLabel);Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=Ui.Brush("#F8F9FB"),BorderBrush=Ui.Brush("#E9ECF0"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
             bool? compactNavigation=null;Action updateNavigation=delegate{bool compact=ActualWidth>0&&ActualWidth<700;if(compactNavigation==compact)return;compactNavigation=compact;sidebarColumn.Width=new GridLength(compact?64:224);sidebarHeader.Visibility=compact?Visibility.Collapsed:Visibility.Visible;versionLabel.Visibility=compact?Visibility.Collapsed:Visibility.Visible;sidebarFooter.Margin=compact?new Thickness(10,14,10,20):new Thickness(14,14,14,20);navigation.Margin=compact?new Thickness(6,18,6,0):new Thickness(10,0,10,0);foreach(ListBoxItem item in navigation.Items){item.ContentTemplate=NavigationTemplate(compact);item.Padding=compact?new Thickness(10):new Thickness(10,8,10,8);if(compact)item.Visibility=Visibility.Visible;}if(compact)categorySearch.Text="";guideButton.Content=compact?(object)ShellIcons.Image("book",Ui.PageInk,16):TextResources.Get("settingsPage.settingsPage.guideButtonContentCompact");guideButton.Padding=compact?new Thickness(8):new Thickness(12,7,12,7);content.Margin=compact?new Thickness(0):new Thickness(16,18,16,8);};SizeChanged+=delegate{updateNavigation();};Loaded+=delegate{updateNavigation();};
-            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;if(index==0)content.Content=companionPage;else if(index==1)content.Content=aiConfiguration;else if(index==2){RefreshWorkState();content.Content=work;}else if(index==3)content.Content=quiet;else if(index==4)content.Content=about;else if(index==5)content.Content=imChannelsPage;if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
+            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;ActivateCategory(index);if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
+            IsVisibleChanged+=delegate{if(IsVisible)RefreshActiveCategory();};
             RefreshState(); ShowNotice(pet.Notice ?? pet.Store.Warning);
+        }
+        // Only routes and explicit guide actions materialize secondary pages.
+        // State/dirty queries and background refreshes must never call this method.
+        private void EnsureCategory(int category)
+        {
+            if(disposed)throw new ObjectDisposedException("SettingsPage");
+            if(category==1 && aiConfiguration==null){connections=new ConnectionSettingsPanel(pet);aiConfiguration=new AiConfigurationPanel(connections);aiConfiguration.SelectionChanged+=delegate{SecondaryChanged(1);};}
+            else if(category==2 && work==null){work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;}
+            else if(category==3 && quiet==null){quiet=new QuietPanel(pet,RefreshRestoredPreferences);quiet.SelectionChanged+=delegate{SecondaryChanged(3);};}
+            else if(category==4 && about==null)about=new AboutPanel(pet);
+            else if(category==5 && imChannels==null){imChannels=new ImChannelSettingsPanel(pet);imChannelsPage=Ui.Scroll(imChannels);}
+        }
+        private void ActivateCategory(int category)
+        {
+            if(category<0)return;EnsureCategory(category);
+            switch(category){case 0:content.Content=companionPage;break;case 1:content.Content=aiConfiguration;break;case 2:content.Content=work;break;case 3:content.Content=quiet;break;case 4:content.Content=about;break;case 5:content.Content=imChannelsPage;break;}
+            RefreshActiveCategory();
+        }
+        private void RefreshActiveCategory()
+        {
+            if(disposed)return;
+            if(navigation.SelectedIndex==2 && work!=null)RefreshWorkState();
+            else if(navigation.SelectedIndex==3 && quiet!=null)quiet.RefreshState();
         }
         private static DataTemplate NavigationTemplate(bool compact)
         {
@@ -209,10 +233,10 @@ namespace Dafeiyu
         static ComboBoxItem FindParentItem(DependencyObject source)
         {while(source!=null){var item=source as ComboBoxItem;if(item!=null)return item;source=source is Visual?VisualTreeHelper.GetParent(source):LogicalTreeHelper.GetParent(source);}return null;}
         private void RefreshAvatar() { displayedSkin=pet.Skin;LocalizedUi.Set(name,"Text",()=>(pet.Skin.DisplayName)); avatar.Source=SkinCatalog.GetAvatar(pet.Skin);if(persona!=null)persona.RefreshPersona();if(connections!=null)connections.RefreshPersonaVoices(); }
-        public void RefreshTextProviders(){connections.RefreshTextProviders();}
+        public void RefreshTextProviders(){if(connections!=null)connections.RefreshTextProviders();}
         void RefreshRestoredPreferences()
         {
-            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();connections.RefreshPreferenceVolume();work.RefreshRestoredPreferences();RefreshState();
+            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();if(connections!=null)connections.RefreshPreferenceVolume();if(work!=null)work.RefreshRestoredPreferences();RefreshState();
         }
         public void RefreshState()
         {
@@ -223,7 +247,7 @@ namespace Dafeiyu
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
             top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
-            RefreshAutoStart();if(quiet!=null)quiet.RefreshState();if(work!=null)RefreshWorkState();
+            RefreshAutoStart();if(IsVisible)RefreshActiveCategory();
         }
         private void HolidayWardrobeChanged(object sender,EventArgs args)
         {if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshHolidayLayout));return;}RefreshHolidayLayout();}
@@ -261,7 +285,7 @@ namespace Dafeiyu
         internal void SelectMcpSettings(bool edit=false){pet.ShowMcpPage(edit);}
         public bool CanChangeWorkSettingsProject(ProjectDefinition project)
         {
-            if(SameProject(workEditingProject,project) || !work.HasUnsavedChanges)return true;
+            if(work==null || SameProject(workEditingProject,project) || !work.HasUnsavedChanges)return true;
             string message=TextResources.Get("settingsPage.canChangeWorkSettingsProject.message");
             ShowNotice(message);var label=FindVisual(work.Content as DependencyObject,"WorkSettingsNotice") as TextBlock;if(label!=null)label.Text=message;return false;
         }
@@ -269,14 +293,14 @@ namespace Dafeiyu
         {return ReferenceEquals(first,second) || (first!=null && second!=null && first.Id==second.Id);}
         private void RefreshWorkState()
         {
-            if(!CanChangeWorkSettingsProject(pet.CurrentEditingProject))return;
+            if(work==null || !CanChangeWorkSettingsProject(pet.CurrentEditingProject))return;
             if(work.HasUnsavedChanges)return;
             work.RefreshState();workEditingProject=pet.CurrentEditingProject;
         }
         public bool TrySelectWorkSettings()
         {
             if(!CanChangeWorkSettingsProject(pet.CurrentEditingProject))return false;
-            RefreshWorkState();navigation.SelectedIndex=2;return true;
+            RestoreNavigation(2,-1,null);return true;
         }
         public void SelectWorkSettings(){TrySelectWorkSettings();}
         public void SelectNavigation(int index)
@@ -286,16 +310,16 @@ namespace Dafeiyu
         }
         public void Dispose()
         {
-            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();connections.DisposeImageGeneration();about.Dispose();imChannels.Dispose();
+            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();if(connections!=null)connections.DisposeImageGeneration();if(about!=null)about.Dispose();if(imChannels!=null)imChannels.Dispose();
         }
         public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
-        public bool ValidateGuideNetwork(out string error){return about.ValidateNetwork(out error);}
-        public bool SaveGuideNetwork(){return about.SaveNetwork();}
-        public bool SaveAiConfiguration(){return connections.Save();}
-        public bool SaveGuideAiSection(int index){return connections.SaveGuideSection(index);}
-        internal int GuideSpeechTestRevision {get{return connections.SpeechTestRevision;}}
-        internal bool GuideSpeechTestSucceeded {get{return connections.SpeechTestSucceeded;}}
-        public bool ValidateGuideAiSection(int index,out string error){return connections.ValidateGuideSection(index,out error);}
+        public bool ValidateGuideNetwork(out string error){EnsureCategory(4);return about.ValidateNetwork(out error);}
+        public bool SaveGuideNetwork(){EnsureCategory(4);return about.SaveNetwork();}
+        public bool SaveAiConfiguration(){EnsureCategory(1);return connections.Save();}
+        public bool SaveGuideAiSection(int index){EnsureCategory(1);return connections.SaveGuideSection(index);}
+        internal int GuideSpeechTestRevision {get{return connections==null?0:connections.SpeechTestRevision;}}
+        internal bool GuideSpeechTestSucceeded {get{return connections!=null && connections.SpeechTestSucceeded;}}
+        public bool ValidateGuideAiSection(int index,out string error){EnsureCategory(1);return connections.ValidateGuideSection(index,out error);}
         public FrameworkElement FindControl(string controlName)
         {
             UpdateLayout();var match=FindVisual(this,controlName);return match??(HostWindow==null?null:FindVisual(HostWindow,controlName));
@@ -310,7 +334,7 @@ namespace Dafeiyu
         public FrameworkElement FocusGuideTarget(string controlName)
         {
             if(navigation.SelectedIndex==3)quiet.ShowTarget(controlName);
-            connections.ExpandConnectionFor(controlName);
+            if(navigation.SelectedIndex==1){EnsureCategory(1);connections.ExpandConnectionFor(controlName);}
             var target=FindControl(controlName);if(target==null)return null;
             target.BringIntoView();UpdateLayout();if(target.Focusable && target.IsEnabled)target.Focus();return target;
         }
