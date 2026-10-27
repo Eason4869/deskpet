@@ -29,14 +29,14 @@ namespace Dafeiyu
             if(value.StartsWith("https://github.com/",StringComparison.OrdinalIgnoreCase))value=value.Substring(19).TrimEnd('/');
             if(value.EndsWith(".git",StringComparison.OrdinalIgnoreCase))value=value.Substring(0,value.Length-4);
             if(value.Length>200||!Regex.IsMatch(value,@"\A[a-zA-Z0-9][a-zA-Z0-9-]{0,38}/[a-zA-Z0-9_.-]+\z")||value.Split('/')[1].Trim('.').Length==0)
-                throw new ArgumentException("请输入 owner/repo 或 GitHub 仓库地址，不要包含分支路径、参数或凭据。");
+                throw new ArgumentException(TextResources.Get("skillRepositoryCatalog.normalizeRepository.text"));
             return value;
         }
         public static string ValidateBranch(string branch)
         {
             string value=(branch??"").Trim();
             if(value.Length>256||value.Any(c=>Char.IsControl(c)||Char.IsWhiteSpace(c)||"~^:?*[\\".IndexOf(c)>=0)||value.Contains("..")||value.Contains("@{")||value.StartsWith("-")||value.StartsWith("/")||value.EndsWith("/")||value.EndsWith(".")||value.Split('/').Any(p=>p.StartsWith(".")||p.EndsWith(".lock"))||value.Contains("//"))
-                throw new ArgumentException("分支名称无效；留空可使用仓库默认分支。");
+                throw new ArgumentException(TextResources.Get("skillRepositoryCatalog.validateBranch.text"));
             return value;
         }
     }
@@ -79,30 +79,30 @@ namespace Dafeiyu
         {
             if(!File.Exists(ConfigPath))return new State{Version=1,Sources=new List<SkillRepositorySource>()};
             var state=SkillStorage.ReadJson<State>(ConfigPath,65536);
-            if(state==null||state.Version!=1||state.Sources==null||state.Sources.Count>32)throw new InvalidOperationException("仓库配置无法读取，原文件已保留。");
+            if(state==null||state.Version!=1||state.Sources==null||state.Sources.Count>32)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.read.text"));
             var keys=new HashSet<string>(StringComparer.Ordinal);var ids=new HashSet<string>();
-            foreach(var s in state.Sources){if(s==null||!ValidId(s.Id)||!ids.Add(s.Id)||Normalize(s.Repository)!=s.Repository||!keys.Add(s.Repository.ToLowerInvariant()+"\n"+SkillRepositorySource.ValidateBranch(s.Branch)))throw new InvalidOperationException("仓库配置存在无效或重复项，原文件已保留。");}
+            foreach(var s in state.Sources){if(s==null||!ValidId(s.Id)||!ids.Add(s.Id)||Normalize(s.Repository)!=s.Repository||!keys.Add(s.Repository.ToLowerInvariant()+"\n"+SkillRepositorySource.ValidateBranch(s.Branch)))throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.read.text.alternativeA"));}
             return state;
         }
         static string Normalize(string repository){return SkillRepositorySource.NormalizeRepository(repository);}
         static bool ValidId(string id){return id!=null&&Regex.IsMatch(id,@"\A[a-f0-9]{32}\z");}
-        string CachePath(string id){if(!ValidId(id))throw new ArgumentException("仓库标识无效。");return System.IO.Path.Combine(DirectoryPath,id+".json");}
+        string CachePath(string id){if(!ValidId(id))throw new ArgumentException(TextResources.Get("skillRepositoryCatalog.cachePath.text"));return System.IO.Path.Combine(DirectoryPath,id+".json");}
         public SkillRepositorySource Add(string repository,string branch)
         {
             lock(gate){var state=Read();repository=Normalize(repository);branch=SkillRepositorySource.ValidateBranch(branch);
-                if(state.Sources.Count>=32)throw new InvalidOperationException("最多可添加 32 个仓库来源。");
-                if(state.Sources.Any(s=>String.Equals(s.Repository,repository,StringComparison.OrdinalIgnoreCase)&&s.Branch==branch))throw new InvalidOperationException("已添加此仓库与分支。");
+                if(state.Sources.Count>=32)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.add.text"));
+                if(state.Sources.Any(s=>String.Equals(s.Repository,repository,StringComparison.OrdinalIgnoreCase)&&s.Branch==branch))throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.add.text.alternativeA"));
                 var item=new SkillRepositorySource{Id=Guid.NewGuid().ToString("N"),Repository=repository,Branch=branch,Enabled=true};state.Sources.Add(item);SkillStorage.WriteJson(ConfigPath,state,65536);return item;}
         }
         public void SetEnabled(string id,bool enabled){lock(gate){var state=Read();Find(state,id).Enabled=enabled;SkillStorage.WriteJson(ConfigPath,state,65536);}}
         public void SetBranch(string id,string branch)
         {
             lock(gate){var state=Read();var item=Find(state,id);branch=SkillRepositorySource.ValidateBranch(branch);
-                if(state.Sources.Any(s=>s.Id!=id&&String.Equals(s.Repository,item.Repository,StringComparison.OrdinalIgnoreCase)&&s.Branch==branch))throw new InvalidOperationException("已添加此仓库与分支。");
+                if(state.Sources.Any(s=>s.Id!=id&&String.Equals(s.Repository,item.Repository,StringComparison.OrdinalIgnoreCase)&&s.Branch==branch))throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.setBranch.text"));
                 item.Branch=branch;SkillStorage.WriteJson(ConfigPath,state,65536);}
         }
         public void Remove(string id){lock(gate){var state=Read();state.Sources.Remove(Find(state,id));SkillStorage.WriteJson(ConfigPath,state,65536);}}
-        static SkillRepositorySource Find(State state,string id){var s=state.Sources.SingleOrDefault(r=>r.Id==id);if(s==null)throw new InvalidOperationException("仓库来源已移除。");return s;}
+        static SkillRepositorySource Find(State state,string id){var s=state.Sources.SingleOrDefault(r=>r.Id==id);if(s==null)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.find.text"));return s;}
         public SkillRepositorySnapshot ReadSnapshot(string id)
         {
             lock(gate){var source=Find(Read(),id);string file=CachePath(id);if(!File.Exists(file))return null;
@@ -112,7 +112,7 @@ namespace Dafeiyu
         public void SaveSnapshot(string id,SkillRepositorySnapshot snapshot)
         {
             lock(gate){var source=Find(Read(),id);SkillRepositoryClient.ValidateSnapshot(snapshot);
-                if(snapshot.Repository!=source.Repository||(snapshot.RequestedBranch??"")!=source.Branch)throw new InvalidOperationException("仓库来源已变化，请重新刷新。");
+                if(snapshot.Repository!=source.Repository||(snapshot.RequestedBranch??"")!=source.Branch)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.saveSnapshot.text"));
                 SkillStorage.WriteJson(CachePath(id),snapshot,16*1024*1024);}
         }
     }
@@ -121,14 +121,14 @@ namespace Dafeiyu
     {
         internal static T ReadJson<T>(string path,int limit)
         {
-            AgentInstructions.RejectLinks(path);if(new FileInfo(path).Length>limit)throw new InvalidOperationException("技能配置或缓存超过大小限制。");
+            AgentInstructions.RejectLinks(path);if(new FileInfo(path).Length>limit)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.readJson.text"));
             try{return new JavaScriptSerializer{MaxJsonLength=limit}.Deserialize<T>(File.ReadAllText(path,Encoding.UTF8));}
-            catch(ArgumentException){throw new InvalidOperationException("技能配置或缓存格式无效，原文件已保留。");}
+            catch(ArgumentException){throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.readJson.text.alternativeA"));}
         }
         internal static void WriteJson(string path,object value,int limit)
         {
             byte[] bytes=Encoding.UTF8.GetBytes(new JavaScriptSerializer{MaxJsonLength=limit}.Serialize(value));
-            if(bytes.Length>limit)throw new InvalidOperationException("技能配置或缓存超过大小限制。");
+            if(bytes.Length>limit)throw new InvalidOperationException(TextResources.Get("skillRepositoryCatalog.writeJson.text"));
             string directory=System.IO.Path.GetDirectoryName(path);AgentInstructions.RejectLinks(directory);Directory.CreateDirectory(directory);AgentInstructions.RejectLinks(path);
             string temp=System.IO.Path.Combine(directory,".write-"+Guid.NewGuid().ToString("N"));
             try{using(var file=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){file.Write(bytes,0,bytes.Length);file.Flush(true);}

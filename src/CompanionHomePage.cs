@@ -1,0 +1,208 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.IO;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
+using System.Windows.Controls.Primitives;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+
+namespace Dafeiyu
+{
+    internal sealed class CompanionHomePage : ScrollViewer, IDisposable
+    {
+        readonly PetWindow owner;
+        readonly RelationshipHomeModel model;
+        readonly HolidayKeepsakeAlbumView holidayAlbum;
+        bool holidaySelected;
+        readonly System.Windows.Threading.DispatcherTimer holidayPulse=new System.Windows.Threading.DispatcherTimer();
+        internal Task PendingHoliday {get{return holidayAlbum.Pending;}}
+        async void ObserveShownHome(){if(disposed)return;var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome);}
+
+        readonly StackPanel body = new StackPanel();
+        StackPanel settingsControls;Button retryControl;
+        readonly RelationshipStageArtSource scenes=new RelationshipStageArtSource();
+        readonly Dictionary<string,HomeCardCapture> captures=new Dictionary<string,HomeCardCapture>();
+        bool introOpen,welcomeOpen,rulesOpen,settingsOpen;string captureKey;
+        string identity;
+        string navigationIdentity;bool navigateToSettings;
+        SkinDefinition displayedSkin;string displayedName;
+        CompanionPortraitSource portrait;string artworkKey;
+        int revision;
+        Action updateLayout;
+        Task refreshTask;
+        bool disposed, saveFailed, saving;
+        public Task PendingSettings {get;private set;}
+        public Task PendingRetry {get;private set;}
+        public RelationshipHomeView View { get; private set; }
+        public CompanionHomePage(PetWindow owner)
+        {
+            this.owner = owner; model = new RelationshipHomeModel(owner.Relationships);
+            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,()=>owner.Holidays.Catalog,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
+            holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
+            Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
+
+            PendingRetry=PendingSettings=Task.FromResult(true);Name = "CompanionHomePage"; VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; Background = ThemeManager.Surface;
+            body.Margin = new Thickness(28,24,28,28); body.MaxWidth=1080; body.HorizontalAlignment=HorizontalAlignment.Stretch; Content = body;
+            ThemeManager.Changed+=ThemeChanged;owner.Relationships.Changed += SavedChanged;SizeChanged+=delegate{if(updateLayout!=null)updateLayout();};
+            ScrollChanged+=delegate(object sender,ScrollChangedEventArgs args){if(args.ViewportWidthChange!=0&&updateLayout!=null)updateLayout();};
+        }
+        void ThemeChanged(){if(!disposed&&View!=null){Render();var holidayRefresh=holidayAlbum.RefreshAsync();}}
+        void SavedChanged() { if (!disposed) ObserveRefresh(); }
+        async void ObserveRefresh() { await RefreshAsync(); }
+        internal void RefreshIdentity()
+        {
+            if(disposed)return;
+            if(identity!=owner.RelationshipCompanionId)ObserveRefresh();
+            else if(View!=null&&(!Object.ReferenceEquals(displayedSkin,owner.Skin)||displayedName!=owner.Skin.DisplayName))Render();
+        }
+        public Task RefreshAsync(){return refreshTask=LoadAndRenderAsync();}
+        internal void RequestNavigationAnchor(string anchor)
+        {navigateToSettings=anchor=="CompanionRelationshipSettings";navigationIdentity=navigateToSettings?owner.RelationshipCompanionId:null;if(navigateToSettings)settingsOpen=true;}
+        async Task LoadAndRenderAsync()
+        {
+            if (disposed) return;
+            string id=owner.RelationshipCompanionId;int version=++revision;
+            if(navigationIdentity!=id)navigateToSettings=false;
+            if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label(()=>(TextResources.Get("relationship.home.loading"))));}
+            var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.IsOfficial?owner.Skin.BuiltinCharacterId:null,owner.Skin.DisplayName);
+            var view=await model.LoadAsync(id,RelationshipTime.Current());
+            await holiday;
+            if(disposed)return;
+            if(version!=revision){if(refreshTask!=null)await refreshTask;return;}
+            if(id!=owner.RelationshipCompanionId){await RefreshAsync();return;}
+            scenes.SetIdentity(id);View=view;Render();
+        }
+        TextBlock Label(string value,double size=13,string name=null)
+        {var text=Ui.Text(value,size,AgentUi.Ink);if(name!=null)text.Name=name;return text;}
+        TextBlock Text(string value,double size=13,string name=null)
+        {var text=Ui.Text(value,size,AgentUi.Ink);if(name!=null)text.Name=name;return text;}
+        StackPanel Section(System.Func<string> title){var panel=new StackPanel{Margin=new Thickness(0,0,0,22)};var heading=Label(title,18);heading.FontWeight=FontWeights.SemiBold;panel.Children.Add(heading);return panel;}
+        void Render()
+        {
+            if(View==null||View.CompanionId!=owner.RelationshipCompanionId){ObserveRefresh();return;}
+            displayedSkin=owner.Skin;displayedName=owner.Skin.DisplayName;
+            int version=revision;double scroll=VerticalOffset;
+            var focused=Keyboard.FocusedElement as FrameworkElement;
+            var focusToken=HomeVisual.CaptureFocus(body,focused);
+            var expandedStages=captures.Where(x=>x.Value.Expanded).Select(x=>x.Key).ToArray();
+            string key=identity+"|"+TextResources.CurrentLanguage+"|"+owner.Skin.DisplayName+"|"+owner.Skin.PickerKey+"|"+owner.Skin.GetHashCode()+"|"+owner.Skin.Source+"|"+owner.Skin.Preview+"|"+ThemeManager.IsDark+"|"+RelationshipStageArt.Version+"|"+RelationshipTitleFonts.Version+"|"+RelationshipCardDecoration.Version+"|"+String.Join(",",RelationshipStageArt.All.Where(a=>a.CompanionId==identity&&a.HolidayId==null).Select(a=>a.SceneVersion));
+            if(captureKey!=key){bool switched=captureKey==null||!captureKey.StartsWith(identity+"|",StringComparison.Ordinal);captures.Clear();captureKey=key;if(switched){introOpen=false;welcomeOpen=false;scroll=0;expandedStages=new string[0];}}
+            string nextArtwork=owner.Skin.GetHashCode()+"|"+owner.Skin.Source+"|"+owner.Skin.Preview;
+            if(artworkKey!=nextArtwork){portrait=CompanionPortraitSource.Load(owner.Skin);artworkKey=nextArtwork;}
+            body.Children.Clear();var title=Label(()=>(TextResources.Get("relationship.home.title")),26);title.FontWeight=FontWeights.SemiBold;body.Children.Add(title);
+            var profile=new StackPanel{Name="CompanionProfileBio"};
+            var head=new Grid();head.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(68)});head.ColumnDefinitions.Add(new ColumnDefinition());
+            var avatar=new Image{Name="CompanionHomeAvatar",Source=CompanionPortraitSource.Avatar(owner.Skin),Width=56,Height=56,Stretch=Stretch.Uniform,HorizontalAlignment=HorizontalAlignment.Left};
+            head.Children.Add(avatar);
+            var name=Text(owner.Skin.DisplayName,27,"CompanionHomeName");name.FontWeight=FontWeights.SemiBold;name.TextTrimming=TextTrimming.CharacterEllipsis;LocalizedUi.Set(name,"ToolTip",()=>(owner.Skin.DisplayName));
+            Grid.SetColumn(name,1);name.VerticalAlignment=VerticalAlignment.Center;head.Children.Add(name);profile.Children.Add(head);
+            string description=owner.Skin.DisplayDescription??"";
+            if(description.Length>180){var intro=LocalizedUi.With(new Expander{Name="CompanionIntroduction",Header=TextResources.Get("relationship.home.introduction"),Content=Text(description,13,"CompanionHomeDescription"),IsExpanded=introOpen,Margin=new Thickness(0,16,0,0),Foreground=AgentUi.Ink},"Header",()=>(TextResources.Get("relationship.home.introduction")));intro.Expanded+=delegate{introOpen=true;};intro.Collapsed+=delegate{introOpen=false;};profile.Children.Add(intro);}else{var desc=Text(description,13,"CompanionHomeDescription");desc.Margin=new Thickness(0,16,0,0);profile.Children.Add(desc);}
+            var profileContent=new Grid();
+            var scene=View.ProfileArtStageId==null?null:scenes.Get(View.CompanionId,View.ProfileArtStageId);
+            var sceneView=scene==null?null:new Image{Name="CompanionProfileScene",Source=scene,Stretch=Stretch.Uniform,Margin=new Thickness(0,0,0,20),VerticalAlignment=VerticalAlignment.Top};
+            CompanionPortraitVisual portraitView=null;
+            if(sceneView!=null){profileContent.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});profileContent.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});profileContent.Children.Add(sceneView);Grid.SetRow(profile,1);}
+            else {profileContent.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(136)});profileContent.ColumnDefinitions.Add(new ColumnDefinition());portraitView=new CompanionPortraitVisual(portrait,ThemeManager.IsDark){Name="CompanionHomePortrait",Height=230,Margin=new Thickness(0,0,18,0)};profileContent.Children.Add(portraitView);Grid.SetColumn(profile,1);}
+            profile.VerticalAlignment=VerticalAlignment.Center;profileContent.Children.Add(profile);
+            var relation=Section(()=> (TextResources.Get("relationship.home.relation")));relation.Margin=new Thickness(0);
+            var profileBox=HomeVisual.Box(profileContent,true);profileBox.Name="CompanionProfileCard";var relationBox=HomeVisual.Box(relation,false);relationBox.Name="CompanionRelationshipCard";relationBox.Background=new SolidColorBrush(ThemeManager.IsDark?Color.FromRgb(43,53,69):Color.FromRgb(244,247,252));
+            var top=new Grid{Margin=new Thickness(0,20,0,0)};top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(55,GridUnitType.Star)});top.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(45,GridUnitType.Star)});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});top.Children.Add(profileBox);top.Children.Add(relationBox);body.Children.Add(top);
+            UniformGrid nodes=null;Grid progressRow=null;StackPanel stats=null;Grid bottom=null;WrapPanel cardsWrap=null;
+            if(View.Snapshot!=null){
+                var p=View.Progress;var words=new StackPanel{Margin=new Thickness(18,0,0,0),VerticalAlignment=VerticalAlignment.Center};
+                var stage=Text(()=> (RelationshipContent.StageName(p.StageId)),26,"CompanionRelationshipStage");stage.FontWeight=FontWeights.SemiBold;words.Children.Add(stage);words.Children.Add(Text(()=> (p.ScoreText),28,"CompanionRelationshipScore"));var next=Text(()=> (p.NextText));next.Foreground=AgentUi.Muted;words.Children.Add(next);
+                progressRow=new Grid{Margin=new Thickness(0,14,0,16)};progressRow.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(112)});progressRow.ColumnDefinitions.Add(new ColumnDefinition());progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});progressRow.Children.Add(HomeVisual.Ring(p.Fraction));Grid.SetColumn(words,1);progressRow.Children.Add(words);relation.Children.Add(progressRow);
+                nodes=HomeVisual.Nodes(p);relation.Children.Add(nodes);var relationScope=Label(()=>(TextResources.Get("relationship.home.globalScope")),12);relationScope.Foreground=AgentUi.Muted;relation.Children.Add(relationScope);
+                int statusIndex=0;foreach(string explanation in View.StatusTexts){int statusPosition=statusIndex++;var state=Text(()=>View.StatusTexts.ElementAtOrDefault(statusPosition)??"",13,statusPosition==0?"RelationshipGrowthStatus":null);state.Margin=new Thickness(0,14,0,0);state.Foreground=AgentUi.Muted;relation.Children.Add(state);}
+                stats=new StackPanel{Margin=new Thickness(0,12,0,0)};stats.Children.Add(HomeVisual.Stat("heart",()=> (TextResources.Get("relationship.home.todayLabel")),()=> (View.TodayPoints+" / 20"),"CompanionTodayGrowth"));stats.Children.Add(HomeVisual.Stat("sun",()=> (TextResources.Get("relationship.home.activeDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.ActiveDays)),"CompanionActiveDays"));stats.Children.Add(HomeVisual.Stat("calendar",()=> (TextResources.Get("relationship.home.acquaintanceDaysLabel")),()=> (TextResources.Format("relationship.home.daysValue",View.AcquaintanceDays)),"CompanionAcquaintanceDays"));relation.Children.Add(stats);
+                if(View.Snapshot.State!=null){
+                    string greeting=RelationshipContent.Welcome(View.Snapshot.StageId,owner.RelationshipPack);
+                    if(!String.IsNullOrWhiteSpace(greeting)){
+                        var message=Text(()=>RelationshipContent.Welcome(View.Snapshot.StageId,owner.RelationshipPack),17,"CompanionCurrentWelcome");message.Margin=new Thickness(0,12,0,4);
+                        LocalizedUi.Automation(message,()=>RelationshipContent.Welcome(View.Snapshot.StageId,owner.RelationshipPack));
+                        if(greeting.Length>110){var disclosure=LocalizedUi.With(new Expander{Name="CompanionWelcome",Header=TextResources.Get("relationship.home.stageMessage"),Content=message,IsExpanded=welcomeOpen,Margin=new Thickness(0,16,0,0),Foreground=AgentUi.Ink},"Header",()=>(TextResources.Get("relationship.home.stageMessage")));disclosure.Expanded+=delegate{welcomeOpen=true;};disclosure.Collapsed+=delegate{welcomeOpen=false;};relation.Children.Add(disclosure);}
+                        else{var caption=Label(()=>(TextResources.Get("relationship.home.stageMessage")),12);caption.Foreground=AgentUi.Muted;caption.Margin=new Thickness(0,20,0,0);relation.Children.Add(caption);relation.Children.Add(message);}
+                    }
+                }
+
+                var timeline=Section(()=> (TextResources.Get("relationship.home.timeline")));var cards=Section(()=> (TextResources.Get("relationship.home.cards")));cardsWrap=new WrapPanel();cards.Children.Add(cardsWrap);
+                cardsWrap.SizeChanged+=delegate(object sender,SizeChangedEventArgs args){if(!disposed&&args.WidthChanged&&updateLayout!=null)updateLayout();};
+                if(View.Snapshot.State==null){timeline.Children.Add(Label(()=>(TextResources.Get("relationship.home.empty"))));cards.Children.Add(Label(()=>(TextResources.Get("relationship.home.emptyCards"))));}
+                else foreach(var milestone in View.Snapshot.State.Milestones.AsEnumerable().Reverse())timeline.Children.Add(HomeVisual.Milestone(()=> (RelationshipContent.StageName(milestone.StageId)),()=> (RelationshipCardData.FormatDate(milestone.EarnedLocalDate))));
+                if(View.Snapshot.State!=null)foreach(var milestone in View.Snapshot.State.Milestones){
+                    HomeCardCapture capture;if(!captures.TryGetValue(milestone.StageId,out capture)||capture.Data.EarnedLocalDate!=milestone.EarnedLocalDate||capture.Data.FirstLocalDate!=View.Snapshot.State.FirstLocalDate){var data=RelationshipCardData.FromSnapshot(View.Snapshot,milestone.StageId,owner.Skin.DisplayName);capture=new HomeCardCapture(data,RelationshipCardRenderer.Render(data,portrait.Image,ThemeManager.IsDark,scenes.Get(data))){Expanded=expandedStages.Contains(milestone.StageId)};captures[milestone.StageId]=capture;}
+                    var card=new RelationshipCardPreview(capture,RelationshipContent.Welcome(milestone.StageId,owner.RelationshipPack),delegate{return !disposed&&captureKey==key&&identity==capture.Data.CompanionId&&owner.RelationshipCompanionId==capture.Data.CompanionId&&version==revision;},delegate{return !disposed&&owner.RelationshipCompanionId==capture.Data.CompanionId;},delegate{if(updateLayout!=null)updateLayout();});cardsWrap.Children.Add(card);
+                }
+                bottom=new Grid{Margin=new Thickness(0,4,0,20)};bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(78,GridUnitType.Star)});bottom.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(22,GridUnitType.Star)});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});bottom.Children.Add(timeline);bottom.Children.Add(cards);body.Children.Add(bottom);
+            }
+            var albumSelection=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,8,0,16)};
+            var relationshipTab=LocalizedUi.Button(()=>(TextResources.Get("holidayKeepsake.relationshipAlbum")));var holidayTab=LocalizedUi.Button(()=>(TextResources.Get("holidayKeepsake.albumTitle")));
+            if(bottom!=null)body.Children.Remove(bottom);body.Children.Add(albumSelection);if(bottom!=null)body.Children.Add(bottom);body.Children.Add(holidayAlbum);
+            Action selectAlbum=delegate{relationshipTab.Background=holidaySelected?ThemeManager.Surface:HomeVisual.Accent;holidayTab.Background=holidaySelected?HomeVisual.Accent:ThemeManager.Surface;relationshipTab.Foreground=holidaySelected?AgentUi.Ink:Brushes.White;holidayTab.Foreground=holidaySelected?Brushes.White:AgentUi.Ink;relationshipTab.FontWeight=holidaySelected?FontWeights.Normal:FontWeights.SemiBold;holidayTab.FontWeight=holidaySelected?FontWeights.SemiBold:FontWeights.Normal;holidayAlbum.Visibility=holidaySelected?Visibility.Visible:Visibility.Collapsed;if(bottom!=null)bottom.Visibility=holidaySelected?Visibility.Collapsed:Visibility.Visible;};selectAlbum();
+            relationshipTab.Name="RelationshipAlbumTab";holidayTab.Name="HolidayAlbumTab";albumSelection.Children.Add(relationshipTab);albumSelection.Children.Add(holidayTab);relationshipTab.Click+=delegate{holidaySelected=false;selectAlbum();};holidayTab.Click+=delegate{holidaySelected=true;selectAlbum();};
+            bool warning=View.ReadFailed||saveFailed||!String.IsNullOrEmpty(owner.Relationships.Warning);bool restart=owner.Relationships.RequiresRestart;
+            var warningPanel=new StackPanel();var warningText=Label(()=>(restart?TextResources.Get("relationship.home.restartRequired"):View.ReadFailed?TextResources.Get("relationship.home.readWarning"):saveFailed?TextResources.Get("relationship.home.settingsWarning"):TextResources.Get("relationship.saveWarning")),13,"RelationshipWarning");warningText.Visibility=warning?Visibility.Visible:Visibility.Collapsed;warningText.Foreground=ThemeManager.Brush("#97580C","#FFD38A");warningPanel.Children.Add(warningText);
+            var actions=new WrapPanel{Margin=new Thickness(0,8,0,0)};var retry=LocalizedUi.Button(()=>(TextResources.Get("relationship.home.retry")));retry.Name="RelationshipRetry";retry.Visibility=warning&&!restart?Visibility.Visible:Visibility.Collapsed;retry.IsEnabled=!saving;retryControl=retry;retry.Click+=delegate{if(!BeginSaving())return;PendingRetry=RetryChangesAsync();};actions.Children.Add(retry);
+            var open=LocalizedUi.Button(()=>(TextResources.Get("relationship.home.openDataFolder")));open.Name="RelationshipOpenDataFolder";open.Visibility=warning?Visibility.Visible:Visibility.Collapsed;open.Click+=delegate{try{Directory.CreateDirectory(owner.Relationships.DataDirectory);System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(owner.Relationships.DataDirectory){UseShellExecute=true});}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.ComponentModel.Win32Exception))throw;LocalizedUi.Set(warningText,"Text",()=>(TextResources.Get("relationship.home.folderFailed")));}};actions.Children.Add(open);
+            var reboot=LocalizedUi.Button(()=>(TextResources.Get("relationship.home.restart")));reboot.Name="RelationshipRestart";reboot.Visibility=warning&&restart?Visibility.Visible:Visibility.Collapsed;reboot.Click+=delegate{ApplicationRestart.Request(false);owner.Close();};actions.Children.Add(reboot);warningPanel.Children.Add(actions);if(warning){warningPanel.Margin=new Thickness(0,16,0,0);relation.Children.Add(warningPanel);}else relation.Children.Add(warningPanel);
+            var rules=new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionGrowthRules",Header=HomeVisual.Header("diamond",()=> (TextResources.Get("relationship.home.rules"))),Foreground=AgentUi.Ink,IsExpanded=rulesOpen,Content=HomeVisual.Rules()};rules.Expanded+=delegate{rulesOpen=true;};rules.Collapsed+=delegate{rulesOpen=false;};
+            var settings=new StackPanel();settingsControls=settings;var current=View.Snapshot==null?null:View.Snapshot.Settings;
+            var scope=Label(()=>(TextResources.Get("relationship.home.globalScope")),13);scope.Foreground=AgentUi.Muted;scope.Margin=new Thickness(0,8,0,12);settings.Children.Add(scope);
+            AddSetting(settings,"RelationshipGrowthEnabled",()=> (TextResources.Get("relationship.home.growth")),current!=null&&current.GrowthEnabled,0);AddSetting(settings,"RelationshipFeedbackEnabled",()=> (TextResources.Get("relationship.home.feedback")),current!=null&&current.FeedbackEnabled,1);AddSetting(settings,"RelationshipAiContextEnabled",()=> (TextResources.Get("relationship.home.aiContext")),current!=null&&current.AiContextEnabled,2);settings.IsEnabled=current!=null&&!View.ReadFailed&&!saving;
+            var settingsExp=new Expander{HorizontalContentAlignment=HorizontalAlignment.Stretch,Name="CompanionRelationshipSettings",Header=HomeVisual.Header("settings",()=> (TextResources.Get("relationship.home.settings"))),Foreground=AgentUi.Ink,IsExpanded=settingsOpen,Content=settings};settingsExp.Expanded+=delegate{settingsOpen=true;};settingsExp.Collapsed+=delegate{settingsOpen=false;};
+            var groups=new StackPanel();groups.Children.Add(rules);groups.Children.Add(new Border{Height=1,Background=AgentUi.Line,Margin=new Thickness(0,10,0,10)});groups.Children.Add(settingsExp);body.Children.Add(HomeVisual.Box(groups,false));
+            updateLayout=delegate{
+                double viewport=ViewportWidth>0?ViewportWidth:ActualWidth;double width=Math.Min(1080,Math.Max(0,viewport-(ActualWidth<600?32:56)));bool wide=width>=760;body.Margin=new Thickness(ActualWidth<600?16:28,24,ActualWidth<600?16:28,28);
+                Grid.SetColumn(relationBox,wide?1:0);Grid.SetRow(relationBox,wide?0:1);Grid.SetColumnSpan(profileBox,wide?1:2);Grid.SetColumnSpan(relationBox,wide?1:2);relationBox.Margin=new Thickness(wide?22:0,wide?0:16,0,0);
+                if(progressRow!=null){bool tiny=width<340;var words=progressRow.Children[1] as FrameworkElement;Grid.SetColumn(words,tiny?0:1);Grid.SetRow(words,tiny?1:0);Grid.SetColumnSpan(words,tiny?2:1);words.Margin=new Thickness(tiny?0:18,tiny?12:0,0,0);}
+                double profileWidth=wide?width*.55-44:width-44;bool compactPortrait=profileWidth<380;if(sceneView!=null){sceneView.Height=Math.Max(120,profileWidth)*scene.PixelHeight/(double)scene.PixelWidth;}else if(portraitView!=null){profileContent.ColumnDefinitions[0].Width=new GridLength(compactPortrait?112:160);portraitView.Height=compactPortrait?216:230;portraitView.Margin=new Thickness(0,0,compactPortrait?12:20,0);}
+                if(stats!=null){bool horizontal=wide?width*.45-66>=370:width-44>=370;stats.Orientation=horizontal?Orientation.Horizontal:Orientation.Vertical;foreach(FrameworkElement stat in stats.Children)stat.Width=horizontal?(wide?width*.45-66:width-44)/3:Double.NaN;}
+                if(bottom!=null){var cards=bottom.Children[1] as FrameworkElement;var timeline=bottom.Children[0] as FrameworkElement;Grid.SetColumn(cards,0);Grid.SetRow(cards,0);Grid.SetColumn(timeline,wide?1:0);Grid.SetRow(timeline,wide?0:1);Grid.SetColumnSpan(timeline,wide?1:2);Grid.SetColumnSpan(cards,wide?1:2);cards.Margin=new Thickness(0,0,wide?24:0,0);timeline.Margin=new Thickness(wide?16:0,0,0,0);double available=cardsWrap.ActualWidth>0?cardsWrap.ActualWidth:wide?width*.78-24:width;double cardArea=Math.Max(120,available-14);double cardWidth=cardArea>=668?(cardArea-22)/2:cardArea;foreach(FrameworkElement card in cardsWrap.Children)card.Width=((HomeCardCapture)card.Tag).Expanded?cardArea:cardWidth;}
+            };updateLayout();UpdateLayout();ScrollToVerticalOffset(scroll);
+            if(focusToken!=null&&Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive){var replacement=HomeVisual.ResolveFocus(body,focusToken);if(replacement!=null)replacement.Focus();}
+            if(navigateToSettings&&navigationIdentity==identity&&identity==owner.RelationshipCompanionId&&IsVisible){
+                navigateToSettings=false;settingsExp.IsExpanded=true;settingsExp.Focusable=true;settingsExp.BringIntoView();
+                if(Window.GetWindow(this)!=null&&Window.GetWindow(this).IsActive)settingsExp.Focus();
+            }
+        }
+        void AddSetting(StackPanel parent,string name,System.Func<string> label,bool value,int kind)
+        {
+            var check=LocalizedUi.Toggle(label,value,delegate{});check.Name=name;check.Content=Label(label);
+LocalizedUi.Automation(check,label);
+            check.Click+=delegate{
+                bool desired=check.IsChecked==true;check.IsChecked=value;
+                if(View==null||View.ReadFailed||!parent.IsEnabled||!BeginSaving())return;
+                var current=View.Snapshot.Settings;
+                PendingSettings=SaveAsync(kind==0?desired:current.GrowthEnabled,kind==1?desired:current.FeedbackEnabled,kind==2?desired:current.AiContextEnabled);
+            };parent.Children.Add(check);
+        }
+        bool BeginSaving()
+        {
+            if(disposed||saving)return false;saving=true;
+            if(settingsControls!=null)settingsControls.IsEnabled=false;
+            if(retryControl!=null)retryControl.IsEnabled=false;
+            return true;
+        }
+        async Task SaveAsync(bool growth,bool feedback,bool ai)
+        {
+            try{saveFailed=!(await model.UpdateSettingsAsync(growth,feedback,ai)).Success;}
+            catch(Exception){saveFailed=true;}
+            finally{saving=false;}
+            if(!disposed)await RefreshAsync();
+        }
+        async Task RetryChangesAsync()
+        {
+            try{saveFailed=!(await model.RetryAsync()).Success;}
+            catch(Exception){saveFailed=true;}
+            finally{saving=false;}
+            if(!disposed)await RefreshAsync();
+        }
+        public void Dispose(){if(disposed)return;disposed=true;revision++;holidayPulse.Stop();holidayAlbum.Dispose();ThemeManager.Changed-=ThemeChanged;owner.Relationships.Changed-=SavedChanged;body.Children.Clear();captures.Clear();scenes.Dispose();}
+ TextBlock Label(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Label(value(),size,name),"Text",value);} TextBlock Text(System.Func<string> value,double size=13,string name=null){return LocalizedUi.With(Text(value(),size,name),"Text",value);}    }
+}

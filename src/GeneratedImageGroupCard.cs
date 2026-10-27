@@ -132,7 +132,7 @@ namespace Dafeiyu
             }
             var text = slot.Button.Content as TextBlock;
             if (text != null) text.Text = (index + 1).ToString();
-            slot.Button.ToolTip = asset != null ? "图片 " + (index + 1) : ImageGenerationMotion.Label(pet.ImageTasks.Get((string)slot.Button.Tag));
+            slot.Button.ToolTip = asset != null ? TextResources.Format("generatedImageGroupCard.updateSlot.toolTipAssetNull",(index + 1)) : ImageGenerationMotion.Label(pet.ImageTasks.Get((string)slot.Button.Tag));
         }
 
         void UpdateSelection()
@@ -160,7 +160,7 @@ namespace Dafeiyu
                     if (chat != null) chat.ShowImagesPage(selected); else pet.OpenImageWorkspace(selected);
                 });
             else if (state.SelectedId != null)
-                main.Content = hasTask ? (FrameworkElement)ImageGenerationPendingCard.Create(pet, host, state.SelectedId) : Ui.Text("图片记录不可用", 12, Ui.Muted);
+                main.Content = hasTask ? (FrameworkElement)ImageGenerationPendingCard.Create(pet, host, state.SelectedId) : LocalizedUi.Text(()=>(TextResources.Get("generatedImageGroupCard.showSelected.text")), 12, Ui.Muted);
             else main.Content = null;
         }
 

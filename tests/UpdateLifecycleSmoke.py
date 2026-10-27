@@ -7,6 +7,8 @@ in the installed fixture worker; all update implementation bodies are unchanged.
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 import hashlib
+import ctypes
+import atexit
 import json
 import os
 import re
@@ -32,6 +34,15 @@ FRAMEWORK = CSC.parent
 INNO = Path(os.environ.get('DESKPET_TEST_INNO', str(PROJECT / 'work/tools/inno/ISCC.exe')))
 APP_ID = '3B63C162-076E-4B2F-BDCC-2572664875A9'
 passed = 0
+# All native fixture windows remain on this owned inactive desktop.
+desktop_name='DeskPet-Update-'+uuid.uuid4().hex
+user32=ctypes.WinDLL('user32',use_last_error=True)
+user32.CreateDesktopW.restype=ctypes.c_void_p
+user32.CreateDesktopW.argtypes=[ctypes.c_wchar_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_uint,ctypes.c_uint,ctypes.c_void_p]
+desktop=user32.CreateDesktopW(desktop_name,None,None,0,0x10000000,None)
+if not desktop: raise ctypes.WinError(ctypes.get_last_error())
+user32.CloseDesktop.argtypes=[ctypes.c_void_p]
+atexit.register(user32.CloseDesktop,desktop)
 LEGACY_WORKER=next((Path(value.split('=',1)[1]).resolve() for value in sys.argv[1:] if value.startswith('--legacy-worker=')),None)
 CLEAN_RUNTIME=next((Path(value.split('=',1)[1]).resolve() for value in sys.argv[1:] if value.startswith('--clean-runtime=')),None)
 OLD_VERSION='0.9.3' if LEGACY_WORKER else '0.3.1'
@@ -47,6 +58,7 @@ def start(command, cwd):
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = 0
+    info.lpDesktop = desktop_name
     return subprocess.Popen([str(x) for x in command], cwd=str(cwd), startupinfo=info, creationflags=subprocess.CREATE_NO_WINDOW)
 
 def run(command, cwd=ROOT, timeout=90):
@@ -70,29 +82,21 @@ def ticks(pid):
         env=dict(os.environ, DESKPET_TEST_PARENT_ID=str(pid)), capture_output=True, check=True)
     return int(result.stdout.decode('ascii').strip())
 
-def compile_worker(destination, fixture_id=None):
-    source = (PROJECT / 'src/UpdateInstall.cs').read_text(encoding='utf-8-sig')
-    if fixture_id:
-        original = source
-        source = source.replace(APP_ID, fixture_id)
-        check(source.replace(fixture_id, APP_ID) == original, 'installed fixture substitutes only its own registry AppId')
-    local = destination.parent / 'UpdateInstall.fixture.cs'
-    local.write_text(source, encoding='utf-8')
-    refs = ['System.dll', 'System.Core.dll', 'System.Runtime.Serialization.dll', 'System.IO.Compression.dll']
-    run([CSC, '/nologo', '/codepage:65001', '/utf8output', '/target:winexe', '/define:UPDATE_WORKER',
-        '/main:Dafeiyu.UpdateWorkerProgram', '/out:' + str(destination),
-        *['/reference:' + str(FRAMEWORK / x) for x in refs], local, PROJECT / 'src/UpdateWorker.cs', PROJECT / 'src/ReleaseInfo.cs', PROJECT / 'src/ReleaseVersion.cs', PROJECT / 'src/ReleaseIdentity.cs', PROJECT / 'src/RetiredRuntimeFiles.cs'])
-    shutil.copy2(PROJECT / 'app.config', Path(str(destination) + '.config'))
+from worker_fixture import compile_sources, numeric, COMMIT
+
+def compile_worker(destination, fixture_id=None, version=None):
+    compile_sources(destination, version or VERSION, fixture_id)
 
 def compile_parent(destination, mutex, old):
     source = '''using System;using System.IO;using System.Threading;
         [assembly:System.Reflection.AssemblyVersion("%s")]
+        [assembly:System.Reflection.AssemblyInformationalVersion("%s")]
         public static class Probe{[STAThread]public static void Main(string[] args){
         string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data");Directory.CreateDirectory(data);
         if(args.Length>0 && args[0]=="--update-result"){File.WriteAllText(Path.Combine(data,"restarted"),"%s");return;}
         using(var mutex=new Mutex(false,@"%s")){File.WriteAllText(Path.Combine(data,"parent-started"),"ready");
         while(!File.Exists(Path.Combine(data,"exit-parent")))Thread.Sleep(40);}}}''' % (
-            OLD_VERSION+'.0' if old else VERSION + '.0', 'old' if old else VERSION, mutex)
+            numeric(OLD_VERSION if old else VERSION), (OLD_VERSION if old else VERSION)+'+'+COMMIT, 'old' if old else VERSION, mutex)
     script = destination.parent / ('ParentOld.cs' if old else 'ParentNew.cs')
     script.write_text(source, encoding='utf-8')
     run([CSC, '/nologo', '/codepage:65001', '/utf8output', '/target:winexe', '/out:' + str(destination), script])
@@ -106,6 +110,14 @@ def setup(runtime, stage, version, fixture_id, mutex, group):
     text = text.replace('DefaultGroupName=桌面伙伴', 'DefaultGroupName=' + group).replace('AppName=桌面伙伴', 'AppName=DeskPet Update Fixture')
     # The fixture uses an absolute icon reference and its own start-menu group.
     text = text.replace('SetupIconFile=..\\assets\\pet.ico', 'SetupIconFile=' + str(PROJECT / 'assets/pet.ico'))
+    # Test-only installation: retain real file/version/rollback behavior without
+    # any user's startup or shortcut side effects.
+    text = re.sub(r'(?ms)^\[Icons\].*?(?=^\[Code\])', '', text)
+    start = text.index('procedure RemoveLegacyShortcut(')
+    end = text.index('function InitializeSetup()', start)
+    text = text[:start] + "procedure CurStepChanged(CurStep: TSetupStep);\nbegin\n  if CurStep = ssInstall then RetireKnownFiles;\n  if CurStep = ssPostInstall then RetiredSuccess := True;\nend;\n\n" + text[end:]
+    text = text[:text.index('procedure CurUninstallStepChanged(')]
+    assert '[Icons]' not in text and '[Run]' not in text and 'CurrentVersion\\Run' not in text and 'RemoveLegacyShortcut' not in text
     script = installer / 'DeskPet.iss'
     script.write_text(text, encoding='utf-8-sig')
     shutil.copy2(PROJECT / 'installer/ChineseSimplified.isl', installer / 'ChineseSimplified.isl')
@@ -114,7 +126,7 @@ def setup(runtime, stage, version, fixture_id, mutex, group):
     files=[dict(destination=p.relative_to(runtime).as_posix()) for p in runtime.rglob('*') if p.is_file()]
     write_inno_files(files,runtime,installer/'files.iss')
     run([INNO, '/Qp', '/DRuntimeDir=' + str(runtime), '/DRuntimeFiles=' + str(installer/'files.iss'), '/DOutputDir=' + str(stage), '/DProductVersion=' + version,
-        '/DAssemblyVersion=' + version + '.0', '/DRepositoryUrl=https://github.com/Eason4869/deskpet',
+        '/DAssemblyVersion=' + numeric(version), '/DInformationalVersion=' + version+'+'+COMMIT, '/DRepositoryUrl=https://github.com/Eason4869/deskpet',
         '/DInstallerBaseName=' + installer_asset_name(version)[:-4], script])
     return stage / installer_asset_name(version)
 
@@ -133,7 +145,7 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
     if LEGACY_WORKER and mode=='portable':
         shutil.copy2(LEGACY_WORKER,worker)
         shutil.copy2(Path(str(LEGACY_WORKER)+'.config'),Path(str(worker)+'.config'))
-    else:compile_worker(worker, fixture_id if mode == 'installed' else None)
+    else:compile_worker(worker, fixture_id if mode == 'installed' else None, OLD_VERSION)
     for name in ['README.md', 'CHANGELOG.md']:
         shutil.copy2(PROJECT / name, runtime / name)
     for name in ['docs', 'templates', 'previews']:
@@ -163,7 +175,7 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
             (data / 'update-result.json').mkdir()
             (work / 'result.json').mkdir()
         compile_parent(exe, mutex, False)
-        if LEGACY_WORKER:compile_worker(worker)
+        compile_worker(worker, fixture_id if mode == 'installed' else None)
         (runtime / 'README.md').write_text('updated readme', encoding='utf-8')
         if mode=='installed' and invalid_package:
             compile_parent(exe, mutex, True)
@@ -189,6 +201,9 @@ def scenario(mode, abandon=False, blocked_receipts=False, invalid_package=False)
             'Size': package.stat().st_size, 'Digest': hashlib.sha256(package.read_bytes()).hexdigest(),
             'AssetUrl': 'https://github.com/Eason4869/deskpet/releases/download/v' + VERSION + '/' + package.name,
             'ParentPid': parent.pid, 'ParentStartedUtcTicks': ticks(parent.pid)}
+        if not LEGACY_WORKER:
+            job.update(ProtocolVersion=2, InstalledAssemblyVersion=numeric(OLD_VERSION), TargetAssemblyVersion=numeric(VERSION),
+                       InstalledBuildId=OLD_VERSION+'+'+COMMIT, TargetBuildId=VERSION+'+'+COMMIT)
         path = work / 'job.json'
         path.write_text(json.dumps(job), encoding='utf-8')
         shutil.copy2(directory / 'DeskPet.Update.exe', work / 'DeskPet.Update.exe')

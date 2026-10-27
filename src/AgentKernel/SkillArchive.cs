@@ -21,17 +21,17 @@ namespace Dafeiyu
             try{
                 // Hash and extract the same open stream so the source cannot change between the two operations.
                 using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read)){
-                    if(input.Length>64L*1024*1024)throw new InvalidOperationException("ZIP 文件超过 64 MiB。");
+                    if(input.Length>64L*1024*1024)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text"));
                     using(var sha=SHA256.Create())digest=BitConverter.ToString(sha.ComputeHash(input)).Replace("-","").ToLowerInvariant();input.Position=0;
                     using(var archive=new ZipArchive(input,ZipArchiveMode.Read,true)){
-                        if(archive.Entries.Count>4096)throw new InvalidOperationException("ZIP 条目超过 4096 项。");
+                        if(archive.Entries.Count>4096)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeA"));
                         long total=0;int files=0;var paths=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         foreach(var entry in archive.Entries){string name=entry.FullName.TrimEnd('/');SkillRepositoryClient.SafePath(name);
-                            if(!paths.Add(name))throw new InvalidOperationException("ZIP 包含大小写冲突或重复路径。");
+                            if(!paths.Add(name))throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeB"));
                             int kind=(entry.ExternalAttributes>>16)&0xF000;
-                            if(kind==0xA000||(entry.ExternalAttributes&(int)FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("ZIP 不能包含链接。");
+                            if(kind==0xA000||(entry.ExternalAttributes&(int)FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeC"));
                             if(entry.FullName.EndsWith("/"))continue;
-                            total+=entry.Length;if(++files>2048||entry.Length<0||total>64L*1024*1024)throw new InvalidOperationException("ZIP 超过 2048 个文件或解压后 64 MiB。");
+                            total+=entry.Length;if(++files>2048||entry.Length<0||total>64L*1024*1024)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeD"));
                         }
                         Directory.CreateDirectory(directory);
                         long copied=0;
@@ -39,7 +39,7 @@ namespace Dafeiyu
                             if(entry.FullName.EndsWith("/")){Directory.CreateDirectory(target);continue;}
                             Directory.CreateDirectory(Path.GetDirectoryName(target));
                             using(var source=entry.Open())using(var output=new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.None)){
-                                var buffer=new byte[81920];int count;long current=0;while((count=source.Read(buffer,0,buffer.Length))>0){copied+=count;current+=count;if(copied>64L*1024*1024||current>entry.Length)throw new InvalidOperationException("ZIP 实际解压大小超过限制。");output.Write(buffer,0,count);}if(current!=entry.Length)throw new InvalidOperationException("ZIP 文件不完整。");}
+                                var buffer=new byte[81920];int count;long current=0;while((count=source.Read(buffer,0,buffer.Length))>0){copied+=count;current+=count;if(copied>64L*1024*1024||current>entry.Length)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeE"));output.Write(buffer,0,count);}if(current!=entry.Length)throw new InvalidOperationException(TextResources.Get("skillArchive.skillArchive.text.alternativeF"));}
                         }
                     }
                 }
@@ -55,7 +55,7 @@ namespace Dafeiyu
         public ManagedSkillInfo Install(RepositorySkill selected,ManagedSkillLibrary library)
         {
             var skill=Skills.SingleOrDefault(s=>s.Name==selected.Name&&s.Path==selected.Path&&s.Content==selected.Content);
-            if(skill==null)throw new InvalidOperationException("请先选择 ZIP 中的技能。");
+            if(skill==null)throw new InvalidOperationException(TextResources.Get("skillArchive.install.text"));
             string source=Path.Combine(directory,skill.Path.Replace('/',Path.DirectorySeparatorChar));AgentInstructions.RequireWithin(directory,source);
             return library.Import(source,new SkillOrigin{Kind="zip",Repository=archiveName,Commit=digest,Path=skill.Path,Branch=""});
         }

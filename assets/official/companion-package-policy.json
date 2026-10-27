@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "maximum_archive_bytes": 536870912,
+  "maximum_expanded_bytes": 536870912,
+  "maximum_entries": 1024,
+  "maximum_png_bytes": 26214400,
+  "maximum_manifest_bytes": 65536,
+  "maximum_metadata_bytes": 1048576,
+  "maximum_text_bytes": 1048576,
+  "maximum_official_text_bytes": 65536,
+  "maximum_appearance_bytes": 268435456,
+  "maximum_default_frames": 1024,
+  "maximum_holiday_outfits": 32
+}

@@ -11,9 +11,12 @@ def main():
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     original = json.loads((ROOT / 'assets/holidays/catalog.json').read_text(encoding='utf-8-sig'))
-    selected = [item for item in original['outfits'] if item['character_id'] == 'e-bao']
-    if not selected or not all(item['ready'] is True for item in selected):
-        raise SystemExit('The embedded character must include every complete released outfit.')
+    # New authored wardrobes are distributed on demand. Match the actual
+    # Ebao/Halloween resources embedded by Build.ps1 and DeskPet.Core.csproj.
+    selected = [item for item in original['outfits']
+                if item['character_id'] == 'e-bao' and item['holiday_id'] == 'halloween']
+    if len(selected) != 1 or not all(item['ready'] is True for item in selected):
+        raise SystemExit('The declared embedded Halloween outfit must be complete.')
     files = {'holiday-catalog.json': {'schema_version': original['schema_version'], 'outfits': selected},
              'bundled-catalog.json': []}
     for name, data in files.items():

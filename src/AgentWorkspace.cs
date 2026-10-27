@@ -52,9 +52,9 @@ namespace Dafeiyu
         public AgentWorkspace(string root, bool restrictToRoot)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-                throw new PlatformNotSupportedException("当前文件 Agent 仅支持 Windows；请关闭文件 Agent 后使用普通聊天。");
+                throw new PlatformNotSupportedException(TextResources.Get("agentWorkspace.agentWorkspace.text"));
             if (String.IsNullOrWhiteSpace(root) || !Path.IsPathRooted(root))
-                throw new ArgumentException("工作目录必须是明确选择的绝对路径。");
+                throw new ArgumentException(TextResources.Get("agentWorkspace.agentWorkspace.text.alternativeA"));
             RestrictToRoot = restrictToRoot;
             BackupEnabled = true; ContextTokenLimit=32768;
             DirectoryOpener = OpenExplorer;
@@ -64,17 +64,17 @@ namespace Dafeiyu
             prefix = Root.TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
             string volume = Path.GetPathRoot(Root).TrimEnd('\\', '/');
             if ((restrictToRoot && String.Equals(Root.TrimEnd('\\', '/'), volume, StringComparison.OrdinalIgnoreCase)) || !Directory.Exists(Root))
-                throw new ArgumentException("请选择已存在的项目目录，不能选择磁盘根目录。");
+                throw new ArgumentException(TextResources.Get("agentWorkspace.agentWorkspace.text.alternativeB"));
             if (restrictToRoot) foreach (string protectedRoot in ProtectedRoots())
             {
                 if (String.IsNullOrEmpty(protectedRoot)) continue;
                 string p = Path.GetFullPath(protectedRoot).TrimEnd('\\', '/');
                 if (IsWithin(Root, p) || String.Equals(Root, p, StringComparison.OrdinalIgnoreCase))
-                    throw new ArgumentException("不能将系统目录设为 Agent 工作目录。");
+                    throw new ArgumentException(TextResources.Get("agentWorkspace.agentWorkspace.text.alternativeC"));
             }
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             if (restrictToRoot && !String.IsNullOrEmpty(home) && (String.Equals(Root, home, StringComparison.OrdinalIgnoreCase) || IsWithin(home, Root)))
-                throw new ArgumentException("请选择具体项目目录，不能选择整个用户目录或其上级。");
+                throw new ArgumentException(TextResources.Get("agentWorkspace.agentWorkspace.text.alternativeD"));
             ValidateSegments(Root);
             using (LockDirectories(Root, false)) { }
             BuildSchemas();
@@ -108,12 +108,13 @@ namespace Dafeiyu
         readonly AgentExecutionGuard executionGuard=new AgentExecutionGuard();
         public Task<string> ExecuteAsync(string name,string argumentsJson,string callId,CancellationToken token)
         {
-            token.ThrowIfCancellationRequested();if(name=="complete_subagent")return Task.FromResult("错误：只有真实 worker 可以记录子任务完成。");if(ChildToolBudget>0 && Interlocked.Increment(ref childToolCalls)>ChildToolBudget)throw new ApiException("只读子任务工具预算已用尽。");Dictionary<string,object> args;
-            try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return Task.FromResult("错误：工具参数必须是 JSON 对象。");}
-            if(args==null)return Task.FromResult("错误：工具参数必须是 JSON 对象。");
+            if(AgentJobTools.IsJobTool(name))return ExecuteJobAsync(name,argumentsJson,callId,token);
+            token.ThrowIfCancellationRequested();if(name=="complete_subagent")return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeA"));if(ChildToolBudget>0 && Interlocked.Increment(ref childToolCalls)>ChildToolBudget)throw new ApiException(TextResources.Get("agentWorkspace.executeAsync.text"));Dictionary<string,object> args;
+            try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeB"));}
+            if(args==null)return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeB"));
             if(name=="exec_command")NormalizeTerminalArguments(args);
             string resource=name!=null&&name.StartsWith("github_",StringComparison.Ordinal)&&github!=null?github.Repository+" :: "+AgentPermissionRuntime.ResourceForTool(name,args):null;
-            if(name=="git_status"||name=="git_diff"||name=="git_log")try{resource=AgentGitTools.FindRoot(Resolve(GetString(args,"path",".")),Root,RestrictToRoot,token);}catch(UnauthorizedAccessException){return Task.FromResult("错误：Git 仓库或元数据超出授权工作区，或路径经过链接。");}catch(ArgumentException ex){return Task.FromResult("错误："+ex.Message);}catch(IOException){return Task.FromResult("错误：无法读取 Git 仓库目录。");}
+            if(name=="git_status"||name=="git_diff"||name=="git_log")try{resource=AgentGitTools.FindRoot(Resolve(GetString(args,"path",".")),Root,RestrictToRoot,token);}catch(UnauthorizedAccessException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeC"));}catch(ArgumentException ex){return Task.FromResult(TextResources.Format("agentWorkspace.executeAsync.taskFromResult",ex.Message));}catch(IOException){return Task.FromResult(TextResources.Get("agentWorkspace.executeAsync.taskFromResult.alternativeD"));}
             var invocation=new AgentToolInvocation(name,args,new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,ProjectId=kernelSessionModel==null?Root:kernelSessionModel.ProjectId,AgentId=kernelProfile==null?"":kernelProfile.Id,TaskId=kernelTaskId,CallId=callId},resource??dynamicTools.Where(t=>t.Name==name).Select(t=>t.ApprovalResource).FirstOrDefault());
             return executionGuard.RunAsync(invocation,()=>ExecuteRecordedAsync(invocation,token));
         }
@@ -121,26 +122,26 @@ namespace Dafeiyu
         {
             string name=invocation.ToolName,argumentsJson=invocation.Arguments,callId=invocation.CallId;
             token.ThrowIfCancellationRequested();
-            if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return "错误：当前模型不支持图片理解；请选择支持图片输入的模型。";
-            if(providerCapabilities!=null && !providerCapabilities.CanUseTool(name))return "错误：当前模型未启用工具能力。";
-            if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return "错误：独立 worker 尚未连接，不会执行子任务。";
-            if(desktopSession && !DesktopToolAvailable(name))return "错误：此工具尚未在桌面端启用或连接，不会执行操作。";
+            if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text");
+            if(providerCapabilities!=null && !providerCapabilities.CanUseTool(name))return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeA");
+            if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeB");
+            if(desktopSession && !DesktopToolAvailable(name))return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeC");
             if(name=="exec_command")return await ExecuteTerminalAsync(invocation,token,beforeEffect).ConfigureAwait(false);
-            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException("工具调用必须具有稳定 CallId。");Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return "错误：工具参数必须是 JSON 对象。";}if(args==null)return "错误：工具参数必须是 JSON 对象。";if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return "错误：当前为计划模式，只能读取和分析文件，不能调用写入或执行工具。";var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId,ProjectId=invocation.ProjectId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token,beforeEffect).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=invocation.Resource;
+            if(String.IsNullOrWhiteSpace(callId) || callId.Length>256)throw new ArgumentException(TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeD"));Dictionary<string,object> args;try{args=new JavaScriptSerializer{MaxJsonLength=MaxFileBytes*2+4096,RecursionLimit=12}.DeserializeObject(argumentsJson??"{}") as Dictionary<string,object>;}catch(ArgumentException){return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeE");}if(args==null)return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeE");if(kernelTools!=null && kernelTools.Has(name)){if(readOnly && !kernelTools.IsReadOnly(name))return TextResources.Get("agentWorkspace.executeAuthorizedAsync.text.alternativeF");var kernelContext=new AgentToolExecutionContext{SessionId=kernelSessionModel==null?"":kernelSessionModel.SessionId,AgentId=kernelProfile==null?"":kernelProfile.Id,CallId=callId,TaskId=kernelTaskId,ProjectId=invocation.ProjectId};return await kernelTools.ExecuteAsync(name,args,kernelContext,token,beforeEffect).ConfigureAwait(false);}var action=AgentPermissionRuntime.ActionForTool(name);var resource=invocation.Resource;
             var decision=await new AgentAuthorizationService(kernelPermissions,kernelApproval).AuthorizeAsync(invocation,token).ConfigureAwait(false);
-            if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return "错误：权限拒绝："+decision.Reason;}
+            if(decision.Effect!=AgentPermissionEffect.Allow){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="denied",CreatedUtc=DateTime.UtcNow});return TextResources.Format("agentWorkspace.executeAuthorizedAsync.template",decision.Reason);}
             token.ThrowIfCancellationRequested();
             if(name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")return await ExecuteChildToolAsync(name,args,token).ConfigureAwait(false);
             try{
                 string result;
                 if(name=="ask_user")result=await AskUserAsync(args,callId,token).ConfigureAwait(false);
                 else if(name=="generate_image"){
-                    if(readOnly)result="错误：计划模式不能生成图片。";
-                    else if(ImageGenerator==null)result="错误：当前入口未配置图片生成。";
-                    else {string prompt=GetString(args,"prompt",null);if(String.IsNullOrWhiteSpace(prompt)||prompt.Length>16000)result="错误：图片描述必须为 1～16000 字符。";else{if(beforeEffect!=null)beforeEffect();result=await ImageGenerator(prompt,callId,token).ConfigureAwait(false);}}
+                    if(readOnly)result=TextResources.Get("agentWorkspace.executeAuthorizedAsync.result");
+                    else if(ImageGenerator==null)result=TextResources.Get("agentWorkspace.executeAuthorizedAsync.result.alternativeA");
+                    else {string prompt=GetString(args,"prompt",null);if(String.IsNullOrWhiteSpace(prompt)||prompt.Length>16000)result=TextResources.Get("agentWorkspace.executeAuthorizedAsync.result.alternativeB");else{if(beforeEffect!=null)beforeEffect();result=await ImageGenerator(prompt,callId,token).ConfigureAwait(false);}}
                 }
                 else{if(beforeEffect!=null)beforeEffect();result=await ExecuteCoreAsync(name,argumentsJson,callId,token,invocation.Resource).ConfigureAwait(false);}
-                if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&result.StartsWith("错误：")?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
+                if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result=result!=null&&TextResources.IsToolError(result)?"error":"completed",CreatedUtc=DateTime.UtcNow});return result;}
             catch(Exception){if(kernelAudit!=null)kernelAudit.Record(new AgentAuditEvent{CallId=callId,TaskId=kernelTaskId,Tool=name,Action=action,Resource=resource,Result="error",CreatedUtc=DateTime.UtcNow});throw;}
         }
         private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token,string authorizedResource=null)
@@ -152,14 +153,14 @@ namespace Dafeiyu
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    if(readOnly && !AgentToolCatalog.IsReadOnly(name) && !dynamicTools.Any(d=>d.Name==name&&d.ReadOnly))return "错误：当前为计划模式，只能读取和分析文件，不能创建、修改或打开目录。";
+                    if(readOnly && !AgentToolCatalog.IsReadOnly(name) && !dynamicTools.Any(d=>d.Name==name&&d.ReadOnly))return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeD");
                     if (argumentsJson == null || argumentsJson.Length > MaxFileBytes * 2 + 4096)
-                        return "错误：工具参数缺失或过长。";
+                        return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeE");
                     var serializer = new JavaScriptSerializer { MaxJsonLength = MaxFileBytes * 2 + 4096, RecursionLimit = 12 };
                     var args = serializer.DeserializeObject(argumentsJson) as Dictionary<string, object>;
-                    if (args == null) return "错误：工具参数必须是 JSON 对象。";
-                    if(name=="spawn_subagent"||name=="complete_subagent"||name=="interrupt_subagent"){if(subagentScheduler==null)return "错误：子 Agent 生命周期尚未初始化。";var serializer2=new JavaScriptSerializer{MaxJsonLength=65536};if(name=="spawn_subagent"){var profile=new AgentProfileRegistry().Get(GetString(args,"profile","general"));if(profile==null)throw new ArgumentException("未知子 Agent Profile。");var child=subagentScheduler.Schedule(kernelTaskId,profile,GetString(args,"input",""));return serializer2.Serialize(new{child.Id,child.Status,child.ProfileId});}string id=GetString(args,"id",null);if(name=="complete_subagent"){bool ok=subagentScheduler.Complete(id,GetString(args,"result",""));return serializer2.Serialize(new{id,status=ok?"complete":"error"});}bool stopped=subagentScheduler.Interrupt(id);return serializer2.Serialize(new{id,status=stopped?"interrupted":"error"});}
-                    if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return "错误：尚未连接 GitHub，请在工作设置中填写 owner/repo 和访问令牌。";return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
+                    if (args == null) return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeF");
+                    if(name=="spawn_subagent"||name=="complete_subagent"||name=="interrupt_subagent"){if(subagentScheduler==null)return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeG");var serializer2=new JavaScriptSerializer{MaxJsonLength=65536};if(name=="spawn_subagent"){var profile=new AgentProfileRegistry().Get(GetString(args,"profile","general"));if(profile==null)throw new ArgumentException(TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeH"));var child=subagentScheduler.Schedule(kernelTaskId,profile,GetString(args,"input",""));return serializer2.Serialize(new{child.Id,child.Status,child.ProfileId});}string id=GetString(args,"id",null);if(name=="complete_subagent"){bool ok=subagentScheduler.Complete(id,GetString(args,"result",""));return serializer2.Serialize(new{id,status=ok?"complete":"error"});}bool stopped=subagentScheduler.Interrupt(id);return serializer2.Serialize(new{id,status=stopped?"interrupted":"error"});}
+                    if(name=="fetch_url" || name.StartsWith("github_",StringComparison.Ordinal)){if(github==null)return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeI");return github.ExecuteAsync(name,args,token).GetAwaiter().GetResult();}
                     if(name=="load_skill" || name=="read_instructions")return InstructionTool(name,args);
                     string path = Resolve(GetString(args, "path", "."));
                     if(name=="inspect_image")return InspectImage(path,args,callId,token);
@@ -179,46 +180,46 @@ namespace Dafeiyu
                     if (name == "create_directory")
                     {
                         token.ThrowIfCancellationRequested();
-                        using (LockDirectories(path, true)) { return "已创建目录 " + Relative(path) + "。"; }
+                        using (LockDirectories(path, true)) { return TextResources.Format("agentWorkspace.executeCoreAsync.taskRun",Relative(path)); }
                     }
                     if (name == "open_directory")
                     {
                         using (LockDirectories(path, false))
                         {
                             token.ThrowIfCancellationRequested(); DirectoryOpener(path);
-                            return "已在资源管理器打开目录 " + Relative(path) + "。";
+                            return TextResources.Format("agentWorkspace.executeCoreAsync.taskRun.alternativeA",Relative(path));
                         }
                     }
                     if (name == "write_file") return WriteFile(path, GetString(args, "content", null), token);
                     if (name == "edit_file")
                     {
                         string oldText = GetString(args, "old_text", null), newText = GetString(args, "new_text", null);
-                        if (oldText.Length == 0) throw new ArgumentException("old_text 不能为空。");
-                        if (DocumentFormats.IsDocument(path)) throw new ArgumentException("Word/Excel 文档不支持 old_text 精确修改；请用 write_file 以文字完整重写：" + Relative(path));
+                        if (oldText.Length == 0) throw new ArgumentException(TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeJ"));
+                        if (DocumentFormats.IsDocument(path)) throw new ArgumentException(TextResources.Format("agentWorkspace.executeCoreAsync.taskRun.alternativeB",Relative(path)));
                         using (LockDirectories(Path.GetDirectoryName(path), false))
                         {
                             CheckExpected(path,ReadBytes(path,token));
                             string content = ReadText(path, token);
                             int start = content.IndexOf(oldText, StringComparison.Ordinal);
-                            if (start < 0) return "错误：未找到 old_text，请先读取当前文件。";
+                            if (start < 0) return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeK");
                             if (content.IndexOf(oldText, start + oldText.Length, StringComparison.Ordinal) >= 0)
-                                return "错误：old_text 匹配多处，请提供更完整的上下文。";
+                                return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeL");
                             return WriteFile(path, content.Substring(0, start) + newText + content.Substring(start + oldText.Length), token);
                         }
                     }
-                    return "错误：未知工具。可用工具：list_files、read_file、write_file、edit_file、search_files、create_directory、open_directory。";
+                    return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeM");
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (DecoderFallbackException) { return "错误：文件不是有效的 UTF-8 文本，未进行写入。"; }
-                catch (EncoderFallbackException) { return "错误：内容包含无效 Unicode 字符，未进行写入。"; }
-                catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { return "错误：正则搜索超时，请缩小范围或简化表达式。"; }
-                catch (ArgumentException ex) { return "错误：" + ex.Message; }
-                catch (UnauthorizedAccessException) { return RestrictToRoot ? "错误：拒绝访问。请使用工作目录内的普通文件，禁止链接、受保护目录和越界路径。" : "错误：拒绝访问。请检查系统访问权限；禁止设备路径、链接及硬链接。"; }
-                catch (FileNotFoundException) { return "错误：文件不存在，请先用 list_files 查看目录。"; }
-                catch (DirectoryNotFoundException) { return "错误：目录不存在，请先用 list_files 查看目录。"; }
-                catch (IOException) { return "错误：文件操作失败，文件可能被占用或工作目录已变化。"; }
-                catch (System.ComponentModel.Win32Exception) { return "错误：无法打开资源管理器，请确认目录和系统权限。"; }
-                catch (InvalidOperationException) { return "错误：JSON 参数无效或操作超出限制。"; }
+                catch (DecoderFallbackException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeN"); }
+                catch (EncoderFallbackException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeO"); }
+                catch (System.Text.RegularExpressions.RegexMatchTimeoutException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeP"); }
+                catch (ArgumentException ex) { return TextResources.Format("agentWorkspace.executeCoreAsync.taskRun.alternativeC",ex.Message); }
+                catch (UnauthorizedAccessException) { return RestrictToRoot ? TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeQ") : TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeR"); }
+                catch (FileNotFoundException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeS"); }
+                catch (DirectoryNotFoundException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeT"); }
+                catch (IOException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeU"); }
+                catch (System.ComponentModel.Win32Exception) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeV"); }
+                catch (InvalidOperationException) { return TextResources.Get("agentWorkspace.executeCoreAsync.taskRun.alternativeW"); }
                 finally { gate.Release(); }
             }, token);
         }
@@ -239,19 +240,19 @@ namespace Dafeiyu
         private static void ValidateSyntax(string path, bool allowDrive, bool allowParent)
         {
             if (String.IsNullOrWhiteSpace(path) || path.Length > 240 || path.StartsWith("\\") || path.StartsWith("//"))
-                throw new ArgumentException("路径无效：禁止 UNC、设备路径和过长路径。");
+                throw new ArgumentException(TextResources.Get("agentWorkspace.validateSyntax.text"));
             for (int i = 0; i < path.Length; i++)
                 if (Char.IsControl(path[i]) || path[i] == '*' || path[i] == '?' || path[i] == '"' || path[i] == '<' || path[i] == '>' || path[i] == '|' ||
                     (path[i] == ':' && !(allowDrive && i == 1 && Char.IsLetter(path[0]) && path.Length > 2 && (path[2] == '\\' || path[2] == '/'))))
-                    throw new ArgumentException("路径包含无效字符或备用数据流。");
+                    throw new ArgumentException(TextResources.Get("agentWorkspace.validateSyntax.text.alternativeA"));
             foreach (string part in path.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 if ((!allowParent && part == "..") || (part != "." && part != ".." && (part.EndsWith(".") || part.EndsWith(" "))))
-                    throw new ArgumentException("禁止上级目录跳转及不明确的文件名。");
+                    throw new ArgumentException(TextResources.Get("agentWorkspace.validateSyntax.text.alternativeB"));
                 string device = part.Split('.')[0].ToUpperInvariant();
                 if (device == "CON" || device == "PRN" || device == "AUX" || device == "NUL" || device == "CONIN$" || device == "CONOUT$" ||
                     (device.Length == 4 && (device.StartsWith("COM") || device.StartsWith("LPT")) && "123456789¹²³".IndexOf(device[3]) >= 0))
-                    throw new ArgumentException("禁止设备文件名。");
+                    throw new ArgumentException(TextResources.Get("agentWorkspace.validateSyntax.text.alternativeC"));
             }
         }
 
@@ -294,17 +295,17 @@ namespace Dafeiyu
                     {
                         token.ThrowIfCancellationRequested();
                         if (number++ < offset) continue;
-                        if (++emitted > limit || output.Length + line.Length > MaxResultChars - 100) { output.AppendLine("[已截断：请使用 offset/limit 分段读取]"); break; }
+                        if (++emitted > limit || output.Length + line.Length > MaxResultChars - 100) { output.AppendLine(TextResources.Get("agentWorkspace.readFile.outputAppendLine")); break; }
                         output.Append(number).Append(": ").AppendLine(line);
                     }
                 }
-                return output.Length == 0 ? "文件为空，或 offset 已超过文件末尾。" : Clip(output.ToString());
+                return output.Length == 0 ? TextResources.Get("agentWorkspace.readFile.text") : Clip(output.ToString());
             }
         }
 
         private string Search(string path, string query, string pattern, bool useRegex, CancellationToken token)
         {
-            if (String.IsNullOrEmpty(query) || query.Length > 1000) throw new ArgumentException("query 应为 1 至 1000 个字符的普通文本。");
+            if (String.IsNullOrEmpty(query) || query.Length > 1000) throw new ArgumentException(TextResources.Get("agentWorkspace.search.text"));
             var expression=useRegex?new System.Text.RegularExpressions.Regex(query,System.Text.RegularExpressions.RegexOptions.IgnoreCase|System.Text.RegularExpressions.RegexOptions.CultureInvariant,TimeSpan.FromMilliseconds(100)):null;
             var filter=String.IsNullOrEmpty(pattern)?null:FilePattern(pattern);
             var queue = new Queue<KeyValuePair<string, int>>();
@@ -319,7 +320,7 @@ namespace Dafeiyu
                     foreach (string entry in Directory.EnumerateFileSystemEntries(item.Key))
                     {
                         token.ThrowIfCancellationRequested();
-                        if (++visited > 1500) return Clip(output + "\n[已截断：最多检查 1500 项]");
+                        if (++visited > 1500) return Clip(TextResources.Format("agentWorkspace.search.clip",output));
                         string leaf = Path.GetFileName(entry);
                         if ((RestrictToRoot && leaf.Equals(".git", StringComparison.OrdinalIgnoreCase)) || leaf.Equals(BackupFolder, StringComparison.OrdinalIgnoreCase)) continue;
                         FileAttributes attributes = File.GetAttributes(entry);
@@ -344,13 +345,13 @@ namespace Dafeiyu
                                 token.ThrowIfCancellationRequested(); number++;
                                 if (expression==null ? line.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0 : !expression.IsMatch(line)) continue;
                                 output.Append(Relative(entry)).Append(':').Append(number).Append(": ").AppendLine(line.Length > 400 ? line.Substring(0, 400) + "…" : line);
-                                if (++matches >= 100 || output.Length >= MaxResultChars - 600) return Clip(output + "[已截断：结果达到上限]");
+                                if (++matches >= 100 || output.Length >= MaxResultChars - 600) return Clip(TextResources.Format("agentWorkspace.search.clip.alternativeA",output));
                             }
                         }
                     }
                 }
             }
-            return output.Length == 0 ? "未找到匹配文本（搜索文字文件及 .docx/.xlsx，深度最多 12 层）。" : Clip(output.ToString());
+            return output.Length == 0 ? TextResources.Get("agentWorkspace.search.text.alternativeA") : Clip(output.ToString());
         }
 
         private string ReadText(string path, CancellationToken token)
@@ -363,7 +364,7 @@ namespace Dafeiyu
         {
             int start = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
             string result = Utf8.GetString(bytes, start, bytes.Length - start);
-            if (result.IndexOf('\0') >= 0) throw new ArgumentException("文件包含二进制数据，仅支持 UTF-8 文本。");
+            if (result.IndexOf('\0') >= 0) throw new ArgumentException(TextResources.Get("agentWorkspace.decodeText.text"));
             return result;
         }
 
@@ -381,7 +382,7 @@ namespace Dafeiyu
 
         private static string SizeMessage(long limit)
         {
-            return "文件超过 " + (limit / 1024 / 1024) + " MiB 限制" + (limit == MaxFileBytes ? "，请缩小工作范围。" : "，请拆分文档后重试。");
+            return TextResources.Get("agentWorkspace.sizeMessage.text") + (limit / 1024 / 1024) + TextResources.Get("agentWorkspace.sizeMessage.text.alternativeA") + (limit == MaxFileBytes ? TextResources.Get("agentWorkspace.sizeMessage.text.alternativeB") : TextResources.Get("agentWorkspace.sizeMessage.text.alternativeC"));
         }
 
         private byte[] ReadBytes(string path, CancellationToken token, long maxBytes = MaxFileBytes)
@@ -410,12 +411,12 @@ namespace Dafeiyu
 
         private string WriteFile(string path, string content, CancellationToken token, byte[] exactBytes=null)
         {
-            if (path == Root) throw new ArgumentException("写入路径必须是文件。");
+            if (path == Root) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text"));
             EnsureChangeCapacity(new[]{path});
             if (exactBytes == null && DocumentFormats.IsDocument(path)) exactBytes = DocumentFormats.WriteDocumentBytes(path, content, token);
             byte[] bytes = exactBytes??Utf8.GetBytes(content);
-            if (bytes.Length > MaxFileBytes) throw new ArgumentException("写入内容超过 1 MiB 限制。");
-            if (content != null && content.IndexOf('\0') >= 0) throw new ArgumentException("写入内容必须是 UTF-8 文本。");
+            if (bytes.Length > MaxFileBytes) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeA"));
+            if (content != null && content.IndexOf('\0') >= 0) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeB"));
             using (LockDirectories(Path.GetDirectoryName(path), true))
             {
                 token.ThrowIfCancellationRequested();
@@ -439,9 +440,9 @@ namespace Dafeiyu
                             foreach (string backup in Directory.EnumerateFiles(backupDir))
                             {
                                 token.ThrowIfCancellationRequested();
-                                if (++total >= 200) throw new ArgumentException("备份达到 200 份上限，请手动整理工作目录中的备份。");
+                                if (++total >= 200) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeC"));
                                 size += new FileInfo(backup).Length;
-                                if (size + previous.Length > 64L * MaxFileBytes) throw new ArgumentException("备份达到 64 MiB 上限，请手动整理备份。");
+                                if (size + previous.Length > 64L * MaxFileBytes) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeD"));
                             }
                             backupName = Guid.NewGuid().ToString("N") + ".bak";
                             backupPath = Path.Combine(backupDir, backupName);
@@ -449,8 +450,8 @@ namespace Dafeiyu
                         }
                     }
                 }
-                else if (Directory.Exists(path)) throw new ArgumentException("写入路径是目录。");
-                else if(observed.ContainsKey(path) && observed[path]!=null)throw new ArgumentException("读取过的文件已被删除，请核对后重试。");
+                else if (Directory.Exists(path)) throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeE"));
+                else if(observed.ContainsKey(path) && observed[path]!=null)throw new ArgumentException(TextResources.Get("agentWorkspace.writeFile.text.alternativeF"));
                 string temp = Path.Combine(Path.GetDirectoryName(path), ".deskpet-write-" + Guid.NewGuid().ToString("N") + ".tmp");
                 try
                 {
@@ -467,7 +468,7 @@ namespace Dafeiyu
                 }
                 finally { if (File.Exists(temp)) File.Delete(temp); }
                 RecordChange(path,beforeHash,ContentHash(bytes),backupPath,beforeText,content,token);
-                return "已写入 " + Relative(path) + "（" + bytes.Length + " 字节）" + (backupName == null ? "。" : "；原文件备份：" + Relative(backupPath) + "。");
+                return TextResources.Get("agentWorkspace.writeFile.text.alternativeG") + Relative(path) + "（" + bytes.Length + TextResources.Get("agentWorkspace.writeFile.text.alternativeH") + (backupName == null ? "。" : TextResources.Format("agentWorkspace.writeFile.template",Relative(backupPath)));
             }
         }
 
@@ -501,7 +502,7 @@ namespace Dafeiyu
                 Marshal.WriteInt32(info, lengthOffset, name.Length);
                 Marshal.Copy(name, 0, new IntPtr(info.ToInt64() + nameOffset), name.Length);
                 if (!SetFileInformationByHandle(handle, 3, info, (uint)(nameOffset + name.Length + 2)))
-                    throw new IOException("原子重命名失败。");
+                    throw new IOException(TextResources.Get("agentWorkspace.rename.text"));
             }
             finally { Marshal.FreeHGlobal(info); }
         }
@@ -549,12 +550,12 @@ namespace Dafeiyu
             if (error == 2) throw new FileNotFoundException();
             if (error == 3) throw new DirectoryNotFoundException();
             if (error == 5 || error == 1920) throw new UnauthorizedAccessException();
-            throw new IOException("文件句柄操作失败。");
+            throw new IOException(TextResources.Get("agentWorkspace.open.text"));
         }
         private static FileInfoNative Inspect(SafeFileHandle handle)
         {
             FileInfoNative info;
-            if (!GetFileInformationByHandle(handle, out info)) throw new IOException("无法验证文件句柄。");
+            if (!GetFileInformationByHandle(handle, out info)) throw new IOException(TextResources.Get("agentWorkspace.inspect.text"));
             return info;
         }
         private void VerifyFinalPath(SafeFileHandle handle, string expected)
@@ -596,26 +597,26 @@ namespace Dafeiyu
         private static string GetString(Dictionary<string, object> args, string key, string fallback)
         {
             object value;
-            if (!args.TryGetValue(key, out value)) { if (fallback != null) return fallback; throw new ArgumentException("缺少参数 " + key + "。"); }
+            if (!args.TryGetValue(key, out value)) { if (fallback != null) return fallback; throw new ArgumentException(TextResources.Format("agentWorkspace.getString.template",key)); }
             string text = value as string;
-            if (text == null) throw new ArgumentException(key + " 必须是字符串。");
+            if (text == null) throw new ArgumentException(TextResources.Format("agentWorkspace.getString.template.alternativeA",key));
             return text;
         }
         private static int GetInt(Dictionary<string, object> args, string key, int fallback, int min, int max)
         {
             object value; if (!args.TryGetValue(key, out value)) return fallback;
-            if (!(value is int) || (int)value < min || (int)value > max) throw new ArgumentException(key + " 必须是 " + min + " 至 " + max + " 的整数。");
+            if (!(value is int) || (int)value < min || (int)value > max) throw new ArgumentException(TextResources.Format("agentWorkspace.getInt.template",key,min,max));
             return (int)value;
         }
-        private static string Clip(string value) { return value.Length <= MaxResultChars ? value : value.Substring(0, MaxResultChars - 20) + "\n[结果已截断]"; }
+        private static string Clip(string value) { return value.Length <= MaxResultChars ? value : TextResources.Format("agentWorkspace.clip.template",value.Substring(0, MaxResultChars - 20)); }
         public void Dispose(){if(disposed)return;disposed=true;DisposeProjectTools();if(childWorkers!=null)childWorkers.Dispose();foreach(var transport in mcpTransports){var disposable=transport as IDisposable;if(disposable!=null)disposable.Dispose();}mcpTransports.Clear();if(github!=null){github.Dispose();github=null;}}
         readonly Dictionary<string,IMcpConnectionState> mcpAvailability=new Dictionary<string,IMcpConnectionState>();
-        private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);var state=transport as IMcpConnectionState;if(state!=null)mcpAvailability[definition.Name]=state;}}catch(Exception e){throw new ApiException("MCP 工具注册失败："+e.Message);}}}
+        private void RegisterMcpTools(){if(kernelTools==null)return;dynamicTools.RemoveAll(d=>d.Name.StartsWith("mcp_",StringComparison.Ordinal));foreach(var transport in mcpTransports){try{foreach(var definition in new McpToolAdapter(transport).Register(kernelTools)){bool exists=false;foreach(var current in dynamicTools)if(current.Name==definition.Name){exists=true;break;}if(!exists)dynamicTools.Add(definition);var state=transport as IMcpConnectionState;if(state!=null)mcpAvailability[definition.Name]=state;}}catch(Exception e){throw new ApiException(TextResources.Format("agentWorkspace.registerMcpTools.template",e.Message));}}}
         private void BuildSchemas()
         {
             object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
-        bool RuntimeToolAvailable(string name){if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        bool RuntimeToolAvailable(string name){if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
         public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }

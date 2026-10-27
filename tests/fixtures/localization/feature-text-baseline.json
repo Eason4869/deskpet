@@ -1,0 +1,1151 @@
+{
+  "schemaVersion": 1,
+  "resources": [
+    {
+      "key": "cache.clean",
+      "expected": "清理",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.cleaning",
+      "expected": "正在清理…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.downloadCategory",
+      "expected": "遗留下载",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.downloads",
+      "expected": "遗留下载：{0:N0} 字节",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "cache.failed",
+      "expected": "操作未能完成，请重新扫描后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.packVersionCategory",
+      "expected": "角色包历史副本",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.preserved",
+      "expected": "保留设置、API 密钥、聊天记录、角色、所有图片及附件、关系数据和项目。使用中或状态不明的文件会跳过；仅清理已确认归属且超过七天的缓存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.preservedPackVersions",
+      "expected": "保留聊天、设置、附件、关系和项目资料。角色包保留当前、一个可恢复前版本，以及使用中或状态不明的素材；旧格式副本继续保护。仅清理确认退役超过七天的历史副本和过期缓存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.protected",
+      "expected": "已保护 {0} 项；扫描失败 {1} 项。",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "cache.rescan",
+      "expected": "重新扫描",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.result",
+      "expected": "已释放 {0:N0} 字节；移除 {1} 个目录；跳过 {2} 项；失败 {3} 项。",
+      "format": true,
+      "argument_count": 4
+    },
+    {
+      "key": "cache.scanning",
+      "expected": "正在安全扫描…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.spaceLabel",
+      "expected": "可清理空间",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.title",
+      "expected": "清理缓存",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.total",
+      "expected": "可清理：{0:N0} 字节",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "cache.updateCategory",
+      "expected": "过期更新包",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.updates",
+      "expected": "过期更新包：{0:N0} 字节",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "companionImport.cancelled",
+      "expected": "导入已取消，原有角色仍可使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.progress",
+      "expected": "正在校验图像与动作并安装角色包。大包可能需要一些时间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.space",
+      "expected": "磁盘可用空间不足。请为解压暂存、新安装副本和额外64 MiB预留空间后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companionImport.title",
+      "expected": "导入完整角色包",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.behavior.stumbleHint",
+      "expected": "实际拖动并放下后，有 40% 概率短暂踉跄，触发后冷却 10 秒；仅在当前外观提供此动作时生效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.guide.downloadDetail",
+      "expected": "选择伙伴可查看介绍；点击全量下载／更新后在后台准备素材，可以继续后续引导。已有素材仍可使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.package.metadataConflict",
+      "expected": "已保留安装的素材；远端角色包元数据不一致，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "companions.removeFromList",
+      "expected": "从列表移除",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "composerDraft.storageError",
+      "expected": "草稿保存失败，当前文字仍保留在窗口中。请检查数据目录权限或磁盘空间。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataMaintenance.busy",
+      "expected": "当前有任务或数据维护正在进行。请结束发送、录音、Live 通话及排队任务后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataMaintenance.storageFailure",
+      "expected": "部分数据无法安全读取、保留或移除。未移除的原始资料已保留，请排除问题后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.applyFailed",
+      "expected": "偏好已保存，但部分运行时设置未能应用。请打开对应设置后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.attachments",
+      "expected": "查看保留附件",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.attachmentsEmpty",
+      "expected": "目前没有保留的附件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.attachmentsFailed",
+      "expected": "无法打开保留附件，请检查文件夹访问权限后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.attachmentsNote",
+      "expected": "清理聊天时保留的图片与附件，可在这里取回。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.attachmentsTitle",
+      "expected": "保留附件",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.clearHistory",
+      "expected": "清空全部聊天记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.clearNote",
+      "expected": "清除伙伴与项目中的聊天及会话上下文。执行前会再次确认。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.close",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.failed",
+      "expected": "操作未能完成，请检查存储访问权限后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.historyComplete",
+      "expected": "聊天记录已清空，共移除 {0} 个存储文件。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "dataManagement.historyNote",
+      "expected": "在本机加密保存。关闭保存后，已有记录仍会保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.historyPartial",
+      "expected": "聊天记录未完全清空。已移除 {0} 个文件，{1} 个文件或存储操作未能完成；相关数据已保留。请解决存储问题后重试。",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "dataManagement.historyScope",
+      "expected": "清空所有伙伴和项目的聊天、模型会话上下文及已完成任务的回放上下文。保留未发送草稿及其附件、图片和保留的附件、模型配置与密钥、人设与语音、关系、项目设置、工作文件及明确保存的项目资料。此操作无法撤销。请先完成待处理任务。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.historyTitle",
+      "expected": "聊天记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.intro",
+      "expected": "管理保存在本机的聊天记录、偏好与附件。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.localDirectory",
+      "expected": "本地数据目录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.pendingSaveFailed",
+      "expected": "最近的位置或设置更改尚未保存，待写入更改仍保留。请检查存储权限后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.preferenceNote",
+      "expected": "恢复外观与交互等偏好，保留模型配置、密钥与个人资料。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.preferenceScope",
+      "expected": "恢复显示主题、桌宠大小、音量、行为与问候、免打扰、全屏隐藏、鼠标穿透、位置锁定、聊天保存与显示、图片任务并发数、图片动效、图库布局及快捷键的默认值。保留语言、模型服务与密钥、人设与语音、图片、聊天、关系及关系设置、项目与保存的资料、更新设置和引导进度。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.preferenceTitle",
+      "expected": "默认偏好",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.processing",
+      "expected": "正在处理，请保持此窗口打开。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.resetComplete",
+      "expected": "默认偏好已保存并应用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.resetFailed",
+      "expected": "偏好未能保存，原有偏好保持不变。请检查存储权限和可用空间后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.restorePreferences",
+      "expected": "恢复默认偏好",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.retained",
+      "expected": "清空聊天会保留草稿、图片、关系和明确保存的项目资料。聊天中保留的附件在重启后仍可从此处取回。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.title",
+      "expected": "数据管理",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.tools",
+      "expected": "应用工具",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dataManagement.toolsNote",
+      "expected": "网络加速、下载进度、配置向导与关于。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.albumTitle",
+      "expected": "节日纪念",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.christmasMessage",
+      "expected": "炉火与礼物，暖暖地陪你过冬。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.christmasTitle",
+      "expected": "圣诞节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.dragonBoatMessage",
+      "expected": "粽叶飘香，愿你一路顺风。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.dragonBoatTitle",
+      "expected": "端午节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.empty",
+      "expected": "尚未留下节日纪念。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.halloweenMessage",
+      "expected": "这一夜，灯光温柔，和你一起把平凡变成了奇妙。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.historyMessage",
+      "expected": "和你一起度过的节日，已经成为值得珍藏的回忆。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.historyTitle",
+      "expected": "相伴纪念卡",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.lanternMessage",
+      "expected": "一盏花灯，留住今夜的团圆。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.lanternTitle",
+      "expected": "元宵节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.locked",
+      "expected": "未获得 · 在节日当天相见，留下这一年的纪念。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.midAutumnMessage",
+      "expected": "月光与桂香，陪你共度团圆夜。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.midAutumnTitle",
+      "expected": "中秋节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.nationalDayMessage",
+      "expected": "五星红旗迎风，与你同庆祖国华诞。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.nationalDayTitle",
+      "expected": "国庆节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.next",
+      "expected": "下一页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.pageNumber",
+      "expected": "{0} / {1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "holidayKeepsake.previous",
+      "expected": "上一页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qingmingMessage",
+      "expected": "柳色与细雨，一同记住春天。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qingmingTitle",
+      "expected": "清明节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qixiMessage",
+      "expected": "鹊桥映星河，今夜与你相逢。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.qixiTitle",
+      "expected": "七夕节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.readError",
+      "expected": "纪念册暂时无法读取，数量未知。原文件已保留。请打开数据目录检查访问权限，或检查应用更新后再试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.relationshipAlbum",
+      "expected": "关系纪念",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.retry",
+      "expected": "重试",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.savedCount",
+      "expected": "已保存 {0} 张",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "holidayKeepsake.sceneError",
+      "expected": "这张纪念卡的场景无法读取。原有记录仍保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.springFestivalMessage",
+      "expected": "灯火照归途，与你共迎新岁。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.springFestivalTitle",
+      "expected": "春节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.unavailable",
+      "expected": "节日场景暂不可用，请检查伙伴资源后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.valentinesDayMessage",
+      "expected": "把心意藏进花束，送给此刻的你。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "holidayKeepsake.valentinesDayTitle",
+      "expected": "情人节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.language.applyContinue",
+      "expected": "应用并继续",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "onboarding.language.liveDetail",
+      "expected": "选择应用的界面语言，点击“应用并继续”立即生效并继续配置引导。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.aiContext",
+      "expected": "当前陪伴关系阶段：{0}。这只描述当前阶段，请勿编造昵称、身世、共同回忆或偏好。保留用户设定的角色和明确偏好。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.card.acquaintanceDay",
+      "expected": "相识第 {0} 天",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.card.failed",
+      "expected": "无法保存纪念卡，请选择其他位置后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.firstDay",
+      "expected": "相识的第一天",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.footer",
+      "expected": "珍藏一起走过的日子",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.halloweenTitle",
+      "expected": "万圣节",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryBestFriend",
+      "expected": "一路相伴至此，把这一刻留给未来的我们。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryClose",
+      "expected": "相伴的日常，让我们又靠近了一点。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryFamiliar",
+      "expected": "从陌生到熟悉，日常的陪伴开始有了分量。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryFirstMeeting",
+      "expected": "把初次见面的这一天，留作我们故事的开篇。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryHeartfelt",
+      "expected": "有些默契，藏在一次次平凡的相伴里。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.memoryTrusted",
+      "expected": "把这份慢慢积累的信赖，认真珍藏。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.pngFilter",
+      "expected": "PNG 图片",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.save",
+      "expected": "保存纪念卡",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.saved",
+      "expected": "纪念卡已保存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.card.title",
+      "expected": "相伴纪念卡",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.feedback.dismiss",
+      "expected": "关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.feedback.gain",
+      "expected": "好感度 +{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.home.achievement",
+      "expected": "{0} · {1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "relationship.home.acquaintanceDays",
+      "expected": "相识天数：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.home.acquaintanceDaysLabel",
+      "expected": "已经认识",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.activeDays",
+      "expected": "实际相伴活跃天数：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.home.activeDaysLabel",
+      "expected": "有效相处",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.aiContext",
+      "expected": "在 AI 上下文中使用关系阶段",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.cards",
+      "expected": "已解锁的欢迎语与纪念卡",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.dailyLimit",
+      "expected": "今日已达 20 点上限，明天可继续积累。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.daysValue",
+      "expected": "{0} 天",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.home.empty",
+      "expected": "从一声你好开始，按自己的节奏相伴。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.emptyCards",
+      "expected": "初次相遇后，这里会留下第一份欢迎。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.feedback",
+      "expected": "显示关系反馈",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.folderFailed",
+      "expected": "无法打开数据目录。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.globalScope",
+      "expected": "关系设置对所有伙伴生效，分数分别属于每位伙伴。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.growth",
+      "expected": "启用关系成长",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.growthPaused",
+      "expected": "成长已暂停，已保存的关系会保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.introduction",
+      "expected": "伙伴介绍",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.loading",
+      "expected": "正在读取已保存的关系…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.maximum",
+      "expected": "最亲密的伙伴 · 已达最高阶段",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.next",
+      "expected": "还差 {0} 点，走向{1}",
+      "format": true,
+      "argument_count": 2
+    },
+    {
+      "key": "relationship.home.open",
+      "expected": "查看伙伴主页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.openDataFolder",
+      "expected": "打开关系数据目录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.preview",
+      "expected": "预览纪念卡",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.profile",
+      "expected": "我的伙伴",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.readWarning",
+      "expected": "暂时无法读取已保存的关系，原文件已保留。如有上次保存的记录，仍会显示。请重试读取。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.relation",
+      "expected": "我们的关系",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.restart",
+      "expected": "重启应用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.restartRequired",
+      "expected": "待保存的关系数据无法读取，原文件已保留。请打开数据目录处理文件问题，再重启应用；重试无法修复此待处理队列。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.retry",
+      "expected": "重试",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.ruleConversation",
+      "expected": "完成对话：+2，每日最多 8 点",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.ruleInteraction",
+      "expected": "互动：+1，每日最多 6 点，间隔至少 20 秒",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.ruleLimit",
+      "expected": "每日总上限 20 点，日常相伴，自然成长。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.ruleVisit",
+      "expected": "见面：+2，每日最多 2 点",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.ruleWork",
+      "expected": "成功工作：+4，每日最多 8 点",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.rules",
+      "expected": "成长规则",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.rulesBody",
+      "expected": "阶段累计分数：0 / 80 / 240 / 480 / 760 / 1000。\n到访：+2，每天最多 2 点。\n互动：+1，每天最多 6 点，间隔至少 20 秒。\n完成对话：+2，每天最多 8 点。\n成功完成工作：+4，每天最多 8 点。\n每天合计最多 20 点，无需每日打卡。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.saveCancelled",
+      "expected": "已取消保存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.settings",
+      "expected": "关系设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.settingsWarning",
+      "expected": "设置暂时无法保存，之前的设置已保留。请重试以保存刚才的更改。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.stageCompleted",
+      "expected": "已达成",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.stageCurrent",
+      "expected": "当前阶段",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.stageLocked",
+      "expected": "未解锁",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.stageMessage",
+      "expected": "这一阶段的留言",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.timeline",
+      "expected": "相伴历程",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.title",
+      "expected": "伙伴主页",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.home.today",
+      "expected": "今日获得：{0} / 20",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "relationship.home.todayLabel",
+      "expected": "今日获得",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.bestFriend",
+      "expected": "和你在一起，总是很开心。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.close",
+      "expected": "真有意思！",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.familiar",
+      "expected": "见到你真开心！",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.firstMeeting",
+      "expected": "你好呀！",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.heartfelt",
+      "expected": "很喜欢和你一起的时光。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.interaction.trusted",
+      "expected": "谢谢你陪着我。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.packInvalid",
+      "expected": "陪伴内容扩展格式无效。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.saveWarning",
+      "expected": "陪伴进度暂未保存，请重试以保存待处理的进度。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.bestFriend",
+      "expected": "挚友",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.close",
+      "expected": "亲近",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.familiar",
+      "expected": "渐渐熟悉",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.firstMeeting",
+      "expected": "初次见面",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.heartfelt",
+      "expected": "心意相通",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.stage.trusted",
+      "expected": "信任",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.bestFriend",
+      "expected": "又能一起度过一天了。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.close",
+      "expected": "又见到你，真好。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.familiar",
+      "expected": "欢迎回来。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.firstMeeting",
+      "expected": "初次见面，很高兴认识你。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.heartfelt",
+      "expected": "有你相伴，真好。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "relationship.welcome.trusted",
+      "expected": "你来了，真开心。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "settingsSearch.clearHistoryAlias",
+      "expected": "清空聊天记录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "settingsSearch.noResults",
+      "expected": "未找到匹配的设置或功能",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "settingsSearch.resetAlias",
+      "expected": "恢复默认设置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.clear",
+      "expected": "清除",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.help",
+      "expected": "点击快捷键框后直接按键识别，保存后生效；清除可停用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.prompt",
+      "expected": "请直接按下组合键，然后点击保存。Esc 取消。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.record",
+      "expected": "点击录制快捷键",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "shortcutCapture.title",
+      "expected": "录制快捷键",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.closeCanceled",
+      "expected": "关闭被取消或设置发生变化，桌面伙伴仍在运行，卸载已取消。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.handoffFailed",
+      "expected": "卸载未能完成。请查看卸载日志后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.portable",
+      "expected": "此副本没有匹配的安装注册信息，无法自动卸载。请关闭应用后手动移除程序文件，并保留 data 文件夹。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.prepareFailed",
+      "expected": "卸载准备失败，桌面伙伴仍在运行。请处理待保存的错误后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.scope",
+      "expected": "关闭桌面伙伴并卸载应用？设置、API 密钥、聊天、关系和已保存的纪念物会保留在 data 文件夹中。取消后桌面伙伴继续运行。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "uninstall.title",
+      "expected": "卸载",
+      "format": false,
+      "argument_count": 0
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ namespace Dafeiyu.Tests
         static string root;static int passed,failed;
         static readonly BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
         static void Check(bool ok,string reason){if(!ok)throw new Exception(reason);}
-        static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e.Message);}}
+        static void Run(string name,Action action){try{action();passed++;Console.WriteLine("PASS "+name);}catch(Exception e){failed++;Console.WriteLine("FAIL "+name+": "+e);}}
         static PetSettings Config(){var s=new PetSettings{AgentEnabled=false,ReadReplies=false,AutoUpdate=false,GreetingEnabled=false,OnboardingState="completed"};s.Text.BaseUrl="http://127.0.0.1:1";s.Text.Model="fixture";foreach(var key in s.Hotkeys.Keys.ToArray())s.Hotkeys[key]="";return s;}
         static ConversationWorkspace Open(ProjectDefinition p,ConversationDefinition c,bool save=true){return ConversationWorkspace.Create(p,c,root,"pet",()=>new Api(),()=>new Silent(),()=>null,Config,()=>save);}
         static ProjectDefinition Project(string id){string path=Path.Combine(root,id);Directory.CreateDirectory(path);return new ProjectDefinition{Id=id,Name=id,Workspace=path};}
@@ -75,7 +75,7 @@ namespace Dafeiyu.Tests
         static void ProjectSettings(){var pet=new PetWindow(null,Config(),new SettingsStore(Path.Combine(root,"ui","settings.json")),null);try{
             var a=ProjectCatalogStore.CreateProject(pet.Projects,"A",Project("ui-a").Workspace);var b=ProjectCatalogStore.CreateProject(pet.Projects,"B",Project("ui-b").Workspace);b.FullAccess=false;b.PlanMode=true;b.Goal="B goal";
             pet.OpenProjectConversation(a,a.Conversations[0]);var chat=Application.Current.Windows.OfType<ChatWindow>().Single();var composer=typeof(ChatWindow).GetField("composer",hidden).GetValue(chat);composer.GetType().GetMethod("BuildSlashItems",hidden).Invoke(composer,null);
-            foreach(var item in (System.Collections.IEnumerable)composer.GetType().GetField("triggerItems",hidden).GetValue(composer))if((string)item.GetType().GetField("Title").GetValue(item)=="计划模式")((Action)item.GetType().GetField("Action").GetValue(item))();
+            foreach(var item in (System.Collections.IEnumerable)composer.GetType().GetField("triggerItems",hidden).GetValue(composer))if((string)item.GetType().GetProperty("Title").GetValue(item,null)=="计划模式")((Action)item.GetType().GetField("Action").GetValue(item))();
             var w=pet.Workspaces.OpenWorkspaces.Single();var settings=(Func<PetSettings>)typeof(ConversationQueue).GetField("settings",hidden).GetValue(w.Queue);var cfg=settings();Check(cfg.AgentPlanMode,"menu did not enable project plan mode");
             using(var tools=new AgentWorkspace(cfg.AgentWorkspace){ReadOnly=cfg.AgentPlanMode})Check(Call(tools,"write_file",new{path="forbidden.txt",content="x"}).StartsWith("错误：")&&!File.Exists(Path.Combine(cfg.AgentWorkspace,"forbidden.txt")),"plan mode wrote a file");
             Check(pet.MoveConversation(a,b,a.Conversations[0]),"move failed");cfg=settings();Check(cfg.AgentWorkspace==b.Workspace&&!cfg.AgentFullAccess&&cfg.AgentPlanMode&&cfg.AgentGoal=="B goal","moved queue uses old project settings");chat.Close();

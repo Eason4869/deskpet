@@ -29,9 +29,10 @@ internal sealed partial class PetWindow
     private string? rejectedOutfit;
     private bool refreshingHoliday, disposedHoliday, rejectingHoliday;
     private bool sessionInteractive = true;
+    internal bool KeepsakeInteractive=>sessionInteractive&&!owner.IsExiting;
     private ulong lifecycleRevision;
     private int observedTerminalRevision;
-    internal Func<DateTime> HolidayLocalNow { get; set; } = () => DateTime.Now;
+    internal Func<DateTime> HolidayLocalNow { get; set; } = () => HolidayLocalClock.Now;
     internal Func<double>? HolidayMonotonicNow { get; set; }
     internal Func<double>? HolidayHoverRandom { get; set; }
     private double HolidaySeconds => HolidayMonotonicNow?.Invoke() ?? clock.Elapsed.TotalSeconds;
@@ -51,13 +52,15 @@ internal sealed partial class PetWindow
     }
     private void HolidayChanged(object? sender, EventArgs args)
     {
-        if (disposedHoliday || rejectingHoliday) return;
+        // Source replacement publishes its controller/catalog before Pet.SelectSkin.
+        // Ignore callbacks until the sprite and controller share the same source.
+        if (disposedHoliday || rejectingHoliday || !ReferenceEquals(sprite.Skin, owner.Skin)) return;
         if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) { Avalonia.Threading.Dispatcher.UIThread.Post(() => HolidayChanged(sender, args)); return; }
         SynchronizeHolidayAppearance();
     }
     private void HolidayBusinessChanged()
     {
-        if (disposedHoliday) return;
+        if (disposedHoliday || !ReferenceEquals(sprite.Skin, owner.Skin)) return;
         ApplyHolidayBusinessAction();
         if (!HolidaySafe) CancelHoliday();
         RefreshHoliday(true);
@@ -87,7 +90,7 @@ internal sealed partial class PetWindow
         try
         {
             owner.Holidays.Refresh(new HolidayContext {
-                PersonaId = owner.Skin.Id, CharacterId = owner.Skin.BuiltinCharacterId,
+                PersonaId = owner.Skin.Id, CharacterId = owner.Skin.OutfitCharacterId, StateKey = owner.Skin.PickerKey,
                 LocalTime = HolidayLocalNow(), MonotonicSeconds = now, ResourceVersion = ResourceVersion,
                 CanPlayEasterEgg = HolidaySafe && OutfitKey(committedOutfit) == OutfitKey(owner.Holidays.EffectiveOutfit) && committedOutfit != null && rejectedOutfit != OutfitKey(committedOutfit),
                 CanAnimateTransition = HolidaySafe
@@ -98,7 +101,7 @@ internal sealed partial class PetWindow
                 var notice = owner.Holidays.TakeUnlockNotice();
                 if (!string.IsNullOrEmpty(notice))
                 {
-                    var bubble = Ui.Window("特殊服饰", Ui.Text(notice), 350, 150);
+                    var bubble = LocalizedUi.Window(()=>(TextResources.Get("petHoliday.refreshHoliday.window")), Ui.Text(notice), 350, 150);
                     bubble.ShowActivated = false; bubble.ShowInTaskbar = false; bubble.Topmost = owner.Settings.Topmost; bubble.Show();
                     var dismiss = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
                     dismiss.Tick += (_, _) => { dismiss.Stop(); bubble.Close(); }; bubble.Closed += (_, _) => dismiss.Stop(); dismiss.Start();
@@ -211,6 +214,7 @@ internal sealed partial class PetWindow
     }
     private void HolidayFrameRendered()
     {
+        _=owner.ObserveHolidayEncounter(IsPetVisible&&sprite.Clip!=null,HolidayEncounterKind.VisibleBuddy);
         if (!holidayPlayback.Active || holidayPlayback.FirstFrameRendered || sprite.Frame != 0 || committedOutfit == null || sprite.Clip?.File != SpriteAssets.OutfitClip(committedOutfit, holidayPlayback.Ticket.Clip).File) return;
         holidayPlayback.MarkFirstFrameRendered(); owner.Holidays.MarkHoverFirstFrame(holidayPlayback.Ticket);
     }

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "fde04835ffce544c334205d881a232c579ded4df",
+  "catalogs": {
+    "zh_CN": {
+      "keyCount": 4507,
+      "valuesSha256": "8c03dbe3e5b4812f3cac9f00adc09b6e4a0dca30d0efb56ed0024f870b270973"
+    },
+    "zh_TW": {
+      "keyCount": 4507,
+      "valuesSha256": "ded5631bce23419d168ab19a76b94f40502c2659272e240faccb95dd8154a3c2"
+    },
+    "en_US": {
+      "keyCount": 4507,
+      "valuesSha256": "08f3cdea8b1b96a5af65c8d68e5a26279da2cfd419364210125f4473b71bfb1a"
+    },
+    "ja_JP": {
+      "keyCount": 4507,
+      "valuesSha256": "132982e1115492c526b9203883c804b30452ed5a8f66be70792ea5fec4f7dee4"
+    },
+    "ko_KR": {
+      "keyCount": 4507,
+      "valuesSha256": "fe52f350e06e43f2504406d783b56794d66138be432f4ee756c2846bf682edfa"
+    },
+    "fr_FR": {
+      "keyCount": 4507,
+      "valuesSha256": "1886306f67a1cc40e8e6286931ff96c7ad8d5809ae88a4e72ea6c4fb1526c43c"
+    },
+    "de_DE": {
+      "keyCount": 4507,
+      "valuesSha256": "ac32abddc62fbf3fc833316756a9b1e7cb59511b764f5d91ba5c2ae7b1959a25"
+    },
+    "hi_IN": {
+      "keyCount": 4507,
+      "valuesSha256": "356167b91b852a1981b176aff3fa53dd8821d098b1d5a9dc2cecef0b0825242a"
+    },
+    "id_ID": {
+      "keyCount": 4507,
+      "valuesSha256": "d8c30abf7606e379cf9d1ba095fc7f7239d08c95f68d4a51e61630796c23ea0f"
+    },
+    "it_IT": {
+      "keyCount": 4507,
+      "valuesSha256": "d8780b307425845ca3654de7bfbdb8142dd205c0b7c9324b8e4faf222acca653"
+    },
+    "pt_BR": {
+      "keyCount": 4507,
+      "valuesSha256": "7e612ee5e0a45737ccda181aeb08c7eb8a95dcbf4f1f5bd6958823f2ff0bb5c3"
+    },
+    "es_419": {
+      "keyCount": 4507,
+      "valuesSha256": "a1a16316b6a33273d6e3f6b16714ef8478081e72c759ed3f78d32346799b9c9e"
+    },
+    "es_ES": {
+      "keyCount": 4507,
+      "valuesSha256": "3f456ed0e341d8687884875a45d2fc8a6251807af80584550757cf5a08f7abdf"
+    }
+  }
+}

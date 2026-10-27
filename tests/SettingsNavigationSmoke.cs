@@ -93,8 +93,9 @@ namespace Dafeiyu.Tests
                 Check(((TextBox)settings.FindControl("PersonaPrompt")).Text=="保留人格草稿","companion tabs preserve persona draft");prompt.Text=savedPrompt;
                 var appearance=pet.ContextMenu.Items.OfType<MenuItem>().Single(i=>(string)i.Header=="外观");
                 Check(appearance.Items.Count==pet.Catalog.Skins.Count && pet.ContextMenu.Items.OfType<MenuItem>().Any(i=>(string)i.Header=="设置"),"context menu separates quick appearance from detailed settings");
-                var switchTo=appearance.Items.OfType<MenuItem>().First(i=>(string)i.Tag!=pet.Skin.Id);string expected=(string)switchTo.Tag;switchTo.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                Check(pet.Skin.Id==expected,"appearance submenu switches companion directly");
+                var switchTo=appearance.Items.OfType<MenuItem>().First(i=>(string)i.Tag!=pet.Skin.PickerKey);string expected=(string)switchTo.Tag;var expectedSkin=pet.Catalog.Skins.Single(s=>s.PickerKey==expected);switchTo.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var switchDeadline=DateTime.UtcNow.AddSeconds(5);while(pet.Skin.PickerKey!=expected&&DateTime.UtcNow<switchDeadline)Pump();
+                Check(pet.Skin.PickerKey==expected&&pet.Skin.Id==expectedSkin.Id&&pet.Settings.SelectedCompanionKey==expected,"appearance submenu switches companion directly with coherent picker identity");
                 settings.Width=960;settings.Height=790;settings.SelectPage(0);Pump();Capture(settings,Path.Combine(folder,"companion-normal.png"));
                 Console.WriteLine("Settings navigation smoke: "+passed+" passed; previews: "+folder);return 0;
             }

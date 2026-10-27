@@ -10,40 +10,40 @@ namespace Dafeiyu
         internal bool TryExecutePermissionCommand(string text)
         {
             string command=(text??"").Trim();if(!command.StartsWith("/permissions",StringComparison.OrdinalIgnoreCase)&&!command.StartsWith("/sandbox",StringComparison.OrdinalIgnoreCase))return false;
-            if(conversationOnly||!WorkSettings.AgentEnabled){status.Text="请在工作入口中更改权限。";return true;}
+            if(conversationOnly||!WorkSettings.AgentEnabled){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status")));return true;}
             string[] parts=command.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries);string head=parts[0].ToLowerInvariant();
             if(head=="/permissions"&&parts.Length==1){OpenPermissions();return true;}
             if(head=="/sandbox"&&parts.Length==1){status.Text=AgentAccessPolicy.Label(WorkSettings);return true;}
-            if(parts.Length!=2){status.Text="使用 /permissions ask|auto|full 或 /sandbox on|off";return true;}
+            if(parts.Length!=2){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeA")));return true;}
             if(head=="/permissions"){
                 if(parts[1]=="ask")SelectPermissions(AgentApprovalMode.Ask,true);
                 else if(parts[1]=="auto")SelectPermissions(AgentApprovalMode.Auto,true);
                 else if(parts[1]=="full")SelectPermissions(AgentApprovalMode.Full,false);
-                else status.Text="使用 /permissions ask|auto|full";
+                else LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeB")));
             }else if(head=="/sandbox"&&(parts[1]=="on"||parts[1]=="off")){
                 var mode=WorkSettings.AgentApprovalMode;if(mode==AgentApprovalMode.Legacy||mode==AgentApprovalMode.Full)mode=AgentApprovalMode.Ask;SelectPermissions(mode,parts[1]=="on");
-            }else status.Text="使用 /sandbox on|off";
+            }else LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.tryExecutePermissionCommand.status.alternativeC")));
             return true;
         }
         void SelectPermissions(AgentApprovalMode mode,bool sandbox)
         {
-            if(session.IsBusy||queue.HasPending){status.Text="请先停止当前任务并处理排队消息，再更改权限。";return;}
+            if(session.IsBusy||queue.HasPending){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.selectPermissions.status")));return;}
             var current=WorkSettings;bool expanding=mode==AgentApprovalMode.Full&&current.AgentApprovalMode!=AgentApprovalMode.Full||current.AgentSandboxEnabled&&!sandbox;
-            if(expanding&&!(mode==AgentApprovalMode.Full?PermissionChangeDialog.ConfirmFullAccess(host):PermissionChangeDialog.Confirm(host,"关闭工作区沙箱？","将以当前 Windows 账户权限访问文件与网络。此设置只影响当前会话，不会自动获得管理员权限。")))return;
-            Try(delegate{pet.SetConversationPermissions(session,mode,sandbox);RefreshMode();status.Text="当前会话："+AgentAccessPolicy.Label(WorkSettings)+"。";});
+            if(expanding&&!(mode==AgentApprovalMode.Full?PermissionChangeDialog.ConfirmFullAccess(host):PermissionChangeDialog.Confirm(host,TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm"),TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm.alternativeA"))))return;
+            Try(delegate{pet.SetConversationPermissions(session,mode,sandbox);RefreshMode();status.Text=TextResources.Format("composerPermissions.selectPermissions.statusAgentAccessPolicy",AgentAccessPolicy.Label(WorkSettings));});
         }
         internal void OpenPermissions()
         {
             if(modePicker==null)return;var cfg=WorkSettings;var menu=ChatUi.Menu();menu.Name="AgentPermissionsMenu";menu.MinWidth=340;
-            var heading=Ui.Text("应如何批准桌宠操作？",13,AgentUi.Muted);heading.Margin=new Thickness(0,2,0,7);menu.Items.Add(new MenuItem{Header=heading,IsEnabled=false});
-            AddPermissionItem(menu,"请求批准","编辑外部文件和使用互联网时始终询问",AgentApprovalMode.Ask,cfg);
-            AddPermissionItem(menu,"帮我批准","自动审核权限请求，不确定时请你批准",AgentApprovalMode.Auto,cfg);
-            AddPermissionItem(menu,"完全访问权限","可访问当前账户可访问的文件与互联网",AgentApprovalMode.Full,cfg);
+            var heading=LocalizedUi.Text(()=>(TextResources.Get("composerPermissions.openPermissions.text")),13,AgentUi.Muted);heading.Margin=new Thickness(0,2,0,7);menu.Items.Add(new MenuItem{Header=heading,IsEnabled=false});
+            AddPermissionItem(menu,()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem")),()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeA")),AgentApprovalMode.Ask,cfg);
+            AddPermissionItem(menu,()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeB")),()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeC")),AgentApprovalMode.Auto,cfg);
+            AddPermissionItem(menu,()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeD")),()=> (TextResources.Get("composerPermissions.openPermissions.addPermissionItem.alternativeE")),AgentApprovalMode.Full,cfg);
             modePicker.ContextMenu=menu;menu.PlacementTarget=modePicker;menu.Placement=PlacementMode.Top;menu.IsOpen=true;
         }
-        void AddPermissionItem(ContextMenu menu,string title,string description,AgentApprovalMode mode,PetSettings cfg)
+        void AddPermissionItem(ContextMenu menu,System.Func<string> title,System.Func<string> description,AgentApprovalMode mode,PetSettings cfg)
         {
-            var color=mode==AgentApprovalMode.Full?Ui.Brush("#F36C21"):AgentUi.Ink;var text=new StackPanel{Margin=new Thickness(0,3,8,3)};text.Children.Add(Ui.Text(title,14,color));text.Children.Add(Ui.Text(description,12,mode==AgentApprovalMode.Full?color:AgentUi.Muted));
+            var color=mode==AgentApprovalMode.Full?Ui.Brush("#F36C21"):AgentUi.Ink;var text=new StackPanel{Margin=new Thickness(0,3,8,3)};text.Children.Add(LocalizedUi.Text(()=> (title()),14,color));text.Children.Add(LocalizedUi.Text(()=> (description()),12,mode==AgentApprovalMode.Full?color:AgentUi.Muted));
             var row=new Grid{Width=300};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(26)});row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(20)});row.Children.Add(PermissionGlyph(mode,color));Grid.SetColumn(text,1);row.Children.Add(text);var check=Ui.Text(AgentAccessPolicy.DisplayMode(cfg)==mode?"✓":"",15,AgentUi.Ink);check.VerticalAlignment=VerticalAlignment.Center;check.HorizontalAlignment=HorizontalAlignment.Right;Grid.SetColumn(check,2);row.Children.Add(check);
             var item=new MenuItem{Name="Permission"+mode,Header=row,Padding=new Thickness(0,2,2,2)};item.Click+=delegate{SelectPermissions(mode,mode!=AgentApprovalMode.Full);};menu.Items.Add(item);
         }
@@ -63,19 +63,19 @@ namespace Dafeiyu
             var detail=Ui.Text(description,14,AgentUi.Muted);detail.TextWrapping=TextWrapping.Wrap;detail.Margin=new Thickness(0,14,0,16);body.Children.Add(detail);
             if(fullAccess){
                 var capabilities=new StackPanel();
-                AddCapability(capabilities,"folder","文件和文件夹","读取、创建、编辑或删除当前账户可访问位置的文件。",false);
-                AddCapability(capabilities,"terminal","终端命令","终端启用后，可运行命令、安装软件及更改当前账户设置。",true);
-                AddCapability(capabilities,"globe","互联网和已连接的应用","访问网站、发送数据，并使用已启用的连接与工具。",true);
+                AddCapability(capabilities,"folder",()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability")),()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeA")),false);
+                AddCapability(capabilities,"terminal",()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeB")),()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeC")),true);
+                AddCapability(capabilities,"globe",()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeD")),()=> (TextResources.Get("composerPermissions.permissionChangeDialog.addCapability.alternativeE")),true);
                 body.Children.Add(new Border{Name="FullAccessCapabilities",Child=capabilities,Background=Ui.Brush("#EEEEF0"),CornerRadius=new CornerRadius(16),Padding=new Thickness(18,6,18,6)});
-                var risk=Ui.Text("这可能带来敏感数据丢失或泄露、提示注入等风险。你可以随时切回其他模式；此设置不会自动获得管理员权限。",13,AgentUi.Muted);risk.Name="FullAccessRiskNotice";risk.TextWrapping=TextWrapping.Wrap;risk.Margin=new Thickness(0,16,0,20);body.Children.Add(risk);
+                var risk=LocalizedUi.Text(()=>(TextResources.Get("composerPermissions.permissionChangeDialog.text")),13,AgentUi.Muted);risk.Name="FullAccessRiskNotice";risk.TextWrapping=TextWrapping.Wrap;risk.Margin=new Thickness(0,16,0,20);body.Children.Add(risk);
             }
-            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var cancel=Ui.Button("取消");cancel.Name="CancelPermissionChange";cancel.IsCancel=true;cancel.IsDefault=true;cancel.MinWidth=82;cancel.Height=38;cancel.Padding=new Thickness(16,0,16,0);cancel.Click+=delegate{DialogResult=false;};actions.Children.Add(cancel);var allow=Ui.Button(fullAccess?"确认开启":"确认更改");allow.Name="ConfirmPermissionChange";allow.MinWidth=110;allow.Height=38;allow.Padding=new Thickness(16,0,16,0);allow.Margin=new Thickness(12,0,0,0);allow.Background=Ui.Brush("#FAE7E6");allow.BorderBrush=Brushes.Transparent;allow.Foreground=Ui.Brush("#D94A40");allow.Click+=delegate{DialogResult=true;};actions.Children.Add(allow);body.Children.Add(actions);DialogUi.Apply(this,new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
+            var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var cancel=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")));cancel.Name="CancelPermissionChange";cancel.IsCancel=true;cancel.IsDefault=true;cancel.MinWidth=82;cancel.Height=38;cancel.Padding=new Thickness(16,0,16,0);cancel.Click+=delegate{DialogResult=false;};actions.Children.Add(cancel);var allow=LocalizedUi.Button(()=>(fullAccess?TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeA"):TextResources.Get("composerPermissions.permissionChangeDialog.text.alternativeB")));allow.Name="ConfirmPermissionChange";allow.MinWidth=110;allow.Height=38;allow.Padding=new Thickness(16,0,16,0);allow.Margin=new Thickness(12,0,0,0);allow.Background=Ui.Brush("#FAE7E6");allow.BorderBrush=Brushes.Transparent;allow.Foreground=Ui.Brush("#D94A40");allow.Click+=delegate{DialogResult=true;};actions.Children.Add(allow);body.Children.Add(actions);DialogUi.Apply(this,new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled});
         }
-        static void AddCapability(StackPanel parent,string icon,string title,string description,bool divider)
+        static void AddCapability(StackPanel parent,string icon,System.Func<string> title,System.Func<string> description,bool divider)
         {
-            var row=new Grid{Margin=new Thickness(0)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(30)});row.ColumnDefinitions.Add(new ColumnDefinition());var glyph=UiIcons.Image(icon,Ui.Brush(icon=="terminal"?"#53565C":"#279FE8"));glyph.Width=glyph.Height=23;glyph.VerticalAlignment=VerticalAlignment.Center;row.Children.Add(glyph);var text=new StackPanel{Margin=new Thickness(12,10,0,10)};var label=Ui.Text(title,14);label.FontWeight=FontWeights.SemiBold;label.LineHeight=20;label.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;text.Children.Add(label);var explanation=Ui.Text(description,12,AgentUi.Muted);explanation.TextWrapping=TextWrapping.Wrap;explanation.LineHeight=18;explanation.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;text.Children.Add(explanation);Grid.SetColumn(text,1);row.Children.Add(text);parent.Children.Add(new Border{Child=row,BorderBrush=Ui.Brush("#DEDFE2"),BorderThickness=new Thickness(0,divider?1:0,0,0)});
+            var row=new Grid{Margin=new Thickness(0)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(30)});row.ColumnDefinitions.Add(new ColumnDefinition());var glyph=UiIcons.Image(icon,Ui.Brush(icon=="terminal"?"#53565C":"#279FE8"));glyph.Width=glyph.Height=23;glyph.VerticalAlignment=VerticalAlignment.Center;row.Children.Add(glyph);var text=new StackPanel{Margin=new Thickness(12,10,0,10)};var label=LocalizedUi.Text(()=> (title()),14);label.FontWeight=FontWeights.SemiBold;label.LineHeight=20;label.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;text.Children.Add(label);var explanation=LocalizedUi.Text(()=> (description()),12,AgentUi.Muted);explanation.TextWrapping=TextWrapping.Wrap;explanation.LineHeight=18;explanation.LineStackingStrategy=LineStackingStrategy.BlockLineHeight;text.Children.Add(explanation);Grid.SetColumn(text,1);row.Children.Add(text);parent.Children.Add(new Border{Child=row,BorderBrush=Ui.Brush("#DEDFE2"),BorderThickness=new Thickness(0,divider?1:0,0,0)});
         }
-        internal static bool ConfirmFullAccess(Window owner){return new PermissionChangeDialog("要开启完全访问权限吗？","桌宠将能够在未经逐次批准的情况下，访问当前账户可访问的文件、互联网和已启用的工具。",true){Owner=owner}.ShowDialog()==true;}
+        internal static bool ConfirmFullAccess(Window owner){return new PermissionChangeDialog(TextResources.Get("composerPermissions.confirmFullAccess.permissionChangeDialog"),TextResources.Get("composerPermissions.confirmFullAccess.permissionChangeDialog.alternativeA"),true){Owner=owner}.ShowDialog()==true;}
         internal static bool Confirm(Window owner,string title,string description){return new PermissionChangeDialog(title,description){Owner=owner}.ShowDialog()==true;}
     }
 }

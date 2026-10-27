@@ -13,8 +13,8 @@ namespace Dafeiyu
         {
             Background=Ui.Brush("#ECEDEF");CornerRadius=new CornerRadius(10);Padding=new Thickness(3);VerticalAlignment=VerticalAlignment.Center;Name=compact?"CompactEntryTabs":"WorkspaceEntryTabs";
             var row=new Grid();row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition());Child=row;
-            chat=Choice("聊天",compact?"CompactChatEntry":"ChatEntry",()=>select(false));work=Choice("工作",compact?"CompactWorkEntry":"WorkEntry",()=>select(true));
-            row.Children.Add(chat);Grid.SetColumn(work,1);row.Children.Add(work);var workBody=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};workBody.Children.Add(Label("工作"));busy=new Border{Name="BackgroundWorkIndicator",Width=5,Height=5,CornerRadius=new CornerRadius(3),Background=Ui.Blue,Margin=new Thickness(6,0,0,0),VerticalAlignment=VerticalAlignment.Center,Visibility=Visibility.Collapsed};workBody.Children.Add(busy);work.Content=workBody;
+            chat=Choice(()=>(TextResources.Get("conversationEntryNavigation.conversationEntryTabs.choice")),compact?"CompactChatEntry":"ChatEntry",()=>select(false));work=Choice(()=>(TextResources.Get("conversationEntryNavigation.conversationEntryTabs.choice.alternativeA")),compact?"CompactWorkEntry":"WorkEntry",()=>select(true));
+            row.Children.Add(chat);Grid.SetColumn(work,1);row.Children.Add(work);var workBody=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};workBody.Children.Add(Label(()=>(TextResources.Get("conversationEntryNavigation.conversationEntryTabs.text"))));busy=new Border{Name="BackgroundWorkIndicator",Width=5,Height=5,CornerRadius=new CornerRadius(3),Background=Ui.Blue,Margin=new Thickness(6,0,0,0),VerticalAlignment=VerticalAlignment.Center,Visibility=Visibility.Collapsed};workBody.Children.Add(busy);work.Content=workBody;
         }
         static TextBlock Label(string title){return new TextBlock{Text=title,FontSize=13,Foreground=AgentUi.Ink,LineHeight=18,LineStackingStrategy=LineStackingStrategy.BlockLineHeight,VerticalAlignment=VerticalAlignment.Center};}
         static Button Choice(string title,string name,Action action)
@@ -23,8 +23,9 @@ namespace Dafeiyu
             var b=AgentUi.Nav(title,name,true);
             b.Content=Label(title);b.Height=30;b.MinHeight=30;b.Padding=new Thickness(14,0,14,0);b.Margin=new Thickness(0);b.HorizontalContentAlignment=HorizontalAlignment.Center;b.VerticalContentAlignment=VerticalAlignment.Center;b.Click+=delegate{action();};return b;
         }
-        internal void Refresh(bool isWork,bool running){chat.Background=isWork?Brushes.Transparent:ThemeManager.Surface;work.Background=isWork?ThemeManager.Surface:Brushes.Transparent;chat.Tag=!isWork;work.Tag=isWork;busy.Visibility=running?Visibility.Visible:Visibility.Collapsed;work.ToolTip=running?"工作任务正在后台运行":"项目与任务";}
-    }
+        internal void Refresh(bool isWork,bool running){chat.Background=isWork?Brushes.Transparent:ThemeManager.Surface;work.Background=isWork?ThemeManager.Surface:Brushes.Transparent;chat.Tag=!isWork;work.Tag=isWork;busy.Visibility=running?Visibility.Visible:Visibility.Collapsed;LocalizedUi.Set(work,"ToolTip",()=>(running?TextResources.Get("conversationEntryNavigation.refresh.workToolTipRunning"):TextResources.Get("conversationEntryNavigation.refresh.workToolTipRunning.alternativeA")));}
+static TextBlock Label(System.Func<string> title){return LocalizedUi.With(Label(title()),"Text",title);}
+        static Button Choice(System.Func<string> title,string name,Action action){return LocalizedUi.With(Choice(title(),name,action),"Content",title);}    }
     public sealed partial class ChatWindow
     {
         readonly ContentControl entryHeader=new ContentControl{Margin=new Thickness(0,0,14,0),VerticalAlignment=VerticalAlignment.Center,VerticalContentAlignment=VerticalAlignment.Center};

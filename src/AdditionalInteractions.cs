@@ -17,8 +17,20 @@ namespace Dafeiyu
         public static readonly string[] Actions = { "lifted", "landing", "feeding", "happy", "sleeping", "special", "special2", "stumble" };
         static string SourceId(SkinDefinition skin){return skin.Embedded||skin.Bundled?skin.BuiltinCharacterId??skin.Id:skin.Id;}
         static string Resource(SkinDefinition skin, string action) { return "Dafeiyu.Companion." + SourceId(skin) + "." + action; }
+        internal static CompanionQuietClip Quiet(SkinDefinition skin,string action,bool original)
+        {return skin!=null && (skin.Embedded||skin.Bundled)?CompanionQuietClips.Find(skin.BuiltinCharacterId??skin.Id,action,original):null;}
+        internal static MotionClip LoadQuiet(CompanionQuietClip spec)
+        {
+            using(var input=Assembly.GetExecutingAssembly().GetManifestResourceStream(spec.ResourceName)){
+                if(input==null)throw new InvalidDataException("Missing controlled quiet resource: "+spec.ResourceName);
+                var image=BitmapDecoder.Create(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
+                return new MotionClip(image,spec.Frames,spec.Duration,spec.Loop,spec.Width,spec.Height,spec.Columns);
+            }
+        }
         public static bool Specification(SkinDefinition skin,string action,bool original,out IllustratedAnimation clip)
         {
+            var quiet=action=="sleeping"?Quiet(skin,action,original):null;
+            if(quiet!=null){clip=new IllustratedAnimation{File=quiet.Path,Columns=quiet.Columns,Frames=quiet.Frames,Fps=quiet.Fps,Loop=quiet.Loop};return true;}
             clip=null;if(skin==null || !skin.Illustrated)return false;
             var manifest=skin.Manifest;
             if(manifest.AlternateAnimations!=null && manifest.AlternateAnimations.TryGetValue(action,out clip)) {
@@ -47,7 +59,7 @@ namespace Dafeiyu
         public static string SpecialName(SkinDefinition skin)
         {
             if(skin.Illustrated && !String.IsNullOrWhiteSpace(skin.Manifest.SpecialAction2))return skin.Manifest.SpecialAction2;
-            switch (skin.BuiltinCharacterId??skin.Id) { case "e-bao": return "比心鼓励"; case "dafeiyu": return "泡泡环游"; case "marfu": return "荧光咒语"; case "xiaobei": return "全息键盘"; default: return "第二招牌"; }
+            switch (skin.BuiltinCharacterId??skin.Id) { case "e-bao": return TextResources.Get("additionalInteractions.specialName.text"); case "dafeiyu": return TextResources.Get("additionalInteractions.specialName.text.alternativeA"); case "marfu": return TextResources.Get("additionalInteractions.specialName.text.alternativeB"); case "xiaobei": return TextResources.Get("additionalInteractions.specialName.text.alternativeC"); default: return TextResources.Get("additionalInteractions.specialName.text.alternativeD"); }
         }
         public MotionClip Get(SkinDefinition skin, string action)
         {
@@ -62,7 +74,9 @@ namespace Dafeiyu
                 return clip;
             }
             IllustratedAnimation specification;
-            if(Specification(skin,name,original,out specification)) {
+            var quiet=Quiet(skin,name,original);
+            if(quiet!=null)clip=LoadQuiet(quiet);
+            else if(Specification(skin,name,original,out specification)) {
                 var image=IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,specification.File),480*specification.Columns,520*((specification.Frames+specification.Columns-1)/specification.Columns));
                 clip=new MotionClip(image,specification.Frames,specification.Frames/specification.Fps,specification.Loop,480,520,specification.Columns);
             }
@@ -70,7 +84,7 @@ namespace Dafeiyu
             else using (Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(Resource(skin, action)))
             {
                 var image = BitmapDecoder.Create(input, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
-                if (image.PixelWidth != 3840 || image.PixelHeight != 520) throw new InvalidDataException("伙伴动作需要 8 列 × 1 行、480 × 520 单帧。");
+                if (image.PixelWidth != 3840 || image.PixelHeight != 520) throw new InvalidDataException(TextResources.Get("additionalInteractions.get.text"));
                 clip = new MotionClip(image, 8, 1.0, action == "lifted" || action == "sleeping", 480, 520, 8);
             }
             // Each clip owns full-size pixels and hit masks. Keep the current
@@ -92,7 +106,7 @@ namespace Dafeiyu
             }
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
             {
-                if (stream == null) throw new InvalidDataException("旧版互动素材缺失：" + skin.Id + " / " + action);
+                if (stream == null) throw new InvalidDataException(TextResources.Format("additionalInteractions.loadOriginal.template",skin.Id,action));
                 var image = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
                 var crop = new CroppedBitmap(image, new Int32Rect(0, top, columns * 480, height));
                 return new MotionClip(crop, count, count / 8.0, action == "lifted" || action == "sleeping", 480, 520, columns);

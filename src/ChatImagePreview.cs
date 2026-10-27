@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -34,23 +34,23 @@ namespace Dafeiyu
         ChatImagePreview(Window window,string title)
         {
             host=window;root=window.Content as Grid;
-            if(root==null)throw new InvalidOperationException("此窗口暂不支持图片预览。");
+            if(root==null)throw new InvalidOperationException(TextResources.Get("chatImagePreview.chatImagePreview.text"));
             var old=window.GetValue(ActiveProperty) as ChatImagePreview;if(old!=null)old.Close();
             previousFocus=Keyboard.FocusedElement;Name="ChatImagePreviewOverlay";Background=Ui.Brush("#56EEF0F3");ClipToBounds=true;Focusable=true;
             KeyboardNavigation.SetTabNavigation(this,KeyboardNavigationMode.Cycle);WindowChrome.SetIsHitTestVisibleInChrome(this,true);
             var layout=new Grid();layout.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});layout.RowDefinitions.Add(new RowDefinition());layout.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             Child=layout;
             var heading=new Grid();heading.ColumnDefinitions.Add(new ColumnDefinition());heading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});heading.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            var label=Ui.InlineText(String.IsNullOrWhiteSpace(title)?"图片预览":title.Replace('\r',' ').Replace('\n',' '),13,Ui.Brush("#252A31"));label.Margin=new Thickness(0,0,12,0);heading.Children.Add(label);
+            var label=Ui.InlineText(String.IsNullOrWhiteSpace(title)?TextResources.Get("chatImagePreview.chatImagePreview.inlineText"):title.Replace('\r',' ').Replace('\n',' '),13,Ui.Brush("#252A31"));label.Margin=new Thickness(0,0,12,0);heading.Children.Add(label);
             var escape=Ui.InlineText("Esc",10,Ui.Brush("#7B8490"));var escapePill=new Border{Child=escape,Background=Ui.Brush("#F1F3F5"),CornerRadius=new CornerRadius(5),Padding=new Thickness(5,3,5,3),Margin=new Thickness(0,0,5,0),VerticalAlignment=VerticalAlignment.Center};Grid.SetColumn(escapePill,1);heading.Children.Add(escapePill);
-            var close=ShellIcons.Button("close","关闭图片预览 · Esc",Close);close.Name="ChatPreviewClose";close.Template=previewButtonTemplate;close.Content=ShellIcons.Image("close",Ui.Brush("#59616D"),18);Grid.SetColumn(close,2);heading.Children.Add(close);
+            var close=ShellIcons.Button("close",()=>(TextResources.Get("chatImagePreview.chatImagePreview.shellIcons")),Close);close.Name="ChatPreviewClose";close.Template=previewButtonTemplate;close.Content=ShellIcons.Image("close",Ui.Brush("#59616D"),18);Grid.SetColumn(close,2);heading.Children.Add(close);
             var header=new Border{Name="ChatPreviewHeading",Child=heading,Background=ThemeManager.Surface,CornerRadius=new CornerRadius(14),BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),Padding=new Thickness(14,4,4,4),HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(16,12,16,8),MaxWidth=520,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=14,ShadowDepth=2,Opacity=.06,Color=Colors.Black}};layout.Children.Add(header);
             var imageLayout=new Grid();imageLayout.RowDefinitions.Add(new RowDefinition());imageLayout.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             image.Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=22,ShadowDepth=4,Opacity=.14,Color=Colors.Black};image.SizeChanged+=delegate{image.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,image.ActualWidth),Math.Max(0,image.ActualHeight)),12,12);};
-            scroll.Content=image;scroll.Margin=new Thickness(20,8,20,4);scroll.HorizontalContentAlignment=HorizontalAlignment.Center;scroll.VerticalContentAlignment=VerticalAlignment.Center;scroll.ToolTip="滚轮缩放，拖动查看图片";imageLayout.Children.Add(scroll);imageLayout.Children.Add(status);
+            scroll.Content=image;scroll.Margin=new Thickness(20,8,20,4);scroll.HorizontalContentAlignment=HorizontalAlignment.Center;scroll.VerticalContentAlignment=VerticalAlignment.Center;LocalizedUi.Set(scroll,"ToolTip",()=>(TextResources.Get("chatImagePreview.chatImagePreview.scrollToolTip")));imageLayout.Children.Add(scroll);imageLayout.Children.Add(status);
             var imageArea=new Border{Name="ChatPreviewImageArea",Background=Brushes.Transparent,Child=imageLayout};Grid.SetRow(imageArea,1);layout.Children.Add(imageArea);
             var tools=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center};imageActions=tools;
-            var minus=Control("−","ChatPreviewZoomOut",()=>ZoomBy(1/1.25));minus.ToolTip="缩小";minus.FontSize=20;tools.Children.Add(minus);tools.Children.Add(percentage);var plus=Control("+","ChatPreviewZoomIn",()=>ZoomBy(1.25));plus.ToolTip="放大";plus.FontSize=20;tools.Children.Add(plus);tools.Children.Add(new Border{Width=1,Height=16,Background=Ui.Brush("#DCE0E5"),Margin=new Thickness(8,0,8,0),VerticalAlignment=VerticalAlignment.Center});tools.Children.Add(Control("适应窗口","ChatPreviewFit",Fit));
+            var minus=Control("−","ChatPreviewZoomOut",()=>ZoomBy(1/1.25));LocalizedUi.Set(minus,"ToolTip",()=>(TextResources.Get("chatImagePreview.chatImagePreview.minusToolTip")));minus.FontSize=20;tools.Children.Add(minus);tools.Children.Add(percentage);var plus=Control("+","ChatPreviewZoomIn",()=>ZoomBy(1.25));LocalizedUi.Set(plus,"ToolTip",()=>(TextResources.Get("chatImagePreview.chatImagePreview.plusToolTip")));plus.FontSize=20;tools.Children.Add(plus);tools.Children.Add(new Border{Width=1,Height=16,Background=Ui.Brush("#DCE0E5"),Margin=new Thickness(8,0,8,0),VerticalAlignment=VerticalAlignment.Center});tools.Children.Add(Control(()=>(TextResources.Get("chatImagePreview.chatImagePreview.control")),"ChatPreviewFit",Fit));
             var toolbar=new Border{Name="ChatPreviewToolbar",Child=tools,Background=ThemeManager.Surface,BorderBrush=Ui.Brush("#E6E8EC"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(21),Padding=new Thickness(4),HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(10,8,10,14),Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=14,ShadowDepth=2,Opacity=.07,Color=Colors.Black}};Grid.SetRow(toolbar,2);layout.Children.Add(toolbar);
             SizeChanged+=delegate{header.MaxWidth=Math.Max(80,Math.Min(520,ActualWidth-32));scroll.Margin=new Thickness(ActualWidth<640?12:24,8,ActualWidth<640?12:24,4);};
             MouseUp+=delegate(object sender,MouseButtonEventArgs e){if(e.ChangedButton==MouseButton.Left&&!IsPreviewControl(e.OriginalSource as DependencyObject)){e.Handled=true;Close();}};
@@ -87,25 +87,25 @@ namespace Dafeiyu
         }
         internal static ChatImagePreview OpenGenerated(Window host,GeneratedImageStore store,GeneratedImage asset,bool showDetails=false,Action<GeneratedImage> regenerate=null)
         {
-            var preview=new ChatImagePreview(host,"生成图片");
+            var preview=new ChatImagePreview(host,TextResources.Get("chatImagePreview.openGenerated.previewChatImagePreview"));
             try{preview.SetGeneratedImage(store.Read(asset.Id));}catch(Exception error){preview.ShowError(error);}
-            preview.imageActions.Children.Add(Control("另存为…","ChatPreviewSaveOriginal",delegate{try{GeneratedImageCard.SaveOriginal(host,store,asset);}catch(Exception error){preview.status.Text=error is IOException||error is UnauthorizedAccessException?"保存失败，请检查文件位置和权限。":"保存未完成，请重试。";}}));
-            preview.imageActions.Children.Add(Control("复制图片","ChatPreviewCopyImage",delegate{try{GeneratedImageCard.CopyOriginal(store,asset);}catch(Exception){preview.status.Text="复制失败，请稍后重试。";}}));
+            preview.imageActions.Children.Add(Control(()=>(TextResources.Get("chatImagePreview.openGenerated.control")),"ChatPreviewSaveOriginal",delegate{try{GeneratedImageCard.SaveOriginal(host,store,asset);}catch(Exception error){LocalizedUi.Set(preview.status,"Text",()=>(error is IOException||error is UnauthorizedAccessException?TextResources.Get("chatImagePreview.openGenerated.errorIsUnauthorizedAccessException"):TextResources.Get("chatImagePreview.openGenerated.errorIsUnauthorizedAccessException.alternativeA")));}}));
+            preview.imageActions.Children.Add(Control(()=>(TextResources.Get("chatImagePreview.openGenerated.control.alternativeA")),"ChatPreviewCopyImage",delegate{try{GeneratedImageCard.CopyOriginal(store,asset);}catch(Exception){LocalizedUi.Set(preview.status,"Text",()=>(TextResources.Get("chatImagePreview.openGenerated.previewStatus")));}}));
             if(showDetails)preview.ShowGeneratedDetails(store,asset,regenerate);return preview;
         }
         void ShowGeneratedDetails(GeneratedImageStore store,GeneratedImage asset,Action<GeneratedImage> regenerate)
         {
             var layout=(Grid)Child;var area=(Border)layout.Children[1];var visual=area.Child as FrameworkElement;area.Child=null;
             var split=new Grid();split.ColumnDefinitions.Add(new ColumnDefinition());split.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(280)});split.RowDefinitions.Add(new RowDefinition());split.RowDefinitions.Add(new RowDefinition{Height=new GridLength(0)});area.Child=split;split.Children.Add(visual);
-            var fields=new StackPanel();fields.Children.Add(Ui.Text("图片详情",18,Ui.Ink));fields.Children.Add(Ui.Text("提示词",11,Ui.Muted));var prompt=Ui.Field(asset.Prompt??"",true);prompt.Name="GeneratedImageDetailPrompt";prompt.IsReadOnly=true;prompt.MaxHeight=240;fields.Children.Add(prompt);fields.Children.Add(Ui.Text("模型  "+asset.Model+"\n尺寸  "+asset.Width+" × "+asset.Height+"\n生成时间  "+asset.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),12,Ui.Muted));
-            var actions=new WrapPanel{Margin=new Thickness(0,12,0,0)};var folder=Ui.Button("打开所在文件夹");folder.Click+=delegate{try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe","/select,\""+store.PathFor(asset.Id)+"\""){UseShellExecute=true});}catch(Exception){status.Text="无法打开图片目录，请检查原图是否存在。";}};actions.Children.Add(folder);
-            if(regenerate!=null){var again=Ui.Button("再生成一张");again.Name="ChatPreviewRegenerate";again.Click+=delegate{Close();regenerate(asset.Copy());};actions.Children.Add(again);}fields.Children.Add(actions);
+            var fields=new StackPanel();fields.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("chatImagePreview.showGeneratedDetails.text")),18,Ui.Ink));fields.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("chatImagePreview.showGeneratedDetails.text.alternativeA")),11,Ui.Muted));var prompt=Ui.Field(asset.Prompt??"",true);prompt.Name="GeneratedImageDetailPrompt";prompt.IsReadOnly=true;prompt.MaxHeight=240;fields.Children.Add(prompt);fields.Children.Add(Ui.Text(TextResources.Format("chatImagePreview.showGeneratedDetails.template",asset.Model,asset.Width,asset.Height,asset.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")),12,Ui.Muted));
+            var actions=new WrapPanel{Margin=new Thickness(0,12,0,0)};var folder=LocalizedUi.Button(()=>(TextResources.Get("chatImagePreview.showGeneratedDetails.text.alternativeB")));folder.Click+=delegate{try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe","/select,\""+store.PathFor(asset.Id)+"\""){UseShellExecute=true});}catch(Exception){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("chatImagePreview.showGeneratedDetails.status")));}};actions.Children.Add(folder);
+            if(regenerate!=null){var again=LocalizedUi.Button(()=>(TextResources.Get("chatImagePreview.showGeneratedDetails.text.alternativeC")));again.Name="ChatPreviewRegenerate";again.Click+=delegate{Close();regenerate(asset.Copy());};actions.Children.Add(again);}fields.Children.Add(actions);
             var detail=Ui.Scroll(fields);detail.Name="GeneratedImageDetails";detail.Margin=new Thickness(12,8,20,8);split.Children.Add(detail);
             Action adapt=delegate{bool narrow=ActualWidth<800;split.ColumnDefinitions[1].Width=new GridLength(narrow?0:280);split.RowDefinitions[1].Height=narrow?GridLength.Auto:new GridLength(0);Grid.SetColumn(visual,0);Grid.SetRow(visual,0);Grid.SetColumnSpan(visual,narrow?2:1);Grid.SetRowSpan(visual,narrow?1:2);Grid.SetColumn(detail,narrow?0:1);Grid.SetRow(detail,narrow?1:0);Grid.SetColumnSpan(detail,narrow?2:1);Grid.SetRowSpan(detail,narrow?1:2);detail.MaxHeight=narrow?210:Double.PositiveInfinity;};SizeChanged+=delegate{adapt();};adapt();
         }
         internal static ChatImagePreview OpenRemote(Window host,Uri uri,string title)
         {
-            var preview=new ChatImagePreview(host,title);preview.status.Text="正在加载图片…";preview.LoadRemote(uri);return preview;
+            var preview=new ChatImagePreview(host,title);LocalizedUi.Set(preview.status,"Text",()=>(TextResources.Get("chatImagePreview.openRemote.previewStatus")));preview.LoadRemote(uri);return preview;
         }
         async void LoadRemote(Uri uri)
         {
@@ -122,15 +122,15 @@ namespace Dafeiyu
             Dispatcher.BeginInvoke(new Action(delegate
             {
                 if(closed)return;
-                if(failure is OperationCanceledException){status.Text="图片加载已取消或超时";return;}
+                if(failure is OperationCanceledException){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("chatImagePreview.presentRemote.status")));return;}
                 if(failure!=null){ShowError(failure);return;}
                 try{SetImage(bytes);}catch(Exception error){ShowError(error);}
             }));
         }
         internal static byte[] DecodeBase64(string data,int maximum)
         {
-            if(String.IsNullOrEmpty(data)||data.Length>((long)maximum+2)/3*4)throw new InvalidDataException("图片为空或超过大小限制。");
-            byte[] bytes=Convert.FromBase64String(data);if(bytes.Length>maximum)throw new InvalidDataException("图片超过大小限制。");return bytes;
+            if(String.IsNullOrEmpty(data)||data.Length>((long)maximum+2)/3*4)throw new InvalidDataException(TextResources.Get("chatImagePreview.decodeBase64.text"));
+            byte[] bytes=Convert.FromBase64String(data);if(bytes.Length>maximum)throw new InvalidDataException(TextResources.Get("chatImagePreview.decodeBase64.text.alternativeA"));return bytes;
         }
         // Read headers and each body chunk under the same deadline and byte cap.
         // This client has no application API key, cookies or default credentials.
@@ -143,31 +143,31 @@ namespace Dafeiyu
                 timeout.CancelAfter(TimeSpan.FromSeconds(15));client.Timeout=System.Threading.Timeout.InfiniteTimeSpan;
                 for(int redirects=0;redirects<=3;redirects++)
                 {
-                    if(uri==null||!uri.IsAbsoluteUri||(uri.Scheme!="http"&&uri.Scheme!="https")||!String.IsNullOrEmpty(uri.UserInfo))throw new InvalidDataException("只支持无登录信息的 HTTP(S) 图片地址。");
+                    if(uri==null||!uri.IsAbsoluteUri||(uri.Scheme!="http"&&uri.Scheme!="https")||!String.IsNullOrEmpty(uri.UserInfo))throw new InvalidDataException(TextResources.Get("chatImagePreview.readRemoteAsync.text"));
                     using(var response=await client.GetAsync(uri,HttpCompletionOption.ResponseHeadersRead,timeout.Token).ConfigureAwait(false))
                     {
-                        int code=(int)response.StatusCode;if(code>=300&&code<=399){var location=response.Headers.Location;if(location==null||redirects==3)throw new InvalidDataException("图片地址重定向过多或无效。");uri=location.IsAbsoluteUri?location:new Uri(uri,location);continue;}
-                        response.EnsureSuccessStatusCode();long? length=response.Content.Headers.ContentLength;if(length.HasValue&&length.Value>MaximumRemoteBytes)throw new InvalidDataException("图片超过 16 MB，无法预览。");
+                        int code=(int)response.StatusCode;if(code>=300&&code<=399){var location=response.Headers.Location;if(location==null||redirects==3)throw new InvalidDataException(TextResources.Get("chatImagePreview.readRemoteAsync.text.alternativeA"));uri=location.IsAbsoluteUri?location:new Uri(uri,location);continue;}
+                        response.EnsureSuccessStatusCode();long? length=response.Content.Headers.ContentLength;if(length.HasValue&&length.Value>MaximumRemoteBytes)throw new InvalidDataException(TextResources.Get("chatImagePreview.readRemoteAsync.text.alternativeB"));
                         using(timeout.Token.Register(()=>response.Dispose()))
                         try
                         {
                             using(var input=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                             using(var output=new MemoryStream())
-                            {var buffer=new byte[32768];while(true){int count=await input.ReadAsync(buffer,0,buffer.Length,timeout.Token).ConfigureAwait(false);if(count==0)break;if(output.Length+count>MaximumRemoteBytes)throw new InvalidDataException("图片超过 16 MB，无法预览。");output.Write(buffer,0,count);}return output.ToArray();}
+                            {var buffer=new byte[32768];while(true){int count=await input.ReadAsync(buffer,0,buffer.Length,timeout.Token).ConfigureAwait(false);if(count==0)break;if(output.Length+count>MaximumRemoteBytes)throw new InvalidDataException(TextResources.Get("chatImagePreview.readRemoteAsync.text.alternativeB"));output.Write(buffer,0,count);}return output.ToArray();}
                         }
                         catch(Exception){timeout.Token.ThrowIfCancellationRequested();throw;}
                     }
                 }
-                throw new InvalidDataException("图片地址无效。");
+                throw new InvalidDataException(TextResources.Get("chatImagePreview.readRemoteAsync.text.alternativeC"));
             }
         }
         void SetImage(byte[] bytes)
         {
-            int width,height;bitmap=DecodeImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);status.Text=width+" × "+height+(limited?" · 已缩小预览":"");Fit();
+            int width,height;bitmap=DecodeImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);LocalizedUi.Set(status,"Text",()=>(width+" × "+height+(limited?TextResources.Get("chatImagePreview.setImage.statusWidthHeight"):"")));Fit();
         }
         void SetGeneratedImage(byte[] bytes)
         {
-            int width,height;bitmap=DecodeGeneratedImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);status.Text=width+" × "+height+(limited?" · 已缩小预览":"");Fit();
+            int width,height;bitmap=DecodeGeneratedImage(bytes,MaximumDimension,out width,out height,out limited);image.Source=bitmap;Grid.SetRow(status,1);status.FontSize=11;status.Margin=new Thickness(12,0,12,10);LocalizedUi.Set(status,"Text",()=>(width+" × "+height+(limited?TextResources.Get("chatImagePreview.setGeneratedImage.statusWidthHeight"):"")));Fit();
         }
         internal static BitmapSource DecodeImage(byte[] bytes,int maximumDimension,out int width,out int height,out bool limited)
         {return DecodeImageCore(bytes,maximumDimension,MaximumRemoteBytes,out width,out height,out limited);}
@@ -175,10 +175,10 @@ namespace Dafeiyu
         {return DecodeImageCore(bytes,maximumDimension,GeneratedImageStore.MaximumBytes,out width,out height,out limited);}
         static BitmapSource DecodeImageCore(byte[] bytes,int maximumDimension,int maximumBytes,out int width,out int height,out bool limited)
         {
-            if(bytes==null||bytes.Length==0||bytes.Length>maximumBytes)throw new InvalidDataException("图片为空或超过大小限制。");
+            if(bytes==null||bytes.Length==0||bytes.Length>maximumBytes)throw new InvalidDataException(TextResources.Get("chatImagePreview.decodeImageCore.text"));
             using(var metadata=new MemoryStream(bytes,false))
-            {var decoder=BitmapDecoder.Create(metadata,BitmapCreateOptions.DelayCreation,BitmapCacheOption.None);if(decoder.Frames.Count==0)throw new InvalidDataException("图片没有可显示的画面。");width=decoder.Frames[0].PixelWidth;height=decoder.Frames[0].PixelHeight;}
-            if(width<1||height<1)throw new InvalidDataException("图片尺寸无效。");
+            {var decoder=BitmapDecoder.Create(metadata,BitmapCreateOptions.DelayCreation,BitmapCacheOption.None);if(decoder.Frames.Count==0)throw new InvalidDataException(TextResources.Get("chatImagePreview.decodeImageCore.text.alternativeA"));width=decoder.Frames[0].PixelWidth;height=decoder.Frames[0].PixelHeight;}
+            if(width<1||height<1)throw new InvalidDataException(TextResources.Get("chatImagePreview.decodeImageCore.text.alternativeB"));
             double factor=Math.Min(1,Math.Min((double)maximumDimension/Math.Max(width,height),Math.Sqrt(16000000.0/width/height)));limited=factor<1;
             var decoded=new BitmapImage();using(var input=new MemoryStream(bytes,false)){decoded.BeginInit();decoded.CacheOption=BitmapCacheOption.OnLoad;decoded.StreamSource=input;if(limited){decoded.DecodePixelWidth=Math.Max(1,(int)(width*factor));decoded.DecodePixelHeight=Math.Max(1,(int)(height*factor));}decoded.EndInit();decoded.Freeze();}
             return decoded;
@@ -186,7 +186,7 @@ namespace Dafeiyu
         void ShowError(Exception error)
         {
             if(!(error is IOException||error is FormatException||error is NotSupportedException||error is ArgumentException||error is InvalidOperationException||error is HttpRequestException||error is System.Runtime.InteropServices.ExternalException||error is System.Net.WebException))throw error;
-            Grid.SetRow(status,0);status.FontSize=12;status.Margin=new Thickness(20);status.Text="无法预览此图片\n图片无效、不可访问或超过大小限制";image.Source=null;bitmap=null;percentage.Text="";
+            Grid.SetRow(status,0);status.FontSize=12;status.Margin=new Thickness(20);LocalizedUi.Set(status,"Text",()=>(TextResources.Get("chatImagePreview.showError.status")));image.Source=null;bitmap=null;percentage.Text="";
         }
         internal void ZoomBy(double factor){if(bitmap==null)return;zoom=Math.Max(.1,Math.Min(20,zoom*factor));ResizeImage();}
         internal void Fit(){zoom=1;scroll.ScrollToHome();ResizeImage();}
@@ -212,5 +212,5 @@ namespace Dafeiyu
             if(closed)return;closed=true;cancel.Cancel();EndDrag();InputManager.Current.PreProcessInput-=BeforeInput;host.RemoveHandler(Keyboard.PreviewKeyDownEvent,new KeyEventHandler(HostKeyDown));host.Closed-=HostClosed;root.Children.Remove(this);foreach(var entry in backdropEffects)entry.Key.SetCurrentValue(UIElement.EffectProperty,entry.Value);backdropEffects.Clear();if(ReferenceEquals(host.GetValue(ActiveProperty),this))host.ClearValue(ActiveProperty);image.Source=null;bitmap=null;
             var previous=previousFocus as UIElement;if(host.IsVisible&&previous!=null&&previous.IsVisible&&previous.IsEnabled)Keyboard.Focus(previousFocus);
         }
-    }
+static Button Control(System.Func<string> text,string name,Action action){return LocalizedUi.With(Control(text(),name,action),"Content",text);}    }
 }

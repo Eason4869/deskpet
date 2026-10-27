@@ -21,19 +21,19 @@ namespace Dafeiyu
         public double AudioLevel {get{lock(gate){return disposed || buffers.Count==0?0:buffers.Peek().Level*volume/100.0;}}}
         public void Enqueue(byte[] bytes,int sampleRate)
         {
-            if(bytes==null || bytes.Length==0 || bytes.Length%2!=0 || (sampleRate!=16000 && sampleRate!=24000 && sampleRate!=48000)) throw new ApiException("Live 返回了不支持的 PCM 音频格式。");
+            if(bytes==null || bytes.Length==0 || bytes.Length%2!=0 || (sampleRate!=16000 && sampleRate!=24000 && sampleRate!=48000)) throw new ApiException(TextResources.Get("pcmOutput.enqueue.text"));
             lock(gate)
             {
                 if(disposed)return; Collect();
                 if(failure!=null)throw new InvalidOperationException(failure);
-                if((long)bytes.Length+queued>sampleRate*2*MaximumBufferedSeconds) throw new ApiException("Live 回复音频积压过多，请打断当前回复后重新连接。");
+                if((long)bytes.Length+queued>sampleRate*2*MaximumBufferedSeconds) throw new ApiException(TextResources.Get("pcmOutput.enqueue.text.alternativeA"));
                 if(device!=IntPtr.Zero && sampleRate!=rate)
-                { if(buffers.Count>0) throw new ApiException("Live 音频采样率在播放中发生变化，请重连。"); Check(waveOutClose(device)); device=IntPtr.Zero; }
+                { if(buffers.Count>0) throw new ApiException(TextResources.Get("pcmOutput.enqueue.text.alternativeB")); Check(waveOutClose(device)); device=IntPtr.Zero; }
                 if(device==IntPtr.Zero)
                 {
                     var format=new WaveFormat {FormatTag=1,Channels=1,SamplesPerSec=(uint)sampleRate,AvgBytesPerSec=(uint)(sampleRate*2),BlockAlign=2,BitsPerSample=16};
                     uint result=waveOutOpen(out device,UInt32.MaxValue,ref format,ready.SafeWaitHandle.DangerousGetHandle(),IntPtr.Zero,0x50000);
-                    if(result!=0){device=IntPtr.Zero;throw new InvalidOperationException("Live 无法打开默认音频输出设备。");}rate=sampleRate;ApplyVolume();
+                    if(result!=0){device=IntPtr.Zero;throw new InvalidOperationException(TextResources.Get("pcmOutput.enqueue.text.alternativeC"));}rate=sampleRate;ApplyVolume();
                 }
                 if(buffers.Count==0)progress.Restart();
                 // Short headers let completion measure real playback progress even
@@ -60,7 +60,7 @@ namespace Dafeiyu
                     if(stopping)return;
                     if(device!=IntPtr.Zero)Collect();
                     if(buffers.Count>0 && progress.Elapsed.TotalSeconds>=StallSeconds)
-                        stalled=failure="Live 音频输出已连续 10 秒没有播放进展，请检查输出设备后重新连接。";
+                        stalled=failure=TextResources.Get("pcmOutput.drain.failure");
                 }
                 // A failure handler can stop the session and dispose this output;
                 // notify off the playback worker so Dispose never joins itself.
@@ -83,7 +83,7 @@ namespace Dafeiyu
             lock(gate){if(disposed)return;disposed=true;stopping=true;if(device!=IntPtr.Zero)waveOutReset(device);}ready.Set();worker.Join();
             lock(gate){if(device!=IntPtr.Zero){Collect();waveOutClose(device);device=IntPtr.Zero;}while(buffers.Count>0)buffers.Dequeue().Dispose();queued=0;}ready.Dispose();
         }
-        static void Check(uint result){if(result!=0)throw new InvalidOperationException("Live 音频输出设备未能完成播放。");}
+        static void Check(uint result){if(result!=0)throw new InvalidOperationException(TextResources.Get("pcmOutput.check.text"));}
         static readonly uint HeaderSize=(uint)Marshal.SizeOf(typeof(WaveHeader));
         sealed class Buffer : IDisposable
         {

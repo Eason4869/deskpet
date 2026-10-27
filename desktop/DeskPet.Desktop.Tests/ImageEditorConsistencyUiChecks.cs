@@ -19,15 +19,15 @@ internal static class ImageEditorConsistencyUiChecks
         var host = new Window { Width = 570, Height = 920 }; using var text = new ProviderEditor(owner, "text"); using var image = new ImageProviderEditor(owner, host);
         var scroll = new ScrollViewer { Content = image }; host.Content = new Border { Padding = new Thickness(20), Child = scroll }; host.Show(); Render();
         Check(image.Spacing == text.Spacing && image.Spacing == 12, "form uses conversation editor spacing");
-        var textRow = (StackPanel)text.Children[0]; var imageRow = (StackPanel)image.Children[0];
-        Check(imageRow.Orientation == textRow.Orientation && imageRow.Orientation == Orientation.Horizontal && imageRow.Spacing == textRow.Spacing, "provider selector and actions share the same horizontal row");
+        var textRow = (WrapPanel)text.Children[0]; var imageRow = (WrapPanel)image.Children[0];
+        Check(imageRow.Orientation == textRow.Orientation && imageRow.Orientation == Orientation.Horizontal && imageRow.ItemSpacing == textRow.ItemSpacing && imageRow.LineSpacing == textRow.LineSpacing && imageRow.Children.Select(c=>c.Margin).SequenceEqual(textRow.Children.Select(c=>c.Margin)), "provider selector and actions share the same wrapping row spacing");
         Check(((ComboBox)imageRow.Children[0]).MinWidth == ((ComboBox)textRow.Children[0]).MinWidth && imageRow.Children.OfType<Button>().Select(b => b.Content as string).SequenceEqual(textRow.Children.OfType<Button>().Select(b => b.Content as string)), "selector width and add/delete labels match conversation settings");
         Check(((TextBlock)image.Children[1]).Text == ((TextBlock)text.Children[1]).Text && ((TextBlock)image.Children[1]).FontSize == ((TextBlock)text.Children[1]).FontSize, "draft guidance has matching text and typography");
         Check(((ComboBox)image.Children[2]).PlaceholderText == ((ComboBox)text.Children[2]).PlaceholderText, "both editors use the same service preset prompt");
         var labels = image.Children.OfType<StackPanel>().Where(p => p.Children.FirstOrDefault() is TextBlock).Select(p => ((TextBlock)p.Children[0]).Text).ToArray();
         Check(labels.SequenceEqual(new[] { "厂商名称", "服务地址", "API Key（保存在系统密钥保护下）", "协议", "代理地址", "模型 ID（可手填）" }), "common fields follow conversation naming and order");
         Check(image.Children.Last() is Button imageSave && text.Children.Last() is Button textSave && imageSave.Content as string == textSave.Content as string, "save/enable action matches text model footer");
-        Check(image.Children.OfType<StackPanel>().Any(row => row.Children.OfType<CheckBox>().Select(c => c.Content as string).SequenceEqual(new[] { "此厂商使用独立代理", "支持参考图编辑" })), "independent proxy and reference capability share the options row");
+        Check(image.Children.OfType<WrapPanel>().Any(row => row.Children.OfType<CheckBox>().Select(c => c.Content as string).SequenceEqual(new[] { "此厂商使用独立代理", "支持参考图编辑" })), "independent proxy and reference capability share the options row");
         var parameters = image.GetLogicalDescendants().OfType<Expander>().Distinct().Single(e => e.Name == "ImageProviderParameters");
         Check(!parameters.IsExpanded && parameters.Header is TextBlock { Text: "图片生成设置" }, "image specific defaults are grouped and initially collapsed");
         var before = owner.Settings.ImageProviders.Count; var drafts = image.GetLogicalDescendants().OfType<ComboBox>().Distinct().Single(c => c.Name == "ImageProviderList"); var count = drafts.Items.Count;

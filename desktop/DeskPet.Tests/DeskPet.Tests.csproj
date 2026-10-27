@@ -7,6 +7,19 @@
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/ComposerDraftStoreTests.cs;../../tests/SeasonalKeepsakeTests.cs" Link="Regression/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/SeasonalIntegrationTests.cs" Link="Regression/SeasonalIntegrationTests.cs" />
+    <Compile Include="../../tests/CompleteCompanionTests.cs" Link="Regression/CompleteCompanionTests.cs" />
+    <Compile Include="../../tests/RequestLanguageSnapshotTests.cs;../../tests/LiveLanguageTests.cs;../../tests/UiLanguageChangeTests.cs" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/DataManagementTests.cs" Link="Tests/DataManagementTests.cs" />
+    <Compile Include="../../tests/HistoryMaintenanceTests.cs" Link="Tests/HistoryMaintenanceTests.cs" />
+    <Compile Include="../../tests/DataMaintenanceAdmissionTests.cs" Link="Tests/DataMaintenanceAdmissionTests.cs" />
+    <Compile Include="../../tests/CacheMaintenanceTests.cs" Link="Tests/CacheMaintenanceTests.cs" />
+    <Compile Include="../../tests/Relationship*.cs" Exclude="../../tests/RelationshipStageArtTests.cs;../../tests/RelationshipTitleFontTests.cs;../../tests/RelationshipExperienceUiTests.cs" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/SpeechLanguagePolicyTests.cs;../../tests/SystemLanguageTests.cs;../../tests/ReplyLanguagePolicyTests.cs;../../tests/LanguagePackTests.cs;../../tests/AgentJobSessionTests.cs;../../tests/AgentJobToolTests.cs;../../tests/AgentJobIntegrationTests.cs;../../tests/AgentJobSandboxTests.cs;../../tests/AgentJobProcessTests.cs;../../tests/AgentJobManagerTests.cs;../../tests/AgentJobLifecycleTests.cs;../../tests/AgentJobViewStateTests.cs;../../tests/AgentJobLogTests.cs;../../tests/AgentJobStoreTests.cs;../../tests/AgentJobContractTests.cs;../../tests/AgentJobTestSupport.cs" Link="Tests/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../tests/fixtures/localization/text-baseline.json" LogicalName="Dafeiyu.Tests.LocalizationBaseline" />
+    <EmbeddedResource Include="../../tests/fixtures/localization/feature-text-baseline.json" LogicalName="Dafeiyu.Tests.FeatureLocalizationBaseline" />
+    <Compile Include="../../tests/LocalizationTests.cs" Link="Tests/LocalizationTests.cs" />
     <Compile Include="../../tests/OfficialCompanionLegacyTests.cs;../../tests/OfficialCompanionIdentityTests.cs;../../tests/HolidaySourceBindingTests.cs" Link="Tests/%(Filename)%(Extension)" />
     <Compile Include="../../tests/HolidayStateTests.cs;../../tests/HolidayCalendarTests.cs;../../tests/HolidayRuntimeTests.cs;../../tests/HolidayHoverTests.cs;../../tests/HolidayAssetTests.cs;../../tests/HolidayGreetingTests.cs" Link="Regression/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../tests/fixtures/holidays/calendar-golden.json" LogicalName="Dafeiyu.Tests.HolidayGolden" />

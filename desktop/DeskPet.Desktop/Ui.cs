@@ -1,3 +1,4 @@
+using Dafeiyu;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -48,9 +49,12 @@ internal static class Ui
     public static Control Field(string label, Control input) => Column(Text(label), input);
     public static void ReadOnlyMenu(SelectableTextBlock text)
     {
-        var copy = new MenuItem { Header = "复制", InputGesture = new KeyGesture(Key.C, KeyModifiers.Control) }; copy.Click += (_, _) => text.Copy();
-        var all = new MenuItem { Header = "全选", InputGesture = new KeyGesture(Key.A, KeyModifiers.Control) }; all.Click += (_, _) => text.SelectAll();
+        var copy = LocalizedUi.With(new MenuItem { Header = TextResources.Get("common.copy"), InputGesture = new KeyGesture(Key.C, KeyModifiers.Control) },"Header",()=>(TextResources.Get("common.copy"))); copy.Click += (_, _) => text.Copy();
+        var all = LocalizedUi.With(new MenuItem { Header = TextResources.Get("ui.readOnlyMenu.header"), InputGesture = new KeyGesture(Key.A, KeyModifiers.Control) },"Header",()=>(TextResources.Get("ui.readOnlyMenu.header"))); all.Click += (_, _) => text.SelectAll();
         var menu = new ContextMenu { ItemsSource = new object[] { copy, all } };
         menu.Opening += (_, _) => { copy.IsEnabled = text.CanCopy; all.IsEnabled = !string.IsNullOrEmpty(text.Text) || text.Inlines?.Count > 0; }; text.ContextMenu = menu;
     }
-}
+public static TextBlock Text(System.Func<string> value, double size = 14){return LocalizedUi.With(Text(value(),size),"Text",value);}
+        public static Button Button(System.Func<string> label, Action action){return LocalizedUi.With(Button(label(),action),"Content",label);}
+        public static Button AsyncButton(System.Func<string> label, Func<Task> action, Action<Exception> error){return LocalizedUi.With(AsyncButton(label(),action,error),"Content",label);}
+        public static CheckBox Check(System.Func<string> label, bool value, Action<bool> changed){return LocalizedUi.With(Check(label(),value,changed),"Content",label);}}

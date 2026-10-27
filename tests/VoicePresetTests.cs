@@ -100,7 +100,11 @@ namespace Dafeiyu.Tests
             {
                 var cfg=new PetSettings {GreetingEnabled=false,Wander=false,AutoUpdate=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
-                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);pet.Show();pet.ShowSettings();Pump();
+                pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);
+                // This suite exercises saved voice drafts, not the official package updater.
+                // Keep the embedded e-bao source stable while repeatedly switching roles.
+                Assert(pet.Skin.BuiltinCharacterId=="e-bao" && pet.Skin.Embedded,"expected embedded e-bao voice fixture");
+                pet.Skin.FixtureEmbedded=true;pet.Show();pet.ShowSettings();Pump();
                 var settings=SettingsPageFor(pet);
                 foreach(string id in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"})
                 {
@@ -124,8 +128,8 @@ namespace Dafeiyu.Tests
                 {
                     settings.SelectPage(0);Pump();((ComboBox)settings.FindControl("SkinPicker")).SelectedItem=pet.Catalog.Find(id);Pump();Equal(id,pet.Skin.Id);
                     settings.SelectAiSection(2);Pump();var voice=(ComboBox)settings.FindControl("SpeechVoice");Equal("voice-"+id+"-openai",Editable(voice).Text);
-                    ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=1;Pump();Equal("voice-"+id+"-mimo",Editable(voice).Text);Assert(settings.SaveAiConfiguration(),"restored MiMo save failed");
-                    ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=3;Pump();Equal("voice-"+id+"-openai",Editable(voice).Text);Assert(settings.SaveAiConfiguration(),"restored provider save failed");
+                    ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=1;Pump();Equal("voice-"+id+"-mimo",Editable(voice).Text);SaveRestoredVoice(settings,pet,id,"restored MiMo save failed");
+                    ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=3;Pump();Equal("voice-"+id+"-openai",Editable(voice).Text);SaveRestoredVoice(settings,pet,id,"restored provider save failed");
                     settings.SelectAiSection(3);Pump();Equal("voice-"+id+"-live",Editable((ComboBox)settings.FindControl("LiveVoice")).Text);
                 }
                 settings.HostWindow.Close();pet.ShowSettings();Pump();settings=SettingsPageFor(pet);settings.SelectAiSection(2);Pump();Equal("voice-gugugaga-openai",Editable((ComboBox)settings.FindControl("SpeechVoice")).Text);
@@ -188,6 +192,14 @@ namespace Dafeiyu.Tests
         }
         private static IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var value in All<T>(VisualTreeHelper.GetChild(root,i)))yield return value;}
         private static TextBox Editable(ComboBox box){var field=box.Template.FindName("PART_EditableTextBox",box) as TextBox;Assert(box.IsEditable && field!=null && field.Visibility==Visibility.Visible,"visible editable voice part missing");return field;}
+        private static void SaveRestoredVoice(SettingsPage settings,PetWindow pet,string id,string reason)
+        {
+            if(settings.SaveAiConfiguration())return;
+            var message=(TextBlock)settings.FindControl("ConnectionNotice");var preset=(ComboBox)settings.FindControl("SpeechPreset");var voice=(ComboBox)settings.FindControl("SpeechVoice");
+            string notice=pet.Notice,storeWarning=pet.Store.Warning,persisted;
+            try{persisted=pet.Store.Load().VoiceName;}catch(Exception error){persisted="<load failed: "+error.GetType().Name+">";}
+            throw new Exception(reason+" requested="+id+" selected="+pet.Skin.Id+" preset="+preset.SelectedIndex+" voice="+voice.Text+" persisted="+persisted+" notice="+notice+" storeWarning="+storeWarning+" connectionNotice="+message.Text);
+        }
         private static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer {Interval=TimeSpan.FromMilliseconds(120)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
         private static SettingsPage SettingsPageFor(PetWindow pet){return (SettingsPage)typeof(PetWindow).GetField("preferences",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);}
         private static void Capture(FrameworkElement window,string path){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth),(int)Math.Ceiling(window.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(window);using(var stream=File.Create(path)){var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));png.Save(stream);}}

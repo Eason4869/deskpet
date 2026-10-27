@@ -7,15 +7,32 @@ namespace Dafeiyu
 {
     public sealed class ConversationWorkspaceManager : IDisposable
     {
+        public Dafeiyu.Maintenance.DataMaintenanceGate Maintenance {get;private set;}
         readonly object gate=new object();readonly List<ConversationWorkspace> workspaces=new List<ConversationWorkspace>();
         readonly Dictionary<string,Task> closing=new Dictionary<string,Task>(StringComparer.Ordinal);
         readonly string dataRoot,personaId;readonly Func<IConversationApi> apiFactory;readonly Func<IReplySpeech> speechFactory;readonly Func<IAudioRecorder> recorderFactory;readonly Func<PetSettings> settings;readonly Func<bool> saveHistory;bool disposed;
-        public ConversationWorkspaceManager(string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory)
+        public ConversationWorkspaceManager(string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
         {
-            this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
+            Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
+        }
+        ComposerDraftStore composerDrafts;
+        internal void BindDraft(ConversationWorkspace workspace,string role)
+        {
+            if(composerDrafts==null)composerDrafts=new ComposerDraftStore(dataRoot,Maintenance);
+            workspace.DraftOwner=role;
+            workspace.DraftProjectChanged=delegate{if(workspace.IsDraft)BindDraft(workspace,workspace.DraftOwner);};
+            workspace.Session.BindDraft(composerDrafts,ComposerDraftStore.Scope(role,workspace.Definition.Mode,workspace.ProjectId,workspace.Definition.SectionId),saveHistory);
         }
         public int OpenCount {get{lock(gate)return workspaces.Count(w=>!closing.ContainsKey(w.Id));}}
         public event Action StateChanged;
+        AgentJobApplicationService jobServices;
+        public AgentJobApplicationService JobServices
+        {
+            get{lock(gate)return jobServices;}
+            set{lock(gate){if(workspaces.Count>0&&!Object.ReferenceEquals(value,jobServices))throw new InvalidOperationException("workspaces_open");jobServices=value;}}
+        }
+        public RelationshipRuntime Relationships {get;set;}
+        public Func<string> RelationshipCompanion {get;set;}
         public IAgentApprovalProvider ApprovalProvider {get;set;}
         public IAgentQuestionProvider QuestionProvider {get;set;}
         public GeneratedImageStore ImageStore {get;set;}
@@ -28,15 +45,16 @@ namespace Dafeiyu
         internal IList<ConversationWorkspace> AllOwnedWorkspaces {get{lock(gate)return workspaces.ToArray();}}
         public bool Busy {get{lock(gate)return closing.Count>0||workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
-        {
+        {using(Maintenance.EnterActivity()){
             if(project==null||conversation==null)throw new ArgumentNullException("conversation");
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
-                if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException("会话正在保存并关闭，请稍后重试。");
+                if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.createWorkspace.text"));
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
-                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride);
+                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride,Maintenance);
+                workspace.Session.ConfigureRelationships(Relationships,RelationshipCompanion);
                 workspace.Session.ApprovalProvider=ApprovalProvider;
                 workspace.Session.QuestionProvider=QuestionProvider;
                 workspace.Session.ImageStore=ImageStore;
@@ -44,12 +62,13 @@ namespace Dafeiyu
                 workspace.Session.ImageTasks=ImageTasks;
                 workspace.Session.ImageUsage=ImageUsage;
                 workspace.Session.McpConnections=McpConnections;
+                workspace.ConfigureJobServices(jobServices);
                 workspace.Session.StateChanged+=NotifyState;
                 workspace.Queue.Changed+=NotifyState;
                 workspaces.Add(workspace);
                 return workspace;
             }
-        }
+        }}
         public async Task<ConversationWorkspace> CreateWorkspaceAsync(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
         {
             while(true)
@@ -78,7 +97,7 @@ namespace Dafeiyu
             return GetCatalogWorkspaceAsync(catalog,id,null);
         }
         async Task<ConversationWorkspace> GetCatalogWorkspaceAsync(ProjectCatalog catalog,string id,string requiredPersona)
-        {
+        {using(Maintenance.EnterActivity()){
             while(true)
             {
                 Task pending;
@@ -87,7 +106,7 @@ namespace Dafeiyu
                     if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
                     // Re-resolve membership and project after every awaited close handoff.
                     var definition=ProjectCatalogStore.AllConversations(catalog).SingleOrDefault(c=>c.Id==id);
-                    if(definition==null)throw new InvalidOperationException("原会话已不可用，请在图库查看图片。");
+                    if(definition==null)throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.getCatalogWorkspaceAsync.text"));
                     if(!closing.TryGetValue(id,out pending))
                     {
                         var existing=workspaces.SingleOrDefault(w=>w.Id==id);
@@ -97,14 +116,14 @@ namespace Dafeiyu
                         if(requiredPersona!=null)
                         {
                             string directory=ConversationWorkspace.ResolveDataDirectory(dataRoot,id);
-                            if(!new HistoryStore(Path.Combine(directory,"history")).HasSavedHistory(requiredPersona))throw new InvalidOperationException("原会话记录不存在，请在图库查看图片。");
+                            if(!new HistoryStore(Path.Combine(directory,"history")).HasSavedHistory(requiredPersona))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.getCatalogWorkspaceAsync.text.alternativeA"));
                         }
                         return CreateWorkspace(project,definition);
                     }
                 }
                 await pending.ConfigureAwait(false);
             }
-        }
+        }}
         public Task CloseWorkspaceAsync(string id)
         {
             lock(gate)
@@ -113,6 +132,7 @@ namespace Dafeiyu
                 if(closing.TryGetValue(id,out pending))return pending;
                 var workspace=workspaces.SingleOrDefault(w=>w.Id==id);
                 if(workspace==null)return Task.FromResult(0);
+                var admission=Maintenance.EnterActivity();
                 var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 // Publish ownership before invoking any synchronous pre-await close work.
                 closing.Add(id,completion.Task);
@@ -134,7 +154,7 @@ namespace Dafeiyu
                             else if(!workspace.IsDisposed){workspace.Session.StateChanged+=NotifyState;workspace.Queue.Changed+=NotifyState;}
                             if(error==null||!workspace.IsDisposed)closing.Remove(id);
                         }
-                        if(error==null)completion.TrySetResult(true);else completion.TrySetException(error);
+                        admission.Dispose();if(error==null)completion.TrySetResult(true);else completion.TrySetException(error);
                         NotifyState();
                     }
                 });
@@ -150,6 +170,7 @@ namespace Dafeiyu
                 lock(gate){pending=closing.Values.ToArray();var active=workspaces.Where(w=>!closing.ContainsKey(w.Id)).ToArray();sessions=active.Select(w=>w.Session).ToArray();queues=active.Select(w=>w.Queue).ToArray();}
                 await Task.WhenAll(pending.Concat(sessions.Select(session=>session.WaitForIdleAsync()))).ConfigureAwait(false);
                 await Task.WhenAll(sessions.Select(session=>session.FlushHistoryAsync()).Concat(queues.Select(queue=>queue.FlushAsync()))).ConfigureAwait(false);
+                if(composerDrafts!=null)composerDrafts.Flush();
                 if(!Busy)break;
             }
         }
@@ -157,6 +178,7 @@ namespace Dafeiyu
         {
             if(disposed)return;disposed=true;ConversationWorkspace[] snapshot;lock(gate){snapshot=workspaces.Where(w=>!closing.ContainsKey(w.Id)).ToArray();foreach(var workspace in snapshot)workspaces.Remove(workspace);}
             foreach(var workspace in snapshot){workspace.Session.StateChanged-=NotifyState;workspace.Queue.Changed-=NotifyState;workspace.Dispose();}
+            if(composerDrafts!=null)composerDrafts.Dispose();
         }
     }
 }

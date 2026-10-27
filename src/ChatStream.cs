@@ -34,7 +34,7 @@ namespace Dafeiyu
                 {
                     token.ThrowIfCancellationRequested();
                     int read = await stream.ReadAsync(bytes, 0, bytes.Length, token).ConfigureAwait(false);
-                    if(total > maximumBytes - read) throw new ApiException("服务返回的内容过大，请缩短本次请求。");
+                    if(total > maximumBytes - read) throw new ApiException(TextResources.Get("chatStream.readAsync.text"));
                     total += read;
                     int count = decoder.GetChars(bytes, 0, read, chars, 0, read == 0);
                     for(int i = 0; i < count; i++)
@@ -68,7 +68,7 @@ namespace Dafeiyu
                 if(onDelta != null) onDelta(result); token.ThrowIfCancellationRequested(); return result;
             }
             // A stream is committed only by its protocol terminal event, never arbitrary EOF.
-            throw new ApiException("流式回复连接中断，回复尚未完成；可以重试，或在文字服务设置中关闭流式回复。");
+            throw new ApiException(TextResources.Get("chatStream.readAsync.text.alternativeA"));
         }
         private void Character(char value)
         {
@@ -147,17 +147,17 @@ namespace Dafeiyu
         private void Append(string text)
         {
             if(String.IsNullOrEmpty(text)) return;
-            if(reply.Length > MaxReplyCharacters - text.Length) throw new ApiException("模型回复过长，请缩短本次请求。");
+            if(reply.Length > MaxReplyCharacters - text.Length) throw new ApiException(TextResources.Get("chatStream.append.text"));
             reply.Append(text); if(onDelta != null) onDelta(text);
         }
         private void Reasoning(string text)
         {
             if(String.IsNullOrEmpty(text))return;
-            if(reasoningCharacters>MaxReplyCharacters-text.Length)throw new ApiException("模型思考内容过长，请缩短本次请求。");
+            if(reasoningCharacters>MaxReplyCharacters-text.Length)throw new ApiException(TextResources.Get("chatStream.reasoning.text"));
             reasoningCharacters+=text.Length;if(onReasoning!=null)onReasoning(text);
         }
         private string Result() { if(String.IsNullOrWhiteSpace(reply.ToString())) throw InvalidStream(); return reply.ToString().Trim(); }
-        private static ApiException TooLarge() { return new ApiException("流式回复单条事件过大，请缩短本次请求。"); }
-        private static ApiException InvalidStream() { return new ApiException("服务返回了不兼容或失败的流式回复，请检查模型与接口，或在文字服务设置中关闭流式回复后重试。"); }
+        private static ApiException TooLarge() { return new ApiException(TextResources.Get("chatStream.tooLarge.text")); }
+        private static ApiException InvalidStream() { return new ApiException(TextResources.Get("chatStream.invalidStream.text")); }
     }
 }

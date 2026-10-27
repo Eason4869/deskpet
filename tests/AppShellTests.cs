@@ -18,7 +18,53 @@ namespace Dafeiyu.Tests
         static IEnumerable<T> All<T>(DependencyObject root) where T:DependencyObject {if(root==null)yield break;if(root is T)yield return (T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var item in All<T>(VisualTreeHelper.GetChild(root,i)))yield return item;}
         static Button Button(DependencyObject root,string name){return All<Button>(root).Single(b=>b.Name==name);}
         static void Click(Button b){b.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));}
-        static void Save(Window w,string name){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine("work","permissions",name)))png.Save(f);}
+        static string SessionNotice(ChatWindow window){return ((ConversationSession)typeof(ChatWindow).GetField("session",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(window)).LastNotice;}
+        static void Save(FrameworkElement w,string name){w.UpdateLayout();var bmp=new RenderTargetBitmap((int)Math.Ceiling(w.ActualWidth),(int)Math.Ceiling(w.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(w);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine("work","permissions",name)))png.Save(f);}
+        static BitmapSource VisualSnapshot(FrameworkElement view)
+        {
+            return UiControlSnapshot.Capture(view);
+        }
+        static void ChooseLanguage(MenuItem entry,string selected,string pending,string screenshot=null)
+        {
+            Exception failure=null;bool shown=false;
+            var timer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
+            timer.Tick+=delegate{
+                var dialog=app.Windows.OfType<LanguagePickerWindow>().FirstOrDefault(window=>window.IsVisible);if(dialog==null)return;timer.Stop();
+                try{
+                    shown=true;var list=All<ListBox>(dialog).Single(item=>item.Name=="LanguageChoiceList");var items=list.Items.OfType<ListBoxItem>().ToArray();
+                    Check(items.Select(item=>(string)item.Tag).SequenceEqual(UiLanguages.Choices.Select(choice=>choice.Code)),"language dialog lists system and all supported languages in order");
+                    Check((string)((ListBoxItem)list.SelectedItem).Tag==selected,"language dialog selects the saved preference");
+                    Check(dialog.Owner is ChatWindow,"language dialog is owned by the chat window");
+                    if(screenshot!=null){var image=VisualSnapshot(dialog);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(image));using(var output=File.Create(screenshot))png.Save(output);}
+                    list.SelectedItem=items.Single(item=>(string)item.Tag==pending);Click(Button(dialog,"SaveLanguageSelection"));
+                }catch(Exception error){failure=error;dialog.Close();}
+            };timer.Start();try{entry.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));}finally{timer.Stop();}
+            if(failure!=null)throw failure;Check(shown,"avatar language entry opens the real selector");
+        }
+        static async Task RunLanguageFixture(string code)
+        {
+            string root=Path.Combine(Directory.GetCurrentDirectory(),"work","language-ui","wpf",code);Directory.CreateDirectory(root);
+            var cfg=new PetSettings{UiLanguage=code,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,AgentWorkspace=Path.Combine(root,"workspace"),OnboardingState="completed",ShowPredictedMessages=false,ShowProjectSidebar=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+            var store=new SettingsStore(Path.Combine(root,"data","settings.json"));store.Save(cfg);cfg=store.Load();TextResources.ConfigureStartupLanguage(cfg.UiLanguage);
+            pet=new PetWindow(null,cfg,store,null);pet.ShowChat();await Task.Delay(150);var chat=app.Windows.OfType<ChatWindow>().Single(window=>window.IsVisible);chat.Width=1000;chat.Height=780;
+            Check(TextResources.CurrentLanguage==code,"WPF startup uses the saved language "+code);
+            foreach(string mode in new[]{"light","dark"})
+            {
+                ThemeManager.Apply(mode);var avatar=Button(chat,"ShellAvatar");if(avatar.ContextMenu!=null)avatar.ContextMenu.IsOpen=false;Click(avatar);
+                var menu=avatar.ContextMenu;var languages=menu.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileLanguage");
+                Check(!languages.HasItems&&menu.Items.IndexOf(languages)+1==menu.Items.IndexOf(menu.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileSettings")),mode+" language dialog entry is immediately above settings");
+                Check((string)languages.Header==TextResources.Get("menus.language"),mode+" WPF language menu label is translated "+code);
+                var subtitle=All<TextBlock>(menu).Single(item=>item.Name=="ProfileCompanionLabel");
+                Check(subtitle.Text==TextResources.Get("relationship.home.open"),mode+" WPF avatar subtitle is translated "+code);
+                string pending=code=="en_US"?"ja_JP":"en_US";
+                ChooseLanguage(languages,code,pending,Path.Combine(root,"language-dialog-"+mode+".png"));
+                Check(pet.Settings.UiLanguage==pending&&store.Load().UiLanguage==pending&&TextResources.CurrentLanguage==pending,mode+" selection immediately updates the running language");
+                Check(String.IsNullOrEmpty(SessionNotice(chat)),mode+" changing language requires no restart");
+                ChooseLanguage(languages,pending,code);
+                menu.IsOpen=false;
+            }
+            Console.WriteLine("WPF language UI: "+code+" "+checks+" passed");
+        }
         static async Task Run()
         {
             string root=Path.Combine(Directory.GetCurrentDirectory(),"work","permissions","shell-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
@@ -27,6 +73,15 @@ namespace Dafeiyu.Tests
             Check(All<AgentWorkspaceNavigation>(chat).Single().IsVisible,"opening a full conversation defaults to an expanded sidebar even after the previous window hid it");
             Check(chat.WindowStyle==WindowStyle.None,"main window uses client-drawn chrome without a system title bar");
             var rail=All<Border>(chat).Single(b=>b.Name=="AppIconRail");Check(rail.IsVisible&&Button(chat,"ShellHome").IsVisible&&Button(chat,"ShellSettings").IsVisible&&Button(chat,"ShellAvatar").IsVisible,"home settings and avatar share the persistent left icon rail");
+            Click(Button(chat,"ShellAvatar"));await Task.Delay(60);
+            var profile=Button(chat,"ShellAvatar").ContextMenu;
+            var language=profile.Items.OfType<MenuItem>().SingleOrDefault(item=>item.Name=="ProfileLanguage");
+            Check(language!=null&&profile.Items.IndexOf(language)+1==profile.Items.IndexOf(profile.Items.OfType<MenuItem>().Single(item=>item.Name=="ProfileSettings")),"avatar language entry is immediately above settings");
+            Check(!language.HasItems,"language entry opens a scrollable dialog");
+            ChooseLanguage(language,pet.Settings.UiLanguage,"en_US");
+            Check(pet.Settings.UiLanguage=="en_US"&&new SettingsStore(Path.Combine(pet.Store.DirectoryPath,"settings.json")).Load().UiLanguage=="en_US","avatar selection saves English");
+            Check(TextResources.CurrentLanguage=="en_US"&&String.IsNullOrEmpty(SessionNotice(chat)),"changing language requires no restart without mixing the current window language");
+            ChooseLanguage(language,"en_US","zh_CN");profile.IsOpen=false;await app.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.ApplicationIdle);chat.UpdateLayout();
             var frame=All<Border>(chat).Single(b=>b.Name=="AppContentFrame");var clip=frame.Clip as RectangleGeometry;Check(clip!=null&&clip.RadiusX==16&&!clip.FillContains(new Point(1,1))&&!clip.FillContains(new Point(frame.ActualWidth-1,frame.ActualHeight-1)),"page children are clipped at all rounded content-frame corners");
             Check(Button(chat,"ShellUsage").IsVisible&&Button(chat,"ShellMcp").IsVisible,"usage and approved puzzle extension entries are visible in the left rail");var homePath=All<System.Windows.Shapes.Path>(Button(chat,"ShellHome")).Single();Check(homePath.Fill is SolidColorBrush&&((SolidColorBrush)homePath.Fill).Color==Color.FromRgb(28,32,36),"active home icon is a solid black silhouette");
             var text=All<MarkdownEditor>(chat).Single(e=>e.Name=="MessageInput");text.Text="保留主聊天草稿";var sameInput=text;
@@ -56,6 +111,6 @@ namespace Dafeiyu.Tests
             chat.Width=1320;Click(Button(chat,"AppMaximize"));await Task.Delay(180);Check(chat.WindowState==WindowState.Maximized&&rail.IsVisible,"custom maximize keeps the icon rail and page frame visible");var maximizedClip=frame.Clip as RectangleGeometry;Check(maximizedClip!=null&&Math.Abs(maximizedClip.Rect.Width-frame.ActualWidth)<1&&maximizedClip.RadiusX==16,"maximized content uses the resized rounded clip");Click(Button(chat,"AppMaximize"));await Task.Delay(100);Check(chat.WindowState==WindowState.Normal,"custom restore returns to normal window state");Click(Button(chat,"AppMinimize"));await Task.Delay(70);Check(chat.WindowState==WindowState.Minimized,"custom minimize action changes the native window state");pet.ShowChat();await Task.Delay(100);Check(chat.WindowState==WindowState.Normal&&rail.IsVisible,"existing full-chat entry restores the same minimized window");
             Console.WriteLine("App shell tests: "+checks+" passed");
         }
-        [STAThread]public static int Main(){app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run();code=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return code;}
+        [STAThread]public static int Main(string[] args){if(args.Length!=0&&(args.Length!=2||args[0]!="--language-ui"||!UiLanguages.Choices.Any(choice=>choice.Code==args[1])))return 2;app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{if(args.Length==2)await RunLanguageFixture(args[1]);else await Run();code=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var w in app.Windows.OfType<Window>().ToArray())w.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return code;}
     }
 }

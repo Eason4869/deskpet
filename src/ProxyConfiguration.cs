@@ -14,7 +14,7 @@ namespace Dafeiyu
             string value=Normalize(address);if(!value.Contains("://"))value="http://"+value;
             Uri uri;
             if(!Uri.TryCreate(value,UriKind.Absolute,out uri) || uri.Scheme!="http" || String.IsNullOrEmpty(uri.Host) || uri.Port<1 || uri.Port>65535 || uri.UserInfo.Length>0 || uri.Query.Length>0 || uri.Fragment.Length>0 || uri.AbsolutePath!="/" || value.IndexOfAny(new[]{'\r','\n','\t',' '})>=0)
-                throw new InvalidOperationException("请填写 HTTP 代理地址，例如 127.0.0.1:7890 或 http://proxy.example:8080；不要附带账号、路径或密钥。");
+                throw new InvalidOperationException(TextResources.Get("proxyConfiguration.endpoint.text"));
             return uri;
         }
         public static HttpClient CreateHttpClient(string address,bool allowRedirect)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,6 +24,7 @@ namespace Dafeiyu
                 case "mcp":shape="M4 6h5V4a2 2 0 0 1 4 0v2h5v5h2a2 2 0 0 1 0 4h-2v5h-5v-2a2 2 0 0 0-4 0v2H4v-5h2a2 2 0 0 0 0-4H4Z";break;
                 case "pet":shape="M2 12q10-14 20 0-10 14-20 0 M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0";break;
                 case "people":shape="M3 21v-3q0-5 7-5t7 5v3 M14 6a4 4 0 1 1-8 0a4 4 0 1 1 8 0 M18 3q6 3 0 7 M20 14q3 1 3 6";break;
+                case "language":shape="M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0 M3 12h18 M4.2 7.5h15.6 M4.2 16.5h15.6 M12 3C6 8 6 16 12 21 M12 3C18 8 18 16 12 21";break;
                 case "help":shape="M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0 M9.5 8.5C9.5 5.4 14.8 5.4 14.8 8.4C14.8 10.3 12 10.6 12 12.8 M12 16.5v.15";break;
                 case "about":shape="M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0 M12 7v6 M12 16.5v.15";break;
                 case "keys":shape="M4 5h16q2 0 2 2v10q0 2-2 2H4q-2 0-2-2V7q0-2 2-2 M6 9h1 M11 9h1 M16 9h1 M6 13h1 M11 13h1 M16 13h1 M8 16h8";break;
@@ -55,5 +56,6 @@ namespace Dafeiyu
             var b=new Button{Content=Image(icon),Template=buttonTemplate,Width=32,Height=32,MinHeight=0,Padding=new Thickness(0),Margin=new Thickness(2),Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Focusable=true,Cursor=Cursors.Hand,ToolTip=label,FocusVisualStyle=null};
             System.Windows.Automation.AutomationProperties.SetName(b,label);if(click!=null)b.Click+=delegate{click();};return b;
         }
+        internal static Button Button(string icon,Func<string> label,Action click){var button=Button(icon,label(),click);LocalizedUi.Set(button,"ToolTip",label);LocalizedUi.Automation(button,label);return button;}
     }
 }

@@ -31,7 +31,7 @@ namespace Dafeiyu
                     if(pixels||alpha||size<=5||data[p]!=47||(data[p+4]&0xe0)!=0)throw Invalid();
                     width=1+(data[p+1]|((data[p+2]&63)<<8));height=1+((data[p+2]>>6)|(data[p+3]<<2)|((data[p+4]&15)<<10));pixels=true;
                 }
-                else if(kind=="ANIM"||kind=="ANMF")throw new InvalidDataException("暂不支持动画 WebP，请使用静态 WebP、PNG 或 JPEG。");
+                else if(kind=="ANIM"||kind=="ANMF")throw new InvalidDataException(TextResources.Get("webPValidation.validate.text"));
                 else if(!extended)throw Invalid();
                 position=p+size;if((size&1)!=0){if(position>=data.Length||data[position]!=0)throw Invalid();position++;}
             }
@@ -41,6 +41,6 @@ namespace Dafeiyu
         static string Text(byte[] data,int p){return Encoding.ASCII.GetString(data,p,4);}
         static uint Little(byte[] data,int p){return (uint)(data[p]|data[p+1]<<8|data[p+2]<<16|data[p+3]<<24);}
         static int Little24(byte[] data,int p){return data[p]|data[p+1]<<8|data[p+2]<<16;}
-        static InvalidDataException Invalid(){return new InvalidDataException("WebP 容器或压缩画面不完整，请使用有效的静态 WebP、PNG 或 JPEG。");}
+        static InvalidDataException Invalid(){return new InvalidDataException(TextResources.Get("webPValidation.invalid.text"));}
     }
 }

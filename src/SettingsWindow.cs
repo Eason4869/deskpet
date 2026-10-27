@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -11,7 +11,7 @@ namespace Dafeiyu
         public SettingsWindow(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
-            Ui.Window(this,"桌面伙伴 · 设置",960,790);
+            LocalizedUi.Window(this,()=>(TextResources.Get("settingsWindow.settingsWindow.window")),960,790);
             MinWidth=Math.Min(820,Math.Max(320,SystemParameters.WorkArea.Width-36));
             MinHeight=Math.Min(600,Math.Max(320,SystemParameters.WorkArea.Height-36));
             Background=GlassSurface.Background();Icon=Ui.ApplicationIcon();Page=new SettingsPage(companion);Content=Page;

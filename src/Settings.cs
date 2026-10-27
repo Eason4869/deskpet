@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -80,7 +80,7 @@ namespace Dafeiyu
         public static string Name(ConnectionSettings settings)
         {
             string known=NameForBrand(Brand(settings.BaseUrl));if(known.Length>0)return known;
-            Uri uri;return Uri.TryCreate(settings.BaseUrl,UriKind.Absolute,out uri)?(uri.IsLoopback?"本地服务":uri.Host):"自定义服务";
+            Uri uri;return Uri.TryCreate(settings.BaseUrl,UriKind.Absolute,out uri)?(uri.IsLoopback?TextResources.Get("settings.name.text"):uri.Host):TextResources.Get("settings.name.text.alternativeA");
         }
         public static string NameForBrand(string brand)
         {
@@ -90,6 +90,14 @@ namespace Dafeiyu
             }
             return "";
         }
+        // Translate generated labels only; user-entered provider names and persisted IDs stay intact.
+        public static string DisplayName(string name,string brand)
+        {
+            if(name==TextResources.CatalogFor("zh_CN").Get("settings.name.text.alternativeA"))return TextResources.Get("settings.name.text.alternativeA");
+            if(name==NameForBrand(brand))switch(brand){case "doubao":return TextResources.Get("providers.brands.doubao");case "zhipu":return TextResources.Get("providers.brands.zhipu");case "qwen":return TextResources.Get("providers.brands.qwen");}
+            return name;
+        }
+        public static string DisplayName(TextProviderSettings provider){return DisplayName(provider.Name,provider.BrandId);}
         public static string Name(TextProviderSettings provider){string name=NameForBrand(provider.BrandId);return name.Length>0?name:Name(provider.Connection);}
         public static bool AutomaticName(string name,TextProviderSettings provider)
         {int number;bool generated=name.StartsWith("自定义服务 ",StringComparison.Ordinal) && Int32.TryParse(name.Substring(6),out number);return name=="默认服务" || name=="自定义服务" || generated || name==Name(provider);}
@@ -142,7 +150,7 @@ namespace Dafeiyu
         }
         public string DisplayName(string model) {string label;return ModelDisplayNames!=null && model!=null && ModelDisplayNames.TryGetValue(model,out label) && !String.IsNullOrWhiteSpace(label)?label:model ?? "";}
         public TextProviderSettings Copy() { return new TextProviderSettings {Id=Id,Name=Name,BrandId=BrandId,CapabilityEndpoint=CapabilityEndpoint,ServerCapabilities=(ServerCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelCapabilities=(ModelCapabilities??new Dictionary<string,ModelCapabilitySetting>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy()),ModelContextWindows=ModelContextCapacity.Copy(ModelContextWindows),ModelContextOverrides=ModelContextCapacity.Copy(ModelContextOverrides),ModelDisplayNames=ModelDisplayNames==null?new Dictionary<string,string>():new Dictionary<string,string>(ModelDisplayNames),Connection=(Connection ?? new ConnectionSettings()).Copy(),Models=Models==null?new List<string>():new List<string>(Models)}; }
-        public override string ToString() {return Name;}
+        public override string ToString() {return ProviderIdentity.DisplayName(this);}
     }
 
     internal static class AtomicFile
@@ -187,6 +195,7 @@ namespace Dafeiyu
         [DataMember] public bool AgentCommandsEnabled {get;set;}
         [DataMember] public string AgentCommandRecipes {get;set;}
         [DataMember] public int AgentCommandTimeoutSeconds {get;set;}
+        [DataMember] public int AgentBackgroundJobTimeoutSeconds {get;set;}
         [DataMember] public AgentTerminalPolicy AgentTerminalPolicy {get;set;}
         [DataMember] public AgentApprovalMode AgentApprovalMode {get;set;}
         [DataMember] public bool ShowProjectSidebar {get;set;}
@@ -211,6 +220,7 @@ namespace Dafeiyu
         [DataMember] public bool AgentPlanMode { get; set; }
         [DataMember] public string AgentGoal { get; set; }
         [DataMember] public string ThemeMode {get;set;}
+        [DataMember] public string UiLanguage {get;set;}
         [DataMember] public bool QuietMode { get; set; }
         [DataMember] public bool HideOnFullscreen { get; set; }
         [DataMember] public bool ClickThrough { get; set; }
@@ -255,7 +265,7 @@ namespace Dafeiyu
         [DataMember] public bool AutoUpdate { get; set; }
         [DataMember] public long LastUpdateCheckUtcTicks { get; set; }
         [DataMember] public string VoiceName { get; set; }
-        public const string DefaultAgentSystemPrompt="你是一位严谨、清晰的工作助手。根据用户要求完成分析和任务，优先使用实际可用工具核对事实，如实报告已执行的操作与结果。不编造文件修改、命令输出、联网结果或子任务进度。遵守当前项目、文件权限和计划模式；遇到缺少信息时明确说明。回答使用自然的中文，保留必要的技术细节。";
+        public static string DefaultAgentSystemPrompt {get{return TextResources.Get("personaProfiles.defaults.agent");}}
         [DataMember] public string AgentSystemPrompt {get;set;}
         [DataMember] public string SystemPrompt { get; set; }
         [DataMember] public ConnectionSettings Text { get; set; }
@@ -274,13 +284,14 @@ namespace Dafeiyu
         private void Defaults()
         {
             ThemeMode="system";
+            UiLanguage=UiLanguages.Default;
             OnboardingLessonId="";OnboardingCompletedLessons=new List<string>();OnboardingSkippedLessons=new List<string>();OnboardingVerifiedLessons=new List<string>();AgentSystemPrompt=DefaultAgentSystemPrompt;OnboardingState="new";OnboardingStep=0;OnboardingVersion=1;LastOnboardingSeries="";
             SaveChatHistory=true; QuietMode=false; HideOnFullscreen=true; ClickThrough=false; LockPosition=false;
             AgentFullAccess=true;AgentBackupFiles=true;AgentContextTokenLimit=32768;AgentDetailedProcess=false;ShowPredictedMessages=true;PlainTextEditor=false;ShowContextUsage=true;SendOnEnter=true;FollowUpBehavior="queue";
             // Full conversation defaults to work mode; quick chat is always
             // conversation-only and switches its own requests regardless.
             AgentEnabled=true;AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository="";GitHub=new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};
-            AgentPlanMode=false;AgentGoal="";AgentCommandsEnabled=false;AgentCommandRecipes="[]";AgentCommandTimeoutSeconds=120;
+            AgentPlanMode=false;AgentGoal="";AgentCommandsEnabled=false;AgentCommandRecipes="[]";AgentCommandTimeoutSeconds=120;AgentBackgroundJobTimeoutSeconds=1800;
             ShowProjectSidebar=true;AgentApprovalMode=AgentApprovalMode.Auto;AgentSandboxEnabled=true;AgentTerminalPolicy=AgentTerminalPolicy.Disabled;
             LocalShortcuts=ShortcutCatalog.Defaults();
             Hotkeys=new Dictionary<string,string> { {"quick","Ctrl+Alt+Space"},{"hide","Ctrl+Alt+H"},{"quiet","Ctrl+Alt+D"},{"passthrough","Ctrl+Alt+P"} };
@@ -300,11 +311,12 @@ namespace Dafeiyu
             UpdateProxyAddress=ProxyConfiguration.DefaultAddress;
             UpdateMirrorAddress=DefaultUpdateMirror;
             AutoUpdate=true;UpdateChannel=ReleaseInfo.DisplayVersion.Contains("-dev")?UpdateChannel.Preview:UpdateChannel.Stable;
-            SystemPrompt = "你是{pet_name}，一位温和、俏皮的桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
+            SystemPrompt = PersonaProfiles.Generic("{pet_name}");
         }
         public void Normalize()
         {
             ThemeMode=ThemeColors.Normalize(ThemeMode);
+            UiLanguage=UiLanguages.Normalize(UiLanguage);
             ImageGenerationConcurrency=Math.Max(1,Math.Min(4,ImageGenerationConcurrency));
             ImageGalleryLayout=ImageGalleryLayout=="grid"?"grid":"masonry";
             if(String.IsNullOrWhiteSpace(AgentSystemPrompt))AgentSystemPrompt=DefaultAgentSystemPrompt;if(AgentSystemPrompt.Length>16000)AgentSystemPrompt=AgentSystemPrompt.Substring(0,16000);
@@ -316,6 +328,7 @@ namespace Dafeiyu
             if(FollowUpBehavior!="steer")FollowUpBehavior="queue";
             if(String.IsNullOrWhiteSpace(AgentWorkspace))AgentWorkspace=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","agent-workspace");GitHubRepository=(GitHubRepository??"").Trim();GitHub=GitHub??new ConnectionSettings{BaseUrl="https://api.github.com",Protocol="github"};GitHub.Normalize();
             AgentCommandRecipes="[]";AgentCommandsEnabled=false;AgentCommandTimeoutSeconds=Math.Max(1,Math.Min(600,AgentCommandTimeoutSeconds));
+            AgentBackgroundJobTimeoutSeconds=Math.Max(1,Math.Min(28800,AgentBackgroundJobTimeoutSeconds));
             if(AgentContextTokenLimit==0)AgentContextTokenLimit=32768;AgentContextTokenLimit=Math.Max(8192,Math.Min(2000000,AgentContextTokenLimit));
             AgentGoal=(AgentGoal??"").Trim();if(AgentGoal.Length>4000)AgentGoal=AgentGoal.Substring(0,4000);
             // Version 1 inserts the double-click lesson before the old service steps.
@@ -430,7 +443,7 @@ namespace Dafeiyu
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var images=new List<ImageGenerationProvider>();if(ImageProviders!=null)foreach(var provider in ImageProviders)if(provider!=null)images.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
+            return new PetSettings { UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
                 ImageGenerationConcurrency=ImageGenerationConcurrency,ImageGenerationMotionEnabled=ImageGenerationMotionEnabled,ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
@@ -441,6 +454,8 @@ namespace Dafeiyu
     public sealed class SettingsStore
     {
         private readonly string path;
+        readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
+        string committedLanguage;
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
         public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
@@ -460,25 +475,143 @@ namespace Dafeiyu
                         (!String.IsNullOrEmpty(settings.Transcription.EncryptedKey) && settings.Transcription.ApiKey.Length == 0) ||
                         (!String.IsNullOrEmpty(settings.Speech.EncryptedKey) && settings.Speech.ApiKey.Length == 0) ||
                         (!String.IsNullOrEmpty(settings.Live.EncryptedKey) && settings.Live.ApiKey.Length == 0))
-                        Warning = "已保存的密钥无法在当前系统账户下解密，请重新填写。";
-                    foreach(var provider in settings.TextProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的密钥无法在当前系统账户下解密，请重新填写。";
-                    foreach(var provider in settings.ImageProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning="已保存的图片服务密钥无法在当前系统账户下解密，请重新填写。";
+                        Warning = TextResources.Get("settings.load.warning");
+                    foreach(var provider in settings.TextProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning=TextResources.Get("settings.load.warning");
+                    foreach(var provider in settings.ImageProviders)if(!String.IsNullOrEmpty(provider.Connection.EncryptedKey) && provider.Connection.ApiKey.Length==0)Warning=TextResources.Get("settings.load.warning.alternativeA");
                     return settings;
                 }
             }
             catch (Exception e)
             {
                 if (!(e is SerializationException || e is IOException || e is UnauthorizedAccessException || e is ArgumentException)) throw;
-                Warning = "设置文件无法读取，已恢复默认设置。";
+                Warning = TextResources.Get("settings.load.warning.alternativeB");
                 try { File.Copy(path, path + ".invalid-" + DateTime.Now.ToString("yyyyMMddHHmmssfff"), false); }
-                catch (IOException) { Warning += " 原文件未改动。"; }
-                catch (UnauthorizedAccessException) { Warning += " 原文件未改动。"; }
+                catch (IOException) { Warning += TextResources.Get("settings.load.warning.alternativeC"); }
+                catch (UnauthorizedAccessException) { Warning += TextResources.Get("settings.load.warning.alternativeC"); }
                 return new PetSettings();
             }
         }
+        public void SaveUiLanguage(PetSettings settings,string code)
+        {
+            if(settings==null)throw new ArgumentNullException("settings");
+            SaveLanguageSelection(settings,code,false);
+        }
+        internal void SaveLanguageSelection(PetSettings settings,string code,bool guide)
+        {
+            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{
+                var json=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=16*1024*1024,RecursionLimit=128};
+                Dictionary<string,object> values;
+                try{
+                    string raw=File.ReadAllText(path,new UTF8Encoding(false,true));
+                    using(var stream=new MemoryStream(Encoding.UTF8.GetBytes(raw)))
+                        if(new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream)==null)throw new InvalidDataException("Empty settings.");
+                    values=ReadLanguageSettings(raw,json);
+                }catch(FileNotFoundException){values=DefaultLanguageSettings(json);}
+                catch(DirectoryNotFoundException){values=DefaultLanguageSettings(json);}
+                catch(Exception error){if(!(error is SerializationException||error is ArgumentException||error is InvalidOperationException||error is DecoderFallbackException))throw;throw new InvalidDataException("Cannot read existing settings; language was not changed.",error);}
+                string normalized=UiLanguages.Normalize(code);values["UiLanguage"]=json.Serialize(normalized);
+                if(guide){values["OnboardingLessonId"]=json.Serialize("welcome");values["OnboardingStep"]="0";values["OnboardingState"]=json.Serialize("deferred");}
+                Directory.CreateDirectory(DirectoryPath);string temporary=path+".tmp";
+                // Never delete a temporary file owned/locked by another writer on failure.
+                using(var stream=new FileStream(temporary,FileMode.Create,FileAccess.Write,FileShare.None)){
+                    string output="{"+String.Join(",",values.Select(pair=>json.Serialize(pair.Key)+":"+(string)pair.Value))+"}";
+                    var bytes=new UTF8Encoding(false).GetBytes(output);stream.Write(bytes,0,bytes.Length);stream.Flush(true);
+                }
+                AtomicFile.Commit(temporary,path);
+                committedLanguage=normalized;settings.UiLanguage=normalized;
+                if(guide){settings.OnboardingLessonId="welcome";settings.OnboardingStep=0;settings.OnboardingState="deferred";}
+                Warning="";
+            }finally{writes.Release();}
+        }
+        static Dictionary<string,object> DefaultLanguageSettings(System.Web.Script.Serialization.JavaScriptSerializer json)
+        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,new PetSettings());return ReadLanguageSettings(Encoding.UTF8.GetString(stream.ToArray()),json);}}
+        // Settings were validated above. Keep each value's JSON bytes as text rather
+        // than round-tripping unknown future fields through a numeric CLR type.
+        static Dictionary<string,object> ReadLanguageSettings(string raw,System.Web.Script.Serialization.JavaScriptSerializer json)
+        {
+            if(raw.Length>json.MaxJsonLength)throw new InvalidDataException("Settings exceed the language-save limit.");
+            var values=new Dictionary<string,object>();int position=0;
+            Action whitespace=delegate{while(position<raw.Length&&Char.IsWhiteSpace(raw[position]))position++;};
+            whitespace();if(position==raw.Length||raw[position++]!='{')throw new InvalidDataException("Expected a settings object.");
+            while(true){
+                whitespace();if(position<raw.Length&&raw[position]=='}'){position++;break;}
+                int keyStart=position;if(position==raw.Length||raw[position++]!='"')throw new InvalidDataException("Expected a settings key.");
+                bool escaped=false,closed=false;
+                while(position<raw.Length){char c=raw[position++];if(escaped){escaped=false;continue;}if(c=='\\'){escaped=true;continue;}if(c=='"'){closed=true;break;}}
+                if(!closed)throw new InvalidDataException("Unterminated settings key.");
+                string key=json.Deserialize<string>(raw.Substring(keyStart,position-keyStart));
+                whitespace();if(position==raw.Length||raw[position++]!=':')throw new InvalidDataException("Expected a settings value.");whitespace();
+                int start=position,depth=0;bool quoted=false;escaped=false;
+                while(position<raw.Length){
+                    char c=raw[position];
+                    if(quoted){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')quoted=false;}
+                    else if(c=='"')quoted=true;
+                    else if(c=='{'||c=='['){if(++depth>json.RecursionLimit)throw new InvalidDataException("Settings exceed the depth limit.");}
+                    else if(c=='}'||c==']'){if(depth==0)break;depth--;}
+                    else if(c==','&&depth==0)break;
+                    position++;
+                }
+                if(quoted||depth!=0||position==start||values.ContainsKey(key))throw new InvalidDataException("Invalid or duplicate settings member.");
+                values.Add(key,raw.Substring(start,position-start));whitespace();
+                if(position<raw.Length&&raw[position]==','){position++;continue;}
+                if(position<raw.Length&&raw[position]=='}'){position++;break;}
+                throw new InvalidDataException("Unterminated settings object.");
+            }
+            whitespace();if(position!=raw.Length)throw new InvalidDataException("Unexpected settings suffix.");return values;
+        }
         public void Save(PetSettings settings)
         {
-            settings.Normalize(); Directory.CreateDirectory(DirectoryPath);
+            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{settings.Normalize();SaveSnapshot(settings);}finally{writes.Release();}
+        }
+        // Save a detached candidate before publishing preferences. Deliberately
+        // avoid Normalize here: provider migration is outside this operation.
+        public async System.Threading.Tasks.Task RestoreDefaultPreferencesAsync(PetSettings settings,Maintenance.DataMaintenanceGate gate)
+        {
+            if(settings==null)throw new ArgumentNullException("settings");
+            if(gate==null)throw new ArgumentNullException("gate");
+            using(await gate.BeginAsync()){
+                await writes.WaitAsync();
+                try{var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));CopyPreferences(candidate,settings);}
+                finally{writes.Release();}
+            }
+        }
+        // Snapshot on the caller's UI context; only durable I/O runs on a worker.
+        // Position autosaves must not migrate retained provider configuration.
+        public async System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        {
+            await writes.WaitAsync();
+            try{var candidate=Snapshot(settings);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));}
+            finally{writes.Release();}
+        }
+        internal static PetSettings Snapshot(PetSettings settings)
+        {
+            var serializer=new DataContractJsonSerializer(typeof(PetSettings));
+            using(var stream=new MemoryStream()){serializer.WriteObject(stream,settings);stream.Position=0;return (PetSettings)serializer.ReadObject(stream);}
+        }
+        internal static string SnapshotIdentity(PetSettings settings)
+        {using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream,settings);return Convert.ToBase64String(stream.ToArray());}}
+        static void CopyPreferences(PetSettings source,PetSettings target)
+        {
+            target.ThemeMode=source.ThemeMode;target.Scale=source.Scale;target.Volume=source.Volume;
+            target.Topmost=source.Topmost;target.FollowCursor=source.FollowCursor;target.Wander=source.Wander;
+            target.StumbleEnabled=source.StumbleEnabled;target.AutoSleepEnabled=source.AutoSleepEnabled;
+            target.GreetingEnabled=source.GreetingEnabled;target.AiGreetingEnabled=source.AiGreetingEnabled;
+            target.GreetingMinMinutes=source.GreetingMinMinutes;target.GreetingMaxMinutes=source.GreetingMaxMinutes;
+            target.QuietMode=source.QuietMode;target.HideOnFullscreen=source.HideOnFullscreen;
+            target.ClickThrough=source.ClickThrough;target.LockPosition=source.LockPosition;
+            target.SaveChatHistory=source.SaveChatHistory;target.ShowPredictedMessages=source.ShowPredictedMessages;
+            target.PlainTextEditor=source.PlainTextEditor;target.ShowContextUsage=source.ShowContextUsage;
+            target.SendOnEnter=source.SendOnEnter;target.FollowUpBehavior=source.FollowUpBehavior;
+            target.ImageGenerationConcurrency=source.ImageGenerationConcurrency;target.ImageGenerationMotionEnabled=source.ImageGenerationMotionEnabled;
+            target.ImageGalleryLayout=source.ImageGalleryLayout;
+            target.Hotkeys=new Dictionary<string,string>(source.Hotkeys);target.LocalShortcuts=new Dictionary<string,string>(source.LocalShortcuts);
+        }
+        void SaveSnapshot(PetSettings settings)
+        {
+            if(committedLanguage!=null)settings.UiLanguage=committedLanguage;
+            Directory.CreateDirectory(DirectoryPath);
             string temporary = path + ".tmp";
             try
             {

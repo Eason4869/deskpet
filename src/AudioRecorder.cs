@@ -37,7 +37,7 @@ namespace Dafeiyu
             if (device != IntPtr.Zero || finished) throw new InvalidOperationException("Recorder is already used.");
             var format = new WaveFormat { FormatTag = 1, Channels = 1, SamplesPerSec = 16000, AvgBytesPerSec = 32000, BlockAlign = 2, BitsPerSample = 16, Size = 0 };
             uint result = waveInOpen(out device, UInt32.MaxValue, ref format, ready.SafeWaitHandle.DangerousGetHandle(), IntPtr.Zero, 0x50000);
-            if (result != 0) { device = IntPtr.Zero; throw new InvalidOperationException("无法打开麦克风，请检查 Windows 麦克风权限和默认输入设备。"); }
+            if (result != 0) { device = IntPtr.Zero; throw new InvalidOperationException(TextResources.Get("audioRecorder.start.text")); }
             try
             {
                 for (int i = 0; i < 4; i++)
@@ -71,7 +71,7 @@ namespace Dafeiyu
                 }
                 var failed=Failed;
                 if(report && failed!=null)ThreadPool.QueueUserWorkItem(delegate {
-                    failed(streaming?"Live 麦克风录音中断，请检查输入设备。":"麦克风录音中断，请检查输入设备及权限。");
+                    failed(streaming?TextResources.Get("audioRecorder.drain.failed"):TextResources.Get("audioRecorder.drain.failed.alternativeA"));
                 });
             }
         }
@@ -98,11 +98,11 @@ namespace Dafeiyu
         {
             lock(lifecycle)
             {
-            if(disposed) throw new InvalidOperationException("录音已经停止。");
+            if(disposed) throw new InvalidOperationException(TextResources.Get("audioRecorder.finish.text"));
             Release();
-            if (workerError != null) throw new InvalidOperationException("录音被中断，请检查麦克风后重试。");
+            if (workerError != null) throw new InvalidOperationException(TextResources.Get("audioRecorder.finish.text.alternativeA"));
             byte[] bytes = pcm.ToArray();
-            if (bytes.Length < 12800) throw new InvalidOperationException("录音太短，请至少说半秒后再发送。");
+            if (bytes.Length < 12800) throw new InvalidOperationException(TextResources.Get("audioRecorder.finish.text.alternativeB"));
             return WaveData.EncodePcm(bytes);
             }
         }
@@ -124,7 +124,7 @@ namespace Dafeiyu
             }
         }
         public void Dispose() { lock(lifecycle) { if(disposed) return; Release(); ready.Dispose(); pcm.Dispose(); disposed=true; } }
-        private static void Check(uint code) { if (code != 0) throw new InvalidOperationException("麦克风设备无法开始录音，请检查输入设备。"); }
+        private static void Check(uint code) { if (code != 0) throw new InvalidOperationException(TextResources.Get("audioRecorder.check.text")); }
         private static readonly uint HeaderSize = (uint)Marshal.SizeOf(typeof(WaveHeader));
         private sealed class Buffer : IDisposable
         {

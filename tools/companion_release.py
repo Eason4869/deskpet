@@ -9,7 +9,16 @@ import subprocess
 IDS = {'e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga'}
 REPOSITORY = 'Eason4869/deskpet'
 ROOT = Path(__file__).resolve().parents[1]
+POLICY = json.loads((ROOT / 'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
 
+
+
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
 
 def identity(root, tag):
     source = (root / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
@@ -38,17 +47,23 @@ def prepare(root, tag, directory):
     if len(entries) != 5 or {x['id'] for x in entries} != IDS or len(checked) != 5 or {x['id'] for x in checked} != IDS:
         raise ValueError('Both index and native report must cover exactly five roles')
     checks = {x['id']: x for x in checked}
+    registry_path = root / 'assets/official/companion-versions.json'
+    registry = json.loads(registry_path.read_text(encoding='utf-8'))['companions'] if registry_path.exists() else None
     assets = []
     for entry in entries:
-        name = 'DeskPet-Companion-' + entry['id'] + '-' + version + '.zip'
-        if entry['asset_name'] != name or entry['version'] != version or entry['min_app_version'] != version:
+        material = registry[entry['id']] if registry is not None else {'pack_version': version, 'min_app_version': version}
+        name = 'DeskPet-Companion-' + entry['id'] + '-' + material['pack_version'] + '.zip'
+        if entry['asset_name'] != name or entry['version'] != material['pack_version'] or entry['min_app_version'] != material['min_app_version']:
             raise ValueError('Package identity differs from the tagged source')
         path = directory / name
         if path.is_symlink() or not path.is_file():
             raise ValueError('A regular package file is required')
-        digest, size = hashlib.sha256(path.read_bytes()).hexdigest(), path.stat().st_size
+        size = path.stat().st_size
+        if size <= 0 or size > POLICY['maximum_archive_bytes']:
+            raise ValueError('Package exceeds the shared archive size policy')
+        digest = file_digest(path)
         check = checks[entry['id']]
-        if size <= 0 or size > 256 * 1024 * 1024 or entry['sha256'] != digest or entry['size'] != size or check.get('sha256') != digest or check.get('size') != size or check.get('nativeValidated') is not True or check.get('finalRootValidated') is not True:
+        if entry['sha256'] != digest or entry['size'] != size or check.get('sha256') != digest or check.get('size') != size or check.get('nativeValidated') is not True or check.get('finalRootValidated') is not True:
             raise ValueError('Package changed after authoring or native validation')
         assets.append({'name': name, 'sha256': digest, 'size': size})
     if index_path.is_symlink() or index_path.stat().st_size > 1024 * 1024:

@@ -39,6 +39,18 @@ namespace Dafeiyu
                 if(validated.Count>=32)validated.Clear();validated.Add(key);
             }finally{gate.Release();}
         }
+        internal static CompanionPackageInventory ValidateLocalPackage(string root,CancellationToken cancel)
+        {
+            var inventory=CompanionPackageInventory.Read(root,cancel);
+            ValidateDefault(root,cancel);
+            if(inventory.HolidayCatalog!=null)foreach(var outfit in inventory.HolidayCatalog.Outfits) {
+                foreach(var clip in outfit.Clips.Concat(new[]{outfit.Gaze,outfit.EasterEgg}).GroupBy(c=>c.Path,StringComparer.Ordinal).Select(g=>g.OrderByDescending(c=>c.FrameCount).First())) {
+                    cancel.ThrowIfCancellationRequested();using(var stream=clip.OpenResource())ValidateRaster(stream,clip.FrameWidth*clip.Columns,clip.FrameHeight*((clip.FrameCount+clip.Columns-1)/clip.Columns),clip.FrameCount,clip.Columns,true,cancel);
+                }
+                using(var stream=outfit.OpenPreview())ValidateRaster(stream,480,520,1,1,true,cancel);
+            }
+            return inventory;
+        }
         internal static void ValidateDefault(string root,CancellationToken cancel)
         {
             SkinManifest manifest;
@@ -87,6 +99,6 @@ namespace Dafeiyu
                 if(!visible||!transparent)throw Invalid();
             }
         }
-        static InvalidDataException Invalid(){return new InvalidDataException("角色素材无法完整读取，请重新下载后重试。");}
+        static InvalidDataException Invalid(){return new InvalidDataException(TextResources.Get("wpfOfficialNativeValidator.invalid.text"));}
     }
 }

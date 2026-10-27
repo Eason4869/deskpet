@@ -1,0 +1,235 @@
+{
+  "animations": {
+    "idle": {
+      "columns": 8,
+      "file": "animations/idle.png",
+      "fps": 4.0,
+      "frames": 8,
+      "loop": true
+    },
+    "running-right": {
+      "columns": 8,
+      "file": "animations/running-right.png",
+      "fps": 4.545454545454546,
+      "frames": 8,
+      "loop": true
+    },
+    "running-left": {
+      "columns": 8,
+      "file": "animations/running-left.png",
+      "fps": 4.545454545454546,
+      "frames": 8,
+      "loop": true
+    },
+    "waving": {
+      "columns": 8,
+      "file": "animations/waving.png",
+      "fps": 6.25,
+      "frames": 4,
+      "loop": true
+    },
+    "jumping": {
+      "columns": 8,
+      "file": "animations/jumping.png",
+      "fps": 7.692307692307692,
+      "frames": 5,
+      "loop": false,
+      "hold_last_seconds": 0.35
+    },
+    "failed": {
+      "columns": 8,
+      "file": "animations/failed.png",
+      "fps": 6.25,
+      "frames": 8,
+      "loop": true
+    },
+    "waiting": {
+      "columns": 8,
+      "file": "animations/waiting.png",
+      "fps": 5.2631578947368425,
+      "frames": 6,
+      "loop": true
+    },
+    "running": {
+      "columns": 8,
+      "file": "animations/running.png",
+      "fps": 5.555555555555555,
+      "frames": 6,
+      "loop": true
+    },
+    "review": {
+      "columns": 8,
+      "file": "animations/review.png",
+      "fps": 5.555555555555555,
+      "frames": 6,
+      "loop": true
+    },
+    "lifted": {
+      "columns": 8,
+      "file": "animations/lifted.png",
+      "fps": 8,
+      "frames": 4,
+      "loop": true
+    },
+    "landing": {
+      "columns": 8,
+      "file": "animations/landing.png",
+      "fps": 8,
+      "frames": 4,
+      "loop": false
+    },
+    "petting": {
+      "columns": 8,
+      "file": "animations/petting.png",
+      "fps": 2.5,
+      "frames": 4,
+      "loop": false
+    },
+    "poked": {
+      "columns": 8,
+      "file": "animations/poked.png",
+      "fps": 5,
+      "frames": 4,
+      "loop": false
+    },
+    "feeding": {
+      "columns": 8,
+      "file": "animations/feeding.png",
+      "fps": 8,
+      "frames": 4,
+      "loop": false
+    },
+    "happy": {
+      "columns": 8,
+      "file": "animations/happy.png",
+      "fps": 8,
+      "frames": 4,
+      "loop": false
+    },
+    "sleeping": {
+      "columns": 8,
+      "file": "animations/sleeping.png",
+      "fps": 2.5,
+      "frames": 8,
+      "loop": true
+    },
+    "special": {
+      "columns": 8,
+      "file": "animations/special.png",
+      "fps": 8,
+      "frames": 4,
+      "loop": false
+    }
+  },
+  "atlas": null,
+  "cell_height": 520,
+  "cell_width": 480,
+  "description": "傲娇毒舌 · 白发正太",
+  "format": "illustrated-atlases-v1",
+  "gaze": {
+    "columns": 4,
+    "file": "gaze.png",
+    "frames": 16,
+    "interpolation": "none",
+    "order": "clockwise-from-up"
+  },
+  "name": "E包",
+  "preview": "preview.png",
+  "special_action": "傲娇扭头",
+  "system_prompt": "你是E包，一位傲娇、毒舌的白发正太桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。",
+  "version": 2,
+  "special_action2": "比心鼓励",
+  "extra_animations": {
+    "stumble": {
+      "file": "extra/stumble.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "special2": {
+      "file": "extra/special2.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    }
+  },
+  "alternate_animations": {
+    "lifted": {
+      "file": "alternate/lifted.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    "landing": {
+      "file": "alternate/landing.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "feeding": {
+      "file": "alternate/feeding.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "happy": {
+      "file": "alternate/happy.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "sleeping": {
+      "file": "alternate/sleeping.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 2.5,
+      "loop": true
+    },
+    "special": {
+      "file": "alternate/special.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "special2": {
+      "file": "alternate/special2.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "stumble": {
+      "file": "alternate/stumble.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "jumping": {
+      "file": "alternate/jumping.png",
+      "columns": 8,
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    }
+  },
+  "id": "e-bao",
+  "pack_version": "0.10.5-dev.3",
+  "avatar": "avatar.png",
+  "voice_presets": {
+    "speech": [
+      "苏打",
+      "ash"
+    ],
+    "live": [
+      "Puck"
+    ]
+  }
+}

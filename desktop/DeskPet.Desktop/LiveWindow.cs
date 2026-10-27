@@ -1,3 +1,4 @@
+using Dafeiyu;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -19,14 +20,14 @@ internal sealed class LiveWindow : Window
     private bool closing;
     public LiveWindow(DesktopController controller)
     {
-        owner = controller; Title = "DeskPet · Gemini Live"; Width = 560; Height = 490;
+        owner = controller; LocalizedUi.Set(this,"Title",()=>(TextResources.Get("liveWindow.liveWindow.title"))); Width = 560; Height = 490;
         avatar = new AvatarView { Assets = avatarAssets, Skin = owner.Skin, Width = 36, Height = 36 };
         partnerName.VerticalAlignment = VerticalAlignment.Center;
-        Content = new Border { Padding = new Thickness(20), Child = Ui.Column(Ui.Text("Gemini Live 实时语音", 22), Ui.Row(avatar, partnerName), status,
-            Ui.Text("麦克风"), input, Ui.Text("伙伴音量"), output,
-            new ScrollViewer { Content = Ui.Column(Ui.Text("你", 12), user, Ui.Text("伙伴", 12), reply), MaxHeight = 200 },
-            Ui.Row(Ui.AsyncButton("开始对话", StartAsync, owner.Error), Ui.AsyncButton("结束对话", owner.Live.StopAsync, owner.Error), Ui.Button("Live 设置", () => owner.ShowSettingsSection("live"))),
-            Ui.Text("开始时申请麦克风权限。音频发送至你配置的 Gemini Live 服务；结束或关闭窗口时释放麦克风和播放设备。")) };
+        Content = new Border { Padding = new Thickness(20), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text")), 22), Ui.Row(avatar, partnerName), status,
+            LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeA"))), input, LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeB"))), output,
+            new ScrollViewer { Content = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeC")), 12), user, LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeD")), 12), reply), MaxHeight = 200 },
+            Ui.Row(LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton")), StartAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton.alternativeA")), owner.Live.StopAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeE")), () => owner.ShowSettingsSection("live"))),
+            LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeF")))) };
         owner.Live.StateChanged += Refresh; owner.Live.PartialTranscript += Transcript; owner.Changed += RefreshPartner;
         Closing += async (_, e) =>
         {
@@ -46,16 +47,19 @@ internal sealed class LiveWindow : Window
         if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
         var granted = await owner.RequestMicrophoneAccessAsync();
         if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
-        if (!granted) throw new InvalidOperationException("麦克风权限未授予。请在系统设置 → 隐私与安全性 → 麦克风中允许 DeskPet。");
+        if (!granted) throw new InvalidOperationException(TextResources.Get("liveWindow.startAsync.text"));
         if (owner.Live.IsActive) return;
-        if (owner.Dictation.IsBusy || owner.Session.IsBusy) throw new InvalidOperationException("另一处对话或听写已经开始，请先结束它。");
-        await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt);
+        if (owner.Dictation.IsBusy || owner.Session.IsBusy) throw new InvalidOperationException(TextResources.Get("liveWindow.startAsync.text.alternativeA"));
+        var companion=owner.RelationshipCompanionId;
+        var context=await Task.Run(()=>owner.Relationships.StageContext(companion));
+        if (!IsVisible || closing || owner.Skin.Id != expectedPersona) return;
+        await owner.Live.StartAsync(owner.Settings, owner.Settings.SystemPrompt+"\n"+context);
     }
-    private void Refresh() => Dispatcher.UIThread.Post(() => status.Text = owner.Live.Status);
+    private void Refresh() => Dispatcher.UIThread.Post(() => LocalizedUi.Set(status,"Text",()=>owner.Live.Status));
     private void RefreshPartner()
     {
         if (!ReferenceEquals(avatar.Skin, owner.Skin)) avatar.Skin = owner.Skin;
-        partnerName.Text = owner.Skin.Name;
+        LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName));
     }
     private void Transcript(string role, string text) => Dispatcher.UIThread.Post(() => { if (role == "user") user.Text = text; else reply.Text = text; });
 }

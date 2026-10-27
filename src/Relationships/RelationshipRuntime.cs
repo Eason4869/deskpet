@@ -1,0 +1,199 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Threading.Tasks;
+namespace Dafeiyu
+{
+    // Application-owned. Only successful, real operations enter this outbox.
+    // Keep the head on any write failure; later timestamps must not overtake it.
+    public sealed class RelationshipRuntime : IDisposable
+    {
+        [DataContract] sealed class PendingEvent
+        {
+            [DataMember] public string CompanionId,EventId;
+            [DataMember] public RelationshipEventType Type;
+            [DataMember] public long UtcTicks;
+            [DataMember] public int OffsetMinutes;
+            internal RelationshipResult CommittedResult;
+            internal int FeedbackSuppressionVersion;
+            internal RelationshipTime Time(){return new RelationshipTime(new DateTime(UtcTicks,DateTimeKind.Utc),TimeSpan.FromMinutes(OffsetMinutes));}
+        }
+        readonly object gate=new object();readonly string directory,path;readonly Action<Action> dispatch;
+        List<PendingEvent> pending=new List<PendingEvent>();bool blocked;volatile bool disposed;volatile string warning="";volatile int pendingCount;
+        readonly object submissionGate=new object();Task worker=Task.FromResult(0),shutdown;bool admissionClosed;
+        readonly Dafeiyu.Maintenance.DataMaintenanceGate maintenance;
+        readonly object settingsGate=new object();volatile bool feedbackEnabled=true;int feedbackSuppressionVersion;
+        int settingsVersion;
+        internal int SettingsVersion {get{return System.Threading.Volatile.Read(ref settingsVersion);}}
+        public bool FeedbackEnabled {get{return feedbackEnabled;}}
+        public int FeedbackSuppressionVersion {get{return System.Threading.Volatile.Read(ref feedbackSuppressionVersion);}}
+        public event Action FeedbackSettingsChanged;
+        // Host transitions invalidate history, even if eligibility returns to
+        // the same Boolean before an asynchronous continuation is delivered.
+        public void InvalidateFeedback()
+        {
+            System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);
+            Publish(delegate{var changed=FeedbackSettingsChanged;if(changed!=null)changed();});
+        }
+        public RelationshipService Service {get;private set;}
+        public string Warning {get{return warning;}}
+        public bool RequiresRestart {get{return blocked;}}
+        public string DataDirectory {get{return directory;}}
+        public int PendingCount {get{return pendingCount;}}
+        public event Action Changed;
+        public event Action<string,RelationshipResult> Committed;
+        public RelationshipRuntime(string dataDirectory,Action<Action> uiDispatch=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
+        {
+            this.maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();
+            Service=new RelationshipService(new RelationshipStore(dataDirectory));directory=Path.Combine(Path.GetFullPath(dataDirectory),"relationships");path=CompanionPackStorage.AssetPath(dataDirectory,"relationships/pending.json");dispatch=uiDispatch??(action=>action());
+            try{
+                if(File.Exists(path)){
+                    if(new FileInfo(path).Length>8*1024*1024)throw new InvalidDataException();
+                    using(var stream=File.OpenRead(path))pending=(List<PendingEvent>)new DataContractJsonSerializer(typeof(List<PendingEvent>)).ReadObject(stream);
+                    if(pending==null || pending.Count>10000 || pending.Any(p=>p==null || !RelationshipIdentity.IsValid(p.CompanionId) || !RelationshipRules.ValidEventId(p.EventId) || !RelationshipRules.ValidType(p.Type)))throw new InvalidDataException();
+                    foreach(var p in pending)p.Time();
+                    pendingCount=pending.Count;
+                    if(pending.Count>0)warning=TextResources.Get("relationship.saveWarning");
+                }else RelationshipWriteRecovery.RequireNoCandidate(directory,false);
+            }catch(Exception error){if(!StorageError(error))throw;pending=new List<PendingEvent>();pendingCount=0;blocked=true;warning=TextResources.Get("relationship.saveWarning");}
+        }
+        static bool StorageError(Exception e){return e is IOException || e is InvalidDataException || e is UnauthorizedAccessException || e is SerializationException || e is ArgumentException || e is System.Xml.XmlException;}
+        void Publish(Action action){dispatch(delegate{if(!disposed)action();});}
+        void Notify(){Publish(delegate{var changed=Changed;if(changed!=null)changed();});}
+        // Admission belongs to the requested HomeModel operation, including its
+        // FIFO wait. The capability exposes only settings save/retry bodies and
+        // cannot authorize another runtime or survive disposal.
+        internal SettingsRequest TryBeginSettingsRequest(){return SettingsRequest.TryBegin(this);}
+        internal sealed class SettingsRequest:IDisposable
+        {
+            readonly RelationshipRuntime runtime;IDisposable activity;
+            SettingsRequest(RelationshipRuntime runtime,IDisposable activity){this.runtime=runtime;this.activity=activity;}
+            internal static SettingsRequest TryBegin(RelationshipRuntime runtime)
+            {
+                lock(runtime.submissionGate){
+                    IDisposable admitted;if(runtime.admissionClosed||!runtime.maintenance.TryEnterActivity(out admitted))return null;
+                    return new SettingsRequest(runtime,admitted);
+                }
+            }
+            void Require(){if(activity==null)throw new ObjectDisposedException("SettingsRequest");}
+            internal RelationshipResult Save(bool growth,bool feedback,bool aiContext)
+            {Require();return runtime.SaveSettingsCore(growth,feedback,aiContext);}
+            internal Task RetryPendingAsync()
+            {
+                lock(runtime.submissionGate){
+                    Require();if(runtime.admissionClosed)throw new ObjectDisposedException("RelationshipRuntime");
+                    runtime.worker=runtime.worker.ContinueWith(delegate{Require();runtime.RetryPendingCore();},TaskScheduler.Default);return runtime.worker;
+                }
+            }
+            public void Dispose(){var release=System.Threading.Interlocked.Exchange(ref activity,null);if(release!=null)release.Dispose();}
+        }
+        // Serialize the transaction and cache together across pages; UI observers read memory.
+        RelationshipResult SaveSettingsCore(bool growth,bool feedback,bool aiContext)
+        {
+            RelationshipResult result;
+            lock(settingsGate){
+                result=Service.UpdateSettings(growth,feedback,aiContext);
+                if(result.Success){feedbackEnabled=result.Snapshot.Settings.FeedbackEnabled;System.Threading.Interlocked.Increment(ref settingsVersion);if(!feedbackEnabled)System.Threading.Interlocked.Increment(ref feedbackSuppressionVersion);}
+            }
+            if(result.Success){
+                // No captured bool: delayed/reordered UI callbacks always observe
+                // the latest cache and the monotonic history of saved disables.
+                Publish(delegate{var changed=FeedbackSettingsChanged;if(changed!=null)changed();});
+                Notify();
+            }
+            return result;
+        }
+        void SavePending()
+        {
+            CompanionPackStorage.AssetPath(Path.GetDirectoryName(directory),"relationships/pending.json");Directory.CreateDirectory(directory);string temp=Path.Combine(directory,Guid.NewGuid().ToString("N")+".pending.tmp");
+            bool replacing=RelationshipWriteRecovery.AuthoritativeExists(path);
+            try{using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(List<PendingEvent>)).WriteObject(stream,pending);stream.Flush(true);}AtomicFile.Commit(temp,path);}
+            finally{if(File.Exists(temp)&&(!replacing||File.Exists(path)))try{File.Delete(temp);}catch(IOException){}catch(UnauthorizedAccessException){}}
+        }
+        public void Record(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
+        {int version=FeedbackSuppressionVersion;using(maintenance.EnterActivity())RecordCore(companionId,type,eventId,time,version);}
+        void RecordCore(string companionId,RelationshipEventType type,string eventId,RelationshipTime time,int feedbackVersion)
+        {
+            if(!RelationshipIdentity.IsValid(companionId) || !RelationshipRules.ValidEventId(eventId) || !RelationshipRules.ValidType(type) || time==null)return;
+            var notifications=new List<Action>();
+            lock(gate){if(disposed)return;if(!pending.Any(p=>p.CompanionId==companionId && p.EventId==eventId))pending.Add(new PendingEvent{CompanionId=companionId,Type=type,EventId=eventId,UtcTicks=time.UtcNow.Ticks,OffsetMinutes=(int)time.LocalOffset.TotalMinutes,FeedbackSuppressionVersion=feedbackVersion});pendingCount=pending.Count;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();
+        }
+        void Drain(List<Action> notifications)
+        {
+            if(blocked){warning=TextResources.Get("relationship.saveWarning");return;}
+            try{
+                // Persist only completed events before touching the ledger. A crash
+                // after ledger commit is safe: receipts deduplicate replay.
+                SavePending();
+                while(pending.Count>0){
+                    var next=pending[0];var result=next.CommittedResult??Service.Record(next.CompanionId,next.Type,next.EventId,next.Time());
+                    if(!result.Success){warning=TextResources.Get("relationship.saveWarning");return;}
+                    if(!result.FeedbackSuppressionVersion.HasValue)result.FeedbackSuppressionVersion=next.FeedbackSuppressionVersion;
+                    next.CommittedResult=result;
+                    pending.RemoveAt(0);pendingCount=pending.Count;
+                    try{SavePending();}catch{pending.Insert(0,next);pendingCount=pending.Count;throw;}
+                    var id=next.CompanionId;notifications.Add(delegate{var committed=Committed;if(committed!=null)committed(id,result);});
+                }
+                warning="";
+            }catch(Exception error){if(!StorageError(error))throw;warning=TextResources.Get("relationship.saveWarning");}
+        }
+        public void RetryPending(){using(maintenance.EnterActivity())RetryPendingCore();}
+        void RetryPendingCore(){var notifications=new List<Action>();lock(gate){if(disposed)return;Drain(notifications);}foreach(var notification in notifications)Publish(notification);Notify();}
+        public void RecordVisit(string companionId,bool actuallyVisible=true){if(actuallyVisible)Record(companionId,RelationshipEventType.Visit,"visit-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());}
+        public void RecordUserInteraction(string companionId,bool userOrigin,bool started){if(userOrigin && started)Record(companionId,RelationshipEventType.UserInteraction,"interaction-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current());}
+        public string StageContext(string companionId)
+        {
+            if(!RelationshipIdentity.IsValid(companionId))return "";
+            try{var snapshot=Service.GetSnapshot(companionId);return snapshot.Settings.AiContextEnabled?RelationshipContent.StageContext(snapshot.StageId):"";}
+            catch(Exception error){if(!StorageError(error))throw;warning=TextResources.Get("relationship.saveWarning");return "";}
+        }
+        // UI producers use this ordered chain. Submission does no storage I/O;
+        // timestamps, identity and logical IDs are caller-captured values.
+        public Task Enqueue(string companionId,RelationshipEventType type,string eventId,RelationshipTime time)
+        {Task completion;TryEnqueue(companionId,type,eventId,time,out completion);return completion;}
+        bool TryEnqueue(string companionId,RelationshipEventType type,string eventId,RelationshipTime time,out Task completion)
+        {
+            lock(submissionGate){
+                completion=Task.FromResult(0);
+                if(admissionClosed)return false;
+                IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return false;
+                int feedbackVersion=FeedbackSuppressionVersion;
+                worker=worker.ContinueWith(delegate{using(activity)RecordCore(companionId,type,eventId,time,feedbackVersion);},TaskScheduler.Default);
+                completion=worker;return true;
+            }
+        }
+        public Task EnqueueVisit(string companionId,bool actuallyVisible=true)
+        {
+            return actuallyVisible?Enqueue(companionId,RelationshipEventType.Visit,"visit-"+Guid.NewGuid().ToString("N"),RelationshipTime.Current()):Task.FromResult(0);
+        }
+        public Task EnqueueUserInteraction(string companionId,bool userOrigin,bool started)
+        {
+            Task completion;string eventId;TryEnqueueUserInteraction(companionId,userOrigin,started,out completion,out eventId);return completion;
+        }
+        internal bool TryEnqueueUserInteraction(string companionId,bool userOrigin,bool started,out Task completion,out string eventId)
+        {
+            completion=Task.FromResult(0);eventId=null;if(!userOrigin||!started)return false;
+            eventId="interaction-"+Guid.NewGuid().ToString("N");return TryEnqueue(companionId,RelationshipEventType.UserInteraction,eventId,RelationshipTime.Current(),out completion);
+        }
+        public Task RetryPendingAsync()
+        {
+            lock(submissionGate){if(admissionClosed)return Task.FromResult(0);IDisposable activity;if(!maintenance.TryEnterActivity(out activity))return Task.FromResult(0);worker=worker.ContinueWith(delegate{using(activity)RetryPendingCore();},TaskScheduler.Default);return worker;}
+        }
+        internal async Task CheckForUninstallAsync(Dafeiyu.Maintenance.UninstallOwner owner)
+        {owner.Require(maintenance);await FlushAsync().ConfigureAwait(false);owner.Require(maintenance);if(RequiresRestart||PendingCount!=0||!String.IsNullOrEmpty(Warning))throw new IOException(TextResources.Get("dataMaintenance.storageFailure"));}
+        public Task FlushAsync(){lock(submissionGate)return worker;}
+        public Task ShutdownAsync()
+        {
+            lock(submissionGate){if(shutdown!=null)return shutdown;admissionClosed=true;shutdown=worker.ContinueWith(delegate{DisposeCore();},TaskScheduler.Default);return shutdown;}
+        }
+        void DisposeCore()
+        {
+            lock(gate){if(disposed)return;try{if(!blocked && pending.Count>0)SavePending();}catch(Exception error){if(!StorageError(error))throw;}disposed=true;Changed=null;Committed=null;FeedbackSettingsChanged=null;}
+        }
+        public void Dispose(){ShutdownAsync().GetAwaiter().GetResult();}
+
+    }
+}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -17,7 +17,7 @@ namespace Dafeiyu
         readonly List<AppRoute> appHistory=new List<AppRoute>();int historyIndex=-1;
         readonly List<ShellCommand> shellCommands=new List<ShellCommand>();IInputElement lastEditingTarget;
         string liveReturnPage;int liveReturnSection,liveReturnHistory;
-        sealed class AppRoute{internal string Page;internal ConversationWorkspace Workspace;internal int Section;}
+        sealed class AppRoute{internal string Page;internal ConversationWorkspace Workspace;internal int Section,SecondarySection=-1;internal string FeatureAnchor;}
         internal string CurrentPage {get{return shellPage;}}
         internal bool HasUnsavedMcpEdits {get{return mcpPage!=null&&mcpPage.HasUnsavedEdits;}}
         internal void InitializeAppShell()
@@ -28,19 +28,19 @@ namespace Dafeiyu
             var frame=new Grid{Background=Ui.Brush("#EDF3F8")};frame.RowDefinitions.Add(new RowDefinition{Height=new GridLength(46)});frame.RowDefinitions.Add(new RowDefinition());
             var top=new DockPanel{Name="AppTitleBar",LastChildFill=true,Margin=new Thickness(8,0,4,0)};
             var captionButtons=new StackPanel{Orientation=Orientation.Horizontal};
-            var minimize=ShellIcons.Button("minimize","最小化",()=>SystemCommands.MinimizeWindow(this));minimize.Name="AppMinimize";
-            var maximize=ShellIcons.Button("maximize","最大化／还原",delegate{if(WindowState==WindowState.Maximized)SystemCommands.RestoreWindow(this);else SystemCommands.MaximizeWindow(this);});maximize.Name="AppMaximize";
-            var close=ShellIcons.Button("close","关闭窗口",Close);close.Name="AppClose";
+            var minimize=ShellIcons.Button("minimize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons")),()=>SystemCommands.MinimizeWindow(this));minimize.Name="AppMinimize";
+            var maximize=ShellIcons.Button("maximize",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeA")),delegate{if(WindowState==WindowState.Maximized)SystemCommands.RestoreWindow(this);else SystemCommands.MaximizeWindow(this);});maximize.Name="AppMaximize";
+            var close=ShellIcons.Button("close",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeB")),Close);close.Name="AppClose";
             foreach(var b in new[]{minimize,maximize,close}){b.Width=42;b.Height=36;WindowChrome.SetIsHitTestVisibleInChrome(b,true);captionButtons.Children.Add(b);}DockPanel.SetDock(captionButtons,Dock.Right);top.Children.Add(captionButtons);
             var navButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-            shellBack=ShellIcons.Button("back","返回 · Alt+←",()=>TravelPage(-1));shellBack.Name="AppBack";shellForward=ShellIcons.Button("forward","前进 · Alt+→",()=>TravelPage(1));shellForward.Name="AppForward";
-            shellSidebar=ShellIcons.Button("sidebar","显示／隐藏侧边栏 · Ctrl+Shift+S",ToggleAppSidebar);shellSidebar.Name="ToggleAppSidebar";
+            shellBack=ShellIcons.Button("back",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeC")),()=>TravelPage(-1));shellBack.Name="AppBack";shellForward=ShellIcons.Button("forward",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeD")),()=>TravelPage(1));shellForward.Name="AppForward";
+            shellSidebar=ShellIcons.Button("sidebar",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeE")),ToggleAppSidebar);shellSidebar.Name="ToggleAppSidebar";
             foreach(var b in new[]{shellBack,shellForward,shellSidebar}){WindowChrome.SetIsHitTestVisibleInChrome(b,true);navButtons.Children.Add(b);}DockPanel.SetDock(navButtons,Dock.Left);top.Children.Add(navButtons);
             var menuButtons=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};BuildShellCommands();BuildTitleMenus(menuButtons);DockPanel.SetDock(menuButtons,Dock.Left);top.Children.Add(menuButtons);top.Children.Add(new Border{Background=Brushes.Transparent});frame.Children.Add(top);
             var body=new Grid();body.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(60)});body.ColumnDefinitions.Add(new ColumnDefinition());
             var railBody=new Grid{Margin=new Thickness(6,8,6,10)};railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});railBody.RowDefinitions.Add(new RowDefinition());railBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var railTop=new StackPanel();shellHome=ShellIcons.Button("home","首页 · 完整对话",()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage","用量统计",ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp","插件",ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings","设置",()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image","图像",()=>ShowImagesPage());shellImages.Name="ShellImages";foreach(var b in new[]{shellHome,shellImages,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
-            shellAvatarImage=new Image{Width=30,Height=30,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,30,30),10,10)};RenderOptions.SetBitmapScalingMode(shellAvatarImage,BitmapScalingMode.HighQuality);var profile=ShellIcons.Button("pet","伙伴菜单",OpenProfileMenu);profile.Name="ShellAvatar";profile.Width=profile.Height=40;profile.Content=shellAvatarImage;Grid.SetRow(profile,2);railBody.Children.Add(profile);appRail=new Border{Name="AppIconRail",Background=ThemeManager.Brush("#EDF3F8","#202733"),Child=railBody};body.Children.Add(appRail);
+            var railTop=new StackPanel();shellHome=ShellIcons.Button("home",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeF")),()=>ShowHomePage());shellHome.Name="ShellHome";shellUsage=ShellIcons.Button("usage",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeG")),ShowUsagePage);shellUsage.Name="ShellUsage";shellMcp=ShellIcons.Button("mcp",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeH")),ShowPluginsPage);shellMcp.Name="ShellMcp";shellSettings=ShellIcons.Button("settings",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeI")),()=>pet.ShowSettings());shellSettings.Name="ShellSettings";shellImages=ShellIcons.Button("image",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeJ")),()=>ShowImagesPage());shellImages.Name="ShellImages";foreach(var b in new[]{shellHome,shellImages,shellUsage,shellMcp,shellSettings}){b.Width=b.Height=40;b.Margin=new Thickness(0,3,0,3);railTop.Children.Add(b);}railBody.Children.Add(railTop);
+            shellAvatarImage=new Image{Width=30,Height=30,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,30,30),10,10)};RenderOptions.SetBitmapScalingMode(shellAvatarImage,BitmapScalingMode.HighQuality);var profile=ShellIcons.Button("pet",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")),OpenProfileMenu);profile.Name="ShellAvatar";profile.Width=profile.Height=40;profile.Content=shellAvatarImage;Grid.SetRow(profile,2);railBody.Children.Add(profile);appRail=new Border{Name="AppIconRail",Background=ThemeManager.Brush("#EDF3F8","#202733"),Child=railBody};body.Children.Add(appRail);
             appPages=new Grid{Name="AppPageHost",Background=ThemeManager.Surface,ClipToBounds=true};homePage=new Grid{Name="AppHomePage"};homePage.Children.Add(workspaceShell);appPages.Children.Add(homePage);
             var pageFrame=new Border{Name="AppContentFrame",Background=ThemeManager.Surface,CornerRadius=new CornerRadius(16),BorderBrush=Ui.Brush("#E3E7EC"),BorderThickness=new Thickness(1),Child=appPages,ClipToBounds=true};pageFrame.SizeChanged+=delegate{pageFrame.Clip=new RectangleGeometry(new Rect(0,0,Math.Max(0,pageFrame.ActualWidth),Math.Max(0,pageFrame.ActualHeight)),16,16);};Grid.SetColumn(pageFrame,1);body.Children.Add(pageFrame);Grid.SetRow(body,1);frame.Children.Add(body);Content=frame;
             sidebarHidden=false;shellReady=true;RecordPage("home");RefreshShellAppearance();
@@ -49,8 +49,8 @@ namespace Dafeiyu
             Deactivated+=delegate{CloseProfileMenu();if(sidebarTemporary){sidebarTemporary=false;RefreshWorkspaceLayout();}};
             StateChanged+=delegate{maximize.Content=ShellIcons.Image(WindowState==WindowState.Maximized?"restore":"maximize");};
             SourceInitialized+=delegate{HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook(ShellWindowMessage);};
-            var compose=ShellIcons.Button("new-chat","新建对话",pet.NewShellConversation);compose.Name="ShellNewChat";compose.Margin=new Thickness(0,0,10,0);DockPanel.SetDock(compose,Dock.Left);conversationHeader.Children.Insert(0,compose);
-            Closed+=delegate{if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
+            var compose=ShellIcons.Button("new-chat",()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeL")),pet.NewShellConversation);compose.Name="ShellNewChat";compose.Margin=new Thickness(0,0,10,0);DockPanel.SetDock(compose,Dock.Left);conversationHeader.Children.Insert(0,compose);
+            Closed+=delegate{if(companionPage!=null)companionPage.Dispose();if(settingsPage!=null)settingsPage.Dispose();if(usagePage!=null)usagePage.Dispose();if(mcpPage!=null)mcpPage.Dispose();if(imagePage!=null)imagePage.Dispose();pet.ReleaseSettingsPage(settingsPage);};
         }
         internal void ShowHomePage(bool record=true)
         {
@@ -60,7 +60,7 @@ namespace Dafeiyu
         {
             if(!shellReady||closed||page==null)return;
             if(settingsPage==null){settingsPage=page;settingsPage.Visibility=Visibility.Collapsed;appPages.Children.Add(page);page.NavigationChanged+=SettingsSectionChanged;}
-            if(!ReferenceEquals(settingsPage,page))throw new InvalidOperationException("设置页已属于其他主窗口。");SetShellPage("settings");RecordPage("settings");
+            if(!ReferenceEquals(settingsPage,page))throw new InvalidOperationException(TextResources.Get("chatAppShell.showSettingsPage.text"));SetShellPage("settings");RecordPage("settings");
         }
         void SettingsSectionChanged(int section){if(shellPage=="settings"&&!restoringRoute)RecordPage("settings");}
         internal void ShowUsagePage()
@@ -79,43 +79,48 @@ namespace Dafeiyu
         }
         void SetShellPage(string page)
         {
-            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
+            CloseTransientSummary();CloseProfileMenu();shellPage=page;if(companionPage!=null)companionPage.Visibility=page=="companion"?Visibility.Visible:Visibility.Collapsed;if(imagePage!=null)imagePage.Visibility=page=="images"?Visibility.Visible:Visibility.Collapsed;homePage.Visibility=page=="home"?Visibility.Visible:Visibility.Collapsed;if(settingsPage!=null)settingsPage.Visibility=page=="settings"?Visibility.Visible:Visibility.Collapsed;if(usagePage!=null)usagePage.Visibility=page=="usage"?Visibility.Visible:Visibility.Collapsed;if(mcpPage!=null)mcpPage.Visibility=page=="mcp"?Visibility.Visible:Visibility.Collapsed;RefreshShellAppearance();if(page=="home")Dispatcher.BeginInvoke(new Action(RefreshWorkspaceLayout));
         }
         void RecordPage(string page)
         {
-            if(restoringRoute||!shellReady)return;var route=new AppRoute{Page=page,Workspace=workspace,Section=settingsPage==null?0:settingsPage.SelectedNavigationIndex};var prior=historyIndex>=0?appHistory[historyIndex]:null;
-            if(prior!=null&&prior.Page==page&&(page!="home"||ReferenceEquals(prior.Workspace,workspace))&&(page!="settings"||prior.Section==route.Section)){RefreshShellAppearance();return;}
+            if(restoringRoute||!shellReady)return;var route=new AppRoute{Page=page,Workspace=workspace,Section=settingsPage==null?0:settingsPage.SelectedNavigationIndex,SecondarySection=settingsPage==null?-1:settingsPage.SelectedSecondarySection,FeatureAnchor=page=="companion"?companionFeatureAnchor:page=="settings"&&settingsPage!=null?settingsPage.SelectedFeatureAnchor:null};var prior=historyIndex>=0?appHistory[historyIndex]:null;
+            if(prior!=null&&prior.Page==page&&(page!="home"||ReferenceEquals(prior.Workspace,workspace))&&(page!="settings"||(prior.Section==route.Section&&prior.SecondarySection==route.SecondarySection&&prior.FeatureAnchor==route.FeatureAnchor))&&(page!="companion"||prior.FeatureAnchor==route.FeatureAnchor)){RefreshShellAppearance();return;}
             if(historyIndex+1<appHistory.Count)appHistory.RemoveRange(historyIndex+1,appHistory.Count-historyIndex-1);appHistory.Add(route);if(appHistory.Count>100)appHistory.RemoveAt(0);historyIndex=appHistory.Count-1;RefreshShellAppearance();
         }
         void TravelPage(int direction)
         {
             int next=historyIndex+direction;if(next<0||next>=appHistory.Count)return;var route=appHistory[next];restoringRoute=true;
-            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.SelectNavigation(route.Section);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
+            try{if(route.Page=="settings"){if(settingsPage==null)return;SetShellPage("settings");settingsPage.RestoreNavigation(route.Section,route.SecondarySection,route.FeatureAnchor,true);}else if(route.Page=="companion"){ShowCompanionPage(route.FeatureAnchor);}else if(route.Page=="images"){ShowImagesPage();}else if(route.Page=="usage"){ShowUsagePage();}else if(route.Page=="mcp"){ShowPluginsPage();}else{if(!ReferenceEquals(workspace,route.Workspace)&&(route.Workspace==null||pet.Workspaces.OpenWorkspaces.Contains(route.Workspace)))SwitchWorkspace(route.Workspace);SetShellPage("home");}historyIndex=next;}
             finally{restoringRoute=false;RefreshShellAppearance();}
         }
         void RefreshShellAppearance()
         {
-            if(!shellReady)return;shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);shellAvatarImage.ToolTip=pet.Skin.Name;
+            if(!shellReady)return;if(companionPage!=null)companionPage.RefreshIdentity();shellBack.IsEnabled=historyIndex>0;shellForward.IsEnabled=historyIndex>=0&&historyIndex<appHistory.Count-1;shellSidebar.IsEnabled=shellPage=="home";SelectRailIcon(shellHome,"home",shellPage=="home");SelectRailIcon(shellImages,"image",shellPage=="images");SelectRailIcon(shellUsage,"usage",shellPage=="usage");SelectRailIcon(shellMcp,"mcp",shellPage=="mcp");SelectRailIcon(shellSettings,"settings",shellPage=="settings");shellAvatarImage.Source=SkinCatalog.GetAvatar(pet.Skin);LocalizedUi.Set(shellAvatarImage,"ToolTip",()=>(pet.Skin.DisplayName));
         }
         void SelectRailIcon(Button button,string icon,bool selected)
-        {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?"已选中":"");}
+        {button.Content=ShellIcons.Image(icon,selected?Ui.Brush("#1C2024"):AgentUi.Muted,18,selected);button.Background=selected?Ui.Brush("#E1E8EE"):Brushes.Transparent;System.Windows.Automation.AutomationProperties.SetItemStatus(button,selected?TextResources.Get("chatAppShell.selectRailIcon.automationAutomationPropertiesSetItemStatus"):"");}
         void ToggleAppSidebar()
         {if(shellPage!="home")return;bool shown=navigation!=null&&navigation.IsVisible;sidebarHidden=shown;sidebarTemporary=!shown&&workspaceShell.ActualWidth<900;pet.Settings.ShowProjectSidebar=!shown;pet.SaveSettings();RefreshWorkspaceLayout();}
         void LayoutAppSidebar(bool wide)
         {
             if(navigation==null)return;if(wide)sidebarTemporary=false;bool overlay=sidebarTemporary&&!sidebarHidden&&!wide&&shellPage=="home";navigation.Visibility=wide||overlay?Visibility.Visible:Visibility.Collapsed;Grid.SetColumn(navigation,overlay?2:0);Grid.SetColumnSpan(navigation,overlay?3:1);navigation.Width=overlay?Math.Max(210,Math.Min(navigationWidth,workspaceShell.ActualWidth-40)):Double.NaN;navigation.HorizontalAlignment=overlay?HorizontalAlignment.Left:HorizontalAlignment.Stretch;Panel.SetZIndex(navigation,overlay?40:0);navigation.Effect=overlay?new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=18,ShadowDepth=5,Opacity=.14}:null;
-            if(shellReady){shellSidebar.Background=wide||overlay?Ui.Brush("#E1E8EE"):Brushes.Transparent;shellSidebar.ToolTip=(wide||overlay?"隐藏":"显示")+"侧边栏 · Ctrl+Shift+S";var compose=conversationHeader.Children.OfType<Button>().FirstOrDefault(b=>b.Name=="ShellNewChat");if(compose!=null)compose.Visibility=wide?Visibility.Collapsed:Visibility.Visible;}
+            if(shellReady){shellSidebar.Background=wide||overlay?Ui.Brush("#E1E8EE"):Brushes.Transparent;LocalizedUi.Set(shellSidebar,"ToolTip",()=>((wide||overlay?TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip"):TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeA"))+TextResources.Get("chatAppShell.layoutAppSidebar.shellSidebarToolTip.alternativeB")));var compose=conversationHeader.Children.OfType<Button>().FirstOrDefault(b=>b.Name=="ShellNewChat");if(compose!=null)compose.Visibility=wide?Visibility.Collapsed:Visibility.Visible;}
         }
         void OpenProfileMenu()
         {
             var button=FindShellButton("ShellAvatar");if(button.ContextMenu!=null&&button.ContextMenu.IsOpen){button.ContextMenu.IsOpen=false;return;}
-            var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;var heading=new StackPanel{Margin=new Thickness(0,4,0,8)};heading.Children.Add(Ui.Text(pet.Skin.Name,14,AgentUi.Ink));heading.Children.Add(Ui.Text("桌面伙伴",11,AgentUi.Muted));menu.Items.Add(new MenuItem{Header=heading,Icon=new Image{Source=SkinCatalog.GetAvatar(pet.Skin),Width=24,Height=24},IsEnabled=false});menu.Items.Add(new Separator());
-            AddProfile(menu,"ProfileUsage","用量统计","usage",ShowUsagePage);
-            AddProfile(menu,"ProfilePetVisibility",pet.IsPetVisible?"隐藏桌宠":"显示桌宠","pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
-            var skins=new MenuItem{Name="ProfileCompanions",Header="切换伙伴",Icon=ShellIcons.Image("people")};foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}};entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
-            AddProfile(menu,"ProfileSettings","设置","settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=new MenuItem{Name="ProfileHelp",Header="帮助",Icon=ShellIcons.Image("help")};foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
+            var menu=ChatUi.Menu();menu.Name="ShellProfileMenu";menu.MinWidth=258;menu.Items.Add(CompanionProfileEntry(menu));menu.Items.Add(new Separator());
+            AddProfile(menu,"ProfileUsage",()=>TextResources.Get("chatAppShell.openProfileMenu.addProfile"),"usage",ShowUsagePage);
+            AddProfile(menu,"ProfilePetVisibility",()=>pet.IsPetVisible?TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeA"):TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeB"),"pet",delegate{if(pet.IsPetVisible)pet.HidePet();else pet.RestorePet();});
+            var skins=LocalizedUi.With(new MenuItem{Name="ProfileCompanions",Header=TextResources.Get("chatAppShell.openProfileMenu.header"),Icon=ShellIcons.Image("people")},"Header",()=>(TextResources.Get("chatAppShell.openProfileMenu.header")));foreach(var skin in pet.Catalog.Skins){var selected=skin;var entry=LocalizedUi.With(new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==pet.Skin.PickerKey,IsEnabled=!pet.DialogueBusy&&(settingsPage==null||!settingsPage.HasUnsavedEdits),Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=20,Height=20}},"Header",()=>(skin.DisplayName));entry.Click+=async delegate{await pet.RequestSkinAsync(selected,CompanionSelectionOrigin.MainWindow,this);};skins.Items.Add(entry);}menu.Items.Add(skins);
+            AddProfile(menu,"ProfileLanguage",()=>TextResources.Get("menus.language"),"language",delegate{
+                var dialog=new LanguagePickerWindow(pet.Settings.UiLanguage,delegate(string code){
+                    UiLanguageChange.Apply(pet.Store,pet.Settings,code);
+                });dialog.Owner=this;dialog.ShowDialog();
+            });
+            AddProfile(menu,"ProfileSettings",()=>TextResources.Get("chatAppShell.openProfileMenu.addProfile.alternativeC"),"settings",()=>pet.ShowSettings());menu.Items.Add(new Separator());var help=LocalizedUi.With(new MenuItem{Name="ProfileHelp",Header=TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA"),Icon=ShellIcons.Image("help")},"Header",()=>(TextResources.Get("chatAppShell.openProfileMenu.header.alternativeA")));foreach(var command in shellCommands.Where(c=>c.Group=="帮助"))help.Items.Add(CommandMenuItem(command));menu.Items.Add(help);button.ContextMenu=menu;menu.PlacementTarget=button;menu.Placement=System.Windows.Controls.Primitives.PlacementMode.Top;menu.StaysOpen=false;menu.IsOpen=true;
         }
-        void AddProfile(ContextMenu menu,string name,string label,string icon,Action action){var item=new MenuItem{Name=name,Header=label,Icon=ShellIcons.Image(icon)};item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
+        void AddProfile(ContextMenu menu,string name,Func<string> label,string icon,Action action){var item=LocalizedUi.With(new MenuItem{Name=name,Header=label(),Icon=ShellIcons.Image(icon)},"Header",label);item.Click+=delegate{menu.IsOpen=false;action();};menu.Items.Add(item);}
         Button FindShellButton(string name){return appRail.Child is Grid?((Grid)appRail.Child).Children.OfType<Button>().First(b=>b.Name==name):null;}
         void CloseProfileMenu(){if(appRail==null)return;var button=FindShellButton("ShellAvatar");if(button!=null&&button.ContextMenu!=null)button.ContextMenu.IsOpen=false;}
         internal void MountLiveContent(FrameworkElement view){liveReturnPage=shellPage;liveReturnSection=settingsPage==null?0:settingsPage.SelectedNavigationIndex;liveReturnHistory=historyIndex;ShowHomePage(false);workspaceShell.Visibility=Visibility.Collapsed;homePage.Children.Add(view);}
@@ -137,5 +142,5 @@ namespace Dafeiyu
         [StructLayout(LayoutKind.Sequential)]struct MonitorInfo{public int Size;public NativeRect Monitor,Work;public int Flags;}
         [DllImport("user32.dll")]static extern IntPtr MonitorFromWindow(IntPtr window,uint flags);
         [DllImport("user32.dll",CharSet=CharSet.Auto)]static extern bool GetMonitorInfo(IntPtr monitor,ref MonitorInfo info);
-    }
+}
 }

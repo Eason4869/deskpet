@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,7 +11,7 @@ namespace Dafeiyu
     {
         private void TargetVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
-            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); status.Text = "你切换了设置页，可点下方按钮回到当前步骤。"; }
+            if (!navigating && target != null && !target.IsVisible) { RemoveHighlight(); LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingGeometry.targetVisibilityChanged.status"))); }
         }
         private void RemoveHighlight()
         {
@@ -19,6 +19,7 @@ namespace Dafeiyu
             if (layer != null && highlight != null) layer.Remove(highlight); target = null; layer = null; highlight = null;
         }
         private void OwnerClosing(object sender, CancelEventArgs args) { ownerClosing = true; Close(); }
+        private void OwnerVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args) { PositionNearTarget(); }
         private void OwnerMoved(object sender, EventArgs args) { PositionNearTarget(); }
         private void OwnerSized(object sender, SizeChangedEventArgs args) { if (highlight != null) highlight.InvalidateVisual(); PositionNearTarget(); }
         private void PositionNearTarget()
@@ -26,25 +27,18 @@ namespace Dafeiyu
             if (!IsVisible || positioning) return; positioning = true;
             try
             {
-                IntPtr mine = new WindowInteropHelper(this).Handle, owner = new WindowInteropHelper(target != null ? Window.GetWindow(target) ?? settingsHost : settingsHost).Handle;
-                if (mine == IntPtr.Zero || owner == IntPtr.Zero) return;
-                Rect area = DesktopInterop.WorkArea(owner), editor = DesktopInterop.Bounds(owner), bounds = DesktopInterop.Bounds(mine);
+                IntPtr mine = new WindowInteropHelper(this).Handle;
+                Window main = settingsHost.IsVisible && settingsHost.WindowState != WindowState.Minimized ? settingsHost : null;
+                if (mine == IntPtr.Zero) return;
+                IntPtr anchor = new WindowInteropHelper(main ?? pet).Handle;
+                Rect area = DesktopInterop.WorkArea(anchor == IntPtr.Zero ? mine : anchor);
                 var source = PresentationSource.FromVisual(this); Matrix toDevice = source == null ? Matrix.Identity : source.CompositionTarget.TransformToDevice;
-                Width = Math.Max(280, Math.Min(390, (area.Width - 24) / toDevice.M11)); Height = Math.Max(240, Math.Min(540, (area.Height - 24) / toDevice.M22));
+                double availableWidth=Math.Max(1,(area.Width-24)/toDevice.M11),availableHeight=Math.Max(1,(area.Height-24)/toDevice.M22);
+                MinWidth=Math.Min(280,availableWidth);MinHeight=Math.Min(300,availableHeight);Width=Math.Min(390,availableWidth);Height=Math.Min(540,availableHeight);
                 double width = Width * toDevice.M11, height = Height * toDevice.M22;
-                Rect focus = new Rect(editor.Left + editor.Width * .5, editor.Top + editor.Height * .5, 1, 1);
-                if (target != null && target.IsVisible)
-                {
-                    Point a = target.PointToScreen(new Point()), b = target.PointToScreen(new Point(target.ActualWidth, target.ActualHeight)); focus = new Rect(a, b);
-                }
-                Point[] candidates = { new Point(editor.Right + 12, focus.Top), new Point(editor.Left - width - 12, focus.Top), new Point(focus.Right + 16, focus.Top), new Point(focus.Left - width - 16, focus.Top), new Point(focus.Left, focus.Bottom + 16), new Point(focus.Left, focus.Top - height - 16), area.TopLeft, new Point(area.Right - width, area.Top), new Point(area.Left, area.Bottom - height), new Point(area.Right - width, area.Bottom - height) };
-                double best = Double.MaxValue; Point chosen = bounds.TopLeft;
-                foreach (Point candidate in candidates)
-                {
-                    Point clamped = PetMath.ClampPosition(candidate.X, candidate.Y, width, height, area); Rect rectangle = new Rect(clamped, new Size(width, height)), overlap = Rect.Intersect(rectangle, focus), editorOverlap = Rect.Intersect(rectangle, editor);
-                    double score = (overlap.IsEmpty ? 0 : overlap.Width * overlap.Height) * 10000 + (editorOverlap.IsEmpty ? 0 : editorOverlap.Width * editorOverlap.Height) + Math.Abs(clamped.Y - focus.Y) * .01;
-                    if (score < best) { best = score; chosen = clamped; }
-                }
+                Rect editor = main == null ? Rect.Empty : DesktopInterop.Bounds(anchor);
+                Point desired = main == null ? new Point(area.Left + (area.Width - width) / 2, area.Top + (area.Height - height) / 2) : new Point(editor.Right + 12, editor.Top);
+                Point chosen = PetMath.ClampPosition(desired.X, desired.Y, width, height, area);
                 DesktopInterop.Move(mine, chosen);
             }
             finally { positioning = false; }

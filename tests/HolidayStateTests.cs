@@ -38,10 +38,10 @@ namespace Dafeiyu.Tests
                 string blocker=Path.Combine(root,"not-a-directory");File.WriteAllText(blocker,"keep");bool failed=false;
                 try{new HolidayStateStore(Path.Combine(blocker,"state.json")).Save(fresh);}catch(IOException){failed=true;}
                 Check(failed && fresh.WardrobeDiscovered,"failed write is reported and in-memory unlock remains");
-                string future=Path.Combine(root,"future.json");string futureJson="{\"SchemaVersion\":2,\"WardrobeDiscovered\":true}";File.WriteAllText(future,futureJson);
+                string future=Path.Combine(root,"future.json");string futureJson="{\"SchemaVersion\":3,\"WardrobeDiscovered\":true}";File.WriteAllText(future,futureJson);
                 var futureStore=new HolidayStateStore(future);futureStore.Load();failed=false;try{futureStore.Save(new HolidayState());}catch(InvalidOperationException){failed=true;}
                 Check(failed && File.ReadAllText(future)==futureJson,"unknown future schema is not overwritten");
-                string futureShape=Path.Combine(root,"future-shape.json");string changedJson="{\"SchemaVersion\":2,\"Characters\":\"new-format\"}";File.WriteAllText(futureShape,changedJson);
+                string futureShape=Path.Combine(root,"future-shape.json");string changedJson="{\"SchemaVersion\":3,\"Characters\":\"new-format\"}";File.WriteAllText(futureShape,changedJson);
                 var changedStore=new HolidayStateStore(futureShape);changedStore.Load();failed=false;try{changedStore.Save(new HolidayState());}catch(InvalidOperationException){failed=true;}
                 Check(failed && File.Exists(futureShape) && File.ReadAllText(futureShape)==changedJson,"future field shapes are checked only after schema version");
                 string locked=Path.Combine(root,"locked.json");var lockedStore=new HolidayStateStore(locked);lockedStore.Save(state);

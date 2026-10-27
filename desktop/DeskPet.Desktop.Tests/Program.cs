@@ -21,7 +21,18 @@ using Avalonia.Threading;
 using Dafeiyu;
 using DeskPet.Desktop;
 
+if(args.Length==3&&args[0]=="--agent-job-exit-fixture"){Environment.ExitCode=AgentJobExitUiChecks.RunNativeHost(args[1],args[2]);return;}
+
+if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPackChecks: "+RelationshipPackChecks.Run()+" passed");return;}
+
+// Legacy UI fixtures assert Chinese copy. Pin their test UI culture so the new
+// system-language default does not depend on the CI runner's OS language.
+var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
+System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo(systemLanguageFixture==null?"zh-CN":systemLanguageFixture.Substring("--system-language-ui=".Length));
 AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
+if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
+if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
@@ -34,6 +45,66 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(a=>a.StartsWith("--profile-fresh="))){Console.WriteLine("ProfileFresh: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-fresh"),args.Single(a=>a.StartsWith("--profile-fresh=")).Split('=')[1],freshOnly:true)+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--profile-art="))){Console.WriteLine("ProfileArtwork: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-art"),args.Single(a=>a.StartsWith("--profile-art=")).Split('=')[1])+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--profile-type="))){Console.WriteLine("ProfileTypography: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-typography"),args.Single(a=>a.StartsWith("--profile-type=")).Split('=')[1],true)+" passed");return;}
+    if(args.Contains("--heart-icons")){Console.WriteLine("HeartIcons: "+CompanionHomeUiChecks.RunHeartIcons(Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native"))+" passed");return;}
+    if(args.Contains("--heart-home")){Console.WriteLine("HeartHome: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"heart-home"),"zh_CN",Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native-home"))+" passed");return;}
+    if(args.Contains("--maintenance-default-sequence")){
+        TextResources.ConfigureStartupLanguage("zh_CN");TextResources.Get("common.cancel");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));
+        Check(TextResources.CurrentLanguage=="en_US","language changes before maintenance fixtures without restarting");
+        TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
+        int sequence=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-sequence"),TextResources.CurrentLanguage)
+            +DataManagementUiChecks.Run(Path.Combine(directory,"data-management-sequence"),TextResources.CurrentLanguage)
+            +CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-sequence"),TextResources.CurrentLanguage);
+        Console.WriteLine("MaintenanceDefaultSequence: "+(sequence+assertions)+" passed");return;
+    }
+    if(args.Any(a=>a.StartsWith("--stage-track-layout="))){Console.WriteLine("StageTrackLayout: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"stage-track"),args.Single(a=>a.StartsWith("--stage-track-layout=")).Split('=')[1])+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
+    if(args.Contains("--deferred-cache-only")){Console.WriteLine("PASS: "+CompleteCompanionChecks.RunDeferred(Path.Combine(directory,"deferred"))+" render-deferred cache checks");return;}
+    if(args.Contains("--composer-drafts-only")){Console.WriteLine("PASS: "+ComposerDraftUiChecks.Run(Path.Combine(directory,"composer-drafts"))+" native composer draft isolation checks");return;}
+    if(args.Contains("--complete-local-only")){Console.WriteLine("PASS: "+CompleteCompanionLocalUiChecks.Run(Path.Combine(directory,"complete-local"))+" installed local wardrobe/restart/source checks");return;}
+    if(args.Contains("--complete-companions")){Console.WriteLine("PASS: "+CompleteCompanionChecks.Run(Path.Combine(directory,"complete"))+" native complete companion clock/pose checks");return;}
+    if(args.Contains("--quiet-motion")){Console.WriteLine("QuietMotion: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet"))+" passed");return;}
+    if(args.Contains("--quiet-installed")){Console.WriteLine("QuietInstalled: "+QuietMotionChecks.Run(Path.Combine(directory,"quiet-installed"),true)+" passed");return;}
+    if(args.Contains("--holiday-folder-failure")){Console.WriteLine("HolidayFolderFailureUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.FolderFailureUi()+" passed");return;}
+    if(args.Contains("--holiday-keepsake-between-read-ui")){Console.WriteLine("HolidayBetweenReadUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.BetweenReadUi()+" passed");return;}
+    if(args.Contains("--holiday-keepsake-between-reads")){Console.WriteLine("HolidayBetweenReads: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.GetFullPath("work/h1b/r1/native-contracts-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
+    if(args.Contains("--holiday-keepsake-lifecycle")){Console.WriteLine("HolidayLifecycle: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle()+" passed");return;}
+    if(args.Contains("--holiday-keepsake-presentation")){Console.WriteLine("HolidayPresentation: "+Result(Task.Run(()=>HolidayKeepsakePresentationChecks.Run(Path.GetFullPath("work/h1b/contracts-native/"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator())))+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--holiday-keepsake-ui="))){Console.WriteLine("HolidayKeepsakeUi: "+DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.Run(args.Single(a=>a.StartsWith("--holiday-keepsake-ui=")).Split('=')[1],args.Contains("--sample"))+" passed");return;}
+    if(args.Contains("--relationship-ornament-only")){Console.WriteLine("OrnamentOnly: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.OrnamentOnly()+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--relationship-stage-art-sample="))){Console.WriteLine("RelationshipStageArtSample: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Sample(args.Single(a=>a.StartsWith("--relationship-stage-art-sample=")).Split('=')[1])+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--relationship-stage-art="))){Console.WriteLine("RelationshipStageArtChecks: "+DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(args.Single(a=>a.StartsWith("--relationship-stage-art=")).Substring(25),args.Contains("--resources"),args.Contains("--quick"),args.Contains("--title-corpus"))+" passed");return;}
+    if(args.Contains("--relationship-title-font-only")){Console.WriteLine("RelationshipTitleFontChecks: "+DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"))+" passed");return;}
+    if(args.Contains("--companion-portrait-only")){Console.WriteLine("CompanionPortraitChecks: "+CompanionPortraitChecks.Run(Path.Combine(directory,"companion-portrait"))+" passed");return;}
+    if(args.Any(a=>a.StartsWith("--companion-home-ui="))){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"),args.Single(a=>a.StartsWith("--companion-home-ui=")).Split('=')[1])+" passed");return;}
+    if(args.Contains("--first-home-visit")){Console.WriteLine("FirstHomeVisitUi: "+CompanionHomeUiChecks.RunFirstVisit(Path.Combine(directory,"first-home"))+" passed");return;}
+    if(args.Contains("--relationship-settings-maintenance")){Console.WriteLine("Companion settings maintenance: "+CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance"))+" passed");return;}
+    if(args.Contains("--relationship-feedback-motion")){Console.WriteLine("RelationshipFeedbackMotion: "+RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion"))+" passed");return;}
+    if(args.Contains("--relationship-feedback-placement")){Console.WriteLine("RelationshipFeedbackPlacement: "+RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement"))+" passed");return;}
+    if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
+    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
+    if(args.Contains("--relationship-experience-visibility-only")){Console.WriteLine("RelationshipExperienceVisibility: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-visibility"),visibilityOnly:true)+" passed");return;}
+    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
+    if(args.Contains("--companion-home-ui-only")){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"))+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
+    if(args.Contains("--agent-job-native-ui-only")){Console.WriteLine("AgentJobNativeUiChecks: "+AgentJobExitUiChecks.RunPreview(Path.Combine(directory,"agent-job-native-ui"))+" passed");return;}
+    if(args.Contains("--agent-job-held-exit-ui-only")){Console.WriteLine("AgentJobExitUiChecks held: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit-held"),"held")+" passed");return;}
+    if(args.Contains("--agent-job-kill-host-ui-only")){Console.WriteLine("AgentJobExitUiChecks kill: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit-kill"),"kill")+" passed");return;}
+    if(args.Contains("--agent-job-exit-ui-only")){Console.WriteLine("AgentJobExitUiChecks: "+AgentJobExitUiChecks.Run(Path.Combine(directory,"agent-job-exit"))+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--agent-job-ui="))){string language=args.Single(arg=>arg.StartsWith("--agent-job-ui=")).Substring("--agent-job-ui=".Length);Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"),language)+" passed");return;}
+    if(args.Contains("--agent-job-ui-only")){Console.WriteLine("AgentJobUiChecks: "+AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui"))+" passed");return;}
+    if(args.Contains("--live-language-ui-only")){Console.WriteLine("LiveLanguageUiChecks: "+LiveLanguageUiChecks.Run(Path.Combine(directory,"live-language-ui"))+" passed");return;}
+    if(args.Contains("--onboarding-preparation-ui-only")){Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"))+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--onboarding-preparation-ui="))){string language=args.Single(arg=>arg.StartsWith("--onboarding-preparation-ui=")).Substring("--onboarding-preparation-ui=".Length);Console.WriteLine("OnboardingPreparationUiChecks: "+OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation"),language)+" passed");return;}
+    if(args.Contains("--work-binding-ui-only")||args.Contains("--agent-job-binding-ui-only")){Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"))+" passed");return;}
+    if(systemLanguageFixture!=null){Console.WriteLine("SystemLanguageUiChecks: "+LanguageUiChecks.RunSystemStartup(Path.Combine(directory,"system-language-ui"),System.Globalization.CultureInfo.CurrentUICulture.Name)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--language-picker="))){string language=args.Single(arg=>arg.StartsWith("--language-picker=")).Substring("--language-picker=".Length);Console.WriteLine("LanguagePickerChecks: "+LanguagePickerChecks.Run(language)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--full-language-ui="))){string language=args.Single(arg=>arg.StartsWith("--full-language-ui=")).Substring("--full-language-ui=".Length);Console.WriteLine("MultilingualUiAuditChecks: "+MultilingualUiAuditChecks.Run(Path.Combine(directory,"multilingual-audit"),language)+" passed");return;}
+    if(args.Any(arg=>arg.StartsWith("--language-ui="))){string language=args.Single(arg=>arg.StartsWith("--language-ui=")).Substring("--language-ui=".Length);if(!UiLanguages.Choices.Any(choice=>choice.Code==language))throw new ArgumentException("Unsupported language fixture");Console.WriteLine("LanguageUiChecks: "+LanguageUiChecks.Run(Path.Combine(directory,"language-ui"),language)+" passed");return;}
+    if(args.Contains("--localization-ui-only")){Console.WriteLine("LocalizationUiChecks: "+LocalizationUiChecks.Run(Path.Combine(directory,"localization"))+" passed");return;}
     if(args.Contains("--companion-startup-ui-only")){Console.WriteLine("CompanionStartupUi: "+OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory,"startup-restore"))+" passed");return;}
     if (args.Contains("--official-native-index") || args.Contains("--official-native-materials"))
     {
@@ -53,15 +124,49 @@ try
     if (args.Contains("--image-exit-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.RunQuit(Path.Combine(directory, "image-exit-ui")) + " native lifetime assertions"); return; }
     if (args.Contains("--image-task-ui-only")) { Console.WriteLine("PASS: " + ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui")) + " native task center assertions"); return; }
     if (args.Contains("--image-ui-only")) { var imageChecks = ImageUiChecks.Run(Path.Combine(directory, "image-ui")); Console.WriteLine("PASS: " + imageChecks + " image workspace / gallery / conversation UI assertions"); return; }
+    if(args.Contains("--data-admission-host-only")){Console.WriteLine("PASS: "+DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission"))+" admission host assertions");return;}
+    if(args.Any(a=>a.StartsWith("--settings-visual-ui="))){var language=args.Single(a=>a.StartsWith("--settings-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"settings-visual"),language)+" settings visual assertions");return;}
+    if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
+    if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
+    if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
+    if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
+    assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
+    assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
+    assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"),TextResources.CurrentLanguage);
+    assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"),TextResources.CurrentLanguage);
+    assertions+=RelationshipPackChecks.Run();
+    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
+    assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);
+    assertions+=RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion-default"));
+    assertions+=RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement-default"));
+    assertions+=QuietMotionChecks.Run(Path.Combine(directory,"quiet-default"));
+    Console.WriteLine("START OnboardingPreparationUiChecks");
+    assertions+=OnboardingPreparationUiChecks.Run(Path.Combine(directory,"onboarding-preparation-default"));
+    Console.WriteLine("START AgentJobUiChecks");
+    assertions+=AgentJobUiChecks.Run(Path.Combine(directory,"agent-job-ui-default"));
+    Console.WriteLine("START WorkBindingUiChecks");
+    assertions+=WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding-default"));
+    Console.WriteLine("START LocalizationUiChecks");
+    assertions += LocalizationUiChecks.Run(Path.Combine(directory,"localization"));
+    Console.WriteLine("START OfficialCompanion.Timing");
     assertions += OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory,"startup-restore"));
     assertions += OfficialCompanionUiChecks.RunTiming();
+    Console.WriteLine("START OfficialCompanionUiChecks.RunSelection");
     assertions += OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection"));
+    Console.WriteLine("START OfficialCompanionUiChecks.RunNative");
     assertions += OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native"));
+    Console.WriteLine("START OfficialCompanionUiChecks.RunIdentity");
     assertions += OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"));
+    Console.WriteLine("START HolidayUiChecks.Run");
     assertions += HolidayUiChecks.Run(Path.Combine(directory, "holiday"));
+    Console.WriteLine("START HolidayWardrobeLayoutChecks.RunSourceSwitch");
     assertions += HolidayWardrobeLayoutChecks.RunSourceSwitch(Path.Combine(directory, "source-switch"));
+    Console.WriteLine("START HolidayWardrobeLayoutChecks.Run");
     assertions += HolidayWardrobeLayoutChecks.Run(Path.Combine(directory, "wardrobe-layout"), Path.GetFullPath("work/holiday-ui"));
+    Console.WriteLine("START HolidayReviewChecks.Run");
     assertions += HolidayReviewChecks.Run(Path.Combine(directory, "holiday-review"));
+    Console.WriteLine("START HolidayUiChecks.RunResources");
     assertions += HolidayUiChecks.RunResources(Path.Combine(directory, "holiday-resources"));
     var skins = SpriteAssets.LoadSkins(directory);
     Check(skins.Count == 5 && skins.Any(s => s.Id == "gugugaga"), "five bundled companions including Guga");
@@ -143,7 +248,7 @@ try
         foreach (var original in new[] { false, true })
         {
             var clip = assets.Resolve(skin, action, original); var bitmap = assets.Get(skin, clip.File);
-            Check(clip.Fps == 8, skin.Id + "/" + action + " runs at 8FPS");
+            double expectedFps=action=="sleeping"?2.5:8;Check(clip.Fps == expectedFps, skin.Id + "/" + action + " uses reviewed cadence " + expectedFps + "FPS");
             for (int frame = 0; frame < clip.Frames; frame++)
             {
                 var rect = SpriteAssets.Rect(clip, frame);
@@ -604,7 +709,7 @@ try
     }
     uploadWindow.Close(); Dispatcher.UIThread.RunJobs();
     var settings = (SettingsWindow)windows[2];
-    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem != null, "settings section " + section); }
+    foreach (var section in new[] { "partner", "behavior", "text", "image", "asr", "speech", "live", "work", "voice", "storage" }) { settings.SelectSection(section); Dispatcher.UIThread.RunJobs(); Check(settings.SelectedSection == section, "settings section " + section); }
     var settingsFile = Path.Combine(controller.DataDirectory, "settings.json"); var beforeWorkOpen = File.GetLastWriteTimeUtc(settingsFile);
     _ = new WorkSettingsView(controller, settings); Dispatcher.UIThread.RunJobs();
     Check(File.GetLastWriteTimeUtc(settingsFile) == beforeWorkOpen, "creating work settings does not save or dirty initial values");
@@ -656,6 +761,7 @@ try
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
+    for(int intro=0;intro<2&&(guide.CurrentLessonId=="language"||guide.CurrentLessonId=="welcome");intro++){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
     var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
     Check(guideExit.FontSize >= 14 && guideExit.FontWeight == Avalonia.Media.FontWeight.SemiBold && guideExit.Foreground == DesktopTheme.Brush("#203754"), "desktop guide exit is larger semibold and theme aware");
     var later = guide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "稍后继续"); later.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -665,14 +771,16 @@ try
     Check(controller.Settings.OnboardingState == "skipped", "guide skip releases window");
     controller.Settings.OnboardingState = "new"; controller.Settings.OnboardingStep = 14;
     var workGuide = new GuideWindow(controller); workGuide.Show(); Dispatcher.UIThread.RunJobs();
-    Check(workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "15 / 17 · 对话模式与附件"), "work guide revision starts at new conversation and attachment lesson");
+    Check(workGuide.CurrentLessonId=="ava.legacy.14"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 对话模式与附件",StringComparison.Ordinal)==true), "work guide revision starts at new conversation and attachment lesson");
     var guideNext = workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "下一步");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
-    Check(guideSettings.GetLogicalDescendants().OfType<TabControl>().First().SelectedItem is TabItem { Header: "工作设置" }, "work lesson opens actual work settings tab");
+    var guideNavigation=guideSettings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
+    Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作设置") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
-    Check(guideNext.Content as string == "完成引导" && workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "17 / 17 · 更新与开始使用"), "seventeenth lesson exposes reachable completion button");
+    Check(workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "original final lesson remains reachable after preparation steps are inserted");
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","final lesson leads to congratulations before explicit completion");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(controller.Settings.OnboardingState == "completed" && !workGuide.IsVisible, "completing new guide persists completion and closes guide");
     editor.Dispose(); editorHost.Close();
@@ -685,6 +793,28 @@ finally
     // Only remove this run's newly created GUID directory.
     if (Directory.Exists(directory)) Directory.Delete(directory, true);
 }
+
+int CompanionLifecycleSmoke(string root)
+{
+    Directory.CreateDirectory(root);
+    int total=CompanionHomeUiChecks.RunHeartIcons(Path.GetFullPath("work/relationship-validation/evidence/m6c/heart-native"));
+    total+=DeskPet.Desktop.Tests.RelationshipTitleFontChecks.Run(Path.GetFullPath("work/localization-completion/title-proofs/native"));
+    total+=DeskPet.Desktop.Tests.RelationshipStageArtChecks.Run(TextResources.CurrentLanguage,true,true);
+    // Core negative cases deliberately retain read-only/reparse fixtures. Keep their
+    // owned GUID evidence outside the generic native UI temporary-root teardown.
+    string core=Path.GetFullPath(Path.Combine("work","localization-completion","holiday-core-default",Guid.NewGuid().ToString("N")));
+    Console.WriteLine("OWNED_HOLIDAY_CORE_RETAINED "+core);
+    // This full core suite performs large storage/PNG checks and child processes,
+    // not a UI action subject to Until's 10-second dispatcher budget.
+    var coreWatch=System.Diagnostics.Stopwatch.StartNew();
+    total+=Task.Run(()=>Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run(core,new HolidayKeepsakeSceneValidator())).GetAwaiter().GetResult();
+    Console.WriteLine("Holiday core contracts completed in "+coreWatch.ElapsedMilliseconds+" ms");
+    total+=Result(Task.Run(()=>HolidayKeepsakePresentationChecks.RunBetweenReadFailures(Path.Combine(root,"holiday-read-boundary"),new HolidayKeepsakeSceneValidator())));
+    total+=DeskPet.Desktop.Tests.HolidayKeepsakeUiChecks.RunLifecycle();
+    total+=CompanionHomeUiChecks.Run(Path.Combine(root,"home"),TextResources.CurrentLanguage);
+    return total;
+}
+
 
 sealed class DelayedFileTransfer : IAsyncDataTransfer, IAsyncDataTransferItem
 {

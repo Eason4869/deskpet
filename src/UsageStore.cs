@@ -40,12 +40,12 @@ namespace Dafeiyu
                     catch(Exception error)
                     {if(!(error is ArgumentException || error is InvalidOperationException || error is FormatException))throw;damaged=true;}
                 }
-                loadFailed=false;warning=damaged?"部分历史用量行已损坏，已保留原文件并跳过这些行。":"";
+                loadFailed=false;warning=damaged?TextResources.Get("usageStore.load.warningDamaged"):"";
             }
             catch(Exception error)
             {
                 if(!StorageError(error))throw;
-                loadFailed=true;warning="历史用量暂时无法读取；当前请求仅暂存内存，请检查存储权限与空间。";
+                loadFailed=true;warning=TextResources.Get("usageStore.load.warning");
             }
             // Requests captured while the file was inaccessible remain the newest snapshots.
             foreach(var record in latest)Merge(record);
@@ -88,7 +88,7 @@ namespace Dafeiyu
                 catch(Exception error)
                 {
                     if(!StorageError(error))throw;
-                    warning="用量记录暂未完整写入磁盘，当前请求保留在内存；请检查存储权限与空间。";
+                    warning=TextResources.Get("usageStore.addOrUpdate.warning");
                 }
             }
             var changed=Changed;

@@ -45,6 +45,20 @@ internal static class ImageTaskCenterUiChecks
             new ImageGenerationTaskStore(data).Save(records);var manager=new ImageGenerationTaskManager(new ImageGenerationTaskStore(data),assets,client,usage);Complete(manager.RestoreAsync(CancellationToken.None));typeof(DesktopController).GetField("<ImageTasks>k__BackingField",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner,manager);
             session.ImageTasks=manager;session.ImageStore=assets;session.ImageUsage=usage;
             var management=new ImageAssetManagementService(assets,usage,new ImageAssetReferenceResolver(data,assets,manager));
+            ImagePurgeResult PurgeAfterThumbnailReads(string id)
+            {
+                var wait=System.Diagnostics.Stopwatch.StartNew();
+                while(true)
+                {
+                    var result=Result(management.PurgeAsync(new[]{id},CancellationToken.None));
+                    if(result.DeletedIds.Contains(id))return result;
+                    // A visible row can precede its asynchronous thumbnail decode.
+                    // Retry only that temporary usage refusal, never a reference or storage error.
+                    if(!result.Blocked.TryGetValue(id,out var reason) || reason!=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId") || wait.Elapsed.TotalSeconds>6)
+                        throw new Exception("Unexpected purge refusal after "+wait.ElapsedMilliseconds+"ms: "+string.Join(",",result.Blocked.Values));
+                    Complete(Pause());
+                }
+            }
             var page=new ImageWorkspacePage(owner,new Window());var host=new Window{Content=page,Width=900,Height=740};host.Show();page.SelectedIndex=2;Dispatcher.UIThread.RunJobs();
             Complete(Pause());Complete(Until(()=>All<Border>(page).Count(b=>b.Name=="ImageTaskRow")==4));
             if(scenario=="recovery")
@@ -92,7 +106,15 @@ internal static class ImageTaskCenterUiChecks
                 Complete(Until(()=>filter.Items.Count>2));filter.SelectedItem=scenario=="service"?filter.Items.OfType<ImageGalleryProviderChoice>().Single(p=>p.Id=="service-a"):(object)"model-a";
                 Complete(Until(()=>((IList<GeneratedImage>)Field(page,"loadedGallery")).Count==1&&((IList<GeneratedImage>)Field(page,"loadedGallery"))[0].Id==first.Id));
                 ((ImageGallerySelection)Field(page,"gallerySelection")).Toggle(first.Id);
-                var purged=Result(management.PurgeAsync(new[]{first.Id},CancellationToken.None));Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");
+                // Exercise the same in-flight thumbnail lease that can still be active
+                // after the asynchronously loaded gallery row becomes visible.
+                IDisposable? pendingReader=scenario=="model"?usage.Acquire(first.Id,"fixture-thumbnail"):null;
+                var releaseReader=pendingReader==null?null:new System.Threading.Timer(_=>pendingReader.Dispose(),null,1000,Timeout.Infinite);
+                try {
+                    var purged=PurgeAfterThumbnailReads(first.Id);
+                    Console.WriteLine("PURGE_RESULT scenario="+scenario+" deleted="+purged.DeletedIds.Count+" blocked="+string.Join(",",purged.Blocked.Values));
+                    Check(purged.DeletedIds.Contains(first.Id),"last selected "+scenario+" asset permanently deleted");
+                }finally{releaseReader?.Dispose();pendingReader?.Dispose();}
                 Complete(Until(()=>filter.SelectedIndex==0));Complete(Pause());
                 var loaded=(IList<GeneratedImage>)Field(page,"loadedGallery");Check(loaded.Count==1&&loaded[0].Id==other.Id&&(int)Field(page,"galleryTotal")==1,"All "+scenario+" control renders the normalized page and count");
                 Check(((ImageGallerySelection)Field(page,"gallerySelection")).Count==0,"effective "+scenario+" filter change clears explicit selection");
@@ -153,11 +175,13 @@ internal static class ImageTaskCenterUiChecks
     }
     internal static int RunHeldQuit(string directory)
     {
-        void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>10)throw new TimeoutException("Held native exit did not finish");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
+        Action diagnostic=()=>{};
+        void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.Elapsed.TotalSeconds>10){diagnostic();throw new TimeoutException("Held native exit did not finish");}Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
         var lifetime=NativeLifetime();using var owner=new DesktopController(lifetime,new TestRuntime(directory));var host=new ChatWindow(owner,false);lifetime.MainWindow=host;host.Show();
         var api=new HeldConversationApi();var speech=new HeldFinalization();var setupSafety=Task.Run(async()=>{await Task.Delay(15000);api.Release.TrySetResult("cleanup");speech.Release.Set();});typeof(ConversationSession).GetField("api",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,api);typeof(ConversationSession).GetField("speech",BindingFlags.Instance|BindingFlags.NonPublic)!.SetValue(owner.Session,speech);
         owner.Settings.AgentEnabled=false;owner.Settings.ReadReplies=false;owner.Settings.Text.BaseUrl="https://unused.invalid/v1";owner.Settings.Text.Model="fixture";owner.Settings.Text.ApiKey="local-fixture-only";var sending=owner.Session.SendTextAsync("hold active session on native quit",owner.Settings,"pet");Until(()=>api.Entered.Task.IsCompleted||sending.IsCompleted);if(!api.Entered.Task.IsCompleted){speech.Release.Set();sending.GetAwaiter().GetResult();throw new Exception("active Avalonia session did not enter held API");}
         bool exited=false,hostClosed=false;host.Closed+=(_,_)=>hostClosed=true;lifetime.Exit+=(_,_)=>{owner.Dispose();exited=true;};var watchdog=Task.Run(async()=>{await Task.Delay(7500);speech.Release.Set();});var watch=System.Diagnostics.Stopwatch.StartNew();
+        diagnostic=()=>{var drain=(Task)typeof(DesktopController).GetField("applicationExitDrain",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner)!;Console.WriteLine("HELD_EXIT sending="+sending.Status+" shutdown="+owner.ImageServicesShutdown.Status+" drain="+drain.Status+" busy="+owner.Session.IsBusy+" idle="+owner.Session.WaitForIdleAsync().IsCompleted+" exited="+exited+" hostClosed="+hostClosed+" apiReleased="+api.Release.Task.IsCompleted+" speechEntered="+speech.Entered.Task.IsCompleted+" speechReleased="+speech.Release.WaitOne(0));};
         try
         {
             if(lifetime.TryShutdown())throw new Exception("FAIL native held session quit was not deferred");Until(()=>exited);
@@ -165,7 +189,7 @@ internal static class ImageTaskCenterUiChecks
             if(!hostClosed)throw new Exception("FAIL held native quit did not close real ChatWindow");
             if(speech.Entered.Task.IsCompleted||owner.ImageServicesShutdown.IsCompleted)throw new Exception("FAIL native OS quit finalized resources before active writer drained");
         }
-        finally{api.Release.TrySetResult("finished");speech.Release.Set();}
+        finally{api.Release.TrySetResult("finished");speech.Release.Set();diagnostic();}
         Until(()=>sending.IsCompleted&&owner.ImageServicesShutdown.IsCompleted);Console.WriteLine("PASS actual native OS quit defers held active-session finalization beyond deadline, then drains safely");return 3;
     }
     internal static int RunWriterGateQuit(string directory)

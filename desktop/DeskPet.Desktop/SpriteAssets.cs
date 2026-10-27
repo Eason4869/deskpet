@@ -20,24 +20,31 @@ internal sealed class PetSkin
     public bool IsPlaceholder { get; set; }
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
     public string? BuiltinCharacterId { get; set; }
+    internal HolidayCatalog? PackageHolidayCatalog { get; set; }
+    internal string? OutfitCharacterId => OfficialCharacterId ?? BuiltinCharacterId ?? (PackageHolidayCatalog != null ? PackageId : null);
     public required string Name { get; init; }
+    public string DisplayName => OfficialCompanionProfiles.GetDisplayName(OfficialCharacterId ?? BuiltinCharacterId, Name);
+    public string DisplayDescription => OfficialCompanionProfiles.Find(OfficialCharacterId ?? BuiltinCharacterId)?.Description ?? Description;
     public required string Prompt { get; init; }
     public string? Folder { get; init; }
     public bool BuiltIn => Folder == null;
+    // Assigned only by the canonical embedded-resource registry, never manifests.
+    internal bool CanonicalBuiltIn { get; set; }
     public string? Atlas { get; init; }
-    public string SpecialAction { get; init; } = "伙伴招牌";
-    public string SpecialAction2 { get; init; } = "第二招牌";
+    public string SpecialAction { get; init; } = TextResources.Get("spriteAssets.specialAction.text");
+    public string SpecialAction2 { get; init; } = TextResources.Get("spriteAssets.specialAction2.text");
     public string? PackageId { get; set; }
     public string? PackVersion { get; init; }
     public string? Avatar { get; set; }
     public string? Preview { get; init; }
-    public string Description { get; init; } = "你的专属桌面伙伴";
+    public string Description { get; init; } = TextResources.Get("spriteAssets.description.text");
+    public RelationshipPackContent? Relationship {get;set;}
     public VoiceRecommendations? Voices { get; init; }
     public Dictionary<string, ClipSpec> ExtraClips { get; } = new();
     public Dictionary<string, ClipSpec> Alternates { get; } = new();
     public Dictionary<string, ClipSpec> Clips { get; } = new();
     public ClipSpec? Gaze { get; set; }
-    public override string ToString() => Name;
+    public override string ToString() => DisplayName;
 }
 
 internal sealed class SpriteAssets : IDisposable
@@ -45,6 +52,26 @@ internal sealed class SpriteAssets : IDisposable
     private readonly Func<string, Stream>? openHoliday;
     internal SpriteAssets(Func<string, Stream>? holidaySource = null) => openHoliday = holidaySource;
     private readonly Dictionary<string, Bitmap> images = new();
+    private readonly LinkedList<string> recentImages = new();
+    private readonly Dictionary<string,int> pins = new(StringComparer.Ordinal);
+    internal long RetainedPixelBytes => images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);
+    internal int DecodeCount {get;private set;}
+    private void TrimImages(string? requested=null)
+    {
+        while(images.Count>5 || RetainedPixelBytes>64L*1024*1024) {
+            var oldest=recentImages.FirstOrDefault(k=>k!=requested&&!pins.ContainsKey(k));if(oldest==null)break;
+            recentImages.Remove(oldest);images[oldest].Dispose();images.Remove(oldest);
+            foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(oldest+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);
+        }
+    }
+    internal IDisposable Pin(PetSkin skin,ClipSpec clip)
+    {
+        string key=ImageKey(skin,clip.File);pins[key]=pins.GetValueOrDefault(key)+1;
+        try{Get(skin,clip);return new ImagePin(this,key);}catch{ReleasePin(key);throw;}
+    }
+    private void ReleasePin(string key){if(pins.TryGetValue(key,out int count)){if(count<=1)pins.Remove(key);else pins[key]=count-1;}TrimImages();}
+    private sealed class ImagePin:IDisposable {private SpriteAssets? owner;private readonly string key;internal ImagePin(SpriteAssets assets,string imageKey){owner=assets;key=imageKey;}public void Dispose(){var assets=owner;owner=null;assets?.ReleasePin(key);}}
+
     private readonly Dictionary<(string, int), byte[]> masks = new();
     public static readonly string[] Interactions = { "lifted", "landing", "petting", "poked", "feeding", "happy", "sleeping", "special" };
     public static Stream OpenAsset(string path) => AssetLoader.Open(new Uri("avares://DeskPet/Assets/" + path.Replace('\\', '/')));
@@ -124,6 +151,7 @@ internal sealed class SpriteAssets : IDisposable
                     else skin = new PetSkin { Id = persona, Name = profile.Name, Prompt = profile.SystemPrompt, Description = profile.Description, Voices = profile.VoicePresets, SpecialAction = profile.SpecialAction, SpecialAction2 = profile.SpecialAction2, IsPlaceholder = true };
                 }
             }
+            skin.CanonicalBuiltIn = skin.BuiltIn && !skin.IsPlaceholder;
             skin.OfficialCharacterId = skin.BuiltinCharacterId = profile.Id; skin.PickerKey = "official:" + profile.Id;
             skin.Avatar = skin.Folder == null ? skin.Avatar ?? "avatars/" + profile.Id + ".png" : skin.Avatar;
             skins.Add(skin);
@@ -152,65 +180,76 @@ internal sealed class SpriteAssets : IDisposable
     }
     internal static PetSkin ReadManifest(Stream stream, string id, string? folder, string prefix = "")
     {
-        if (stream.Length > 65536) throw new InvalidDataException("外观说明文件过大。");
+        if (stream.Length > 65536) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text"));
         using var json = JsonDocument.Parse(stream);
         var root = json.RootElement;
         var version = root.GetProperty("version").GetInt32();
-        var name = root.GetProperty("name").GetString() ?? "自定义伙伴";
-        if (name.Length is < 1 or > 60) throw new InvalidDataException("外观名称应为 1～60 字。");
+        var name = root.GetProperty("name").GetString() ?? TextResources.Get("spriteAssets.readManifest.nameRootGetProperty");
+        if (name.Length is < 1 or > 60) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeA"));
         var prompt = root.TryGetProperty("system_prompt", out var p) ? p.GetString() ?? "" : PersonaProfiles.Generic(name);
-        if (prompt.Length > 8000) throw new InvalidDataException("人格最多 8000 字。");
+        if (prompt.Length > 8000) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeB"));
         string? Text(string field) => root.TryGetProperty(field, out var value) ? value.GetString() : null;
-        var packageId = Text("id"); if (packageId != null && !CompanionPackStorage.ValidId(packageId)) throw new InvalidDataException("角色包 ID 无效。");
-        var second = Text("special_action2"); if ((second?.Length ?? 0) > 32 || (Text("pack_version")?.Length ?? 0) > 32) throw new InvalidDataException("角色包名称或版本过长。");
+        var packageId = Text("id"); if (packageId != null && !CompanionPackStorage.ValidId(packageId)) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeC"));
+        var second = Text("special_action2"); if ((second?.Length ?? 0) > 32 || (Text("pack_version")?.Length ?? 0) > 32) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeD"));
         VoiceRecommendations? voices = null;
         if (root.TryGetProperty("voice_presets", out var voice))
         {
             string[]? Choices(string kind) => voice.TryGetProperty(kind, out var values) ? values.EnumerateArray().Select(v => v.GetString()!).ToArray() : null;
             voices = new VoiceRecommendations { Speech = Choices("speech"), Live = Choices("live"), Description = voice.TryGetProperty("description", out var d) ? d.GetString() : null, SampleText = voice.TryGetProperty("sample_text", out var t) ? t.GetString() : null };
-            if ((voices.Description?.Length ?? 0) > 280 || (voices.SampleText?.Length ?? 0) > 200 || new[] { voices.Speech, voices.Live }.Any(v => v != null && (v.Length > 16 || v.Any(item => string.IsNullOrWhiteSpace(item) || item.Length > 64)))) throw new InvalidDataException("角色包音色预设无效。");
+            if ((voices.Description?.Length ?? 0) > 280 || (voices.SampleText?.Length ?? 0) > 200 || new[] { voices.Speech, voices.Live }.Any(v => v != null && (v.Length > 16 || v.Any(item => string.IsNullOrWhiteSpace(item) || item.Length > 64)))) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeE"));
         }
         var skin = new PetSkin { Id = id, Name = name, Folder = folder, Prompt = prompt, Atlas = version == 1 ? root.GetProperty("atlas").GetString() : null,
-            SpecialAction = Text("special_action") ?? "伙伴招牌", SpecialAction2 = second ?? "第二招牌", PackageId = packageId, PackVersion = Text("pack_version"),
+            SpecialAction = Text("special_action") ?? TextResources.Get("spriteAssets.readManifest.specialAction"), SpecialAction2 = second ?? TextResources.Get("spriteAssets.readManifest.specialAction2Second"), PackageId = packageId, PackVersion = Text("pack_version"),
             Avatar = Text("avatar") is { } avatar ? prefix + avatar : null, Preview = Text("preview") is { } preview ? prefix + preview : null,
-            Description = Text("description") ?? "你的专属桌面伙伴", Voices = voices };
-        if (version == 1) return skin;
-        if (version != 2 || root.GetProperty("cell_width").GetInt32() != 480 || root.GetProperty("cell_height").GetInt32() != 520) throw new InvalidDataException("外观需要 v1 或 480 × 520 的 v2 格式。");
+            Description = Text("description") ?? TextResources.Get("spriteAssets.readManifest.description"), Voices = voices };
+        if (root.TryGetProperty("relationship",out var relation))
+        {
+            skin.Relationship=RelationshipContent.ParseJson(relation.GetRawText());
+        }
+        if (version == 1)
+        {
+            // Legacy atlases have fixed fallback actions; raw extras are not loaded.
+            RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions));
+            return skin;
+        }
+        if (version != 2 || root.GetProperty("cell_width").GetInt32() != 480 || root.GetProperty("cell_height").GetInt32() != 520) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeF"));
         foreach (var property in root.GetProperty("animations").EnumerateObject())
         {
             var a = property.Value;
             var columns = a.GetProperty("columns").GetInt32(); var frames = a.GetProperty("frames").GetInt32(); var fps = a.GetProperty("fps").GetDouble();
-            if (columns is < 1 or > 16 || frames is < 1 or > 64 || !double.IsFinite(fps) || fps is <= 0 or > 60) throw new InvalidDataException("外观帧数或速度无效。");
+            if (columns is < 1 or > 16 || frames is < 1 or > 64 || !double.IsFinite(fps) || fps is <= 0 or > 60) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeG"));
             var loop = a.GetProperty("loop").GetBoolean();
             skin.Clips[property.Name] = new ClipSpec(prefix + a.GetProperty("file").GetString(), columns, frames, fps, loop, HoldLastSeconds: ReadHold(a, property.Name, loop));
         }
-        foreach (var required in AnimationPlayer.States.Concat(Interactions)) if (!skin.Clips.ContainsKey(required)) throw new InvalidDataException("缺少动作：" + required);
+        foreach (var required in AnimationPlayer.States.Concat(Interactions)) if (!skin.Clips.ContainsKey(required)) throw new InvalidDataException(TextResources.Format("spriteAssets.readManifest.template",required));
         var gaze = root.GetProperty("gaze");
-        if (gaze.GetProperty("columns").GetInt32() != 4 || gaze.GetProperty("frames").GetInt32() != 16) throw new InvalidDataException("视线图需要 4 列、16 帧。");
+        if (gaze.GetProperty("columns").GetInt32() != 4 || gaze.GetProperty("frames").GetInt32() != 16) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeH"));
         skin.Gaze = new ClipSpec(prefix + gaze.GetProperty("file").GetString(), 4, 16, 8, true);
         foreach (var pair in new[] { ("extra_animations", skin.ExtraClips), ("alternate_animations", skin.Alternates) })
         {
             if (!root.TryGetProperty(pair.Item1, out var dictionary)) continue;
             foreach (var property in dictionary.EnumerateObject())
             {
-                if (!(pair.Item1 == "extra_animations" ? new[] { "stumble", "special2" } : PairedActions.Append("jumping")).Contains(property.Name)) throw new InvalidDataException("扩展动作名称无效。");
+                if (!(pair.Item1 == "extra_animations" ? new[] { "stumble", "special2" } : PairedActions.Append("jumping")).Contains(property.Name)) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeI"));
                 var a = property.Value; var count = a.GetProperty("frames").GetInt32(); var fps = a.GetProperty("fps").GetDouble();
-                if (a.GetProperty("columns").GetInt32() != 8 || count is < 1 or > 128 || !double.IsFinite(fps) || fps is < 1 or > 60) throw new InvalidDataException("扩展动作帧数或速度无效。");
+                if (a.GetProperty("columns").GetInt32() != 8 || count is < 1 or > 128 || !double.IsFinite(fps) || fps is < 1 or > 60) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeJ"));
                 var loop = a.GetProperty("loop").GetBoolean();
                 pair.Item2[property.Name] = new ClipSpec(prefix + a.GetProperty("file").GetString(), 8, count, fps, loop, HoldLastSeconds: ReadHold(a, property.Name, loop));
             }
         }
         foreach (var pair in skin.Alternates)
         {
-            if (!skin.Clips.TryGetValue(pair.Key, out var first) && !skin.ExtraClips.TryGetValue(pair.Key, out first)) throw new InvalidDataException("第二套动作缺少第一套。");
-            if (pair.Value.Loop != first.Loop || pair.Key == "jumping" && Math.Abs(pair.Value.Frames / pair.Value.Fps + pair.Value.HoldLastSeconds - first.Frames / first.Fps - first.HoldLastSeconds) > 1e-8) throw new InvalidDataException("两套动作的循环或跳跃时长不一致。");
+            if (!skin.Clips.TryGetValue(pair.Key, out var first) && !skin.ExtraClips.TryGetValue(pair.Key, out first)) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeK"));
+            if (pair.Value.Loop != first.Loop || pair.Key == "jumping" && Math.Abs(pair.Value.Frames / pair.Value.Fps + pair.Value.HoldLastSeconds - first.Frames / first.Fps - first.HoldLastSeconds) > 1e-8) throw new InvalidDataException(TextResources.Get("spriteAssets.readManifest.text.alternativeL"));
         }
+        // Extras can authorize content only after known-name and clip validation.
+        RelationshipContent.Validate(skin.Relationship,AnimationPlayer.States.Concat(Interactions).Where(skin.Clips.ContainsKey).Concat(skin.ExtraClips.Keys));
         return skin;
     }
     private static double ReadHold(JsonElement clip, string action, bool loop)
     {
         var hold = clip.TryGetProperty("hold_last_seconds", out var value) ? value.GetDouble() : 0;
-        if (!double.IsFinite(hold) || hold < 0 || hold > 2 || hold != 0 && (action != "jumping" || loop)) throw new InvalidDataException("最终停留仅适用于非循环跳跃，范围为 0～2 秒。");
+        if (!double.IsFinite(hold) || hold < 0 || hold > 2 || hold != 0 && (action != "jumping" || loop)) throw new InvalidDataException(TextResources.Get("spriteAssets.readHold.text"));
         return hold;
     }
     internal static PetSkin ReadOfficial(OfficialCompanionInstallation installation, string personaId)
@@ -229,29 +268,29 @@ internal sealed class SpriteAssets : IDisposable
             cancel.ThrowIfCancellationRequested();
             using var assets = new SpriteAssets();
             var image = assets.Get(skin, spec);
-            if (image.PixelSize.Width != spec.Columns * spec.Width || image.PixelSize.Height != (int)Math.Ceiling((double)spec.Frames / spec.Columns) * spec.Height) throw new InvalidDataException("外观图像尺寸与说明不一致。");
+            if (image.PixelSize.Width != spec.Columns * spec.Width || image.PixelSize.Height != (int)Math.Ceiling((double)spec.Frames / spec.Columns) * spec.Height) throw new InvalidDataException(TextResources.Get("spriteAssets.validateNativeDefault.text"));
             for (int frame = 0; frame < spec.Frames; frame++) { cancel.ThrowIfCancellationRequested(); assets.ValidateFrame(skin, spec, frame); }
         }
         using var portraits = new SpriteAssets();
         if (skin.Avatar is { } avatar)
         {
             var size = portraits.Get(skin, avatar).PixelSize;
-            if (size.Width != size.Height || size.Width is < 64 or > 2048) throw new InvalidDataException("角色头像需要正方形 PNG。");
+            if (size.Width != size.Height || size.Width is < 64 or > 2048) throw new InvalidDataException(TextResources.Get("spriteAssets.validateNativeDefault.text.alternativeA"));
         }
-        if (skin.Preview is { } preview && portraits.Get(skin, preview).PixelSize != new PixelSize(480, 520)) throw new InvalidDataException("角色预览尺寸无效。");
+        if (skin.Preview is { } preview && portraits.Get(skin, preview).PixelSize != new PixelSize(480, 520)) throw new InvalidDataException(TextResources.Get("spriteAssets.validateNativeDefault.text.alternativeB"));
     }
     public static string SafePath(string root, string relative, bool legacy = false)
     {
         if (!legacy) return CompanionPackStorage.AssetPath(root, relative);
-        if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':')) throw new InvalidDataException("外观资源路径无效。");
+        if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':')) throw new InvalidDataException(TextResources.Get("spriteAssets.safePath.text"));
         var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("外观资源目录不接受符号链接。");
+        if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException(TextResources.Get("spriteAssets.safePath.text.alternativeA"));
         var target = Path.GetFullPath(Path.Combine(fullRoot, relative.Replace('/', Path.DirectorySeparatorChar)));
-        if (!target.StartsWith(fullRoot, StringComparison.Ordinal)) throw new InvalidDataException("外观资源不能越过所在目录。");
+        if (!target.StartsWith(fullRoot, StringComparison.Ordinal)) throw new InvalidDataException(TextResources.Get("spriteAssets.safePath.text.alternativeB"));
         var current = target;
         while (current.Length >= fullRoot.Length)
         {
-            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("外观资源不接受符号链接。");
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException(TextResources.Get("spriteAssets.safePath.text.alternativeC"));
             current = Path.GetDirectoryName(current)!;
         }
         return target;
@@ -263,28 +302,29 @@ internal sealed class SpriteAssets : IDisposable
         {
             var image = assets.Get(skin, skin.Atlas);
             var size = image.PixelSize;
-            if (size.Width % 8 != 0 || size.Height % 11 != 0 || size.Width / 8 is < 64 or > 768 || size.Height / 11 is < 64 or > 832 || (long)size.Width * size.Height > 55000000) throw new InvalidDataException("精灵图需要 8 列 × 11 行透明 PNG。");
+            if (size.Width % 8 != 0 || size.Height % 11 != 0 || size.Width / 8 is < 64 or > 768 || size.Height / 11 is < 64 or > 832 || (long)size.Width * size.Height > 55000000) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text"));
             for (int row = 0; row < 11; row++) for (int col = 0; col < (row < 9 ? AnimationPlayer.Counts[row] : 8); col++) assets.ValidateFrame(skin, new ClipSpec(skin.Atlas, 8, 88, 8, true, size.Width / 8, size.Height / 11), row * 8 + col);
         }
         else foreach (var spec in skin.Clips.Values.Concat(skin.ExtraClips.Values).Concat(skin.Alternates.Values).Append(skin.Gaze!))
         {
             var image = assets.Get(skin, spec.File);
-            if (image.PixelSize.Width != spec.Columns * spec.Width || image.PixelSize.Height != (int)Math.Ceiling((double)spec.Frames / spec.Columns) * spec.Height) throw new InvalidDataException("外观图像尺寸与说明不一致：" + spec.File);
+            if (image.PixelSize.Width != spec.Columns * spec.Width || image.PixelSize.Height != (int)Math.Ceiling((double)spec.Frames / spec.Columns) * spec.Height) throw new InvalidDataException(TextResources.Format("spriteAssets.validateSkin.template",spec.File));
             for (int i = 0; i < spec.Frames; i++) assets.ValidateFrame(skin, spec, i);
         }
         if (skin.Avatar is { } avatar)
         {
             var size = assets.Get(skin, avatar).PixelSize;
-            if (size.Width != size.Height || size.Width is < 64 or > 2048) throw new InvalidDataException("角色头像需要 64–2048 像素的正方形 PNG。");
+            if (size.Width != size.Height || size.Width is < 64 or > 2048) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text.alternativeA"));
         }
-        if (skin.Preview is { } preview && (skin.BuiltIn || skin.PackageId != null || File.Exists(Path.Combine(skin.Folder!, preview))) && assets.Get(skin, preview).PixelSize != new PixelSize(480, 520)) throw new InvalidDataException("角色预览需要 480 × 520 像素 PNG。");
-        if (skin.Clips.Values.Concat(skin.ExtraClips.Values).Concat(skin.Alternates.Values).Sum(c => c.Frames) > 1024) throw new InvalidDataException("角色包姿态数量过多。");
+        if (skin.Preview is { } preview && (skin.BuiltIn || skin.PackageId != null || File.Exists(Path.Combine(skin.Folder!, preview))) && assets.Get(skin, preview).PixelSize != new PixelSize(480, 520)) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text.alternativeB"));
+        if (skin.Clips.Values.Concat(skin.ExtraClips.Values).Concat(skin.Alternates.Values).Sum(c => c.Frames) > 1024) throw new InvalidDataException(TextResources.Get("spriteAssets.validateSkin.text.alternativeC"));
     }
-    public static PetSkin Import(string manifestPath, string data)
+    public static PetSkin Import(string manifestPath, string data, CancellationToken cancel=default)
     {
-        if (string.Equals(Path.GetExtension(manifestPath), ".zip", StringComparison.OrdinalIgnoreCase)) return CompanionPackStorage.ReadZip(manifestPath, data, path => Import(path, data));
+        cancel.ThrowIfCancellationRequested();
+        if (string.Equals(Path.GetExtension(manifestPath), ".zip", StringComparison.OrdinalIgnoreCase)) return CompanionPackStorage.ReadZip(manifestPath, data, path => Import(path, data,cancel),cancel);
         var root = Path.GetDirectoryName(Path.GetFullPath(manifestPath))!;
-        if (new FileInfo(manifestPath).Length > 65536) throw new InvalidDataException("外观说明文件过大。");
+        if (new FileInfo(manifestPath).Length > 65536) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text"));
         var id = "skin-" + Guid.NewGuid().ToString("N");
         using var stream = File.OpenRead(manifestPath);
         var skin = ReadManifest(stream, id, root);
@@ -292,11 +332,12 @@ internal sealed class SpriteAssets : IDisposable
         var references = skin.Atlas != null ? new[] { skin.Atlas } : skin.Clips.Values.Concat(skin.ExtraClips.Values).Concat(skin.Alternates.Values).Append(skin.Gaze!).Select(c => c.File).Concat(new[] { skin.Avatar, skin.Preview }.OfType<string>()).Distinct();
         if (skin.PackageId is { } packageId)
         {
-            if (!string.Equals(Path.GetFileName(manifestPath), "pet.json", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("完整角色包说明请命名为 pet.json。");
+            if (!string.Equals(Path.GetFileName(manifestPath), "pet.json", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text.alternativeA"));
+            var inventory = OfficialCompanionNativeValidator.ValidateLocalPackage(root, cancel);
             var before = LoadSkins(data);
             bool canonical = OfficialCompanionLegacy.MatchImport(root, packageId, CancellationToken.None) != null;
+            CompanionPackStorage.Install(root, data, packageId, inventory.AllReferences, copied => { OfficialCompanionNativeValidator.ValidateLocalPackage(copied, cancel); },cancel);
             if (!canonical) OfficialCompanionIdentity.ResolveCustom(data, packageId, before.Where(s => s.OfficialCharacterId != null).Select(s => s.Id), !before.Any(s => s.PickerKey == "custom-pack:" + packageId));
-            CompanionPackStorage.Install(root, data, packageId, references, copied => { using var input = File.OpenRead(Path.Combine(copied, "pet.json")); ValidateSkin(ReadManifest(input, packageId, copied)); });
             CompanionPackStorage.SetHidden(data, packageId, false);
             CompanionPackStorage.SetHidden(data, (canonical ? "official:" : "custom-pack:") + packageId, false);
             return LoadSkins(data).Single(s => s.PickerKey == (canonical ? "official:" : "custom-pack:") + packageId);
@@ -311,7 +352,7 @@ internal sealed class SpriteAssets : IDisposable
             foreach (var relative in files)
             {
                 var source = SafePath(root, relative, skin.Atlas != null); total += new FileInfo(source).Length;
-                if (total > 256L * 1024 * 1024) throw new InvalidDataException("外观资源总大小不能超过 256 MB。");
+                if (total > 256L * 1024 * 1024) throw new InvalidDataException(TextResources.Get("spriteAssets.import.text.alternativeB"));
                 var target = Path.Combine(staging, relative.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(source, target);
             }
@@ -325,30 +366,26 @@ internal sealed class SpriteAssets : IDisposable
     }
     public Bitmap Get(PetSkin skin, string path) => GetImage(ImageKey(skin, path), () => path.StartsWith("holiday|", StringComparison.Ordinal)
         ? OpenHoliday(path.Split('|')[2]) : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null)));
-    private Stream OpenHoliday(string resource) => openHoliday != null ? openHoliday(resource) : typeof(HolidayCatalog).Assembly.GetManifestResourceStream(resource) ?? throw new InvalidDataException("节日服饰资源不存在。");
+    private Stream OpenHoliday(string resource) => openHoliday != null ? openHoliday(resource) : typeof(HolidayCatalog).Assembly.GetManifestResourceStream(resource) ?? throw new InvalidDataException(TextResources.Get("spriteAssets.openHoliday.text"));
     public Bitmap Get(PetSkin skin, ClipSpec clip) => clip.HolidaySource is { } source
-        ? GetImage(clip.File, () => openHoliday != null ? openHoliday(source.ResourceName) : source.OpenResource() ?? throw new InvalidDataException("节日服饰资源不存在。"))
+        ? GetImage(clip.File, () => openHoliday != null ? openHoliday(source.ResourceName) : source.OpenResource() ?? throw new InvalidDataException(TextResources.Get("spriteAssets.get.getImage")))
         : Get(skin, clip.File);
     internal Bitmap GetPreview(OutfitDefinition outfit) => GetImage("preview|" + outfit.SourceKey + "|" + outfit.Preview,
-        () => openHoliday != null ? openHoliday("Dafeiyu.Holidays." + outfit.Preview.Replace('/', '.')) : outfit.OpenPreview() ?? throw new InvalidDataException("服饰预览不存在。"));
+        () => openHoliday != null ? openHoliday("Dafeiyu.Holidays." + outfit.Preview.Replace('/', '.')) : outfit.OpenPreview() ?? throw new InvalidDataException(TextResources.Get("spriteAssets.getPreview.getImage")));
     private Bitmap GetImage(string key, Func<Stream> open)
     {
         if (!images.TryGetValue(key, out var image))
         {
             using var stream = open();
-            if (stream.Length > 64L * 1024 * 1024) throw new InvalidDataException("单张外观图不能超过 64 MB。");
+            if (stream.Length > 64L * 1024 * 1024) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text"));
             Span<byte> header = stackalloc byte[24]; stream.ReadExactly(header); stream.Position = 0;
-            if (!header[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) throw new InvalidDataException("外观图像必须是 PNG。");
+            if (!header[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeA"));
             var width = BinaryPrimitives.ReadUInt32BigEndian(header[16..20]); var height = BinaryPrimitives.ReadUInt32BigEndian(header[20..24]);
-            if (width == 0 || height == 0 || width > 8192 || height > 33280 || (long)width * height > 55000000) throw new InvalidDataException("外观 PNG 尺寸过大或无效。");
+            if (width == 0 || height == 0 || width > 8192 || height > 33280 || (long)width * height > 55000000) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeB"));
             image = new Bitmap(stream);
-            if (images.Count >= 5)
-            {
-                var oldest = images.Keys.First(); images[oldest].Dispose(); images.Remove(oldest);
-                foreach (var mask in masks.Keys.Where(k => k.Item1.StartsWith(oldest + "/", StringComparison.Ordinal)).ToArray()) masks.Remove(mask);
-            }
-            images[key] = image;
+            DecodeCount++;images[key] = image;
         }
+        recentImages.Remove(key);recentImages.AddLast(key);TrimImages(key);
         return image;
     }
     private static string ImageKey(PetSkin skin, string path) => path.StartsWith("holiday|", StringComparison.Ordinal) ? path : skin.SourceKey + "/" + path;
@@ -357,28 +394,29 @@ internal sealed class SpriteAssets : IDisposable
     internal void PrepareFrame(PetSkin skin, ClipSpec clip, int frame)
     {
         var image = Get(skin, clip); var rect = Rect(clip, frame);
-        if (frame < 0 || frame >= clip.Frames || rect.Right > image.PixelSize.Width || rect.Bottom > image.PixelSize.Height) throw new InvalidDataException("服饰帧超出图像范围。");
+        if (frame < 0 || frame >= clip.Frames || rect.Right > image.PixelSize.Width || rect.Bottom > image.PixelSize.Height) throw new InvalidDataException(TextResources.Get("spriteAssets.prepareFrame.text"));
         if (IsHolidayClip(clip)) _ = Mask(skin, clip, frame);
     }
-    internal static ClipSpec MatchSourceTiming(ClipSpec visual, ClipSpec source) => visual with { Fps = visual.Frames * source.Fps / source.Frames, Loop = source.Loop, HoldLastSeconds = source.HoldLastSeconds };
     public static string? AvatarPath(PetSkin skin) => skin.Avatar ?? (skin.OfficialCharacterId != null ? "@official/" + skin.OfficialCharacterId : skin.BuiltIn && skin.Id is "e-bao" or "dafeiyu" or "marfu" or "xiaobei" ? "avatars/" + skin.Id + ".png" : null);
     public Bitmap? GetAvatar(PetSkin skin) => AvatarPath(skin) is { } path ? path.StartsWith("@official/", StringComparison.Ordinal) ? GetImage(path, () => OpenAsset("avatars/" + path.Substring(10) + ".png")) : Get(skin, path) : null;
     public static bool HasExtra(PetSkin skin,string action) => skin.ExtraClips.ContainsKey(action) || skin.Alternates.ContainsKey(action) || skin.BuiltIn && skin.PackageId == null && PairedActions.Contains(action);
     public static void Remove(PetSkin skin,string data)
     {
-        if (skin.OfficialCharacterId == "e-bao") throw new InvalidOperationException("默认伙伴用于离线启动，不能删除。");
-        if (LoadSkins(data).Count <= 1) throw new InvalidOperationException("至少保留一位伙伴。");
+        if (skin.OfficialCharacterId == "e-bao") throw new InvalidOperationException(TextResources.Get("spriteAssets.remove.text"));
+        if (LoadSkins(data).Count <= 1) throw new InvalidOperationException(TextResources.Get("spriteAssets.remove.text.alternativeA"));
         CompanionPackStorage.SetHidden(data, skin.OfficialCharacterId != null ? skin.PickerKey : skin.PackageId ?? skin.Id, true);
     }
     public ClipSpec Resolve(PetSkin skin, string action, bool original, OutfitDefinition? outfit = null)
     {
-        if (skin.IsPlaceholder) throw new InvalidOperationException("请先下载完整角色包。");
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId)
+        if (skin.IsPlaceholder) throw new InvalidOperationException(TextResources.Get("spriteAssets.resolve.text"));
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId)
         {
             var useAlternate = !original && outfit.FindClip(action, "alternate") != null;
-            var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException("节日服饰缺少当前动作。");
-            return MatchSourceTiming(OutfitClip(outfit, clip), Resolve(skin, action, original));
+            var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException(TextResources.Get("spriteAssets.resolve.clipOutfitFindClip"));
+            return OutfitClip(outfit, clip);
         }
+        var quiet = skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
+        if (quiet != null) return new ClipSpec(quiet.Path, quiet.Columns, quiet.Frames, quiet.Fps, quiet.Loop, quiet.Width, quiet.Height);
         if (!original && skin.Alternates.TryGetValue(action, out var alternate)) return alternate;
         if (!original && action == "jumping" && skin.BuiltIn && (skin.OfficialCharacterId ?? skin.Id) == "e-bao")
             return new ClipSpec("companion-animations/e-bao/jumping.png", 8, 8, 8, false);
@@ -399,7 +437,7 @@ internal sealed class SpriteAssets : IDisposable
     }
     public ClipSpec Gaze(PetSkin skin, OutfitDefinition? outfit = null)
     {
-        if (outfit != null && skin.BuiltinCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
+        if (outfit != null && skin.OutfitCharacterId == outfit.CharacterId) return OutfitClip(outfit, outfit.Gaze);
         if (skin.Gaze != null) return skin.Gaze;
         var atlas = Get(skin, skin.Atlas!); return new ClipSpec(skin.Atlas!, 8, 16, 8, true, atlas.PixelSize.Width / 8, atlas.PixelSize.Height / 11, atlas.PixelSize.Height / 11 * 9);
     }
@@ -416,27 +454,41 @@ internal sealed class SpriteAssets : IDisposable
         for (int i = 0; i < result.Length; i++) result[i] = bytes[i * 4 + 3];
         // Some native decoders accept broken IDAT as empty pixels rather than
         // throwing. A holiday frame must still have a character and transparency.
-        if (IsHolidayClip(spec) && (!result.Any(b => b > 16) || !result.Any(b => b == 0))) throw new InvalidDataException("节日服饰帧无法解码为有效透明人物。");
-        masks[key] = result; return result;
+        if (IsHolidayClip(spec) && (!result.Any(b => b > 16) || !result.Any(b => b == 0))) throw new InvalidDataException(TextResources.Get("spriteAssets.mask.text"));
+        masks[key] = result;TrimImages(ImageKey(skin,spec.File)); return result;
     }
     private void ValidateFrame(PetSkin skin, ClipSpec spec, int frame)
     {
         var mask = Mask(skin, spec, frame);
-        if (!mask.Any(b => b > 16) || !mask.Any(b => b == 0)) throw new InvalidDataException("外观每帧需要可见人物和透明背景。");
+        if (!mask.Any(b => b > 16) || !mask.Any(b => b == 0)) throw new InvalidDataException(TextResources.Get("spriteAssets.validateFrame.text"));
     }
     public bool Hit(PetSkin skin, ClipSpec spec, int frame, double x, double y)
     {
         var px = (int)(x * spec.Width); var py = (int)(y * spec.Height);
         return px >= 0 && py >= 0 && px < spec.Width && py < spec.Height && Mask(skin, spec, frame)[py * spec.Width + px] > 16;
     }
-    public void Dispose() { foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear(); }
+    public void Dispose() { foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear();recentImages.Clear();pins.Clear(); }
 }
 
 internal sealed class SpriteView : Control
 {
     public required SpriteAssets Assets { get; init; }
     public required PetSkin Skin { get; set; }
-    public new ClipSpec? Clip { get; set; }
+    private ClipSpec? clip;
+    private IDisposable? currentFramePin;
+    private IDisposable? displayedFramePin;
+    public new ClipSpec? Clip { get=>clip;set{
+        if(ReferenceEquals(clip,value))return;
+        var next=value==null?null:Assets.Pin(Skin,value);
+        // Only the last drawn image needs to survive until the next render.
+        // An intermediate candidate never submitted for drawing can be released now.
+        if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();
+        currentFramePin=next;clip=value;
+    }}
+    private void ReleasePins(){if(!ReferenceEquals(currentFramePin,displayedFramePin))currentFramePin?.Dispose();displayedFramePin?.Dispose();currentFramePin=displayedFramePin=null;}
+    internal void ResetFrames(){ReleasePins();clip=null;}
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e){base.OnDetachedFromVisualTree(e);ReleasePins();}
+    private void CommitDisplayedFrame(){if(!ReferenceEquals(displayedFramePin,currentFramePin))displayedFramePin?.Dispose();displayedFramePin=currentFramePin;}
     public int Frame { get; set; }
     public bool MirrorX { get; set; }
     public event Action? FrameRendered;
@@ -444,15 +496,15 @@ internal sealed class SpriteView : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        if (Clip == null) return;
+        if (Clip == null) { ReleasePins();return; }
         try { DrawFrame(context); }
         catch (Exception error) when (CanRecover(error)) { HolidayFrameFailed!(error); if (Clip == null || SpriteAssets.IsHolidayClip(Clip)) return; DrawFrame(context); }
-        FrameRendered?.Invoke();
+        CommitDisplayedFrame();FrameRendered?.Invoke();
     }
     private bool CanRecover(Exception error) => Clip != null && SpriteAssets.IsHolidayClip(Clip) && HolidayFrameFailed != null && (error is InvalidDataException or IOException or ArgumentException or InvalidOperationException or ExternalException);
     private void DrawFrame(DrawingContext context)
     {
-        var clip = Clip!; Assets.PrepareFrame(Skin, clip, Frame); var r = SpriteAssets.Rect(clip, Frame);
+        var clip = Clip!;currentFramePin??=Assets.Pin(Skin,clip); Assets.PrepareFrame(Skin, clip, Frame); var r = SpriteAssets.Rect(clip, Frame);
         using var transform = context.PushTransform(MirrorX ? new Matrix(-1, 0, 0, 1, Bounds.Width, 0) : Matrix.Identity);
         context.DrawImage(Assets.Get(Skin, clip), new Rect(r.X, r.Y, r.Width, r.Height), new Rect(clip.OffsetX / clip.Width * Bounds.Width, clip.OffsetY / clip.Height * Bounds.Height, Bounds.Width, Bounds.Height));
     }

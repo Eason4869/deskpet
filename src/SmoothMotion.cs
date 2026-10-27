@@ -53,11 +53,13 @@ namespace Dafeiyu
         {
             if(action<0 || action>=Durations.Length || Durations[action]==0)return null;
             int count=0;
+            var quiet=action==0?AdditionalInteractions.Quiet(definition,"idle",true):null;
             bool imported=definition!=null && definition.Illustrated;
-            if(!imported && !Counts.TryGetValue(skin+"-"+action,out count))return null;
+            if(quiet==null && !imported && !Counts.TryGetValue(skin+"-"+action,out count))return null;
             MotionClip clip;
             if(clips.TryGetValue(action,out clip)){if(recent.Last.Value!=action){var node=recent.Find(action);recent.Remove(node);recent.AddLast(node);}return clip;}
-            if(imported) {
+            if(quiet!=null)clip=AdditionalInteractions.LoadQuiet(quiet);
+            else if(imported) {
                 var spec=definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]];
                 string path=IllustratedPack.AssetPath(definition.Source,spec.File);
                 var image=IllustratedPack.ReadImage(path,480*spec.Columns,520*((spec.Frames+spec.Columns-1)/spec.Columns));

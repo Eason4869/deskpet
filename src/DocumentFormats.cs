@@ -29,7 +29,7 @@ namespace Dafeiyu
             if (IsDocx(path)) return ReadDocxText(bytes, token);
             if (IsXlsx(path)) return ReadXlsxText(bytes, token);
             if (IsLegacyWord(path) || IsLegacyExcel(path)) return DocumentFormatsLegacy.ReadText(path, IsLegacyWord(path), token);
-            throw new ArgumentException("这不是受支持的 Word/Excel 文档。");
+            throw new ArgumentException(TextResources.Get("documentFormats.readDocumentText.text"));
         }
 
         // Returns the exact bytes to write. Legacy formats are produced through
@@ -37,11 +37,11 @@ namespace Dafeiyu
         internal static byte[] WriteDocumentBytes(string path, string content, CancellationToken token)
         {
             if (content == null) content = "";
-            if (content.IndexOf('\0') >= 0) throw new ArgumentException("文档内容必须是文字。");
+            if (content.IndexOf('\0') >= 0) throw new ArgumentException(TextResources.Get("documentFormats.writeDocumentBytes.text"));
             if (IsDocx(path)) return WriteDocx(content);
             if (IsXlsx(path)) return WriteXlsx(content, token);
             if (IsLegacyWord(path) || IsLegacyExcel(path)) return DocumentFormatsLegacy.Write(path, content, IsLegacyWord(path), token);
-            throw new ArgumentException("这不是受支持的 Word/Excel 文档。");
+            throw new ArgumentException(TextResources.Get("documentFormats.writeDocumentBytes.text.alternativeA"));
         }
 
         static XmlReaderSettings XmlSettings()
@@ -55,8 +55,8 @@ namespace Dafeiyu
             using (var zip = new ZipArchive(memory, ZipArchiveMode.Read))
             {
                 var entry = zip.GetEntry("word/document.xml");
-                if (entry == null) throw new ArgumentException("不是有效的 .docx 文档（缺少 word/document.xml）。");
-                if (entry.Length > MaxPartBytes) throw new ArgumentException(".docx 文字部分超过 4 MiB，请拆分文档。");
+                if (entry == null) throw new ArgumentException(TextResources.Get("documentFormats.readDocxText.text"));
+                if (entry.Length > MaxPartBytes) throw new ArgumentException(TextResources.Get("documentFormats.readDocxText.text.alternativeA"));
                 var text = new StringBuilder(); bool inText = false, inCell = false; int paragraphs = 0;
                 using (var stream = entry.Open())
                 using (var reader = XmlReader.Create(stream, XmlSettings()))
@@ -64,7 +64,7 @@ namespace Dafeiyu
                     while (reader.Read())
                     {
                         token.ThrowIfCancellationRequested();
-                        if (text.Length >= MaxTextChars) { text.AppendLine("[文档文字过长，已截断；请拆分后读取]"); break; }
+                        if (text.Length >= MaxTextChars) { text.AppendLine(TextResources.Get("documentFormats.readDocxText.textAppendLine")); break; }
                         if (reader.NodeType == XmlNodeType.Element)
                         {
                             string name = reader.LocalName;
@@ -84,10 +84,10 @@ namespace Dafeiyu
                         else if (reader.NodeType == XmlNodeType.Text && inText) text.Append(reader.Value);
                     }
                 }
-                if (paragraphs == 0 && text.Length == 0) return "文档没有可读取的文字。";
+                if (paragraphs == 0 && text.Length == 0) return TextResources.Get("documentFormats.readDocxText.text.alternativeB");
                 var lines = text.ToString().Split('\n').Select(l => l.TrimEnd('\t', ' ')).ToList();
                 while (lines.Count > 0 && lines[lines.Count - 1].Length == 0) lines.RemoveAt(lines.Count - 1);
-                return lines.Count == 0 ? "文档没有可读取的文字。" : String.Join("\n", lines);
+                return lines.Count == 0 ? TextResources.Get("documentFormats.readDocxText.text.alternativeB") : String.Join("\n", lines);
             }
         }
 
@@ -96,7 +96,7 @@ namespace Dafeiyu
             var result = new List<string>();
             var entry = zip.GetEntry("xl/sharedStrings.xml");
             if (entry == null) return result;
-            if (entry.Length > MaxPartBytes) throw new ArgumentException(".xlsx 共享字符串超过 4 MiB，请拆分表格。");
+            if (entry.Length > MaxPartBytes) throw new ArgumentException(TextResources.Get("documentFormats.readSharedStrings.text"));
             using (var stream = entry.Open())
             using (var reader = XmlReader.Create(stream, XmlSettings()))
             {
@@ -174,15 +174,15 @@ namespace Dafeiyu
             {
                 var shared = ReadSharedStrings(zip, token);
                 var names = ReadSheetNames(zip);
-                if (names.Count == 0) throw new ArgumentException("不是有效的 .xlsx 表格（缺少工作表）。");
+                if (names.Count == 0) throw new ArgumentException(TextResources.Get("documentFormats.readXlsxText.text"));
                 var output = new StringBuilder(); int shown = 0;
                 foreach (var sheet in names)
                 {
-                    if (++shown > MaxSheets) { output.AppendLine("[工作表过多，仅显示前 " + MaxSheets + " 个]"); break; }
+                    if (++shown > MaxSheets) { output.AppendLine(TextResources.Format("documentFormats.readXlsxText.outputAppendLine",MaxSheets)); break; }
                     var entry = zip.GetEntry(sheet.Value);
                     if (entry == null) continue;
-                    if (entry.Length > MaxPartBytes) throw new ArgumentException("工作表 " + sheet.Key + " 超过 4 MiB，请拆分表格。");
-                    output.Append("[工作表 ").Append(sheet.Key).AppendLine("]");
+                    if (entry.Length > MaxPartBytes) throw new ArgumentException(TextResources.Format("documentFormats.readXlsxText.template",sheet.Key));
+                    output.Append(TextResources.Get("documentFormats.readXlsxText.outputAppend")).Append(sheet.Key).AppendLine("]");
                     ReadSheet(entry, shared, output, token);
                 }
                 return output.ToString().TrimEnd('\n');
@@ -201,7 +201,7 @@ namespace Dafeiyu
                     if (reader.NodeType == XmlNodeType.Element)
                     {
                         string name = reader.LocalName;
-                        if (name == "row") { row.Length = 0; tabs = 0; next = 0; if (++rows > MaxSheetRows) { output.AppendLine("[行数过多，已截断]"); return; } }
+                        if (name == "row") { row.Length = 0; tabs = 0; next = 0; if (++rows > MaxSheetRows) { output.AppendLine(TextResources.Get("documentFormats.readSheet.outputAppendLine")); return; } }
                         else if (name == "c") { type = reader.GetAttribute("t"); cellColumn = ColumnIndex(reader.GetAttribute("r")); value.Length = 0; }
                         else if (name == "v") inValue = true;
                         else if (name == "is") inInline = true;
@@ -346,8 +346,8 @@ namespace Dafeiyu
         internal static byte[] WriteXlsx(string text, CancellationToken token)
         {
             var rows = ParseGrid(text, token);
-            if (rows.Count > MaxSheetRows) throw new ArgumentException("表格超过 " + MaxSheetRows + " 行，请拆分后再写入。");
-            if (rows.Any(r => r.Count > MaxSheetColumns)) throw new ArgumentException("表格超过 " + MaxSheetColumns + " 列，请拆分后再写入。");
+            if (rows.Count > MaxSheetRows) throw new ArgumentException(TextResources.Format("documentFormats.writeXlsx.template",MaxSheetRows));
+            if (rows.Any(r => r.Count > MaxSheetColumns)) throw new ArgumentException(TextResources.Format("documentFormats.writeXlsx.template.alternativeA",MaxSheetColumns));
             var sheet = new StringBuilder();
             for (int r = 0; r < rows.Count; r++)
             {
@@ -442,8 +442,8 @@ namespace Dafeiyu
         static string UnavailableMessage(bool word)
         {
             return word
-                ? ".doc 需要本机安装 Word 或 WPS 才能读写；也可另存为 .docx 后使用内置读写。"
-                : ".xls 需要本机安装 Excel 或 WPS 才能读写；也可另存为 .xlsx 后使用内置读写。";
+                ? TextResources.Get("documentFormats.unavailableMessage.text")
+                : TextResources.Get("documentFormats.unavailableMessage.text.alternativeA");
         }
 
         internal static void HardenApplication(object app,bool word)
@@ -489,7 +489,7 @@ namespace Dafeiyu
                         {
                             workToken.ThrowIfCancellationRequested();
                             object sheet = Invoke(sheets, "Item", i);
-                            output.Append("[工作表 ").Append(Convert.ToString(Get(sheet, "Name"))).AppendLine("]");
+                            output.Append(TextResources.Get("documentFormats.readText.outputAppend")).Append(Convert.ToString(Get(sheet, "Name"))).AppendLine("]");
                             object range = Get(sheet, "UsedRange");
                             AppendMatrix(output, Get(range, "Value2") as Array);
                         }
@@ -631,7 +631,7 @@ namespace Dafeiyu
         {
             Exception cause = error; while (cause.InnerException != null) cause = cause.InnerException;
             string message = cause.Message == null ? "" : cause.Message;
-            return "本机 Office/WPS 无法处理此文档（可能被占用、缺少组件或已弹窗）：" + (message.Length > 160 ? message.Substring(0, 160) : message);
+            return TextResources.Format("documentFormats.failure.template",(message.Length > 160 ? message.Substring(0, 160) : message));
         }
 
         internal static T RunSta<T>(Func<CancellationToken,T> work,CancellationToken token,int timeoutMilliseconds,Action cleanup)
@@ -647,7 +647,7 @@ namespace Dafeiyu
                     try{cancel.Cancel();}catch(ObjectDisposedException){}
                     bool finished=thread.Join(100);if(!finished && cleanup!=null){var cleanupThread=new Thread(delegate(){try{cleanup();}catch(Exception){}});cleanupThread.IsBackground=true;cleanupThread.Start();}
                     if(token.IsCancellationRequested)throw new OperationCanceledException(token);
-                    throw new ArgumentException("本机 Office/WPS 转换超时，请关闭相关窗口或弹窗后重试。");
+                    throw new ArgumentException(TextResources.Get("documentFormats.runSta.text"));
                 }
             }
             if(failure!=null)

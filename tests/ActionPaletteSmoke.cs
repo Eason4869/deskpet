@@ -50,7 +50,7 @@ namespace Dafeiyu.Tests
                     var hubPoint=palette.PointToScreen(new Point(palette.ActualWidth/2,palette.ActualHeight*220/490));MovePointer((int)hubPoint.X,(int)hubPoint.Y);Pump();
                     Check(!Actions(palette).Any(Highlighted),"moving back to the hub clears all sector highlights "+skin);
                     palette.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(palette),0,Key.Right){RoutedEvent=Keyboard.PreviewKeyDownEvent});Pump();
-                    Check(Actions(palette).First().IsKeyboardFocused && Highlighted(Actions(palette).First()),"arrow navigation still highlights the first skill "+skin);
+                    Check(Actions(palette).First().IsKeyboardFocused && Highlighted(Actions(palette).First()),"arrow navigation still highlights the first skill "+skin+" active="+palette.IsActive+" visible="+palette.IsVisible+" buttons="+String.Join(",",Actions(palette).Select(b=>b.Name+":"+b.IsEnabled+":"+b.IsKeyboardFocused+":"+Highlighted(b))));
                     Check(All(palette).OfType<Image>().Count(i=>i.Source!=null)==4,"four actual pet previews "+skin);
                     foreach(var button in Actions(palette))
                     {

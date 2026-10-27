@@ -34,7 +34,7 @@ namespace Dafeiyu
             get
             {
                 var protector=Volatile.Read(ref current);
-                if(protector==null)throw new InvalidOperationException("平台密钥保护尚未初始化，无法读取或保存私密数据。");
+                if(protector==null)throw new InvalidOperationException(TextResources.Get("secretProtection.current.text"));
                 return protector;
             }
         }

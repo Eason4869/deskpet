@@ -29,11 +29,19 @@ namespace Dafeiyu
         [DataMember] public int SchemaVersion {get;set;}
         [DataMember] public bool WardrobeDiscovered {get;set;}
         [DataMember] public Dictionary<string,HolidayCharacterState> Characters {get;set;}
-        public HolidayState(){SchemaVersion=1;Characters=new Dictionary<string,HolidayCharacterState>(StringComparer.Ordinal);}
+        public HolidayState(){SchemaVersion=2;Characters=new Dictionary<string,HolidayCharacterState>(StringComparer.Ordinal);}
         public HolidayCharacterState ForCharacter(string id)
-        {RequireId(id,false);HolidayCharacterState result;if(!Characters.TryGetValue(id,out result)){result=new HolidayCharacterState();Characters.Add(id,result);}return result;}
+        {id=SourceKey(id);HolidayCharacterState result;if(!Characters.TryGetValue(id,out result)){result=new HolidayCharacterState();Characters.Add(id,result);}return result;}
         public void Unlock(string characterId,string outfitId)
         {RequireId(outfitId,false);var role=ForCharacter(characterId);if(!role.UnlockedOutfits.Contains(outfitId))role.UnlockedOutfits.Add(outfitId);WardrobeDiscovered=true;}
+        internal static string SourceKey(string value)
+        {
+            if(value==null)throw new InvalidDataException("Invalid holiday state source.");
+            if(!value.Contains(":")){RequireId(value,false);return "official:"+value;}
+            string prefix=value.StartsWith("official:",StringComparison.Ordinal)?"official:":value.StartsWith("custom-pack:",StringComparison.Ordinal)?"custom-pack:":null;
+            if(prefix==null)throw new InvalidDataException("Invalid holiday state source.");
+            RequireId(value.Substring(prefix.Length),false);return value;
+        }
         internal static void RequireId(string value,bool instance)
         {
             if(String.IsNullOrEmpty(value) || value.Length>128 || value=="." || value==".." || value.Any(c=>!(c>='a' && c<='z' || c>='0' && c<='9' || c=='-' || c=='_' || c=='.' || instance && c==':')))
@@ -41,13 +49,18 @@ namespace Dafeiyu
         }
         internal void ValidateAndPrune()
         {
-            if(SchemaVersion>1)throw new NotSupportedException("Holiday state was written by a newer application.");
-            if(SchemaVersion!=1)throw new InvalidDataException("Invalid holiday state version.");
+            if(SchemaVersion>2)throw new NotSupportedException("Holiday state was written by a newer application.");
+            if(SchemaVersion!=1&&SchemaVersion!=2)throw new InvalidDataException("Invalid holiday state version.");
             if(Characters==null)Characters=new Dictionary<string,HolidayCharacterState>(StringComparer.Ordinal);
+            if(SchemaVersion==1) {
+                var migrated=new Dictionary<string,HolidayCharacterState>(StringComparer.Ordinal);
+                foreach(var pair in Characters)migrated.Add(SourceKey(pair.Key),pair.Value);
+                Characters=migrated;SchemaVersion=2;
+            }
             if(Characters.Count>64)throw new InvalidDataException("Too many holiday characters.");
             int activities=0;
             foreach(var pair in Characters) {
-                RequireId(pair.Key,false);var role=pair.Value;if(role==null)throw new InvalidDataException("Missing holiday character state.");
+                if(SourceKey(pair.Key)!=pair.Key)throw new InvalidDataException("Noncanonical holiday source.");var role=pair.Value;if(role==null)throw new InvalidDataException("Missing holiday character state.");
                 if(role.UnlockedOutfits==null)role.UnlockedOutfits=new List<string>();
                 if(role.Activities==null)role.Activities=new List<HolidayActivityState>();
                 if(role.UnlockedOutfits.Count>128)throw new InvalidDataException("Too many unlocked outfits.");
@@ -116,7 +129,7 @@ namespace Dafeiyu
             using(var input=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.Read)) {
                 if(input.Length>MaximumBytes)throw new InvalidDataException("Holiday state exceeds 1 MiB.");
                 var header=(StateHeader)new DataContractJsonSerializer(typeof(StateHeader)).ReadObject(input);
-                if(header!=null && header.SchemaVersion>1)throw new NotSupportedException("Holiday state was written by a newer application.");
+                if(header!=null && header.SchemaVersion>2)throw new NotSupportedException("Holiday state was written by a newer application.");
                 input.Position=0;
                 var state=(HolidayState)new DataContractJsonSerializer(typeof(HolidayState)).ReadObject(input);
                 if(state==null)throw new InvalidDataException("Holiday state is empty.");state.ValidateAndPrune();return state;
@@ -131,6 +144,12 @@ namespace Dafeiyu
                 using(var output=new MemoryStream()) {
                     new DataContractJsonSerializer(typeof(HolidayState)).WriteObject(output,state);
                     if(output.Length>MaximumBytes)throw new InvalidDataException("Holiday state exceeds 1 MiB.");bytes=output.ToArray();
+                }
+                if(File.Exists(path)&&!File.Exists(path+".schema-1.bak")) {
+                    using(var input=File.OpenRead(path)) {
+                        var header=(StateHeader)new DataContractJsonSerializer(typeof(StateHeader)).ReadObject(input);
+                        if(header!=null&&header.SchemaVersion==1)File.Copy(path,path+".schema-1.bak",false);
+                    }
                 }
                 Directory.CreateDirectory(Path.GetDirectoryName(path));string temporary=path+".tmp-"+Guid.NewGuid().ToString("N");
                 try {

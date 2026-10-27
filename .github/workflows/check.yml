@@ -9,17 +9,46 @@ permissions:
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Check background job acceptance registration
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path work/agent-jobs-validation/ci | Out-Null
+          python tests/AgentJobRegistrationTests.py | Tee-Object -FilePath work/agent-jobs-validation/ci/registration.log
+          if ($LASTEXITCODE) { throw 'Background job registration checks failed' }
+      - name: Audit Chinese resources
+        shell: powershell
+        run: |
+          python tests/FeatureResourceProvenanceTests.py
+          if ($LASTEXITCODE) { throw 'Feature localization provenance regression failed' }
+          python tests/BuildCompileOnlyTests.py
+          if ($LASTEXITCODE) { throw 'Compile-only guard regression failed' }
+          python -m pip install -r tools/fonts/requirements.txt
+          if ($LASTEXITCODE) { throw 'Font preparation dependency install failed' }
+          python tools/fonts/relationship_title_fonts.py --check
+          if ($LASTEXITCODE) { throw 'Title corpus/font integrity failed' }
+          python tools/fonts/test_relationship_title_fonts.py
+          if ($LASTEXITCODE) { throw 'Title corpus freshness regression failed' }
+          python tests/LocalizationAuditTests.py
+          if ($LASTEXITCODE) { throw 'Localization audit regression failed' }
+          python tests/HelperResourceTests.py
+          if ($LASTEXITCODE) { throw 'Standalone helper resource contract failed' }
+          python tools/verify_localization.py check --phase complete --report work/localization-audit.json
+          if ($LASTEXITCODE) { throw 'Localization completeness failed' }
+          python tests/LanguagePackSnapshotTests.py
+          if ($LASTEXITCODE) { throw 'Embedded language byte snapshot regression failed' }
+          python tools/verify_language_packs.py --report work/language-pack-audit.json
+          if ($LASTEXITCODE) { throw 'Translation completeness failed' }
       - name: Build and run tests
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           $failedTargets = @()
-          foreach ($target in @('CompanionStartupTests','PowerShellStartupTests','OfficialCompanionLegacyTests','OfficialCompanionIdentityTests','HolidaySourceBindingTests','OfficialCompanionTests','ConversationArchiveRegressionTests','HolidayAssetTests','HolidayProductionSmoke','HolidayRuntimeTests','HolidayHoverTests','HolidayIdentityTests','HolidayVisualSmoke','HolidaySettingsSmoke','HolidayGreetingTests','HolidayCalendarTests','HolidayStateTests','ConversationWorkspaceManagerTests','ImageGenerationTaskStoreTests','ImageGenerationTaskManagerTests','ImageGenerationMotionTests','GeneratedImageGroupTests','ImageGalleryManagementTests','ImageGalleryExportTests','ImageTaskCenterLifecycleTests','ImageTaskCenterUiTests','ImageGenerationBackendTests','ImageProviderProtocolTests','ImageGalleryLayoutTests','ImageGenerationIntegrationTests','ImageGenerationUiTests','AgentProjectToolsTests','AgentQuestionUiSmoke','LanServiceTests','LanSettingsUiTests','ThemeTests','ContextPreviewTests','LiveWaveformTests','ReleaseIdentityTests','UpdateChannelTests','ReleaseVersionTests','WindowsTerminalTests','WorkspaceSandboxTests','BrowserProfileCleanupTests','ManualRunTests','GuideBookendTests','PopupLifecycleTests','AppShellTests','PluginsUiTests','ManagedSkillLibraryTests','SkillRepositoryTests','SkillDiscoveryUiTests','UsageTrackingTests','UsageStatisticsUiTests','EmbeddedSettingsTests','ChatImagePreviewTests','ShortcutHelpTests','TrayInteractionTests','ChangeSummaryPersistenceTests','ChangeSummaryIntegrationTests','ConversationViewportTests','UnifiedWorkspaceTests','UnifiedPreviewTabsTests','SidebarWorkspaceTests','SummaryNavigationTests','SideChatTests','BrowserPaneTests','TerminalUiTests','FilePreviewTests','ProcessAvatarTests','ChatAtmosphereTests','FinalOutputFilesTests','WorkspacePermissionTests','PermissionUiSmoke','ConversationSwitchRegressionTests','PetRuntimeTests','AgentEvolutionRegressionTests','ComposerSmoke','AgentCapabilityTests','AgentApprovalTests','AgentApprovalUiSmoke','AgentTerminalTests','AgentIsolationTests','AgentCodingWorkflowTests','AgentContextPolicyTests','AgentInstructionTests','McpConnectionTests','McpUiSmoke','AgentTaskRunnerTests','AgentSubagentExecutionTests','AgentRunRecoveryTests','AgentTaskMemoryTests','GuidanceUiTests','ComposerRenderingTests','DeleteDialogTests','UiResourceTests','QueueHandleTests','ConversationVisualTests','ConversationOwnershipUiTests','WelcomeSuggestionTests','DetailedGuideTests','ConversationModeUiTests','ConversationOwnershipTests','CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','DevReviewRegressionTests','SidebarSectionsTests','DraftConversationTests','ComposerPaletteTests','ContextUsageTests','ModelConfigurationSmoke','SettingsMaximizeTests','SidebarProjectInteractionTests','SidebarActionTests','ConversationUiSmoke','ApplicationSnapshotTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','SteeringSmoke')) {
+          foreach ($target in @('RelationshipTitleFontTests','RelationshipStageArtTests','HolidayKeepsakeTests','SettingsFeatureNavigationTests','RelationshipExperienceTests','RelationshipExperienceUiTests','WpfRelationshipPackTests','QuietMotionTests','ReplyLanguagePolicyTests','LanguagePackTests','AgentJobContractTests','AgentJobStoreTests','AgentJobLogTests','AgentJobManagerTests','AgentJobLifecycleTests','AgentJobViewStateTests','AgentJobUiTests','AgentJobLifecycleUiTests','AgentJobProjectTests','UiControlSnapshotTests','LocalizationTests','LocalizationMissingResourceTests','LocalizationUiTests','CompanionStartupTests','PowerShellStartupTests','OfficialCompanionLegacyTests','OfficialCompanionIdentityTests','HolidaySourceBindingTests','OfficialCompanionTests','ConversationArchiveRegressionTests','HolidayAssetTests','HolidayProductionSmoke','HolidayRuntimeTests','HolidayHoverTests','HolidayIdentityTests','HolidayVisualSmoke','HolidaySettingsSmoke','HolidayGreetingTests','HolidayCalendarTests','HolidayStateTests','ConversationWorkspaceManagerTests','ImageGenerationTaskStoreTests','ImageGenerationTaskManagerTests','ImageGenerationMotionTests','GeneratedImageGroupTests','ImageGalleryManagementTests','ImageGalleryExportTests','ImageTaskCenterLifecycleTests','ImageTaskCenterUiTests','ImageGenerationBackendTests','ImageProviderProtocolTests','ImageGalleryLayoutTests','ImageGenerationIntegrationTests','ImageGenerationUiTests','AgentProjectToolsTests','AgentQuestionUiSmoke','LanServiceTests','LanSettingsUiTests','ThemeTests','ContextPreviewTests','LiveWaveformTests','ReleaseIdentityTests','UpdateChannelTests','ReleaseVersionTests','WindowsTerminalTests','WorkspaceSandboxTests','BrowserProfileCleanupTests','ManualRunTests','GuideBookendTests','LiveLanguageUiTests','RequestLanguageSnapshotTests','PopupLifecycleTests','CacheMaintenanceTests','CacheMaintenanceUiTests','DataManagementTests','DataManagementUiTests','DataMaintenanceAdmissionTests','HistoryMaintenanceTests','DataMaintenanceHostTests','RelationshipFeedbackTests','RelationshipPresentationTests','CompanionHomeUiTests','AppShellTests','PluginsUiTests','ManagedSkillLibraryTests','SkillRepositoryTests','SkillDiscoveryUiTests','UsageTrackingTests','UsageStatisticsUiTests','EmbeddedSettingsTests','ChatImagePreviewTests','ShortcutHelpTests','TrayInteractionTests','ChangeSummaryPersistenceTests','ChangeSummaryIntegrationTests','ConversationViewportTests','UnifiedWorkspaceTests','UnifiedPreviewTabsTests','SidebarWorkspaceTests','SummaryNavigationTests','SideChatTests','BrowserPaneTests','TerminalUiTests','FilePreviewTests','ProcessAvatarTests','ChatAtmosphereTests','FinalOutputFilesTests','WorkspacePermissionTests','PermissionUiSmoke','ConversationSwitchRegressionTests','PetRuntimeTests','AgentEvolutionRegressionTests','ComposerSmoke','AgentCapabilityTests','AgentApprovalTests','AgentApprovalUiSmoke','AgentTerminalTests','AgentIsolationTests','AgentCodingWorkflowTests','AgentContextPolicyTests','AgentInstructionTests','McpConnectionTests','McpUiSmoke','AgentTaskRunnerTests','AgentSubagentExecutionTests','AgentRunRecoveryTests','AgentTaskMemoryTests','GuidanceUiTests','ComposerRenderingTests','DeleteDialogTests','UiResourceTests','QueueHandleTests','ConversationVisualTests','ConversationOwnershipUiTests','WelcomeSuggestionTests','DetailedGuideTests','ConversationModeUiTests','ConversationOwnershipTests','CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','DevReviewRegressionTests','SidebarSectionsTests','DraftConversationTests','ComposerPaletteTests','ContextUsageTests','ModelConfigurationSmoke','SettingsMaximizeTests','SidebarProjectInteractionTests','SidebarActionTests','ConversationUiSmoke','ApplicationSnapshotTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','SteeringSmoke')) {
             try {
               if ($target -eq 'PredictionTests') { & .\Build.ps1 -Target $target -TestArguments '--ui' } else { & .\Build.ps1 -Target $target }
               if ($LASTEXITCODE -ne 0) { throw "Failed: $target" }
@@ -29,6 +58,49 @@ jobs:
             }
           }
           if ($failedTargets.Count -gt 0) { throw ("Failed targets: " + ($failedTargets -join ', ')) }
+      - name: Bounded keepsake title and holiday UI checks
+        shell: powershell
+        run: |
+          ./Build.ps1 -Target RelationshipStageArtTests -TestArguments @('--proof','--resources','--quick','--locale=en_US')
+          if ($LASTEXITCODE) { throw 'Bounded WPF stage title/resource proof failed' }
+          ./Build.ps1 -Target HolidayKeepsakeUiTests -TestArguments @('--locale=en_US','--sample')
+          if ($LASTEXITCODE) { throw 'Bounded WPF holiday UI failed' }
+      - name: Saved-stage actual crossing and official phrase capture
+        shell: powershell
+        run: |
+          & work/RelationshipExperienceUiTests.exe --crossing
+          if ($LASTEXITCODE) { throw 'Saved-stage actual WPF crossing failed' }
+          & work/RelationshipExperienceUiTests.exe --official
+          if ($LASTEXITCODE) { throw 'Saved-stage official WPF response failed' }
+          & work/RelationshipExperienceUiTests.exe --feedback-motion
+          if ($LASTEXITCODE) { throw 'Relationship feedback WPF motion failed' }
+          & work/RelationshipExperienceUiTests.exe --feedback-placement
+          if ($LASTEXITCODE) { throw 'Relationship feedback WPF placement failed' }
+      - name: Companion home narrow and translated routes
+        shell: powershell
+        run: |
+          foreach ($locale in @('de_DE','ja_JP')) {
+            & work/CompanionHomeUiTests.exe $locale
+            if ($LASTEXITCODE) { throw ('Companion home UI failed: '+$locale) }
+          }
+          & work/CompanionHomeUiTests.exe --first-visit
+          if ($LASTEXITCODE) { throw 'Actual first companion home Visit failed' }
+          & work/HolidayKeepsakeUiTests.exe --folder-failure
+          if ($LASTEXITCODE) { throw 'Holiday recovery folder feedback failed' }
+      - name: Verify native background jobs and AppContainer ownership
+        shell: powershell
+        run: |
+          Start-Transcript -Path work/agent-jobs-validation/ci/framework.log
+          try {
+            foreach ($target in @('AgentJobToolTests', 'AgentJobIntegrationTests', 'AgentJobSessionTests', 'AgentJobProcessTests', 'AgentJobSandboxTests')) {
+              & ./Build.ps1 -Target $target
+              if ($LASTEXITCODE) { throw ('Native background job checks failed: ' + $target) }
+            }
+            & ./Build.ps1 -Target AgentJobUiTests -TestArguments '--native-preview'
+            if ($LASTEXITCODE) { throw 'Native job UI and browser preview acceptance failed' }
+            & ./Build.ps1 -Target AgentJobProcessTests -TestArguments '--resources-only'
+            if ($LASTEXITCODE) { throw 'Framework native resource checks failed (P1)' }
+          } catch { Write-Host ($_ | Out-String); throw } finally { Stop-Transcript }
       - name: Verify thin WPF companion download and restoration integration
         shell: powershell
         run: |
@@ -37,6 +109,11 @@ jobs:
       - name: Compile application
         shell: powershell
         run: .\Build.ps1 -Target App -OutputDirectory work/dev3-ci-package/DafeiyuDeskPet
+      - name: Verify standalone application and helper locale
+        shell: powershell
+        run: |
+          ./tools/check_localization_artifacts.ps1 -AppRoot work/dev3-ci-package/DafeiyuDeskPet
+          if ($LASTEXITCODE) { throw 'WPF locale artifact verification failed' }
       - name: Verify release archive can be applied by the updater
         shell: powershell
         run: |
@@ -52,10 +129,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Legacy companion inventory is stale' }
           python tests/CompanionReleaseTests.py
           if ($LASTEXITCODE -ne 0) { throw 'Companion publication guard checks failed' }
+          python tools/build_official_companions.py --check-material-history
+          if ($LASTEXITCODE) { throw 'Material version history failed' }
+          python tests/CompanionMaterialVersionTests.py
+          if ($LASTEXITCODE) { throw 'Material version contract failed' }
           python tests/OfficialCompanionAuthoringTests.py
           if ($LASTEXITCODE -ne 0) { throw 'Official companion authoring checks failed' }
           python tests/RuntimePackageTests.py
-          if ($LASTEXITCODE -ne 0) { throw 'Runtime staging checks failed' }
+          if ($LASTEXITCODE) { throw 'Runtime package contract checks failed' }
+          python tests/WpfLanguageAuditRunnerTests.py
+          if ($LASTEXITCODE) { throw 'WPF diagnostic runner checks failed' }
           python tests/ReleaseAssetTests.py
           if ($LASTEXITCODE -ne 0) { throw 'Release asset naming checks failed' }
           python tests/WindowsReleaseTests.py
@@ -78,9 +161,92 @@ jobs:
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 --no-restore
           if ($LASTEXITCODE) { throw 'Desktop build failed' }
           $testDll = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
-          foreach ($arguments in @('', '--image-writer-exit-ui-only', '--image-held-exit-ui-only', '--image-exit-ui-only')) {
+          dotnet $testDll --first-home-visit
+          if ($LASTEXITCODE) { throw 'Actual native first companion home Visit failed' }
+          dotnet $testDll --holiday-folder-failure
+          if ($LASTEXITCODE) { throw 'Native holiday recovery folder feedback failed' }
+          dotnet $testDll --relationship-experience-only
+          if ($LASTEXITCODE) { throw 'Saved-stage native experience checks failed' }
+          dotnet $testDll --relationship-experience-crossing
+          if ($LASTEXITCODE) { throw 'Saved-stage native crossing checks failed' }
+          dotnet $testDll --relationship-experience-visibility-only
+          if ($LASTEXITCODE) { throw 'Saved-stage native fullscreen visibility checks failed' }
+          foreach ($arguments in @('', '--data-management-ui-only', '--agent-job-native-ui-only', '--agent-job-exit-ui-only', '--image-writer-exit-ui-only', '--image-held-exit-ui-only', '--image-exit-ui-only')) {
             if ($arguments) { dotnet $testDll $arguments } else { dotnet $testDll }
             if ($LASTEXITCODE) { throw ('Desktop acceptance failed: ' + $arguments) }
+          }
+      - name: Verify shared background job entry points and native conversations
+        shell: powershell
+        run: |
+          Start-Transcript -Path work/agent-jobs-validation/ci/shared.log
+          try {
+            dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1
+            if ($LASTEXITCODE) { throw 'Shared business build failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only
+            if ($LASTEXITCODE) { throw "Live language core checks failed" }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json work/localization-core-report.json
+            if ($LASTEXITCODE) { throw 'Shared business regression failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only
+            if ($LASTEXITCODE) { throw '.NET background job logic aggregate failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-job-integration-only
+            if ($LASTEXITCODE) { throw '.NET background job workspace integration failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-native-only
+            if ($LASTEXITCODE) { throw '.NET native background job and conversation checks failed' }
+            dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-resources-only
+            if ($LASTEXITCODE) { throw '.NET native resource checks failed (P1)' }
+            dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- ((@('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES') | ForEach-Object { $_+'='+((Get-FileHash ('assets/locales/'+$_+'.json')).Hash.ToLowerInvariant()) }) -join ';') desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Core.dll
+            if ($LASTEXITCODE) { throw 'Core locale artifact verification failed' }
+          } catch { Write-Host ($_ | Out-String); throw } finally { Stop-Transcript }
+      - name: Thirteen startup languages and complete UI capture matrix
+        shell: powershell
+        run: |
+          ./Build.ps1 -Target SpeechLanguagePolicyTests
+          if ($LASTEXITCODE) { throw 'Framework speech language checks failed' }
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --speech-language-only
+          if ($LASTEXITCODE) { throw '.NET speech language checks failed' }
+          ./Build.ps1 -Target SystemLanguageTests
+          if ($LASTEXITCODE) { throw 'Framework system language startup checks failed' }
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --system-language-only
+          if ($LASTEXITCODE) { throw '.NET system language startup checks failed' }
+          foreach ($culture in @('zh-TW','en-GB','ar-SA','fr-CA','de-DE','hi-IN','id-ID','it-IT','pt-PT','es-ES','es-MX')) {
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--system-language-ui='+$culture)
+            if ($LASTEXITCODE) { throw ('Avalonia system language startup failed: '+$culture) }
+          }
+          ./Build.ps1 -Target LanguagePickerTests -TestArguments zh_CN
+          if ($LASTEXITCODE) { throw 'WPF language picker failed' }
+          foreach ($locale in @('zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
+            & work/LanguagePickerTests.exe $locale
+            if ($LASTEXITCODE) { throw ('WPF translated language picker failed: '+$locale) }
+          }
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
+            & work/AgentJobUiTests.exe --locale $locale
+            if ($LASTEXITCODE) { throw ('WPF translated background job UI failed: '+$locale) }
+            & work/SettingsFeatureNavigationTests.exe $locale
+            if ($LASTEXITCODE) { throw ('WPF feature navigation failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--feature-navigation-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia feature navigation failed: '+$locale) }
+            & work/AppShellTests.exe --language-ui $locale
+            if ($LASTEXITCODE) { throw ('WPF language dialog integration failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--language-picker='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia language picker failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--language-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia language dialog integration failed: '+$locale) }
+          }
+          ./Build.ps1 -Target MultilingualUiAuditTests -TestArguments @('zh_CN','work/language-ui/wpf-build-smoke','light')
+          if ($LASTEXITCODE) { throw 'WPF Chinese UI audit failed' }
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
+            ./tools/run_wpf_language_audit.ps1 -Executable work/MultilingualUiAuditTests.exe -Locale $locale -OutputDirectory ('work/language-ui/full/wpf/'+$locale)
+            if ($LASTEXITCODE) { throw ('WPF translated UI audit failed: '+$locale) }
+          }
+          foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--full-language-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia translated UI audit failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--onboarding-preparation-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Onboarding preparation UI failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--agent-job-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Agent task UI failed: '+$locale) }
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--work-binding-ui='+$locale)
+            if ($LASTEXITCODE) { throw ('Avalonia work binding UI failed: '+$locale) }
           }
       - name: Verify actual thin Avalonia companion resources and restoration
         shell: powershell
@@ -96,6 +262,87 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Verify abortable uninstall UI and close ownership
+        shell: powershell
+        run: |
+          .\Build.ps1 -Target UninstallUiTests -TestArguments '--compile-only'
+          if ($LASTEXITCODE) { throw 'Uninstall UI compilation failed' }
+          foreach ($mode in @('', '--owner', '--closed', '--late', '--job-warning', '--relationship-settings')) {
+            & .\work\UninstallUiTests.exe $mode
+            if ($LASTEXITCODE) { throw "Uninstall UI failed: $mode" }
+          }
+      - name: Verify trusted uninstall handoff in a unique owned Inno installation
+        shell: powershell
+        run: |
+          $candidates = @((Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
+          $env:DESKPET_TEST_INNO = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (!$env:DESKPET_TEST_INNO) { throw 'Inno compiler required for owned uninstall acceptance' }
+          python tests/UninstallHandoffSmoke.py
+          if ($LASTEXITCODE) { throw 'Owned uninstall handoff failed' }
+          python tests/UninstallInstalledUiSmoke.py
+          if ($LASTEXITCODE) { throw 'Actual installed WPF uninstall failed' }
+          python tests/UpdateLifecycleSmoke.py --receipts-only
+          if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
+      - name: Preserve owned uninstall handoff diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uninstall-handoff-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/uc-*/install.log
+            work/uc-*/i/data/fixture-error
+            work/uc-*/i/data/pre-uninstall.json
+            work/uc-*/i/data/uninstall/*/*.log
+            work/uc-*/i/data/uninstall/*/result.json
+            work/uninstall-handoff-*/install.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/*.log
+            work/uninstall-handoff-*/owned */data/uninstall/*/result.json
+      - name: Verify locale in the actually installed application
+        shell: powershell
+        run: |
+          $setup = @(Get-ChildItem work/dev3-ci-package/DeskPet-Windows-Setup-*.exe)
+          if ($setup.Count -ne 1) { throw 'Expected one verified installer' }
+          $destination = Join-Path $PWD 'work/localization-installed'
+          $process = Start-Process -FilePath $setup[0].FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS',('/DIR="'+$destination+'"')) -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode) { throw 'Isolated installer acceptance failed' }
+          $log = Join-Path $PWD 'work/localization-installed.log'
+          ./tools/check_localization_artifacts.ps1 -AppRoot $destination | Tee-Object -FilePath $log
+          if ($LASTEXITCODE) { throw 'Installed locale acceptance failed' }
+      - name: Preserve localization acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-acceptance-windows-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/localization-audit.json
+            work/localization-core-report.json
+            work/localization-installed.log
+            work/language-pack-audit.json
+            work/language-ui/
+            work/language-picker/
+            work/agent-jobs-ui/
+            work/relationship-validation/wpf/*.png
+            work/relationship-experience/**/*.png
+      - name: Preserve compact WPF language diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpf-language-diagnostics-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/language-ui/full/wpf/**/process.json
+            work/language-ui/full/wpf/**/process.log
+            work/language-ui/full/wpf/**/trace.log
+            work/language-ui/full/wpf/**/native-events.json
+      - name: Preserve background job acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-jobs-acceptance-windows-${{ github.sha }}
+          if-no-files-found: warn
+          path: work/agent-jobs-validation/ci/
       - name: Preserve failed native link test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -107,6 +354,8 @@ jobs:
             work/permissions/link-native-input-not-ready.png
             work/permissions/link-navigation-failure.png
             work/permissions/link-navigation-failure.txt
+            work/agent-jobs-ui/native-preview-failure.txt
+            work/agent-jobs-ui/native-preview.png
             work/image-ui-evidence/generation-layout-failure.png
             work/image-ui-evidence/generation-layout-failure.txt
             work/image-ui-evidence/gallery-toolbar-failure.png

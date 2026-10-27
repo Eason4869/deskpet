@@ -1,6 +1,7 @@
 """Build release archives from a fresh source tree with no local work directory."""
 from pathlib import Path
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -14,6 +15,7 @@ from zipfile import ZipFile
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(PROJECT))
 from tools.release_assets import installer_asset_name
+from tools.localization.helper_resources import expected_locale_resources, validate_helper_resources
 version = re.search(r'DisplayVersion="([^"]+)"', (PROJECT / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')).group(1)
 arguments = argparse.ArgumentParser()
 arguments.add_argument('--compiler', help='Optional Inno ISCC.exe for full fresh installer verification')
@@ -55,7 +57,7 @@ for private_name in ['.env', '.env.local', 'credentials.json', 'release-signing.
 (checkout / '.codex/auth.json').write_text('private auth sentinel', encoding='utf-8')
 result = subprocess.run([sys.executable, str(checkout / 'Package.py'), '--output-directory', str(output)], cwd=checkout,
                         env=dict(os.environ,PYTHONIOENCODING='utf-8'),
-                        capture_output=True, text=True, encoding='utf-8', timeout=1200)
+                        capture_output=True, text=True, encoding='utf-8', timeout=2400)
 if result.returncode:
     print(result.stdout + result.stderr)
     raise AssertionError('fresh source packaging needs no local test artifacts')
@@ -84,27 +86,35 @@ with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
 print('PASS runtime includes the exact daily-use and voice-preset guides')
 index_path=output/('DeskPet-Companions-'+version+'.json')
 companion_index=json.loads(index_path.read_text(encoding='utf-8'))
+package_policy=json.loads((checkout/'assets/official/companion-package-policy.json').read_text(encoding='utf-8'))
+material_registry=json.loads((checkout/'assets/official/companion-versions.json').read_text(encoding='utf-8'))['companions']
 assert companion_index['schema_version']==1
 assert [entry['id'] for entry in companion_index['companions']]==['e-bao','dafeiyu','marfu','xiaobei','gugugaga']
 for entry in companion_index['companions']:
     pet=entry['id']
-    archive=output/('DeskPet-Companion-'+pet+'-'+version+'.zip')
+    material=material_registry[pet]
+    archive=output/('DeskPet-Companion-'+pet+'-'+material['pack_version']+'.zip')
     assert archive.is_file() and entry['asset_name']==archive.name
-    assert entry['version']==version and entry['min_app_version']==version
+    assert entry['version']==material['pack_version'] and entry['min_app_version']==material['min_app_version']
     assert entry['size']==archive.stat().st_size and entry['sha256']==hashlib.sha256(archive.read_bytes()).hexdigest()
+    assert archive.stat().st_size<=package_policy['maximum_archive_bytes']
     with ZipFile(archive) as bundle:
-        assert bundle.testzip() is None and len(bundle.infolist())<=512
-        assert sum(item.file_size for item in bundle.infolist())<=256*1024*1024
+        assert bundle.testzip() is None and len(bundle.infolist())<=package_policy['maximum_entries']
+        assert sum(item.file_size for item in bundle.infolist())<=package_policy['maximum_expanded_bytes']
         skin=json.loads(bundle.read('pet.json'))
         identity=json.loads(bundle.read('companions.json'))
-        assert identity['id']==pet and identity['version']==version and identity['name']==skin['name']
-        assert skin['id']==pet and skin['pack_version']==version
+        assert identity['id']==pet and identity['version']==material['pack_version'] and identity['min_app_version']==material['min_app_version'] and identity['name']==skin['name']
+        assert skin['id']==pet and skin['pack_version']==material['pack_version']
         assert skin['version']==2 and len(skin['animations'])==17 and skin['gaze']['frames']==16
         assert skin['system_prompt'] and skin['special_action'] and skin['special_action2']
         assert skin['avatar'] in bundle.namelist() and skin['voice_presets']['speech'] and skin['voice_presets']['live']
-        expected_counts=[6,8,8,4,5,8,6,6,6]+[4]*8
+        # The reviewed quiet source replaces idle and sleeping for every official role.
+        expected_counts=[8,8,8,4,5,8,6,6,6]+[4]*6+[8,4]
         action_names=['idle','running-right','running-left','waving','jumping','failed','waiting','running','review','lifted','landing','petting','poked','feeding','happy','sleeping','special']
-        assert [skin['animations'][name]['frames'] for name in action_names]==([8]*17 if pet in ('xiaobei','gugugaga') else expected_counts)
+        actual_counts=[skin['animations'][name]['frames'] for name in action_names]
+        assert actual_counts==([8]*17 if pet in ('xiaobei','gugugaga') else expected_counts), (pet,dict(zip(action_names,actual_counts)))
+        assert [(skin[group][name]['frames'],skin[group][name]['fps']) for group,name in
+                (('animations','idle'),('animations','sleeping'),('alternate_animations','sleeping'))]==[(8,4),(8,2.5),(8,2.5)], pet+' quiet timing'
         assert set(skin['extra_animations'])=={'stumble','special2'}
         assert len(skin['alternate_animations'])==(9 if pet in ('e-bao','gugugaga') else 8)
         for group in ('animations','extra_animations','alternate_animations'):
@@ -125,10 +135,19 @@ with ZipFile(output/('DeskPet-Skin-Template-v2-'+version+'.zip')) as bundle:
 with ZipFile(output/('DeskPet-Windows-'+version+'.zip')) as bundle:
     assert 'DafeiyuDeskPet/docs/configuration-guide.md' in bundle.namelist()
     guide = bundle.read('DafeiyuDeskPet/docs/configuration-guide.md').decode('utf-8-sig')
-    lesson_titles = re.findall(r'add\(\d+,\s*"[^"]+",\s*"([^"]+)"', (checkout/'src/OnboardingLessons.cs').read_text(encoding='utf-8-sig'))
-    assert lesson_titles, 'application lesson titles must be extracted from the current source'
-    assert str(len(lesson_titles)) + ' 个小步骤' in guide, 'packaged guide count must match current application lessons'
-    guide_titles = re.findall(r'^### \d+\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
+    # Read the actual compiled titles, including embedded resource resolution.
+    # Source-literal regexes cannot follow TextResources.Get and miss dynamic values.
+    probe=root/'GuideTitles.exe'
+    compiler=Path(os.environ['WINDIR'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+    subprocess.run([str(compiler),'/nologo','/codepage:65001','/target:exe','/out:'+str(probe),str(checkout/'tools/localization/VerifyArtifacts.cs')],capture_output=True,check=True,timeout=30)
+    result=subprocess.run([str(probe),'--onboarding-titles',str(runtime/'桌面伙伴.exe')],capture_output=True,timeout=30)
+    if result.returncode != 0:
+        raise RuntimeError('Compiled onboarding-title probe failed: ' + (result.stdout + result.stderr).decode('utf-8', errors='replace'))
+    lesson_titles=base64.b64decode(result.stdout).decode('utf8').split('\n')
+    assert lesson_titles and all(lesson_titles), 'application lesson titles must be extracted from the actual compiled application'
+    guide_steps = re.findall(r'^### (\d+)\. (.+)$', guide.replace('\r\n', '\n'), re.MULTILINE)
+    assert [int(number) for number, title in guide_steps] == list(range(1, len(lesson_titles) + 1)), 'packaged guide numbers must match current application lessons'
+    guide_titles = [title for number, title in guide_steps]
     assert guide_titles == lesson_titles, 'packaged guide must retain every current lesson title in order'
     assert not any('/templates/' in name or '/previews/' in name for name in bundle.namelist())
     assert not any('/pets/' in name or name.endswith('/verification.md') for name in bundle.namelist())
@@ -142,13 +161,14 @@ manifest = (output / 'SHA256.txt').read_text(encoding='utf-8-sig').splitlines()
 manifest_names = [line.split('  ', 1)[1] for line in manifest]
 assert manifest_names.count(app_asset.name) == 1, 'standalone application must appear exactly once in the release manifest'
 assert all('/' not in name and '\\' not in name for name in manifest_names), 'release manifest must contain flat uploadable asset names'
-assert all(version in name for name in manifest_names), 'each release asset must retain the complete release version'
+material_assets={entry['asset_name'] for entry in companion_index['companions']}
+assert all(version in name for name in manifest_names if name not in material_assets), 'application assets must retain the complete release version'
 assert set(manifest_names) == {path.name for path in output.iterdir() if path.is_file() and (path.suffix in {'.exe', '.zip'} or path.name=='DeskPet-Companions-'+version+'.json')}, 'manifest must cover every release asset'
 for line in manifest:
     digest, name = line.split('  ', 1)
     assert digest == hashlib.sha256((output / name).read_bytes()).hexdigest(), 'stale digest: ' + name
 for pet in ['e-bao', 'dafeiyu', 'marfu', 'xiaobei', 'gugugaga']:
-    assert any(line.endswith('  DeskPet-Companion-' + pet + '-' + version + '.zip') for line in manifest)
+    assert any(line.endswith('  DeskPet-Companion-' + pet + '-' + material_registry[pet]['pack_version'] + '.zip') for line in manifest)
 assert any(line.endswith('  DeskPet-Companions-' + version + '.json') for line in manifest)
 print('PASS versioned ASCII skin names and manifest hashes match release artifacts')
 result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',
@@ -156,8 +176,22 @@ result = subprocess.run(['powershell.exe', '-NoProfile', '-Command',
     env=dict(os.environ, DESKPET_TEST_HELPER=str(runtime / 'DeskPet.Update.exe')),
     capture_output=True, check=True)
 assert result.stdout.decode('ascii').strip() == version.split('-')[0] + '.0'
-assert (runtime / 'DeskPet.Update.exe').stat().st_size < 1024 * 1024, 'helper should not embed pet sprite assets'
-print('PASS update helper has the declared version and excludes sprite resources')
+helper_manifest_script = '''
+$ErrorActionPreference='Stop'
+$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_HELPER)
+$manifest=@(foreach($name in $a.GetManifestResourceNames()) {
+    $stream=$a.GetManifestResourceStream($name);$sha=[Security.Cryptography.SHA256]::Create()
+    try { [pscustomobject]@{name=$name;length=$stream.Length;sha256=([BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','').ToLowerInvariant())} }
+    finally { $sha.Dispose();$stream.Dispose() }
+})
+ConvertTo-Json -InputObject $manifest -Compress
+'''
+result = subprocess.run(['powershell.exe', '-NoProfile', '-Command', helper_manifest_script],
+    env=dict(os.environ, DESKPET_TEST_HELPER=str(runtime / 'DeskPet.Update.exe')),
+    capture_output=True, check=True)
+validate_helper_resources((runtime / 'DeskPet.Update.exe').stat().st_size,
+    json.loads(result.stdout.decode('utf-8-sig')), expected_locale_resources(checkout / 'assets/locales'))
+print('PASS update helper has the declared version, exact locale hashes, no sprite resources and less than 1 MiB non-locale overhead')
 result=subprocess.run(['powershell.exe','-NoProfile','-Command',
     '$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_APP); $a.GetManifestResourceNames()'],
     env=dict(os.environ,DESKPET_TEST_APP=str(runtime/'桌面伙伴.exe')),capture_output=True,check=True)

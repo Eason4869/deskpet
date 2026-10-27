@@ -1,10 +1,10 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Threading;
 using Dafeiyu;
 
 namespace DeskPet.Desktop;
 
-internal enum CompanionSelectionOrigin { Settings, PetMenu, StartupRestore }
+internal enum CompanionSelectionOrigin { Settings, PetMenu, StartupRestore, Onboarding }
 
 internal sealed partial class DesktopController
 {
@@ -20,12 +20,12 @@ internal sealed partial class DesktopController
     private readonly Dictionary<string, (string? Version, long Order)> acceptedAppearances = new(StringComparer.Ordinal);
     private long appearanceOperation;
     private bool applyingAppearance;
-    internal bool CompanionAppearanceSafe => !GuideLocked && !HolidayBusinessBusy && Pet.CompanionSourceRefreshSafe;
+    internal bool CompanionAppearanceSafe => (!GuideLocked||guide?.AllowsCompanionPreparation==true) && !HolidayBusinessBusy && Pet.CompanionSourceRefreshSafe;
     private OfficialDownloadRouting CompanionRouting() => new(Settings.UpdateUseMirror, Settings.UpdateMirrorAddress, Settings.UpdateUseProxy, Settings.UpdateProxyAddress);
     internal bool ExplainGuideCompanions()
     {
         if (!GuideLocked) return false;
-        var notice = Ui.Window("选择桌面伙伴", Ui.Text("完成使用引导后可选择伙伴并下载完整角色包。引导期间只演示设置，不切换伙伴。"), 400, 180);
+        var notice = LocalizedUi.Window(()=>(TextResources.Get("desktopCompanions.explainGuideCompanions.window")), LocalizedUi.Text(()=>(TextResources.Get("desktopCompanions.explainGuideCompanions.text"))), 400, 180);
         notice.Name = "GuideCompanionNotice"; notice.ShowActivated = false; notice.ShowInTaskbar = false; notice.Show();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => { timer.Stop(); notice.Close(); }; notice.Closed += (_, _) => timer.Stop(); timer.Start();
@@ -78,10 +78,24 @@ internal sealed partial class DesktopController
         await companionNative.ValidateAsync(installation, cancel);
         return await Task.Run(() => ReadPublished(installation, entry.Id), cancel);
     }
-    private void MergeCompanionCatalog(string id, HolidayCatalog catalog) => Holidays.ReplaceCatalog(Holidays.Catalog.WithCharacter(id, catalog));
+    private HolidayCatalog? embeddedHolidayCatalog;
+    private readonly Dictionary<string,HolidayCatalog> officialHolidayCatalogs=new(StringComparer.Ordinal);
+    private void MergeCompanionCatalog(string id, HolidayCatalog catalog)
+    {
+        officialHolidayCatalogs[id]=catalog;RebuildCompanionCatalog();
+    }
+    private void RebuildCompanionCatalog()=>RebuildCompanionCatalogFor(Skin);
+    private void RebuildCompanionCatalogFor(PetSkin? selected)
+    {
+        embeddedHolidayCatalog??=Holidays.Catalog;
+        var merged=embeddedHolidayCatalog;
+        foreach(var item in officialHolidayCatalogs)merged=merged.WithCharacter(item.Key,item.Value);
+        if(selected?.PackageHolidayCatalog is { } local)merged=merged.WithCharacter(selected.OutfitCharacterId!,local);
+        Holidays.ReplaceCatalog(merged);
+    }
     private async Task WaitForGuideAsync(long token, CancellationToken cancel)
     {
-        while (GuideLocked && officialCompanions.OwnsSelection(token)) await Task.Delay(100, cancel);
+        while (GuideLocked && guide?.AllowsCompanionPreparation!=true && officialCompanions.OwnsSelection(token)) await Task.Delay(100, cancel);
     }
     private async Task WaitForAutomaticRestoreAsync(long token, CancellationToken cancel)
     {
@@ -91,7 +105,7 @@ internal sealed partial class DesktopController
     public Task SelectSkinAsync(PetSkin skin) => SelectSkinAsync(skin, CompanionSelectionOrigin.Settings);
     internal async Task SelectSkinAsync(PetSkin requested, CompanionSelectionOrigin origin)
     {
-        if (ExplainGuideCompanions() || exiting) return;
+        if ((origin!=CompanionSelectionOrigin.Onboarding&&ExplainGuideCompanions()) || exiting) return;
         long token = officialCompanions.BeginSelection();
         latestCompanionToken = token; companionSelectionGeneration++;
         companionSelection?.Cancel(); companionRefreshProgress?.Dispose(); companionRefreshProgress=null;
@@ -126,6 +140,15 @@ internal sealed partial class DesktopController
                     }
                 }
             }
+            if (requested.OfficialCharacterId == null && requested.PackageId != null && requested.Folder != null && OfficialCompanionRules.Ids.Contains(requested.PackageId))
+            {
+                nextCatalog = await Task.Run(() => {
+                    var root = Path.Combine(requested.Folder, "holidays"); if (!Directory.Exists(root)) return null;
+                    var result = new HolidayCatalog(root);
+                    if (!string.IsNullOrEmpty(result.Warning) || result.Outfits.Any(o => !o.Ready || o.CharacterId != requested.PackageId)) throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
+                    return result;
+                }, cancellation.Token);
+            }
             if (!Owns()) return;
             await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
             if (origin == CompanionSelectionOrigin.StartupRestore)
@@ -141,12 +164,14 @@ internal sealed partial class DesktopController
                 await Live.StopAsync(); await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
                 await Session.StopAsync(); await WaitForGuideAsync(token, cancellation.Token); if (!Owns()) return;
             }
+            using var admission=DataMaintenance.EnterActivity();
             if (next.OfficialCharacterId != null && !CanPublishOfficial(next)) return;
             Pet.CancelHolidayForSkinChange();
+            if(next.OfficialCharacterId==null)next.PackageHolidayCatalog=nextCatalog;
             PersonaProfiles.SaveVoices(Settings); Skin = next;
-            PersonaProfiles.Activate(Settings, next.Id, next.Prompt, next.Voices); Session.SelectPersona(next.Id);
+            PersonaProfiles.Activate(Settings, next.Id, next.Prompt, next.Voices, next.OfficialCharacterId ?? next.BuiltinCharacterId); Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey = next.PickerKey; Settings.PendingOfficialCompanionId = "";
-            ReplaceCompanionEntry(next); if (nextCatalog != null) MergeCompanionCatalog(next.OfficialCharacterId!, nextCatalog);
+            ReplaceCompanionEntry(next); if (nextCatalog != null && next.OfficialCharacterId != null) MergeCompanionCatalog(next.OfficialCharacterId, nextCatalog); else RebuildCompanionCatalog();
             Pet.SelectSkin(); Save(); if (tray != null) tray.ToolTipText = "DeskPet · " + next.Name;
             if (next.OfficialCharacterId != null && !next.BuiltIn)
                 Run(() => RefreshOfficialAsync(next, token, origin == CompanionSelectionOrigin.StartupRestore ? OfficialCompanionCheckMode.AfterApplicationUpdate : OfficialCompanionCheckMode.Cached,origin));
@@ -227,38 +252,29 @@ internal sealed partial class DesktopController
         }
         finally { applyingAppearance = false; }
     }
-    internal async Task DownloadAllOfficialAsync()
+    private long companionSelectionGeneration;
+    private OfficialCompanionPreparation? preparation;
+    internal Func<IProgress<OfficialCompanionProgress>,CancellationToken,Task>? PreparationDownloadOverride;
+    internal OfficialCompanionPreparation OfficialPreparation=>preparation??=new OfficialCompanionPreparation((progress,token)=>PreparationDownloadOverride?.Invoke(progress,token)??PrepareAllOfficialAsync(progress,token),companionLifetime.Token);
+    internal Task DownloadAllOfficialAsync()
     {
-        if (ExplainGuideCompanions() || exiting) return;
-        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(companionLifetime.Token);
-        using var progress = new OfficialCompanionProgressView(false, settingsWindow ?? (Window)Pet, Settings.Topmost, cancel);
-        var captured = Skin;
-        // Bulk does not advance selection. Captured lease ownership is observed
-        // via object identity plus the token snapshot updated by real choices.
-        long generation = companionSelectionGeneration;
-        long order = ++appearanceOperation;
-        while (true)
-        {
-            try
-            {
-                var results = await officialCompanions.EnsureAllAsync(CompanionRouting(), progress, cancel.Token);
-                foreach (var result in results) await PublishBulkResultAsync(result.Installation, captured, generation, order, cancel.Token);
-                return;
-            }
-            catch (OperationCanceledException) when (cancel.IsCancellationRequested) { return; }
-            catch (Exception error)
-            {
-                // Aggregate failure still leaves completed installations usable.
-                foreach (var entry in Skins.Where(s => s.OfficialCharacterId != null).ToArray())
-                {
-                    var installation = await Task.Run(() => officialCompanions.Installed(entry.OfficialCharacterId!), cancel.Token);
-                    if (installation != null) { await companionNative.ValidateAsync(installation, cancel.Token); await PublishBulkResultAsync(installation, captured, generation, order, cancel.Token); }
-                }
-                if (!await progress.RetryAsync(error)) return;
+        if(ExplainGuideCompanions()||exiting)return Task.CompletedTask;
+        ShowOfficialPreparation();return OfficialPreparation.StartAsync();
+    }
+    internal void ShowOfficialPreparation()=>new CompanionPreparationWindow(this).Show();
+    private async Task PrepareAllOfficialAsync(IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
+    {
+        var captured=Skin;long generation=companionSelectionGeneration;long order=++appearanceOperation;Exception? failure=null;
+        try{var results=await officialCompanions.EnsureAllAsync(CompanionRouting(),progress,cancel);foreach(var result in results)await PublishBulkResultAsync(result.Installation,captured,generation,order,cancel);}
+        catch(Exception error){failure=error;}
+        if(failure!=null&&!exiting){
+            foreach(var entry in Skins.Where(skin=>skin.OfficialCharacterId!=null).ToArray()){
+                var installed=await Task.Run(()=>officialCompanions.Installed(entry.OfficialCharacterId!),companionLifetime.Token);
+                if(installed!=null){await companionNative.ValidateAsync(installed,companionLifetime.Token);await PublishBulkResultAsync(installed,captured,generation,order,companionLifetime.Token);}
             }
         }
+        if(failure!=null)throw failure;
     }
-    private long companionSelectionGeneration;
     private async Task PublishBulkResultAsync(OfficialCompanionInstallation installation, PetSkin captured, long generation, long order, CancellationToken cancel)
     {
         var entry = Skins.FirstOrDefault(s => s.OfficialCharacterId == installation.Asset.Id);
@@ -266,14 +282,26 @@ internal sealed partial class DesktopController
         var next = await Task.Run(() => ReadPublished(installation, entry.Id), cancel);
         if (exiting || !CanPublishOfficial(next.Skin)) return;
         if (Skin.OfficialCharacterId != installation.Asset.Id) { if (AcceptAppearance(next.Skin, order)) { ReplaceCompanionEntry(next.Skin); MergeCompanionCatalog(installation.Asset.Id, next.Catalog); Notify(); } return; }
-        if (generation != companionSelectionGeneration || !ReferenceEquals(Skin, captured) || next.Skin.SourceKey == Skin.SourceKey) return;
+        if (next.Skin.SourceKey == Skin.SourceKey) return;
         // Use the latest real-selection token without advancing it for bulk.
-        QueueAppearance(next.Skin, next.Catalog, captured, latestCompanionToken, order);
+        QueueAppearance(next.Skin, next.Catalog, Skin, latestCompanionToken, order);
     }
     private long latestCompanionToken;
     private async Task StartOfficialCompanionsAsync()
     {
         if (GuideLocked || companionSelection != null || showAutomaticGuide && Settings.OnboardingState is not ("completed" or "skipped")) return;
+        if (Skin.OfficialCharacterId == null && Skin.PackageId != null && Skin.Folder != null && OfficialCompanionRules.Ids.Contains(Skin.PackageId))
+        {
+            var captured=Skin;
+            var catalog=await Task.Run(()=>{
+                string root=Path.Combine(captured.Folder,"holidays");if(!Directory.Exists(root))return null;
+                var loaded=new HolidayCatalog(root);
+                if(!string.IsNullOrEmpty(loaded.Warning)||loaded.Outfits.Any(o=>!o.Ready||o.CharacterId!=captured.PackageId))throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
+                return loaded;
+            },companionLifetime.Token);
+            if(!exiting&&ReferenceEquals(Skin,captured)){captured.PackageHolidayCatalog=catalog;RebuildCompanionCatalog();Notify();}
+            return;
+        }
         var pending = Settings.PendingOfficialCompanionId;
         if (pending.Length != 0)
         {

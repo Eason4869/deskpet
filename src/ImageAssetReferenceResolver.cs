@@ -116,7 +116,7 @@ namespace Dafeiyu
         }
         static void Check(string path)
         {
-            if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new IOException("历史目录不能是链接。");
+            if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new IOException(TextResources.Get("imageAssetReferenceResolver.check.text"));
         }
     }
     public sealed class ImageAssetManagementService
@@ -147,8 +147,8 @@ namespace Dafeiyu
             {
                 GeneratedImage item;
                 assets.TryGetValue(id,out item);
-                if(item==null)result.Blocked[id]="图片不存在。";
-                else if(refs.Contains(id)||usage.IsInUse(id)||(!String.IsNullOrEmpty(item.ImageJobId)&&usage.IsInUse("job:"+item.ImageJobId)))result.Blocked[id]="图片仍被聊天、任务或其他图片引用。";
+                if(item==null)result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.inspect.resultBlockedId");
+                else if(refs.Contains(id)||usage.IsInUse(id)||(!String.IsNullOrEmpty(item.ImageJobId)&&usage.IsInUse("job:"+item.ImageJobId)))result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.inspect.resultBlockedId.alternativeA");
             }
             return result;
         }
@@ -184,13 +184,13 @@ namespace Dafeiyu
                         assets.TryGetValue(id,out item);
                         if(item==null||(privateReferences?!item.IsReference:!item.TrashedUtc.HasValue))
                         {
-                            result.Blocked[id]=privateReferences?"只能显式清理私有参考图。":"请先移入回收站。";
+                            result.Blocked[id]=privateReferences?TextResources.Get("imageAssetReferenceResolver.purgeCore.blockedIdPrivateReferences"):TextResources.Get("imageAssetReferenceResolver.purgeCore.blockedIdPrivateReferences.alternativeA");
                             continue;
                         }
                         var lease=usage.TryAcquireDeletion(id);
                         if(lease==null)
                         {
-                            result.Blocked[id]="图片正在使用。";
+                            result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId");
                             continue;
                         }
                         leases.Add(lease);
@@ -217,7 +217,7 @@ namespace Dafeiyu
                             if(lease==null){reserved=false;break;}
                             leases.Add(lease);reservedKeys.Add(key);
                         }
-                        if(!reserved){candidates.Remove(id);result.Blocked[id]="原消息仍在使用图片任务。";}
+                        if(!reserved){candidates.Remove(id);result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId.alternativeA");}
                     }
                     // The final disk scan happens after reservations, never under a session/UI gate.
                     if(AfterReservations!=null)AfterReservations();
@@ -225,7 +225,7 @@ namespace Dafeiyu
                     foreach(string id in candidates.ToArray())if(refs.Contains(id))
                     {
                         candidates.Remove(id);
-                        result.Blocked[id]="图片仍被历史或其他图片引用。";
+                        result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId.alternativeB");
                     }
                     token.ThrowIfCancellationRequested();
                     var deletedJobKeys=candidates.Where(id=>taskKeys.ContainsKey(id)).SelectMany(id=>taskKeys[id]).Distinct().ToArray();
@@ -246,7 +246,7 @@ namespace Dafeiyu
                             result.DeletedIds.Add(id);
                             result.CleanupPendingIds.Add(id);
                         }
-                        else result.Blocked[id]="无法确认安全清理，文件已保留。";
+                        else result.Blocked[id]=TextResources.Get("imageAssetReferenceResolver.purgeCore.resultBlockedId.alternativeC");
                     }
                 }
                 finally

@@ -33,7 +33,7 @@ namespace Dafeiyu
         {
             if (ids == null) throw new ArgumentNullException("ids");
             string folder = Path.GetFullPath(destination);
-            if (!Directory.Exists(folder) || (File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0) throw new IOException("导出目录无效。");
+            if (!Directory.Exists(folder) || (File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0) throw new IOException(TextResources.Get("imageGalleryExport.exportAsync.text"));
             string[] selected = ids.Distinct(StringComparer.Ordinal).ToArray();
             return Task.Run(() => Export(selected, folder, progress, token));
         }
@@ -50,7 +50,7 @@ namespace Dafeiyu
                     using (usage.Acquire(id, "gallery-export"))
                     {
                         var metadata = store.Get(id);
-                        if (metadata == null || metadata.IsReference) throw new FileNotFoundException("图片不存在。");
+                        if (metadata == null || metadata.IsReference) throw new FileNotFoundException(TextResources.Get("imageGalleryExport.export.text"));
                         byte[] original = store.Read(id);
                         string suffix = metadata.MediaType == "image/jpeg" ? ".jpg" : metadata.MediaType == "image/webp" ? ".webp" : metadata.MediaType == "image/gif" ? ".gif" : ".png";
                         temporary = Path.Combine(folder, ".deskpet-" + Guid.NewGuid().ToString("N") + ".tmp");
@@ -63,7 +63,7 @@ namespace Dafeiyu
                             try { File.Move(temporary, candidate); temporary = null; item.Path = candidate; break; }
                             catch (IOException) { if (!File.Exists(candidate)) throw; }
                         }
-                        if (item.Path == null) throw new IOException("导出文件名已用尽。");
+                        if (item.Path == null) throw new IOException(TextResources.Get("imageGalleryExport.export.text.alternativeA"));
                     }
                 }
                 catch (OperationCanceledException) { summary.Canceled = true; item.Canceled = true; }
@@ -81,10 +81,10 @@ namespace Dafeiyu
             {
                 if (DeleteTemporary == null) File.Delete(temporary);
                 else DeleteTemporary(temporary);
-                if (File.Exists(temporary)) throw new IOException("临时文件仍存在。");
+                if (File.Exists(temporary)) throw new IOException(TextResources.Get("imageGalleryExport.cleanupTemporary.text"));
             }
-            catch (IOException error) { item.TemporaryPath = temporary; item.Error = "临时文件清理失败：" + temporary + "；" + error.Message; }
-            catch (UnauthorizedAccessException error) { item.TemporaryPath = temporary; item.Error = "临时文件清理失败：" + temporary + "；" + error.Message; }
+            catch (IOException error) { item.TemporaryPath = temporary; item.Error = TextResources.Format("imageGalleryExport.cleanupTemporary.temporaryErrorMessage",temporary,error.Message); }
+            catch (UnauthorizedAccessException error) { item.TemporaryPath = temporary; item.Error = TextResources.Format("imageGalleryExport.cleanupTemporary.temporaryErrorMessage",temporary,error.Message); }
         }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -19,7 +19,7 @@ namespace Dafeiyu.Tests
     public static class WpfOfficialCompanionTests
     {
         static int passed;
-        static void Check(bool value,string message){if(!value)throw new Exception(message);passed++;}
+        static void Check(bool value,string message){if(!value)throw new Exception(message);passed++;Console.WriteLine("PASS "+message);}
         static void Hold(IllustratedAnimation clip,double hold)
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
@@ -188,6 +188,17 @@ namespace Dafeiyu.Tests
                     Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null));
                     string eSource=pet.Skin.Source,hiddenPersona=pet.Catalog.FindOfficial("dafeiyu").Id;
                     Check(!pet.Skin.Embedded&&pet.Skin.OfficialInstallation!=null,"bulk-installed newer Ebao is a valid selected external source");
+                    Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("dafeiyu"),CompanionSelectionOrigin.StartupRestore,null));
+                    fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",210);
+                    Console.WriteLine("TRACE switched-role metadata fixture setup");var metadataEntered=new TaskCompletionSource<bool>();var metadataRelease=new TaskCompletionSource<bool>();bool holdMetadata=true;var originalIntercept=fixture.Intercept;
+                    fixture.Intercept=async(request,cancel)=>{if(request.RequestUri.Host=="api.github.com"&&holdMetadata){metadataEntered.TrySetResult(true);await metadataRelease.Task.ConfigureAwait(false);}return originalIntercept==null?null:await originalIntercept(request,cancel).ConfigureAwait(false);};
+                    Console.WriteLine("TRACE opening preparation guide");pet.Settings.OnboardingState="deferred";pet.Settings.OnboardingLessonId="pet.packages";pet.ShowOnboarding();Pump();var bulkGuide=(OnboardingWindow)Field("guide").GetValue(pet);
+                    Walk(bulkGuide).OfType<Button>().Single(button=>button.Name=="GuidePreparePacks").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));var batch=pet.OfficialPreparation.StartAsync();Console.WriteLine("TRACE waiting for forced metadata");Wait(metadataEntered.Task);
+                    Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.Onboarding,null));Check(pet.Skin.Source==eSource&&bulkGuide.IsVisible,"pending full refresh allows cached last-choice role while guidance continues");
+                    string selectedPersona=pet.Skin.Id;var selectedHistory=pet.Conversation.History;
+                    Console.WriteLine("TRACE releasing forced metadata");holdMetadata=false;metadataRelease.TrySetResult(true);Wait(batch);var reconcileDeadline=DateTime.UtcNow.AddSeconds(15);while(pet.Skin.Source==eSource&&DateTime.UtcNow<reconcileDeadline)Pump();
+                    Check(pet.OfficialPreparation.State==OfficialCompanionPreparationState.Completed&&pet.Skin.Source!=eSource&&pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Skin.Id==selectedPersona&&Object.ReferenceEquals(pet.Conversation.History,selectedHistory),"bulk completion hotloads the last cached role selected during metadata wait without changing persona or history");
+                    eSource=pet.Skin.Source;bulkGuide.Close();Pump();fixture.Intercept=originalIntercept;
                     pet.Catalog.Remove(pet.Catalog.FindOfficial("dafeiyu"));Wait(pet.DownloadAllOfficialAsync(null));
                     Check(!pet.Catalog.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu")&&pet.Catalog.FindOfficial("dafeiyu").Id==hiddenPersona,"bulk refreshes hidden official registry without unhiding role or losing persona");
                     var reloaded=new SkinCatalog(pet.Store.DirectoryPath);Check(!reloaded.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu")&&reloaded.FindOfficial("dafeiyu").Id==hiddenPersona,"hidden official identity persists across catalog restart");

@@ -13,12 +13,157 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static int passed;
+        public static int OptimizationOnly()
+        {
+            try{SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();Console.WriteLine("Official optimization tests: "+passed+" passed");return 0;}
+            catch(Exception error){Console.WriteLine("FAIL Official optimization: "+error);return 1;}
+        }
+        static void SingleVerifiedRead()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                Revision(new OfficialCompanionStorage(fixture.Root),fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    var clock=System.Diagnostics.Stopwatch.StartNew();var current=service.Installed("dafeiyu");long count=service.Storage.VerificationCount;
+                    Check(current!=null&&count==1,"managed offline query fully verifies once; reads="+count+" elapsedMs="+clock.ElapsedMilliseconds);
+                    File.AppendAllText(current.PetManifestPath," ");Check(service.Installed("dafeiyu")==null,"single-pass verification still rejects subsequently tampered material");
+                }
+            }
+        }
+        static async Task AutomaticHistorySweep()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);var second=Revision(store,fixture,2);var third=Revision(store,fixture,3);
+                string update=Path.Combine(fixture.Root,"updates",Guid.NewGuid().ToString("N"));using(Maintenance.CacheResourceLease.Acquire(fixture.Root,update))File.WriteAllBytes(Path.Combine(update,"keep.zip"),new byte[64]);
+                string tag="companions-v0.10.4-dev.4",name=OfficialCompanionFixture.PackageName("dafeiyu");fixture.Files[name]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{4});
+                fixture.Intercept=(r,c)=>Task.FromResult(r.RequestUri.Host=="api.github.com"?OfficialCompanionFixture.Response(OfficialCompanionFixture.Json(new[]{fixture.Release(tag,fixture.Index())})):null);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    service.UtcNow=()=>DateTime.UtcNow.AddDays(8);var fourth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var sweep=await service.HistoryMaintenance;
+                    Check(fourth.InstalledNow&&sweep.DeletedItems==2&&!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory),"successful install automatically reclaims expired unused managed history");
+                    Check(Directory.Exists(third.RootDirectory)&&Directory.Exists(fourth.Installation.RootDirectory)&&Directory.Exists(update),"automatic sweep retains recovery active resources and unrelated update caches");
+                    string summary=Path.Combine(fixture.Root,"cache-maintenance","last-companion-history.json");Check(File.Exists(summary),"automatic maintenance retains a numeric diagnostic summary");
+                    string savedSummary=summary+".saved";File.Move(summary,savedSummary);Directory.CreateDirectory(summary);
+                    try{
+                        tag="companions-v0.10.4-dev.5";fixture.Files[name]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{5});
+                        var fifth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var failed=await service.HistoryMaintenance;
+                        Check(fifth.InstalledNow&&failed.FailedItems>0&&service.Installed("dafeiyu").RootDirectory==fifth.Installation.RootDirectory,"maintenance reporting failure cannot turn a committed update into failure");
+                    }finally{Directory.Delete(summary);File.Move(savedSummary,summary);}
+                    using(var cancel=new CancellationTokenSource()){cancel.Cancel();var cancelled=Maintenance.OfficialCompanionMaintenance.MaintainHistory(fixture.Root,DateTime.UtcNow.AddDays(8),cancel.Token);Check(cancelled.SkippedItems>0&&service.Installed("dafeiyu")!=null,"cancelled history maintenance leaves current material usable");}
+                }
+            }
+        }
+        public static int MaintenanceOnly()
+        {
+            try{ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();Console.WriteLine("Official maintenance tests: "+passed+" passed");return 0;}
+            catch(Exception error){Console.WriteLine("FAIL Official maintenance: "+error);return 1;}
+        }
         static void Check(bool result,string name){if(!result)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
         static readonly OfficialDownloadRouting Direct=new OfficialDownloadRouting(false,"",false,"");
+        static void ReaderLockContention()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                var store=new OfficialCompanionStorage(fixture.Root);var current=Revision(store,fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    Task<bool> lockWait;bool lockBlocked;using(var entered=new ManualResetEventSlim()){
+                        using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu"))){lockWait=Task.Factory.StartNew(()=>{entered.Set();using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu")))return true;},CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);entered.Wait();lockBlocked=Task.WhenAny(lockWait,Task.Delay(200)).GetAwaiter().GetResult()!=lockWait;}
+                    }
+                    Check(lockBlocked,"publication lock contention waits instead of throwing sharing violations");Check(Timeout(lockWait).GetAwaiter().GetResult(),"waiting lifecycle lock completes after holder exits");
+                    Task<OfficialCompanionInstallation> pending;bool waited;
+                    using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot("dafeiyu"))){pending=Task.Run(()=>service.Installed("dafeiyu"));Thread.Sleep(100);waited=!pending.IsCompleted;}
+                    Check(waited,"offline reader waits for concurrent publication instead of failing");
+                    Check(Timeout(pending).GetAwaiter().GetResult().RootDirectory==current.RootDirectory,"reader revalidates and leases current after publication lock release");
+                }
+            }
+        }
+        static void CommittedPointerOutcome()
+        {
+            using(var fixture=new OfficialCompanionFixture()){
+                var store=new OfficialCompanionStorage(fixture.Root);
+                store.Commit=(from,to)=>{AtomicFile.Commit(from,to);throw new IOException("fixture failure after atomic commit");};
+                var published=Revision(store,fixture,1);
+                Check(store.Installed("dafeiyu").RootDirectory==published.RootDirectory,"verified committed pointer wins over an ambiguous post-commit error");
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=new GitHubUpdates()){
+                var store=new OfficialCompanionStorage(fixture.Root);
+                store.Commit=(from,to)=>{AtomicFile.Commit(from,to);File.WriteAllText(Path.Combine(Path.GetDirectoryName(to),"version-transaction.json"),"{\"schema_version\":99}");};
+                var published=Revision(store,fixture,1);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0)))
+                    Check(service.Installed("dafeiyu").RootDirectory==published.RootDirectory,"maintenance recovery failure never hides a verified committed installation");
+                Check(new Maintenance.CacheMaintenanceService(fixture.Root).Scan(DateTime.UtcNow.AddDays(8)).TotalBytes==0,"unknown transaction remains protected from cleanup");
+            }
+        }
+        static OfficialCompanionInstallation Revision(OfficialCompanionStorage store,OfficialCompanionFixture fixture,int revision)
+        {
+            string id="dafeiyu",role=store.CharacterRoot(id);Directory.CreateDirectory(role);
+            string stage=Path.Combine(role,".stage-"+Guid.NewGuid().ToString("N")),zip=Path.Combine(fixture.Root,"revision.zip");
+            byte[] bytes=OfficialCompanionFixture.Package(id,files=>files["README.txt"]=new[]{(byte)revision});File.WriteAllBytes(zip,bytes);
+            var asset=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,"companions-v0.10.4-dev."+revision,OfficialCompanionFixture.PackageName(id),bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+            try{OfficialCompanionPackageValidation.Extract(zip,stage,CancellationToken.None);OfficialCompanionPackageValidation.Validate(stage,asset,CancellationToken.None);store.WriteReceipt(stage,asset,CancellationToken.None);return store.Publish(stage,asset,CancellationToken.None,()=>{},action=>action());}
+            finally{if(Directory.Exists(stage))OfficialCompanionStorage.DeleteOwned(stage);}
+        }
+        static void ManagedVersionLifecycle()
+        {
+            using(var fixture=new OfficialCompanionFixture()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);var second=Revision(store,fixture,2);
+                string role=store.CharacterRoot("dafeiyu"),pointer=Path.Combine(role,"current.txt"),state=Path.Combine(role,"versions.json");
+                Check(Path.GetFileName(first.RootDirectory).StartsWith("v2-",StringComparison.Ordinal),"managed roots use a namespace legacy readers cannot select");
+                Check(OfficialJson.Integer(OfficialJson.File(Path.Combine(first.RootDirectory,"receipt.json"),1024*1024),"schema_version")==2,"managed receipt cannot be silently adopted by old readers");
+                string previous=OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220);Check(previous==Path.GetFileName(first.RootDirectory),"second publication retains verified first version");
+                store.Commit=(a,b)=>{throw new IOException("fixture commit failure");};bool failed=false;try{Revision(store,fixture,3);}catch(IOException){failed=true;}
+                Check(failed&&store.Installed("dafeiyu").RootDirectory==second.RootDirectory&&OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220)==previous,"failed current commit preserves original previous and current");
+                store.Commit=AtomicFile.Commit;using(Maintenance.OfficialCompanionMaintenance.Lock(role))Maintenance.OfficialCompanionMaintenance.Recover(store,"dafeiyu");
+                var fourth=Revision(store,fixture,4);var service=new Maintenance.CacheMaintenanceService(fixture.Root);DateTime future=DateTime.UtcNow.AddDays(8);
+                Check(!service.Scan(DateTime.UtcNow).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"retired root has a seven-day grace period");
+                using(Maintenance.CacheResourceLease.ProtectExisting(fixture.Root,first.RootDirectory))Check(!service.Scan(future).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"active root lease prevents historical cleanup");
+                var scan=service.Scan(future);
+                Check(scan.Candidates.Count(x=>x.Category=="pack-versions")==1&&scan.Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"only retired managed history is reclaimable");
+                File.WriteAllText(pointer,Path.GetFileName(first.RootDirectory));var changed=service.Clean(scan,future);Check(changed.DeletedItems==0&&Directory.Exists(first.RootDirectory),"changed current pointer invalidates historical cleanup scan");
+                File.WriteAllText(pointer,Path.GetFileName(fourth.RootDirectory));string legacy=Path.Combine(role,"v-"+OfficialCompanionFixture.Version+"-"+new string('a',64));Directory.CreateDirectory(legacy);File.WriteAllText(Path.Combine(legacy,"unknown.png"),"legacy");
+                var result=service.Clean(service.Scan(future),future);Check(result.DeletedItems==1&&!Directory.Exists(first.RootDirectory)&&Directory.Exists(second.RootDirectory)&&Directory.Exists(fourth.RootDirectory)&&Directory.Exists(legacy),"cleanup retains current previous and all legacy readers' unknown roots");
+                string legacyCurrent=Path.Combine(role,"v-"+fourth.Asset.Version+"-"+fourth.Asset.Sha256);Directory.CreateDirectory(legacyCurrent);
+                foreach(string file in Directory.GetFiles(fourth.RootDirectory,"*",SearchOption.AllDirectories)){string target=Path.Combine(legacyCurrent,file.Substring(fourth.RootDirectory.Length+1));Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target);}
+                var legacyReceipt=OfficialJson.File(Path.Combine(legacyCurrent,"receipt.json"),1024*1024);legacyReceipt["schema_version"]=1;File.WriteAllBytes(Path.Combine(legacyCurrent,"receipt.json"),OfficialJson.Bytes(legacyReceipt));File.WriteAllText(pointer,Path.GetFileName(legacyCurrent));
+                Check(store.Installed("dafeiyu").RootDirectory==legacyCurrent,"legacy schema-one installation remains readable after old-client rollback");
+                Check(!service.Scan(future).Candidates.Any(x=>x.Category=="pack-versions"),"old-client pointer disagreement protects historical cleanup");
+                var fifth=Revision(store,fixture,5);Check(store.Installed("dafeiyu").RootDirectory==fifth.RootDirectory&&OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220)==Path.GetFileName(legacyCurrent),"new publication resumes from a verified legacy pointer without adopting legacy history");
+            }
+        }
+        static void MaterialReusePolicy()
+        {
+            var a=new OfficialCompanionAsset("e-bao","old","0.11.0-dev.3","0.11.0-dev.3","v0.11.1-dev.1","DeskPet-Companion-e-bao-0.11.0-dev.3.zip",100,new string('a',64),new OfficialCompanionOutfit[0]);
+            var b=new OfficialCompanionAsset("e-bao","new display","0.11.0-dev.3","0.11.0-dev.3","v0.11.1-dev.2","DeskPet-Companion-e-bao-0.11.0-dev.3.zip",100,new string('a',64),new OfficialCompanionOutfit[0]);
+            Check(OfficialCompanionStorage.SameContent(a,b),"display metadata does not redownload identical material");
+            var conflicting=new OfficialCompanionAsset(b.Id,b.Name,b.Version,"0.11.1-dev.1",b.Tag,b.AssetName,b.Size,b.Sha256,b.Outfits);
+            Check(!OfficialCompanionStorage.ConsistentContent(a,conflicting),"same bytes cannot claim a different minimum application version");
+            Check(OfficialCompanionRules.PackageName(a.AssetName,a.Id,a.Version,a.Tag),"material-version filename remains compatible");
+            Check(OfficialCompanionRules.PackageName("DeskPet-Companion-e-bao-0.11.1-dev.1.zip",a.Id,a.Version,a.Tag),"release-version filename is strictly bound to its owning tag");
+            Check(!OfficialCompanionRules.PackageName("DeskPet-Companion-e-bao-99.0.0.zip",a.Id,a.Version,a.Tag),"unrelated filename version rejected");
+            using(var fixture=new OfficialCompanionFixture()){
+                string root=Path.Combine(fixture.Root,"inventory");Directory.CreateDirectory(root);
+                for(int i=0;i<1024;i++)File.WriteAllText(Path.Combine(root,i+".json"),"{}");
+                Check(OfficialCompanionStorage.Inventory(root).Count==1024,"official receipt inventory accepts shared 1024-file policy");
+                File.WriteAllText(Path.Combine(root,"overflow.json"),"{}");bool rejected=false;try{OfficialCompanionStorage.Inventory(root);}catch(InvalidDataException){rejected=true;}
+                Check(rejected,"official receipt inventory rejects 1025 files");
+            }
+        }
+        static async Task ConcurrentMaterialReuse()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();var duplicate=new TaskCompletionSource<bool>();int calls=0;
+                fixture.Intercept=async(r,c)=>{if(r.RequestUri.AbsolutePath.EndsWith(".zip")){if(Interlocked.Increment(ref calls)==1)entered.TrySetResult(true);else duplicate.TrySetResult(true);await release.Task;}return null;};
+                string id="dafeiyu",name=OfficialCompanionFixture.PackageName(id);byte[] bytes=fixture.Files[name];
+                var a=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,OfficialCompanionFixture.Tag,name,bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+                var b=new OfficialCompanionAsset(a.Id,a.Name,a.Version,a.MinimumAppVersion,"companions-v0.10.4-dev.1",name,a.Size,a.Sha256,a.Outfits);
+                var method=typeof(OfficialCompanionDownloads).GetMethod("InstallAsync",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+                var first=(Task)method.Invoke(downloads,new object[]{a,Direct,null,CancellationToken.None});await entered.Task;
+                var second=(Task)method.Invoke(downloads,new object[]{b,Direct,null,CancellationToken.None});
+                await Task.WhenAny(duplicate.Task,Task.Delay(200));release.SetResult(true);await Task.WhenAll(first,second);
+                Check(fixture.Packages==1,"concurrent equal material across tags transfers exactly one ZIP");
+            }
+        }
         static void ProgressNoticeGate()
         {
             var property=typeof(OfficialCompanionProgress).GetProperty("RequiresUpdateNotice");
@@ -30,14 +175,44 @@ namespace Dafeiyu.Tests
             }
             Check(!(bool)property.GetValue(new OfficialCompanionProgress("dafeiyu","install","",100,100,100),null),"unchanged cached installation makes no update notice");
         }
+        static async Task PreparationLifecycle()
+        {
+            int starts=0;var pending=new TaskCompletionSource<bool>();IProgress<OfficialCompanionProgress> report=null;CancellationToken operation=CancellationToken.None;
+            using(var lifetime=new CancellationTokenSource())using(var preparation=new OfficialCompanionPreparation((progress,token)=>{starts++;report=progress;operation=token;return pending.Task;},lifetime.Token)){
+                Check(starts==0&&preparation.State==OfficialCompanionPreparationState.Idle,"O01 preparation never downloads merely because guidance opens");
+                var first=preparation.StartAsync();var duplicate=preparation.StartAsync();
+                Check(starts==1&&Object.ReferenceEquals(first,duplicate)&&!first.IsCompleted,"O02 explicit start is nonblocking and deduplicates active full-pack batches");
+                report.Report(new OfficialCompanionProgress("e-bao","download","fixture",10,100,10));
+                Check(preparation.Progress.TotalBytes==100&&preparation.Progress.Percent==10,"O03 application-owned progress retains known download size");
+                pending.SetResult(true);await first;
+                Check(preparation.State==OfficialCompanionPreparationState.Completed,"O04 complete state remains observable after the original view has closed");
+                pending=new TaskCompletionSource<bool>();var retry=preparation.StartAsync();pending.SetException(new AggregateException(new IOException("fixture partial failure")));await retry;
+                Check(preparation.State==OfficialCompanionPreparationState.Failed,"O05 partial failures remain retryable without deleting installed packages");
+                pending=new TaskCompletionSource<bool>();retry=preparation.StartAsync();preparation.Cancel();Check(operation.IsCancellationRequested,"O06 explicit cancellation reaches the actual application download operation");pending.SetCanceled();await retry;
+                Check(preparation.State==OfficialCompanionPreparationState.Cancelled,"cancelled full-pack preparation offers a retry");
+                pending=new TaskCompletionSource<bool>();retry=preparation.StartAsync();lifetime.Cancel();Check(operation.IsCancellationRequested,"O07 application exit cancels remaining preparation");pending.SetCanceled();await retry;
+            }
+        }
         static async Task Run()
         {
+            using(var low=new OfficialCompanionFixture())using(var transport=low.Transport())using(var service=new OfficialCompanionDownloads(low.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))) {
+                var probe=CompanionPackStorage.FreeSpaceProbe;
+                try{CompanionPackStorage.FreeSpaceProbe=_=>0;await Reject(async()=>{await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);},"official low space rejects before downloading");Check(low.Packages==0,"official disk preflight starts no package transfer");}
+                finally{CompanionPackStorage.FreeSpaceProbe=probe;}
+            }
+
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))) {
                 var result=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                 Check(result.InstalledNow&&result.MetadataChecked&&!result.UsedOfflineFallback&&File.Exists(result.Installation.PetManifestPath),"verified complete package is published and returned");
                 Check(downloads.Installed("dafeiyu")!=null,"published receipt verifies offline");
                 var again=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
                 Check(!again.InstalledNow&&!again.MetadataChecked&&fixture.Packages==1&&fixture.Metadata==1,"cached feed and matching receipt skip redundant network and transfer");
+                var changed=OfficialJson.Object(OfficialJson.Parse(fixture.Index(),1024*1024));
+                foreach(var raw in OfficialJson.Array(changed["companions"]))OfficialJson.Object(raw)["min_app_version"]="0.10.2";
+                byte[] conflictIndex=OfficialCompanionFixture.Json(changed);
+                fixture.Intercept=(r,c)=>Task.FromResult(r.RequestUri.Host=="api.github.com"?OfficialCompanionFixture.Response(OfficialCompanionFixture.Json(new[]{fixture.Release(OfficialCompanionFixture.Tag,conflictIndex)})):r.RequestUri.AbsolutePath.EndsWith(".json")?OfficialCompanionFixture.Response(conflictIndex):null);
+                bool warned=false;try{await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);}catch(ApiException error){warned=error.Message==TextResources.Get("companions.package.metadataConflict");}
+                Check(warned&&fixture.Packages==1&&downloads.Installed("dafeiyu").RootDirectory==again.Installation.RootDirectory,"conflicting metadata warns without download or successful update claim");fixture.Intercept=null;
                 fixture.Offline=true;var offline=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);
                 Check(offline.UsedOfflineFallback&&!offline.MetadataChecked&&!String.IsNullOrEmpty(offline.Warning),"failed refresh preserves offline package without claiming newest");
                 fixture.Intercept=(r,c)=>{throw new HttpRequestException("private proxy address");};var disconnected=await downloads.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);Check(disconnected.UsedOfflineFallback&&!disconnected.MetadataChecked&&!disconnected.Warning.Contains("private"),"network socket failure also retains verified offline package with sanitized warning");fixture.Intercept=null;
@@ -71,7 +246,12 @@ namespace Dafeiyu.Tests
             using(var f=new OfficialCompanionFixture())using(var t=f.Transport())using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
                 f.CorruptMirror=true;int proxy=0;t.AssetClientFactory=(enabled,address)=>{proxy++;return new HttpClient(new OfficialDelegateHandler(f.Dispatch));};
                 var routing=new OfficialDownloadRouting(true," https://mirror.example/prefix/ ",true,"http://proxy.example");
-                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                var routeKind=typeof(OfficialCompanionProgress).GetProperty("RouteKind");
+                Check(routeKind!=null,"transport route identity must be independent of translated route text");
+                var routes=new List<string>();
+                var reporter=new OfficialProgress<OfficialCompanionProgress>(p=>{if(p.Stage=="download")routes.Add(routeKind.GetValue(p,null).ToString());});
+                var result=await s.EnsureAsync("dafeiyu",routing,OfficialCompanionCheckMode.Cached,reporter,CancellationToken.None);
+                Check(routes.Contains("Mirror")&&routes.Contains("Direct"),"mirror fallback reports explicit route identities without parsing display labels");
                 Check(result.InstalledNow&&f.Packages==2,"mirror wrong digest falls back to verified direct bytes");
                 Check(f.Requests.Any(x=>x.StartsWith("https://mirror.example/prefix/https://github.com/",StringComparison.Ordinal))&&proxy==1,"mirror address normalizes and assets bypass proxy while metadata uses it");
                 Check(!Directory.GetFiles(f.Root,"*.part",SearchOption.AllDirectories).Any(),"successful fallback removes only owned partial files");
@@ -84,6 +264,11 @@ namespace Dafeiyu.Tests
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,async(i,c)=>{calls++;entered.TrySetResult(i);await release.Task;})) {
                     var task=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);var staging=await Timeout(entered.Task);
                     Check(staging.RootDirectory.Contains(".stage-")&&s.Installed("dafeiyu")==null&&!task.IsCompleted,"native callback observes staging and blocks pointer publication");
+                    foreach(string resource in Directory.GetDirectories(Path.GetDirectoryName(staging.RootDirectory)).Where(p=>Path.GetFileName(p).StartsWith(".stage-",StringComparison.Ordinal)||Path.GetFileName(p).StartsWith(".transfer-",StringComparison.Ordinal))){
+                        Check(Maintenance.CacheResourceLease.Registered(f.Root,resource),"actual companion transfer is registered before publication");
+                        bool protectedResource=false;try{using(Maintenance.CacheResourceLease.TryExclusive(f.Root,resource)){}}catch(IOException){protectedResource=true;}
+                        Check(protectedResource,"actual companion unpack/validation holds a cross-process cache lease");
+                    }
                     release.SetResult(true);var result=await Timeout(task);Check(!result.Installation.RootDirectory.Contains(".stage-")&&!Directory.Exists(staging.RootDirectory)&&calls==1,"returned installation binds final immutable root after asynchronous native validation");
                 }
                 using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>{throw new FormatException("private path secret");})) {

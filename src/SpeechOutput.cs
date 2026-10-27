@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Speech.Synthesis;
@@ -28,23 +28,24 @@ namespace Dafeiyu
         }
         public Task SpeakAsync(string reply,PetSettings settings,CancellationToken cancel)
         {
+            var language=LanguageRequestScope.Capture();
             if(!dispatcher.CheckAccess() || !(SynchronizationContext.Current is DispatcherSynchronizationContext))
-                return dispatcher.InvokeAsync(new Func<Task>(delegate {return SpeakOnUiAsync(reply,settings,cancel);})).Task.Unwrap();
-            return SpeakOnUiAsync(reply,settings,cancel);
+                return dispatcher.InvokeAsync(new Func<Task>(delegate {return SpeakOnUiAsync(reply,settings,cancel,language);})).Task.Unwrap();
+            return SpeakOnUiAsync(reply,settings,cancel,language);
         }
-        private async Task SpeakOnUiAsync(string reply,PetSettings settings,CancellationToken cancel)
+        private async Task SpeakOnUiAsync(string reply,PetSettings settings,CancellationToken cancel,LanguageSelection language)
         {
-            if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException("正在朗读，请先停止。");
+            if(disposed)throw new ObjectDisposedException("SpeechOutput");if(active!=null)throw new InvalidOperationException(TextResources.Get("speechOutput.speakOnUiAsync.text"));
             currentVolume=Math.Max(0,Math.Min(100,settings.Volume));
-            string text=Regex.Replace(reply??"","```[\\s\\S]*?```","（代码内容请看聊天窗口）");text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
-            if(text.Length>1800)text=text.Substring(0,1800)+"。剩下内容请看聊天窗口。";if(text.Length==0 || settings.Volume==0)return;
+            string text=Regex.Replace(reply??"","```[\\s\\S]*?```",TextResources.Get("speech.codeOmitted",language));text=Regex.Replace(text,"[\\*#`]|https?://\\S+","").Trim();
+            if(text.Length>1800)text=TextResources.FormatForLanguage(language,"speechOutput.speakOnUiAsync.textTextSubstring",text.Substring(0,1800));if(text.Length==0 || settings.Volume==0)return;
             using(var reading=CancellationTokenSource.CreateLinkedTokenSource(cancel))
             {
                 active=reading;reading.CancelAfter(TimeSpan.FromMinutes(4));
                 try
                 {
                     if(settings.UseCloudVoice){var wav=await api.SpeechAsync(settings.SpeechConnection(),settings.VoiceName,text,reading.Token);await PlayWave(wav,currentVolume,reading.Token);}
-                    else await SpeakSystem(text,currentVolume,reading.Token);
+                    else await SpeakSystem(text,currentVolume,reading.Token,language);
                 }
                 finally {if(Object.ReferenceEquals(active,reading))active=null;}
             }
@@ -54,17 +55,20 @@ namespace Dafeiyu
             completion.TrySetCanceled();
             if(!dispatcher.HasShutdownStarted)dispatcher.BeginInvoke(new Action(delegate {if(token.IsCancellationRequested)stop();}));
         }
-        private async Task SpeakSystem(string text,int volume,CancellationToken token)
+        private async Task SpeakSystem(string text,int volume,CancellationToken token,LanguageSelection language)
         {
             token.ThrowIfCancellationRequested();SpeechSynthesizer voice;
             try{voice=new SpeechSynthesizer();}
-            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException("系统语音无法启动，请安装中文语音或选择兼容语音服务。");}
+            catch(Exception e){if(!(e is InvalidOperationException || e is System.Runtime.InteropServices.COMException))throw;throw new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.languageUnavailable"));}
             activeVoice=voice;var completion=new TaskCompletionSource<bool>();
-            EventHandler<SpeakCompletedEventArgs> done=delegate(object sender,SpeakCompletedEventArgs e){if(e.Cancelled)completion.TrySetCanceled();else if(e.Error!=null)completion.TrySetException(new InvalidOperationException("系统朗读失败，请检查音频输出。"));else completion.TrySetResult(true);};
+            EventHandler<SpeakCompletedEventArgs> done=delegate(object sender,SpeakCompletedEventArgs e){if(e.Cancelled)completion.TrySetCanceled();else if(e.Error!=null)completion.TrySetException(new InvalidOperationException(TextResources.Get("speechOutput.speakSystem.completionTrySetException")));else completion.TrySetResult(true);};
             voice.SpeakCompleted+=done;
             try
             {
-                var chinese=voice.GetInstalledVoices().FirstOrDefault(v=>v.Enabled && v.VoiceInfo.Culture.TwoLetterISOLanguageName=="zh");if(chinese!=null)voice.SelectVoice(chinese.VoiceInfo.Name);
+                var enabledVoices=voice.GetInstalledVoices().Where(v=>v.Enabled).ToArray();
+                string culture=SpeechLanguagePolicy.SelectCulture(language.Code,enabledVoices.Select(v=>v.VoiceInfo.Culture.Name));
+                var selectedVoice=enabledVoices.FirstOrDefault(v=>String.Equals(v.VoiceInfo.Culture.Name,culture,StringComparison.Ordinal));
+                if(selectedVoice!=null)voice.SelectVoice(selectedVoice.VoiceInfo.Name);
                 voice.SetOutputToDefaultAudioDevice();voice.Volume=Math.Max(0,Math.Min(100,volume));
                 using(token.Register(delegate {CancelOnUi(token,completion,delegate {if(Object.ReferenceEquals(activeVoice,voice))voice.SpeakAsyncCancelAll();});}))
                 {token.ThrowIfCancellationRequested();voice.SpeakAsync(text);await completion.Task;}
@@ -77,7 +81,7 @@ namespace Dafeiyu
             token.ThrowIfCancellationRequested();Directory.CreateDirectory(cacheDirectory);string file=Path.Combine(cacheDirectory,"reply-"+Guid.NewGuid().ToString("N")+".wav");File.WriteAllBytes(file,bytes);
             var player=new MediaPlayer();activePlayer=player;player.Volume=Math.Max(0,Math.Min(100,volume))/100.0;var completion=new TaskCompletionSource<bool>();
             player.MediaOpened+=delegate {if(!token.IsCancellationRequested && Object.ReferenceEquals(activePlayer,player))player.Play();};
-            player.MediaEnded+=delegate {completion.TrySetResult(true);};player.MediaFailed+=delegate {completion.TrySetException(new InvalidOperationException("无法播放模型语音，请检查返回音频。"));};
+            player.MediaEnded+=delegate {completion.TrySetResult(true);};player.MediaFailed+=delegate {completion.TrySetException(new InvalidOperationException(TextResources.Get("speechOutput.playWave.completionTrySetException")));};
             try
             {
                 using(token.Register(delegate {CancelOnUi(token,completion,delegate {if(Object.ReferenceEquals(activePlayer,player))player.Stop();});}))

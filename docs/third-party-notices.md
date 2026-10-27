@@ -140,3 +140,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+## Keepsake title fonts
+
+Local card titles use modified static subsets of Noto Serif, Noto Serif CJK (SC/TC/JP/KR), and Noto Serif Devanagari, licensed under the SIL Open Font License 1.1. The modified families are named DeskPet Keepsake Latin/SC/TC/JP/KR/Devanagari. CJK copyright: © 2017–2024 Adobe (http://www.adobe.com/). Latin/Devanagari copyright: 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic and https://github.com/notofonts/devanagari). Original copyright and license name records remain embedded in the subsets.
+
+Verbatim upstream licenses are in assets/fonts/relationships/OFL-CJK.txt, OFL-Latin.txt, and OFL-Devanagari.txt and embedded with the fonts in both desktop hosts. Immutable source commits, hashes, byte counts, modifications, regeneration commands, and scope are recorded in docs/companion-relationship/stage-keepsake-art-assets.md and assets/fonts/relationships/manifest.json. Asset preparation tools are not runtime dependencies; no operating-system fonts are redistributed.

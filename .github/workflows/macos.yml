@@ -9,6 +9,10 @@ on:
       - 'installer/macos/**'
       - 'tools/mac_package.py'
       - 'tools/build_official_companions.py'
+      - 'tools/fonts/**'
+      - 'tools/verify_localization.py'
+      - 'tools/verify_language_packs.py'
+      - 'docs/localization/**'
       - 'Build.ps1'
       - 'tests/**'
       - '.github/workflows/macos.yml'
@@ -29,6 +33,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tests/MacPackagingTests.py
+      - name: Verify embedded language byte snapshots
+        run: |
+          python tests/LanguagePackSnapshotTests.py
+          python tools/verify_language_packs.py
       - name: Validate complete holiday artwork
         run: |
           python -m pip install Pillow
@@ -40,6 +48,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -76,7 +86,7 @@ jobs:
           - arch: x86_64
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
@@ -84,6 +94,8 @@ jobs:
       REPORT_ROOT: work/macos-reports-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: desktop/global.json
@@ -101,8 +113,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/AgentJobRegistrationTests.py | tee "$REPORT_ROOT/agent-jobs-registration.log"
+          python3 tests/FeatureResourceProvenanceTests.py
+          python3 -m pip install -r tools/fonts/requirements.txt
+          python3 tools/fonts/relationship_title_fonts.py --check
+          python3 tools/fonts/test_relationship_title_fonts.py
+          python3 tests/LocalizationAuditTests.py
+          python3 tests/HelperResourceTests.py
+          python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
+          python3 tools/verify_language_packs.py --report "$REPORT_ROOT/language-pack-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only | tee "$REPORT_ROOT/live-language-core.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json "$REPORT_ROOT/core-tests.json" | tee "$REPORT_ROOT/core-tests.log"
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only 2>&1 | tee "$REPORT_ROOT/agent-jobs-logic.log"
       - name: Build and execute real native bridge tests
         shell: bash
         run: |
@@ -115,10 +138,37 @@ jobs:
         run: |
           set -euo pipefail
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          # The default headless suite includes feedback motion and placement checks.
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll | tee "$REPORT_ROOT/headless-ui.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --data-management-ui-only | tee "$REPORT_ROOT/data-management-ui.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --cache-ui-only | tee "$REPORT_ROOT/cache-maintenance-ui.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-writer-exit-ui-only | tee "$REPORT_ROOT/image-writer-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-held-exit-ui-only | tee "$REPORT_ROOT/image-held-exit.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --image-exit-ui-only | tee "$REPORT_ROOT/image-exit.log"
+      - name: Companion home routes and saved relationship UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          for locale in en_US de_DE ja_JP; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --companion-home-ui="$locale" | tee "$REPORT_ROOT/companion-home-$locale.log"
+          done
+      - name: Thirteen translated startup UI matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          for culture in zh-TW en-GB ar-SA fr-CA de-DE hi-IN id-ID it-IT pt-PT es-ES es-MX; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --system-language-ui="$culture" | tee "$REPORT_ROOT/system-language-$culture.log"
+          done
+          for locale in zh_CN zh_TW en_US ja_JP ko_KR fr_FR de_DE hi_IN id_ID it_IT pt_BR es_419 es_ES; do
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-picker="$locale" | tee "$REPORT_ROOT/language-picker-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --language-ui="$locale" | tee "$REPORT_ROOT/language-dialog-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --full-language-ui="$locale" | tee "$REPORT_ROOT/ui-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --onboarding-preparation-ui="$locale" | tee "$REPORT_ROOT/onboarding-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --agent-job-ui="$locale" | tee "$REPORT_ROOT/agent-job-ui-$locale.log"
+            dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --work-binding-ui="$locale" | tee "$REPORT_ROOT/work-binding-$locale.log"
+          done
+          cp -R work/language-ui "$REPORT_ROOT/language-ui"
+          cp -R work/agent-jobs-ui "$REPORT_ROOT/agent-jobs-ui"
       - name: Verify actual thin companion resources and restoration
         shell: bash
         run: |
@@ -146,6 +196,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          locale_sha="$(python3 -c 'import hashlib,pathlib; print(";".join(code+"="+hashlib.sha256(pathlib.Path("assets/locales",code+".json").read_bytes()).hexdigest() for code in ["zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"]))')"
+          dotnet run --project tools/localization/VerifyArtifacts.csproj -c Release -- "$locale_sha" 'work/macos-${{ matrix.arch }}/artifacts/DeskPet.app/Contents/MacOS/DeskPet.Core.dll' | tee "$REPORT_ROOT/localization-artifact.log"
           python3 - <<'PY'
           import json, os, pathlib, subprocess
           root=pathlib.Path.cwd()

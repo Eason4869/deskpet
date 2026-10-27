@@ -11,6 +11,7 @@ namespace Dafeiyu
         public string PersonaId {get;set;} public string CharacterId {get;set;} public DateTime LocalTime {get;set;}
         public double MonotonicSeconds {get;set;} public bool CanPlayEasterEgg {get;set;} public bool CanAnimateTransition {get;set;}
         public string ResourceVersion {get;set;}
+        public string StateKey {get;set;}
         internal HolidayContext Copy(){return (HolidayContext)MemberwiseClone();}
     }
     public sealed class HolidayPlaybackTicket
@@ -71,7 +72,8 @@ namespace Dafeiyu
             if(context==null)Notify();else Recompute(true);
         }
         bool ValidCharacter(string id){return id=="e-bao" || id=="dafeiyu" || id=="marfu" || id=="xiaobei" || id=="gugugaga";}
-        HolidayCharacterState Role(){return state.ForCharacter(context.CharacterId);}
+        string StateKey {get{return HolidayState.SourceKey(String.IsNullOrEmpty(context.StateKey)?context.CharacterId:context.StateKey);}}
+        HolidayCharacterState Role(){return state.ForCharacter(StateKey);}
         HolidayActivityState Activity(HolidayOccurrence occurrence)
         {
             var role=Role();var activity=role.Activities.FirstOrDefault(x=>x.InstanceKey==occurrence.InstanceKey);
@@ -81,7 +83,7 @@ namespace Dafeiyu
         {
             if(value==null)throw new ArgumentNullException("value");
             if(Double.IsNaN(value.MonotonicSeconds) || Double.IsInfinity(value.MonotonicSeconds))throw new ArgumentException("Invalid monotonic clock.");
-            if(context!=null && (context.PersonaId!=value.PersonaId || context.CharacterId!=value.CharacterId || context.LocalTime.Date!=value.LocalTime.Date || context.ResourceVersion!=value.ResourceVersion)){runtimeOriginalFallback=false;rejectedOutfit=null;}
+            if(context!=null && (context.PersonaId!=value.PersonaId || context.StateKey!=value.StateKey || context.CharacterId!=value.CharacterId || context.LocalTime.Date!=value.LocalTime.Date || context.ResourceVersion!=value.ResourceVersion)){runtimeOriginalFallback=false;rejectedOutfit=null;}
             context=value.Copy();events=calendar.Resolve(context.LocalTime.Date);
             Recompute();
             if(ticket!=null && (!Current(ticket) || !context.CanPlayEasterEgg))CancelHover();
@@ -106,7 +108,7 @@ namespace Dafeiyu
             EffectiveOutfit=desired;ActiveOccurrence=active;
             // Busy/hidden/paused frames must never leave a delayed celebration queued.
             if(!context.CanAnimateTransition)TransitionRequested=false;
-            string next=context.PersonaId+"|"+context.CharacterId+"|"+context.LocalTime.Date.Ticks+"|"+String.Join(",",events.Select(x=>x.InstanceKey+":"+x.Stage))+"|"+Enabled+"|"+(desired==null?"":desired.OutfitId+":"+desired.Version+":"+desired.SourceKey+":"+IsOwned(desired.OutfitId))+"|"+context.ResourceVersion;
+            string next=context.StateKey+"|"+context.PersonaId+"|"+context.CharacterId+"|"+context.LocalTime.Date.Ticks+"|"+String.Join(",",events.Select(x=>x.InstanceKey+":"+x.Stage))+"|"+Enabled+"|"+(desired==null?"":desired.OutfitId+":"+desired.Version+":"+desired.SourceKey+":"+IsOwned(desired.OutfitId))+"|"+context.ResourceVersion;
             bool changed=next!=fingerprint;
             if(changed){fingerprint=next;Revision++;if(ticket!=null && !Current(ticket))CancelHover();}
             if(saved)Persist();
@@ -143,7 +145,7 @@ namespace Dafeiyu
             if(Double.IsNaN(randomValue) || randomValue<0 || randomValue>=1 || context==null || !context.CanPlayEasterEgg || !Enabled || EffectiveOutfit==null || !EffectiveOutfit.Ready || EffectiveOutfit.EasterEgg==null || ticket!=null)return null;
             bool inEvent=ActiveOccurrence!=null && ActiveOccurrence.Id==EffectiveOutfit.HolidayId;
             if(randomValue>=(inEvent?.30:.20) || !inEvent && !IsOwned(EffectiveOutfit.OutfitId))return null;
-            double last;if(cooldowns.TryGetValue(context.CharacterId+":"+EffectiveOutfit.OutfitId,out last) && context.MonotonicSeconds-last<60)return null;
+            double last;if(cooldowns.TryGetValue(StateKey+":"+EffectiveOutfit.OutfitId,out last) && context.MonotonicSeconds-last<60)return null;
             ticket=new HolidayPlaybackTicket(context,EffectiveOutfit,inEvent?ActiveOccurrence:null,Revision,inEvent && !IsOwned(EffectiveOutfit.OutfitId));return ticket;
         }
         bool Current(HolidayPlaybackTicket value)
@@ -154,7 +156,7 @@ namespace Dafeiyu
             if(!IsTicket(value) || !context.CanPlayEasterEgg)return false;
             if(!value.FirstFrameRendered){value.FirstFrameRendered=true;}
             // Playback may set FirstFrameRendered before the controller observes it.
-            string key=value.CharacterId+":"+value.OutfitId;
+            string key=StateKey+":"+value.OutfitId;
             if(!value.CooldownRecorded){cooldowns[key]=context.MonotonicSeconds;value.CooldownRecorded=true;}
             return true;
         }
@@ -163,14 +165,14 @@ namespace Dafeiyu
             if(!IsTicket(value) || !context.CanPlayEasterEgg || !value.FirstFrameRendered || !value.CooldownRecorded || !value.PlaybackCompleted)return false;
             ticket=null;
             if(!value.CanUnlock || ActiveOccurrence==null || ActiveOccurrence.InstanceKey!=value.InstanceKey || ActiveOccurrence.Id!=EffectiveOutfit.HolidayId)return false;
-            state.Unlock(value.CharacterId,value.OutfitId);pendingUnlockNotice="已解锁「"+EffectiveOutfit.Name+"」，可在设置中更换";Persist();Recompute();Notify();return true;
+            state.Unlock(StateKey,value.OutfitId);pendingUnlockNotice=TextResources.Format("holidayController.completeHover.pendingUnlockNoticeEffectiveOutfitName",EffectiveOutfit.Name);Persist();Recompute();Notify();return true;
         }
         public void CancelHover(){if(ticket!=null)ticket.Cancelled=true;ticket=null;}
         public string TakeUnlockNotice(){string result=UnlockNotice;UnlockNotice=null;return result;}
         void Persist()
         {
             try {save(state);PersistencePending=false;PersistenceWarning=null;if(pendingUnlockNotice!=null){UnlockNotice=pendingUnlockNotice;pendingUnlockNotice=null;}}
-            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException))throw;PersistencePending=true;PersistenceWarning="服饰状态尚未保存，将稍后重试。 "+e.Message;}
+            catch(Exception e){if(!(e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException))throw;PersistencePending=true;PersistenceWarning=TextResources.Format("holidayController.persist.persistenceWarningEMessage",e.Message);}
         }
         public bool RetrySave(){if(PersistencePending){Persist();Notify();}return !PersistencePending;}
         void Notify(){var handler=Changed;if(handler!=null)handler(this,EventArgs.Empty);}

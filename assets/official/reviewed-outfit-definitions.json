@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "christmas/dafeiyu/outfit.json",
+      "sha256": "a35da160b7a0504540c41d17e06c122353e00d9b621d5f7e03b0823a3414df66"
+    },
+    {
+      "path": "dragon-boat/dafeiyu/outfit.json",
+      "sha256": "6f25e8bcc3ca3d3d01fa88c128a242092cb2a2ad5119a90b4a2720e742c18bbf"
+    },
+    {
+      "path": "halloween/dafeiyu/outfit.json",
+      "sha256": "dc8bc938f3a0eeaed6a827c7424d64deed3942d1e0d64ad749eef2b86f0a2d74"
+    },
+    {
+      "path": "lantern/dafeiyu/outfit.json",
+      "sha256": "31171fbd5d3714785359375d71ccc1b5df7a2d8b86dd8375e6694416aea85af9"
+    },
+    {
+      "path": "mid-autumn/dafeiyu/outfit.json",
+      "sha256": "84c6297ef5cd26017c63df439235cefd956048c5069c9697b28541cc1f597322"
+    },
+    {
+      "path": "national-day/dafeiyu/outfit.json",
+      "sha256": "9c7c69d99d700284ff60f94afa9c2faabd53a52673417e87cee84280b9c577dd"
+    },
+    {
+      "path": "qingming/dafeiyu/outfit.json",
+      "sha256": "f35d5619c75d3987c8530e8254d8445599dc84be7479ab6cb501b5e12ed23d15"
+    },
+    {
+      "path": "qixi/dafeiyu/outfit.json",
+      "sha256": "dc11462b7b77d13417bf74862a6ae5f457b7b27cadc3aa02d53b9f9414d238f1"
+    },
+    {
+      "path": "spring-festival/dafeiyu/outfit.json",
+      "sha256": "97793ce0a1c7bfca161e4230b9735eacde939eb6e116d7e44e02bd7fa5a436a0"
+    },
+    {
+      "path": "valentines-day/dafeiyu/outfit.json",
+      "sha256": "f1023880eb77e3b155b67cf74a6742e31ecbf62ffed0c61755e37cebb3fd0fda"
+    },
+    {
+      "path": "christmas/e-bao/outfit.json",
+      "sha256": "92da8e469edf76bb8df2de3823857722f7bd17dd8da3fe3a0f86f9ab255bc0eb"
+    },
+    {
+      "path": "dragon-boat/e-bao/outfit.json",
+      "sha256": "9722172773c1be50b2afda33359911c4b2885e8a8c51b6125823efc9de6f4617"
+    },
+    {
+      "path": "halloween/e-bao/outfit.json",
+      "sha256": "6af981e16d32b597970086027d4992fe06edc35d98d1ad59642a6f1740393778"
+    },
+    {
+      "path": "lantern/e-bao/outfit.json",
+      "sha256": "83a008c3053d5f501ca17000a9c48f2992edf8e542984fb0efe0eed02f8fec2a"
+    },
+    {
+      "path": "mid-autumn/e-bao/outfit.json",
+      "sha256": "c2cdece16a52427e06a95f7c99c0d4343ada826b0fa13075a9fbdb1803670e25"
+    },
+    {
+      "path": "national-day/e-bao/outfit.json",
+      "sha256": "be6408afebd1bc1ef236f6a9b273c059778a82e6caba8350da7cdd561f8a885b"
+    },
+    {
+      "path": "qingming/e-bao/outfit.json",
+      "sha256": "c60eff73723d9b89fb795ee76412c11ee427f1ee03ffd283c556b0868e4c2ab6"
+    },
+    {
+      "path": "qixi/e-bao/outfit.json",
+      "sha256": "ad7a255b82f775a874e3b4ebdc774fe3a56762e8b7011ca6b7a844c20f029c63"
+    },
+    {
+      "path": "spring-festival/e-bao/outfit.json",
+      "sha256": "f0302ebece9f93c317c5f022d023a0245eacda695c5691288ed4cbf0b8d21b58"
+    },
+    {
+      "path": "valentines-day/e-bao/outfit.json",
+      "sha256": "229204c85aeaf6a984c2efbf4190c948e24d4cedc6279df3994e8fe04e8afb48"
+    },
+    {
+      "path": "christmas/gugugaga/outfit.json",
+      "sha256": "4e66e61b176e45bb99107e1d96ac08b686e6a0195a4b6ed4869e6d289ba1e888"
+    },
+    {
+      "path": "dragon-boat/gugugaga/outfit.json",
+      "sha256": "350fbb0dd21f7716ddb55e13f9540c81abb4dcfc2a978944cf5d5db23f57a36b"
+    },
+    {
+      "path": "halloween/gugugaga/outfit.json",
+      "sha256": "54311977a0bb4712606c887af1e1d90ba7d3e44fdfa4ec80587489d643b08bd2"
+    },
+    {
+      "path": "lantern/gugugaga/outfit.json",
+      "sha256": "9339eb6a52206694f8067f5c3321d5c493bdd221eaeabe9504da67fdaa9dfbf4"
+    },
+    {
+      "path": "mid-autumn/gugugaga/outfit.json",
+      "sha256": "6babfcdfa0f9ddaec5eeed931f9e132b75e70166efc7122b4e261cd49f2a73fa"
+    },
+    {
+      "path": "national-day/gugugaga/outfit.json",
+      "sha256": "671a54b101ce406bedc0b0033a9c494710b1dc13140934c1216ac4102bb744ea"
+    },
+    {
+      "path": "qingming/gugugaga/outfit.json",
+      "sha256": "cc746e502ff1263fcaa7c61df545dccbfbc5ceb4de002799217256e20108b913"
+    },
+    {
+      "path": "qixi/gugugaga/outfit.json",
+      "sha256": "16b9914499de5b0a4678729a17eea2af266403d78e4dce9afea799eeb9541990"
+    },
+    {
+      "path": "spring-festival/gugugaga/outfit.json",
+      "sha256": "f6b26f45a1b01b5b116a51cb84b8911440bc58437dfa5bddb66190eaecd63eed"
+    },
+    {
+      "path": "valentines-day/gugugaga/outfit.json",
+      "sha256": "2e88331eade516932924f91c3a8d6533ec2805ace662e17d1e068bca9b0e4873"
+    },
+    {
+      "path": "christmas/marfu/outfit.json",
+      "sha256": "ac24247dac38a95532afa3e74af81cdb80206be2ffe24a6a03b89fd14e121491"
+    },
+    {
+      "path": "dragon-boat/marfu/outfit.json",
+      "sha256": "2d393e04d31f8b66a742212cdffa1155f8cf9b051875225d647ddbe7408a0e63"
+    },
+    {
+      "path": "halloween/marfu/outfit.json",
+      "sha256": "501b8e2a76b010c4cbcf44f0079f3aed95e8890aea61eb296bcefd253d5dce05"
+    },
+    {
+      "path": "lantern/marfu/outfit.json",
+      "sha256": "19194d8b02081200a263f433ed6d79e366c1a7f24b0069af0082c7593b83f0e7"
+    },
+    {
+      "path": "mid-autumn/marfu/outfit.json",
+      "sha256": "41228b5b96c0f28fc923b3601333d6c47e80050ce35129e6ec54cc29c3437e48"
+    },
+    {
+      "path": "national-day/marfu/outfit.json",
+      "sha256": "c1b64340d1b5f246bd3f216640473a531c9e43c3170af4f2897e0709a025c7a1"
+    },
+    {
+      "path": "qingming/marfu/outfit.json",
+      "sha256": "ec9fd8cda186845c0ea9b6d6c29c9a159eb8bbbc6876e173104eb7fb982c5b2f"
+    },
+    {
+      "path": "qixi/marfu/outfit.json",
+      "sha256": "9f3ec1099c5a7ae847284d9609563d8db72c4444191249cdb927d1f6a0f9c127"
+    },
+    {
+      "path": "spring-festival/marfu/outfit.json",
+      "sha256": "1bbc736ed3529ec374bb2e1a24c7313ddb61effb3b3f54c1ccd0207b947e5a62"
+    },
+    {
+      "path": "valentines-day/marfu/outfit.json",
+      "sha256": "3bd87f45e60d3be8dd0d8faf6d50b50b2275d11ff471b3b9063bdf5a75a4616d"
+    },
+    {
+      "path": "christmas/xiaobei/outfit.json",
+      "sha256": "9034c81436eba0dbcc25a96d04c39f2afda08b281ba7cc9cdf047fdd754ca3c2"
+    },
+    {
+      "path": "dragon-boat/xiaobei/outfit.json",
+      "sha256": "7151207a51a0d4a121835eb87f097cafeb249fe8bbef7403ce74cbd982435f8f"
+    },
+    {
+      "path": "halloween/xiaobei/outfit.json",
+      "sha256": "14be2f781159aa344c0d306d375be6bf1573a821cc58f0e72b7172a116009f1a"
+    },
+    {
+      "path": "lantern/xiaobei/outfit.json",
+      "sha256": "472de538ce7455fe6c3213405e66527a55171d47bbe24617f27cd177a52590c1"
+    },
+    {
+      "path": "mid-autumn/xiaobei/outfit.json",
+      "sha256": "fdd3d397b12487218077f6332a659b0cdafaa3f934a143749e70bbfdab2e1da0"
+    },
+    {
+      "path": "national-day/xiaobei/outfit.json",
+      "sha256": "6b8110d3db146bde9785121325047012a907510a1d61266573fb5ca67438c2b1"
+    },
+    {
+      "path": "qingming/xiaobei/outfit.json",
+      "sha256": "c872938a4d987035c4dcb532ac292a9405a0ff92fa275ded907575a107ccb15a"
+    },
+    {
+      "path": "qixi/xiaobei/outfit.json",
+      "sha256": "d4b93083b66030a372087b844e06012539f3a2c5220e31e162a06f56c439d370"
+    },
+    {
+      "path": "spring-festival/xiaobei/outfit.json",
+      "sha256": "7e6c9a5fd92819412e693b9658425ab89245a5d063aeeab256b7f4c95313751f"
+    },
+    {
+      "path": "valentines-day/xiaobei/outfit.json",
+      "sha256": "9dafd35286309ef1d39bf238ad25a0cc27f0cfa9ad80c3287432a8f571762f34"
+    }
+  ]
+}

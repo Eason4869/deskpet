@@ -21,10 +21,10 @@ namespace Dafeiyu
             Registration[] entries;
             using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Bundled.Catalog")) {
                 if(stream==null)yield break;
-                if(stream.Length>65536)throw new InvalidOperationException("内置角色目录过大。");
+                if(stream.Length>65536)throw new InvalidOperationException(TextResources.Get("bundledSkinCache.registered.text"));
                 entries=(Registration[])new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(Registration[])).ReadObject(stream);
             }
-            if(entries==null || entries.Length>32)throw new InvalidOperationException("内置角色目录无效。");
+            if(entries==null || entries.Length>32)throw new InvalidOperationException(TextResources.Get("bundledSkinCache.registered.text.alternativeA"));
             foreach(var entry in entries) {
                 SkinDefinition skin=null;
                 try {
@@ -52,18 +52,18 @@ namespace Dafeiyu
                 manifest=SkinCatalog.ReadManifest(stream);
             }
             if(manifest.Version!=2 || manifest.Animations==null || manifest.Gaze==null)
-                throw new InvalidOperationException("内置外观说明不完整。");
+                throw new InvalidOperationException(TextResources.Get("bundledSkinCache.load.text"));
             var paths=IllustratedPack.Files(manifest);paths.Add("pet.json");
             var entries=new List<Entry>();var resourceNames=new HashSet<string>(StringComparer.Ordinal);long total=0;
             foreach(string relative in paths.OrderBy(p=>p,StringComparer.Ordinal)) {
                 CheckRelative(relative);
                 string resource=prefix+relative.Replace('/','.');
-                if(!resourceNames.Add(resource))throw new InvalidOperationException("内置外观资源名称冲突。");
+                if(!resourceNames.Add(resource))throw new InvalidOperationException(TextResources.Get("bundledSkinCache.load.text.alternativeA"));
                 using(var stream=assembly.GetManifestResourceStream(resource)) {
-                    if(stream==null)throw new InvalidOperationException("内置外观缺少素材："+id+" / "+relative);
+                    if(stream==null)throw new InvalidOperationException(TextResources.Format("bundledSkinCache.load.template",id,relative));
                     long max=relative=="pet.json" ? 65536 : 25L*1024*1024;
                     total+=stream.Length;
-                    if(stream.Length>max || total>256L*1024*1024)throw new InvalidOperationException("内置外观素材过大。");
+                    if(stream.Length>max || total>256L*1024*1024)throw new InvalidOperationException(TextResources.Get("bundledSkinCache.load.text.alternativeB"));
                     using(var sha=SHA256.Create())entries.Add(new Entry{Relative=relative,Resource=resource,Length=stream.Length,Hash=sha.ComputeHash(stream)});
                 }
             }
@@ -106,12 +106,12 @@ namespace Dafeiyu
         static void CheckRelative(string relative)
         {
             if(String.IsNullOrWhiteSpace(relative) || (relative!="pet.json" && !relative.EndsWith(".png",StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException("内置外观素材路径无效。");
+                throw new InvalidOperationException(TextResources.Get("bundledSkinCache.checkRelative.text"));
             try {CompanionPackStorage.CheckRelative(relative);}
             catch(InvalidDataException error){throw new InvalidOperationException(error.Message,error);}
         }
         static void CheckDirectory(string path)
-        {if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("内置外观缓存目录不能是链接。");}
+        {if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException(TextResources.Get("bundledSkinCache.checkDirectory.text"));}
         static bool Matches(string folder,IEnumerable<Entry> entries)
         {
             if(!Directory.Exists(folder))return false;

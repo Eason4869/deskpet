@@ -8,8 +8,9 @@ namespace Dafeiyu
     public sealed class DictationSession : IDisposable
     {
         readonly IConversationApi api;readonly Func<IAudioRecorder> factory;readonly Func<PetSettings> settings;readonly object gate=new object();
+        public Dafeiyu.Maintenance.DataMaintenanceGate Maintenance {get;private set;}
         Operation active;bool disposed;double level;long levelAt;
-        sealed class Operation{public object Owner;public IAudioRecorder Recorder;public ConnectionSettings Connection;public CancellationTokenSource Cancel=new CancellationTokenSource();public bool Finishing;public Action<string> Failure;}
+        sealed class Operation{public IDisposable Admission;public object Owner;public IAudioRecorder Recorder;public ConnectionSettings Connection;public CancellationTokenSource Cancel=new CancellationTokenSource();public bool Finishing;public Action<string> Failure;}
         public event Action Changed;
         public DictationStage Stage {get;private set;}
         public string LastNotice {get;private set;}
@@ -17,7 +18,7 @@ namespace Dafeiyu
         internal int SuccessfulRecognitions {get{return Volatile.Read(ref successfulRecognitions);}}
         public bool IsBusy{get{lock(gate)return active!=null;}}
         public double InputLevel{get{return DateTime.UtcNow.Ticks-Interlocked.Read(ref levelAt)>TimeSpan.TicksPerSecond/3?0:Volatile.Read(ref level);}}
-        public DictationSession(IConversationApi api,Func<IAudioRecorder> factory,Func<PetSettings> settings){this.api=api;this.factory=factory;this.settings=settings;}
+        public DictationSession(IConversationApi api,Func<IAudioRecorder> factory,Func<PetSettings> settings,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null){Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.api=api;this.factory=factory;this.settings=settings;}
         public bool Owns(object owner){lock(gate)return active!=null && ReferenceEquals(active.Owner,owner);}
         void Notify(){if(!disposed && Changed!=null)Changed();}
         public void Start(object owner)
@@ -25,9 +26,9 @@ namespace Dafeiyu
             Operation op;
             lock(gate)
             {
-                if(disposed)throw new ObjectDisposedException("DictationSession");if(active!=null)throw new InvalidOperationException("另一处正在听写，请先结束或取消。");
+                if(disposed)throw new ObjectDisposedException("DictationSession");if(active!=null)throw new InvalidOperationException(TextResources.Get("dictationSession.start.text"));
                 var connection=settings().Copy().TranscriptionConnection();ApiClient.ValidateConnection(connection,ApiClient.AsrPath(connection));
-                op=new Operation{Owner=owner,Connection=connection,Recorder=factory()};active=op;LastNotice="";
+                var admission=Maintenance.EnterActivity();try{op=new Operation{Admission=admission,Owner=owner,Connection=connection,Recorder=factory()};}catch{admission.Dispose();throw;}active=op;LastNotice="";
             }
             try
             {
@@ -44,16 +45,16 @@ namespace Dafeiyu
         {
             lock(gate) {
                 if(disposed || active!=op || op.Finishing)return;
-                op.Finishing=true;LastNotice=String.IsNullOrWhiteSpace(message)?"麦克风录音中断，请检查设备及权限。":message;op.Cancel.Cancel();
+                op.Finishing=true;LastNotice=String.IsNullOrWhiteSpace(message)?TextResources.Get("dictationSession.recordingFailed.lastNoticeStringIsNullOrWhiteSpace"):message;op.Cancel.Cancel();
             }
-            Task.Run(delegate {try{Release(op);}finally{op.Cancel.Dispose();}});
+            Task.Run(delegate {try{Release(op);}finally{op.Cancel.Dispose();op.Admission.Dispose();}});
         }
         public async Task<string> FinishAsync(object owner)
         {
-            Operation op;lock(gate){op=active;if(op==null || !ReferenceEquals(op.Owner,owner) || op.Finishing)throw new InvalidOperationException("当前没有可结束的听写。");op.Finishing=true;}
+            Operation op;lock(gate){op=active;if(op==null || !ReferenceEquals(op.Owner,owner) || op.Finishing)throw new InvalidOperationException(TextResources.Get("dictationSession.finishAsync.text"));op.Finishing=true;}
             Stage=DictationStage.Recognizing;Notify();
             try{byte[] wav=await op.Recorder.FinishAsync();op.Cancel.Token.ThrowIfCancellationRequested();string result=await api.TranscribeAsync(op.Connection,wav,op.Cancel.Token);op.Cancel.Token.ThrowIfCancellationRequested();if(!String.IsNullOrWhiteSpace(result))Interlocked.Increment(ref successfulRecognitions);return result;}
-            finally{Release(op);op.Cancel.Dispose();}
+            finally{try{Release(op);op.Cancel.Dispose();}finally{op.Admission.Dispose();}}
         }
         public async Task CancelAsync(object owner=null)
         {
@@ -66,8 +67,8 @@ namespace Dafeiyu
             op.Recorder.Dispose();lock(gate){if(active!=op)return;active=null;Stage=DictationStage.Idle;}Volatile.Write(ref level,0);Notify();
             // A cancelled provider may still be observing its token; dispose only
             // after FinishAsync exits, or when no recognition was started.
-            if(!op.Finishing)op.Cancel.Dispose();
+            if(!op.Finishing){op.Cancel.Dispose();op.Admission.Dispose();}
         }
-        public void Dispose(){disposed=true;Operation op;lock(gate){op=active;active=null;Stage=DictationStage.Idle;}if(op!=null){op.Cancel.Cancel();op.Recorder.Dispose();if(!op.Finishing)op.Cancel.Dispose();}api.Dispose();}
+        public void Dispose(){disposed=true;Operation op;lock(gate){op=active;active=null;Stage=DictationStage.Idle;}if(op!=null){op.Cancel.Cancel();op.Recorder.Dispose();if(!op.Finishing){op.Cancel.Dispose();op.Admission.Dispose();}}api.Dispose();}
     }
 }

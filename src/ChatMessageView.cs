@@ -64,23 +64,23 @@ namespace Dafeiyu
             if(user)panel.Children.Add(new Border{Name="SentUserBubble",HorizontalAlignment=HorizontalAlignment.Right,Background=Ui.Brush("#E8F2FF"),CornerRadius=new CornerRadius(18),Padding=new Thickness(15,10,15,10),Child=Body,Visibility=String.IsNullOrEmpty(message.Content)?Visibility.Collapsed:Visibility.Visible});
             else panel.Children.Add(Body);
             state=Ui.Text("",11,Ui.Muted);state.Margin=new Thickness(0,6,0,0);if(!user)panel.Children.Add(state);
-            if(!user){panel.Children.Add(generatedImagesHost);panel.Children.Add(changeSummaryHost);panel.Children.Add(outputFiles);}
+            if(!user){panel.Children.Add(agentJobsHost);panel.Children.Add(generatedImagesHost);panel.Children.Add(changeSummaryHost);panel.Children.Add(outputFiles);}
             actions=new StackPanel{Name="ReplyActions",Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(0,7,0,0)};
             if(user)
             {
                 var userActions=new StackPanel{Name="UserMessageActions",Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,3,0,0),Opacity=0};
                 var sent=Ui.Text(message.Timestamp.ToLocalTime().ToString("HH:mm"),11,Ui.Brush("#969BA3"));sent.Name="UserMessageTime";sent.VerticalAlignment=VerticalAlignment.Center;sent.Margin=new Thickness(0,0,7,0);sent.ToolTip=message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");userActions.Children.Add(sent);
-                var copyUser=ActionIcon("copy","复制消息","CopyUserMessage");copyUser.Margin=new Thickness(0);copyUser.Click+=delegate{try{Clipboard.SetText(current.Content??"");}catch(System.Runtime.InteropServices.COMException){session.ReportNotice("剪贴板正忙，请再试一次。");}};userActions.Children.Add(copyUser);panel.Children.Add(userActions);
+                var copyUser=ActionIcon("copy",()=>(TextResources.Get("chatMessageView.chatMessageView.actionIcon")),"CopyUserMessage");copyUser.Margin=new Thickness(0);copyUser.Click+=delegate{try{Clipboard.SetText(current.Content??"");}catch(System.Runtime.InteropServices.COMException){session.ReportNotice(TextResources.Message("chatMessageView.chatMessageView.sessionReportNotice"));}};userActions.Children.Add(copyUser);panel.Children.Add(userActions);
                 Action syncActions=delegate{userActions.Opacity=IsMouseOver || IsKeyboardFocusWithin?1:0;};MouseEnter+=delegate{syncActions();};MouseLeave+=delegate{syncActions();};GotKeyboardFocus+=delegate{syncActions();};LostKeyboardFocus+=delegate{Dispatcher.BeginInvoke(syncActions);};
             }
             if(!user)
             {
-                var copy=ActionIcon("copy","复制","CopyReply");copy.Click+=delegate{try{Clipboard.SetText(current.Content);}catch(System.Runtime.InteropServices.COMException){session.ReportNotice("剪贴板正忙，请再试一次。");}};actions.Children.Add(copy);
-                var speak=ActionIcon("speaker","朗读","ReadReply");speak.Click+=async delegate{try{if(session.Stage==ConversationStage.Speaking)pet.StopReplySpeech();else await session.SpeakReplyAsync(current.Id,pet.Settings);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:"朗读未完成，请检查语音设置。");}};actions.Children.Add(speak);
-                var more=ActionIcon("more","更多","MoreReply");var menu=ChatUi.Menu();var regenerate=new MenuItem{Header="重新生成此回复",Name="RegenerateReply"};regenerate.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.RegenerateAsync(current.Id,pet.ConversationSettings(session),pet.Skin.Name);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:"重新生成未完成。");}finally{if(resumeQueue)queue.Resume();}};menu.Items.Add(regenerate);
-                var inspect=new MenuItem{Header="查看思考与工具记录",IsCheckable=true};inspect.Click+=delegate{inspectThinking=inspect.IsChecked;thinking.IsExpanded=inspectThinking;Update(current);};menu.Items.Add(inspect);
-                var plain=new MenuItem{Header="复制纯文本"};plain.Click+=delegate{try{Clipboard.SetText(MarkdownContent.PlainText(current.Content));}catch(System.Runtime.InteropServices.COMException){session.ReportNotice("剪贴板正忙，请再试一次。");}};menu.Items.Add(plain);
-                var export=new MenuItem{Header="导出本条回复…"};export.Click+=delegate{var picker=new Microsoft.Win32.SaveFileDialog{Filter="Markdown (*.md)|*.md",FileName="DeskPet-reply-"+current.Timestamp.ToLocalTime().ToString("yyyyMMdd-HHmmss")+".md"};if(picker.ShowDialog(host)==true)try{File.WriteAllText(picker.FileName,current.Content,new System.Text.UTF8Encoding(false));}catch(IOException){session.ReportNotice("导出失败，请选择可写入的位置。");}catch(UnauthorizedAccessException){session.ReportNotice("导出失败，请检查目录权限。");}};menu.Items.Add(export);more.ContextMenu=menu;more.Click+=delegate{regenerate.IsEnabled=!pet.DialogueBusy && !queue.IsRunning;menu.PlacementTarget=more;menu.IsOpen=true;};actions.Children.Add(more);panel.Children.Add(actions);
+                var copy=ActionIcon("copy",()=>(TextResources.Get("common.copy")),"CopyReply");copy.Click+=delegate{try{Clipboard.SetText(current.Content);}catch(System.Runtime.InteropServices.COMException){session.ReportNotice(TextResources.Message("chatMessageView.chatMessageView.sessionReportNotice"));}};actions.Children.Add(copy);
+                var speak=ActionIcon("speaker",()=>(TextResources.Get("chatMessageView.chatMessageView.actionIcon.alternativeA")),"ReadReply");speak.Click+=async delegate{try{if(session.Stage==ConversationStage.Speaking)pet.StopReplySpeech();else await session.SpeakReplyAsync(current.Id,pet.Settings);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("chatMessageView.chatMessageView.sessionReportNotice.alternativeA"));}};actions.Children.Add(speak);
+                var more=ActionIcon("more",()=>(TextResources.Get("chatMessageView.chatMessageView.actionIcon.alternativeB")),"MoreReply");var menu=ChatUi.Menu();var regenerate=LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatMessageView.chatMessageView.header.alternativeD"),Name="RegenerateReply"},"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeD")));regenerate.Click+=async delegate{bool resumeQueue=!queue.IsPaused;queue.Hold();try{await session.RegenerateAsync(current.Id,pet.ConversationSettings(session),pet.Skin.Name);}catch(Exception e){session.ReportNotice(e is ApiException || e is InvalidOperationException?e.Message:TextResources.Get("chatMessageView.chatMessageView.sessionReportNotice.alternativeB"));}finally{if(resumeQueue)queue.Resume();}};menu.Items.Add(regenerate);
+                var inspect=LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatMessageView.chatMessageView.header.alternativeE"),IsCheckable=true},"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeE")));inspect.Click+=delegate{inspectThinking=inspect.IsChecked;thinking.IsExpanded=inspectThinking;Update(current);};menu.Items.Add(inspect);
+                var plain=LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatMessageView.chatMessageView.header.alternativeA")},"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeA")));plain.Click+=delegate{try{Clipboard.SetText(MarkdownContent.PlainText(current.Content));}catch(System.Runtime.InteropServices.COMException){session.ReportNotice(TextResources.Message("chatMessageView.chatMessageView.sessionReportNotice"));}};menu.Items.Add(plain);
+                var export=LocalizedUi.With(new MenuItem{Header=TextResources.Get("chatMessageView.chatMessageView.header.alternativeF")},"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeF")));export.Click+=delegate{var picker=new Microsoft.Win32.SaveFileDialog{Filter="Markdown (*.md)|*.md",FileName="DeskPet-reply-"+current.Timestamp.ToLocalTime().ToString("yyyyMMdd-HHmmss")+".md"};if(picker.ShowDialog(host)==true)try{File.WriteAllText(picker.FileName,current.Content,new System.Text.UTF8Encoding(false));}catch(IOException){session.ReportNotice(TextResources.Message("chatMessageView.chatMessageView.sessionReportNotice.alternativeC"));}catch(UnauthorizedAccessException){session.ReportNotice(TextResources.Message("chatMessageView.chatMessageView.sessionReportNotice.alternativeD"));}};menu.Items.Add(export);more.ContextMenu=menu;more.Click+=delegate{regenerate.IsEnabled=!pet.DialogueBusy && !queue.IsRunning;menu.PlacementTarget=more;menu.IsOpen=true;};actions.Children.Add(more);panel.Children.Add(actions);
             }
             Update(message);
         }
@@ -96,7 +96,7 @@ namespace Dafeiyu
             var card=new Border{Name="SentAttachmentCard",Width=file.IsImage?88:220,Height=80,CornerRadius=new CornerRadius(10),BorderBrush=Ui.Brush("#E2E3E6"),BorderThickness=new Thickness(1),Background=Ui.Brush("#FAFAFA"),Margin=new Thickness(6,0,0,0),ToolTip=String.IsNullOrWhiteSpace(file.SourcePath)?file.Name:file.SourcePath,ContextMenu=AttachmentMenu(file)};
             if(file.IsImage)
             {
-                card.Focusable=true;card.Cursor=System.Windows.Input.Cursors.Hand;card.ToolTip=file.Name+" · 点击放大预览";System.Windows.Automation.AutomationProperties.SetName(card,"预览图片："+file.Name);
+                card.Focusable=true;card.Cursor=System.Windows.Input.Cursors.Hand;LocalizedUi.Set(card,"ToolTip",()=>(TextResources.Format("chatMessageView.attachmentCard.toolTipFileName",file.Name)));LocalizedUi.Automation(card,()=>(TextResources.Format("chatMessageView.attachmentCard.automationAutomationPropertiesSetName",file.Name)));
                 card.MouseLeftButtonUp+=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);};
                 card.KeyDown+=delegate(object sender,System.Windows.Input.KeyEventArgs e){if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){e.Handled=true;ChatImagePreview.OpenAttachment(host,file);}};
             }
@@ -108,23 +108,23 @@ namespace Dafeiyu
             }
             catch(Exception e){if(!(e is IOException || e is FormatException || e is NotSupportedException || e is ArgumentException || e is InvalidOperationException || e is System.Runtime.InteropServices.ExternalException))throw;}
             var content=new Grid{Margin=new Thickness(10,8,10,6)};content.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(32)});content.ColumnDefinitions.Add(new ColumnDefinition());var icon=UiIcons.Image("file",Ui.Muted);icon.Width=icon.Height=24;icon.HorizontalAlignment=HorizontalAlignment.Left;icon.VerticalAlignment=VerticalAlignment.Top;Grid.SetColumn(icon,0);content.Children.Add(icon);
-            var text=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var label=Ui.Text(file.Name,11,Ui.Blue);label.TextWrapping=TextWrapping.Wrap;label.TextTrimming=TextTrimming.CharacterEllipsis;label.MaxHeight=34;text.Children.Add(label);var detail=Ui.Text(file.MediaType=="text/plain"?"文本附件":file.MediaType??"文件",10,Ui.Muted);detail.TextTrimming=TextTrimming.CharacterEllipsis;text.Children.Add(detail);Grid.SetColumn(text,1);content.Children.Add(text);card.Child=content;return card;
+            var text=new StackPanel{VerticalAlignment=VerticalAlignment.Center};var label=Ui.Text(file.Name,11,Ui.Blue);label.TextWrapping=TextWrapping.Wrap;label.TextTrimming=TextTrimming.CharacterEllipsis;label.MaxHeight=34;text.Children.Add(label);var detail=LocalizedUi.Text(()=>(file.MediaType=="text/plain"?TextResources.Get("chatMessageView.attachmentCard.text"):file.MediaType??TextResources.Get("chatMessageView.attachmentCard.text.alternativeA")),10,Ui.Muted);detail.TextTrimming=TextTrimming.CharacterEllipsis;text.Children.Add(detail);Grid.SetColumn(text,1);content.Children.Add(text);card.Child=content;return card;
         }
         ContextMenu AttachmentMenu(ChatAttachment file)
         {
             return FileActionsMenu.Create(()=>OpenAttachment(file),()=>OpenAttachmentWith(file),()=>RevealAttachment(file),()=>CopyAttachmentPath(file),()=>CopyAttachmentContent(file),()=>SaveAttachmentAs(file),true,file.MediaType=="text/plain"||!String.IsNullOrEmpty(file.Text));
         }
-        void OpenAttachment(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(EnsureAttachmentPath(file)){UseShellExecute=true});}catch(Exception e){ReportAttachmentError("打开文件失败",e);}}
-        void OpenAttachmentWith(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("rundll32.exe","shell32.dll,OpenAs_RunDLL \""+EnsureAttachmentPath(file)+"\""){UseShellExecute=true});}catch(Exception e){ReportAttachmentError("打开方式失败",e);}}
-        void RevealAttachment(ChatAttachment file){try{string path=EnsureAttachmentPath(file);System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe","/select,\""+path+"\""){UseShellExecute=true});}catch(Exception e){ReportAttachmentError("打开资源管理器失败",e);}}
-        void CopyAttachmentPath(ChatAttachment file){try{Clipboard.SetText(AttachmentPath(file));session.ReportNotice("文件路径已复制。");}catch(Exception e){ReportAttachmentError("复制路径失败",e);}}
+        void OpenAttachment(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(EnsureAttachmentPath(file)){UseShellExecute=true});}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.openAttachment.reportAttachmentError"),e);}}
+        void OpenAttachmentWith(ChatAttachment file){try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("rundll32.exe","shell32.dll,OpenAs_RunDLL \""+EnsureAttachmentPath(file)+"\""){UseShellExecute=true});}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.openAttachmentWith.reportAttachmentError"),e);}}
+        void RevealAttachment(ChatAttachment file){try{string path=EnsureAttachmentPath(file);System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe","/select,\""+path+"\""){UseShellExecute=true});}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.revealAttachment.reportAttachmentError"),e);}}
+        void CopyAttachmentPath(ChatAttachment file){try{Clipboard.SetText(AttachmentPath(file));session.ReportNotice(TextResources.Message("chatMessageView.copyAttachmentPath.sessionReportNotice"));}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.copyAttachmentPath.reportAttachmentError"),e);}}
         void CopyAttachmentContent(ChatAttachment file)
         {
-            try{string content=file.Text; if(String.IsNullOrEmpty(content)){byte[] bytes=AttachmentBytes(file);content=System.Text.Encoding.UTF8.GetString(bytes);}if(String.IsNullOrWhiteSpace(content))throw new InvalidOperationException("此文件没有可复制的文字内容。");Clipboard.SetText(content);session.ReportNotice("文件内容已复制。");}catch(Exception e){ReportAttachmentError("复制文件内容失败",e);}
+            try{string content=file.Text; if(String.IsNullOrEmpty(content)){byte[] bytes=AttachmentBytes(file);content=System.Text.Encoding.UTF8.GetString(bytes);}if(String.IsNullOrWhiteSpace(content))throw new InvalidOperationException(TextResources.Get("chatMessageView.copyAttachmentContent.text"));Clipboard.SetText(content);session.ReportNotice(TextResources.Message("chatMessageView.copyAttachmentContent.sessionReportNotice"));}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.copyAttachmentContent.reportAttachmentError"),e);}
         }
         void SaveAttachmentAs(ChatAttachment file)
         {
-            var picker=new Microsoft.Win32.SaveFileDialog{FileName=file.Name,Filter="所有文件|*.*"};if(picker.ShowDialog(host)!=true)return;try{byte[] bytes=AttachmentBytes(file);if(file.MediaType=="text/plain" && String.IsNullOrEmpty(file.Data))File.WriteAllText(picker.FileName,file.Text??"",new System.Text.UTF8Encoding(false));else File.WriteAllBytes(picker.FileName,bytes);session.ReportNotice("文件已保存。");}catch(Exception e){ReportAttachmentError("另存为失败",e);}
+            var picker=new Microsoft.Win32.SaveFileDialog{FileName=file.Name,Filter=TextResources.Get("chatMessageView.saveAttachmentAs.filter")};if(picker.ShowDialog(host)!=true)return;try{byte[] bytes=AttachmentBytes(file);if(file.MediaType=="text/plain" && String.IsNullOrEmpty(file.Data))File.WriteAllText(picker.FileName,file.Text??"",new System.Text.UTF8Encoding(false));else File.WriteAllBytes(picker.FileName,bytes);session.ReportNotice(TextResources.Message("chatMessageView.saveAttachmentAs.sessionReportNotice"));}catch(Exception e){ReportAttachmentError(TextResources.Get("chatMessageView.saveAttachmentAs.reportAttachmentError"),e);}
         }
         string AttachmentPath(ChatAttachment file)
         {
@@ -179,8 +179,9 @@ namespace Dafeiyu
                 }
                 else if(active && detailChanged)row.IsExpanded=inspectThinking;
                 string summary=(item.Summary??"").Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()??item.Name;
-                ((TextBlock)row.Header).Text=(item.Status=="running"?"◌ ":item.Status=="error"?"! ":"⌘ ")+summary+(item.Status=="running"?" · 执行中":"");((TextBox)row.Content).Text=item.Summary??"";
+                LocalizedUi.Set(((TextBlock)row.Header),"Text",()=>((item.Status=="running"?"◌ ":item.Status=="error"?"! ":"⌘ ")+summary+(item.Status=="running"?TextResources.Get("chatMessageView.update.text"):"")));((TextBox)row.Content).Text=item.Summary??"";
             }
+            RefreshAgentJobCards(message);
             details.Text=message.Reasoning??"";
             RefreshProcessRecordSummary(message,events);
             UpdateProcess(message,events,active,workMode);
@@ -199,18 +200,18 @@ namespace Dafeiyu
             {
                 // Work mode: one lightweight line describing the current action.
                 thinkingLabel.Text=running!=null?ActivityVerb(running.Name)+" "+ActivityTarget(running):
-                    events.Count>0?"正在整理结果":"正在思考";
+                    events.Count>0?TextResources.Get("chatMessageView.updateProcess.runningNullActivityVerb"):TextResources.Get("chatMessageView.updateProcess.runningNullActivityVerb.alternativeA");
             }
             else if(active)
             {
                 string last=text.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).LastOrDefault()??"";
-                thinkingLabel.Text=String.IsNullOrEmpty(last)?"正在思考":last;
+                thinkingLabel.Text=String.IsNullOrEmpty(last)?TextResources.Get("chatMessageView.updateProcess.thinkingLabelStringIsNullOrEmpty"):last;
             }
             else
             {
                 StopShimmer();
                 thinkingLabel.Foreground=AgentUi.Muted;
-                thinkingLabel.Text=workMode?"处理记录":"思考记录";
+                LocalizedUi.Set(thinkingLabel,"Text",()=>(workMode?TextResources.Get("chatMessageView.updateProcess.thinkingLabelWorkMode"):TextResources.Get("chatMessageView.updateProcess.thinkingLabelWorkMode.alternativeA")));
             }
             RefreshStageFeed(events,active,workMode);
             RefreshProcessMotion(SystemParameters.ClientAreaAnimation);
@@ -240,13 +241,13 @@ namespace Dafeiyu
         {
             switch(name)
             {
-                case "write_file":case "edit_file":case "apply_patch":case "create_directory":return "正在编辑";
-                case "run_command":case "exec_command":case "open_directory":return "正在运行";
+                case "write_file":case "edit_file":case "apply_patch":case "create_directory":return TextResources.Get("chatMessageView.activityVerb.text");
+                case "run_command":case "exec_command":case "open_directory":return TextResources.Get("chatMessageView.activityVerb.text.alternativeA");
                 case "read_file":case "read_files":case "list_files":case "find_files":case "search_files":case "list_changes":case "read_output":case "fetch_url":
-                case "github_read_file":case "github_list_files":case "github_search_code":case "github_read_issue":case "github_list_pull_requests":return "正在查看";
-                case "restore_file":return "正在恢复";
-                case "update_plan":case "list_commands":return "正在规划";
-                default:return "正在处理";
+                case "github_read_file":case "github_list_files":case "github_search_code":case "github_read_issue":case "github_list_pull_requests":return TextResources.Get("chatMessageView.activityVerb.text.alternativeB");
+                case "restore_file":return TextResources.Get("chatMessageView.activityVerb.text.alternativeC");
+                case "update_plan":case "list_commands":return TextResources.Get("chatMessageView.activityVerb.text.alternativeD");
+                default:return TextResources.Get("chatMessageView.activityVerb.text.alternativeE");
             }
         }
         static string ActivityTarget(AgentToolEvent item)
@@ -281,7 +282,7 @@ namespace Dafeiyu
             shimmerBrush=null;shimmerAnimation=null;
             if(thinkingLabel!=null)thinkingLabel.Foreground=AgentUi.Muted;
         }
-    }
+static Button ActionIcon(string icon,System.Func<string> label,string name){return LocalizedUi.Caption(ActionIcon(icon,label(),name),label);}}
     internal sealed class ChatWidthConverter : IValueConverter
     {
         readonly double factor,inset;public ChatWidthConverter(double factor,double inset){this.factor=factor;this.inset=inset;}

@@ -1,4 +1,4 @@
-using Dafeiyu;
+﻿using Dafeiyu;
 using DeskPet.Desktop;
 using Avalonia;
 using Avalonia.Controls;
@@ -19,7 +19,7 @@ internal static class HolidayUiChecks
         var catalog = new HolidayCatalog();
         Check(catalog.Outfits.Count == 1 && catalog.Outfits.All(o => o.Ready && o.CharacterId == "e-bao"), "production Core embeds only the complete Ebao holiday");
         var fullCatalog = new HolidayCatalog(Path.GetFullPath("assets/holidays"));
-        Check(fullCatalog.Outfits.Count == 5 && fullCatalog.Outfits.All(o => o.Ready), "explicit source fixture validates all five complete outfits separately");
+        Check(fullCatalog.Outfits.Count == 50 && fullCatalog.Outfits.All(o => o.Ready), "explicit source fixture validates all fifty complete outfits separately");
         var skins = SpriteAssets.LoadSkins(directory);
         foreach (var outfit in fullCatalog.Outfits)
         {
@@ -29,8 +29,7 @@ internal static class HolidayUiChecks
             {
                 var original = definition.Variant == "default";
                 var clip = assets.Resolve(skin, definition.Action, original, outfit);
-                var source = assets.Resolve(skin, definition.Action, original);
-                Check(clip.File.Contains(definition.ResourceName) && clip.Loop == source.Loop && Math.Abs(clip.Frames / clip.Fps - source.Frames / source.Fps) < 1e-8, "action/variant uses outfit pixels with source duration and loop: " + outfit.CharacterId + "/" + definition.Action + "/" + definition.Variant);
+                Check(clip.File.Contains(definition.ResourceName) && clip.Loop == definition.Loop && clip.Fps == definition.Fps && clip.Frames == definition.FrameCount, "action/variant uses reviewed outfit pixels and its own cadence: " + outfit.CharacterId + "/" + definition.Action + "/" + definition.Variant);
                 Check(assets.Get(skin, clip).PixelSize.Width == clip.Columns * clip.Width, "bound outfit image geometry");
                 bool opaque = false, transparent = false;
                 for (int y = 0; y < 20; y++) for (int x = 0; x < 20; x++) { var hit = assets.Hit(skin, clip, 0, x / 20d, y / 20d); opaque |= hit; transparent |= !hit; }
@@ -101,8 +100,9 @@ internal static class HolidayUiChecks
         Check(!entry.TryEnter(true, false) && !entry.TryEnter(true, true), "transparent pixel jitter never rearms entry");
         entry.Leave(); Check(entry.TryEnter(true, true), "leaving viewport rearms opportunity");
         entry.Leave(); Check(!entry.TryEnter(true, false) && entry.TryEnter(true, true), "transparent margin does not consume opportunity before first alpha hit");
-        var timed = SpriteAssets.MatchSourceTiming(new ClipSpec("outfit", 8, 8, 5, true), new ClipSpec("source", 8, 5, 8, false));
-        Check(!timed.Loop && Math.Abs(timed.Frames / timed.Fps - 5d / 8) < 1e-9, "outfit keeps source duration and nonloop completion even when frame count differs");
+        var reviewed=new HolidayCatalog(Path.GetFullPath("assets/holidays")).Outfits.First(o=>o.CharacterId=="e-bao"&&o.HolidayId=="christmas");
+        var timed=SpriteAssets.OutfitClip(reviewed,reviewed.FindClip("jumping","default"));
+        Check(!timed.Loop&&timed.Frames==8&&Math.Abs(timed.Frames/timed.Fps-.9)<1e-8&&timed.HoldLastSeconds==0,"reviewed jump uses its own complete cycle without default timing or dwell");
         Directory.CreateDirectory(directory);
         using (var bitmap = new WriteableBitmap(new PixelSize(8, 8), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Unpremul))
         {

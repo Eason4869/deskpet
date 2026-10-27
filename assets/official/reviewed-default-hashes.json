@@ -1,0 +1,765 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "id": "e-bao",
+      "path": "alternate/feeding.png",
+      "sha256": "31b3185b8732d9bddbe9c5611bb26cc8f5edcc49c78266f1299dc12aa508cc28"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/happy.png",
+      "sha256": "0405961f277af42e61fe98bb7cbb0c08982d696ba1f62b1e4a30d0eeb7ff9d3d"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/jumping.png",
+      "sha256": "dd7d881cef6c49a7fc2b41f6d033ff529e5e83df3bc69f10e21875f0198fd3e7"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/landing.png",
+      "sha256": "34504128fb073a2a72284567e528f3c43560df6819dfa42ebd02a99e8e804a78"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/lifted.png",
+      "sha256": "9ac0584c4783da1933514cf0415c3c75b42164bc22ab040ebaf8f64e12311858"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/sleeping.png",
+      "sha256": "307d065b93a4d09c23c2e91db1cda0fa07db1e2fd52cf256b4bb8835693c5fc9"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/special.png",
+      "sha256": "6d8edba3a21520fb9e7cb8da4dbeb0f78a449271459c33eed5f49b05599392ba"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/special2.png",
+      "sha256": "887adb8c6d893f372c12baa7c351a61cb811d3e755a570be38c5d745bad0af3a"
+    },
+    {
+      "id": "e-bao",
+      "path": "alternate/stumble.png",
+      "sha256": "4a9da17e64ac159537a8fb78d5cca73e36a809adf97ac3c7366a01fc7c635df5"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/failed.png",
+      "sha256": "de4650cf62a271eadab2577835a8df6fb48579395e91e7220bae062c9dc2c7f0"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/feeding.png",
+      "sha256": "76f3af3d5d996648ab678be04cdbe73e6b83e9dc4f6c413638e3b2b96dfbe1c7"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/happy.png",
+      "sha256": "bf443d140c9b948ef103d6e1c03a91fa88bc7cab9da417ea95f99ffce55d8fd6"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/idle.png",
+      "sha256": "43747751ac3c2e7a25b0815a0eab23a0ad49761ad8d016e2229365737b39ffa0"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/jumping.png",
+      "sha256": "0d10e7d6e6774dd210c9e204be40272317fa43c6d86bae8d7c8c40d0e32570bd"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/landing.png",
+      "sha256": "6796aa92a15210adacb0e92889b7c99613d8ce760f1c2636be1d0304af83f01c"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/lifted.png",
+      "sha256": "6da69b7069d835405971bd60d51254904c54ed31516eb19d4b735470afaf070d"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/petting.png",
+      "sha256": "cc1a74e8e30657812733b1fa26277446af0f32ab4d7e5f136c3dd21e7600f199"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/poked.png",
+      "sha256": "494d933f48894be15531fac008190b3caf50a1eb7102e446c4c6112dfc8a7d21"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/review.png",
+      "sha256": "4b72311e60f62895a145519ea2ddc025217fd1b4aa513e12d0c1906396bb1080"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/running-left.png",
+      "sha256": "76c1342a842aebb66cf52a8b52155d96819c7053618d16edae67ef07b9a4aa23"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/running-right.png",
+      "sha256": "4abe2eb602eb6e68b8a394fdcb2bf27d9b2174630bb36df4486dc0e66ddcc9a6"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/running.png",
+      "sha256": "0b18ebc6a08e72df7e5072fb6f402ac1b4db4a090f3b4f29f5e7e9dc1024f986"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/sleeping.png",
+      "sha256": "02226156334f0bba1e2801649a99c928ee28cc6b6362a96c5581b5fbe5fa976c"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/special.png",
+      "sha256": "1925879378239495f97e51b0af588e546a5613c2cd2e731f34e1e695a5b37267"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/waiting.png",
+      "sha256": "86eac0a76353abc04c56fa0c99b74ec97bae27ddff0925e3ef3a3d696a2c3a34"
+    },
+    {
+      "id": "e-bao",
+      "path": "animations/waving.png",
+      "sha256": "2bef572e45d0be4a4d34cc361dccf08d6a965307bca838a70ad9174d0389e227"
+    },
+    {
+      "id": "e-bao",
+      "path": "avatar.png",
+      "sha256": "c80244aefc03d32bc66f07eb854e69756fdf7bbdd2ec84d3691da6b010884348"
+    },
+    {
+      "id": "e-bao",
+      "path": "extra/special2.png",
+      "sha256": "6d25291feae1290090741210cb6d21c3fb865f12fbb68e1b82cabed5e0724726"
+    },
+    {
+      "id": "e-bao",
+      "path": "extra/stumble.png",
+      "sha256": "3baee7813d063e2c6be88957c981a5949c635194d7dd306bd42980e8c89e6d42"
+    },
+    {
+      "id": "e-bao",
+      "path": "gaze.png",
+      "sha256": "5f13b4b8d7d50136e91d0ac47c077e08e8230d3ca0478c37bcf74839308c7cc4"
+    },
+    {
+      "id": "e-bao",
+      "path": "preview.png",
+      "sha256": "93d741e8989f451df1289b04b0df22bbfd277219c8a3e9d52d4e2a0aece4ea18"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/feeding.png",
+      "sha256": "466a14c297d551dc8046b03dea8d03750cf89ceae710f91a0821a3b71551809a"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/happy.png",
+      "sha256": "9302a136921464cd50df084c5484da221bb49e5adb58c3969b15f8aae9d5813f"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/landing.png",
+      "sha256": "f81f99c44c73351b688dac6670a5e59075b8346a1fefd3811dbd509c858ad42d"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/lifted.png",
+      "sha256": "126bc990be6f4d63f2acd42cc9d591d40cad915d8675d377291fcbafe7256d70"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/sleeping.png",
+      "sha256": "5d0d67ec7d4c819b51aef5d0e4d91ba8ef39ae9f85cf8d291082032ca01001c0"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/special.png",
+      "sha256": "339e26aaec00a6994cc07e5ae842ee7346cca73531c37a8a9b55e50bf0eea645"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/special2.png",
+      "sha256": "04934df9a83e735f74445e19df6af3b892c28822e57c3028054e015cd579ac05"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "alternate/stumble.png",
+      "sha256": "9a6b33d09754ec79c9f41c2795cff67f51408e09a6fefbbf58c758ca94165a19"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/failed.png",
+      "sha256": "c4871ccb7ad8bc5c1c8de3d89e456266167eae5f9251fca943a72da3ca19c2ea"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/feeding.png",
+      "sha256": "66e72624ca50fc6837a34c85663b36199289b6c960e8396949c814bebc07420d"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/happy.png",
+      "sha256": "f583033b8a8276cb88089d24ba20fb5562a78e78e4e46d90e2fc5adc83b4bdcf"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/idle.png",
+      "sha256": "4f3d6fa9558a788f04bf64ab85115c550c09962db49e4ea206eb9ebd91d3d37e"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/jumping.png",
+      "sha256": "4f4af342157b30586224bcccc57012c491abef865b16315e7901a61afd45171f"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/landing.png",
+      "sha256": "3580c2a0c22178e4c464dcd578b42e7cc3a6e1eac3ffff6f56bd29f9b6397b5d"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/lifted.png",
+      "sha256": "2dcf41427ebca5dfc1e5730e5d9a40231584d08269ff8fb969789c4e0fb6da63"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/petting.png",
+      "sha256": "6598028e8f9cad569e8b5e850063aa47c3eca4a97a05ed07eea80ded6ed16825"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/poked.png",
+      "sha256": "af8d0a0e8afd2743bb03bcab34d041d3ea5159731cd13b3049d7afc29882af56"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/review.png",
+      "sha256": "a8a759620e31e19ab0015899ddc9f17294f2bcf2ce46006ff714abea36beed1b"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/running-left.png",
+      "sha256": "207cd462d22aff358a6f7ac2bb86eae65f8a38c9ce0250c5d412793b97f3223a"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/running-right.png",
+      "sha256": "6422d5448c770685d769fa8d787ff23294d4ae00a65570782053975a720e2bda"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/running.png",
+      "sha256": "cbc8d86a27b59347b89beb0625808a38752a43366268bfa0bc5a57dec2f0d04d"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/sleeping.png",
+      "sha256": "d367f10e01227d1a904e7fdd5bdab6f4e4432f1d8035497a2ff0a70ee23e6c0b"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/special.png",
+      "sha256": "eefdcf77c020cf34c462694bde527ec305c53f280bc0d33c4060be67c32e68ca"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/waiting.png",
+      "sha256": "98c117891dedea5055606d3f28d8a270226ae24e4a6356c177f17992f4fb67b1"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "animations/waving.png",
+      "sha256": "a5107755b8a86f861ccf43350789503f57852cd01b124b7aae69bf724998dfcc"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "avatar.png",
+      "sha256": "4c394d259e02c988b804ea61377a7c2f5aa52b31aab9e54cd9af26300958b83a"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "extra/special2.png",
+      "sha256": "ebfb7261c51ba8f86be3ac50b97607576eea7884728bb16b81d17e586b7ac1b7"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "extra/stumble.png",
+      "sha256": "3078f26293dd7d5e9ed82b488935cb9092e424d6e070f7383b112a0531b671e6"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "gaze.png",
+      "sha256": "01d536ca5ebb801656340d194b42207d072b7bc6b79de6e888812f23172ee3a1"
+    },
+    {
+      "id": "dafeiyu",
+      "path": "preview.png",
+      "sha256": "21d82b652926152bfddc62f80d2c0aaea78ff7edcc59a8cf4b65117abc8d6ccc"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/feeding.png",
+      "sha256": "fc9e123462226912ae29b50a0bf908b37d56d93e4435880393d322e037624ac1"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/happy.png",
+      "sha256": "58c911acbd0e3c727cb684d65d9ca2d1b9a8edde68704bfb222e14cd039d6dc3"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/landing.png",
+      "sha256": "3c0159c0b2b7abf3b84fbcacc3b1c0d08be35c9372e41c15a1a9a57e6a51fed1"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/lifted.png",
+      "sha256": "ae0fa0ba393c1d18f9fb5946d3ee275635963bc1a1ccaba8d149b99179233b94"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/sleeping.png",
+      "sha256": "84f82714a63dcf80c0a9327bad9fc272f4c5cbcf57a50c58a8ebd11f048ac2cc"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/special.png",
+      "sha256": "2ad675a1be0c453932bccba53c0a124be3d9e4d9e1a6228e5b6a38ad21c92bee"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/special2.png",
+      "sha256": "a7d12d7737bdc4c84be59b28baa0a10ba4ad387e8476e6f7f2432b872c01ebf6"
+    },
+    {
+      "id": "marfu",
+      "path": "alternate/stumble.png",
+      "sha256": "70c6c9597462d6ba691c96339b9b6cbae33b976e96e2699d248aea703b19f79a"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/failed.png",
+      "sha256": "b80b4936fdb75be04b8df0d6030528efcfb671e3cff632d88ff0a52a24574e5a"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/feeding.png",
+      "sha256": "bc0a641243cbfa6a63146bd31824235dc7b036bf65b03b563ece434224d96334"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/happy.png",
+      "sha256": "bbb45594b424292a8fece9d158c6ffb6cbc0284c2eb7366b62efc843574cdb1e"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/idle.png",
+      "sha256": "a50b2860d496dfbbd3af83248120d210f13cbd774b2e15ae2e81fbf7ac39e4a3"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/jumping.png",
+      "sha256": "f58c779505098d9f2f8e2ea53fc9ae7036d39719f19d41a8ee993e217cda7fd6"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/landing.png",
+      "sha256": "38669f5d98d3fb89b890beb9c36a49815f8b4d962e0dcc9c93dc0787024dd59e"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/lifted.png",
+      "sha256": "ea6445f14decda83f540af8c2f5cbe35f9464c23cfab6d836f05cfa42e048d83"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/petting.png",
+      "sha256": "1911e558d76c98ec700adb9b63d6bd1fd6ce2b2634bc7d259f36220241642baa"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/poked.png",
+      "sha256": "8f2cd57a808f6343933caf56fd2aa650b910f224c1f488a1204b13ed9bc70747"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/review.png",
+      "sha256": "9778905ba7401491a40fc29f2d494d27633197b7fb0cd6419abb5dfd60992bd4"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/running-left.png",
+      "sha256": "ae34a413cd6559f481f4f9a92b202a8dd3d7ae2b97cb5634f61db6988a7a32a4"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/running-right.png",
+      "sha256": "257d885395331a723511dc85ef073f972ef7e301c4437e64ab1e81d0846d126d"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/running.png",
+      "sha256": "bce8e4615121d42540cbbb07c02e06c5f29ab1786b7950dc66e3e0742533b19a"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/sleeping.png",
+      "sha256": "5caaaafef401cce1314827a5225753edaee11115168e3024c4717f8ea1908cc3"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/special.png",
+      "sha256": "4331f0d470ca942561ab5d52db4d7c3f25d4b9329d11724520a0fe4f411985fa"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/waiting.png",
+      "sha256": "7cee10a05a1e392e40ffcdff0a9bfa44f37e82cb7501023d3120f800d58becb7"
+    },
+    {
+      "id": "marfu",
+      "path": "animations/waving.png",
+      "sha256": "72de696e11512f75e3f4b97434ae7d367dbdbbbede9ddbc2c3e5964ec465eaab"
+    },
+    {
+      "id": "marfu",
+      "path": "avatar.png",
+      "sha256": "4fe426e93c0f89cc8aa097c6417263db218bdd00858a46646d7d8084b10f3e97"
+    },
+    {
+      "id": "marfu",
+      "path": "extra/special2.png",
+      "sha256": "9a6705b073a5f05a3252dc1d425ad579fd29a755be534d6068e22ff4c146f035"
+    },
+    {
+      "id": "marfu",
+      "path": "extra/stumble.png",
+      "sha256": "f5e5392fe067cdda7ff780c4c75c95420cb1cb314e1e0686fe928c97d5ee145f"
+    },
+    {
+      "id": "marfu",
+      "path": "gaze.png",
+      "sha256": "f966181f8a0d46b556eda838a6a8ecd414b45f47c704c1be4c439ee716d6d107"
+    },
+    {
+      "id": "marfu",
+      "path": "preview.png",
+      "sha256": "8b158c1770ca6d7b657a88dd9690ed1bc94ab4b13ab4df037cba7695ca5d04f9"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/feeding.png",
+      "sha256": "39fc7f5dcc33b7f357930507d195accb8752a56ca0402f6fee127ed9002ab910"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/happy.png",
+      "sha256": "06db8f944a167a719746518b0dc441c058e8e3e2aadbf863811a048071045452"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/landing.png",
+      "sha256": "b27279f46db9eb5e0d0b61662df1dde5dff3c4f6dfafe70cfc18e3a21cdee273"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/lifted.png",
+      "sha256": "d57bcb0a5fe384b4d47fdaed25ccd5018e48fdaca0f66caf35c6420fe2a76469"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/sleeping.png",
+      "sha256": "5350ac9b299d05e457cc5d19dae7100e836c5409ff1e87cd5f379a05d4ff5d15"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/special.png",
+      "sha256": "7f66d61db4bd33d72d34eb2b97d12afaceebec1a934803797750a7faa3f67575"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/special2.png",
+      "sha256": "696c0d263a58afc94d058b87097998e69045339d8e25d86e3a1b894095879672"
+    },
+    {
+      "id": "xiaobei",
+      "path": "alternate/stumble.png",
+      "sha256": "c6fe9c27fcf3a47e06e7fed4eed85f012fbebcda23083d8942728d3c880544c3"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/failed.png",
+      "sha256": "ee28058d1944f4fcc55f019f89e4164ee0ffc5b5fd64d1e9923eca8e2471fcf3"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/feeding.png",
+      "sha256": "ae7c192eaa80c15234bd6d1c7f5a223dfbef53a451dcfc4666a8116df39eaa36"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/happy.png",
+      "sha256": "66ef65c4306eb3083aa983236d87327b61d90f09f50288ffb3bd5da3736bd31c"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/idle.png",
+      "sha256": "ad7b1c71b26e43082db3c06b2c4b31dc38a11ed8dcacbd72f35408f9e7b8d5ef"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/jumping.png",
+      "sha256": "c6d9a5cae92dd05ad65ec6f3ebd9c9e7deedcfc4afe38dc6e5cd3b413cb2a87e"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/landing.png",
+      "sha256": "2db3f158a851e77382b77943f8830af21f08e2b004ba43fecd34c6aee647a5a5"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/lifted.png",
+      "sha256": "a86d829738ab9b10c3a32cd95a290147e7b830b4f90f5a47523e469ed013f5de"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/petting.png",
+      "sha256": "51d89e988139c86135e3a6901623577a81a85419d620845927d39e4498d4b724"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/poked.png",
+      "sha256": "8278864ba8575fe0955ecaf8b2c51155e41aad865f042d16106ecc1aebdc7747"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/review.png",
+      "sha256": "dc99e0728a1f21c6483dcb85ade1983564a9e35b2415f08bd9457f9083be9494"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/running-left.png",
+      "sha256": "278730bf0fa087224f34c0515b103e67886986c88366df92a8ec31b94fca5717"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/running-right.png",
+      "sha256": "711e0f1848a992ffb2a917e50a1861a65bdc7fa38ee4e03c0d24a3ac423b1886"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/running.png",
+      "sha256": "f5fc235ebe3789403ecfc75ee6cc39a02ff2e4360288bce6700f51992b966291"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/sleeping.png",
+      "sha256": "420b6e02324e4bcf2713ac44fd5a6ad1dd6615823301fd4530839f43d5c4c506"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/special.png",
+      "sha256": "6c2bd6cfda64ac2c14f3d2be90f3f508722a912e49b4ba22bf3cb1cfefd5d7ae"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/waiting.png",
+      "sha256": "67798c71826c82f1472348da1097544690043876842731c9712c2849b95ab268"
+    },
+    {
+      "id": "xiaobei",
+      "path": "animations/waving.png",
+      "sha256": "587ce413e2daec0197ef045d594f3a985334f5b80e6d58d99ba20d2daccc504d"
+    },
+    {
+      "id": "xiaobei",
+      "path": "avatar.png",
+      "sha256": "bbb918f76acfce6eccb79ff117660932db6536cdcbd8ba6480b773ac628873f8"
+    },
+    {
+      "id": "xiaobei",
+      "path": "extra/special2.png",
+      "sha256": "05d85e153c02a4372503fb5373b94b7f091a1f84616d22db7fdebd3eb0c13026"
+    },
+    {
+      "id": "xiaobei",
+      "path": "extra/stumble.png",
+      "sha256": "11fddc7c3e14ccf7b9b160fd63d75c60531454f9a0ba4fb0cda368ecd567a995"
+    },
+    {
+      "id": "xiaobei",
+      "path": "gaze.png",
+      "sha256": "7aacea6713989d10b48a0e5353d8917d8fcbe22da9553f5e28b8fe74082b8ace"
+    },
+    {
+      "id": "xiaobei",
+      "path": "preview.png",
+      "sha256": "56a625c7a2dcced28acdf65f593665bbca116db566d61dd1fa77767229663921"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/failed.png",
+      "sha256": "e40c24c522e375b0d8245bb3146f2f512b4458d4732d4f300cf141fded53b0e2"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/feeding.png",
+      "sha256": "b10ea7534d61779ecc10c629ae857e5faf607bfe5e7998a23dd99cf610e54dee"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/happy.png",
+      "sha256": "60d85aaa315020b4cefc6066dfd4ab3362532b49ed54c694963bf38a0603efcc"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/idle.png",
+      "sha256": "7ecdd2a1389b06ac00b0300dfc86b284a991edb15229562a764688b48c9aaf9f"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/jumping.png",
+      "sha256": "ec7fd3a9700ca7a524265ea8eb9733de26941d1d62bdec038a2ae094d7a80389"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/landing.png",
+      "sha256": "f2cf636b7cd30932f48d90ced709b66bb619f2556b0902e1e059da7ec7402f2d"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/lifted.png",
+      "sha256": "af70bbad589b3aadcca23d00ee2b96d047b2e4b834edabd3fbcff2ab9fca10c8"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/petting.png",
+      "sha256": "7626bfaa30c9605b5ab8ae1ecae2aeca692f0ccf3b184c0cf4ac9683fec6d44c"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/poked.png",
+      "sha256": "208162af76ff9bcdbe57f1a2bf67acdf74b291eda71a5472dbea7892ea61074e"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/review.png",
+      "sha256": "45fc66d889731b2a3287ac72ed5d1a8d1e05a667bd23536e30f9abc18c016e8a"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/running-left.png",
+      "sha256": "6cc6ec0821a597a97deae272ca5b8ec9bb679356d839b94501e673831153e1e0"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/running-right.png",
+      "sha256": "e6338d547a967dbae04c3d52858f9e1aff28871fb94e9f87070b8a2a227e279c"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/running.png",
+      "sha256": "35af92afec204b5b9d3eb37fd13ddb3b3afac381e0f0d444b96a490c313a2ddc"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/sleeping.png",
+      "sha256": "a5623b8827c47ec4c7147325a7ce1a341600150ff4b56af5bb444e2e2b205bc2"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/special.png",
+      "sha256": "ef446bee0d8af790b12b3638d532a581677a8ab250f001c257d5e9b2e9676cc1"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/waiting.png",
+      "sha256": "7fe714c7efa10acc9b4ef2054eb04e242d563ad0ddd93e8982882b4b9da5c36b"
+    },
+    {
+      "id": "gugugaga",
+      "path": "animations/waving.png",
+      "sha256": "5a5f3e7e7944f2fa1ba6dcf96b53d8ac86912038454c95bfa05a458a0322a46f"
+    },
+    {
+      "id": "gugugaga",
+      "path": "avatar.png",
+      "sha256": "8cf921c36abccf7fa1a89f6e44eb3c2a5cddee1c43e12d09a62af7cfb4ed0401"
+    },
+    {
+      "id": "gugugaga",
+      "path": "gaze.png",
+      "sha256": "1e9f6cd4a055974d45a97f415fea02a01289b5a39af61613e38bf9a1f7760553"
+    },
+    {
+      "id": "gugugaga",
+      "path": "preview.png",
+      "sha256": "e4367c692558c1dfa2f645735e5b6f0f83637af4a7f5d0105e14b0d1a7b2776e"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/feeding.png",
+      "sha256": "156af9406d0826cf3319a2adda9f810ac7bf92dc4978ca0a0eadab60b1c1c477"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/happy.png",
+      "sha256": "1737ebe41c22af5f27f0b71939f4ba2a804109a301fba18407e1ff299641797e"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/jumping.png",
+      "sha256": "c9dd857cdaa826f23e852c88430251108a54adf5b02065532dca5e538e5bb6f3"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/landing.png",
+      "sha256": "415d741bb351eca13d3cbc62fa4b1849b35b3aba9220014b81e83f0ac5156c21"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/lifted.png",
+      "sha256": "9c1fb9413f7ded4001449767135ca53d2100db60738e684fefa20e2accb9ed00"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/sleeping.png",
+      "sha256": "92313d8713d94aca0891c89ed39c3656f584ed5542b18d91d23a3f18a2dcf1f6"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/special.png",
+      "sha256": "b0a64726e2cf9221a156c0091babe01f2c477a205744a0f15acb60ff388963d3"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/special2-original.png",
+      "sha256": "2a803ae300a56f4bb40668f57b408db81c12652cee543edbefd7c6c994859761"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/special2.png",
+      "sha256": "a3041610168045b57ed70c17087fb5a464de71c8dfc95a67735598a6450b4417"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/stumble-original.png",
+      "sha256": "c7387b475338de7427cf8d399d90da35d93b23e2cca32725d9eebee0cd35b58d"
+    },
+    {
+      "id": "gugugaga",
+      "path": "variants/stumble.png",
+      "sha256": "5290495f75e140933682707c135a5b309c5fbb2f28b75e8d4865c7282e25f6f5"
+    }
+  ]
+}

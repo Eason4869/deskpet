@@ -1,3 +1,4 @@
+using Dafeiyu;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -35,7 +36,7 @@ internal sealed class SayProcess(Func<ProcessStartInfo>? factory = null)
     {
         token.ThrowIfCancellationRequested();
         using var process = new Process { StartInfo = factory?.Invoke() ?? StartInfo() };
-        if (!process.Start()) throw new InvalidOperationException("系统朗读无法启动。");
+        if (!process.Start()) throw new InvalidOperationException(TextResources.Get("sayProcess.speakAsync.text"));
         using var kill = token.Register(() =>
         {
             try { if (!process.HasExited) process.Kill(); }
@@ -52,7 +53,7 @@ internal sealed class SayProcess(Func<ProcessStartInfo>? factory = null)
             await process.WaitForExitAsync(token);
             await errors;
             token.ThrowIfCancellationRequested();
-            if (process.ExitCode != 0) throw new InvalidOperationException($"系统朗读失败（状态 {process.ExitCode}），请检查系统语音及音频输出。");
+            if (process.ExitCode != 0) throw new InvalidOperationException(TextResources.Format("sayProcess.speakAsync.template",process.ExitCode));
         }
         finally
         {

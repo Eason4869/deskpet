@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +13,30 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1&&args[0]=="--official-maintenance-only")return OfficialCompanionTests.MaintenanceOnly();
+            if(args.Length==1&&args[0]=="--official-optimization-only")return OfficialCompanionTests.OptimizationOnly();
+            if(args.Length==1&&args[0]=="--dev3-features-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ComposerDraftStoreTests.Main() | SeasonalKeepsakeTests.Main();}
+            if(args.Length==1&&args[0]=="--seasonal-integration-only")return SeasonalIntegrationTests.Main();
+            if(args.Length>0&&args[0]=="--complete-companion-only")return CompleteCompanionTests.Main(args.Skip(1).ToArray());
+            if(args.Length==1&&args[0]=="--live-language-core-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return LiveLanguageTests.Main() | UiLanguageChangeTests.Main() | RequestLanguageSnapshotTests.Main();}
+            if(args.Length==1&&args[0]=="--data-admission-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataMaintenanceAdmissionTests.Main();}
+            if(args.Length==1&&args[0]=="--data-management-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return DataManagementTests.Main();}
+            if(args.Length==1&&args[0]=="--relationship-maintenance-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryMaintenanceTests.RelationshipPreservationOnly();}
+            if(args.Length==1&&args[0]=="--history-maintenance-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return HistoryMaintenanceTests.Main();}
+            if(args.Length>0&&args[0]=="--cache-lease-fixture")return CacheMaintenanceTests.Main(args);
+            if(args.Length==1&&args[0]=="--cache-maintenance-only")return CacheMaintenanceTests.Main(new string[0]);
+            if(args.Length==1 && args[0]=="--relationship-integration-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return RelationshipIntegrationTests.Main();}
+            if(args.Length==1 && args[0]=="--relationship-feedback-only")return RelationshipFeedbackTests.Main();
+            if(args.Length==1 && args[0]=="--relationship-presentation-only")return RelationshipPresentationTests.Main();
+            if(args.Length==1 && args[0]=="--relationships-only")return RelationshipIdentityTests.Main() | RelationshipRulesTests.Main() | RelationshipStoreTests.Main() | RelationshipPresentationTests.Main();
+            if(args.Length==4&&args[0]=="--system-language-fixture")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return SystemLanguageTests.RunFixture(args[1],args[2],args[3]);}
+            if(args.Length==1&&args[0]=="--speech-language-only")return SpeechLanguagePolicyTests.RunAll();
+            if(args.Length==1&&args[0]=="--system-language-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return SystemLanguageTests.RunAll();}
+            if(args.Length==2&&args[0]=="--reply-language-fixture")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ReplyLanguagePolicyTests.RunFixture(args[1]);}
+            if(args.Length==1&&args[0]=="--reply-language-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ReplyLanguagePolicyTests.RunAll();}
+            if(args.Length==3&&args[0]=="--language-startup-fixture")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return LanguagePackTests.RunStartupFixture(args[1],args[2]);}
+            if(args.Length>0&&args[0]=="--agent-job-fixture")return AgentJobProcessTests.RunFixture(args);
+            if(args.Length==1&&args[0]=="--agent-jobs-resources-only")return AgentJobProcessTests.RunResourceChecks();
             if(args.Length==1 && args[0]=="--holiday-assets-only")return HolidayAssetTests.Main();
             if(args.Length==1 && args[0]=="--official-legacy-only")return OfficialCompanionLegacyTests.Main();
             if(args.Length==1 && args[0]=="--official-identity-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return OfficialCompanionIdentityTests.Main();}
@@ -30,9 +54,22 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--image-group-only")return GeneratedImageGroupTests.Main();
             if(args.Length==1 && args[0]=="--image-motion-only")return ImageGenerationMotionTests.Main();
             if(args.Length==1 && args[0]=="--image-tasks-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageGenerationTaskManagerTests.Main();}
+            if(args.Length==1 && args[0]=="--language-packs-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return LanguagePackTests.RunAll();}
+            if(args.Length==1 && args[0]=="--localization-only")return LocalizationTests.Main();
+            if(args.Length==1 && args[0]=="--agent-job-tools-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobToolTests.Main() | AgentJobIntegrationTests.Main();}
+            if(args.Length==1 && args[0]=="--agent-job-session-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobSessionTests.Main();}
+            if(args.Length==1 && args[0]=="--agent-jobs-only")return RunAgentJobLogic();
+            if(args.Length==1 && args[0]=="--agent-job-integration-only")return RunAgentJobIntegration();
+            if(args.Length==1 && args[0]=="--agent-job-contract-only")return AgentJobContractTests.Main();
+            if(args.Length==1 && args[0]=="--agent-job-store-only")return AgentJobStoreTests.Main();
+            if(args.Length==1 && args[0]=="--agent-jobs-native-only")return RunAgentJobNative();
+            if(args.Length==1 && args[0]=="--agent-job-lifecycle-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return AgentJobLifecycleTests.Main();}
+            if(args.Length==1 && args[0]=="--agent-job-view-state-only")return AgentJobViewStateTests.Main();
+            if(args.Length==1 && args[0]=="--agent-job-manager-only")return AgentJobManagerTests.Main();
+            if(args.Length==1 && args[0]=="--agent-job-log-only")return AgentJobLogTests.RunAll();
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --relationship-integration-only | --relationships-only | --agent-jobs-only | --agent-job-integration-only | --agent-jobs-native-only | --agent-job-tools-only | --agent-job-session-only | --agent-job-contract-only | --agent-job-store-only | --agent-job-manager-only | --agent-job-lifecycle-only | --agent-job-view-state-only | --agent-job-log-only | --agent-jobs-resources-only | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -59,6 +96,33 @@ namespace Dafeiyu.Tests
                 return result;
             }
         }
+        static int RunAgentJobLogic()
+        {
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobContractTests.Main() | AgentJobStoreTests.Main() | AgentJobLogTests.RunAll() | AgentJobManagerTests.Main() | AgentJobLifecycleTests.Main() | AgentJobViewStateTests.Main() | AgentJobToolTests.Main();
+            }
+        }
+        static int RunAgentJobIntegration()
+        {
+            // The fake process suite still validates real Windows directory identities.
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows workspace background job integration is unsupported on this platform");return 2;}
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobIntegrationTests.Main();
+            }
+        }
+        static int RunAgentJobNative()
+        {
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows native background jobs are unsupported on this platform");return 2;}
+            using(var protector=new TestProtector())
+            {
+                SecretProtection.Configure(protector);
+                return AgentJobProcessTests.RunAll() | AgentJobSandboxTests.Main() | AgentJobSessionTests.Main();
+            }
+        }
         static int Run()
         {
             contractChecks=0;
@@ -74,12 +138,16 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
                         AgentContextPolicyTests.Main,AgentRunRecoveryTests.Main,AgentTaskMemoryTests.Main,AgentIsolationTests.Main,AgentApprovalTests.Main,ProviderTests.Main, LiveTests.Main, GreetingTests.Main, AiGreetingTests.Main, RecorderFailureTests.Main, OnboardingUpgradeTests.Main })
                     { SecretProtection.Configure(protector); result |= test(); }
+                    // Windows identity checks belong in the Windows default regression;
+                    // macOS uses AgentJobToolTests to verify the unsupported-platform gate.
+                    SecretProtection.Configure(protector);
+                    if(Environment.OSVersion.Platform==PlatformID.Win32NT)result |= AgentJobIntegrationTests.Main();
                     return result;
                 }
             }

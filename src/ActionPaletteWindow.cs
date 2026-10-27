@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,21 +27,21 @@ namespace Dafeiyu
         public ActionPaletteWindow(PetWindow companion)
         {
             pet=companion;
-            Ui.Window(this,"和"+pet.Skin.Name+"互动",360,394);
+            LocalizedUi.Window(this,()=>(TextResources.Format("actionPaletteWindow.actionPaletteWindow.window",pet.Skin.DisplayName)),360,394);
             Owner=pet;ShowInTaskbar=false;WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;ResizeMode=ResizeMode.NoResize;
             MinWidth=0;MinHeight=0;Topmost=pet.Topmost;WindowStartupLocation=WindowStartupLocation.Manual;Focusable=true;
             var layout=new Grid{Width=448,Height=490};layout.RowDefinitions.Add(new RowDefinition{Height=new GridLength(440)});layout.RowDefinitions.Add(new RowDefinition());
             actions=new Canvas{Width=Diameter,Height=Diameter,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};layout.Children.Add(actions);
             var center=new StackPanel{VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(10)};
-            var title=Ui.Text(pet.Skin.Name,15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
+            var title=Ui.Text(()=>(pet.Skin.DisplayName),15);title.FontWeight=FontWeights.SemiBold;title.HorizontalAlignment=HorizontalAlignment.Center;center.Children.Add(title);
             var tabs=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,8)};
-            interactionsTab=Ui.Button("技能");interactionsTab.Name="PaletteInteractionsTab";
-            basicTab=Ui.Button("动作");basicTab.Name="PaletteBasicTab";
+            interactionsTab=LocalizedUi.Button(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text")));interactionsTab.Name="PaletteInteractionsTab";
+            basicTab=LocalizedUi.Button(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeA")));basicTab.Name="PaletteBasicTab";
             foreach(var tab in new[]{interactionsTab,basicTab}){tab.Width=58;tab.MinHeight=30;tab.Padding=new Thickness(8,3,8,3);tab.Margin=new Thickness(2,0,2,0);tab.FontSize=11;tabs.Children.Add(tab);}
             interactionsTab.Click+=delegate {SelectSection(false);};basicTab.Click+=delegate {SelectSection(true);};center.Children.Add(tabs);
-            selection=Ui.Text("选择一个技能",12,Ui.Muted);selection.Name="PaletteSelection";selection.TextAlignment=TextAlignment.Center;center.Children.Add(selection);var dismiss=UiIcons.Button("close","收起动作轮盘");dismiss.Name="CloseActionWheel";dismiss.Width=28;dismiss.Height=28;dismiss.MinHeight=28;dismiss.Padding=new Thickness(5);dismiss.Margin=new Thickness(0,4,0,0);dismiss.HorizontalAlignment=HorizontalAlignment.Center;dismiss.Click+=delegate{Close();};center.Children.Add(dismiss);
+            selection=LocalizedUi.Text(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeB")),12,Ui.Muted);selection.Name="PaletteSelection";selection.TextAlignment=TextAlignment.Center;center.Children.Add(selection);var dismiss=UiIcons.Button("close",()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.uiIcons")));dismiss.Name="CloseActionWheel";dismiss.Width=28;dismiss.Height=28;dismiss.MinHeight=28;dismiss.Padding=new Thickness(5);dismiss.Margin=new Thickness(0,4,0,0);dismiss.HorizontalAlignment=HorizontalAlignment.Center;dismiss.Click+=delegate{Close();};center.Children.Add(dismiss);
             var hub=new Border{Width=174,Height=174,CornerRadius=new CornerRadius(87),Background=Glass(true),BorderBrush=Ui.Brush("#EFFFFFFF"),BorderThickness=new Thickness(1.5),Child=center,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};layout.Children.Add(hub);
-            hint=Ui.Text("点选播放 · 滚轮切换分类 · Esc 收起",11,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.VerticalAlignment=VerticalAlignment.Center;
+            hint=LocalizedUi.Text(()=>(TextResources.Get("actionPaletteWindow.actionPaletteWindow.text.alternativeC")),11,Ui.Muted);hint.TextAlignment=TextAlignment.Center;hint.VerticalAlignment=VerticalAlignment.Center;
             var help=new Border{Child=hint,Background=Glass(true),BorderBrush=Ui.Brush("#BFFFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(14),Padding=new Thickness(12,4,12,4),Margin=new Thickness(18,4,18,4)};Grid.SetRow(help,1);layout.Children.Add(help);
             Content=new Viewbox{Child=layout,Stretch=Stretch.Uniform};
             PreviewKeyDown+=delegate(object sender,KeyEventArgs e)
@@ -77,16 +77,16 @@ namespace Dafeiyu
             SetTab(interactionsTab,!basic);SetTab(basicTab,basic);
             if(basic)
             {
-                for(int index=0;index<AnimationPlayer.States.Length;index++)
-                    AddAction(AnimationPlayer.Labels[index],AnimationPlayer.States[index],false);
+                for(int index=0;index<AnimationPlayer.States.Length;index++){int labelIndex=index;
+                    AddAction(()=>AnimationPlayer.Labels[labelIndex],AnimationPlayer.States[index],false);}
             }
             else
             {
-                AddAction("喂零食","feeding",true);
-                AddAction(pet.IsSleeping?"叫醒":"小憩","sleeping",true);AddAction(pet.Skin.SpecialAction,"special",true);
-                if(AdditionalInteractions.Supports(pet.Skin))AddAction(AdditionalInteractions.SpecialName(pet.Skin),"special2",true);
+                AddAction(()=>TextResources.Get("actionPaletteWindow.selectSection.addAction"),"feeding",true);
+                AddAction(()=>pet.IsSleeping?TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeA"):TextResources.Get("actionPaletteWindow.selectSection.addAction.alternativeB"),"sleeping",true);AddAction(()=>pet.Skin.SpecialAction,"special",true);
+                if(AdditionalInteractions.Supports(pet.Skin))AddAction(()=>AdditionalInteractions.SpecialName(pet.Skin),"special2",true);
             }
-            selection.Text=basic?"选择一个动作":"选择一个技能";hint.Text="点选播放 · 滚轮切换分类 · Esc 收起";
+            LocalizedUi.Set(selection,"Text",()=>(basic?TextResources.Get("actionPaletteWindow.selectSection.selectionBasic"):TextResources.Get("actionPaletteWindow.selectSection.selectionBasic.alternativeA")));LocalizedUi.Set(hint,"Text",()=>(TextResources.Get("actionPaletteWindow.selectSection.hint")));
             RefreshAvailability();
             if(IsVisible){UpdateLayout();PlaceNearPet();}
         }
@@ -95,10 +95,10 @@ namespace Dafeiyu
         {
             button.Background=selected?Ui.Blue:Ui.Brush("#60FFFFFF");button.Foreground=selected?Brushes.White:Ui.Ink;
             button.BorderBrush=selected?Ui.Blue:Ui.Line;button.FontWeight=selected?FontWeights.SemiBold:FontWeights.Normal;
-            System.Windows.Automation.AutomationProperties.SetHelpText(button,selected?"当前动作分类":"切换动作分类");
+            System.Windows.Automation.AutomationProperties.SetHelpText(button,selected?TextResources.Get("actionPaletteWindow.setTab.automationAutomationPropertiesSetHelpText"):TextResources.Get("actionPaletteWindow.setTab.automationAutomationPropertiesSetHelpText.alternativeA"));
         }
 
-        void AddAction(string label,string action,bool interaction)
+        void AddAction(Func<string> label,string action,bool interaction)
         {
             int count=basic?AnimationPlayer.States.Length:AdditionalInteractions.Supports(pet.Skin)?4:3,index=actionButtons.Count;
             double angle=-90+index*360.0/count,radians=angle*Math.PI/180;
@@ -108,16 +108,16 @@ namespace Dafeiyu
             var caption=Ui.Text(label,13.5);caption.HorizontalAlignment=HorizontalAlignment.Center;tile.Children.Add(caption);
             var content=new Canvas{Width=Diameter,Height=Diameter,IsHitTestVisible=false};content.Children.Add(tile);
             Canvas.SetLeft(tile,Center+153*Math.Cos(radians)-38);Canvas.SetTop(tile,Center+153*Math.Sin(radians)-(basic?39:48));
-            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
+            if(sectorTemplate==null)sectorTemplate=(ControlTemplate)ThemeManager.Parse("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='Button'><Grid><Path x:Name='sector' Data='{TemplateBinding Tag}' Fill='{TemplateBinding Background}' Stroke='{TemplateBinding BorderBrush}' StrokeThickness='1' StrokeLineJoin='Round'/><ContentPresenter/></Grid><ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='sector' Property='Fill' Value='#EDF3FF'/><Setter TargetName='sector' Property='Stroke' Value='#456DE6'/></Trigger><Trigger Property='IsPressed' Value='True'><Setter TargetName='sector' Property='Fill' Value='#DCE5FF'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.45'/></Trigger></ControlTemplate.Triggers></ControlTemplate>");
             var button=new Button{Template=sectorTemplate,Width=Diameter,Height=Diameter,Background=Glass(false),BorderBrush=Ui.Brush("#DBFFFFFF"),Cursor=Cursors.Hand,Content=content,Tag=Sector(angle,360.0/count)};
-            button.Name=(interaction?"PaletteInteraction_":"PaletteAction_")+action.Replace('-','_');button.ToolTip=Description(action);
-            System.Windows.Automation.AutomationProperties.SetName(button,label);
-            button.MouseEnter+=delegate{selection.Text=label;hint.Text=Description(action);};button.GotKeyboardFocus+=delegate{selection.Text=label;hint.Text=Description(action);};
+            button.Name=(interaction?"PaletteInteraction_":"PaletteAction_")+action.Replace('-','_');LocalizedUi.Tooltip(button,()=>Description(action));
+            LocalizedUi.Automation(button,label);
+            button.MouseEnter+=delegate{LocalizedUi.Set(selection,"Text",label);LocalizedUi.Set(hint,"Text",()=>Description(action));};button.GotKeyboardFocus+=delegate{LocalizedUi.Set(selection,"Text",label);LocalizedUi.Set(hint,"Text",()=>Description(action));};
             button.Click+=delegate
             {
                 if(pet.IsUpdating){RefreshAvailability();return;}
-                if(interaction)pet.PlayInteraction(action=="sleeping" && pet.IsSleeping?"wake":action);
-                else pet.PlayAction(action,action=="jumping"?.7:2);
+                if(interaction)pet.PlayUserInteraction(action=="sleeping" && pet.IsSleeping?"wake":action);
+                else pet.PlayUserAction(action,action=="jumping"?.7:2);
                 pet.NotifyGuideInteraction("wheel");Close();
             };
             actionButtons.Add(button);actions.Children.Add(button);
@@ -148,22 +148,22 @@ namespace Dafeiyu
         {
             switch(action)
             {
-                case "petting":return "轻轻摸摸头，看看伙伴的反应。";
-                case "poked":return "戳一戳伙伴，逗它回应你。";
-                case "feeding":return "请伙伴吃份零食，吃完会开心一下。";
-                case "happy":return "让伙伴做个开心的小表情。";
-                case "sleeping":return pet.IsSleeping?"叫醒正在小憩的伙伴。":"让伙伴安静地小憩，再点一次叫醒。";
-                case "special":return pet.Skin.SpecialAction+"：看看伙伴的反应。";
-                case "special2":return AdditionalInteractions.SpecialName(pet.Skin)+"：看看伙伴的新花样。";
-                case "idle":return "回到平静的待机姿态。";
-                case "running-right":return "向右奔跑一小段距离；锁定位置时原地演示。";
-                case "running-left":return "向左奔跑一小段距离；锁定位置时原地演示。";
-                case "waving":return "挥挥手，和你打个招呼。";
-                case "jumping":return "轻快地跳一下。";
-                case "failed":return "露出委屈的小表情。";
-                case "waiting":return "安静地等待一会儿。";
-                case "running":return "认真想一想。";
-                default:return "认真检查一下成果。";
+                case "petting":return TextResources.Get("actionPaletteWindow.description.text");
+                case "poked":return TextResources.Get("actionPaletteWindow.description.text.alternativeA");
+                case "feeding":return TextResources.Get("actionPaletteWindow.description.text.alternativeB");
+                case "happy":return TextResources.Get("actionPaletteWindow.description.text.alternativeC");
+                case "sleeping":return pet.IsSleeping?TextResources.Get("actionPaletteWindow.description.text.alternativeD"):TextResources.Get("actionPaletteWindow.description.text.alternativeE");
+                case "special":return TextResources.Format("actionPaletteWindow.description.template",pet.Skin.SpecialAction);
+                case "special2":return TextResources.Format("actionPaletteWindow.description.template.alternativeA",AdditionalInteractions.SpecialName(pet.Skin));
+                case "idle":return TextResources.Get("actionPaletteWindow.description.text.alternativeF");
+                case "running-right":return TextResources.Get("actionPaletteWindow.description.text.alternativeG");
+                case "running-left":return TextResources.Get("actionPaletteWindow.description.text.alternativeH");
+                case "waving":return TextResources.Get("actionPaletteWindow.description.text.alternativeI");
+                case "jumping":return TextResources.Get("actionPaletteWindow.description.text.alternativeJ");
+                case "failed":return TextResources.Get("actionPaletteWindow.description.text.alternativeK");
+                case "waiting":return TextResources.Get("actionPaletteWindow.description.text.alternativeL");
+                case "running":return TextResources.Get("actionPaletteWindow.description.text.alternativeM");
+                default:return TextResources.Get("actionPaletteWindow.description.text.alternativeN");
             }
         }
 
@@ -171,7 +171,7 @@ namespace Dafeiyu
         {
             bool enabled=!pet.IsUpdating;
             foreach(var button in actionButtons)button.IsEnabled=enabled;
-            if(!enabled)hint.Text="当前对话或更新结束后，就能继续互动。";
+            if(!enabled)LocalizedUi.Set(hint,"Text",()=>(TextResources.Get("actionPaletteWindow.refreshAvailability.hint")));
         }
 
         void PlaceNearPet()

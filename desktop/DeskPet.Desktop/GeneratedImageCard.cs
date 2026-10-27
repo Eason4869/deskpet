@@ -25,7 +25,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     private Button? selectionOverlay, favoriteOverlay;
     private bool selectionActive, selectedAsset;
     internal string GalleryAssetId => metadata.Id;
-    internal void UpdateSelection(bool selected, bool selecting) { selectedAsset=selected; selectionActive=selecting; if(selectionOverlay==null||favoriteOverlay==null)return;selectionOverlay.Content="√";selectionOverlay.Background=selected?DesktopTheme.Brush("#357FF5"):new SolidColorBrush(Color.Parse("#B0171B22"));AutomationProperties.SetName(selectionOverlay,selected?"取消选择图片":"选择图片");ToolTip.SetTip(selectionOverlay,selected?"取消选择":"选择图片");selectionOverlay.Opacity=favoriteOverlay.Opacity=IsPointerOver||IsKeyboardFocusWithin||selected||selecting?1:0; }
+    internal void UpdateSelection(bool selected, bool selecting) { selectedAsset=selected; selectionActive=selecting; if(selectionOverlay==null||favoriteOverlay==null)return;selectionOverlay.Content="√";selectionOverlay.Background=selected?DesktopTheme.Brush("#357FF5"):new SolidColorBrush(Color.Parse("#B0171B22"));LocalizedUi.Automation(selectionOverlay,()=>(selected?TextResources.Get("generatedImageCard.updateSelection.automationPropertiesSetName"):TextResources.Get("generatedImageCard.updateSelection.automationPropertiesSetName.alternativeA")));LocalizedUi.Tooltip(selectionOverlay,()=>(selected?TextResources.Get("generatedImageCard.updateSelection.toolTipSetTip"):TextResources.Get("generatedImageCard.updateSelection.toolTipSetTip.alternativeA")));selectionOverlay.Opacity=favoriteOverlay.Opacity=IsPointerOver||IsKeyboardFocusWithin||selected||selecting?1:0; }
     internal bool IsGalleryTile { get; }
     internal void SetGalleryLayout(string layout) { if (tileImage != null) tileImage.Stretch = layout == "grid" ? Stretch.UniformToFill : Stretch.Uniform; }
     public GeneratedImageCard(DesktopController controller, Window window, GeneratedImage image, Action<GeneratedImage>? repeat = null, string? galleryLayout = null, Action<string>? choose = null, Action<string>? favorite = null, bool selected = false, bool selecting = false, bool workspacePreview = false)
@@ -40,13 +40,13 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         {
             using var stream = new MemoryStream(owner.ImageStore.Read(image.Id)); thumbnail = Bitmap.DecodeToWidth(stream, 480);
             var preview = Ui.Button("", ShowPreview); preview.Name = "GeneratedImagePreview"; preview.Padding = new Thickness(0); preview.HorizontalAlignment = HorizontalAlignment.Stretch;
-            preview.Content = new Image { Source = thumbnail, Height = 220, Stretch = Stretch.Uniform }; ToolTip.SetTip(preview, "预览图片"); body.Children.Add(preview);
+            preview.Content = new Image { Source = thumbnail, Height = 220, Stretch = Stretch.Uniform }; LocalizedUi.Tooltip(preview,()=>(TextResources.Get("generatedImageCard.generatedImageCard.toolTipSetTip"))); body.Children.Add(preview);
         }
-        catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { body.Children.Add(Ui.Text("图片资产缺失或损坏。可在原会话中重新生成。")); }
+        catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("generatedImageCard.generatedImageCard.text")))); }
         body.Children.Add(new TextBlock { Text = metadata.Prompt, TextWrapping = TextWrapping.Wrap, MaxHeight = 58, TextTrimming = TextTrimming.CharacterEllipsis });
-        body.Children.Add(Ui.Text(metadata.Model + " · " + metadata.CreatedUtc.ToLocalTime().ToString("MM-dd HH:mm") + (metadata.Temporary ? " · 本次运行临时保存" : ""), 11));
+        body.Children.Add(Ui.Text(metadata.Model + " · " + metadata.CreatedUtc.ToLocalTime().ToString("MM-dd HH:mm") + (metadata.Temporary ? TextResources.Get("generatedImageCard.generatedImageCard.text.alternativeA") : ""), 11));
         var actions = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var button in new[] { Ui.AsyncButton("另存为", SaveAsync, owner.Error), Ui.AsyncButton("复制图片", CopyAsync, owner.Error), Ui.Button("详情", Details), Ui.AsyncButton("打开目录", OpenDirectoryAsync, owner.Error), Ui.Button("再生成", Regenerate) }) { button.Margin = new Thickness(0, 0, 4, 4); actions.Children.Add(button); }
+        foreach (var button in new[] { LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.generatedImageCard.asyncButton")), SaveAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.generatedImageCard.asyncButton.alternativeA")), CopyAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("generatedImageCard.generatedImageCard.text.alternativeB")), Details), LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.generatedImageCard.asyncButton.alternativeB")), OpenDirectoryAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("generatedImageCard.generatedImageCard.text.alternativeC")), Regenerate) }) { button.Margin = new Thickness(0, 0, 4, 4); actions.Children.Add(button); }
         body.Children.Add(actions);
     }
     private void BuildWorkspacePreview()
@@ -56,29 +56,29 @@ internal sealed class GeneratedImageCard : Border, IDisposable
         var surface = new Grid(); Child = surface;
         var preview = Ui.Button("", ShowPreview); preview.Name = "WorkspaceGeneratedImagePreview"; preview.Background = Brushes.Transparent; preview.BorderThickness = new Thickness(0); preview.Padding = new Thickness(0); preview.HorizontalAlignment = HorizontalAlignment.Stretch;
         preview.VerticalAlignment = VerticalAlignment.Stretch; preview.HorizontalContentAlignment = HorizontalAlignment.Stretch; preview.VerticalContentAlignment = VerticalAlignment.Stretch;
-        preview.Content = new Image { Source = thumbnail, Stretch = Stretch.Uniform }; surface.Children.Add(preview); AutomationProperties.SetName(preview, "预览生成图片");
+        preview.Content = new Image { Source = thumbnail, Stretch = Stretch.Uniform }; surface.Children.Add(preview); LocalizedUi.Automation(preview,()=>(TextResources.Get("generatedImageCard.buildWorkspacePreview.automationPropertiesSetName")));
         var menu = new ContextMenu();
-        MenuItem Action(string title, Action callback) { var item = new MenuItem { Header = title }; item.Click += (_, _) => callback(); return item; }
-        menu.ItemsSource = new object[] { Action("另存为", () => owner.Run(SaveAsync)), Action("复制图片", () => owner.Run(CopyAsync)), Action("打开目录", () => owner.Run(OpenDirectoryAsync)), Action("详情", Details), Action("再生成", Regenerate) };
+        MenuItem Action(System.Func<string> title, Action callback) { var item = LocalizedUi.With(new MenuItem { Header = title() },"Header",()=> (title())); item.Click += (_, _) => callback(); return item; }
+        menu.ItemsSource = new object[] { Action(()=> (TextResources.Get("generatedImageCard.buildWorkspacePreview.action")), () => owner.Run(SaveAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildWorkspacePreview.action.alternativeA")), () => owner.Run(CopyAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildWorkspacePreview.action.alternativeB")), () => owner.Run(OpenDirectoryAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildWorkspacePreview.action.alternativeC")), Details), Action(()=> (TextResources.Get("generatedImageCard.buildWorkspacePreview.action.alternativeD")), Regenerate) };
         ContextMenu = menu;
-        var more = Ui.Button("⋯", () => menu.Open(this)); more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Top; more.Margin = new Thickness(8); more.CornerRadius = new CornerRadius(16); more.Width = more.Height = 32; more.Padding = new Thickness(0); more.FontSize = 22; ToolTip.SetTip(more, "图片操作"); AutomationProperties.SetName(more, "图片操作"); surface.Children.Add(more);
+        var more = Ui.Button("⋯", () => menu.Open(this)); more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Top; more.Margin = new Thickness(8); more.CornerRadius = new CornerRadius(16); more.Width = more.Height = 32; more.Padding = new Thickness(0); more.FontSize = 22; LocalizedUi.Tooltip(more,()=>(TextResources.Get("generatedImageCard.buildWorkspacePreview.toolTipSetTip"))); LocalizedUi.Automation(more,()=>(TextResources.Get("generatedImageCard.buildWorkspacePreview.automationPropertiesSetName.alternativeA"))); surface.Children.Add(more);
     }
     private void BuildTile(string layout, Action<string>? choose, Action<string>? favorite, bool selected, bool selecting)
     {
         Name = "GeneratedImageTile"; CornerRadius = new CornerRadius(14); ClipToBounds = true; Background = DesktopTheme.Brush("#F2F4F7");
         var surface = new Grid(); Child = surface;
         var open = Ui.Button("", () => OpenPreview(true)); open.Name = "GalleryImagePreview"; open.Padding = new Thickness(0); open.BorderThickness = new Thickness(0); open.CornerRadius = CornerRadius; open.Background = Brushes.Transparent; open.HorizontalAlignment = HorizontalAlignment.Stretch; open.VerticalAlignment = VerticalAlignment.Stretch; open.HorizontalContentAlignment = HorizontalAlignment.Stretch; open.VerticalContentAlignment = VerticalAlignment.Stretch;
-        AutomationProperties.SetName(open, "预览图片：" + metadata.Prompt);
+        LocalizedUi.Automation(open,()=>(TextResources.Format("generatedImageCard.buildTile.automationPropertiesSetName",metadata.Prompt)));
         tileImage = new Image { Name = "GalleryTileImage" }; SetGalleryLayout(layout); open.Content = tileImage; _ = LoadGalleryThumbnailAsync();
         ToolTip.SetTip(this, metadata.Prompt + "\n" + metadata.Model + " · " + metadata.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")); surface.Children.Add(open);
         var menu = new ContextMenu();
-        MenuItem Action(string title, Action callback) { var item = new MenuItem { Header = title }; item.Click += (_, _) => callback(); return item; }
-        menu.ItemsSource = new object[] { Action("查看图片详情", () => OpenPreview(true)), Action("另存为", () => owner.Run(SaveAsync)), Action("复制图片", () => owner.Run(CopyAsync)), Action("打开目录", () => owner.Run(OpenDirectoryAsync)), Action("详情", Details), Action("再生成", Regenerate) };
+        MenuItem Action(System.Func<string> title, Action callback) { var item = LocalizedUi.With(new MenuItem { Header = title() },"Header",()=> (title())); item.Click += (_, _) => callback(); return item; }
+        menu.ItemsSource = new object[] { Action(()=> (TextResources.Get("generatedImageCard.buildTile.action")), () => OpenPreview(true)), Action(()=> (TextResources.Get("generatedImageCard.buildTile.action.alternativeA")), () => owner.Run(SaveAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildTile.action.alternativeB")), () => owner.Run(CopyAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildTile.action.alternativeC")), () => owner.Run(OpenDirectoryAsync)), Action(()=> (TextResources.Get("generatedImageCard.buildTile.action.alternativeD")), Details), Action(()=> (TextResources.Get("generatedImageCard.buildTile.action.alternativeE")), Regenerate) };
         ContextMenu = menu;
         var more = Ui.Button("⋯", () => menu.Open(this)); more.Name = "GalleryTileActions"; more.Width = more.Height = 32; more.FontSize = 22; more.Padding = new Thickness(0); more.CornerRadius = new CornerRadius(16); more.Background = new SolidColorBrush(Color.Parse("#B0171B22")); more.Foreground = Brushes.White; more.HorizontalAlignment = HorizontalAlignment.Right; more.VerticalAlignment = VerticalAlignment.Bottom; more.Margin = new Thickness(8); more.Opacity = 0;
-        AutomationProperties.SetName(more, "图片操作"); ToolTip.SetTip(more, "图片操作"); surface.Children.Add(more);
+        LocalizedUi.Automation(more,()=>(TextResources.Get("generatedImageCard.buildTile.automationPropertiesSetName.alternativeA"))); LocalizedUi.Tooltip(more,()=>(TextResources.Get("generatedImageCard.buildTile.toolTipSetTip"))); surface.Children.Add(more);
         var pick = Ui.Button("√", () => choose?.Invoke(metadata.Id)); pick.Name = "GalleryTileSelect"; pick.Width = pick.Height = 32; pick.Padding = new Thickness(0); pick.HorizontalAlignment = HorizontalAlignment.Left; pick.VerticalAlignment = VerticalAlignment.Top; pick.Margin = new Thickness(8); pick.CornerRadius = new CornerRadius(16); pick.Foreground = Brushes.White; surface.Children.Add(pick);
-        var star = Ui.Button("♥", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); star.CornerRadius = new CornerRadius(16); star.Background = new SolidColorBrush(Color.Parse("#B0171B22")); star.Foreground = metadata.IsFavorite ? DesktopTheme.Brush("#F46E86") : Brushes.White; AutomationProperties.SetName(star, metadata.IsFavorite ? "取消收藏图片" : "收藏图片"); ToolTip.SetTip(star, metadata.IsFavorite ? "取消收藏" : "收藏图片"); surface.Children.Add(star);
+        var star = Ui.Button("", () => favorite?.Invoke(metadata.Id)); star.Name = "GalleryTileFavorite"; star.Width = star.Height = 32; star.Padding = new Thickness(0); star.HorizontalAlignment = HorizontalAlignment.Right; star.VerticalAlignment = VerticalAlignment.Top; star.Margin = new Thickness(8); star.CornerRadius = new CornerRadius(16); star.Background = new SolidColorBrush(Color.Parse("#B0171B22")); star.Foreground = metadata.IsFavorite ? DesktopTheme.Brush("#F46E86") : Brushes.White; star.Content = new Avalonia.Controls.Shapes.Path { Name = "GalleryFavoriteHeart", Data = Geometry.Parse(ImageGalleryLayout.FavoriteHeartPath), Width = 16, Height = 16, Stretch = Stretch.Uniform, Stroke = star.Foreground, StrokeThickness = 1.5, Fill = metadata.IsFavorite ? star.Foreground : Brushes.Transparent, IsHitTestVisible = false }; LocalizedUi.Automation(star,()=>(metadata.IsFavorite ? TextResources.Get("generatedImageCard.buildTile.automationPropertiesSetName.alternativeB") : TextResources.Get("generatedImageCard.buildTile.automationPropertiesSetName.alternativeC"))); LocalizedUi.Tooltip(star,()=>(metadata.IsFavorite ? TextResources.Get("generatedImageCard.buildTile.toolTipSetTip.alternativeA") : TextResources.Get("generatedImageCard.buildTile.toolTipSetTip.alternativeB"))); surface.Children.Add(star);
         selectionOverlay=pick;favoriteOverlay=star;selectionActive=selecting;selectedAsset=selected;
         UpdateSelection(selected, selecting);
         pick.Opacity = star.Opacity = selecting || selected ? 1 : 0;
@@ -94,7 +94,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
             var image = await Task.Run(() => { using (owner.ImageUsage.Acquire(metadata.Id, "gallery-thumbnail")) { using var data = new MemoryStream(owner.ImageStore.Read(metadata.Id)); var width = Math.Max(1, (int)(Math.Max(1, metadata.Width) * Math.Min(1, 480d / Math.Max(1, Math.Max(metadata.Width, metadata.Height))))); return Bitmap.DecodeToWidth(data, width); } });
             await Dispatcher.UIThread.InvokeAsync(() => { if (disposed) image.Dispose(); else { thumbnail?.Dispose(); thumbnail = image; if (tileImage != null) tileImage.Source = image; } });
         }
-        catch (Exception error) when (error is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { await Dispatcher.UIThread.InvokeAsync(() => { if (!disposed) ToolTip.SetTip(this, "图片缺失或损坏"); }); }
+        catch (Exception error) when (error is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { await Dispatcher.UIThread.InvokeAsync(() => { if (!disposed) LocalizedUi.Tooltip(this,()=>(TextResources.Get("generatedImageCard.loadGalleryThumbnailAsync.toolTipSetTip"))); }); }
         finally { if (entered) GalleryDecodeGate.Release(); }
     }
     private void Regenerate()
@@ -103,7 +103,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     }
     internal async Task CopyAsync()
     {
-        if (host.Clipboard == null) throw new InvalidOperationException("系统剪贴板不可用。");
+        if (host.Clipboard == null) throw new InvalidOperationException(TextResources.Get("generatedImageCard.copyAsync.text"));
         var transfer = new ImageClipboardData(owner.ImageStore.Read(metadata.Id));
         try { await host.Clipboard.SetDataAsync(transfer); }
         catch { transfer.Dispose(); throw; }
@@ -112,7 +112,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     private async Task SaveAsync()
     {
         var extension = metadata.MediaType switch { "image/jpeg" => "jpg", "image/webp" => "webp", "image/gif" => "gif", _ => "png" };
-        var file = await host.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "另存生成图片", SuggestedFileName = "generated-" + metadata.Id + "." + extension, DefaultExtension = extension, FileTypeChoices = new[] { new FilePickerFileType("图片") { Patterns = new[] { "*." + extension } } } });
+        var file = await host.StorageProvider.SaveFilePickerAsync(LocalizedUi.With(new FilePickerSaveOptions { Title = TextResources.Get("generatedImageCard.saveAsync.title"), SuggestedFileName = "generated-" + metadata.Id + "." + extension, DefaultExtension = extension, FileTypeChoices = new[] { new FilePickerFileType(TextResources.Get("generatedImageCard.saveAsync.fileTypeChoicesFilePickerFileType")) { Patterns = new[] { "*." + extension } } } },"Title",()=>(TextResources.Get("generatedImageCard.saveAsync.title"))));
         if (file == null) return;
         var bytes = owner.ImageStore.Read(metadata.Id); await using var output = await file.OpenWriteAsync(); output.SetLength(0); await output.WriteAsync(bytes);
     }
@@ -122,8 +122,8 @@ internal sealed class GeneratedImageCard : Border, IDisposable
     }
     private void Details()
     {
-        var info = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, Text = metadata.Prompt + "\n\n模型：" + metadata.Model + "\n服务：" + metadata.ProviderId + "\n尺寸：" + metadata.Width + " × " + metadata.Height + "（" + (string.IsNullOrEmpty(metadata.Size) ? "服务默认" : metadata.Size) + "）\n质量：" + (string.IsNullOrEmpty(metadata.Quality) ? "服务默认" : metadata.Quality) + "\n生成时间：" + metadata.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + "\n资产：" + metadata.Id + "\n会话：" + metadata.SessionId + "\n任务：" + metadata.TaskId + "\n" + metadata.Bytes + " 字节" };
-        var dialog = Ui.Window("图片详情", new ScrollViewer { Content = info }, 520, 490); dialog.Show(host);
+        var info = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, Text = metadata.Prompt + TextResources.Get("generatedImageCard.details.widthMetadataHeight") + metadata.Model + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeA") + metadata.ProviderId + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeB") + metadata.Width + " × " + metadata.Height + "（" + (string.IsNullOrEmpty(metadata.Size) ? TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeC") : metadata.Size) + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeD") + (string.IsNullOrEmpty(metadata.Quality) ? TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeC") : metadata.Quality) + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeE") + metadata.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeF") + metadata.Id + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeG") + metadata.SessionId + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeH") + metadata.TaskId + "\n" + metadata.Bytes + TextResources.Get("generatedImageCard.details.widthMetadataHeight.alternativeI") };
+        var dialog = LocalizedUi.Window(()=>(TextResources.Get("generatedImageCard.details.window")), new ScrollViewer { Content = info }, 520, 490); dialog.Show(host);
     }
     internal void ShowPreview() => OpenPreview(false);
     private void OpenPreview(bool showDetails)
@@ -142,7 +142,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
             viewport.PointerMoved += (_, e) => { if (drag is not Point origin) return; var delta = e.GetPosition(viewport) - origin; move.X = start.X + delta.X; move.Y = start.Y + delta.Y; };
             viewport.PointerReleased += (_, e) => { drag = null; e.Pointer.Capture(null); };
             var panel = new DockPanel(); var toolbar = new WrapPanel();
-            foreach (var button in new[] { Ui.Button("−", () => Zoom(zoom / 1.25)), Ui.Button("+", () => Zoom(zoom * 1.25)), Ui.Button("适应窗口", Fit), Ui.AsyncButton("另存为", SaveAsync, owner.Error), Ui.AsyncButton("复制图片", CopyAsync, owner.Error), Ui.AsyncButton("打开目录", OpenDirectoryAsync, owner.Error), Ui.Button("详情", Details), Ui.Button("再生成", Regenerate) }) toolbar.Children.Add(button);
+            foreach (var button in new[] { Ui.Button("−", () => Zoom(zoom / 1.25)), Ui.Button("+", () => Zoom(zoom * 1.25)), LocalizedUi.Button(()=>(TextResources.Get("generatedImageCard.openPreview.text")), Fit), LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.openPreview.asyncButton")), SaveAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.openPreview.asyncButton.alternativeA")), CopyAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("generatedImageCard.openPreview.asyncButton.alternativeB")), OpenDirectoryAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("generatedImageCard.openPreview.text.alternativeA")), Details), LocalizedUi.Button(()=>(TextResources.Get("generatedImageCard.openPreview.text.alternativeB")), Regenerate) }) toolbar.Children.Add(button);
             DockPanel.SetDock(toolbar, Dock.Top); panel.Children.Add(toolbar);
             if (showDetails)
             {
@@ -151,7 +151,7 @@ internal sealed class GeneratedImageCard : Border, IDisposable
                 DockPanel.SetDock(details, Dock.Bottom); panel.Children.Add(details);
             }
             panel.Children.Add(viewport);
-            var preview = Ui.Window(showDetails ? "DeskPet · 图片详情（滚轮缩放，拖动平移）" : "DeskPet · 图片预览（滚轮缩放，拖动平移）", panel, 860, 700); preview.Name = "GeneratedImagePreviewWindow"; preview.Opened += (_, _) => Dispatcher.UIThread.Post(Fit, DispatcherPriority.Loaded); preview.Closed += (_, _) => bitmap.Dispose(); preview.Show(host);
+            var preview = LocalizedUi.Window(()=>(showDetails ? TextResources.Get("generatedImageCard.openPreview.window") : TextResources.Get("generatedImageCard.openPreview.window.alternativeA")), panel, 860, 700); preview.Name = "GeneratedImagePreviewWindow"; preview.Opened += (_, _) => Dispatcher.UIThread.Post(Fit, DispatcherPriority.Loaded); preview.Closed += (_, _) => bitmap.Dispose(); preview.Show(host);
         }
         catch (Exception e) { owner.Error(e); }
     }

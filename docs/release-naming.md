@@ -2,18 +2,22 @@
 
 所有可安装包、运行 ZIP、源码、外观和模板包含版本号；平台包显式区分 Windows 与 macOS，Mac 再区分 CPU。Windows 提供安装／便携包，macOS 按双架构提供预览包；实际版本与附件以 Release 为准。
 
-运行包、源码、模板及五个伙伴包均使用对应应用发行版本命名；包内 `pack_version` 保持实际素材版本，不因应用更新改写。下表以 0.10.0 为例列出附件命名。
+运行包、源码及模板使用应用发行版本；官方完整伙伴 ZIP 使用独立素材版本，包内 `pack_version` 不因应用发版抬高。0.11.1 的附件如下：
 
-| 用途（推荐下载顺序） | 0.5.6（兼容旧名） | 0.10.0 |
-| --- | --- | --- |
-| Windows 安装（推荐） | `DeskPet-Setup-0.5.6.exe` | `DeskPet-Windows-Setup-0.10.0.exe` |
-| Windows 便携 | `DeskPet-Windows-0.5.6.zip` | `DeskPet-Windows-0.10.0.zip` |
-| Mac Apple Silicon 预览 | 无 | `DeskPet-macOS-0.10.0-arm64-preview.dmg` / `.zip` |
-| Mac Intel 预览 | 无 | `DeskPet-macOS-0.10.0-x86_64-preview.dmg` / `.zip` |
-| 源码 | `DeskPet-Source-0.5.6.zip` | `DeskPet-Source-0.10.0.zip` |
-| 外观 | `{Ebao,Dafeiyu,Marfu,Xiaobei}-HD-Skin-0.5.6.zip` | 相同前缀，版本改为 `0.10.0`；新增 `gugugaga-HD-Skin-0.10.0.zip` |
-| 创作模板 | `DeskPet-Skin-Template-v2-0.5.6.zip` | `DeskPet-Skin-Template-v2-0.10.0.zip` |
-| 校验 | `SHA256.txt` | `SHA256.txt`，覆盖本次所有实际分发包 |
+| 用途 | 当前命名 |
+| --- | --- |
+| Windows 安装（推荐） | `DeskPet-Windows-Setup-0.11.1.exe` |
+| Windows 便携 | `DeskPet-Windows-0.11.1.zip` |
+| 独立主程序（需完整运行目录） | `DeskPet-Windows-App-0.11.1.exe` |
+| Mac Apple Silicon 预览 | `DeskPet-macOS-0.11.1-arm64-preview.dmg` / `.zip` |
+| Mac Intel 预览 | `DeskPet-macOS-0.11.1-x86_64-preview.dmg` / `.zip` |
+| 源码 | `DeskPet-Source-0.11.1.zip` |
+| 五个官方完整角色包 | `DeskPet-Companion-<id>-0.11.0-dev.3.zip`，ID 为 `e-bao`、`dafeiyu`、`marfu`、`xiaobei`、`gugugaga` |
+| 官方角色目录 | `DeskPet-Companions-0.11.1.json` |
+| 创作模板 | `DeskPet-Skin-Template-v2-0.11.1.zip` |
+| 校验 | `SHA256.txt`，覆盖上述全部 15 个实际分发文件，不包含自身 |
+
+合计 16 个附件。ZIP 中的 `0.11.0-dev.3` 是实际素材版本，不改变应用正式通道。0.5.6 的旧安装名及更早外观命名仍保留为历史兼容，既有附件不覆盖。
 
 开发版按相同规则保留完整后缀，例如 `DeskPet-Windows-Setup-0.10.1-dev.2.exe`、`DeskPet-Windows-0.10.1-dev.2.zip` 和 `DeskPet-macOS-0.10.1-dev.2-arm64-preview.dmg`。独立主程序使用 `DeskPet-Windows-App-0.10.1-dev.2.exe`，用于已有运行目录内替换；首次使用推荐安装包或便携 ZIP。开发版为 prerelease，不替换正式版 latest。
 
@@ -29,7 +33,7 @@ Release 说明按 Windows 推荐安装、便携、Mac 两架构、源码、外�
 
 0.10.0 为正式桥接版本，从 main 的固定标签 `v0.10.0` 构建。原 `v0.10.0-dev.1` 源码标签保留；仅创建源码标签不会成为客户端可安装的更新候选。现有 0.9.3 的标签和附件保持不变。
 
-后续随应用打包时，五个伙伴 ZIP 的文件名统一使用完整应用发行版本（如 `gugugaga-HD-Skin-0.10.0-dev.1.zip`）；包内 `pack_version` 继续记录实际素材版本，不因应用升级改写素材。单独运行咕嘎素材打包工具时默认沿用素材版本。
+旧发行的伙伴附件可能沿用应用版本命名；0.11.1 起以逐角色素材注册表为准。应用发版只改变发布位置和目录 JSON 名称，不改写未变化素材的版本、ZIP 字节或收据。历史附件不覆盖。
 
 | 渠道 | 分支与标签 | GitHub 标志 | Windows 附件示例 |
 | --- | --- | --- | --- |
@@ -50,4 +54,20 @@ Windows EXE 的 AssemblyVersion/FileVersion 保持数字四段（例如 `0.9.5.0
 
 用户后续授权发布时才设置 publish=true：共享发布队列串行执行，正式 latest 必须递增；创建草稿、上传完整附件、逐项验证 GitHub digest，最后一次复核 latest 后公开。查询失败即停止，dev 永不设置 latest。`SHA256.txt` 覆盖最终实际附件，不包含自身。Mac 仍使用已有独立构建/签名流程，数字 bundle 版本与完整显示版本分开，不把 Windows 预览通道冒充 Mac 正式签名。
 
-0.10.0 发布授权包含 README／CHANGELOG 核对、dev CI 完成后的 main PR、正式版本标签、完整构建验证和 Release；后续预览版仍须使用更高版本及独立发布授权，不覆盖既有标签或附件。
+正式发布先核对双语 README／CHANGELOG 和用户教程，再通过 PR 合入 main；完整验证通过后在精确合并提交打不可变 tag，构建、校验并上传全部附件，最后公开 Release 并设置 stable latest。0.11.1 的历史 dev.N 标签保留，后续开发预览使用更高语义版本，不覆盖既有标签或附件。
+
+
+## 0.11.1：独立素材版本
+
+官方目录 JSON 使用发行版本号，角色 ZIP 使用逐角色素材版本（`DeskPet-Companion-<id>-<pack_version>.zip`）。`pack_version`、`min_app_version` 与应用发行号分别记录在 `assets/official/companion-versions.json`；仅应用升级不改变素材版本或 ZIP 字节。最低应用版本按完整安装与动作能力保守设置，不自动降到早期 v2 格式版本。
+
+已验证的相同 ZIP 复用原安装根，不改写安装收据；检查或复用不显示下载提示。远端版本/衣装声明与相同字节冲突时保留原素材并报告异常，不宣称更新完成。历史版本因改写包内字段而产生不同摘要时，可能需要一次完整迁移下载。已发布附件不改写。
+
+
+## 受保护的历史副本（0.11.1）
+
+新安装使用独立的 `v2-<素材版本>-<摘要前缀>-<随机标识>` 缓存目录和第 2 版安装收据；ZIP 格式与完整 SHA256 校验不变。旧客户端不能选择这些受管目录。旧 `v-*` 安装仍可读取，但不会自动采用为可删除对象，也不改写原收据。旧应用再次运行时可能需要恢复自己的兼容缓存。
+
+设置中的清理缓存新增“角色包历史副本”。只回收有明确归属、退役超过七天、无使用租约且非当前/前版本的受管目录。当前、一个已验证的恢复前版本、使用中或状态不明的素材及旧格式副本均保留。当前进程保守地持有已使用版本的租约直到退出，因此部分副本要在重启后才可清理；不会声称磁盘始终恰好只有两份。
+
+安装切换先保存事务，再原子提交 current；成功后完成前版本和退役记录。中断状态先保护后恢复，不能因清理失败回滚已经生效的 current。仅从列表移除伙伴不会释放其聊天、配置、关系或可恢复素材；自定义包的历史版本不在本轮回收范围。

@@ -47,6 +47,13 @@ namespace Dafeiyu.Tests
                     cfg.LastUpdateCheckUtcTicks=0;updates.StartAutomaticChecks();var task=updates.CheckAndUpdateAsync(true);Timer(updates).Interval=TimeSpan.FromMilliseconds(20);Pump(.12);
                     Check(feed.Checks==1 && Timer(updates).Interval<=TimeSpan.FromMinutes(1),"busy startup does not lose its scheduled check or overlap requests");updates.Cancel();Wait(()=>task.IsCompleted);
                 }
+                using(var feed=new DownloadFeed())using(var updates=new UpdateCoordinator(pet,feed,null,ReleaseInfo.DisplayVersion)){
+                    var task=updates.CheckAndUpdateAsync(true);Wait(()=>feed.Directory!=null);string resource=feed.Directory;
+                    Check(Maintenance.CacheResourceLease.Registered(pet.Store.DirectoryPath,resource),"actual update download registers cache ownership before transport entry");
+                    bool protectedResource=false;try{using(Maintenance.CacheResourceLease.TryExclusive(pet.Store.DirectoryPath,resource)){}}catch(IOException){protectedResource=true;}
+                    Check(protectedResource,"actual update download holds a cross-process cache lease");updates.Cancel();Wait(()=>task.IsCompleted);
+                    using(Maintenance.CacheResourceLease.TryExclusive(pet.Store.DirectoryPath,resource))Check(true,"cancelled transport releases cache lease after completion");
+                }
                 Console.WriteLine("Update schedule tests: "+checks+" passed");return 0;
             }
             catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
@@ -62,6 +69,14 @@ namespace Dafeiyu.Tests
             public async Task<UpdateRelease> CheckAsync(string repo,bool proxy,string address,bool portable,CancellationToken token){Checks++;if(Block)await Task.Delay(Timeout.Infinite,token);if(Fail)throw new ApiException("模拟启动网络尚未就绪");return new UpdateRelease{VersionTag="v"+ReleaseInfo.DisplayVersion};}
             public Task<UpdateRelease> CheckAsync(string repository,bool useProxy,string address,bool portable,UpdateChannel channel,CancellationToken token){return CheckAsync(repository,useProxy,address,portable,token);}
             public Task<string> DownloadAsync(UpdateRelease release,string folder,bool proxy,string address,IProgress<double> progress,CancellationToken token){throw new Exception("No download expected");}
+            public void Dispose(){}
+        }
+        sealed class DownloadFeed:IUpdateFeed
+        {
+            internal string Directory;
+            public Task<UpdateRelease> CheckAsync(string repo,bool proxy,string address,bool portable,CancellationToken token){return Task.FromResult(new UpdateRelease{VersionTag="v99.0.0",AssetName="DeskPet-Windows-99.0.0.zip",Digest="sha256:"+new string('a',64)});}
+            public Task<UpdateRelease> CheckAsync(string repo,bool proxy,string address,bool portable,UpdateChannel channel,CancellationToken token){return CheckAsync(repo,proxy,address,portable,token);}
+            public async Task<string> DownloadAsync(UpdateRelease release,string folder,bool proxy,string address,IProgress<double> progress,CancellationToken token){Directory=folder;await Task.Delay(Timeout.Infinite,token);return null;}
             public void Dispose(){}
         }
     }

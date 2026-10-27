@@ -29,7 +29,7 @@ internal sealed class OfficialCompanionNativeValidator : IDisposable
         var skin = SpriteAssets.ReadOfficial(installation, installation.Asset.Id);
         SpriteAssets.ValidateNativeDefault(skin, cancel);
         var catalog = new HolidayCatalog(installation.HolidayRootDirectory);
-        if (!string.IsNullOrEmpty(catalog.Warning) || catalog.Outfits.Any(o => !o.Ready)) throw new InvalidDataException("角色服饰无法完整读取。");
+        if (!string.IsNullOrEmpty(catalog.Warning) || catalog.Outfits.Any(o => !o.Ready)) throw new InvalidDataException(TextResources.Get("officialCompanionNativeValidator.validateRoot.text"));
         foreach (var outfit in catalog.Outfits)
         {
             foreach (var definition in outfit.Clips.Concat(new[] { outfit.Gaze, outfit.EasterEgg }))
@@ -53,6 +53,23 @@ internal sealed class OfficialCompanionNativeValidator : IDisposable
             try { for (int y = 0; y < bitmap.PixelSize.Height; y++) { cancel.ThrowIfCancellationRequested(); bitmap.CopyPixels(new PixelRect(0, y, bitmap.PixelSize.Width, 1), pinned.AddrOfPinnedObject(), bytes.Length, bytes.Length); } }
             finally { pinned.Free(); }
         }
+    }
+    internal static CompanionPackageInventory ValidateLocalPackage(string root, CancellationToken cancel)
+    {
+        var inventory = CompanionPackageInventory.Read(root, cancel);
+        using var input = File.OpenRead(Path.Combine(root, "pet.json"));
+        var skin = SpriteAssets.ReadManifest(input, inventory.PackageId, root);
+        SpriteAssets.ValidateNativeDefault(skin, cancel);
+        if (inventory.HolidayCatalog != null) foreach (var outfit in inventory.HolidayCatalog.Outfits)
+        {
+            foreach (var definition in outfit.Clips.Concat(new[] { outfit.Gaze, outfit.EasterEgg }).GroupBy(c => c.Path).Select(g => g.OrderByDescending(c => c.FrameCount).First()))
+            {
+                using var assets = new SpriteAssets(); var clip = SpriteAssets.OutfitClip(outfit, definition);
+                for (int frame = 0; frame < clip.Frames; frame++) { cancel.ThrowIfCancellationRequested(); assets.PrepareFrame(skin, clip, frame); }
+            }
+            using var previews = new SpriteAssets(); _ = previews.GetPreview(outfit);
+        }
+        return inventory;
     }
     // Semaphore remains alive until outstanding cancelled validators release it.
     public void Dispose() { }

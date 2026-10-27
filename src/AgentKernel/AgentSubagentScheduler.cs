@@ -11,7 +11,7 @@ namespace Dafeiyu
         public event Action<AgentSubagentState> Started;
         public AgentSubagentState Schedule(string parentId,AgentProfile profile,string input)
         {
-            if(profile==null || profile.Mode!="subagent")throw new ArgumentException("只有 subagent Profile 可以作为子 Agent 启动。");
+            if(profile==null || profile.Mode!="subagent")throw new ArgumentException(TextResources.Get("agentSubagentScheduler.schedule.text"));
             lock(gate)
             {
                 if(manager.List(parentId).Count(s=>s.Status=="running")<maxConcurrent){var running=manager.Spawn(parentId,profile,input);if(Started!=null)Started(running);return running;}

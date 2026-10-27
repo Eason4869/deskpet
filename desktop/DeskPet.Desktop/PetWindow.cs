@@ -25,9 +25,24 @@ internal sealed partial class PetWindow : Window
     private string action => playback.Action;
     private bool original => playback.Original;
     private bool dragging, moved, nativeIgnored, fullscreenHidden;
+    private bool feedbackQuiet,feedbackFullscreen,feedbackInteractive=true,feedbackSessionObserved;
+    private ulong feedbackSessionRevision;
+    private void ObserveFeedbackQuiet()
+    {if(feedbackQuiet!=owner.Settings.QuietMode){feedbackQuiet=owner.Settings.QuietMode;owner.Relationships.InvalidateFeedback();}}
+    private void ObserveFeedbackSession()
+    {
+        if(NativeWindowHandle==IntPtr.Zero)return;
+        bool interactive=MacServices.IsSessionInteractive;ulong revision=MacServices.SessionLifecycleRevision;
+        bool fullscreen=MacServices.IsFrontApplicationFullscreen();
+        if(feedbackSessionObserved&&(interactive!=feedbackInteractive||revision!=feedbackSessionRevision||fullscreen!=feedbackFullscreen))owner.Relationships.InvalidateFeedback();
+        feedbackInteractive=interactive;feedbackSessionRevision=revision;feedbackFullscreen=fullscreen;feedbackSessionObserved=true;
+    }
+    internal bool RelationshipFeedbackAllowed{get{ObserveFeedbackSession();return IsPetVisible&&sessionInteractive&&feedbackInteractive&&owner.Relationships.FeedbackEnabled;}}
+    internal void CelebrateRelationship(string name){if(!RelationshipFeedbackAllowed||owner.Settings.QuietMode||owner.HolidayBusinessBusy||owner.WorkBindings.Manager.Busy||owner.WorkBindings.Jobs.Manager?.HasActiveJobs==true||owner.GuideLocked||Paused||dragging||drop.Active||holidayPlayback.Active||holidayTransition.Active||action!="idle")return;Interact(name);}
+    public bool IsPetVisible=>IsVisible && !fullscreenHidden && Opacity>0;
     private Point press;
     private PixelPoint start;
-    private double lastTime, wanderAt, runUntil, policyAt;
+    private double lastTime, wanderAt, runUntil, policyAt,keepsakeFrameAt;
     private double? walkTarget;
     private double motionX;
     private int direction = 1;
@@ -37,7 +52,7 @@ internal sealed partial class PetWindow : Window
     private readonly List<string> recentGreetings = new();
     private bool paused;
     internal bool CompanionSourceRefreshSafe => !dragging && !drop.Active && !holidayPlayback.Active && !holidayTransition.Active && action == "idle";
-    public bool Paused { get => paused; set { paused = value; if (value) CancelHoliday(); RefreshHoliday(true); } }
+    public bool Paused { get => paused; set { if(paused!=value)DismissGreeting();paused = value; if (value) CancelHoliday(); RefreshHoliday(true); } }
     public PetWindow(DesktopController controller, SpriteAssets? spriteAssets = null)
     {
         owner = controller;
@@ -48,19 +63,20 @@ internal sealed partial class PetWindow : Window
         WindowDecorations = WindowDecorations.None;
         TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
-        Title = "DeskPet";
+        LocalizedUi.Set(this,"Title",()=>(TextResources.Get("petWindow.petWindow.title")));
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
         playback = new InteractionPlayback(ResolveHolidayAction);
         InitializeHoliday();
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
         PointerExited += (_, _) => LeaveHolidayHover();
+        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty)owner.Relationships.InvalidateFeedback();};
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
-        Opened += (_, _) => { ApplySettings(); Clamp(); ConfigureNative(false); };
+        Opened += (_, _) => { ObserveFeedbackSession();owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);ApplySettings(); Clamp(); ConfigureNative(false); };
         timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => Tick());
-        Closed += (_, _) => { timer.Stop(); Screens.Changed -= ScreensChanged; DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
+        Closed += async (_, _) => { owner.Relationships.InvalidateFeedback();timer.Stop(); Screens.Changed -= ScreensChanged; await owner.HolidayKeepsakes.FlushAsync();DisposeHoliday(); DismissGreeting(); assets.Dispose(); };
         wanderAt = WanderSchedule.Next(0, random.NextDouble());
         ApplySettings();
         if (owner.Settings.X == null || owner.Settings.Y == null)
@@ -71,6 +87,8 @@ internal sealed partial class PetWindow : Window
     }
     public void ApplySettings()
     {
+        relationshipContentEpoch++;
+        ObserveFeedbackQuiet();
         CancelHoliday();
         Width = 192 * owner.Settings.Scale; Height = 208 * owner.Settings.Scale;
         Topmost = owner.Settings.Topmost;
@@ -86,7 +104,10 @@ internal sealed partial class PetWindow : Window
         // through the new skin's resource folder.
         owner.Holidays.CancelHover(); holidayPlayback.Cancel(); holidayTransition.FinishImmediately();
         committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
-        drop.Cancel(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
+        if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
+        drop.Cancel(); sprite.ResetFrames(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
     }
     // Headless windows can expose an IPlatformHandle with a zero Handle even on
@@ -102,42 +123,45 @@ internal sealed partial class PetWindow : Window
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu(); var items = new List<object>();
-        void Add(string label, Action command) { var item = new MenuItem { Header = label }; item.Click += (_, _) => command(); items.Add(item); }
-        Add("快速对话", () => owner.ShowChat(true)); Add("完整聊天与队列", () => owner.ShowChat(false));
-        Add("四格轮盘", ShowPalette); Add("喂零食", () => Interact("feeding")); Add("摸摸", () => Interact("petting"));
-        Add("小憩 / 唤醒", () => { if (action == "sleeping") Play("idle", false); else Interact("sleeping"); });
-        Add(owner.Skin.SpecialAction, () => Interact("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(owner.Skin.SpecialAction2, () => Interact("special2"));
-        Add("暂停 / 继续", () => Paused = !Paused); Add("隐藏伙伴", Hide);
+        void Add(System.Func<string> label, Action command) { var item = LocalizedUi.With(new MenuItem { Header = label() },"Header",()=> (label())); item.Click += (_, _) => command(); items.Add(item); }
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text")), () => owner.ShowChat(true)); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeA")), () => owner.ShowChat(false));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
+        Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), Hide);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
-            var item = new MenuItem { Header = "切换 · " + skin.Name, Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } };
+            var item = LocalizedUi.With(new MenuItem { Header = TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName), Icon = new AvatarView { Assets = assets, Skin = skin, Width = 24, Height = 24 } },"Header",()=>(TextResources.Format("petWindow.buildMenu.headerSkinName",skin.DisplayName)));
             item.Click += (_, _) => owner.Run(() => owner.SelectSkinAsync(skin, CompanionSelectionOrigin.PetMenu)); items.Add(item);
         }
-        Add("设置", owner.ShowSettings); Add("使用引导", owner.ShowGuide); Add("关于与更新", owner.ShowAbout); Add("退出", () => owner.Run(owner.ExitAsync));
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeH")), owner.ShowSettings); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeI")), owner.ShowGuide); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeJ")), owner.ShowAbout); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeK")), () => owner.Run(owner.ExitAsync));
         menu.ItemsSource = items; return menu;
     }
     public void ShowPalette()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), RowDefinitions = new RowDefinitions("*,*") };
-        var choices = new (string, Action)[] { ("聊天", () => owner.ShowChat(true)), ("喂零食", () => Interact("feeding")), ("小憩", () => Interact("sleeping")), ("招牌动作", () => Interact(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
-        var window = Ui.Window("伙伴互动", grid, 290, 280); window.Topmost = true;
+        var choices = new (string, Action)[] { (TextResources.Get("petWindow.showPalette.choices"), () => owner.ShowChat(true)), (TextResources.Get("petWindow.showPalette.choices.alternativeA"), () => UserInteract("feeding")), (TextResources.Get("petWindow.showPalette.choices.alternativeB"), () => UserInteract("sleeping")), (TextResources.Get("petWindow.showPalette.choices.alternativeC"), () => UserInteract(SpriteAssets.HasExtra(owner.Skin,"special2") && random.Next(2) == 0 ? "special2" : "special")) };
+        var window = LocalizedUi.Window(()=>(TextResources.Get("petWindow.showPalette.window")), grid, 290, 280); window.Topmost = true;
         for (int i = 0; i < choices.Length; i++) { var c = choices[i]; var b = Ui.Button(c.Item1, () => { c.Item2(); window.Close(); }); b.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch; b.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch; b.Margin = new Thickness(5); Grid.SetColumn(b, i % 2); Grid.SetRow(b, i / 2); grid.Children.Add(b); }
         window.Show();
     }
-    public void Interact(string name)
+    public void UserInteract(string name)=>Interact(name,true);
+    public void Interact(string name,bool userOrigin=false)
     {
         if (name == "holiday" || name.StartsWith("holiday-", StringComparison.Ordinal)) return;
         if (owner.GuideLocked || dragging) return;
+        if (!AnimationPlayer.States.Contains(name) && !SpriteAssets.Interactions.Contains(name) && !SpriteAssets.HasExtra(owner.Skin,name)) return;
         CancelHoliday();
         DismissGreeting();
         sleep.Touch(clock.Elapsed.TotalSeconds); wanderAt = WanderSchedule.Next(clock.Elapsed.TotalSeconds, random.NextDouble()); runUntil = 0; walkTarget = null; drop.Cancel();
         if (!owner.Skin.BuiltIn && !owner.Skin.Clips.ContainsKey(name) && !SpriteAssets.HasExtra(owner.Skin,name) && !SpriteAssets.Interactions.Contains(name)) return;
         Play(name, (owner.Skin.BuiltIn || owner.Skin.Alternates.ContainsKey(name)) && random.Next(2) == 0);
+        RecordRelationshipInteraction(userOrigin,true);
     }
     private void Play(string name, bool useOriginal)
     {
-        playback.Play(name, useOriginal); PublishHolidayFrame(playback.Clip, playback.Frame, OriginalMirror());
+        relationshipActionRevision++;playback.Play(name, useOriginal); PublishHolidayFrame(playback.Clip, playback.Frame, OriginalMirror());
         sprite.InvalidateVisual();
     }
     private void Pressed(object? sender, PointerPressedEventArgs e)
@@ -173,7 +197,7 @@ internal sealed partial class PetWindow : Window
     private void Released(object? sender, PointerReleasedEventArgs e)
     {
         if (!dragging) return;
-        FinishDrag(); e.Pointer.Capture(null); e.Handled = true;
+        var clicked=!moved;FinishDrag();if(clicked)RecordRelationshipInteraction(true,true); e.Pointer.Capture(null); e.Handled = true;
     }
     private void FinishDrag()
     {
@@ -197,6 +221,7 @@ internal sealed partial class PetWindow : Window
     private void Tick()
     {
         var now = clock.Elapsed.TotalSeconds; var gap = now - lastTime; var dt = Math.Clamp(gap, 0, .125); lastTime = now;
+        if(IsPetVisible&&now>=keepsakeFrameAt){keepsakeFrameAt=now+1;sprite.InvalidateVisual();}
         var nativeWindow = NativeWindowHandle;
         var hasNativeWindow = nativeWindow != IntPtr.Zero;
         var wasInteractive = sessionInteractive;
@@ -206,15 +231,14 @@ internal sealed partial class PetWindow : Window
             sessionInteractive = MacServices.IsSessionInteractive;
             var latestLifecycle = MacServices.SessionLifecycleRevision;
             lifecycleChanged = latestLifecycle != lifecycleRevision; lifecycleRevision = latestLifecycle;
+            ObserveFeedbackSession();
         }
         if (gap > 1 || !sessionInteractive || lifecycleChanged) { CancelHoliday(); DismissGreeting(); }
         RefreshHoliday(gap > 1 || lifecycleChanged || wasInteractive != sessionInteractive);
         if (hasNativeWindow && IsVisible && now >= policyAt)
         {
             policyAt = now + 1;
-            fullscreenHidden = owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen();
-            Opacity = fullscreenHidden ? 0 : 1;
-            if (fullscreenHidden) CancelHoliday();
+            ApplyFullscreenVisibility(owner.Settings.HideOnFullscreen && MacServices.IsFrontApplicationFullscreen());
         }
         if (now >= greetingProbeAt) { greetingProbeAt = now + 1; ProbeGreeting(); }
         if (fullscreenHidden || !sessionInteractive) { if (!nativeIgnored) ConfigureNative(true); return; }
@@ -284,21 +308,33 @@ internal sealed partial class PetWindow : Window
         return new Point(point.X, point.Y);
     }
     private double greetingProbeAt;
+    private void ApplyFullscreenVisibility(bool hidden)
+    {
+        var wasHidden=fullscreenHidden;
+        if(hidden!=wasHidden)owner.Relationships.InvalidateFeedback();
+        if(hidden&&!wasHidden)DismissGreeting();
+        fullscreenHidden=hidden;Opacity=hidden?0:1;
+        if(wasHidden&&IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
+        if(fullscreenHidden)CancelHoliday();
+    }
     public void ConfigureGreetings()
     {
+        ObserveFeedbackQuiet();
         greetingSchedule = new GreetingSchedule(DateTime.UtcNow, owner.Settings.GreetingMinMinutes, owner.Settings.GreetingMaxMinutes, random.NextDouble);
         DismissGreeting();
     }
-    private bool GreetingAllowed => sessionInteractive && IsVisible && !fullscreenHidden && !Paused && !dragging && !holidayPlayback.Active && !holidayTransition.Active && action == "idle" && owner.Settings.GreetingEnabled && !owner.Settings.QuietMode && !owner.HasOpenPanel && !owner.HolidayBusinessBusy;
+    private bool GreetingAllowed => sessionInteractive && IsVisible && !fullscreenHidden && !Paused && !dragging && !holidayPlayback.Active && !holidayTransition.Active && action == "idle" && owner.Settings.GreetingEnabled && !owner.Settings.QuietMode && !owner.HasOpenPanel && !owner.HolidayBusinessBusy&&!owner.DataMaintenance.IsMaintenanceActive&&!owner.RelationshipNoticeVisible;
     private void ProbeGreeting()
     {
-        if (!GreetingAllowed) { DismissGreeting(); greetingSchedule.TryTake(DateTime.UtcNow, false); return; }
+        if (!GreetingAllowed) { DismissGreeting(false); greetingSchedule.TryTake(DateTime.UtcNow, false); return; }
         if (greetingRequest == null && greetingBubble == null && greetingSchedule.TryTake(DateTime.UtcNow, true)) owner.Run(ShowGreetingAsync);
     }
     private async Task ShowGreetingAsync()
     {
+        if(!GreetingAllowed)return;
         var cancellation = new CancellationTokenSource(); greetingRequest = cancellation;
         var id = owner.Skin.Id; var name = owner.Skin.Name;
+        var capturedSkin=owner.Skin;var relationshipId=owner.RelationshipCompanionId;var capturedPack=owner.RelationshipPack;int epoch=relationshipContentEpoch,settingsVersion=owner.Relationships.SettingsVersion;var settings=owner.Settings.Copy();
         RefreshHoliday(true);
         var holiday = owner.Holidays.CreateGreetingContext(random.NextDouble());
         var revision = owner.Holidays.Revision; var date = HolidayLocalNow().Date;
@@ -306,20 +342,22 @@ internal sealed partial class PetWindow : Window
         try
         {
             var service = new GreetingService();
+            var stage=await new RelationshipExperience(owner.Relationships).ReadAsync(relationshipId,capturedPack,TextResources.CurrentLanguage);var stageWelcome=RelationshipWelcome(stage);
             string text;
             var phrase = random.Next(GreetingPhrases.Count);
             IList<ChatMessage>? memory = null;
             try { memory = new CompanionMemory(() => owner.Session).Capture(id); }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException) { }
-            if (memory == null) text = GreetingService.Fallback(id, name, HolidayLocalNow(), phrase, recentGreetings.ToList(), holiday);
-            else text = await service.GenerateAsync(owner.Settings, id, name, memory, HolidayLocalNow(), phrase, recentGreetings.ToList(), cancellation.Token, holiday);
+            if (memory == null) text = GreetingService.Fallback(id, name, HolidayLocalNow(), phrase, recentGreetings.ToList(), holiday,stageWelcome);
+            else text = await service.GenerateAsync(settings, id, name, memory, HolidayLocalNow(), phrase, recentGreetings.ToList(), cancellation.Token, holiday,stageWelcome,stage.AiContext);
             RefreshHoliday(true);
-            if (cancellation.IsCancellationRequested || owner.Skin.Id != id || !GreetingAllowed || HolidayLocalNow().Date != date || owner.Holidays.Revision != revision || owner.Settings.AiGreetingEnabled != aiEnabled || holiday != null && !owner.Holidays.IsGreetingCurrent(holiday)) return;
+            if (cancellation.IsCancellationRequested || epoch!=relationshipContentEpoch||!ReferenceEquals(capturedSkin,owner.Skin)||relationshipId!=owner.RelationshipCompanionId||settingsVersion!=owner.Relationships.SettingsVersion||settings.SystemPrompt!=owner.Settings.SystemPrompt||!SameGreetingConnection(settings.Text,owner.Settings.Text)||owner.Skin.Id != id || !GreetingAllowed || HolidayLocalNow().Date != date || owner.Holidays.Revision != revision || owner.Settings.AiGreetingEnabled != aiEnabled || holiday != null && !owner.Holidays.IsGreetingCurrent(holiday)) return;
             recentGreetings.Add(text); if (recentGreetings.Count > 6) recentGreetings.RemoveAt(0);
-            var bubble = new Window { Width = 320, Height = 115, CanResize = false, ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = name + "的问候", Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(Ui.Text(text), Ui.Button("聊两句", () => { DismissGreeting(); owner.ShowChat(true); })) } };
+            var message=Ui.Text(text);message.Name="GreetingMessage";var bubble = LocalizedUi.With(new Window { Width = 320, Height = 115, CanResize = false, ShowActivated=false,ShowInTaskbar = false, Topmost = owner.Settings.Topmost, WindowDecorations = WindowDecorations.None, Title = TextResources.Format("petWindow.showGreetingAsync.titleName",name), Content = new Border { Padding = new Thickness(12), Background = Brushes.DimGray, Child = Ui.Column(message, LocalizedUi.Button(()=>(TextResources.Get("petWindow.showGreetingAsync.text")), () => { DismissGreeting(); owner.ShowChat(true); })) } },"Title",()=>(TextResources.Format("petWindow.showGreetingAsync.titleName",name)));
             greetingBubble = bubble;
             var area = WorkArea(); bubble.Position = new PixelPoint(Math.Clamp(Position.X - 50, area.X, Math.Max(area.X, area.Right - (int)(320 * RenderScaling))), Math.Max(area.Y, Position.Y - (int)(120 * RenderScaling)));
             bubble.Show();
+            if(bubble.IsVisible)RememberRelationshipWelcome(stage,text);
             if (holiday != null) owner.Holidays.MarkGreetingShown(holiday);
             var dismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) }; dismiss.Tick += (_, _) => { dismiss.Stop(); if (ReferenceEquals(greetingBubble, bubble)) DismissGreeting(); };
             bubble.Closed += (_, _) => dismiss.Stop(); dismiss.Start();
@@ -327,5 +365,6 @@ internal sealed partial class PetWindow : Window
         catch (OperationCanceledException) { }
         finally { if (ReferenceEquals(greetingRequest, cancellation)) greetingRequest = null; cancellation.Dispose(); }
     }
-    private void DismissGreeting() { greetingRequest?.Cancel(); var bubble = greetingBubble; greetingBubble = null; bubble?.Close(); }
+    private void DismissGreeting(bool invalidateRelationship=true) { if(invalidateRelationship)relationshipContentEpoch++;greetingRequest?.Cancel(); var bubble = greetingBubble; greetingBubble = null; bubble?.Close(); }
+    private static bool SameGreetingConnection(ConnectionSettings a,ConnectionSettings b)=>a.BaseUrl==b.BaseUrl&&a.Model==b.Model&&a.EncryptedKey==b.EncryptedKey&&a.Protocol==b.Protocol&&a.UseProxy==b.UseProxy&&a.ProxyAddress==b.ProxyAddress;
 }

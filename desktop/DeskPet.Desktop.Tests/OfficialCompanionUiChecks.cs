@@ -1,4 +1,4 @@
-using Avalonia.LogicalTree;
+﻿using Avalonia.LogicalTree;
 using Avalonia.Controls;
 using Dafeiyu;
 using DeskPet.Desktop;
@@ -368,6 +368,17 @@ internal static class OfficialCompanionUiChecks
             switchSource.Result.TrySetResult(new OfficialCompanionResult(next,false,true,true,""));
             Until(()=>owner.Skin.Folder==next.RootDirectory);
             Check(owner.Skin.Id==persona&&owner.Settings.SelectedCompanionKey==key,"silent update reloads the same role identity");
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(role=>role.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.PetMenu));
+            owner.Settings.OnboardingState="completed";owner.ShowGuide();Until(()=>owner.GuideLocked);
+            var guide=(GuideWindow)typeof(DesktopController).GetField("guide",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
+            void GuideClick(string name){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name==name).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
+            GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");GuideClick("GuideNext");switchSource.BulkResult=new TaskCompletionSource<IList<OfficialCompanionResult>>(TaskCreationOptions.RunContinuationsAsynchronously);GuideClick("GuidePreparePacks");var bulk=owner.OfficialPreparation.StartAsync();Until(()=>switchSource.BulkCalls==1);
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(role=>role.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.Onboarding));
+            Check(owner.Skin.Folder==next.RootDirectory&&guide.IsVisible&&!bulk.IsCompleted,"cached last-choice role is usable while guide-owned full metadata is pending");
+            var latest=CreatePackage(Path.Combine(directory,"bulk-updated"),"dafeiyu",fixture.Root);switchSource.InstalledValue=latest;var selectedHistory=owner.Session.History;
+            switchSource.BulkResult.SetResult(new[]{new OfficialCompanionResult(latest,false,true,true,"")});Complete(bulk);
+            Check(owner.OfficialPreparation.State==OfficialCompanionPreparationState.Completed&&owner.Skin.Folder==latest.RootDirectory&&owner.Skin.Id==persona&&owner.Settings.SelectedCompanionKey==key&&ReferenceEquals(owner.Session.History,selectedHistory),"bulk completion hotloads the cached role chosen during metadata wait without changing persona or history");guide.Close();
+
             Finish(owner);
         }
         var staleSource=new FakeSource{InstalledValue=installation};
@@ -493,13 +504,14 @@ internal static class OfficialCompanionUiChecks
     {
         internal int Calls, BulkCalls, Selections, InstalledCalls;
         internal OfficialCompanionInstallation? InstalledValue;
+        internal TaskCompletionSource<IList<OfficialCompanionResult>>? BulkResult;
         internal TaskCompletionSource<OfficialCompanionResult> Result = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public long BeginSelection() => ++Selections;
         public bool OwnsSelection(long token) => token == Selections;
         public OfficialCompanionInstallation? Installed(string id) { Interlocked.Increment(ref InstalledCalls); return InstalledValue?.Asset.Id == id ? InstalledValue : null; }
         internal IProgress<OfficialCompanionProgress>? Progress;
         public Task<OfficialCompanionResult> EnsureAsync(string id, OfficialDownloadRouting routing, OfficialCompanionCheckMode mode, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { Calls++; Progress=progress; return Result.Task; }
-        public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { BulkCalls++; return Task.FromResult<IList<OfficialCompanionResult>>(Array.Empty<OfficialCompanionResult>()); }
+        public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { BulkCalls++; return BulkResult?.Task??Task.FromResult<IList<OfficialCompanionResult>>(Array.Empty<OfficialCompanionResult>()); }
         public void Dispose() { Result.TrySetCanceled(); }
     }
     internal static int RunTiming()
@@ -515,8 +527,9 @@ internal static class OfficialCompanionUiChecks
         Check(player.Action == "jumping" && player.Frame == 4, "appearance refresh preserves elapsed hold");
         player.Advance(.05);
         Check(player.Action == "idle", "one second completes jump exactly once");
-        var visual = SpriteAssets.MatchSourceTiming(new ClipSpec("holiday", 8, 8, 8, false), clip);
-        Check(Math.Abs(visual.Frames / visual.Fps - .65) < 1e-8 && visual.HoldLastSeconds == .35, "holiday pose duration and hold remain separate");
+        var reviewed=new HolidayCatalog(Path.GetFullPath("assets/holidays")).Outfits.First(o=>o.CharacterId=="e-bao"&&o.HolidayId=="christmas");
+        var visual=SpriteAssets.OutfitClip(reviewed,reviewed.FindClip("jumping","default"));
+        Check(visual.Frames==8&&Math.Abs(visual.Frames/visual.Fps-.9)<1e-8&&visual.HoldLastSeconds==0,"holiday jump cadence stays independent of the default skin dwell");
         var alternate = new ClipSpec("alternate", 8, 8, 8, false);
         player = new InteractionPlayback((action, _) => action == "jumping" ? alternate : clip);
         player.Play("jumping", false);

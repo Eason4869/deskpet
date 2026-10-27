@@ -21,7 +21,7 @@ namespace Dafeiyu
         public AgentRunJournal(string directory,Func<IDisposable> lease=null){this.directory=Path.GetFullPath(directory);this.lease=lease;}
         string FilePath(string key){using(var hash=SHA256.Create())return Path.Combine(directory,BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(key))).Replace("-","")+".run");}
         AgentRunRecord Read(string path){using(lease==null?null:lease())return ReadCore(path);}
-        AgentRunRecord ReadCore(string path){AgentInstructions.RejectLinks(path);byte[] bytes=File.ReadAllBytes(path);if(bytes.Length>1024*1024)throw new IOException("执行记录超过容量。");var record=new JavaScriptSerializer{MaxJsonLength=1024*1024}.Deserialize<AgentRunRecord>(Encoding.UTF8.GetString(SecretProtection.Unprotect(bytes)));if(record==null||record.Version!=1||String.IsNullOrEmpty(record.ExecutionId))throw new IOException("执行记录无效，原文件已保留。");return record;}
+        AgentRunRecord ReadCore(string path){AgentInstructions.RejectLinks(path);byte[] bytes=File.ReadAllBytes(path);if(bytes.Length>1024*1024)throw new IOException(TextResources.Get("agentRunJournal.readCore.text"));var record=new JavaScriptSerializer{MaxJsonLength=1024*1024}.Deserialize<AgentRunRecord>(Encoding.UTF8.GetString(SecretProtection.Unprotect(bytes)));if(record==null||record.Version!=1||String.IsNullOrEmpty(record.ExecutionId))throw new IOException(TextResources.Get("agentRunJournal.readCore.text.alternativeA"));return record;}
         void Save(string path,AgentRunRecord record){using(lease==null?null:lease())SaveCore(path,record);}
         void SaveCore(string path,AgentRunRecord record)
         {
@@ -29,33 +29,34 @@ namespace Dafeiyu
             try{File.WriteAllBytes(temporary,SecretProtection.Protect(Encoding.UTF8.GetBytes(new JavaScriptSerializer{MaxJsonLength=1024*1024}.Serialize(record))));AtomicFile.Commit(temporary,path);}finally{if(File.Exists(temporary))File.Delete(temporary);}
         }
         public bool HasPending(string taskId)
-        {if(!Directory.Exists(directory))return false;AgentInstructions.RejectLinks(directory);var files=Directory.EnumerateFiles(directory,"*.run").Take(4097).ToArray();if(files.Length>4096)throw new IOException("执行记录超过容量，请先归档。");ReconciliationRequired=files.Select(Read).Any(r=>r.TaskId==taskId&&(r.State=="prepared"||r.State=="started"||r.State=="needs_reconciliation"));return ReconciliationRequired;}
+        {if(!Directory.Exists(directory))return false;AgentInstructions.RejectLinks(directory);var files=Directory.EnumerateFiles(directory,"*.run").Take(4097).ToArray();if(files.Length>4096)throw new IOException(TextResources.Get("agentRunJournal.hasPending.text"));ReconciliationRequired=files.Select(Read).Any(r=>r.TaskId==taskId&&(r.State=="prepared"||r.State=="started"||r.State=="needs_reconciliation"));return ReconciliationRequired;}
         public async Task<string> ExecuteAsync(AgentToolInvocation invocation,Func<Action,Task<string>> execute,Func<Dictionary<string,string>> hashes=null)
         {
             string path=FilePath(invocation.Key);if(File.Exists(path)){
-                var old=Read(path);if(old.PayloadHash!=invocation.PayloadHash)throw new InvalidOperationException("旧调用参数与执行记录不一致。");
-                if(old.State=="completed"||old.State=="failed"||old.State=="cancelled")return old.Result??"错误：该调用已经结束，不会重复执行。";
-                if(old.State=="reconciled")return "错误：该旧执行已经人工核对，不会重复执行。";
-                ReconciliationRequired=true;throw new ApiException("结果待核对：上次调用可能已经执行，请先核对本地执行记录。");
+                var old=Read(path);if(old.PayloadHash!=invocation.PayloadHash)throw new InvalidOperationException(AgentJobTools.IsJobTool(invocation.ToolName)?"job_idempotency_conflict":TextResources.Get("agentRunJournal.executeAsync.text"));
+                if(old.State=="completed"||old.State=="failed"||old.State=="cancelled")return AgentJobTools.IsJobTool(invocation.ToolName)?(old.State=="cancelled"?AgentJobTools.Error("start_failed"):AgentJobTools.Replay(old.Result)):old.Result??TextResources.Get("agentRunJournal.executeAsync.text.alternativeA");
+                if(old.State=="reconciled")return AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.Error("execution_reconciliation_required"):TextResources.Get("agentRunJournal.executeAsync.text.alternativeB");
+                if(AgentJobTools.IsJobTool(invocation.ToolName)){ReconciliationRequired=true;return AgentJobTools.Error("execution_reconciliation_required");}
+                ReconciliationRequired=true;throw new ApiException(TextResources.Get("agentRunJournal.executeAsync.text.alternativeC"));
             }
             var record=new AgentRunRecord{ExecutionId=Guid.NewGuid().ToString("N"),SessionId=invocation.SessionId,ProjectId=invocation.ProjectId,TaskId=invocation.TaskId,CallId=invocation.CallId,ToolName=invocation.ToolName,PayloadHash=invocation.PayloadHash,State="prepared",BeforeHashes=hashes==null?new Dictionary<string,string>():hashes()};
             Save(path,record);bool started=false;
             try{
                 string result=await execute(delegate{record.State="started";Save(path,record);started=true;}).ConfigureAwait(false);
-                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000)record.Result=record.Result.Substring(0,24000)+"\n[执行结果已截断，操作不会重复执行]";record.State=record.Result.StartsWith("错误：")?"failed":"completed";
+                record.AfterHashes=hashes==null?new Dictionary<string,string>():hashes();record.Result=(result??"");if(record.Result.Length>24000&&!AgentJobTools.IsJobTool(invocation.ToolName))record.Result=TextResources.Format("agentRunJournal.executeAsync.recordResultSubstring",record.Result.Substring(0,24000));record.State=(AgentJobTools.IsJobTool(invocation.ToolName)?AgentJobTools.IsFailure(record.Result):TextResources.IsToolError(record.Result))?"failed":"completed";
                 try{Save(path,record);}catch(Exception){ReconciliationRequired=started;throw;}return result;
-            }catch(OperationCanceledException){if(!started){record.State="cancelled";record.Result="错误：该调用已停止，不会自动重复执行。";Save(path,record);}else ReconciliationRequired=true;throw;}
+            }catch(OperationCanceledException){if(!started){record.State="cancelled";record.Result=TextResources.Get("agentRunJournal.executeAsync.recordResult");Save(path,record);}else ReconciliationRequired=true;throw;}
             catch(Exception){if(started)ReconciliationRequired=true;throw;}
         }
         public void Acknowledge(string taskId)
         {
-            if(!Directory.Exists(directory))return;foreach(string path in Directory.EnumerateFiles(directory,"*.run")){var record=Read(path);if(record.TaskId==taskId&&(record.State=="prepared"||record.State=="started"||record.State=="needs_reconciliation")){record.State="reconciled";record.Result="用户已人工核对旧执行，不自动重复。";Save(path,record);}}ReconciliationRequired=false;
+            if(!Directory.Exists(directory))return;foreach(string path in Directory.EnumerateFiles(directory,"*.run")){var record=Read(path);if(record.TaskId==taskId&&(record.State=="prepared"||record.State=="started"||record.State=="needs_reconciliation")){record.State="reconciled";record.Result=TextResources.Get("agentRunJournal.acknowledge.recordResult");Save(path,record);}}ReconciliationRequired=false;
         }
     }
     public sealed partial class AgentWorkspace
     {
         AgentRunJournal runJournal;
-        public bool NeedsReconciliation {get{return runJournal!=null&&runJournal.ReconciliationRequired;}}
+        public bool NeedsReconciliation {get{return runJournal!=null&&runJournal.ReconciliationRequired||jobsJournal!=null&&jobsJournal.ReconciliationRequired;}}
         Task<string> ExecuteRecordedAsync(AgentToolInvocation invocation,CancellationToken token)
         {
             bool effect=AgentToolCatalog.Definitions.Concat(dynamicTools).Any(t=>t.Name==invocation.ToolName&&!t.ReadOnly);

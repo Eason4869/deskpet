@@ -71,7 +71,7 @@ namespace Dafeiyu
         private ConversationSession conversation;
         private ConversationQueue inputQueue;private ProjectCatalog projectCatalog;private ProjectDefinition editingProject;private ProjectCatalogStore projectCatalogStore;private ConversationWorkspaceManager workspaces;private readonly HashSet<string> titleGenerationStarted=new HashSet<string>();private ConversationWorkspace quickWorkspace;internal event Action ProjectsChanged;
         private DictationSession dictation;
-        public DictationSession Dictation{get{return dictation ?? (dictation=new DictationSession(new ApiClient(),()=>new AudioRecorder(),()=>Settings));}}
+        public DictationSession Dictation{get{return dictation ?? (dictation=new DictationSession(new ApiClient(),()=>new AudioRecorder(),()=>Settings,DataMaintenance));}}
         public bool DictationActive{get{return dictation!=null && dictation.IsBusy;}}
         public ConversationQueue InputQueue
         {
@@ -98,11 +98,11 @@ namespace Dafeiyu
         public bool IsUpdating {get{return updates!=null && updates.IsApplying;}}
         IEnumerable<ConversationSession> ConversationSessions {get{if(conversation!=null)yield return conversation;if(workspaces!=null)foreach(var workspace in workspaces.AllOwnedWorkspaces){var session=workspace.Session;if(session!=null&&!Object.ReferenceEquals(session,conversation))yield return session;}}}
         public bool HasHistorySaveWarning {get{return ConversationSessions.Any(session=>(Settings.SaveChatHistory&&!String.IsNullOrEmpty(session.HistoryWarning))||!String.IsNullOrEmpty(session.AgentTaskWarning));}}
-        public string PendingSaveWarning {get{var session=ConversationSessions.FirstOrDefault(s=>!String.IsNullOrEmpty(s.AgentTaskWarning));return session!=null?session.AgentTaskWarning:"聊天记录尚未保存，请先导出或处理保存问题后再更新。";}}
+        public string PendingSaveWarning {get{var session=ConversationSessions.FirstOrDefault(s=>!String.IsNullOrEmpty(s.AgentTaskWarning));return session!=null?session.AgentTaskWarning:TextResources.Get("petWindow.pendingSaveWarning.text");}}
         public UpdateCoordinator Updates {get{return updates ?? (updates=new UpdateCoordinator(this));}}
         public bool CanApplyUpdate(bool manual)
         {
-            return !closing && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
+            return !DataMaintenance.IsMaintenanceActive && !closing && !HasActiveAgentJobs && (mcpConnections==null||!mcpConnections.Status.Any(s=>s.State=="connecting")) && !dragging && !DictationActive && (call==null || !call.IsVisible) && !LiveActive && !HasHistorySaveWarning && !HasQueuedMessages && (inputQueue==null || !inputQueue.IsRunning) && (conversation==null || !conversation.IsBusy) && (workspaces==null || !workspaces.Busy) && !sessionLocked && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) &&
                 (chat==null || (!chat.HasDraft && !chat.HasUnsavedMcpEdits && (manual || !chat.IsVisible))) && (quick==null || (!quick.HasDraft && (manual || !quick.IsVisible))) &&
                 (preferences==null || (!preferences.HasUnsavedEdits && (manual || !preferences.IsVisible))) && (guide==null || !guide.IsVisible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen();
         }
@@ -112,7 +112,7 @@ namespace Dafeiyu
             if(HasHistorySaveWarning)throw new InvalidOperationException(PendingSaveWarning);
             SavePosition();
             try{Store.Save(Settings);}
-            catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException))throw;throw new InvalidOperationException("设置尚未保存，请检查目录权限后重试更新。",error);}
+            catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException))throw;throw new InvalidOperationException(TextResources.Get("petWindow.prepareUpdateAsync.text"),error);}
         }
         private GeminiLiveSession live;
         private string liveSkinId;
@@ -126,6 +126,11 @@ namespace Dafeiyu
         public bool AutoHidden {get{return visibility.AutoHidden;}}
         private bool petDisplayed=true;
         public bool IsPetVisible {get{return IsVisible && petDisplayed;}}
+        public RelationshipRuntime Relationships {get;private set;}
+        public RelationshipService RelationshipService {get{return Relationships.Service;}}
+        public string RelationshipCompanionId {get{return RelationshipIdentity.Resolve(Store.DirectoryPath,Skin.PickerKey,Skin.IsOfficial?Skin.BuiltinCharacterId:null,Skin.Id);}}
+        public RelationshipPackContent RelationshipPack {get{return Skin.Manifest==null?null:Skin.Manifest.Relationship;}}
+        public void RecordVisit(){Relationships.EnqueueVisit(RelationshipCompanionId,true);}
         private MenuItem visibilityItem;
         private IntPtr handle;
         private bool dragging,moved,closing,walking;
@@ -161,20 +166,41 @@ namespace Dafeiyu
                 if(projectCatalog==null)
                 {
                     projectCatalogStore=new ProjectCatalogStore(Path.Combine(Store.DirectoryPath,"projects.json"));
-                    try{
-                        projectCatalog=projectCatalogStore.Load();var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
-                        if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);projectCatalog=upgraded;}
-                    }catch(Exception){projectCatalogStore.PreserveAfterReadFailure();if(projectCatalog==null)projectCatalog=new ProjectCatalog();Notice="项目记录读取或归属升级未完成，原文件与加密历史已保留；请检查本地存储后重新打开。";}
+                    try{projectCatalog=projectCatalogStore.Load();ConfigureCatalogBindingGuard();if(AgentJobs.InitializeAsync().IsCompleted&&AgentJobs.Manager!=null)CompleteProjectOwnership();}
+                    catch(Exception){projectCatalogStore.PreserveAfterReadFailure();if(projectCatalog==null)projectCatalog=new ProjectCatalog();Notice=TextResources.Get("petWindow.projects.notice");}
                 }
                 return projectCatalog;
             }
+        }
+        void CompleteProjectOwnership()
+        {
+            if(projectCatalog==null||closing)return;IDisposable admission;if(!DataMaintenance.TryEnterActivity(out admission))return;
+            using(admission){try
+            {
+                AgentJobs.EnsureWritable();
+                var upgraded=ProjectCatalogStore.UpgradeOwnership(projectCatalog,Store.DirectoryPath,Catalog.Skins.Select(s=>s.Id).Concat(Settings.PersonaOverrides.Keys).Concat(Settings.VoiceProfiles.Keys),Skin.Id);
+                if(!Object.ReferenceEquals(upgraded,projectCatalog)){projectCatalogStore.Save(upgraded);RestoreProjectCatalog(upgraded);NotifyProjectsChanged();}
+            }
+            catch(Exception){projectCatalogStore.PreserveAfterReadFailure();Notice=TextResources.Get("petWindow.projects.notice");}}
+        }
+        void ConfigureCatalogBindingGuard()
+        {
+            string baseline=ProjectCatalogStore.WorkBindingSignature(projectCatalog);
+            projectCatalogStore.BeforeSave=catalog=>
+            {
+                string path=Path.Combine(Store.DirectoryPath,"projects.json");
+                var persisted=File.Exists(path)?new ProjectCatalogStore(path).Load():new ProjectCatalog();
+                if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException(TextResources.Get("agent.jobs.ui.bindingChanged"));
+                if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)try{AgentJobs.EnsureWritable();}catch(Exception error){throw new IOException(AgentJobUiText.Error(error),error);}
+            };
+            projectCatalogStore.AfterSave=catalog=>baseline=ProjectCatalogStore.WorkBindingSignature(catalog);
         }
         public ProjectCatalogStore ProjectStore {get{if(projectCatalogStore==null){var ignored=Projects;}return projectCatalogStore;}}
         public ConversationWorkspaceManager Workspaces
         {
             get
             {
-                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;});workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
+                if(workspaces==null){workspaces=new ConversationWorkspaceManager(Store.DirectoryPath,Skin.Id,delegate{return new ApiClient();},delegate{return new SpeechOutput(new ApiClient(),Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);},delegate{return new AudioRecorder();},delegate{return Settings;},delegate{return Settings.SaveChatHistory;},DataMaintenance);workspaces.Relationships=Relationships;workspaces.RelationshipCompanion=()=>RelationshipCompanionId;workspaces.JobServices=AgentJobs;workspaces.ApprovalProvider=new AgentApprovalController(this);workspaces.QuestionProvider=QuestionController;workspaces.ImageStore=ImageStore;workspaces.ImageClient=ImageClient;workspaces.ImageTasks=ImageTasks;workspaces.ImageUsage=ImageUsage;workspaces.McpConnections=McpConnections;workspaces.StateChanged+=ConversationChanged;}
                 return workspaces;
             }
         }
@@ -185,21 +211,22 @@ namespace Dafeiyu
                 if(conversation==null)
                 {
                     var api=new ApiClient();var voice=new SpeechOutput(api,Path.Combine(Store.DirectoryPath,"audio-cache"),Dispatcher);
-                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;});conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
+                    conversation=new ConversationSession(api,voice,delegate {return new AudioRecorder();},new HistoryStore(Path.Combine(Store.DirectoryPath,"history")),delegate {return Settings.SaveChatHistory;},maintenance:DataMaintenance);conversation.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);conversation.ApprovalProvider=new AgentApprovalController(this);ConfigureImageServices(conversation);conversation.McpConnections=McpConnections;conversation.SelectPersona(Skin.Id);conversation.StateChanged+=ConversationChanged;conversation.HistoryChanged+=ConversationMemoryChanged;
                 }
                 return conversation;
             }
         }
         public bool LiveActive {get{return live!=null && live.IsActive;}}
-        public bool DialogueBusy {get{return IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy) || (workspaces!=null && workspaces.Busy);}}
+        public bool DialogueBusy {get{return DataMaintenance.IsMaintenanceActive || IsUpdating || LiveActive || (inputQueue!=null && inputQueue.IsRunning) || (conversation!=null && conversation.IsBusy) || (workspaces!=null && workspaces.Busy);}}
         public GeminiLiveSession Live
         {
             get
             {
                 if(live==null)
                 {
-                    live=new GeminiLiveSession();live.StateChanged+=delegate {if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};
-                    live.TurnCommitted+=delegate(string user,string reply,string status){string id=liveSkinId;Action commit=delegate {if(!exitPrepared)Conversation.AddLiveTurn(id,user,reply,status);};if(Dispatcher.CheckAccess())commit();else if(!Dispatcher.HasShutdownStarted)Dispatcher.Invoke(commit);};
+                    live=new GeminiLiveSession(DataMaintenance);live.StateChanged+=delegate {if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};
+                    live.RelationshipCompanion=()=>RelationshipCompanionId;
+                    live.LogicalTurnCommitted+=delegate(RelationshipLiveTurn turn){string id=liveSkinId;Action commit=delegate {if(!exitPrepared)Conversation.AddLiveTurn(id,turn.User,turn.Reply,turn.Status,turn.LogicalTurnId,turn.CompanionId,true,turn.CompletedTime);};if(Dispatcher.CheckAccess())commit();else if(!Dispatcher.HasShutdownStarted)Dispatcher.Invoke(commit);};
                 }
                 return live;
             }
@@ -210,18 +237,18 @@ namespace Dafeiyu
             if(closing || IsUpdating || ReturnToGuide())return;
             if(call!=null){call.Activate();return;}
             if(origin==null)return;
-            if(DictationActive){Notice="请先结束或取消听写，再开始通话。";return;}
-            if(DialogueBusy && !LiveActive){Notice="请先结束当前对话，再开始 Live。";return;}
+            if(DictationActive){Notice=TextResources.Get("petWindow.showLiveCall.notice");return;}
+            if(DialogueBusy && !LiveActive){Notice=TextResources.Get("petWindow.showLiveCall.notice.alternativeA");return;}
             if(origin is ChatWindow && quick!=null)quick.Hide();
             CancelInteraction();call=new LiveCallView(this,origin);call.Closed+=delegate {call=null;};call.Show();
         }
         public async Task StartLiveAsync()
-        {if(DialogueBusy)throw new InvalidOperationException("请先停止当前对话再开始 Live。");liveSkinId=Skin.Id;await Live.StartAsync(Settings,Settings.SystemPrompt.Replace("{pet_name}",Skin.Name));}
+        {if(DialogueBusy)throw new InvalidOperationException(TextResources.Get("petWindow.startLiveAsync.text"));liveSkinId=Skin.Id;string companion=RelationshipCompanionId,prompt=Settings.SystemPrompt.Replace("{pet_name}",Skin.Name);var snapshot=Settings.Copy();var context=await Task.Run(()=>Relationships.StageContext(companion));if(companion!=RelationshipCompanionId)return;await Live.StartAsync(snapshot,prompt+"\n"+context);}
         public async Task StopDialogueAsync(){if(inputQueue!=null)await inputQueue.PauseAsync();if(live!=null)await live.StopAsync();if(conversation!=null)await conversation.StopAsync();}
 
         public PetWindow(SpriteAtlas source,PetSettings settings,SettingsStore store,EventWaitHandle wakeSignal)
         {
-            atlas=source; Settings=settings; Store=store; wake=wakeSignal; Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
+            atlas=source; Settings=settings; Store=store;Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);},DataMaintenance); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
             Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;
@@ -230,20 +257,20 @@ namespace Dafeiyu
             Skin=RestoreCachedStartupCompanion(Skin);
             if(Skin.IsPlaceholder){Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;PersonaProfiles.SaveVoices(Settings);if(!String.IsNullOrWhiteSpace(Settings.SystemPrompt)&&Settings.PersonaProfileVersion>0)Settings.PersonaOverrides[Settings.SkinId]=Settings.SystemPrompt;Skin=Catalog.EmbeddedFallback();}
             try { atlas=Skin.Load(); }
-            catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice="之前的角色素材无法读取，暂时使用 E包。";}
+            catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
             interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
-            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
+            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
             ResetGreetingSchedule();
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;
             Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
             Microsoft.Win32.SystemEvents.TimeChanged+=HolidayTimeChanged;
-            Title="桌面伙伴 · "+Skin.Name;Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
+            LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.petWindow.titleSkinName",Skin.DisplayName)));Icon=Ui.ApplicationIcon(); AllowsTransparency=true; WindowStyle=WindowStyle.None;
             ResizeMode=ResizeMode.NoResize; Background=Brushes.Transparent; ShowInTaskbar=false;
             ShowActivated=false; Focusable=false; Topmost=Settings.Topmost;
             Width=192*Settings.Scale; Height=208*Settings.Scale;
             image=new HolidayPetImage { Stretch=Stretch.Fill,Cursor=Cursors.Hand };
             clickTimer=new DispatcherTimer(DispatcherPriority.Input) {Interval=TimeSpan.FromMilliseconds(Forms.SystemInformation.DoubleClickTime)};
-            clickTimer.Tick+=delegate {clickTimer.Stop();if(!closing && IsPetVisible && !Paused && !dragging && !IsUpdating){PlayInteraction(pendingHeadClick ? "petting" : "poked");NotifyGuideInteraction("click");}};
+            clickTimer.Tick+=delegate {clickTimer.Stop();if(!closing && IsPetVisible && !Paused && !dragging && !IsUpdating){PlayUserInteraction(pendingHeadClick ? "petting" : "poked");NotifyGuideInteraction("click");}};
             RenderOptions.SetBitmapScalingMode(image,BitmapScalingMode.HighQuality); Content=image;
             image.MouseLeftButtonDown+=BeginDrag; image.MouseMove+=Drag; image.MouseLeftButtonUp+=EndDrag;
             image.PreviewMouseDown+=delegate(object sender,MouseButtonEventArgs args){if(args.ChangedButton==MouseButton.Middle){args.Handled=true;if(!dragging)ShowActionPalette();}};
@@ -277,19 +304,19 @@ namespace Dafeiyu
             };
             using(Stream stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Icon")) trayIcon=(System.Drawing.Icon)new System.Drawing.Icon(stream).Clone();
             trayMenu=new TrayContextMenu();
-            visibilityItem=new MenuItem{Header="显示 / 隐藏伙伴",Name="TrayVisibility",Icon=UiIcons.Image("pet-visible",Ui.Muted),IsCheckable=true,IsChecked=true};visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
-            quietItem=new MenuItem{Header="免打扰",Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode};quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
-            clickThroughItem=new MenuItem{Header="鼠标穿透",Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough};clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
+            visibilityItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header"),Name="TrayVisibility",Icon=UiIcons.Image("pet-visible",Ui.Muted),IsCheckable=true,IsChecked=true},"Header",()=>(TextResources.Get("petWindow.petWindow.header")));visibilityItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {if(visibility.UserVisible)HidePet();else RestorePet();}));};trayMenu.Items.Add(visibilityItem);
+            quietItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeA"),Name="TrayQuietMode",Icon=UiIcons.Image("quiet",Ui.Muted),IsCheckable=true,IsChecked=Settings.QuietMode},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeA")));quietItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetQuietMode(!Settings.QuietMode);}));};trayMenu.Items.Add(quietItem);
+            clickThroughItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeB"),Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeB")));clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
             trayMenu.Opening+=delegate {visibilityItem.IsChecked=visibility.UserVisible;quietItem.IsChecked=Settings.QuietMode;clickThroughItem.IsChecked=Settings.ClickThrough;};
-            AddTray("快速对话",ShowQuickChat,"TrayQuickChat","chat");AddTray("打开完整对话",ShowChat,"TrayFullChat","full-view");AddTray("设置",ShowSettings,"TraySettings","settings");
-            AddTray("回到屏幕角落",ReturnHome,"TrayReturnHome","back");
-            trayMenu.Items.Add(new Separator());AddTray("退出桌宠",Close,"TrayExit","close");
-            tray=new Forms.NotifyIcon { Icon=trayIcon,Text="桌面伙伴 · "+Skin.Name,Visible=true };tray.BalloonTipClicked+=OpenImageTaskNotification;
+            AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray")),ShowQuickChat,"TrayQuickChat","chat");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeA")),ShowChat,"TrayFullChat","full-view");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeB")),ShowSettings,"TraySettings","settings");
+            AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeC")),ReturnHome,"TrayReturnHome","back");
+            trayMenu.Items.Add(new Separator());AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeD")),Close,"TrayExit","close");
+            tray=LocalizedUi.With(new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true },"Text",()=>(TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName)));tray.BalloonTipClicked+=OpenImageTaskNotification;
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
-            InitializeHoliday();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
-            IsVisibleChanged+=delegate { RefreshRendering(); };
+            InitializeRelationshipFeedback();InitializeHoliday();InitializeHolidayKeepsakes();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
+            IsVisibleChanged+=delegate { Relationships.InvalidateFeedback();RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
         }
         private void RefreshRendering()
         {
@@ -297,8 +324,8 @@ namespace Dafeiyu
             if(IsPetVisible && !closing) { previousTick=watch.Elapsed.TotalSeconds;nextRender=previousTick;CompositionTarget.Rendering+=RenderFrame; }
             else CancelInteraction();
         }
-        private void AddTray(string text,Action action,string name,string icon)
-        {var item=new MenuItem{Header=text,Name=name,Icon=UiIcons.Image(icon,Ui.Muted)};item.Click+=delegate {Dispatcher.BeginInvoke(action);};trayMenu.Items.Add(item);}
+        private void AddTray(System.Func<string> text,Action action,string name,string icon)
+        {var item=LocalizedUi.With(new MenuItem{Header=text(),Name=name,Icon=UiIcons.Image(icon,Ui.Muted)},"Header",()=> (text()));item.Click+=delegate {Dispatcher.BeginInvoke(action);};trayMenu.Items.Add(item);}
         internal void ShowTrayMenu(){if(!closing&&trayMenu.Enabled)trayMenu.ShowMenu();}
         internal void HandleTrayDoubleClick()
         {Dispatcher.BeginInvoke(new Action(delegate{if(closing||IsUpdating||!trayMenu.Enabled||ReturnToGuide())return;RestorePet();ShowChat();}));}
@@ -310,33 +337,33 @@ namespace Dafeiyu
             // and WPF drops mouse capture. Keep the existing foreground owner;
             // normal popup capture still dismisses the menu on an outside click.
             menu.StaysOpen=false;menu.Opened+=delegate {Dispatcher.BeginInvoke(DispatcherPriority.Input,new Action(delegate {if(menu.IsOpen && !GuideActive && !DesktopInterop.ForegroundBelongsToPet())DesktopInterop.ForegroundMenu(menu);}));};
-            AddMenu(menu,"快速对话…",ShowQuickChat);AddMenu(menu,"打开完整对话…",ShowChat); var appearance=new MenuItem{Header="外观",Name="QuickAppearanceMenu"};menu.Items.Add(appearance);
+            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"},"Header",()=>(TextResources.Get("petWindow.createMenu.header")));menu.Items.Add(appearance);
             menu.Opened+=delegate{RefreshAppearanceMenu(appearance);};RefreshAppearanceMenu(appearance);
-            AddMenu(menu,"设置",ShowSettings); menu.Items.Add(new Separator());
-            var actions=new MenuItem { Header="做个动作" };
+            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings); menu.Items.Add(new Separator());
+            var actions=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeA") },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeA")));
             for(int i=0;i<AnimationPlayer.States.Length;i++)
             {
-                string state=AnimationPlayer.States[i]; var item=new MenuItem { Header=AnimationPlayer.Labels[i] };
-                item.Click+=delegate { PlayAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
+                int labelIndex=i;string state=AnimationPlayer.States[i]; var item=LocalizedUi.With(new MenuItem { Header=AnimationPlayer.Labels[i] },"Header",()=>AnimationPlayer.Labels[labelIndex]);
+                item.Click+=delegate { PlayUserAction(state,state=="jumping" ? .7 : 2); }; actions.Items.Add(item);
             }
             menu.Items.Add(actions);
-            var interactions=new MenuItem {Header="互动"};
-            AddInteractionMenu(interactions,"摸摸头","petting");AddInteractionMenu(interactions,"戳一戳","poked");AddInteractionMenu(interactions,"喂零食","feeding");
-            var sleep=new MenuItem {Header="小憩"};sleep.Click+=delegate {PlayInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
-            var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayInteraction("special");};interactions.Items.Add(firstSkill);
-            var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
+            var interactions=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeB")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeB")));
+            AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu"),"petting");AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeA"),"poked");AddInteractionMenu(interactions,()=>TextResources.Get("petWindow.createMenu.addInteractionMenu.alternativeB"),"feeding");
+            var sleep=LocalizedUi.With(new MenuItem {Header=TextResources.Get("petWindow.createMenu.header.alternativeC")},"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeC")));sleep.Click+=delegate {PlayUserInteraction(interaction.IsSleeping ? "wake" : "sleeping");};interactions.Items.Add(sleep);
+            var firstSkill=new MenuItem{Header=Skin.SpecialAction};firstSkill.Click+=delegate{PlayUserInteraction("special");};interactions.Items.Add(firstSkill);
+            var extraSkill=new MenuItem();extraSkill.Click+=delegate{PlayUserInteraction("special2");};interactions.Items.Add(extraSkill);menu.Items.Add(interactions);
             menu.Opened+=delegate{RecordPetInteraction();firstSkill.Header=Skin.SpecialAction;extraSkill.Header=AdditionalInteractions.SpecialName(Skin);extraSkill.Visibility=AdditionalInteractions.Has(Skin,"special2")?Visibility.Visible:Visibility.Collapsed;};
-            menu.Opened+=delegate {CancelPendingClick();sleep.Header=interaction.IsSleeping ? "叫醒" : "小憩";interactions.IsEnabled=!IsUpdating;};
-            var pause=new MenuItem { Header="暂停动画",IsCheckable=true };
+            menu.Opened+=delegate {CancelPendingClick();LocalizedUi.Set(sleep,"Header",()=>(interaction.IsSleeping ? TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping") : TextResources.Get("petWindow.createMenu.headerInteractionIsSleeping.alternativeA")));interactions.IsEnabled=!IsUpdating;};
+            var pause=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeD"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeD")));
             pause.Click+=delegate { SetPaused(pause.IsChecked); }; menu.Items.Add(pause);
-            var follow=new MenuItem { Header="视线跟随鼠标",IsCheckable=true };
+            var follow=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeE"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeE")));
             follow.Click+=delegate { Settings.FollowCursor=follow.IsChecked; ApplySettings(); }; menu.Items.Add(follow);
-            var wander=new MenuItem { Header="偶尔散步",IsCheckable=true };
+            var wander=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeF"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeF")));
             wander.Click+=delegate { Settings.Wander=wander.IsChecked; ApplySettings(); }; menu.Items.Add(wander);
-            var top=new MenuItem { Header="保持置顶",IsCheckable=true };
+            var top=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeG"),IsCheckable=true },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeG")));
             top.Click+=delegate { Settings.Topmost=top.IsChecked; ApplySettings(); }; menu.Items.Add(top);
             menu.Opened+=delegate { pause.IsChecked=Paused; follow.IsChecked=Settings.FollowCursor; wander.IsChecked=Settings.Wander; top.IsChecked=Settings.Topmost; };
-            menu.Items.Add(new Separator()); AddMenu(menu,"回到屏幕角落",ReturnHome); AddMenu(menu,"隐藏到托盘",HidePet); AddMenu(menu,"退出桌宠",Close);
+            menu.Items.Add(new Separator()); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeC"),ReturnHome); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeD"),HidePet); AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeE"),Close);
             return menu;
         }
         private void RefreshAppearanceMenu(MenuItem menu)
@@ -345,17 +372,18 @@ namespace Dafeiyu
             foreach(var skin in Catalog.Skins)
             {
                 SkinDefinition selected=skin;
-                var item=new MenuItem{Header=skin.Name,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey};
+                var item=LocalizedUi.With(new MenuItem{Header=skin.DisplayName,IsCheckable=true,IsChecked=skin.PickerKey==Skin.PickerKey,IsEnabled=!DialogueBusy && (preferences==null || !preferences.HasUnsavedEdits),Tag=skin.PickerKey},"Header",()=>(skin.DisplayName));
                 item.Icon=new Image{Source=SkinCatalog.GetAvatar(skin),Width=28,Height=28,Stretch=Stretch.Uniform,Clip=new RectangleGeometry(new Rect(0,0,28,28),5.6,5.6)};
                 item.Click+=async delegate{await RequestSkinAsync(selected,CompanionSelectionOrigin.PassiveMenu,null);foreach(MenuItem entry in menu.Items)entry.IsChecked=(string)entry.Tag==Skin.PickerKey;};menu.Items.Add(item);
             }
         }
-        private static void AddMenu(ContextMenu menu,string text,Action action)
-        { var item=new MenuItem { Header=text }; item.Click+=delegate { action(); }; menu.Items.Add(item); }
-        private void AddInteractionMenu(MenuItem menu,string text,string action)
-        {var item=new MenuItem {Header=text};item.Click+=delegate {PlayInteraction(action);};menu.Items.Add(item);}
+        private static void AddMenu(ContextMenu menu,Func<string> text,Action action)
+        { var item=LocalizedUi.With(new MenuItem { Header=text() },"Header",text); item.Click+=delegate { action(); }; menu.Items.Add(item); }
+        private void AddInteractionMenu(MenuItem menu,Func<string> text,string action)
+        {var item=LocalizedUi.With(new MenuItem {Header=text()},"Header",text);item.Click+=delegate {PlayUserInteraction(action);};menu.Items.Add(item);}
         private void Tick(object sender,EventArgs args)
         {
+            ProbeKeepsakeFrame();
             if(closing) return;
             TryStartOfficialStartup();TryApplyDeferredOfficial();
             if(wake!=null && wake.WaitOne(0)) { RestorePet(); ShowSettings(); }
@@ -389,7 +417,7 @@ namespace Dafeiyu
         }
         private bool GreetingAllowed(bool fullscreen,bool preview)
         {
-            return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
+            return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && (preview || !RelationshipNoticeVisible) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
                 (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
                 !WindowInUse(quick) && (!WindowInUse(chat) || (preview && preferences!=null && Object.ReferenceEquals(preferences.HostWindow,chat))) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
         }
@@ -420,9 +448,9 @@ namespace Dafeiyu
             }
             bool interacting=interaction.Active;
             // New eight-pose actions must show every pose even if a UI frame is late.
-            interaction.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta);
+            interaction.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(interaction.Name,originalInteraction,AdditionalInteractions.Has(Skin,interaction.Name)?Math.Min(delta,.125):delta));
             if(interacting && !interaction.Active){fallbackInteraction="";Animation.Play("idle",0);ConversationChanged();nextWalk=WanderSchedule.Next(now,random.NextDouble());}
-            Animation.Advance(beforeHover!=interactionRevision?0:AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta); UpdateFrame(delta);
+            Animation.Advance(beforeHover!=interactionRevision?0:HolidayActionDelta(Animation.State,originalAction,AdditionalInteractions.Has(Skin,Animation.State)?Math.Min(delta,.125):delta)); UpdateFrame(delta);
         }
         internal void UpdateHover(Point cursor)
         {
@@ -499,9 +527,9 @@ namespace Dafeiyu
                 row=9+direction/columns; col=direction%columns;
             }
             else gazeActive=false;
-            // Built-in companions use the original v0.5.2 atlases and cadence.
-            // Imported illustrated packs retain their own manifest frame timing.
-            if(Skin.Illustrated && row<9) {
+            // Quiet sidecars follow the gaze decision above and are already aligned.
+            // Other built-in actions retain their legacy atlas offsets and cadence.
+            if(row<9 && (Skin.Illustrated || !supplemental && row==0 && AdditionalInteractions.Quiet(Skin,"idle",true)!=null)) {
                 if(motion==null || !ReferenceEquals(motionSkin,Skin)){motion=new SmoothMotion(Skin);motionSkin=Skin;}
                 var clip=motion.Get(supplemental?11+row:row);
                 if(clip!=null) {
@@ -572,7 +600,7 @@ namespace Dafeiyu
         }
         private IntPtr WindowMessage(IntPtr hwnd,int message,IntPtr wParam,IntPtr lParam,ref bool handled)
         {
-            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
+            if(message==0x312 && hotkeys!=null){string action=hotkeys.ActionForId(wParam.ToInt32());if(action!=null){handled=true;Dispatcher.BeginInvoke(new Action(delegate {if(closing || IsUpdating || hotkeyCaptureDepth>0 || ReturnToGuide())return;if(action=="quick")ShowQuickChat();else if(action=="hide"){if(visibility.UserVisible)HidePet();else RestorePet();}else if(action=="quiet")SetQuietMode(!Settings.QuietMode);else if(action=="passthrough")SetClickThrough(!Settings.ClickThrough);}));return IntPtr.Zero;}}
             if(message==0x21) { handled=true; return new IntPtr(3); }
             if(message==0x84 && !dragging)
             {
@@ -588,6 +616,10 @@ namespace Dafeiyu
             if(message==0x7e || message==0x2e0) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate { if(!closing) DesktopInterop.ClampWindow(handle); }));
             return IntPtr.Zero;
         }
+        public void PlayUserAction(string state,double duration)
+        {if(closing || IsUpdating || !AnimationPlayer.States.Contains(state))return;PlayAction(state,duration);RecordRelationshipInteraction(true);}
+        public void PlayUserInteraction(string name)
+        {if(closing || IsUpdating || name=="special2"&&!AdditionalInteractions.Has(Skin,name))return;bool waking=name=="wake"&&interaction.IsSleeping;PlayInteraction(name);RecordRelationshipInteraction(interaction.Active || waking);}
         public void PlayAction(string state,double duration)
         { if(closing || IsUpdating)return;RecordPetInteraction();CancelInteraction();originalAction=AdditionalInteractions.HasOriginal(Skin,state) && random.Next(2)==0;manualActionUntil=watch.Elapsed.TotalSeconds+Math.Max(3,duration);interactionRevision++;walking=false; Paused=false;nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble()); Animation.Play(state,duration);StartManualRun(state,duration);previousTick=watch.Elapsed.TotalSeconds; UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void PlayInteraction(string name)
@@ -605,7 +637,7 @@ namespace Dafeiyu
             var extra=additionalInteractions.Get(Skin,action+(isInteraction && interaction.Name==action && originalInteraction?"-original":""));
             if(extra!=null)return extra.Frame(3);
             int motionRow=Array.IndexOf(isInteraction?new[]{"lifted","landing","petting","poked","feeding","happy","sleeping","special"}:AnimationPlayer.States,action);
-            if(motionRow>=0 && Skin.Illustrated) {
+            if(motionRow>=0 && (Skin.Illustrated || !isInteraction && action=="idle" && AdditionalInteractions.Quiet(Skin,action,true)!=null)) {
                 if(motion==null || !ReferenceEquals(motionSkin,Skin)){motion=new SmoothMotion(Skin);motionSkin=Skin;}
                 var clip=motion.Get(isInteraction?11+motionRow:motionRow);
                 if(clip!=null)return clip.Frame(clip.Count/2);
@@ -634,7 +666,7 @@ namespace Dafeiyu
         {
             interactionRevision++;
             originalInteraction=AdditionalInteractions.HasOriginal(Skin,name) && (originalStyle??random.Next(2)==0);
-            interaction.Configure(Skin,originalInteraction);
+            interaction.ConfigureClips(Skin,originalInteraction,action=>ResolveHolidayClip(action,originalInteraction));
             CancelPendingClick();DismissGreeting();walking=false;Paused=false;fallbackInteraction="";
             Animation.Play("idle",0);interaction.Start(name);nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());UpdateFrame();
             if(AdditionalInteractions.Has(Skin,name))previousTick=watch.Elapsed.TotalSeconds;
@@ -653,40 +685,54 @@ namespace Dafeiyu
         public void SetPaused(bool value)
         { if(Paused!=value){RecordPetInteraction();DismissGreeting(true);}if(value)CancelInteraction();Paused=value; if(value && walking) { walking=false; Animation.Play("idle",0); SavePosition(); }UpdateFrame(); if(preferences!=null) preferences.RefreshState(); }
         public void ApplySettings()
+        {ApplySettingsCore(true);}
+        internal string ApplyRestoredPreferences()
+        {
+            Relationships.InvalidateFeedback();
+            ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
+            if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
+            if(clickThroughItem!=null)clickThroughItem.IsChecked=Settings.ClickThrough;
+            string warning="";
+            if(hotkeys!=null){hotkeys.Dispose();hotkeys=new HotkeyRegistry(handle);foreach(var pair in Settings.Hotkeys.Where(p=>ShortcutCatalog.All.Any(d=>d.Global&&d.Id==p.Key))){string error;if(!hotkeys.TryBind(pair.Key,pair.Value,out error))warning=error;}}
+            HotkeyWarning=warning;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;UpdateVoiceVolume(Settings.Volume);
+            ApplySettingsCore(false);if(chat!=null)chat.RefreshAppearance();return warning;
+        }
+        void ApplySettingsCore(bool persist)
         {
             CancelHolidayEffects();
             StopManualRun();
             RecordPetInteraction();
-            Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
+            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
             Width=192*Settings.Scale; Height=208*Settings.Scale; Topmost=Settings.Topmost;
             if(!Settings.Wander && walking) { walking=false; Animation.Play("idle",0); }
             if(handle!=IntPtr.Zero) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate
             {
                 if(closing) return; Rect after=DesktopInterop.Bounds(handle);
-                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); SavePosition();
+                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); if(persist)SavePosition();
             }));
-            UpdateFrame(); SaveSettings(); if(preferences!=null) preferences.RefreshState();
+            UpdateFrame(); if(persist)SaveSettings(); if(preferences!=null) preferences.RefreshState();
         }
         private bool ActivateSkin(SkinDefinition skin)
         {
             RecordPetInteraction();
             if(Object.ReferenceEquals(skin,Skin))return true;
-            if(preferences!=null && preferences.HasUnsavedEdits){Notice="请先保存当前设置，再切换伙伴。";preferences.ShowNotice(Notice);return false;}
-            if(DialogueBusy || DictationActive){Notice="请先停止对话、听写或结束 Live，再切换伙伴。";return false;}
+            if(preferences!=null && preferences.HasUnsavedEdits){Notice=TextResources.Get("petWindow.activateSkin.notice");preferences.ShowNotice(Notice);return false;}
+            if(DialogueBusy || DictationActive){Notice=TextResources.Get("petWindow.activateSkin.notice.alternativeA");return false;}
             try
             {
+                using(DataMaintenance.EnterActivity()){
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
-                if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
+                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
-                motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();
-                Title="桌面伙伴 · "+skin.Name; tray.Text=Title;
+                motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
+                LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName))); tray.Text=Title;
                 if(quick!=null){var wasVisible=quick.IsVisible;quick.Close();if(wasVisible)ShowQuickChat();}
-                if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;
+                if(chat!=null&&chat.IsPersonalConversation){Settings.AgentEnabled=false;var personal=Projects.QuickConversations.Concat(Projects.UnassignedConversations.Where(c=>c.Mode=="chat")).Where(c=>!c.Archived&&c.PetId==skin.Id).OrderByDescending(c=>c.LastOpenedUtcTicks).FirstOrDefault();if(personal==null)BeginDraftConversation(null);else OpenProjectConversation(Projects.QuickConversations.Contains(personal)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings),personal);}else if(chat!=null)chat.ReloadHistory();RefreshChatAppearance(); SaveSettings();if(preferences!=null)preferences.RefreshState(); return true;}
             }
             catch(Exception e)
             {
                 if(!(e is IOException || e is UnauthorizedAccessException || e is InvalidOperationException || e is NotSupportedException || e is System.IO.FileFormatException)) throw;
-                Notice="外观无法载入，请检查 PNG 精灵图。"; return false;
+                Notice=TextResources.Get("petWindow.activateSkin.notice.alternativeB"); return false;
             }
         }
         public void ShowSettings()
@@ -718,8 +764,15 @@ namespace Dafeiyu
         public void EditProject(ProjectDefinition project)
         {
             if(project==null)return;var dialog=new NewProjectDialog(project);bool accepted=dialog.ShowDialog()==true;if(dialog.RemoveRequested){DeleteProject(project);return;}if(dialog.WorkSettingsRequested){if(preferences!=null&&!preferences.CanChangeWorkSettingsProject(project)){ShowSettings();preferences.SelectWorkSettings();return;}editingProject=project;ShowWorkSettingsCore();return;}if(!accepted)return;
-            if(Workspaces.OpenWorkspaces.Any(w=>w.ProjectId==project.Id&&(w.Session.IsBusy||w.Queue.HasPending))){MessageBox.Show("请先结束项目中正在运行或排队的任务，再编辑项目。","项目正在使用");return;}
-            string name=project.Name,path=project.Workspace;try{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
+            if(Workspaces.OpenWorkspaces.Any(w=>w.ProjectId==project.Id&&(w.Session.IsBusy||w.Queue.HasPending))){MessageBox.Show(TextResources.Get("petWindow.editProject.messageBoxShow"),TextResources.Get("petWindow.editProject.messageBoxShow.alternativeA"));return;}
+            string name=project.Name,path=project.Workspace;
+            try
+            {
+                if(!TryChangeWorkBindings(new[]{project.Id},null,delegate{project.Name=dialog.ProjectName;project.Workspace=dialog.Workspace;ProjectStore.Save(Projects);}))
+                {Notice=TextResources.Get("petWindow.moveConversation.notice");return;}
+            }
+            catch(Exception error){project.Name=name;project.Workspace=path;ShowProjectSaveError(error);return;}
+            foreach(var workspace in Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspace.FollowProject(project);NotifyProjectsChanged();RefreshChatAppearance();
         }
         public void ArchiveProject(ProjectDefinition project)
         {
@@ -737,23 +790,47 @@ namespace Dafeiyu
         {
             if(project==null || conversation==null)return;conversation.Archived=false;SaveProjectsAfterChange(null);if(chat!=null)chat.RefreshAppearance();
         }
-        public void DeleteProject(ProjectDefinition project)
+        public async void DeleteProject(ProjectDefinition project)
         {
-            if(project==null || MessageBox.Show("确定永久删除项目“"+project.Name+"”吗？\n只会删除 DeskPet 的项目记录和任务缓存，不会删除工作目录中的源文件。","永久删除项目",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
-            bool wasCurrent=chat!=null && project.Conversations.Any(c=>c.Id==chat.ConversationId);CloseProjectWorkspaces(project.Id);Projects.Projects.Remove(project);if(editingProject!=null && editingProject.Id==project.Id)editingProject=null;SaveProjectsAfterChange(project.Id);DeleteProjectData(project);if(wasCurrent)SwitchToAvailableConversation(null);
+            if(project==null || MessageBox.Show(TextResources.Format("petWindow.deleteProject.messageBoxShow",project.Name),TextResources.Get("petWindow.deleteProject.messageBoxShow.alternativeA"),MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+            try{await DeleteProjectAsync(project);}catch(Exception error){ShowProjectSaveError(error);}
+        }
+        internal Task DeleteProjectAsync(ProjectDefinition project)
+        {
+            if(project==null)return Task.FromResult(0);
+            return ChangeWorkBindingsAsync(new[]{project.Id},null,async delegate
+            {
+                if(!Projects.Projects.Contains(project))return;
+                bool wasCurrent=chat!=null&&project.Conversations.Any(c=>c.Id==chat.ConversationId);
+                foreach(var workspace in Workspaces.AllOwnedWorkspaces.Where(w=>w.ProjectId==project.Id).ToArray())await Workspaces.CloseWorkspaceAsync(workspace.Id);
+                int index=Projects.Projects.IndexOf(project);string active=Projects.ActiveProjectId;Projects.Projects.RemoveAt(index);
+                if(active==project.Id){var next=Projects.Projects.FirstOrDefault(p=>!p.Archived);Projects.ActiveProjectId=next==null?"":next.Id;}
+                try{ProjectStore.Save(Projects);}catch{Projects.Projects.Insert(index,project);Projects.ActiveProjectId=active;throw;}
+                if(editingProject!=null&&editingProject.Id==project.Id)editingProject=null;
+                await Task.Run(()=>DeleteProjectData(project));if(wasCurrent)SwitchToAvailableConversation(null);NotifyProjectsChanged();
+            });
         }
         public async void DeleteConversation(ProjectDefinition project,ConversationDefinition conversation)
         {
-            if(project==null || conversation==null)return;
+            if(project==null||conversation==null)return;
             var dialog=new DeleteConversationDialog(conversation.Name);if(dialog.ShowDialog()!=true)return;
-            int index=project.Conversations.IndexOf(conversation);if(index<0)return;
-            bool wasCurrent=chat!=null && chat.ConversationId==conversation.Id;project.Conversations.RemoveAt(index);
-            try{ProjectStore.Save(Projects);}catch(Exception error){project.Conversations.Insert(index,conversation);new DeleteConversationDialog(conversation.Name,"聊天记录尚未删除，请检查本地存储权限或空间。\n"+error.Message).ShowDialog();return;}
-            if(wasCurrent)SwitchToAvailableConversation(null);
-            try{await Workspaces.CloseWorkspaceAsync(conversation.Id);}
-            catch(Exception error){project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);try{ProjectStore.Save(Projects);}catch(Exception){}new DeleteConversationDialog(conversation.Name,"聊天记录未能关闭，原文件已保留。\n"+error.Message).ShowDialog();return;}
-            if(quickWorkspace!=null && quickWorkspace.Id==conversation.Id && quick!=null)quick.Close();
-            DeleteConversationData(project.Id,conversation.Id);NotifyProjectsChanged();
+            try{await DeleteConversationAsync(project,conversation);}
+            catch(Exception error){new DeleteConversationDialog(conversation.Name,TextResources.Format("petWindow.deleteConversation.deleteConversationDialog",AgentJobUiText.Error(error))).ShowDialog();}
+        }
+        internal Task DeleteConversationAsync(ProjectDefinition project,ConversationDefinition conversation)
+        {
+            if(project==null||conversation==null)return Task.FromResult(0);
+            return ChangeWorkBindingsAsync(new[]{project.Id},conversation.Id,async delegate
+            {
+                int index=project.Conversations.IndexOf(conversation);if(index<0)return;
+                bool wasCurrent=chat!=null&&chat.ConversationId==conversation.Id;
+                try{await Workspaces.CloseWorkspaceAsync(conversation.Id);}catch(Exception error){throw new IOException(TextResources.Format("petWindow.deleteConversation.deleteConversationDialog.alternativeA",error.Message),error);}
+                project.Conversations.RemoveAt(index);
+                try{ProjectStore.Save(Projects);}catch{project.Conversations.Insert(Math.Min(index,project.Conversations.Count),conversation);throw;}
+                if(quickWorkspace!=null&&quickWorkspace.Id==conversation.Id&&quick!=null)quick.Close();
+                await Task.Run(()=>DeleteConversationData(project.Id,conversation.Id));
+                if(wasCurrent)SwitchToAvailableConversation(null);NotifyProjectsChanged();
+            });
         }
         void SaveProjectsAfterChange(string removedProjectId)
         {
@@ -786,7 +863,7 @@ namespace Dafeiyu
             if(chat==null)return;var project=Projects.Projects.FirstOrDefault(p=>!p.Archived && p.Conversations.Any(c=>!c.Archived));if(project!=null){var conversation=project.Conversations.FirstOrDefault(c=>!c.Archived);if(conversation!=null){OpenProjectConversation(project,conversation);return;}}if(chat!=null)BeginDraftConversation(null);
         }        public void RenameProject(ProjectDefinition project)
         {
-            if(project==null)return;var dialog=new ConversationRenameDialog(project.Name,"重命名项目","项目名称");if(dialog.ShowDialog()!=true)return;var name=dialog.ConversationName;if(name.Length<1 || name.Length>80)return;project.Name=name;try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);return;}if(chat!=null)chat.RefreshAppearance();
+            if(project==null)return;var dialog=new ConversationRenameDialog(project.Name,TextResources.Get("petWindow.renameProject.dialogConversationRenameDialog"),TextResources.Get("petWindow.renameProject.dialogConversationRenameDialog.alternativeA"));if(dialog.ShowDialog()!=true)return;var name=dialog.ConversationName;if(name.Length<1 || name.Length>80)return;project.Name=name;try{ProjectStore.Save(Projects);}catch(Exception error){ShowProjectSaveError(error);return;}if(chat!=null)chat.RefreshAppearance();
         }
         public void RenameConversation(ProjectDefinition project,ConversationDefinition conversation)
         {
@@ -809,7 +886,7 @@ namespace Dafeiyu
                     conversation=current??conversation;QueueConversationTitle(project,conversation,observedSession);
                     bool busy=observedSession.IsBusy||observedQueue.IsRunning;string status=busy?"running":"idle";var reply=observedSession.History.Messages.LastOrDefault(m=>m.Role=="assistant"&&m.Status=="complete");bool changed=conversation.Status!=status;conversation.Status=status;
                     if(wasBusy&&!busy&&reply!=null&&reply.Id!=lastComplete){lastComplete=reply.Id;conversation.HasUnreadCompletion=!IsConversationVisible(conversation.Id);changed=true;}wasBusy=busy;
-                    if(changed){try{ProjectStore.Save(Projects);}catch(Exception){Notice="项目状态尚未保存，请检查本地存储。";}NotifyProjectsChanged();}
+                    if(changed){try{ProjectStore.Save(Projects);}catch(Exception){Notice=TextResources.Get("petWindow.watchConversationTitle.notice");}NotifyProjectsChanged();}
                 };
                 if(Dispatcher.CheckAccess())update();else Dispatcher.BeginInvoke(update);
             };
@@ -822,7 +899,7 @@ namespace Dafeiyu
             titleGenerationStarted.Add(conversation.Id);var snapshot=Settings.Copy();try
             {
                 string title=await observedSession.GenerateTitleAsync(snapshot,CancellationToken.None).ConfigureAwait(false);if(String.IsNullOrWhiteSpace(title))return;
-                Dispatcher.Invoke(new Action(delegate{var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==conversation.Id);if(current==null || current.NameEdited)return;current.Name=title;current.NameEdited=false;try{ProjectStore.Save(Projects);}catch(Exception){Notice="对话标题尚未保存，请检查本地存储。";}if(chat!=null)chat.RefreshAppearance();}));
+                Dispatcher.Invoke(new Action(delegate{var current=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==conversation.Id);if(current==null || current.NameEdited)return;current.Name=title;current.NameEdited=false;try{ProjectStore.Save(Projects);}catch(Exception){Notice=TextResources.Get("petWindow.queueConversationTitle.notice");}if(chat!=null)chat.RefreshAppearance();}));
             }
             catch(Exception){titleGenerationStarted.Remove(conversation.Id);}
         }
@@ -832,8 +909,12 @@ namespace Dafeiyu
         {
             if(closing || IsUpdating)return;
             if(guide!=null && guide.IsVisible){guide.Activate();return;}
-            if(DialogueBusy || DictationActive || LiveActive){ShowSettings();preferences.ShowNotice("请先结束当前对话、听写或通话，再打开配置引导。");return;}
-            ShowSettings();guide=new OnboardingWindow(this,preferences);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
+            if(DialogueBusy || DictationActive || LiveActive){ShowSettings();preferences.ShowNotice(TextResources.Get("petWindow.showOnboarding.preferencesShowNotice"));return;}
+            bool hadMain=chat!=null&&chat.IsVisible&&chat.WindowState!=WindowState.Minimized;
+            RecordPetInteraction();DismissGreeting();var window=EnsureAppWindow();
+            if(preferences==null){preferences=new SettingsPage(this);preferences.GuideRequested+=ShowOnboarding;}
+            preferences.RefreshState();window.ShowSettingsPage(preferences);if(hadMain)ShowAppWindow(window);
+            guide=new OnboardingWindow(this,preferences,window);guide.Closed+=delegate {DismissGreeting();guide=null;};guide.Show();
         }
         int conversationNavigationRevision;
         public async void OpenProjectConversation(ProjectDefinition project,ConversationDefinition conversation)
@@ -851,7 +932,7 @@ namespace Dafeiyu
         async Task CloseConversationWorkspacesAsync()
         {
             if(closing)return;
-            var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)try{await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);}catch(Exception){Notice="会话记录尚未保存，已保留当前会话；请处理存储问题后重试。";}
+            var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)try{await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);}catch(Exception){Notice=TextResources.Get("petWindow.closeConversationWorkspacesAsync.notice");}
         }
         // New chats remain drafts until the first submission; their project is chosen in the composer.
         public void NewActiveConversation(){BeginDraftConversation(null,chat==null?Settings.AgentEnabled:chat.WorkEntry);}
@@ -861,10 +942,10 @@ namespace Dafeiyu
         {
             project=work?(project??ProjectCatalogStore.UnassignedProject(Projects,Settings)):ProjectCatalogStore.UnassignedProject(Projects,Settings);
             string targetSection=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId;
-            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
+            var pending=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.IsDraft&&w.DraftOwner==Skin.PickerKey&&w.Session!=null&&w.ProjectId==project.Id&&w.Definition.Mode==(work?"work":"chat")&&(work||w.Definition.PetId==Skin.Id&&w.Definition.SectionId==targetSection));
             if(pending!=null)return pending;
-            var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="新对话",Mode=work?"work":"chat",PetId=work?"":Skin.Id,SectionId=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
-            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;WatchConversationTitle(project,definition,workspace);return workspace;
+            var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name=TextResources.Get("petWindow.createDraftConversation.name"),Mode=work?"work":"chat",PetId=work?"":Skin.Id,SectionId=work?"":sectionId??ProjectCatalogStore.DefaultChatSectionId,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
+            var workspace=Workspaces.CreateWorkspace(project,definition);workspace.IsDraft=true;Workspaces.BindDraft(workspace,Skin.PickerKey);WatchConversationTitle(project,definition,workspace);return workspace;
         }
         void BeginDraftConversation(ProjectDefinition project,bool? workEntry=null,string sectionId=null)
         {
@@ -877,14 +958,14 @@ namespace Dafeiyu
         internal Action PrepareConversationSubmission(ConversationWorkspace workspace)
         {
             if(workspace==null || !workspace.IsDraft)return null;
-            var owner=ProjectCatalogStore.FindProject(Projects,workspace.ProjectId,Settings);if(owner==null || owner.Archived)throw new InvalidOperationException("所选项目已归档或删除，请重新选择。");
+            var owner=ProjectCatalogStore.FindProject(Projects,workspace.ProjectId,Settings);if(owner==null || owner.Archived)throw new InvalidOperationException(TextResources.Get("petWindow.prepareConversationSubmission.text"));
             var definition=workspace.Definition;string previousActive=Projects.ActiveProjectId;
             if(owner.Conversations.Any(c=>c.Id==definition.Id))return null;
             owner.Conversations.Add(definition);Projects.ActiveProjectId=owner.Id==ProjectCatalogStore.UnassignedProjectId||owner.Id==ProjectCatalogStore.QuickProjectId?"":owner.Id;
             try{ProjectStore.Save(Projects);}catch{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;throw;}
             return delegate{owner.Conversations.Remove(definition);Projects.ActiveProjectId=previousActive;ProjectStore.Save(Projects);};
         }
-        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.IsDraft=false;NotifyProjectsChanged();}}
+        internal void FinishConversationSubmission(ConversationWorkspace workspace){if(workspace!=null&&workspace.IsDraft){workspace.Session.FinishDraft();workspace.IsDraft=false;NotifyProjectsChanged();}}
         internal ProjectDefinition CreateProjectForConversation()
         {
             var dialog=new NewProjectDialog();if(dialog.ShowDialog()!=true)return null;var previous=Projects.Copy();try{var project=ProjectCatalogStore.CreateProject(Projects,dialog.ProjectName,dialog.Workspace);project.Conversations.Clear();ProjectStore.Save(Projects);NotifyProjectsChanged();return project;}catch{RestoreProjectCatalog(previous);throw;}
@@ -897,16 +978,20 @@ namespace Dafeiyu
         }
         public bool MoveConversation(ProjectDefinition from,ProjectDefinition to,ConversationDefinition conversation)
         {
-            if(from==null || to==null || conversation==null)return false;var open=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversation.Id);if(open!=null && (open.Session.IsBusy || open.Queue.IsRunning)){Notice="请先停止当前任务，再移动对话。";return false;}var previous=Projects.Copy();
-            try{ConversationWorkspace.ResolveDataDirectory(Store.DirectoryPath,conversation.Id);ProjectCatalogStore.MoveConversation(Projects,from.Id,to.Id,conversation.Id);ProjectStore.Save(Projects);}
+            if(from==null || to==null || conversation==null)return false;var open=Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==conversation.Id);if(open!=null && (open.Session.IsBusy || open.Queue.IsRunning)){Notice=TextResources.Get("petWindow.moveConversation.notice");return false;}var previous=Projects.Copy();
+            try
+            {
+                if(!TryChangeWorkBindings(new[]{from.Id,to.Id},null,delegate{ConversationWorkspace.ResolveDataDirectory(Store.DirectoryPath,conversation.Id);ProjectCatalogStore.MoveConversation(Projects,from.Id,to.Id,conversation.Id);ProjectStore.Save(Projects);}))
+                {Notice=TextResources.Get("petWindow.moveConversation.notice");return false;}
+            }
             catch(Exception error){RestoreProjectCatalog(previous);ShowProjectSaveError(error);return false;}
             // An open workspace keeps the conversation Id but must follow the new
             // project so its agent tools and task records use the new directory.
             if(open!=null)open.FollowProject(to);
             if(chat!=null)chat.RefreshAppearance();return true;
         }
-        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
-        void ShowProjectSaveError(Exception error){MessageBox.Show(error.Message,"项目记录未保存",MessageBoxButton.OK,MessageBoxImage.Warning);}
+        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.Version=previous.Version;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;Projects.SidebarConversationOrder=previous.SidebarConversationOrder;Projects.SidebarSectionLabels=previous.SidebarSectionLabels;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
+        void ShowProjectSaveError(Exception error){MessageBox.Show(AgentJobUiText.Error(error),TextResources.Get("petWindow.showProjectSaveError.messageBoxShow"),MessageBoxButton.OK,MessageBoxImage.Warning);}
         public void OpenProjectWorkspace(ProjectDefinition project)
         {
             if(project==null || !Directory.Exists(project.Workspace))return;Process.Start(new ProcessStartInfo("explorer.exe","\""+project.Workspace+"\""){UseShellExecute=true});
@@ -923,7 +1008,7 @@ namespace Dafeiyu
         void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
         async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)
         {
-            try{if(workspace.Session==null)return;await workspace.Session.WaitForIdleAsync();if(workspace.Queue!=null)await workspace.Queue.FlushAsync();if(!closing && (chat==null || chat.ConversationId!=workspace.Id)&&(quickWorkspace==null||quickWorkspace.Id!=workspace.Id))await Workspaces.CloseWorkspaceAsync(workspace.Id);}catch(Exception){Notice="快速对话保存未完成，请检查本地存储。";}
+            try{if(workspace.Session==null)return;await workspace.Session.WaitForIdleAsync();if(workspace.Queue!=null)await workspace.Queue.FlushAsync();if(!closing && (chat==null || chat.ConversationId!=workspace.Id)&&(quickWorkspace==null||quickWorkspace.Id!=workspace.Id))await Workspaces.CloseWorkspaceAsync(workspace.Id);}catch(Exception){Notice=TextResources.Get("petWindow.releaseQuickWorkspaceAsync.notice");}
         }
         public void ShowQuickChat()
         {
@@ -934,7 +1019,7 @@ namespace Dafeiyu
             if(quick==null)
             {
                 var project=ProjectCatalogStore.EnsureQuickChatProject(Projects,Settings);
-                var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="新对话",Mode="quick",PetId=Skin.Id,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
+                var definition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name=TextResources.Get("petWindow.showQuickChat.name"),Mode="quick",PetId=Skin.Id,CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
                 quickWorkspace=Workspaces.CreateWorkspace(project,definition);
                 quickWorkspace.IsDraft=true;
                 WatchConversationTitle(project,definition,quickWorkspace);
@@ -965,7 +1050,7 @@ namespace Dafeiyu
         public void ConfigureGreetings(){Settings.Normalize();DismissGreeting(true);SaveSettings();}
         private void ResetGreetingSchedule(){greetingSchedule=new GreetingSchedule(DateTime.UtcNow,Settings.GreetingMinMinutes,Settings.GreetingMaxMinutes,random.NextDouble);}
         private void CancelPendingGreeting(bool retry=true)
-        {greetingGeneration++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
+        {greetingGeneration++;relationshipContentEpoch++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
         private void DismissGreeting(bool restartTimer=false){CancelPendingGreeting(!restartTimer);if(greeting!=null)greeting.Hide();if(restartTimer)ResetGreetingSchedule();}
         public void PreviewGreeting(){if(!closing && IsPetVisible)RunGreeting(true);}
         private void ShowGreeting(){RunGreeting(false);}
@@ -974,21 +1059,23 @@ namespace Dafeiyu
             if(!GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview))return;
             CancelPendingGreeting();var cancellation=new CancellationTokenSource();greetingRequest=cancellation;greetingPreview=preview;int generation=greetingGeneration;
             RefreshHoliday();var holiday=Holidays==null?null:Holidays.CreateGreetingContext(random.NextDouble());long holidayRevision=Holidays==null?0:Holidays.Revision;DateTime holidayTime=HolidayLocalTime(),holidayDate=holidayTime.Date;
-            string skinId=Skin.Id;var snapshot=Settings.Copy();List<string> recent;
+            string skinId=Skin.Id,relationshipId=RelationshipCompanionId;var capturedSkin=Skin;var capturedPack=RelationshipPack;int relationshipSettingsVersion=Relationships.SettingsVersion;var snapshot=Settings.Copy();List<string> recent;
             if(!recentGreetings.TryGetValue(skinId,out recent)){recent=new List<string>();recentGreetings[skinId]=recent;}
             try {
+                RelationshipExperienceContent stage=preview?null:await new RelationshipExperience(Relationships).ReadAsync(relationshipId,capturedPack,TextResources.CurrentLanguage);
+                string stageWelcome=RelationshipWelcome(stage);
                 IList<ChatMessage> memory=null;bool memoryFailed=false;
                 if(snapshot.AiGreetingEnabled)try {if(companionMemory==null)companionMemory=new CompanionMemory(()=>Conversation);memory=companionMemory.Capture(skinId);}
                 catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException || error is InvalidOperationException || error is System.Runtime.Serialization.SerializationException))throw;memoryFailed=true;}
                 int phrase=random.Next(GreetingPhrases.Count);
-                string line=memoryFailed ? GreetingService.Fallback(skinId,Skin.Name,holidayTime,phrase,recent,holiday) : await GreetingGenerator.GenerateAsync(snapshot,skinId,Skin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday);
+                string line=memoryFailed ? GreetingService.Fallback(skinId,capturedSkin.Name,holidayTime,phrase,recent,holiday,stageWelcome) : await GreetingGenerator.GenerateAsync(snapshot,skinId,capturedSkin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday,stageWelcome,stage==null?null:stage.AiContext);
                 RefreshHoliday();if(HolidayLocalTime().Date!=holidayDate || Holidays!=null && (Holidays.Revision!=holidayRevision || holiday!=null && !Holidays.IsGreetingCurrent(holiday)))return;
-                if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId)return;
+                if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId||!ReferenceEquals(capturedSkin,Skin)||RelationshipCompanionId!=relationshipId||relationshipSettingsVersion!=Relationships.SettingsVersion)return;
                 if(snapshot.GreetingEnabled!=Settings.GreetingEnabled || snapshot.AiGreetingEnabled!=Settings.AiGreetingEnabled || snapshot.SystemPrompt!=Settings.SystemPrompt || !SameGreetingConnection(snapshot.Text,Settings.Text) || !GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview)){CancelPendingGreeting();return;}
                 greetingRequest=null;
                 recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);
                 if(greeting==null)greeting=new GreetingBubbleWindow(this);
-                greeting.ShowGreeting(line);if(!preview && greeting.IsVisible && Holidays!=null)Holidays.MarkGreetingShown(holiday);if(!Paused)PlayAction("waving",1.2);
+                greeting.ShowGreeting(line);if(!preview&&greeting.IsVisible){RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);}if(!Paused)PlayAction("waving",1.2);
             }
             catch(OperationCanceledException){}
             finally {if(Object.ReferenceEquals(greetingRequest,cancellation))greetingRequest=null;cancellation.Dispose();}
@@ -997,14 +1084,14 @@ namespace Dafeiyu
         {return first!=null && second!=null && first.BaseUrl==second.BaseUrl && first.Model==second.Model && first.EncryptedKey==second.EncryptedKey && first.Protocol==second.Protocol && first.UseProxy==second.UseProxy && first.ProxyAddress==second.ProxyAddress;}
         private void SessionChanged(object sender,Microsoft.Win32.SessionSwitchEventArgs args)
         {
-            if(closing)return;Dispatcher.BeginInvoke(new Action(delegate
+            if(closing)return;Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate
             {
                 if(closing)return;if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionLock)sessionLocked=true;
                 if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionUnlock)sessionLocked=false;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);
             }));
         }
         private void PowerChanged(object sender,Microsoft.Win32.PowerModeChangedEventArgs args)
-        {if(!closing && args.Mode==Microsoft.Win32.PowerModes.Resume)Dispatcher.BeginInvoke(new Action(delegate {if(!closing){CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);}}));}
+        {if(!closing && args.Mode==Microsoft.Win32.PowerModes.Resume){Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate {if(!closing){CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);}}));}}
         public void RefreshChatAppearance(){CancelPendingGreeting();if(chat!=null)chat.RefreshAppearance();if(quick!=null)quick.RefreshPersona();if(preferences!=null)preferences.RefreshTextProviders();}
         public void ReloadConversation(){DismissGreeting();if(chat!=null)chat.ReloadHistory();if(quick!=null)quick.RefreshPersona();}
         private void ConversationMemoryChanged()
@@ -1023,6 +1110,7 @@ namespace Dafeiyu
         private void PollVisibility()
         {
             if(handle==IntPtr.Zero || closing)return;
+            if(!DesktopInterop.ForegroundBelongsToPet())ObserveRelationshipFullscreen(DesktopInterop.ForegroundIsFullScreen(handle));
             if(visibility.OverrideFullscreen && quick!=null && !quick.IsVisible)visibility.OverrideFullscreen=false;
             // Keep the last fullscreen state while a companion-owned panel has focus.
             if(!DesktopInterop.ForegroundBelongsToPet())visibility.Fullscreen=Settings.HideOnFullscreen && DesktopInterop.ForegroundIsFullScreen(handle);
@@ -1031,6 +1119,7 @@ namespace Dafeiyu
         }
         private void ApplyVisibility()
         {
+            if(!visibility.Visible&&petDisplayed)Relationships.InvalidateFeedback();
             // Keep the per-pixel surface attached. On Windows 11, hiding and
             // showing this layered HWND can leave its native alpha surface empty.
             // Zero opacity plus native pass-through hides it without that cycle.
@@ -1041,7 +1130,7 @@ namespace Dafeiyu
                 {
                     ResetGreetingSchedule();petDisplayed=true;IsHitTestVisible=true;
                     Opacity=1;DesktopInterop.SetClickThrough(handle,Settings.ClickThrough);
-                    UpdateFrame();RefreshRendering();
+                    UpdateFrame();RefreshRendering();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 }
             }
             else if(petDisplayed)
@@ -1054,7 +1143,7 @@ namespace Dafeiyu
             if(visibilityItem!=null)visibilityItem.IsChecked=visibility.UserVisible;
         }
         public void SetQuietMode(bool enabled)
-        {Settings.QuietMode=enabled;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
+        {if(Settings.QuietMode!=enabled)Relationships.InvalidateFeedback();Settings.QuietMode=enabled;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);if(enabled){StopReplySpeech();walking=false;if(!interaction.Active)Animation.Play("idle",0);}SaveSettings();if(quietItem!=null)quietItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public void SetClickThrough(bool enabled)
         {RecordPetInteraction();Settings.ClickThrough=enabled;if(enabled){CancelInteraction();UpdateFrame();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,enabled || !petDisplayed);SaveSettings();if(clickThroughItem!=null)clickThroughItem.IsChecked=enabled;if(preferences!=null)preferences.RefreshState();}
         public bool UpdateHotkey(string action,string value,out string error)
@@ -1072,28 +1161,51 @@ namespace Dafeiyu
             Rect bounds=DesktopInterop.Bounds(handle),area=DesktopInterop.WorkArea(handle);
             DesktopInterop.Move(handle,PetMath.ClampPosition(area.Right-bounds.Width-28,area.Bottom-bounds.Height-16,bounds.Width,bounds.Height,area)); SavePosition();
         }
+        bool deferredSettingsSave;
+        internal async Task<string> FlushDeferredSettingsAsync()
+        {
+            if(!deferredSettingsSave)return "";
+            try{using(await DataMaintenance.BeginAsync()){do{deferredSettingsSave=false;await Store.SaveExactSnapshotAsync(Settings);}while(deferredSettingsSave);}return "";}
+            catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
+        }
         public void SaveSettings()
         {
-            try { Store.Save(Settings);if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
-            catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice="设置暂时无法保存，请将桌宠放在可写入的文件夹。"; }
+            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return;}
+            try { Store.Save(Settings);deferredSettingsSave=false;if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
+            catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice=TextResources.Get("petWindow.saveSettings.notice"); }
             if(preferences!=null) preferences.ShowNotice(Notice);
         }
         private void SavePosition()
         { if(handle==IntPtr.Zero) return; Rect bounds=DesktopInterop.Bounds(handle); Settings.X=bounds.Left; Settings.Y=bounds.Top; SaveSettings(); }
-        private async void OnClosing(object sender,System.ComponentModel.CancelEventArgs args)
+        private void OnClosing(object sender,System.ComponentModel.CancelEventArgs args)
         {
+            if(uninstallPreparing)return;
             if(!exitPrepared)
             {
-                args.Cancel=true;if(closing)return;closing=true;DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
-                timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
-                var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
-                try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
-                catch(OperationCanceledException){}finally{exitPrepared=true;DispatcherOperation closingDispatch=Dispatcher.BeginInvoke(new Action(Close));}return;
+                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;closing=true;
+                // Close can be requested before Application.Run or from a host with
+                // no SynchronizationContext. Enter the dispatcher before any await.
+                Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
             }
+            CleanupClosedWindow();
+        }
+        void CleanupClosedWindow()
+        {
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
-            DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();
+            DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
         }
+        async void PrepareCloseOnDispatcherAsync()
+        {
+            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();return;}
+            foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
+            DisposeRelationshipFeedback();await HolidayKeepsakes.ShutdownAsync();DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
+            timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
+            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
+            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
+            catch(OperationCanceledException){}finally{exitPrepared=true;Dispatcher.BeginInvoke(new Action(Close));}
+        }
+
     }
 }

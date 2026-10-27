@@ -9,7 +9,7 @@ namespace Dafeiyu
     {
         ImageAssetUsageRegistry imageUsage;
         Task imageRepairTail=Task.FromResult(0);
-        public ImageAssetUsageRegistry ImageUsage {get{return imageUsage;}set{lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,value))throw new InvalidOperationException("图片引用协调器不一致。");imageUsage=value;if(store!=null)store.ImageUsage=value;foreach(var log in histories.Values)log.ConfigureImageUsage(value);}}}
+        public ImageAssetUsageRegistry ImageUsage {get{return imageUsage;}set{lock(gate){if(imageUsage!=null&&!Object.ReferenceEquals(imageUsage,value))throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.imageUsage.text"));imageUsage=value;if(store!=null)store.ImageUsage=value;foreach(var log in histories.Values)log.ConfigureImageUsage(value);}}}
         public GeneratedImageStore ImageStore {get;set;}
         public ImageGenerationClient ImageClient {get;set;}
         public ImageGenerationTaskManager ImageTasks {get;set;}
@@ -39,7 +39,7 @@ namespace Dafeiyu
                     MessageId=originReplyId,Persistent=saveEnabled()};
                 GeneratedImage image;string jobId=null;
                 var submission=new ImageGenerationTaskSubmission(Guid.NewGuid().ToString("N"),request,new ImageTaskOrigin{Source=ImageGenerationSource.Conversation,ConversationId=ImageConversationId,KernelSessionId=request.SessionId,PersonaId=op.PersonaId,AgentTaskId=request.TaskId,ToolCallId=callId,MessageId=originReplyId,GroupId=originReplyId,Sequence=(op.History.Messages.First(m=>m.Id==originReplyId).ImageGenerationTaskIds??new System.Collections.Generic.List<string>()).Count});
-                submission.BeforeStart=async id=>{jobId=id;cancel.ThrowIfCancellationRequested();lock(gate){if(disposed||active!=op||op.Ended!=0)throw new OperationCanceledException(cancel);if(op.History.AttachImageTask(originReplyId,id)==null)throw new InvalidOperationException("原消息已删除。");}await PersistImageHistoryAsync(op.PersonaId,op.History,cancel).ConfigureAwait(false);};
+                submission.BeforeStart=async id=>{jobId=id;cancel.ThrowIfCancellationRequested();lock(gate){if(disposed||active!=op||op.Ended!=0)throw new OperationCanceledException(cancel);if(op.History.AttachImageTask(originReplyId,id)==null)throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.configureInteractiveTools.idCancelThrowIfCancellationRequested"));}await PersistImageHistoryAsync(op.PersonaId,op.History,cancel).ConfigureAwait(false);};
                 try{var handle=await ImageTasks.EnqueueAsync(submission,cancel).ConfigureAwait(false);jobId=handle.Id;image=await handle.Completion.ConfigureAwait(false);}
                 catch(OperationCanceledException){if(cancel.IsCancellationRequested)throw;return "错误：这张图片的生成已取消，可以继续对话；不会自动重试。";}
                 catch(InvalidOperationException error){return "错误："+error.Message+" 不会自动重试；请处理服务配置后再发起新请求。";}
@@ -49,8 +49,8 @@ namespace Dafeiyu
                 if(cancel.IsCancellationRequested||disposed||active!=op||op.Ended!=0){await MarkImageDeliveryAsync(jobId,ImageTaskDeliveryState.Detached).ConfigureAwait(false);cancel.ThrowIfCancellationRequested();return "图片已进入图库，原轮次已结束。";}
                 try{await DeliverImageAsync(jobId,op.History,op.PersonaId,cancel,op).ConfigureAwait(false);}
                 catch(OperationCanceledException){throw;}
-                catch(Exception){MarkImageDeliveryAsync(jobId,ImageTaskDeliveryState.Failed).GetAwaiter().GetResult();return new JavaScriptSerializer().Serialize(new{asset_id=image.Id,status="complete",delivery_status="failed",message="图片已保存到图库，但原消息同步失败；可重试同步，无需再次生成。"});}
-                return new JavaScriptSerializer().Serialize(new{asset_id=image.Id,status="complete",delivery_status=ImageTasks.Get(jobId).DeliveryState.ToString(),message="图片已保存；可在原会话或图库查看。",model=image.Model,width=image.Width,height=image.Height});
+                catch(Exception){MarkImageDeliveryAsync(jobId,ImageTaskDeliveryState.Failed).GetAwaiter().GetResult();return new JavaScriptSerializer().Serialize(new{asset_id=image.Id,status="complete",delivery_status="failed",message=TextResources.Get("conversationImageGeneration.configureInteractiveTools.javaScriptSerializer")});}
+                return new JavaScriptSerializer().Serialize(new{asset_id=image.Id,status="complete",delivery_status=ImageTasks.Get(jobId).DeliveryState.ToString(),message=TextResources.Get("conversationImageGeneration.configureInteractiveTools.javaScriptSerializer.alternativeA"),model=image.Model,width=image.Width,height=image.Height});
                 }
                 finally{op.History.RetainImageReply(originReplyId,false);if(op.ReplyId!=originReplyId)op.History.RemoveEmptyReply(originReplyId);}
             };
@@ -59,8 +59,8 @@ namespace Dafeiyu
         async Task MarkImageDeliveryAsync(string id,ImageTaskDeliveryState state)
         {
             try{await ImageTasks.SetDeliveryStateAsync(id,state).ConfigureAwait(false);}
-            catch(System.IO.IOException){imageHistoryWarning="图片已保存，但同步状态暂未写入，请检查磁盘后重试同步。";}
-            catch(UnauthorizedAccessException){imageHistoryWarning="图片已保存，但同步状态暂未写入，请检查权限后重试同步。";}
+            catch(System.IO.IOException){imageHistoryWarning=TextResources.Get("conversationImageGeneration.markImageDeliveryAsync.imageHistoryWarning");}
+            catch(UnauthorizedAccessException){imageHistoryWarning=TextResources.Get("conversationImageGeneration.markImageDeliveryAsync.imageHistoryWarning.alternativeA");}
         }
         async Task PersistImageHistoryAsync(string persona,ConversationLog history,CancellationToken token)
         {
@@ -71,22 +71,25 @@ namespace Dafeiyu
             // therefore cannot enqueue an older snapshot after a repaired attachment.
             lock(gate){history.PersistGeneratedImages(ImageStore);saved=store.SaveAsync(persona,history.Messages);}
             await saved.ConfigureAwait(false);
-            if(!String.IsNullOrEmpty(store.Warning))throw new System.IO.IOException("聊天记录保存失败。");history.ReconcileImageUsage();
+            if(!String.IsNullOrEmpty(store.Warning))throw new System.IO.IOException(TextResources.Get("conversationImageGeneration.persistImageHistoryAsync.text"));history.ReconcileImageUsage();
         }
-        async Task PromoteImageTasksAsync(ConversationLog history,CancellationToken token)
+        async Task PromoteImageTasksAsync(ConversationLog history,CancellationToken token,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(ImageTasks==null)return;
             foreach(var message in history.Messages)if(message.ImageGenerationTaskIds!=null)foreach(var id in message.ImageGenerationTaskIds)
             {
                 var job=ImageTasks.Get(id);if(job==null)continue; // Old terminal task logs may have aged out; asset references remain authoritative.
                 var linked=(job.ReferenceImageIds??new System.Collections.Generic.List<string>()).Concat(String.IsNullOrEmpty(job.ResultImageId)?new string[0]:new[]{job.ResultImageId});
-                if(!job.Persistent||linked.Any(assetId=>ImageStore==null||ImageStore.Get(assetId)==null||ImageStore.Get(assetId).Temporary))await ImageTasks.PromoteAsync(id,token).ConfigureAwait(false);
+                if(!job.Persistent||linked.Any(assetId=>ImageStore==null||ImageStore.Get(assetId)==null||ImageStore.Get(assetId).Temporary)){
+                    if(owner==null)await ImageTasks.PromoteAsync(id,token).ConfigureAwait(false);
+                    else await ImageTasks.PromoteForUninstallAsync(id,token,owner).ConfigureAwait(false);
+                }
             }
         }
         async Task DeliverImageAsync(string id,ConversationLog history,string persona,CancellationToken token,Operation owner=null)
         {
             var job=ImageTasks.Get(id);var image=job==null?null:ImageStore.Get(job.ResultImageId);
-            if(image==null)throw new InvalidOperationException("已保存的图片不可用。");
+            if(image==null)throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.deliverImageAsync.text"));
             token.ThrowIfCancellationRequested();if(saveEnabled()){await ImageTasks.PromoteAsync(id,token).ConfigureAwait(false);image=ImageStore.Get(image.Id);}
             ChatMessage updated;lock(gate){updated=disposed||token.IsCancellationRequested||(owner!=null&&(active!=owner||owner.Ended!=0))?null:history.AttachGeneratedImage(job.Origin.MessageId,image);}
             if(updated==null){await MarkImageDeliveryAsync(id,ImageTaskDeliveryState.Detached).ConfigureAwait(false);return;}
@@ -99,20 +102,21 @@ namespace Dafeiyu
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("ConversationSession");
-                var repair=imageRepairTail.ContinueWith(_=>RepairImageDeliveryCoreAsync(taskId,token),TaskScheduler.Default).Unwrap();
+                var admission=Maintenance.EnterActivity();
+                var repair=imageRepairTail.ContinueWith(async _=>{try{await RepairImageDeliveryCoreAsync(taskId,token).ConfigureAwait(false);}finally{admission.Dispose();}},TaskScheduler.Default).Unwrap();
                 imageRepairTail=repair.ContinueWith(completed=>{var observed=completed.Exception;},TaskScheduler.Default);
                 return repair;
             }
         }
         async Task RepairImageDeliveryCoreAsync(string taskId,CancellationToken token)
         {
-            if(ImageTasks==null)throw new InvalidOperationException("图片任务服务不可用。");var job=ImageTasks.Get(taskId);
-            if(job==null||job.State!=ImageGenerationTaskState.Succeeded||job.Origin==null||job.Source!=ImageGenerationSource.Conversation)throw new InvalidOperationException("没有可同步的图片结果。");
-            if(!String.Equals(job.Origin.ConversationId,ImageConversationId,StringComparison.Ordinal))throw new InvalidOperationException("请在原会话中重试同步。");
+            if(ImageTasks==null)throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.repairImageDeliveryCoreAsync.text"));var job=ImageTasks.Get(taskId);
+            if(job==null||job.State!=ImageGenerationTaskState.Succeeded||job.Origin==null||job.Source!=ImageGenerationSource.Conversation)throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.repairImageDeliveryCoreAsync.text.alternativeA"));
+            if(!String.Equals(job.Origin.ConversationId,ImageConversationId,StringComparison.Ordinal))throw new InvalidOperationException(TextResources.Get("conversationImageGeneration.repairImageDeliveryCoreAsync.text.alternativeB"));
             try
             {
                 var history=GetHistory(job.Origin.PersonaId??"");
-                if(store!=null&&store.IsUnreadable(job.Origin.PersonaId??""))throw new System.IO.IOException("原会话记录无法读取，已保留原文件。");
+                if(store!=null&&store.IsUnreadable(job.Origin.PersonaId??""))throw new System.IO.IOException(TextResources.Get("conversationImageGeneration.repairImageDeliveryCoreAsync.text.alternativeC"));
                 await DeliverImageAsync(taskId,history,job.Origin.PersonaId??"",token).ConfigureAwait(false);
             }
             catch(OperationCanceledException){throw;}

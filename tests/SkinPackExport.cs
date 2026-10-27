@@ -67,12 +67,14 @@ namespace Dafeiyu.Tests
             var manifest=new SkinManifest{Version=2,Name=pet.Name,Format="illustrated-atlases-v1",CellWidth=Width,CellHeight=Height,Preview="preview.png",SystemPrompt=pet.SystemPrompt,Description=pet.Description,SpecialAction=pet.Name+"专属动作",Animations=new Dictionary<string,IllustratedAnimation>(),Gaze=new IllustratedGaze{File="gaze.png",Columns=4,Frames=16,Interpolation="none",Order="clockwise-from-up"}};
             for(int action=0;action<AnimationPlayer.States.Length;action++) {
                 string name=AnimationPlayer.States[action];var frames=new List<byte[]>();
+                if(ExportQuiet(pet,name,folder,manifest))continue;
                 for(int phase=0;phase<AnimationPlayer.Counts[action];phase++)frames.Add(Registered(pet,atlas,action,phase));
                 WriteAtlas(Path.Combine(folder,"animations",name+".png"),frames,8);
                 manifest.Animations.Add(name,new IllustratedAnimation{File="animations/"+name+".png",Columns=8,Frames=frames.Count,Fps=frames.Count/BaseSeconds[action],Loop=action!=4});
             }
             for(int row=0;row<InteractionNames.Length;row++) {
-                string name=InteractionNames[row];var frames=Enumerable.Range(0,4).Select(col=>Pixels(interactions.GetFrame(row,col))).ToList();
+                string name=InteractionNames[row];if(ExportQuiet(pet,name,folder,manifest))continue;
+                var frames=Enumerable.Range(0,4).Select(col=>Pixels(interactions.GetFrame(row,col))).ToList();
                 WriteAtlas(Path.Combine(folder,"animations",name+".png"),frames,8);
                 manifest.Animations.Add(name,new IllustratedAnimation{File="animations/"+name+".png",Columns=8,Frames=4,Fps=4/InteractionSeconds[row],Loop=row==0 || row==6});
             }
@@ -80,7 +82,22 @@ namespace Dafeiyu.Tests
             WriteAtlas(Path.Combine(folder,"preview.png"),new[]{Registered(pet,atlas,0,0)},1);
             using(var file=File.Create(Path.Combine(folder,"pet.json")))SkinCatalog.Serializer().WriteObject(file,manifest);
             IllustratedPack.Validate(folder,manifest,true);
-            Console.WriteLine("PASS "+pet.Id+": 17 actions, original 4/5/6/8 frame counts, 16 gaze directions, persona and special action.");
+            Console.WriteLine("PASS "+pet.Id+": 17 actions, eight-frame quiet originals, unchanged other frame counts, 16 gaze directions, persona and special action.");
+        }
+        static bool ExportQuiet(SkinDefinition pet,string action,string folder,SkinManifest manifest)
+        {
+            var spec=AdditionalInteractions.Quiet(pet,action,true);if(spec==null)return false;
+            string relative="animations/"+action+".png",path=Path.Combine(folder,relative);
+            using(var input=typeof(SkinPackExport).Assembly.GetManifestResourceStream(spec.ResourceName))using(var output=File.Create(path))input.CopyTo(output);
+            var restored=IllustratedPack.ReadImage(path,spec.Width*spec.Columns,spec.Height);
+            using(var input=typeof(SkinPackExport).Assembly.GetManifestResourceStream(spec.ResourceName)){
+                var original=BitmapDecoder.Create(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
+                for(int i=0;i<spec.Frames;i++){
+                    var rect=new Int32Rect(i*Width,0,Width,Height);
+                    if(!Pixels(new CroppedBitmap(original,rect)).SequenceEqual(Pixels(new CroppedBitmap(restored,rect))))throw new InvalidDataException("Quiet export changed source pixels.");verified++;
+                }
+            }
+            manifest.Animations.Add(action,new IllustratedAnimation{File=relative,Columns=spec.Columns,Frames=spec.Frames,Fps=spec.Fps,Loop=spec.Loop});return true;
         }
     }
 }

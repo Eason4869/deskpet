@@ -1,3 +1,4 @@
+using Dafeiyu;
 using System.Runtime.InteropServices;
 using Avalonia.Threading;
 
@@ -9,23 +10,23 @@ internal static class NativeAttachmentPicker
     public static string[] ShowMac()
     {
         if (!OperatingSystem.IsMacOS()) throw new PlatformNotSupportedException();
-        if (!Dispatcher.UIThread.CheckAccess()) throw new InvalidOperationException("请在界面线程打开附件选择器。");
+        if (!Dispatcher.UIThread.CheckAccess()) throw new InvalidOperationException(TextResources.Get("nativeAttachmentPicker.showMac.text"));
         var pool = Send(Class("NSAutoreleasePool"), Select("new"));
         try
         {
             var panel = Send(Class("NSOpenPanel"), Select("openPanel"));
             SendBool(panel, Select("setCanChooseFiles:"), true); SendBool(panel, Select("setCanChooseDirectories:"), true);
             SendBool(panel, Select("setAllowsMultipleSelection:"), true); SendBool(panel, Select("setResolvesAliases:"), true);
-            SendObject(panel, Select("setTitle:"), String("添加文件、图片或文件夹")); SendObject(panel, Select("setPrompt:"), String("添加"));
+            SendObject(panel, Select("setTitle:"), String(TextResources.Get("nativeAttachmentPicker.showMac.string"))); SendObject(panel, Select("setPrompt:"), String(TextResources.Get("nativeAttachmentPicker.showMac.string.alternativeA")));
             if (Send(panel, Select("runModal")) != new IntPtr(1)) return Array.Empty<string>();
             var urls = Send(panel, Select("URLs")); var count = Send(urls, Select("count")).ToInt64();
-            if (count > 4) throw new InvalidOperationException("最多添加 4 个附件。");
+            if (count > 4) throw new InvalidOperationException(TextResources.Get("nativeAttachmentPicker.showMac.text.alternativeA"));
             var paths = new List<string>();
             for (long i = 0; i < count; i++)
             {
                 var url = SendIndex(urls, Select("objectAtIndex:"), new IntPtr(i));
                 var path = Marshal.PtrToStringUTF8(Send(Send(url, Select("path")), Select("UTF8String")));
-                if (string.IsNullOrEmpty(path) || !Path.IsPathRooted(path)) throw new InvalidOperationException("请选择本机文件或文件夹。");
+                if (string.IsNullOrEmpty(path) || !Path.IsPathRooted(path)) throw new InvalidOperationException(TextResources.Get("nativeAttachmentPicker.showMac.text.alternativeB"));
                 paths.Add(path);
             }
             return paths.ToArray();

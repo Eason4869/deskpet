@@ -55,6 +55,8 @@ def check_png(path,width,height,columns,count):
     return count
 
 def source_semantics(character,action,variant):
+    if character in CHARACTERS and action in ('idle','sleeping'):
+        return 8,4.0 if action=='idle' else 2.5,True
     if character in ('xiaobei','gugugaga'):
         manifest=read_json(ROOT/'assets/bundled-skins'/character/'pet.json')
         group='alternate_animations' if variant=='alternate' else ('extra_animations' if action in EXTRA else 'animations')
@@ -97,48 +99,57 @@ def contact_sheet(root,definition,destination):
         sheet.save(destination/(clip['variant']+'-'+clip['action']+'.png'))
 
 def validate(root,contacts=None):
-    root=Path(root);report={'schema_version':1,'success':False,'ready_characters':0,'characters':[],'errors':[]}
+    root=Path(root);report={'schema_version':1,'success':False,'ready_characters':0,'ready_outfits':0,'characters':[],'errors':[]}
     try:
         index=read_json(root/'catalog.json')
         if index.get('schema_version')!=1 or not isinstance(index.get('outfits'),list):raise ValueError('invalid catalog schema')
-        if len(index['outfits'])!=5:raise ValueError('first release requires five character outfits')
+        if len(index['outfits'])!=50:raise ValueError('complete release requires fifty holiday outfits')
+        reviewed={x['path']:x['sha256'] for x in read_json(ROOT/'assets/official/reviewed-outfit-definitions.json')['files']}
+        ready=set()
         seen=set()
         for entry in index['outfits']:
             character=entry.get('character_id');item={'character':character,'errors':[],'frames':0,'png_files':0,'compressed_bytes':0,'files':{}};report['characters'].append(item)
             try:
-                if character not in CHARACTERS or character in seen:raise ValueError('unknown or duplicate character')
-                seen.add(character)
-                if entry.get('ready') is not True or entry.get('greetings_ready') is not True:raise ValueError('character is not marked ready')
-                definition=read_json(asset_path(root,entry['definition']))
+                key=(character,entry.get('outfit_id'))
+                if character not in CHARACTERS or key in seen:raise ValueError('unknown character or duplicate outfit')
+                seen.add(key)
+                item['holiday']=entry.get('holiday_id')
+                if entry.get('ready') is not True:raise ValueError('outfit is not marked ready')
+                if entry.get('holiday_id')=='halloween' and entry.get('greetings_ready') is not True:raise ValueError('Halloween greeting library must stay ready')
+                definition_path=asset_path(root,entry['definition'])
+                if reviewed.get(entry['definition'])!=hashlib.sha256(definition_path.read_bytes()).hexdigest():raise ValueError('reviewed motion metadata changed')
+                definition=read_json(definition_path)
                 if definition.get('schema_version')!=1 or any(definition.get(k)!=entry.get(k) for k in ('character_id','outfit_id','holiday_id','name','version')):raise ValueError('definition identity mismatch')
                 if not definition.get('action_name'):raise ValueError('missing Easter egg action name')
                 keys=[(x['action'],x.get('variant','default')) for x in definition['clips']]
                 if len(keys)!=len(set(keys)) or set(keys)!=required_clips(character):raise ValueError('incomplete or duplicate action/variant matrix')
                 files=[]
                 for clip in definition['clips']:
-                    path,count=validate_clip(root,clip,source_semantics(character,clip['action'],clip.get('variant','default')));files.append(path);item['frames']+=count
+                    if clip['frame_count']!=8 or clip['columns']!=8:raise ValueError('reviewed motion needs all eight drawn poses')
+                    # Timing/loop belong to each reviewed role, not the old default animation profile.
+                    path,count=validate_clip(root,clip);files.append(path);item['frames']+=count
                 for key in ('gaze','easter_egg'):
                     path,count=validate_clip(root,definition[key],gaze=key=='gaze',egg=key=='easter_egg');files.append(path);item['frames']+=count
                 preview=asset_path(root,definition['preview']);check_png(preview,480,520,1,1);files.append(preview);item['frames']+=1
                 if len(set(files))!=len(files):raise ValueError('each required resource needs its own PNG')
                 for path in files:
                     data=path.read_bytes();item['files'][path.relative_to(root.resolve()).as_posix()]={'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)};item['compressed_bytes']+=len(data)
-                item['png_files']=len(files);report['ready_characters']+=1
-                if contacts:contact_sheet(root,definition,Path(contacts)/character)
+                item['png_files']=len(files);report['ready_outfits']+=1;ready.add(character);report['ready_characters']=len(ready)
+                if contacts:contact_sheet(root,definition,Path(contacts)/entry['holiday_id']/character)
             except (KeyError,ValueError,OSError,TypeError) as error:item['errors'].append(str(error));report['errors'].append(str(character)+': '+str(error))
         greetings=read_json(root/'halloween/greetings.json')
         roles=greetings.get('characters',[])
         if greetings.get('schema_version')!=1 or greetings.get('holiday_id')!='halloween' or len(roles)!=5 or {x['character_id'] for x in roles}!=set(CHARACTERS):raise ValueError('invalid five-character greeting library')
         if any(len(x['phrases'])!=6 or len(set(x['phrases']))!=6 or any(not isinstance(t,str) or not t.strip() or len(t)>80 or '\n' in t for t in x['phrases']) for x in roles):raise ValueError('greeting library requires six distinct bounded lines per character')
     except (KeyError,ValueError,OSError,TypeError) as error:report['errors'].append(str(error))
-    report['success']=not report['errors'] and report['ready_characters']==5
+    report['success']=not report['errors'] and report['ready_characters']==5 and report['ready_outfits']==50
     return report
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--root',type=Path,default=ROOT/'assets/holidays');parser.add_argument('--contact-sheet',type=Path);parser.add_argument('--report-json',type=Path);args=parser.parse_args()
     report=validate(args.root,args.contact_sheet)
     if args.report_json:args.report_json.parent.mkdir(parents=True,exist_ok=True);args.report_json.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-    print('Holiday assets:',report['ready_characters'],'/ 5 ready')
+    print('Holiday assets:',report['ready_characters'],'/ 5 roles,',report['ready_outfits'],'/ 50 outfits ready')
     for error in report['errors']:print('ERROR:',error)
     return 0 if report['success'] else 1
 

@@ -1,0 +1,13 @@
+UpdateInstall.cs
+UpdateWorker.cs
+UninstallHandoff.cs
+ReleaseInfo.cs
+ReleaseVersion.cs
+ReleaseIdentity.cs
+RetiredRuntimeFiles.cs
+Maintenance/CacheResourceLease.cs
+Maintenance/CacheUpdateRetirement.cs
+TextResources.cs
+LanguageSelection.cs
+LocalizedMessage.cs
+UiLanguages.cs
