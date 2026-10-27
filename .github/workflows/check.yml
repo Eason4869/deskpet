@@ -221,7 +221,7 @@ jobs:
           foreach ($locale in @('zh_CN','zh_TW','en_US','ja_JP','ko_KR','fr_FR','de_DE','hi_IN','id_ID','it_IT','pt_BR','es_419','es_ES')) {
             & work/AgentJobUiTests.exe --locale $locale
             if ($LASTEXITCODE) { throw ('WPF translated background job UI failed: '+$locale) }
-            & work/SettingsFeatureNavigationTests.exe $locale
+            ./tools/run_wpf_navigation_check.ps1 -Executable work/SettingsFeatureNavigationTests.exe -Locale $locale -OutputDirectory ('work/feature-navigation/process/'+$locale)
             if ($LASTEXITCODE) { throw ('WPF feature navigation failed: '+$locale) }
             dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll ('--feature-navigation-ui='+$locale)
             if ($LASTEXITCODE) { throw ('Avalonia feature navigation failed: '+$locale) }
@@ -336,6 +336,9 @@ jobs:
             work/language-ui/full/wpf/**/process.log
             work/language-ui/full/wpf/**/trace.log
             work/language-ui/full/wpf/**/native-events.json
+            work/feature-navigation/process/**/process.json
+            work/feature-navigation/process/**/process.log
+            work/feature-navigation/process/**/native-events.json
       - name: Preserve background job acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
