@@ -456,6 +456,8 @@ namespace Dafeiyu
         private readonly string path;
         readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
         string committedLanguage;
+        int completedSnapshotWrites;
+        internal int CompletedSnapshotWrites{get{return System.Threading.Volatile.Read(ref completedSnapshotWrites);}}
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
         public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
@@ -618,6 +620,7 @@ namespace Dafeiyu
                 using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
                 { new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream, settings); stream.Flush(true); }
                 AtomicFile.Commit(temporary,path);
+                System.Threading.Interlocked.Increment(ref completedSnapshotWrites);
                 Warning = "";
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }

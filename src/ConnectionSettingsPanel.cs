@@ -53,7 +53,11 @@ namespace Dafeiyu
             sound.Children.Add(Ui.ReplySpeechToggle(pet));
             volumeLabel=LocalizedUi.Text(()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.template",pet.Settings.Volume)),12,Ui.Blue);sound.Children.Add(volumeLabel);
             volume=new Slider{Name="VoiceVolume",Minimum=0,Maximum=100,TickFrequency=5,IsSnapToTickEnabled=true,Value=pet.Settings.Volume,Margin=new Thickness(0,8,0,12)};
-            volume.ValueChanged+=delegate {if(refreshingVolume)return;int value=(int)Math.Round(volume.Value);LocalizedUi.Set(volumeLabel,"Text",()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value)));pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);pet.SaveSettings();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
+            bool draggingVolume=false;
+            volume.ValueChanged+=delegate {if(refreshingVolume)return;int value=(int)Math.Round(volume.Value);LocalizedUi.Set(volumeLabel,"Text",()=>(TextResources.Format("connectionSettingsPanel.connectionSettingsPanel.labelValue",value)));pet.Settings.Volume=value;pet.UpdateVoiceVolume(value);if(!draggingVolume)pet.RequestPreferenceSave();};sound.Children.Add(volume);synthesis.Extras.Children.Add(sound);
+            volume.AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,new System.Windows.Controls.Primitives.DragStartedEventHandler(delegate{draggingVolume=true;}));
+            volume.AddHandler(System.Windows.Controls.Primitives.Thumb.DragCompletedEvent,new System.Windows.Controls.Primitives.DragCompletedEventHandler(delegate{draggingVolume=false;if(!refreshingVolume)pet.RequestPreferenceSave();}));
+            volume.LostKeyboardFocus+=delegate{pet.FlushPreferenceSaves();};
             var testSpeech=LocalizedUi.Button(()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.text.alternativeE")),true);testSpeech.Name="PreviewSpeech";testSpeech.Click+=async delegate{
                 if(pet.DialogueBusy){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("connectionSettingsPanel.connectionSettingsPanel.notice.alternativeA")));return;}if(!SaveGuideSection(2))return;testSpeech.IsEnabled=false;
                 int generation=++speechTestGeneration;SpeechTestSucceeded=false;

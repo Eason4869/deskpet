@@ -106,7 +106,11 @@ namespace Dafeiyu
             var sizeRow=new DockPanel { Margin=new Thickness(0,10,0,8) };
             sizeLabel=Ui.Text("",12,Ui.Blue); DockPanel.SetDock(sizeLabel,Dock.Right); sizeRow.Children.Add(sizeLabel); sizeRow.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeL")),12)); behavior.Children.Add(sizeRow);
             size=new Slider { Name="SizeSlider",Minimum=.75,Maximum=2.25,Value=pet.Settings.Scale,TickFrequency=.05,IsSnapToTickEnabled=true,SmallChange=.05,LargeChange=.25,Margin=new Thickness(0,0,0,4) };
-            size.ValueChanged+=delegate { sizeLabel.Text=Math.Round(size.Value*100)+"%"; if(!refreshing) { pet.Settings.Scale=size.Value; pet.ApplySettings(); } }; behavior.Children.Add(size);
+            bool draggingSize=false;
+            size.ValueChanged+=delegate { sizeLabel.Text=Math.Round(size.Value*100)+"%"; if(!refreshing) { pet.PreviewScale(size.Value);if(!draggingSize)pet.RequestPreferenceSave(); } }; behavior.Children.Add(size);
+            size.AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,new System.Windows.Controls.Primitives.DragStartedEventHandler(delegate{draggingSize=true;}));
+            size.AddHandler(System.Windows.Controls.Primitives.Thumb.DragCompletedEvent,new System.Windows.Controls.Primitives.DragCompletedEventHandler(delegate{draggingSize=false;if(!refreshing)pet.CommitScale();}));
+            size.LostKeyboardFocus+=delegate{pet.FlushPreferenceSaves();};
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeM")),11,Ui.Muted)); behaviorPage.Children.Add(GlassSurface.Card(behavior));
 
             var hello=new StackPanel{Name="GuideGreetingSection"};hello.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeC"))));

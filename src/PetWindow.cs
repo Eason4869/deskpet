@@ -688,6 +688,7 @@ namespace Dafeiyu
         {ApplySettingsCore(true);}
         internal string ApplyRestoredPreferences()
         {
+            if(preferenceSaves!=null)preferenceSaves.MarkSaved();
             Relationships.InvalidateFeedback();
             ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
             if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
@@ -702,14 +703,9 @@ namespace Dafeiyu
             CancelHolidayEffects();
             StopManualRun();
             RecordPetInteraction();
-            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
-            Width=192*Settings.Scale; Height=208*Settings.Scale; Topmost=Settings.Topmost;
+            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility();
+            ApplyScaleGeometry(persist);Topmost=Settings.Topmost;
             if(!Settings.Wander && walking) { walking=false; Animation.Play("idle",0); }
-            if(handle!=IntPtr.Zero) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate
-            {
-                if(closing) return; Rect after=DesktopInterop.Bounds(handle);
-                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); if(persist)SavePosition();
-            }));
             UpdateFrame(); if(persist)SaveSettings(); if(preferences!=null) preferences.RefreshState();
         }
         private bool ActivateSkin(SkinDefinition skin)
@@ -1169,11 +1165,15 @@ namespace Dafeiyu
             catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
         }
         public void SaveSettings()
+        {TrySaveSettings();}
+        bool TrySaveSettings()
         {
-            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return;}
-            try { Store.Save(Settings);deferredSettingsSave=false;if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
+            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return false;}
+            CompleteScaleLayout();bool saved=false;
+            try { Store.Save(Settings);saved=true;deferredSettingsSave=false;if(preferenceSaves!=null&&Dispatcher.CheckAccess())preferenceSaves.MarkSaved();if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
             catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice=TextResources.Get("petWindow.saveSettings.notice"); }
             if(preferences!=null) preferences.ShowNotice(Notice);
+            return saved;
         }
         private void SavePosition()
         { if(handle==IntPtr.Zero) return; Rect bounds=DesktopInterop.Bounds(handle); Settings.X=bounds.Left; Settings.Y=bounds.Top; SaveSettings(); }
@@ -1182,7 +1182,8 @@ namespace Dafeiyu
             if(uninstallPreparing)return;
             if(!exitPrepared)
             {
-                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;closing=true;
+                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;
+                if(!FlushPreferenceSaves()){ReleaseMaintenanceExit();return;}closing=true;
                 // Close can be requested before Application.Run or from a host with
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
@@ -1191,6 +1192,7 @@ namespace Dafeiyu
         }
         void CleanupClosedWindow()
         {
+            if(preferenceSaves!=null)preferenceSaves.Dispose();
             if(imChannels!=null)imChannels.Dispose();
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
