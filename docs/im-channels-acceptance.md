@@ -21,6 +21,7 @@
 | Python 打包/发行契约 | RuntimePackageTests 5 项、ReleaseAssetTests 4 项、WindowsReleaseTests 1 项通过；包含离线教程及本地链接 |
 | 版本/构建身份 | ReleaseVersionTests 15 项、ReleaseIdentityTests 通过，显示预览后缀与数字程序集版本分开 |
 | 翻译证据校验 | FeatureResourceProvenanceTests 10 项、LanguagePackSnapshotTests 1 项通过；受保护历史证据不改写 |
+| 完整本地化审计 | verify_localization.py complete：4750 资源、243 个新增功能契约及其提交/调用位置/13 语言哈希通过，errors 为空 |
 | Windows App / .NET 10 Core / Avalonia | 均完成编译；既有平台 API 与资源反序列化警告仍存在 |
 | 独立代码审查 | 已执行；四个发现均已修复，见下文 |
 
