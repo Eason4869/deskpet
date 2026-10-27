@@ -22,7 +22,7 @@ namespace Dafeiyu.Tests
         }
         sealed class Adapter:IImAdapter
         {
-            internal Func<ImMessage,bool> Receive;internal int Sent;internal readonly TaskCompletionSource<bool> Ready=new TaskCompletionSource<bool>();
+            internal Func<ImMessage,bool> Receive;internal int Sent;internal readonly TaskCompletionSource<bool> Ready=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public async Task RunAsync(Func<ImMessage,bool> receive,Action<string> status,CancellationToken token){Receive=receive;status("im.connected");Ready.TrySetResult(true);await Task.Delay(-1,token);}
             public Task SendAsync(ImMessage message,string text,CancellationToken token){token.ThrowIfCancellationRequested();Interlocked.Increment(ref Sent);return Task.FromResult(0);}
             public void Dispose(){}
@@ -48,7 +48,7 @@ namespace Dafeiyu.Tests
             }
             string root=Path.Combine(Environment.CurrentDirectory,"work","im-life-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             try{
-                var adapter=new Adapter();var started=new TaskCompletionSource<bool>();var cancelled=new TaskCompletionSource<bool>();int calls=0;
+                var adapter=new Adapter();var started=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);var cancelled=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);int calls=0;
                 using(var manager=new ImChannelManager(root,()=>new PetSettings(),new Dafeiyu.Maintenance.DataMaintenanceGate(),p=>adapter,async (p,m,c)=>{Interlocked.Increment(ref calls);started.TrySetResult(true);try{await Task.Delay(-1,c);}catch(OperationCanceledException){cancelled.TrySetResult(true);throw;}return "never";})){
                     var profile=new ImChannelProfile{Kind="qq",Name="test",PetName="pet",AppId="app",Secret="secret"};profile.Users.Add("alice");
                     await manager.SaveAsync(profile);await manager.StartAsync(profile.Id);await adapter.Ready.Task;
@@ -70,6 +70,17 @@ namespace Dafeiyu.Tests
                     var profile=new ImChannelProfile{Kind="wecom",Name="terminal",PetName="pet",AppId="bot",Secret="secret"};await terminal.SaveAsync(profile);await terminal.StartAsync(profile.Id);
                     var deadline=DateTime.UtcNow.AddSeconds(3);while(terminal.State(profile.Id)!="im.connectionReplaced"&&DateTime.UtcNow<deadline)await Task.Delay(10);
                     Check(terminal.State(profile.Id)=="im.connectionReplaced","server replacement is reported");await Task.Delay(1200);Check(attempts==1,"server replacement does not reconnect and steal connection");
+                }
+                Console.WriteLine("ImChannel lifecycle: isolation, bounds, admission and takeover passed; checking full dedup stop");
+                var saturated=new Adapter();int callsAtCapacity=0;var activeAtCapacity=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);var stoppedAtCapacity=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                using(var full=new ImChannelManager(Path.Combine(root,"capacity"),()=>new PetSettings(),new Dafeiyu.Maintenance.DataMaintenanceGate(),p=>saturated,async(p,m,c)=>{
+                    if(Interlocked.Increment(ref callsAtCapacity)==4096){activeAtCapacity.TrySetResult(true);try{await Task.Delay(-1,c);}catch(OperationCanceledException){stoppedAtCapacity.TrySetResult(true);throw;}}return "ok";
+                })){
+                    var profile=new ImChannelProfile{Kind="qq",Name="capacity",PetName="pet",AppId="bot",Secret="secret"};profile.Users.Add("alice");await full.SaveAsync(profile);await full.StartAsync(profile.Id);await saturated.Ready.Task;
+                    var deadline=DateTime.UtcNow.AddSeconds(30);for(int n=0;n<4096;n++){var message=new ImMessage{Id="capacity-"+n,Sender="alice",Chat="alice",Text="hi"};while(!saturated.Receive(message)){if(DateTime.UtcNow>deadline)throw new TimeoutException("capacity fixture");await Task.Delay(1);}}
+                    Check(await Task.WhenAny(activeAtCapacity.Task,Task.Delay(10000))==activeAtCapacity.Task,"full dedup fixture reached active operation");
+                    Check(saturated.Receive(new ImMessage{Id="capacity-stop",Sender="alice",Chat="alice",Text="/stop"}),"stop bypasses full dedup capacity");Check(await Task.WhenAny(stoppedAtCapacity.Task,Task.Delay(1000))==stoppedAtCapacity.Task,"full dedup still permits immediate stop");
+                    using(var cancelledSave=new CancellationTokenSource()){cancelledSave.Cancel();bool saveCancelled=false;try{await full.SaveAsync(new ImChannelProfile{Name="cancelled",PetName="pet"},cancelledSave.Token);}catch(OperationCanceledException){saveCancelled=true;}Check(saveCancelled&&full.Profiles.Count==1,"cancelled login save cannot persist a profile");}
                 }
                 Console.WriteLine("ImChannelLifecycleTests: admission, dedup, expiry, stop, revoke, delete passed");
             }finally{Directory.Delete(root,true);}

@@ -25,10 +25,11 @@ namespace Dafeiyu.ImChannels
             var snapshot=settings.Copy();snapshot.AgentEnabled=false;snapshot.ReadReplies=false;snapshot.SaveChatHistory=false;snapshot.ShowPredictedMessages=false;snapshot.SystemPrompt=profile.Persona;snapshot.Text.StreamReplies=false;
             // A channel has no project, MCP connection, approval provider, microphone or desktop memory.
             session.SelectPersona(profile.PetId);
-            if(message.Text=="/new"){session.Clear();return TextResources.Get("im.contextCleared");}
+            if(message.Text=="/new"){session.Clear();return ImText.Get("im.contextCleared");}
             Trim(38,56000);
+            token.ThrowIfCancellationRequested();var request=session.SendTextAsync(message.Text,snapshot,profile.PetName);
             using(token.Register(()=>{var ignored=session.StopAsync();})){
-                try{token.ThrowIfCancellationRequested();await session.SendTextAsync(message.Text,snapshot,profile.PetName).ConfigureAwait(false);token.ThrowIfCancellationRequested();
+                try{await request.ConfigureAwait(false);token.ThrowIfCancellationRequested();
                     var reply=session.History.Messages.LastOrDefault(x=>x.Role=="assistant"&&x.Status=="complete");if(reply==null)throw new InvalidOperationException("im.modelFailed");return reply.Content;
                 }finally{Trim(40,64000);}
             }

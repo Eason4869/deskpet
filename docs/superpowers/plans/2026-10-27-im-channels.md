@@ -9,7 +9,7 @@
 
 ## Global Constraints
 
-用户无公网 IP；开发者无服务器。无需额外安装 Node/Python/机器人框架。远程对话不开放工具。空允许列表拒绝。敏感信息不进日志。保留 0.11.1 版本号直到明确发布请求。
+用户无公网 IP；开发者无服务器。无需额外安装 Node/Python/机器人框架。远程对话不开放工具。空允许列表拒绝。敏感信息不进日志。根据用户后续请求使用 0.11.2-dev.1，仅向 dev 提交 PR 与源码标签；main 0.11.1 不变。
 
 ## Review Focus
 
@@ -70,4 +70,4 @@ Modify: 两端设置导航与 13 个 assets/locales/*.json。
 - Final: fixed context bound — 超大单轮不能突破 IM 上限，推理不留入上下文；回归通过。
 - Final: fixed stale deletion list — Avalonia 保存/删除后列表为空回归通过，两端均重新加载列表。
 - Final review: independent reviewer completed; all four actionable findings fixed. Deferred review minors: none.
-- Delivery limits: no real-account tests or real Mac acceptance; non-Chinese/English explanatory copy partially remains English. See docs/im-channels-acceptance.md.
+- Delivery limits: no real-account tests or real Mac acceptance; all thirteen locales now have complete native messaging copy. See docs/im-channels-acceptance.md.

@@ -14,7 +14,7 @@ namespace Dafeiyu.ImChannels
             await Connect(ImProtocol.Str(endpoint,"endpoint")+"?ticket="+Uri.EscapeDataString(ImProtocol.Str(endpoint,"ticket")),token).ConfigureAwait(false);
             while(true){var frame=ParseBytes(await Read(token).ConfigureAwait(false));string type=ImProtocol.Str(frame,"type");var headers=ImProtocol.Get(frame,"headers");string topic=ImProtocol.Str(headers,"topic");
                 if(type=="SYSTEM"){
-                    if(topic=="CONNECTED"||topic=="REGISTERED")Status("im.connected");
+                    if(IsRegistered(frame))Status("im.connected");
                     if(topic=="disconnect")throw new InvalidOperationException("im.disconnected");
                     await Send(new{code=200,headers=headers,message="OK",data=ImProtocol.Str(frame,"data")},token).ConfigureAwait(false);
                 }else if(type=="CALLBACK"){
@@ -23,6 +23,7 @@ namespace Dafeiyu.ImChannels
                 }
             }
         }
+        public static bool IsRegistered(object frame){return ImProtocol.Str(frame,"type")=="SYSTEM"&&ImProtocol.Str(ImProtocol.Get(frame,"headers"),"topic")=="REGISTERED";}
         public static ImMessage Parse(object data)
         {
             var message=new ImMessage{Id=ImProtocol.Str(data,"msgId"),Sender=ImProtocol.Str(data,"senderStaffId"),Chat=ImProtocol.Str(data,"conversationId"),IsGroup=ImProtocol.Str(data,"conversationType")=="2",Mentioned=ImProtocol.Bool(data,"isInAtList"),Text=ImProtocol.Str(ImProtocol.Get(data,"text"),"content").Trim(),Unsupported=ImProtocol.Str(data,"msgtype")!="text",ReplyToken=ImProtocol.Str(data,"sessionWebhook"),Time=ImProtocol.Time(data,"createAt")};

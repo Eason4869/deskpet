@@ -4717,7 +4717,7 @@
   "im.lastSender": "最近发送者 / 群：",
   "im.localOnly": "仅文字对话，无法访问桌面文件或 Agent 工具。上下文仅保留在内存中，断开即清除。更换模型后需重新连接。",
   "im.unsaved": "请先保存编辑，再选择其他连接。",
-  "im.selectWeixin": "请先选择 weixin 平台再扫码登录。",
+  "im.selectWeixin": "请先选择微信平台。",
   "im.contextCleared": "已开始新对话。",
   "im.textOnly": "此连接目前仅支持文字消息。",
   "im.help": "发送文字即可对话。/new 新建对话；/stop 取消你的当前请求；/help 查看指令。",
@@ -4741,5 +4741,12 @@
   "im.replyExpired": "回复时限已过，请发送新消息。",
   "im.modelFailed": "模型未完成回复，请检查模型配置。",
   "im.qrExpired": "登录二维码已过期，请重新登录。",
-  "im.connectionReplaced": "连接已被其他客户端接管。请先暂停其他连接，再手动重连。"
+  "im.connectionReplaced": "连接已被其他客户端接管。请先暂停其他连接，再手动重连。",
+  "im.platform.qq": "QQ",
+  "im.platform.weixin": "微信",
+  "im.platform.feishu": "飞书",
+  "im.platform.dingtalk": "钉钉",
+  "im.platform.wecom": "企业微信",
+  "im.openPlatform": "打开平台网站",
+  "im.verificationRequired": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。"
 }

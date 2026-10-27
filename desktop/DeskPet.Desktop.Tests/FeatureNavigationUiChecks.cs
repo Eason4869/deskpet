@@ -36,6 +36,7 @@ internal static class FeatureNavigationUiChecks
                 Check(Named<ComboBox>(settings,"ImPlatform").ItemCount==5,"five platforms available");
                 Click(Named<Button>(settings,"ImSave"));Check(owner.ImChannels.Profiles.Count==1,"channel saved without connecting");
                 Click(Named<Button>(settings,"ImDelete"));Check(owner.ImChannels.Profiles.Count==0&&Named<ComboBox>(settings,"ImChannelList").ItemCount==0,"deletion removes stale profile and credentials from list");
+                UiLanguageChange.Apply(new SettingsStore(settingsPath),owner.Settings,language);Dispatcher.UIThread.RunJobs();Check(Named<Button>(settings,"ImOpenPlatform")!=null,"platform browser entry exists");
                 Capture(settings,"channels");settings.Width=600;Dispatcher.UIThread.RunJobs();Capture(settings,"channels-narrow");
                 Console.WriteLine("Channels UI captures="+captures);return checks;
             }

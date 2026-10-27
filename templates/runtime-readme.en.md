@@ -21,3 +21,5 @@ Ebao's default HD actions and avatar support offline startup. Other official com
 - First-run setup places GitHub routing before character selection and an optional full official-pack download/update. Preparation continues while you proceed through or close the guide.
 
 Companion material versions are independent of the application version. Verified identical packs are reused. Managed history becomes eligible after seven retirement days; current, recovery, active, unknown and legacy resources remain protected. Automatic post-install maintenance affects only managed companion history, preserving chat, relationships, personal images and custom packs.
+
+- Chat through QQ, WeChat, Feishu, DingTalk or WeCom: see the [messaging channel guide](im-channels.md). No public IP is required; keep your computer online and DeskPet running.

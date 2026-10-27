@@ -11,11 +11,12 @@ namespace Dafeiyu.ImChannels
         string access="",bot="";int service,heartbeat=90000;readonly FeishuFragments fragments=new FeishuFragments();DateTimeOffset expires;
         readonly SemaphoreSlim tokenGate=new SemaphoreSlim(1,1);
         public FeishuAdapter(ImChannelProfile profile):base(profile){}
+        internal FeishuAdapter(ImChannelProfile profile,System.Net.Http.HttpMessageHandler handler):base(profile,handler){}
         async Task<string> Token(CancellationToken token)
         {
             await tokenGate.WaitAsync(token).ConfigureAwait(false);try{
                 if(DateTimeOffset.UtcNow<expires)return access;
-                var auth=await Request("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",new{app_id=Profile.AppId,app_secret=Profile.Secret},token).ConfigureAwait(false);Success(auth);access=ImProtocol.Str(auth,"tenant_access_token");if(access.Length==0)throw new InvalidOperationException("im.authFailed");expires=DateTimeOffset.UtcNow.AddSeconds(Math.Max(1,ImProtocol.Num(auth,"expire",7200)-120));return access;
+                var auth=await Request("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",new{app_id=Profile.AppId,app_secret=Profile.Secret},token).ConfigureAwait(false);long code=ImProtocol.Num(auth,"code");if(code==10005||code==10014||code==10015)throw new InvalidOperationException("im.authFailed");Success(auth);access=ImProtocol.Str(auth,"tenant_access_token");if(access.Length==0)throw new InvalidOperationException("im.authFailed");expires=DateTimeOffset.UtcNow.AddSeconds(Math.Max(1,ImProtocol.Num(auth,"expire",7200)-120));return access;
             }finally{tokenGate.Release();}
         }
         public override async Task RunAsync(Func<ImMessage,bool> receive,Action<string> status,CancellationToken token)
@@ -29,11 +30,16 @@ namespace Dafeiyu.ImChannels
             heartbeat=(int)Math.Max(1000,Math.Min(90000,ImProtocol.Num(ImProtocol.Get(data,"ClientConfig"),"PingInterval",30)*1000));
             await Connect(url,token).ConfigureAwait(false);Status("im.connected");
             await Pump(async bytes=>{
-                var frame=FeishuFrame.Decode(bytes);if(frame.Method!=1||frame.Header("type")!="event")return;
+                var frame=FeishuFrame.Decode(bytes);heartbeat=PingInterval(frame,heartbeat);if(frame.Method!=1||frame.Header("type")!="event")return;
                 if(frame.Encoding.Length>0&&frame.Encoding!="json")throw new InvalidOperationException("im.protocolFailed");var payload=fragments.Add(frame);if(payload==null)return;
                 var message=Parse(ImProtocol.Json(Encoding.UTF8.GetString(payload)),bot);if(message!=null)Receive(message);
                 frame.Payload=Encoding.UTF8.GetBytes("{\"code\":200}");await SendBytes(frame.Encode(),System.Net.WebSockets.WebSocketMessageType.Binary,token).ConfigureAwait(false);
             },()=>{var ping=new FeishuFrame{Service=service};ping.Headers["type"]="ping";return SendBytes(ping.Encode(),System.Net.WebSockets.WebSocketMessageType.Binary,token);},()=>heartbeat,token).ConfigureAwait(false);
+        }
+        public static int PingInterval(FeishuFrame frame,int current)
+        {
+            if(frame.Method!=0||frame.Header("type")!="pong"||frame.Payload.Length==0)return current;
+            try{long seconds=ImProtocol.Num(ImProtocol.Json(Encoding.UTF8.GetString(frame.Payload)),"PingInterval");return seconds>=1&&seconds<=90?(int)seconds*1000:current;}catch(ArgumentException){return current;}
         }
         public static ImMessage Parse(object envelope,string botId="")
         {

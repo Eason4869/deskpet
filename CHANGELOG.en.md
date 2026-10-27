@@ -1,11 +1,15 @@
 ﻿# Changelog
 
-## Unreleased
-
-- Add local messaging channels for QQ, WeChat ClawBot DMs, Feishu, DingTalk and WeCom, with encrypted credentials, sender/group allowlists, isolated sessions, pause and reconnect.
-- Add settings on both desktops and locally rendered WeChat login QR codes. No public IP, developer relay or additional bot framework is required. Real-account acceptance remains pending.
-
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
+
+## 0.11.2-dev.1 — 2026-10-27 · Source preview (no Release)
+
+Based on main 0.11.1, submitted to dev; stable main remains unchanged.
+
+- Native outbound messaging for QQ, WeChat, Feishu, DingTalk and WeCom, with credentials/QR login, allowlists and lifecycle controls under Settings → Messaging channels. No public IP, developer server or additional bot runtime.
+- Isolated identities, bounded context/queues, encrypted profiles and no remote Agent tools. All 52 messaging strings are translated in all 13 locales.
+- Fix cancellation races, stop at dedup capacity, WeChat poll timeouts/extra verification, Feishu auth/heartbeat, DingTalk registration readiness and cancelled QR saves. Include an offline guide and Windows/macOS CI checks.
+- See the [plan audit](docs/im-channels-plan-audit.md) and [verification record](docs/im-channels-acceptance.md). Real-account and real Mac login acceptance remain pending; this source tag does not provide installable Release assets.
 
 ## [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1) — 2026-10-27 · Stable
 

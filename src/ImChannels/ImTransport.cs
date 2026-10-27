@@ -17,10 +17,10 @@ namespace Dafeiyu.ImChannels
     public abstract class ImAdapter:IImAdapter
     {
         protected readonly ImChannelProfile Profile;
-        readonly HttpClient http=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}){Timeout=Timeout.InfiniteTimeSpan};
+        readonly HttpClient http;
         protected ClientWebSocket Socket;readonly SemaphoreSlim sendGate=new SemaphoreSlim(1,1);
         protected Action<string> Status=delegate{};protected Func<ImMessage,bool> Receive=delegate{return false;};
-        protected ImAdapter(ImChannelProfile profile){Profile=profile.Copy();}
+        protected ImAdapter(ImChannelProfile profile,HttpMessageHandler handler=null){Profile=profile.Copy();http=new HttpClient(handler??new HttpClientHandler{AllowAutoRedirect=false}){Timeout=Timeout.InfiniteTimeSpan};}
         public abstract Task RunAsync(Func<ImMessage,bool> receive,Action<string> status,CancellationToken token);
         public abstract Task SendAsync(ImMessage message,string text,CancellationToken token);
         protected async Task<Dictionary<string,object>> Request(string address,object body,CancellationToken token,string auth=null,IDictionary<string,string> headers=null,int seconds=30)

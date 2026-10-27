@@ -22,7 +22,8 @@ namespace Dafeiyu.ImChannels
             if(Kind=="weixin"&&!String.IsNullOrEmpty(ApiBase))ImProtocol.Endpoint(ApiBase,"weixin");
         }
         public bool Allows(ImMessage message){return message!=null&&!String.IsNullOrEmpty(message.Sender)&&Users!=null&&Users.Contains(message.Sender)&&(!message.IsGroup||(message.Mentioned&&Chats!=null&&Chats.Contains(message.Chat)));}
-        public override string ToString(){return Name+" ("+Kind+")";}
+        public static string PlatformSite(string kind){switch(kind){case "qq":return "https://q.qq.com/";case "weixin":return "https://weixin.qq.com/";case "feishu":return "https://open.feishu.cn/app/";case "dingtalk":return "https://open-dev.dingtalk.com/";case "wecom":return "https://work.weixin.qq.com/";default:throw new InvalidOperationException("im.invalidConfig");}}
+        public override string ToString(){return Name+" ("+ImText.Get("im.platform."+Kind)+")";}
     }
     public sealed class ImMessage
     {

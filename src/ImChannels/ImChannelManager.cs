@@ -31,10 +31,10 @@ namespace Dafeiyu.ImChannels
         void Require(){if(disposed)throw new ObjectDisposedException("ImChannelManager");if(Warning.Length>0||ownership==null)throw new InvalidOperationException("im.storageFailed");}
         void SetState(Runtime runtime,string state){lock(gate){Runtime current;if(runtime.Stop.IsCancellationRequested||!running.TryGetValue(runtime.Profile.Id,out current)||current!=runtime)return;statuses[runtime.Profile.Id]=state;}Notify();}
         void CheckBotOwner(ImChannelProfile profile){lock(gate)if(running.Values.Any(x=>!x.Stop.IsCancellationRequested&&x.Profile.Id!=profile.Id&&x.Profile.Kind==profile.Kind&&((profile.AppId.Length>0&&x.Profile.AppId==profile.AppId)||(profile.Secret.Length>0&&x.Profile.Secret==profile.Secret))))throw new InvalidOperationException("im.connectionReplaced");}
-        public async Task SaveAsync(ImChannelProfile profile)
+        public async Task SaveAsync(ImChannelProfile profile,CancellationToken token=default(CancellationToken))
         {
             var snapshot=settings().Copy();var copy=profile.Copy();copy.Validate();using(maintenance.EnterActivity()){
-                await edits.WaitAsync().ConfigureAwait(false);try{Require();if(copy.Enabled)CheckBotOwner(copy);await StopRuntime(copy.Id).ConfigureAwait(false);
+                await edits.WaitAsync(token).ConfigureAwait(false);try{Require();token.ThrowIfCancellationRequested();if(copy.Enabled)CheckBotOwner(copy);await StopRuntime(copy.Id).ConfigureAwait(false);token.ThrowIfCancellationRequested();
                     IList<ImChannelProfile> next;lock(gate){next=profiles.Where(x=>x.Id!=copy.Id).Select(x=>x.Copy()).ToList();next.Add(copy);}store.Save(next);lock(gate)profiles=next;
                     if(copy.Enabled)StartRuntime(copy,snapshot);
                 }finally{edits.Release();}Notify();
@@ -87,12 +87,12 @@ namespace Dafeiyu.ImChannels
                 if(runtime.Stop.IsCancellationRequested||!runtime.Profile.Allows(message)||message.Id.Length==0||message.Id.Length>512||message.Chat.Length==0||message.Text.Length>8000||(!message.Unsupported&&String.IsNullOrWhiteSpace(message.Text))||DateTimeOffset.UtcNow-message.Time>TimeSpan.FromMinutes(5)||message.Time-DateTimeOffset.UtcNow>TimeSpan.FromMinutes(1))return false;
                 foreach(string key in runtime.Seen.Where(x=>DateTimeOffset.UtcNow-x.Value>TimeSpan.FromMinutes(10)).Select(x=>x.Key).ToArray())runtime.Seen.Remove(key);
                 string identity=scope+":"+message.Id;if(runtime.Seen.ContainsKey(identity))return false;
-                if(runtime.Seen.Count>=4096)return false;
                 if(message.Text=="/stop"){
                     if(runtime.Scope==scope&&runtime.ActiveCancel!=null){try{runtime.ActiveCancel.Cancel();}catch(ObjectDisposedException){}}
-                    var kept=runtime.Queue.Where(x=>x.Scope!=scope).ToArray();runtime.Queue.Clear();foreach(var item in kept)runtime.Queue.Enqueue(item);
-                    runtime.Seen[identity]=DateTimeOffset.UtcNow;return true;
+                    var kept=runtime.Queue.Where(x=>x.Scope!=scope).ToArray();int removed=runtime.Queue.Count-kept.Length;runtime.Queue.Clear();foreach(var item in kept)runtime.Queue.Enqueue(item);for(int n=0;n<removed&&runtime.Signal.Wait(0);n++){}
+                    if(runtime.Seen.Count<4096)runtime.Seen[identity]=DateTimeOffset.UtcNow;return true;
                 }
+                if(runtime.Seen.Count>=4096)return false;
                 if(runtime.Queue.Count>=32)return false;
                 runtime.Seen[identity]=DateTimeOffset.UtcNow;runtime.Queue.Enqueue(new Pending{Message=message,Scope=scope,Adapter=adapter});runtime.Signal.Release();return true;
             }
@@ -107,10 +107,10 @@ namespace Dafeiyu.ImChannels
                             if(DateTimeOffset.UtcNow-pending.Message.Time>TimeSpan.FromMinutes(5))continue;
                             IDisposable activity;if(!maintenance.TryEnterActivity(out activity))continue;
                             using(activity){string answer;
-                                if(pending.Message.Unsupported)answer=TextResources.Get("im.textOnly");
-                                else if(pending.Message.Text=="/help")answer=TextResources.Get("im.help");
+                                if(pending.Message.Unsupported)answer=ImText.Get("im.textOnly");
+                                else if(pending.Message.Text=="/help")answer=ImText.Get("im.help");
                                 else if(responder!=null)answer=await responder(runtime.Profile,pending.Message,cancel).ConfigureAwait(false);
-                                else {ImConversation conversation;if(!runtime.Conversations.TryGetValue(pending.Scope,out conversation)){if(runtime.Conversations.Count>=64){answer=TextResources.Get("im.sessionLimit");goto Send;}conversation=new ImConversation(maintenance);runtime.Conversations.Add(pending.Scope,conversation);}answer=await conversation.ReplyAsync(runtime.Profile,runtime.Settings,pending.Message,cancel).ConfigureAwait(false);}
+                                else {ImConversation conversation;if(!runtime.Conversations.TryGetValue(pending.Scope,out conversation)){if(runtime.Conversations.Count>=64){answer=ImText.Get("im.sessionLimit");goto Send;}conversation=new ImConversation(maintenance);runtime.Conversations.Add(pending.Scope,conversation);}answer=await conversation.ReplyAsync(runtime.Profile,runtime.Settings,pending.Message,cancel).ConfigureAwait(false);}
                                 Send:cancel.ThrowIfCancellationRequested();lock(gate){if(runtime.Adapter!=pending.Adapter||runtime.Stop.IsCancellationRequested)continue;}
                                 await pending.Adapter.SendAsync(pending.Message,answer,cancel).ConfigureAwait(false);
                             }

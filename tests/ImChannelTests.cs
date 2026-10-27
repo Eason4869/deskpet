@@ -12,7 +12,7 @@ namespace Dafeiyu.Tests
         static int checks;
         static void Check(bool value,string name){if(!value)throw new Exception(name);checks++;}
         static void Reject(Action action,string name){try{action();}catch{checks++;return;}throw new Exception(name);}
-        public static int RunAll()
+        public static int RunAll(ISecretProtector protector=null)
         {
             var profile=new ImChannelProfile{Kind="qq",Name="bot",AppId="app",Secret="secret",PetName="pet",Persona="private persona"};
             var msg=new ImMessage{Id="1",Sender="alice",Chat="room",IsGroup=true,Mentioned=true,Text="hello",Time=DateTimeOffset.UtcNow};
@@ -62,7 +62,8 @@ namespace Dafeiyu.Tests
             var fs=FeishuAdapter.Parse(ImProtocol.Json("{\"header\":{\"event_type\":\"im.message.receive_v1\"},\"event\":{\"sender\":{\"sender_id\":{\"open_id\":\"alice\"}},\"message\":{\"message_id\":\"f1\",\"chat_id\":\"room\",\"chat_type\":\"p2p\",\"message_type\":\"text\",\"content\":\"{\\\"text\\\":\\\"hi\\\"}\"}}}"));
             Check(fs.Sender=="alice"&&fs.Text=="hi"&&!fs.IsGroup,"Feishu fixture");
             Check(ImLoginQr.Png("https://example.com/login?test=1").Take(4).SequenceEqual(new byte[]{137,80,78,71}),"QR generated locally as PNG");
-            ImChannelLifecycleTests.RunAll().GetAwaiter().GetResult();
+            Console.WriteLine("ImChannel protocol/storage fixtures passed");
+            ImChannelLifecycleTests.RunAll().GetAwaiter().GetResult();ImChannelAuditTests.RunAll(protector).GetAwaiter().GetResult();
             Console.WriteLine("ImChannelTests: "+checks+" passed");return 0;
         }
     }

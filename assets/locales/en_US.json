@@ -4717,7 +4717,7 @@
   "im.lastSender": "Latest sender / group:",
   "im.localOnly": "Text conversations only. No access to desktop files or Agent tools. Context stays in memory until you disconnect. Model changes apply after reconnecting.",
   "im.unsaved": "Save your edits before selecting another connection.",
-  "im.selectWeixin": "Select weixin before signing in.",
+  "im.selectWeixin": "Select WeChat first.",
   "im.contextCleared": "Started a new conversation.",
   "im.textOnly": "This connection currently supports text messages only.",
   "im.help": "Send text to chat. /new starts a new conversation; /stop cancels your current request; /help shows these commands.",
@@ -4741,5 +4741,12 @@
   "im.replyExpired": "The reply window expired. Send a new message.",
   "im.modelFailed": "The model did not complete a reply. Check model configuration.",
   "im.qrExpired": "The sign-in code expired. Sign in again.",
-  "im.connectionReplaced": "Another client owns this bot connection. Pause the other client, then reconnect manually."
+  "im.connectionReplaced": "Another client owns this bot connection. Pause the other client, then reconnect manually.",
+  "im.platform.qq": "QQ",
+  "im.platform.weixin": "WeChat",
+  "im.platform.feishu": "Feishu",
+  "im.platform.dingtalk": "DingTalk",
+  "im.platform.wecom": "WeCom",
+  "im.openPlatform": "Open platform website",
+  "im.verificationRequired": "WeChat requires additional verification. Cancel sign-in, complete verification in WeChat, then scan a new code."
 }
