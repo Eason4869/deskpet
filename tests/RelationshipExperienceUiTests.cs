@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -11,6 +11,9 @@ namespace Dafeiyu.Tests
 {
     public static class RelationshipExperienceUiTests
     {
+        sealed class PopupRandom:Random {readonly double sample;internal PopupRandom(double value){sample=value;}public override double NextDouble(){return sample;}}
+        static void PopupChance(double sample){typeof(PetWindow).GetField("random",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(pet,new PopupRandom(sample));}
+
         const string Reply="S1 familiar imported response: glad you are here.";
         static int checks;static Application app;static PetWindow pet;
         static void Check(bool value,string message){if(!value)throw new Exception(message);checks++;Console.WriteLine("PASS "+message);}
@@ -35,7 +38,7 @@ namespace Dafeiyu.Tests
         }
         static async Task Official()
         {
-            string root=Path.GetFullPath(Path.Combine("work","relationship-experience","official-wpf-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);var cfg=new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);Check(pet.Skin.IsOfficial,"normal phrase capture uses actual official companion");pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);if(Notice()!=null)Notice().Close();pet.PlayUserInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(600);var window=Notice();Check(window!=null&&All<TextBlock>(window).Any(t=>t.Text==RelationshipContent.Interaction("first_meeting")),"actual official user action displays normal generic stage text");foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);await Task.Delay(50);Capture(window,Path.Combine(root,theme+"-normal-official-response.png"));}Console.WriteLine("OFFICIAL_CAPTURE_ROOT "+root);
+            string root=Path.GetFullPath(Path.Combine("work","relationship-experience","official-wpf-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);var cfg=new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);PopupChance(0);Check(pet.Skin.IsOfficial,"normal phrase capture uses actual official companion");pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);if(Notice()!=null)Notice().Close();pet.PlayUserInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(600);var window=Notice();Check(window!=null&&All<TextBlock>(window).Any(t=>t.Text==RelationshipContent.Interaction("first_meeting")),"actual official user action displays normal generic stage text");foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);await Task.Delay(50);Capture(window,Path.Combine(root,theme+"-normal-official-response.png"));}Console.WriteLine("OFFICIAL_CAPTURE_ROOT "+root);
         }
         static async Task Run(bool importOnly,bool crossing=false)
         {
@@ -44,7 +47,7 @@ namespace Dafeiyu.Tests
             string json="{\"version\":1,\"name\":\"S1 imported companion\",\"atlas\":\"atlas.png\",\"system_prompt\":\"Keep this explicit persona.\",\"relationship\":{\"fallback_locale\":\"en_US\",\"stages\":{\"familiar\":{\"welcome\":{\"en_US\":\"S1 familiar welcome.\"},\"interaction\":{\"en_US\":\""+Reply+"\"}}}}}";
             File.WriteAllText(Path.Combine(source,"pet.json"),json);string original=File.ReadAllText(Path.Combine(source,"pet.json"));
             var cfg=new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";
-            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);var imported=pet.Catalog.Import(Path.Combine(source,"pet.json"));
+            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"data","settings.json")),null);PopupChance(0);var imported=pet.Catalog.Import(Path.Combine(source,"pet.json"));
             Check(!imported.Illustrated&&imported.Load().CellWidth==480,"actual v1 import retains legacy atlas loading");
             Check(imported.Manifest!=null&&imported.Manifest.Relationship!=null&&imported.Manifest.Relationship.Stages["familiar"].Interaction["en_US"]==Reply,"actual v1 import retains unique relationship content");
             var reloaded=new SkinCatalog(pet.Store.DirectoryPath).Find(imported.Id);Check(reloaded.Id==imported.Id&&reloaded.PickerKey==imported.PickerKey&&!reloaded.Illustrated&&reloaded.Manifest.Relationship.Stages["familiar"].Interaction["en_US"]==Reply,"actual catalog rediscovery retains content and legacy identity");
@@ -59,7 +62,7 @@ namespace Dafeiyu.Tests
             Check(All<TextBlock>(notice).Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",1)),"response retains actual +1 after400ms feedback aggregation; actual="+String.Join(" | ",All<TextBlock>(notice).Select(t=>t.Text)));
             Check(!notice.ShowActivated&&!notice.ShowInTaskbar,"unified response and gain remain passive");notice.UpdateLayout();var bmp=new RenderTargetBitmap((int)notice.ActualWidth,(int)notice.ActualHeight,96,96,PixelFormats.Pbgra32);bmp.Render(notice);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var f=File.Create(Path.Combine(root,"response-and-gain.png")))png.Save(f);
             if(crossing){var milestone=pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Milestones.Single(m=>m.StageId=="familiar");Check(All<TextBlock>(notice).Any(t=>t.Text==RelationshipContent.StageName("familiar"))&&All<TextBlock>(notice).Any(t=>t.Text==RelationshipCardData.FormatDate(milestone.EarnedLocalDate)),"actual79 to80 crossing keeps saved milestone stage/date alongside unique response and +1");Console.WriteLine("CROSSING_CAPTURE_ROOT "+root);return;}
-            notice.Close();pet.PlayInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(500);Check(pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==81&&!app.Windows.OfType<RelationshipFeedbackWindow>().Any(w=>w.IsVisible),"automatic interaction adds neither points nor response");
+            notice.Close();PopupChance(.9);pet.PlayUserInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(500);Check(Notice()==null&&pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==81,"unselected greeting does not create a zero-gain popup or change scoring");PopupChance(0);pet.PlayInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(500);Check(pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==81&&!app.Windows.OfType<RelationshipFeedbackWindow>().Any(w=>w.IsVisible),"automatic interaction adds neither points nor response");
             await Composition(root);
             cfg.GreetingEnabled=true;cfg.AiGreetingEnabled=false;pet.ConfigureGreetings();pet.PlayAction("idle",0);pet.PreviewGreeting();await Task.Delay(200);Check(app.Windows.OfType<GreetingBubbleWindow>().Any(w=>w.IsVisible)&&!app.Windows.OfType<GreetingBubbleWindow>().Where(w=>w.IsVisible).SelectMany(All<TextBlock>).Any(t=>t.Text=="S1 familiar welcome."),"explicit preview retains existing wording and does not consume stage welcome");
             pet.ConfigureGreetings();pet.PlayAction("idle",0);Call("ShowGreeting");await Task.Delay(250);Check(app.Windows.OfType<GreetingBubbleWindow>().Where(w=>w.IsVisible).SelectMany(All<TextBlock>).Any(t=>t.Text=="S1 familiar welcome."),"actual normal welcome channel shows saved imported stage once");pet.ConfigureGreetings();pet.PlayAction("idle",0);Call("ShowGreeting");await Task.Delay(250);Check(!app.Windows.OfType<GreetingBubbleWindow>().Where(w=>w.IsVisible).SelectMany(All<TextBlock>).Any(t=>t.Text=="S1 familiar welcome."),"second actual welcome returns to existing ordinary phrases");cfg.GreetingEnabled=false;pet.ConfigureGreetings();
@@ -78,7 +81,7 @@ namespace Dafeiyu.Tests
         {
             string root=Path.GetFullPath(Path.Combine("work","feedback-placement",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
             var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";
-            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
+            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);PopupChance(0);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
             var handle=new System.Windows.Interop.WindowInteropHelper(pet).Handle;var area=DesktopInterop.WorkArea(handle);pet.Left=area.Left+100;pet.Top=area.Top+8;await Task.Delay(100);
             var notice=new RelationshipFeedbackNotice{CompanionId=pet.RelationshipCompanionId,AwardedPoints=2,Milestones=new List<RelationshipMilestone>()};
             var window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(300);
@@ -97,16 +100,22 @@ namespace Dafeiyu.Tests
         {
             string root=Path.GetFullPath(Path.Combine("work","feedback-motion","wpf-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
             var cfg=new PetSettings{UiLanguage="en_US",AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false};foreach(var k in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[k]="";
-            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
+            pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);PopupChance(0);pet.Skin.FixtureEmbedded=true;pet.Show();await pet.Relationships.FlushAsync();await Task.Delay(600);foreach(var old in app.Windows.OfType<RelationshipFeedbackWindow>().ToArray())old.Close();
             var notice=new RelationshipFeedbackNotice{CompanionId=pet.RelationshipCompanionId,AwardedPoints=2,Milestones=new List<RelationshipMilestone>()};
-            var window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(50);double startTop=window.Top;
-            Check(window.Opacity<1,"ordinary gain enters with a fade rather than appearing fully opaque");
-            await Task.Delay(250);Check(window.Opacity>.98&&window.Top<startTop,"ordinary gain rises into its readable resting position");Capture(window,Path.Combine(root,"gain-rest.png"));
-            Check(!window.ShowActivated&&!window.ShowInTaskbar&&pet.IsEnabled&&pet.IsHitTestVisible&&!pet.Settings.ClickThrough,"feedback leaves the pet enabled and hit-testable without activation");
-            double restTop=window.Top;await Task.Delay(750);Check(window.IsVisible&&window.Opacity>.98,"ordinary gain remains readable for its short hold");
-            await Until(()=>window.Opacity<.9,"exit fade starts");Check(window.IsVisible&&window.Top<restTop,"exit continues upward while fading out");await Until(()=>!window.IsVisible,"ordinary gain closes after exit");
-            var rich=new RelationshipFeedbackWindow(pet,notice);rich.Show();rich.SetInteraction("A readable interaction response","motion-response");await Task.Delay(1700);Check(rich.IsVisible&&rich.Opacity>.98,"interaction response retains its longer reading time");rich.Close();
-            var merged=new RelationshipFeedbackWindow(pet,notice);merged.Show();await Task.Delay(900);double before=merged.Top;merged.Merge(notice);await Task.Delay(650);Check(merged.IsVisible&&merged.Opacity>.98&&Math.Abs(merged.Top-before)<.5&&All<TextBlock>(merged).Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",4)),"merged gain extends the hold without restarting or jumping");merged.Close();
+            var window=new RelationshipFeedbackWindow(pet,notice);window.Show();await Task.Delay(40);double startTop=window.Top;
+            Check(window.Opacity<1,"ordinary gain fades in");await Task.Delay(180);Check(window.Opacity>.98&&window.Top<startTop,"brief gain becomes clearly visible");
+            Check(!window.ShowActivated&&!window.ShowInTaskbar&&pet.IsEnabled&&pet.IsHitTestVisible,"brief feedback remains passive");
+            await Task.Delay(900);Check(!window.IsVisible,"ordinary gain closes within one second including animation");
+            var rich=new RelationshipFeedbackWindow(pet,notice);rich.Show();rich.SetInteraction("A brief interaction response","motion-response");await Task.Delay(1150);Check(!rich.IsVisible,"interaction response uses the same one-second lifetime");
+            var stageNotice=new RelationshipFeedbackNotice{CompanionId=pet.RelationshipCompanionId,AwardedPoints=1,Milestones=new List<RelationshipMilestone>{new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-27"}}};
+            var stage=new RelationshipFeedbackWindow(pet,stageNotice);stage.Show();await Task.Delay(1150);Check(!stage.IsVisible,"milestone content cannot extend a brief gain");
+            var merged=new RelationshipFeedbackWindow(pet,notice);merged.Show();await Task.Delay(600);double before=merged.Top;merged.Merge(notice);merged.SetInteraction("Late greeting","late-response");
+            Check(Math.Abs(merged.Top-before)<.5&&All<TextBlock>(merged).Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",4)),"merging updates points without replaying the entrance");
+            await Task.Delay(550);Check(!merged.IsVisible,"late points and greeting do not restart the one-second lifetime");
+            PopupChance(.9);int scoreBefore=pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score;pet.PlayUserInteraction("petting");await pet.Relationships.FlushAsync();
+            await Until(()=>Notice()!=null&&All<TextBlock>(Notice()).Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",1)),"probability miss still displays the actual gain");
+            Check(pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).State.Score==scoreBefore+1&&!All<TextBlock>(Notice()).Any(t=>t.Name=="RelationshipInteraction"&&t.IsVisible),"greeting probability never suppresses or changes a real gain");Notice().Close();
+            pet.PlayUserInteraction("petting");await pet.Relationships.FlushAsync();await Task.Delay(500);Check(Notice()==null,"probability miss with no gain creates no popup");
             Console.WriteLine("MOTION_ROOT "+root);
         }
         [STAThread]public static int Main(string[] args)

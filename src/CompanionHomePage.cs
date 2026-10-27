@@ -41,7 +41,7 @@ namespace Dafeiyu
         public CompanionHomePage(PetWindow owner)
         {
             this.owner = owner; model = new RelationshipHomeModel(owner.Relationships);
-            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,()=>owner.Holidays.Catalog,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
+            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=Window.GetWindow(this);await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.Store.DirectoryPath);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
             Loaded+=delegate{holidayPulse.Start();ObserveShownHome();};Unloaded+=delegate{holidayPulse.Stop();};
 
@@ -69,7 +69,7 @@ namespace Dafeiyu
             string id=owner.RelationshipCompanionId;int version=++revision;
             if(navigationIdentity!=id)navigateToSettings=false;
             if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label(()=>(TextResources.Get("relationship.home.loading"))));}
-            var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.IsOfficial?owner.Skin.BuiltinCharacterId:null,owner.Skin.DisplayName);
+            var holiday=holidayAlbum.SetIdentityAsync(id);
             var view=await model.LoadAsync(id,RelationshipTime.Current());
             await holiday;
             if(disposed)return;

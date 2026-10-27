@@ -25,7 +25,7 @@ Scores belong to each stable companion identity; relationship switches apply to 
 
 The overall daily cap is 20. Failures, cancellation, repeated completion, internal subtasks, automatic actions and background recovery do not add rewards. Work remains attributed to its original companion. Upgrades do not reconstruct scores from old chats or tasks. Growth feedback follows successful storage; failures retain pending records and show a warning.
 
-Ordinary affection notices rise and fade in, remain briefly for about a second, then rise and fade out. Consecutive gains merge. Interaction responses and stage milestones remain readable longer. Notices avoid covering the companion; if there is no room, the popup is suppressed and saved growth remains available on companion home.
+Affection gains, stage milestones and interaction greetings fade in and out within about 0.9 seconds. Nearby gains merge without restarting the lifetime. Real gains still show feedback; interaction greetings use a 10% chance without changing affection scoring. Notices avoid the companion, and saved growth remains available in its home if there is no room for a popup.
 
 Days since meeting counts calendar days from the first encounter. Active days counts days with actual activity. Daily budgets advance through a naturally elapsed local midnight; changing the offset alone or rolling the clock back does not create a fresh budget. Missing a day does not subtract points.
 
@@ -39,9 +39,9 @@ Choose a save location after pressing Save. Cancellation writes nothing; failure
 
 ## Holiday keepsakes
 
-A locked preview is not an owned card. The registry supports **Halloween, Christmas, Spring Festival, Lantern Festival, Valentine’s Day, Qingming, Dragon Boat Festival, Mid-Autumn Festival, National Day and Qixi from 2026 onward**. Eligibility uses the actual local event date, trusted official identity and matching scenes, without retroactive acquisition. Wearing the outfit is not required; quiet mode or disabled relationship growth does not erase owned keepsakes.
+The holiday album only displays the current companion’s unlocked, successfully saved cards; locked previews are hidden. The registry supports **Halloween, Christmas, Spring Festival, Lantern Festival, Valentine’s Day, Qingming, Dragon Boat Festival, Mid-Autumn Festival, National Day and Qixi from 2026 onward**. Eligibility uses the actual local event date, trusted official identity and matching scenes, without retroactive acquisition. Wearing the outfit is not required; quiet mode or disabled relationship growth does not erase owned keepsakes.
 
-Actually displaying the companion or opening its home on the eligible date attempts to save that year’s keepsake. Background loading, reading an album and opening a locked preview do not earn one. Deduplication uses companion, holiday and annual occurrence. It grants no extra affection or wardrobe item. A failed attempt can be retriggered by a fresh eligible encounter while it is still that date; there is no cross-date retry or automatic collection of previous years.
+Actually displaying the companion or opening its home on the eligible date attempts to save that year’s keepsake. Background loading and reading an album do not earn one. Deduplication uses companion, holiday and annual occurrence. It grants no extra affection or wardrobe item. A failed attempt can be retriggered by a fresh eligible encounter while it is still that date; there is no cross-date retry or automatic collection of previous years.
 
 An owned card retains its original scene PNG, captured name/date, outfit/scene versions and hash. Later outfit changes, updates or missing source packages do not replace that saved picture. A damaged picture preserves the record and available historical facts, without invented pixels or counts. Future holidays require controlled calendar definitions, registry entries, identity/outfit bindings and verified scenes; an optional companion pack cannot simply declare a new collectible holiday.
 

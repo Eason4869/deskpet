@@ -39,5 +39,7 @@
   "settingsWindow.confirmRemoveCompanionAsync.window": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
   "settingsWindow.confirmRemoveCompanionAsync.text.alternativeA": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
   "settingsWindow.partnerRow.toolTipSetTip.alternativeA": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
-  "cache.preserved": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained."
+  "cache.preserved": "Retired in 0.11.1-dev.2: accurate list-removal or managed-history preservation copy replaces this active use; historical translation evidence retained.",
+  "holidayKeepsake.locked": "0.11.2-dev.2 hides unowned holiday preview cards. Retain the original translations and historical text contracts.",
+  "holidayKeepsake.unavailable": "0.11.2-dev.2 hides unowned holiday preview cards. Retain the original translations and historical text contracts."
 }

@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.2-dev.2 — 2026-10-27 · Development branch (no Release)
+
+- Affection gains and interaction greetings now last about 0.9 seconds including entrance and exit; merging gains or adding stage/greeting content does not restart the lifetime.
+- Interaction greetings use a 10% chance. Affection scoring and actual gain notifications keep their existing rules.
+- Holiday albums show only the current companion’s unlocked, saved keepsakes. Remove locked-card previews while retaining historical paging, exports and recovery.
+- Apply and verify both WPF and Avalonia behavior, including hit/miss probability branches, real scoring, unlocks and companion switches. main 0.11.1 and the existing v0.11.2-dev.1 source tag remain unchanged.
+
 ## 0.11.2-dev.1 — 2026-10-27 · Source preview (no Release)
 
 Based on main 0.11.1, submitted to dev; stable main remains unchanged.

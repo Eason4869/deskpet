@@ -1,6 +1,6 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**开发预览 0.11.2-dev.1（源码标签，无二进制 Release）** 新增[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。当前为文字对话，真实账号验收尚未完成。
+**开发预览 0.11.2-dev.2（dev 源码分支，无二进制 Release）** 新增[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。当前为文字对话，真实账号验收尚未完成。
 
 > **当前正式版：[0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 

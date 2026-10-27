@@ -11,28 +11,21 @@ namespace DeskPet.Desktop;
 
 internal sealed class RelationshipFeedbackWindow : Window
 {
-    static readonly TimeSpan EnterDuration=TimeSpan.FromMilliseconds(200),OrdinaryHold=TimeSpan.FromMilliseconds(1000),RichHold=TimeSpan.FromSeconds(7),ExitDuration=TimeSpan.FromMilliseconds(250),ReturnDuration=TimeSpan.FromMilliseconds(180);
+    static readonly TimeSpan EnterDuration=TimeSpan.FromMilliseconds(RelationshipFeedbackPolicy.EnterMilliseconds),ExitDuration=TimeSpan.FromMilliseconds(RelationshipFeedbackPolicy.ExitMilliseconds),TotalDuration=TimeSpan.FromMilliseconds(RelationshipFeedbackPolicy.LifetimeMilliseconds);
     readonly System.Threading.Timer lifetime;int tickQueued;bool closed;
     readonly Stopwatch age=new();readonly TranslateTransform motion=new(0,12);
     readonly SpriteAssets assets=new();
     readonly StackPanel details=Ui.Column();readonly TextBlock gain=Ui.Text("",16),response=Ui.Text("",13);readonly ScrollViewer responseArea;int points;
-    readonly Border card;TimeSpan holdUntil,returnStarted;TimeSpan? exitStarted;double returnOpacity,returnOffset;bool returning;
+    readonly Border card;
     readonly HashSet<string> stages=new();internal readonly HashSet<string> EventIds=new();
     internal string CompanionId{get;}
-    void Extend(bool rich)
-    {
-        var now=age.Elapsed;
-        if(exitStarted.HasValue){returnOpacity=card.Opacity;returnOffset=motion.Y;returnStarted=now;returning=true;exitStarted=null;}
-        var deadline=(now>EnterDuration?now:EnterDuration)+(rich?RichHold:OrdinaryHold);
-        if(deadline>holdUntil)holdUntil=deadline;
-    }
     void UpdateVisual(TimeSpan now)
     {
+        if(now>=TotalDuration){Close();return;}
         double opacity,offset;
         if(now<EnterDuration){double progress=now.TotalMilliseconds/EnterDuration.TotalMilliseconds;opacity=progress;offset=12*(1-progress);}
-        else if(returning){double progress=Math.Clamp((now-returnStarted).TotalMilliseconds/ReturnDuration.TotalMilliseconds,0,1);opacity=returnOpacity+(1-returnOpacity)*progress;offset=returnOffset*(1-progress);if(progress>=1)returning=false;}
-        else if(now<holdUntil){opacity=1;offset=0;}
-        else {exitStarted??=now;double progress=(now-exitStarted.Value).TotalMilliseconds/ExitDuration.TotalMilliseconds;if(progress>=1){Close();return;}opacity=1-progress;offset=-12*progress;}
+        else if(now<TotalDuration-ExitDuration){opacity=1;offset=0;}
+        else {double progress=(now-(TotalDuration-ExitDuration)).TotalMilliseconds/ExitDuration.TotalMilliseconds;opacity=1-progress;offset=-12*progress;}
         card.Opacity=opacity;motion.Y=offset;
     }
     void PlaceNearPet(DesktopController owner)
@@ -54,8 +47,8 @@ internal sealed class RelationshipFeedbackWindow : Window
         else if(IsVisible&&Bounds.Height>0)Close();
         else Position=new PixelPoint(x,y);
     }
-    internal void Merge(RelationshipFeedbackNotice notice){foreach(var id in notice.EventIds)EventIds.Add(id);points+=notice.AwardedPoints;LocalizedUi.Set(gain,"Text",()=>(points>0?TextResources.Format("relationship.feedback.gain",points):""));gain.IsVisible=points>0;foreach(var m in notice.Milestones)if(stages.Add(m.StageId)){details.Children.Add(Ui.Text(RelationshipContent.StageName(m.StageId),18));details.Children.Add(Ui.Text(RelationshipCardData.FormatDate(m.EarnedLocalDate),12));}Extend(notice.Milestones.Count>0);}
-    internal void SetInteraction(string text,string eventId){EventIds.Add(eventId);response.Text=text;ToolTip.SetTip(response,text);Avalonia.Automation.AutomationProperties.SetName(response,text);responseArea.IsVisible=true;Extend(true);}
+    internal void Merge(RelationshipFeedbackNotice notice){foreach(var id in notice.EventIds)EventIds.Add(id);points+=notice.AwardedPoints;LocalizedUi.Set(gain,"Text",()=>(points>0?TextResources.Format("relationship.feedback.gain",points):""));gain.IsVisible=points>0;foreach(var m in notice.Milestones)if(stages.Add(m.StageId)){details.Children.Add(Ui.Text(RelationshipContent.StageName(m.StageId),18));details.Children.Add(Ui.Text(RelationshipCardData.FormatDate(m.EarnedLocalDate),12));}}
+    internal void SetInteraction(string text,string eventId){EventIds.Add(eventId);response.Text=text;ToolTip.SetTip(response,text);Avalonia.Automation.AutomationProperties.SetName(response,text);responseArea.IsVisible=true;}
     internal RelationshipFeedbackWindow(DesktopController owner,RelationshipFeedbackNotice notice)
     {
         CompanionId=notice.CompanionId;var capturedSkin=owner.Skin;

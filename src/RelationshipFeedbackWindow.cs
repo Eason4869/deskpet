@@ -11,15 +11,9 @@ namespace Dafeiyu
 {
     internal sealed class RelationshipFeedbackWindow : Window
     {
-        readonly DispatcherTimer lifetime=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(50)};
+        readonly DispatcherTimer lifetime=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
         readonly System.Diagnostics.Stopwatch age=new System.Diagnostics.Stopwatch();
-        double expiresAt,exitStartedAt,restTop;bool exiting,loaded,closed;
-        void ExtendLifetime()
-        {
-            expiresAt=age.Elapsed.TotalMilliseconds+(stages.Count>0||responseArea.Visibility==Visibility.Visible?7000:1200);
-            if(!loaded||!exiting)return;
-            exiting=false;AnimateTo(1,restTop,120);
-        }
+        double restTop;bool exiting,loaded,closed;
         void AnimateTo(double opacity,double top,double milliseconds)
         {
             var duration=new Duration(TimeSpan.FromMilliseconds(milliseconds));
@@ -28,8 +22,8 @@ namespace Dafeiyu
         }
         void FadeOut()
         {
-            if(exiting||closed)return;exiting=true;exitStartedAt=age.Elapsed.TotalMilliseconds;
-            AnimateTo(0,Top-10,250);
+            if(exiting||closed)return;exiting=true;
+            AnimateTo(0,Top-10,RelationshipFeedbackPolicy.ExitMilliseconds);
         }
         void PositionNear(PetWindow pet)
         {
@@ -60,10 +54,9 @@ namespace Dafeiyu
             foreach(var id in notice.EventIds)EventIds.Add(id);points+=notice.AwardedPoints;
             LocalizedUi.Set(gain,"Text",()=>(points>0?TextResources.Format("relationship.feedback.gain",points):""));gain.Visibility=points>0?Visibility.Visible:Visibility.Collapsed;
             foreach(var m in notice.Milestones)if(stages.Add(m.StageId)){details.Children.Add(Ui.Text(RelationshipContent.StageName(m.StageId),18,AgentUi.Ink));details.Children.Add(Ui.Text(RelationshipCardData.FormatDate(m.EarnedLocalDate),12,AgentUi.Ink));}
-            ExtendLifetime();
         }
         internal void SetInteraction(string text,string eventId)
-        {EventIds.Add(eventId);response.Text=text;response.ToolTip=text;System.Windows.Automation.AutomationProperties.SetName(response,text);responseArea.Visibility=Visibility.Visible;ExtendLifetime();}
+        {EventIds.Add(eventId);response.Text=text;response.ToolTip=text;System.Windows.Automation.AutomationProperties.SetName(response,text);responseArea.Visibility=Visibility.Visible;}
         internal RelationshipFeedbackWindow(PetWindow pet,RelationshipFeedbackNotice notice)
         {
             CompanionId=notice.CompanionId;
@@ -80,12 +73,12 @@ namespace Dafeiyu
             Content=new Border{Child=new ScrollViewer{Content=body,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled,MaxHeight=420},Padding=new Thickness(18),CornerRadius=new CornerRadius(18),Background=ThemeManager.Surface,BorderThickness=new Thickness(1),BorderBrush=Ui.Line};
             SourceInitialized+=delegate{DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
             Opacity=0;
-            Loaded+=delegate{loaded=true;PositionNear(pet);if(closed)return;Top=restTop+12;age.Start();ExtendLifetime();AnimateTo(1,restTop,200);lifetime.Start();};
+            Loaded+=delegate{loaded=true;PositionNear(pet);if(closed)return;Top=restTop+12;age.Start();AnimateTo(1,restTop,RelationshipFeedbackPolicy.EnterMilliseconds);lifetime.Start();};
             SizeChanged+=delegate{PositionNear(pet);};EventHandler petMoved=delegate{PositionNear(pet);};pet.LocationChanged+=petMoved;
             int suppressionVersion=pet.Relationships.FeedbackSuppressionVersion;
             Action savedSettingsChanged=delegate{if(!pet.Relationships.FeedbackEnabled||suppressionVersion!=pet.Relationships.FeedbackSuppressionVersion)Close();};
             pet.Relationships.FeedbackSettingsChanged+=savedSettingsChanged;
-            lifetime.Tick+=delegate{if(!pet.RelationshipFeedbackAllowed(notice.CompanionId)||suppressionVersion!=pet.Relationships.FeedbackSuppressionVersion){Close();return;}if(exiting&&age.Elapsed.TotalMilliseconds>=exitStartedAt+250)Close();else if(age.Elapsed.TotalMilliseconds>=expiresAt)FadeOut();};
+            lifetime.Tick+=delegate{if(!pet.RelationshipFeedbackAllowed(notice.CompanionId)||suppressionVersion!=pet.Relationships.FeedbackSuppressionVersion){Close();return;}if(age.Elapsed.TotalMilliseconds>=RelationshipFeedbackPolicy.LifetimeMilliseconds)Close();else if(age.Elapsed.TotalMilliseconds>=RelationshipFeedbackPolicy.LifetimeMilliseconds-RelationshipFeedbackPolicy.ExitMilliseconds)FadeOut();};
             Closed+=delegate{closed=true;lifetime.Stop();age.Stop();pet.LocationChanged-=petMoved;pet.Relationships.FeedbackSettingsChanged-=savedSettingsChanged;BeginAnimation(OpacityProperty,null);BeginAnimation(TopProperty,null);};
         }
     }

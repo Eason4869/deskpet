@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -17,13 +17,12 @@ namespace Dafeiyu
         readonly string runtimeDataDirectory;
         readonly Action<string> openFolder;
         readonly HolidayKeepsakeAlbumModel model;
-        readonly Func<HolidayCatalog> catalog;
         readonly Func<Task> retryEncounter;
         readonly Func<bool> sameOwner;
         WrapPanel cards;readonly List<WrapPanel> cardAreas=new List<WrapPanel>();
         readonly HashSet<string> expandedCards=new HashSet<string>();
         readonly Dictionary<string,HolidayCardCapture> captures=new Dictionary<string,HolidayCardCapture>();
-        string identity,character,companionName;string selectedHoliday;
+        string identity;
         int page,revision; bool disposed;
         HolidayKeepsakePage loaded;
         HolidayKeepsakeReadStatus readStatus;
@@ -31,13 +30,13 @@ namespace Dafeiyu
         public Task Pending {get;private set;}
         internal int SavedCount {get{return loaded==null?0:loaded.Album.Records.Count;}}
         internal int DecodedCount {get{return captures.Count;}}
-        internal HolidayKeepsakeAlbumView(HolidayKeepsakeRuntime runtime,Func<HolidayCatalog> catalog,Func<Task> retryEncounter,Func<bool> sameOwner,string dataDirectory,Action<string> openFolder=null)
-        {runtimeDataDirectory=dataDirectory;this.openFolder=openFolder??(path=>System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true}));this.runtime=runtime;model=new HolidayKeepsakeAlbumModel(runtime);this.catalog=catalog;this.retryEncounter=retryEncounter;this.sameOwner=sameOwner;Pending=Task.FromResult(true);Name="HolidayKeepsakeAlbum";runtime.Changed+=Changed;SizeChanged+=delegate{ResizeCards();};}
+        internal HolidayKeepsakeAlbumView(HolidayKeepsakeRuntime runtime,Func<Task> retryEncounter,Func<bool> sameOwner,string dataDirectory,Action<string> openFolder=null)
+        {runtimeDataDirectory=dataDirectory;this.openFolder=openFolder??(path=>System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true}));this.runtime=runtime;model=new HolidayKeepsakeAlbumModel(runtime);this.retryEncounter=retryEncounter;this.sameOwner=sameOwner;Pending=Task.FromResult(true);Name="HolidayKeepsakeAlbum";runtime.Changed+=Changed;SizeChanged+=delegate{ResizeCards();};}
         async void Changed(string id){if(!disposed&&id==identity)await RefreshAsync();}
-        internal Task SetIdentityAsync(string id,string verified,string name)
+        internal Task SetIdentityAsync(string id)
         {
             if(identity!=id){revision++;page=0;loaded=null;ClearCaptures();expandedCards.Clear();identity=id;}
-            character=verified;companionName=name;return RefreshAsync();
+            return RefreshAsync();
         }
         internal Task RefreshAsync(){return Pending=LoadAsync();}
         async Task LoadAsync()
@@ -49,22 +48,15 @@ namespace Dafeiyu
             if(readStatus==HolidayKeepsakeReadStatus.Available)loaded=result;
             else if(loaded!=null)result=loaded;
             page=result.Page;
-            var definitions=HolidayKeepsakeRegistry.BuiltIn.Definitions.Where(x=>x.EnabledForAcquisition).ToArray();
-            if(!definitions.Any(x=>x.HolidayId==selectedHoliday)){var available=definitions.FirstOrDefault(d=>catalog().Outfits.Any(o=>o.Ready&&o.CharacterId==character&&o.HolidayId==d.HolidayId));selectedHoliday=available!=null?available.HolidayId:definitions.Length==0?null:definitions[0].HolidayId;}
-            var now=RelationshipTime.Current();int year=now.UtcNow.Add(now.LocalOffset).Year;
-            HolidayKeepsakePreviewResult preview=null;
-            if(readStatus==HolidayKeepsakeReadStatus.Available&&selectedHoliday!=null&&!result.Album.Records.Any(x=>x.HolidayId==selectedHoliday&&x.OccurrenceYear==year))
-                preview=await runtime.PreviewAsync(id,character,companionName,selectedHoliday,year,catalog());
-            if(!Current(version,id))return;
-            Render(result,preview,year,version,id,definitions);
+            // Only persisted receipts unlock album cards; resource availability does not.
+            Render(result,version,id);
         }
         bool Current(int version,string id){return !disposed&&version==revision&&id==identity&&sameOwner();}
-        void Render(HolidayKeepsakePage result,HolidayKeepsakePreviewResult preview,int year,int version,string id,HolidayKeepsakeDefinition[] definitions)
+        void Render(HolidayKeepsakePage result,int version,string id)
         {
             var focused=System.Windows.Input.Keyboard.FocusedElement as FrameworkElement;var focus=HomeVisual.CaptureFocus(this,focused);
             foreach(var old in captures.Values){if(old.Expanded)expandedCards.Add(old.Data.Identity);else expandedCards.Remove(old.Data.Identity);}
             var wanted=new HashSet<string>(result.Scenes.Where(x=>x.Status==HolidayKeepsakeReadStatus.Available&&x.Record!=null).Select(x=>HolidayKeepsakeCardData.Owned(x.Record,HolidayKeepsakeRegistry.BuiltIn).CaptureKey(ThemeManager.IsDark)));
-            if(preview!=null&&preview.Availability==HolidayKeepsakeAvailability.Available)wanted.Add(HolidayKeepsakeCardData.Preview(id,companionName,year,preview,HolidayKeepsakeRegistry.BuiltIn).CaptureKey(ThemeManager.IsDark));
             var keep=new HashSet<string>();Children.Clear();cardAreas.Clear();
             foreach(var key in captures.Keys.Where(x=>!wanted.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}
             var title=Text(()=>(TextResources.Get("holidayKeepsake.albumTitle")),18);Children.Add(title);
@@ -84,18 +76,6 @@ namespace Dafeiyu
                 var back=Button(()=>(TextResources.Get("holidayKeepsake.previous")),async delegate{page--;await RefreshAsync();});back.IsEnabled=page>0;back.Name="HolidayPreviousPage";
                 var next=Button(()=>(TextResources.Get("holidayKeepsake.next")),async delegate{page++;await RefreshAsync();});next.IsEnabled=page+1<result.PageCount;next.Name="HolidayNextPage";
                 pager.Children.Add(back);pager.Children.Add(Text(()=>(TextResources.Format("holidayKeepsake.pageNumber",page+1,result.PageCount)),13));pager.Children.Add(next);Children.Add(pager);
-            }
-            if(definitions.Length>1){
-                var items=definitions.Select(x=>new ComboBoxItem{Tag=x.HolidayId,Content=Text(()=>HolidayKeepsakeCardData.Owned(new HolidayKeepsakeRecord{HolidayId=x.HolidayId},HolidayKeepsakeRegistry.BuiltIn).Title,13)}).ToArray();
-                var choice=new ComboBox{Name="HolidayPreviewChoice",ItemsSource=items,SelectedItem=items.FirstOrDefault(x=>(string)x.Tag==selectedHoliday)};
-                choice.SelectionChanged+=async delegate{if(choice.SelectedItem is ComboBoxItem){selectedHoliday=(string)((ComboBoxItem)choice.SelectedItem).Tag;await RefreshAsync();}};
-                Children.Add(choice);
-            }
-            if(preview!=null){
-                Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.locked")),13));
-                cards=new WrapPanel();cardAreas.Add(cards);Children.Add(cards);
-                if(preview.Availability==HolidayKeepsakeAvailability.Available)AddCard(HolidayKeepsakeCardData.Preview(id,companionName,year,preview,HolidayKeepsakeRegistry.BuiltIn),preview.CopyPngBytes(),keep,version,id);
-                else Children.Add(Text(()=>(TextResources.Get("holidayKeepsake.unavailable")),13));
             }
             var retry=Button(()=>(TextResources.Get("holidayKeepsake.retry")),async delegate{await retryEncounter();if(!disposed)await RefreshAsync();});retry.Name="HolidayRetry";Children.Add(retry);
             foreach(var key in captures.Keys.Where(x=>!keep.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}

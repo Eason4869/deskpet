@@ -26,6 +26,7 @@ namespace Dafeiyu
             if(!Relationships.TryEnqueueUserInteraction(id,true,started,out completion,out eventId))return;
             int epoch=++relationshipContentEpoch,revision=interactionRevision,suppression=Relationships.FeedbackSuppressionVersion;var skin=Skin;var pack=RelationshipPack;string locale=TextResources.CurrentLanguage;
             bool admitted=RelationshipInteractionAllowed(id);
+            if(!RelationshipFeedbackPolicy.ShowInteraction(random.NextDouble()))return;
             try{
                 await completion;
                 if(!admitted||epoch!=relationshipContentEpoch||revision!=interactionRevision||!ReferenceEquals(skin,Skin)||!RelationshipInteractionAllowed(id)||suppression!=Relationships.FeedbackSuppressionVersion||Relationships.PendingCount!=0||Relationships.RequiresRestart||Relationships.Warning.Length!=0)return;

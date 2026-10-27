@@ -1,6 +1,6 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**Development preview 0.11.2-dev.1 (source tag, no binary Release):** [messaging channels](docs/im-channels.md) connect user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Text only; real-account acceptance is pending.
+**Development preview 0.11.2-dev.2 (dev source branch, no binary Release):** [messaging channels](docs/im-channels.md) connect user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Text only; real-account acceptance is pending.
 
 > **Current stable release: [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
 

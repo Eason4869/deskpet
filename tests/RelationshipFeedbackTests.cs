@@ -20,6 +20,10 @@ namespace Dafeiyu.Tests
         public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("RelationshipFeedbackTests: "+checks+" passed");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
         static async Task Run()
         {
+            var policy=typeof(RelationshipRuntime).Assembly.GetType("Dafeiyu.RelationshipFeedbackPolicy");Check(policy!=null,"shared brief feedback and greeting probability policy exists");
+            var choose=policy.GetMethod("ShowInteraction",System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Static);Check(choose!=null,"greeting admission has a deterministic probability boundary");
+            Func<double,bool> show=value=>(bool)choose.Invoke(null,new object[]{value});int selected=0;for(int n=0;n<1000;n++)if(show(n/1000.0))selected++;
+            Check(selected==100&&show(0)&&show(.099)&&!show(.1)&&!show(1)&&!show(-1)&&!show(Double.NaN),"greetings select ten percent and reject invalid samples");
             using(var f=new RelationshipFixture())using(var runtime=new RelationshipRuntime(f.Root)){
                 var clock=new Clock();bool allowed=true;string current="official:e-bao";var notices=new List<RelationshipFeedbackNotice>();
                 using(var feedback=new RelationshipFeedback(runtime,id=>allowed&&id==current,notices.Add,clock)){
