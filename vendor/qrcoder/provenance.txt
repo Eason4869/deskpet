@@ -1,0 +1,4 @@
+QRCoder 1.6.0, MIT
+Source: https://github.com/codebude/QRCoder/tree/v1.6.0
+Package: https://api.nuget.org/v3-flatcontainer/qrcoder/1.6.0/qrcoder.1.6.0.nupkg
+Package SHA256: d84bffe9decf1fa2b8755610407959f998209029c3b6b95a1b282ceb9983a36f

@@ -50,6 +50,8 @@ internal sealed partial class DesktopController : IDisposable
     public DictationSession Dictation { get; }
     public GeminiLiveSession Live { get; }
     public ApiClient Api { get; }
+    Dafeiyu.ImChannels.ImChannelManager? imChannels;
+    internal Dafeiyu.ImChannels.ImChannelManager ImChannels => imChannels ??= new Dafeiyu.ImChannels.ImChannelManager(DataDirectory,()=>Settings.Copy(),DataMaintenance);
     public GeneratedImageStore ImageStore { get; }
     public ImageGenerationClient ImageClient { get; }
     public ImageGenerationTaskManager ImageTasks { get; }
@@ -98,6 +100,7 @@ internal sealed partial class DesktopController : IDisposable
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
         Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
+        if(File.Exists(Path.Combine(DataDirectory,"im-channels.json")))Dispatcher.UIThread.Post(()=>{_ = ImChannels.RestoreAsync();});
         ImageUsage = new ImageAssetUsageRegistry();
         ImageStore = new GeneratedImageStore(DataDirectory, ImageUsage);
         ImageClient = imageClientFactory?.Invoke(ImageStore) ?? new ImageGenerationClient(ImageStore);
@@ -299,6 +302,7 @@ internal sealed partial class DesktopController : IDisposable
     }
     private async Task DrainApplicationForExitAsync()
     {
+        if(imChannels!=null)await imChannels.StopAllAsync();
         await Task.WhenAll(ImageTasks.StopAsync(CancellationToken.None),Task.Run(()=>Session.StopAsync()),StopAsync());
         composerDrafts?.Flush();Save();Holidays.RetrySave();await Session.FlushHistoryAsync();await Relationships.FlushAsync();await HolidayKeepsakes.FlushAsync();
     }
@@ -306,6 +310,7 @@ internal sealed partial class DesktopController : IDisposable
     {
         if(Interlocked.Exchange(ref conversationServicesFinalized,1)!=0)return;
         composerDrafts?.Dispose();
+        imChannels?.Dispose();
         Queue.Dispose();
         Dictation.Dispose();
         Live.Dispose();

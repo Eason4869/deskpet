@@ -7,6 +7,10 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../vendor/qrcoder/netstandard2.0/QRCoder.dll" LogicalName="Dafeiyu.QRCoder.dll" />
+    <EmbeddedResource Include="../../vendor/qrcoder/LICENSE.txt" LogicalName="Dafeiyu.QRCoder.LICENSE.txt" />
+    <Reference Include="QRCoder"><HintPath>../../vendor/qrcoder/netstandard2.0/QRCoder.dll</HintPath><Private>true</Private></Reference>
+    <Compile Include="../../src/ImChannels/*.cs" Link="Shared/ImChannels/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackagePolicy.cs;../../src/CompanionPackageInventory.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/official/companion-package-policy.json" LogicalName="Dafeiyu.CompanionPackagePolicy" />
     <Compile Include="../../src/ComposerDraftStore.cs" Link="Shared/ComposerDraftStore.cs" />

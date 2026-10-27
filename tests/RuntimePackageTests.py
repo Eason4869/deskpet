@@ -22,14 +22,15 @@ class RuntimePackageTests(unittest.TestCase):
             destinations={item['destination'] for item in plan}
             self.assertIn('docs/readme.en.md',destinations)
             self.assertIn('docs/changelog.en.md',destinations)
+            self.assertIn('docs/im-channels.md',destinations)
             # The 0.10.4 updater only accepts the original root filenames and docs/*.md.
             self.assertNotIn('README.en.md',destinations)
             self.assertNotIn('CHANGELOG.en.md',destinations)
             stage=root/'runtime'
             stage_runtime(plan,stage)
             expected={
-                'README.md':['docs/readme.en.md'],
-                'docs/readme.en.md':['../README.md','changelog.en.md','configuration-guide.md'],
+                'README.md':['docs/readme.en.md','docs/im-channels.md'],
+                'docs/readme.en.md':['../README.md','changelog.en.md','configuration-guide.md','im-channels.md'],
                 'CHANGELOG.md':['docs/changelog.en.md'],
                 'docs/changelog.en.md':['../CHANGELOG.md','changelog.en.md','image-generation.md'],
             }

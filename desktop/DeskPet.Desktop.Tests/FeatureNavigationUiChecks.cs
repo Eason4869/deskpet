@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -13,7 +13,7 @@ using DeskPet.Desktop;
 
 internal static class FeatureNavigationUiChecks
 {
-    internal static int Run(string directory,string language)
+    internal static int Run(string directory,string language,bool channelsOnly=false)
     {
         int checks=0;
         void Check(bool value,string reason){if(!value)throw new Exception(reason);checks++;Console.WriteLine("PASS "+reason);}
@@ -26,6 +26,20 @@ internal static class FeatureNavigationUiChecks
         var captures=Path.GetFullPath(Path.Combine("work","feature-navigation","native-"+language+"-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(captures);
         void Capture(Window window,string name){Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(captures,name+".png"),new PngBitmapEncoderOptions());}
         try{
+            if(channelsOnly){
+                settings.SelectSection("channels");Dispatcher.UIThread.RunJobs();
+                Check(settings.SelectedSection=="channels","channel navigation route");
+                Check(Named<TextBox>(settings,"ImSecret").PasswordChar!='\0',"secret is masked");
+                var channelName=Named<TextBox>(settings,"ImChannelName");channelName.Text="unsaved channel";
+                UiLanguageChange.Apply(new SettingsStore(settingsPath),owner.Settings,language=="zh_CN"?"en_US":"zh_CN");Dispatcher.UIThread.RunJobs();
+                Check(channelName.Text=="unsaved channel","live language preserves channel draft");
+                Check(Named<ComboBox>(settings,"ImPlatform").ItemCount==5,"five platforms available");
+                Click(Named<Button>(settings,"ImSave"));Check(owner.ImChannels.Profiles.Count==1,"channel saved without connecting");
+                Click(Named<Button>(settings,"ImDelete"));Check(owner.ImChannels.Profiles.Count==0&&Named<ComboBox>(settings,"ImChannelList").ItemCount==0,"deletion removes stale profile and credentials from list");
+                UiLanguageChange.Apply(new SettingsStore(settingsPath),owner.Settings,language);Dispatcher.UIThread.RunJobs();Check(Named<Button>(settings,"ImOpenPlatform")!=null,"platform browser entry exists");
+                Capture(settings,"channels");settings.Width=600;Dispatcher.UIThread.RunJobs();Capture(settings,"channels-narrow");
+                Console.WriteLine("Channels UI captures="+captures);return checks;
+            }
             Check(TextResources.CurrentLanguage==language,"native frozen startup language matches fixture");
             var draft=Named<TextBox>(chat,"ChatDraft");draft.Text="S3 preserved native composer";var session=chat.BoundSession;
             settings.SelectSection("image");Dispatcher.UIThread.RunJobs();var provider=Named<TextBox>(settings,"ImageProviderName");provider.Text="S3 native unsaved provider";

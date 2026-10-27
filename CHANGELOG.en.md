@@ -1,6 +1,31 @@
-# Changelog
+﻿# Changelog
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
+
+## 0.11.2-dev.1 — 2026-10-27 · Source preview (no Release)
+
+Based on main 0.11.1, submitted to dev; stable main remains unchanged.
+
+- Native outbound messaging for QQ, WeChat, Feishu, DingTalk and WeCom, with credentials/QR login, allowlists and lifecycle controls under Settings → Messaging channels. No public IP, developer server or additional bot runtime.
+- Isolated identities, bounded context/queues, encrypted profiles and no remote Agent tools. All 52 messaging strings are translated in all 13 locales.
+- Fix cancellation races, stop at dedup capacity, WeChat poll timeouts/extra verification, Feishu auth/heartbeat, DingTalk registration readiness and cancelled QR saves. Include an offline guide and Windows/macOS CI checks.
+- See the [plan audit](docs/im-channels-plan-audit.md) and [verification record](docs/im-channels-acceptance.md). Real-account and real Mac login acceptance remain pending; this source tag does not provide installable Release assets.
+
+## [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1) — 2026-10-27 · Stable
+
+Published from main, combining the 0.10.5, 0.11.0 and 0.11.1 development work since stable 0.10.4. Assets include Windows installer/portable/standalone application, both macOS preview architectures, source, five complete companion packs, pack index, authoring template and unified SHA256 checksums. Mac packages remain ad-hoc signed, without Developer ID signing or notarization.
+
+- Support thirteen languages and System default. WPF and Avalonia apply saved language changes immediately while retaining drafts, windows, unsaved settings and running tasks. Existing requests keep their starting language; new requests use the new choice. Custom personalities and existing content remain intact.
+- Add companion home, separate relationship records, stage welcomes and interaction feedback. Score saved encounter, interaction, successful-conversation and root-work-task facts with a daily cap of 20; old chats do not manufacture gains. Growth, feedback and AI stage context can be disabled.
+- Provide 55 appearances across five complete official packs: default plus ten holiday outfits per companion, preserving HD artwork, complete actions and stable identity. Local-date wardrobe changes respect multi-day National Day, Spring Festival and Christmas periods; other events last one day. Normal selection returns afterward, with independent role/source/holiday unlocks.
+- Support ten holiday keepsakes, adding original scenes and decoration for nine holidays across all five roles. Eligible real visits save the current year's card; previews and past dates do not grant ownership. Exports retain original scenes, historical names, dates and digests.
+- Persist encrypted new-conversation drafts by companion, mode, project and section across restarting. Record shortcut keys with clear, conflict detection and save, preserving cancellation and focus-loss behavior.
+- Support application-owned background jobs in persistent Windows WPF and Avalonia work conversations: original-reply cards, project lists, paged logs, stop and retry. Preserve process-tree ownership; local previews open only after an explicit click. macOS provides conversations and task-record UI without local background-process execution.
+- Release application 0.11.1 while retaining actual material version 0.11.0-dev.3 in the five official ZIPs. Unchanged materials retain identical bytes/digests and verified installed content is reused across releases without receipt rewriting. Conflicting metadata preserves existing material and reports an error. Full packs allow 512 MiB and receipts use the shared 1024-file limit.
+- Add transactional current/recovery publication and interrupted-state recovery. Managed history becomes eligible after seven retirement days for manual or successful-install background cleanup. Protect current, recovery, active, unknown, legacy and custom resources. Verify each managed offline query once instead of twice, without permanent trust caching; maintenance failures never change committed install success.
+- Preserve drafts, media, attachments, relationships and project data across the documented maintenance operations. Uninstall requires in-app confirmation; cancellation, Escape, closing and preparation failure keep the companion usable. Correct stumble, download and list-removal copy, align release/runtime documentation, and repair language snapshots, standalone updater dependencies, Unix lock waits and packaging/native-preview acceptance.
+
+Resources, placeholders, provenance and packaged output are checked; generated translations have not received native-speaker review. See the [setup guide](docs/configuration-guide.md), [relationship guide](docs/companion-relationship/user-guide.en.md), [character packs](docs/character-packs.md) and [release naming](docs/release-naming.md). Historical development records retain their original status below.
 
 ## 0.11.1-dev.3 — Source tag (no Release)
 

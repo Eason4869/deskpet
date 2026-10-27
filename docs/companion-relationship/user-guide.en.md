@@ -2,7 +2,7 @@
 
 [简体中文](user-guide.md) · [Feature entry matrix](feature-entry-matrix.md) · [Schemas and identity](schema-and-packs.md)
 
-This guide describes the `0.11.0-dev.1` source preview. The [local acceptance snapshot](acceptance.md) records Windows candidate checks and platform limits; macOS hardware remains unverified. A source tag is not a binary Release.
+This guide describes stable `0.11.1`. The [historical acceptance snapshot](acceptance.md) retains development evidence and platform limits; current binaries and checksums are on the stable Release. Mac packages remain unnotarized ad-hoc previews; CI validation is distinct from manual acceptance on user hardware.
 
 ## Open home and find features
 
@@ -39,7 +39,7 @@ Choose a save location after pressing Save. Cancellation writes nothing; failure
 
 ## Holiday keepsakes
 
-A locked preview is not an owned card. The acquisition registry currently enables **Halloween from 2026 onward**. Other events in the calendar are not automatically collectible. Eligibility uses the actual local holiday date, trusted official companion identity and a matching verified scene. Wearing the corresponding outfit is not required. Quiet mode or disabled relationship growth does not erase owned keepsakes.
+A locked preview is not an owned card. The registry supports **Halloween, Christmas, Spring Festival, Lantern Festival, Valentine’s Day, Qingming, Dragon Boat Festival, Mid-Autumn Festival, National Day and Qixi from 2026 onward**. Eligibility uses the actual local event date, trusted official identity and matching scenes, without retroactive acquisition. Wearing the outfit is not required; quiet mode or disabled relationship growth does not erase owned keepsakes.
 
 Actually displaying the companion or opening its home on the eligible date attempts to save that year’s keepsake. Background loading, reading an album and opening a locked preview do not earn one. Deduplication uses companion, holiday and annual occurrence. It grants no extra affection or wardrobe item. A failed attempt can be retriggered by a fresh eligible encounter while it is still that date; there is no cross-date retry or automatic collection of previous years.
 
@@ -47,7 +47,7 @@ An owned card retains its original scene PNG, captured name/date, outfit/scene v
 
 ## Maintenance and recovery
 
-**About → Clear cache** scans expired update packages and leftover downloads. Only identified, unused cache older than seven days is eligible. Active, pending-install, uncertain, linked/outside or changed-since-scan items are protected or skipped. Results report actual bytes and failures/skips. Images, attachments, relationships, keepsakes, chats, credentials and project data are preserved.
+**About → Clear cache** scans expired updates, abandoned downloads and managed companion history. Only identified, unused candidates meeting the applicable seven-day grace are eligible; history ages from retirement. Current, recovery, active, unknown, legacy and custom resources remain protected. Post-install background maintenance affects only companion history. Linked or changed entries are protected or skipped; results report actual freed bytes and failures/skips. Personal images, attachments, relationships, keepsakes, chats, keys and project data are outside this cleanup.
 
 **General → Data management → Clear all chat history** clears all companion/project transcripts, model-session context and completed-task replay context. It preserves unsent drafts and their attachments, images and retained attachments, model configuration/keys, personas/voices, relationships/keepsakes/settings, project configuration/source files and explicitly saved project facts. It does not retain a hidden copy of chat text. Unsafe or unsuccessful storage operations produce a partial result and preserve related originals.
 

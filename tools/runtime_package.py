@@ -13,7 +13,7 @@ USER_DOCS = [
     'configuration-guide.md', 'agent-workflows.md', 'skin-format.md', 'character-packs.md',
     'dialogue-setup.md', 'conversation-agent.md', 'third-party-notices.md',
     'installation.md', 'daily-use.md', 'voice-presets.md', 'sources.md',
-    'interaction-extension.md', 'holiday-outfits.md', 'image-generation.md',
+    'interaction-extension.md', 'holiday-outfits.md', 'image-generation.md', 'im-channels.md',
 ]
 BINARIES = ['桌面伙伴.exe', '桌面伙伴.exe.config', 'DeskPet.Update.exe', 'DeskPet.Update.exe.config']
 

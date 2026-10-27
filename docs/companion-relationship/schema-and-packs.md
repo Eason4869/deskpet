@@ -48,7 +48,7 @@ The optional top-level `relationship` object is supported by the existing skin-m
 
 已拥有记录先于当前衣装和资源可用性判断。更换当前图片、包版本或名称不会重写旧纪念。读取场景失败时继续保留记录及其历史事实；整本状态不可读时不能把未知数量显示成零。
 
-Future acquisition is a compiled, controlled extension: `HolidayKeepsakeDefinition` binds holiday/calendar IDs, first enabled year, title/message/style resource keys, `SceneSetId` and acquisition enablement. Currently `SceneSetId == HolidayId`, the built-in registry enables only Halloween from 2026, and the five-argument `IRelationshipSceneProvider.Capture(companionId, characterId, holidayId, outfitId, outfitVersion)` must capture the exact reviewed 800×480 scene/version/hash. Original PNG structure, decompression completeness, dimensions and hashes are validated before durable publication. A new calendar entry without matching registry/resources is not collectible, and introducing a definition does not backfill past dates.
+Future acquisition is a compiled, controlled extension: `HolidayKeepsakeDefinition` binds holiday/calendar IDs, first enabled year, title/message/style resource keys, `SceneSetId` and acquisition enablement. Currently `SceneSetId == HolidayId`, the built-in registry enables the ten reviewed holidays from 2026, and the five-argument `IRelationshipSceneProvider.Capture(companionId, characterId, holidayId, outfitId, outfitVersion)` must capture the exact reviewed 800×480 scene/version/hash. Original PNG structure, decompression completeness, dimensions and hashes are validated before durable publication. A new calendar entry without matching registry/resources is not collectible, and introducing a definition does not backfill past dates.
 
 ## Review and compatibility / 审阅与兼容
 
