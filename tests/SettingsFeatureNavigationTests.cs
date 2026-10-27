@@ -34,7 +34,7 @@ namespace Dafeiyu.Tests
         {
             TextResources.ConfigureStartupLanguage(locale);
             string root=Path.GetFullPath(Path.Combine("work","feature-navigation","wpf-"+locale+"-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
-            var cfg=new PetSettings{UiLanguage=locale,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,SaveChatHistory=false,ReadReplies=false,AgentWorkspace=Path.Combine(root,"workspace")};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+            var cfg=new PetSettings{UiLanguage=locale,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,SaveChatHistory=false,ReadReplies=false,AgentWorkspace=Path.Combine(root,"workspace")};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="offline-fixture"};
             var store=new SettingsStore(Path.Combine(root,"data","settings.json"));store.Save(cfg);
             pet=new PetWindow(null,cfg,store,null);pet.ShowChat();await Task.Delay(130);
             var chat=app.Windows.OfType<ChatWindow>().Single();chat.Width=1100;chat.Height=800;

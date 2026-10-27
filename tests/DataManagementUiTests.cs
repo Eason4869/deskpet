@@ -49,7 +49,7 @@ namespace Dafeiyu.Tests
         [STAThread]public static int Main(string[] args)
         {
             TextResources.ConfigureStartupLanguage(args.Length==0?"zh_CN":args[0]);
-            app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window host=null;
+            app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};System.Threading.SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());PetWindow pet=null;Window host=null;
             string root=Path.GetFullPath(Path.Combine("work","data-ui",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
             Check(TextResources.CurrentLanguage==(args.Length==0?"zh_CN":args[0]),"actual WPF startup catalog matches requested locale");
             try{
@@ -91,6 +91,7 @@ namespace Dafeiyu.Tests
                 Check(cfg.AgentCommandsEnabled&&File.ReadAllText(Path.Combine(root,"settings.json")).Contains("\"AgentCommandsEnabled\":true"),"volume editor refresh neither saves nor normalizes retained settings");
                 Check(ReferenceEquals(volume,Find<Slider>(page,"VoiceVolume"))&&voiceDraft.Text=="unsaved voice selection"&&providerDraft.Text=="unsaved speech provider","volume refresh preserves existing provider and voice editor drafts");
                 volume.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(volume),0,Key.Right){RoutedEvent=Keyboard.KeyDownEvent});
+                var volumeSave=pet.FlushPreferenceSavesAsync();Wait(volumeSave);Check(volumeSave.Result,"keyboard volume change flush succeeds");
                 Check(volume.Value==55&&cfg.Volume==55&&SpeechVolume(pet)==55&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Volume==55,"keyboard volume increment starts from reset value and persists runtime value");page.SelectGeneralSection(2);Pump();
                 page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingMinMinutes")).Text=="30"&&((TextBox)page.FindControl("GreetingMaxMinutes")).Text=="60","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
                 page.SelectWorkSettings();Pump();Check(workGoal.Text=="unsaved project goal"&&((CheckBox)page.FindControl("PlainTextEditor")).IsChecked==false,"reset refreshes chat preferences while preserving unrelated work draft");page.SelectGeneralSection(2);Pump();
