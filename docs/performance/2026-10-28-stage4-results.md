@@ -57,3 +57,5 @@ WPF 的 AI、保存连接后发现模型、语音/Live 测试前保存、图片�
 常规命令：`powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -Target <测试名>`。显式保存额外参数为 `--review-persona`、`--review-compat`、`--review-guide`、`--review-text`、`--project`；已注册 Windows CI。性能参数为 `--measure`、`--trace-ai`、`--profile-ai-valid`。
 
 本轮完成 WPF 显式配置和共享项目存储的后台协议；运行时其他业务文件及 Avalonia 自身的全部 UI 保存入口不据此宣称已异步化。既有真实语音设备、消息平台真实账号验收仍单列，不把 fixture 当作实机账号验证。启动、动画、历史与轮询的后续性能路线继续以热点证据推进。
+
+发布前完整本地化审计发现下载弹窗的动态资源键、四个功能键的调用位置变化及删除同步图片保存方法后的停用文案。已改为显式字面量资源调用，以源提交 2dd769c 重新绑定实际引用证据，登记停用原因；历史原文、各语言翻译和审计规则未改。完整审计覆盖 4750 个资源且无错误，13 语言检查与证据回归10通过，下载弹窗回归14通过。远端以修复后的精确提交重新验证。
