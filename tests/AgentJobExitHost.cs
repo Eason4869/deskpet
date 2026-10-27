@@ -47,7 +47,7 @@ namespace Dafeiyu.Tests
         {
             var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,ReadReplies=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,OnboardingState="completed"};
             foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();pet.SetPaused(true);
+            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
             var field=typeof(PetWindow).GetField("agentJobServices",BindingFlags.Instance|BindingFlags.NonPublic);
             var services=(AgentJobApplicationService)field.GetValue(pet);
             if(mode=="held")
