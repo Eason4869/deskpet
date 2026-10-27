@@ -65,12 +65,16 @@ namespace Dafeiyu.Tests
                     Console.WriteLine("Measurement: same process, 10 fresh settings instances, no forced GC; render callback is a layout/render proxy, not OS presentation or input latency. Memory is an end-of-run sample, not retained heap or total resource savings.");
                     return 0;
                 }
+                var removal=new TextProviderEditor(cfg);
+                typeof(TextProviderEditor).GetMethod("RemoveModel",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(removal,null);
+                Check(Field(removal,"modelForm")==null&&removal.ReadProviders().Single().Models.Count==0,"remove model works before model dialog is ever opened");
                 page=new SettingsPage(pet);host=new Window{Content=page,Width=1030,Height=760};host.Show();Render(host);
                 foreach(string field in new[]{"connections","aiConfiguration","work","quiet","about","imChannels"})Check(Field(page,field)==null,"unvisited settings do not construct "+field);
                 Check(!page.HasUnsavedEdits&&!page.HasUnsavedWorkEdits,"dirty queries do not instantiate settings pages");
                 page.RefreshTextProviders();page.RefreshState();page.CanChangeWorkSettingsProject(null);
                 foreach(string field in new[]{"connections","work","quiet","about","imChannels"})Check(Field(page,field)==null,"background refresh does not construct "+field);
                 page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");
+                Check(Field(Field(ai,"text"),"modelForm")==null,"unopened model dialog allocates no form controls");
                 foreach(string field in new[]{"recognition","synthesis","live","images"})Check(Field(ai,field)==null,"text AI route does not create "+field);
                 cfg.Transcription.Model="external-asr-change";
                 Check(((ConnectionSettingsPanel)ai).Save()&&cfg.Transcription.Model=="external-asr-change","saving visited AI editor preserves unopened service settings");
