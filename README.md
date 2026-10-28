@@ -1,11 +1,11 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**源码预览 [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2)（无 Release）**：完善 Windows 消息渠道平台列表与独立连接弹窗，五平台默认扫码、支持手动填写和可选访问限制；精简侧栏“最近”，修正搜索输入对齐、确认框与缓存窗口。保留 dev.1 的设置按需创建、后台保存及维护、退出保护。
+**正式版 [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3)**：新增五平台消息渠道，精简互动提示与节日纪念册；优化设置加载、后台保存及维护、退出保护，完善 Windows 侧栏、扫码弹窗和输入体验。
 
 
-本预览同时包含[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。五平台真实二维码生成及 Windows 弹窗交互已验证；当前仅支持文字对话，真实账号扫码授权与消息往返尚未验收。
+本版新增[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。五平台真实二维码生成及 Windows 弹窗交互已验证；当前仅支持文字对话，真实账号扫码授权与消息往返尚未验收。
 
-> **当前正式版：[0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
+> **当前正式版：[0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 
 <div align="center">
   <picture>
@@ -19,12 +19,14 @@
 
 DeskPet 是一个住在桌面上的伙伴。你可以让它散步、看向鼠标，摸摸头、投喂；接入自己的模型服务后，还能聊日常、讨论想法，围绕项目一起处理文件。
 
-**0.11.1** 将 0.10.5、0.11.0 与 0.11.1 开发系列中尚未进入正式版的功能统一发布：
+**0.11.3** 汇总 0.11.1 之后的消息渠道、互动调整与设置、界面改进：
 
-- 支持 13 种界面语言与“跟随系统”，WPF 和 Avalonia 保存后即时刷新。头像菜单的“语言”入口位于“设置”上方；未适配的系统语言使用 English。切换时保留草稿、窗口和运行任务；已开始的请求保留启动时语言，新请求使用新选择，自定义内容保持原文。
-- 新增伙伴主页、独立关系账本、阶段反馈和纪念册。五位官方伙伴完整包共 **55 套外观**，每位包含默认及十套节日服装。收藏按实际本地节日日期获取，预览不授予收藏。
-- 新建对话草稿加密保存并支持重启恢复，快捷键支持按键录制与冲突检查；保留已有生图、图库、技能发现、项目工作及语音配置。
-- 官方素材版本与应用发行号独立，已验证的相同包直接复用。历史维护保留当前、恢复前版、在用与未知素材；受管副本退役七天后才具备回收资格。旧格式及自定义包历史继续保护。
+- **消息渠道**：接入 QQ、微信、飞书、钉钉与企业微信，远程文字对话与桌面上下文隔离，不开放 Agent 工具。Windows 提供五平台 logo 列表、独立扫码/手动连接弹窗和可选 ID 限制；群聊仍需真实 @ 机器人。
+- **互动与纪念**：好感度和问候提示约 0.9 秒，互动问候按 10% 概率出现，不改变好感度结算；节日纪念册只显示当前伙伴已解锁并保存的卡片。
+- **设置与保存**：按需构建设置页和 AI 编辑器；Windows 全局、项目配置显式保存改为后台事务，失败保留草稿，并保护并发编辑、维护与退出。
+- **Windows 界面**：侧栏标题箭头悬停显示，“最近”默认不显示项目会话，右键开关持久保存；修正搜索和生图输入对齐，统一下载、确认和缓存窗口细节。
+
+继续提供 13 种界面语言与即时切换、伙伴主页与独立关系账本、五位伙伴共 **55 套外观**、加密草稿恢复、快捷键录制、生图、图库、技能发现及语音。官方素材版本与应用发行号独立，相同已验证素材跨版本复用；受管历史副本保留当前、恢复前版、在用与未知资源，退役七天后才具备回收资格，旧格式及自定义包继续保护。
 
 语言名称使用本名：简体中文、繁體中文、English、日本語、한국어、Français (France)、Deutsch (Deutschland)、हिन्दी (भारत)、Bahasa Indonesia、Italiano (Italia)、Português (Brasil)、Español (Latinoamérica)、Español (España)。助手生成的译文经过自动化资源检查，尚未经母语人工审校。
 
@@ -32,7 +34,7 @@ Windows WPF 与 Avalonia 的持久工作会话支持应用级后台任务、原�
 
 E包默认高清素材可离线启动；其他官方伙伴首次选择时按需下载。“全量下载／更新”可获取五位伙伴的完整包，包括 E包的完整节日衣装。下载时保留可用旧素材，完成后安全热加载。详见[角色包说明](docs/character-packs.md)、[关系与纪念册](docs/companion-relationship/user-guide.md)、[节日服饰](docs/holiday-outfits.md)及[更新日志](CHANGELOG.md)。
 
-正式通道使用 main 的正式 Release；预览通道选择正式和预览中的最高版本，不提供降级。历史 `0.11.1-dev.1`～`dev.3` 标签继续保留为源码快照，本次正式版提供可安装附件。
+正式通道使用 main 的正式 Release；预览通道选择正式和预览中的最高版本，不提供降级。历史开发记录与源码标签继续保留，包括 [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2)；该标签无单独 Release，本次正式版提供可安装附件。
 
 在“关于”页选择更新通道，切换只保存偏好，不会降级。点击“立即更新并重启”可跳过剩余 5 秒等待，仍会保护运行任务和未保存内容。制作新角色的模板独立下载；0.10.3-dev.1 起，非默认伙伴使用独立的完整高清角色包，下载沿用应用更新的 GitHub 加速方式，具体规则见 [发布与升级说明](docs/release-naming.md)。
 
@@ -92,9 +94,9 @@ E包默认高清素材可离线启动；其他官方伙伴首次选择时按需�
 
 ### 工具就在对话旁边
 
-本分支新增 **图像 → 生成 / 图库 / 任务**：配置独立生图模型后，可上传参考图生成，按瀑布流或网格浏览缩略图，点击查看详情、预览与另存。Agent 支持直接在对话反馈图片，并增加询问用户、检查本地图片和 Git 只读工具。详见 [使用说明](docs/image-generation.md)。
+通过 **图像 → 生成 / 图库 / 任务**，配置独立生图模型后，可上传参考图生成，按瀑布流或网格浏览缩略图，点击查看详情、预览与另存。Agent 支持直接在对话反馈图片，并提供询问用户、检查本地图片和 Git 只读工具。详见 [使用说明](docs/image-generation.md)。
 
-### 0.10.2-dev.3 已实现
+### 图像生成与图库功能
 
 - [x] **生图动效**：页面与对话共用圆角点阵光斑动效，展示真实阶段、耗时及取消状态。
 - [x] **图库管理**：收藏、多选、批量原图导出、按服务、模型、来源和时间筛选，以及受引用保护的回收站与清理。
@@ -111,32 +113,32 @@ E包默认高清素材可离线启动；其他官方伙伴首次选择时按需�
 
 ## 下载安装
 
-### 正式版 0.11.1（main）
+### 正式版 0.11.3（main）
 
 Windows 需要 **Windows 10／11 x64、.NET Framework 4.8+**；macOS 预览需要 **macOS 14+**。请匹配芯片架构。Mac 包为 ad-hoc 签名，未做 Developer ID 签名或公证。
 
 | 平台 | 下载 |
 | --- | --- |
-| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.11.1.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-Setup-0.11.1.exe) |
-| Windows 便携版 | [DeskPet-Windows-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-0.11.1.zip) |
-| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-arm64-preview.zip) |
-| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-x86_64-preview.zip) |
+| **Windows 安装版 · 推荐** | [DeskPet-Windows-Setup-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-Setup-0.11.3.exe) |
+| Windows 便携版 | [DeskPet-Windows-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-0.11.3.zip) |
+| Mac Apple Silicon · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.zip) |
+| Mac Intel · 预览 | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.zip) |
 
 <details>
 <summary>完整附件、源码与 SHA256</summary>
 
 | 附件 | 下载 |
 | --- | --- |
-| 独立主程序（需已有完整运行目录） | [DeskPet-Windows-App-0.11.1.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-App-0.11.1.exe) |
-| 完整源码 | [DeskPet-Source-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Source-0.11.1.zip) |
-| 完整角色包 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-e-bao-0.11.0-dev.3.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-marfu-0.11.0-dev.3.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-xiaobei-0.11.0-dev.3.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-gugugaga-0.11.0-dev.3.zip) |
-| 官方角色目录 | [DeskPet-Companions-0.11.1.json](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companions-0.11.1.json) |
-| 角色创作模板 | [DeskPet-Skin-Template-v2-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Skin-Template-v2-0.11.1.zip) |
-| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/SHA256.txt) |
+| 独立主程序（需已有完整运行目录） | [DeskPet-Windows-App-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-App-0.11.3.exe) |
+| 完整源码 | [DeskPet-Source-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Source-0.11.3.zip) |
+| 完整角色包 | [E包](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-e-bao-0.11.0-dev.3.zip) · [大肥鱼](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip) · [马尔芙](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-marfu-0.11.0-dev.3.zip) · [小贝](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-xiaobei-0.11.0-dev.3.zip) · [咕嘎](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-gugugaga-0.11.0-dev.3.zip) |
+| 官方角色目录 | [DeskPet-Companions-0.11.3.json](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companions-0.11.3.json) |
+| 角色创作模板 | [DeskPet-Skin-Template-v2-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Skin-Template-v2-0.11.3.zip) |
+| 附件校验 | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/SHA256.txt) |
 
 </details>
 
-素材 ZIP 文件名继续使用实际素材版本 `0.11.0-dev.3`，发布位置和目录 JSON 使用应用版本 `0.11.1`；这不代表应用仍是预览版。请按 `SHA256.txt` 校验下载。历史版本保留在[发布页](https://github.com/Eason4869/deskpet/releases)。
+素材 ZIP 文件名继续使用实际素材版本 `0.11.0-dev.3`，发布位置和目录 JSON 使用应用版本 `0.11.3`；这不代表应用仍是预览版。请按 `SHA256.txt` 校验下载。历史版本保留在[发布页](https://github.com/Eason4869/deskpet/releases)。
 
 ## 开始使用
 

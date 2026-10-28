@@ -10,6 +10,10 @@ on:
         description: Publish after verification (default is build only)
         default: false
         type: boolean
+      draft_only:
+        description: Retain verified draft for macOS asset promotion before publication
+        default: false
+        type: boolean
 permissions:
   contents: read
 env:
@@ -98,6 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_DRAFT_ONLY: ${{ inputs.draft_only }}
         run: |
           $ErrorActionPreference = 'Stop'
           git fetch origin main dev --tags
@@ -142,5 +147,9 @@ jobs:
           $latestArguments = @(LatestArguments)
           python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/checked-final.json @latestArguments
           if ($LASTEXITCODE) { throw 'Latest changed; draft retained' }
+          if ($env:RELEASE_DRAFT_ONLY -eq 'true') {
+            Write-Output 'Verified draft retained for platform asset promotion.'
+            exit 0
+          }
           gh release edit $env:RELEASE_TAG --draft=false "--latest=$($expected.make_latest)"
           if ($LASTEXITCODE) { throw 'Publish failed; inspect draft state' }

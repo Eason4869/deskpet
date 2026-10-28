@@ -1,11 +1,11 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**Source preview [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2) (no Release):** improves the Windows messaging platform list and owned connection dialogs, with QR login by default, manual credentials and optional access limits. Refines Recent, search input alignment, confirmation dialogs and cache maintenance. Retains dev.1 lazy settings, background saves and maintenance/exit protection.
+**Stable release [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3):** adds five messaging platforms, shorter interaction feedback and an owned-keepsake album. Improves settings loading, background saves, maintenance and exit protection, plus Windows sidebar, QR dialogs and text input.
 
 
-This preview also includes [messaging channels](docs/im-channels.md) for user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Live QR generation for all five platforms and Windows dialog interaction have been checked. Text only; real-account QR authorization and message round trips remain unverified.
+This release adds [messaging channels](docs/im-channels.md) for user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Live QR generation for all five platforms and Windows dialog interaction have been checked. Text only; real-account QR authorization and message round trips remain unverified.
 
-> **Current stable release: [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
+> **Current stable release: [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
 
 <div align="center">
   <picture>
@@ -19,12 +19,14 @@ This preview also includes [messaging channels](docs/im-channels.md) for user-ow
 
 DeskPet is a companion that lives on your desktop. Let it wander, follow the pointer, enjoy a head pat or have a snack. Connect your own model service to chat, explore ideas and work with project files.
 
-Version **0.11.1** brings the unpublished 0.10.5, 0.11.0 and 0.11.1 development work into the stable channel:
+Version **0.11.3** brings messaging, interaction changes and settings/UI improvements since 0.11.1 into the stable channel:
 
-- Thirteen interface languages and **System default**, with changes applied immediately in WPF and Avalonia. Open **Language** above **Settings** in the avatar menu. Unsupported system languages use English. Existing drafts, windows and running tasks are retained; ongoing requests keep their starting language and new requests use the new choice. Custom content is preserved.
-- Companion home, separate relationship records, stage feedback and keepsakes. Five official complete packs contain **55 appearances**: a default and ten holiday outfits per companion. Acquisitions use the actual local holiday date; previews do not grant ownership.
-- Encrypted new-conversation drafts survive restarting, and shortcut recording detects conflicts. Existing image generation, gallery, skill discovery, project work and voice configuration remain available.
-- Official material versions are independent of application releases. Verified unchanged packages are reused. History maintenance retains current, recovery, active and unknown resources; eligible managed history is reclaimed after seven retirement days. Legacy formats and custom-pack history remain protected.
+- **Messaging:** QQ, WeChat, Feishu, DingTalk and WeCom text conversations use isolated context and expose no Agent tools. Windows offers five platform logo rows, owned QR/manual connection dialogs and optional ID restrictions; group messages still require an actual bot mention.
+- **Interactions and keepsakes:** affection and greeting feedback lasts about 0.9 seconds, with a 10% interaction-greeting chance and unchanged scoring. Holiday albums show only the current companion's unlocked, saved cards.
+- **Settings and saves:** settings pages and AI editors are built on demand. Windows explicit application/project saves use background transactions, retain drafts on failure and protect concurrent edits, maintenance and exit.
+- **Windows UI:** sidebar section arrows appear on hover. Recent hides project conversations by default, with a persistent context-menu toggle. Search/image input alignment and download, confirmation and cache windows receive further refinements.
+
+Retains thirteen interface languages with live switching, companion home and separate relationship records, **55 appearances** across five companions, encrypted draft recovery, shortcut recording, image generation, gallery, skill discovery and voice. Official material versions stay independent of application releases, with verified unchanged content reused across releases. Managed history protects current, recovery, active and unknown resources; eligible retired copies become reclaimable after seven days. Legacy formats and custom packs remain protected.
 
 Languages use their native names: 简体中文, 繁體中文, English, 日本語, 한국어, Français (France), Deutsch (Deutschland), हिन्दी (भारत), Bahasa Indonesia, Italiano (Italia), Português (Brasil), Español (Latinoamérica) and Español (España). Generated translations have automated resource checks, not native-speaker review.
 
@@ -32,7 +34,7 @@ Persistent work conversations on Windows WPF and Avalonia support application-ow
 
 Ebao's default HD artwork supports offline startup. Other official companions download on first selection, and **Download/update all** obtains complete official packs for all five companions, including Ebao's full holiday wardrobe. Valid old artwork stays available during preparation. See the [character-pack guide](docs/character-packs.md), [relationship guide](docs/companion-relationship/user-guide.en.md), [holiday outfits](docs/holiday-outfits.md) and [changelog](CHANGELOG.en.md).
 
-Stable updates use published releases from main. The preview channel selects the highest stable or preview version and never downgrades. The historical `0.11.1-dev.1`–`dev.3` tags remain source snapshots; this stable release has the installable assets.
+Stable updates use published releases from main. The preview channel selects the highest stable or preview version and never downgrades. Historical development records and source tags remain available, including [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2), which has no separate Release. This stable release has the installable assets.
 
 Choose an update channel in About. This saves a preference and never downgrades the app. **Update and restart now** skips the remaining five-second wait while retaining protections for running tasks and unsaved content. The authoring template is a separate download. Since 0.10.3-dev.1, non-default companions use independent complete HD packs and the same GitHub acceleration settings as application updates. See [release and update naming](docs/release-naming.md).
 
@@ -94,7 +96,7 @@ Dictation turns speech into a draft. Toggle automatic read-aloud above the conve
 
 The image workspace provides **Generate / Gallery / Tasks**. Configure an independent image model, upload references, browse a waterfall or grid gallery, inspect details, preview or save originals. Agent tools can return images in the conversation, ask the user a question, inspect local images and perform read-only Git operations. See the [image guide](docs/image-generation.md).
 
-The 0.10.2-dev.3 image features are implemented:
+Image generation and gallery features:
 
 - **Generation animation:** pages and conversations share a rounded dot-field animation with actual stages, elapsed time and cancellation state.
 - **Gallery management:** favorites, multiple selection, batch export of originals, service/model/source/time filters, and a recycle bin with reference-aware cleanup.
@@ -111,32 +113,32 @@ The main conversation stays in the first tab. Hiding tools or changing the layou
 
 ## Download
 
-### Stable 0.11.1 (main)
+### Stable 0.11.3 (main)
 
 Windows requires **Windows 10/11 x64 and .NET Framework 4.8+**. macOS previews require **macOS 14+**. Choose the matching architecture. Mac previews are ad-hoc signed and not notarized.
 
 | Platform | Download |
 | --- | --- |
-| Windows installer — recommended | [DeskPet-Windows-Setup-0.11.1.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-Setup-0.11.1.exe) |
-| Windows portable | [DeskPet-Windows-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-0.11.1.zip) |
-| Mac Apple Silicon preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-arm64-preview.zip) |
-| Mac Intel preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-macOS-0.11.1-x86_64-preview.zip) |
+| Windows installer — recommended | [DeskPet-Windows-Setup-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-Setup-0.11.3.exe) |
+| Windows portable | [DeskPet-Windows-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-0.11.3.zip) |
+| Mac Apple Silicon preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.zip) |
+| Mac Intel preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.zip) |
 
 <details>
 <summary>All assets, source and SHA256</summary>
 
 | Asset | Download |
 | --- | --- |
-| Standalone app (existing complete runtime required) | [DeskPet-Windows-App-0.11.1.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Windows-App-0.11.1.exe) |
-| Full source | [DeskPet-Source-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Source-0.11.1.zip) |
-| Complete companion packs | [Ebao](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-e-bao-0.11.0-dev.3.zip) · [Dafeiyu](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip) · [Marfu](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-marfu-0.11.0-dev.3.zip) · [Xiaobei](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-xiaobei-0.11.0-dev.3.zip) · [Guga](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companion-gugugaga-0.11.0-dev.3.zip) |
-| Official pack index | [DeskPet-Companions-0.11.1.json](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Companions-0.11.1.json) |
-| Authoring template | [DeskPet-Skin-Template-v2-0.11.1.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/DeskPet-Skin-Template-v2-0.11.1.zip) |
-| Checksums | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.11.1/SHA256.txt) |
+| Standalone app (existing complete runtime required) | [DeskPet-Windows-App-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-App-0.11.3.exe) |
+| Full source | [DeskPet-Source-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Source-0.11.3.zip) |
+| Complete companion packs | [Ebao](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-e-bao-0.11.0-dev.3.zip) · [Dafeiyu](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip) · [Marfu](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-marfu-0.11.0-dev.3.zip) · [Xiaobei](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-xiaobei-0.11.0-dev.3.zip) · [Guga](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-gugugaga-0.11.0-dev.3.zip) |
+| Official pack index | [DeskPet-Companions-0.11.3.json](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companions-0.11.3.json) |
+| Authoring template | [DeskPet-Skin-Template-v2-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Skin-Template-v2-0.11.3.zip) |
+| Checksums | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/SHA256.txt) |
 
 </details>
 
-Material ZIP filenames retain their actual `0.11.0-dev.3` material version; their release location and index use application version `0.11.1`. This does not make the application a prerelease. Verify downloads against `SHA256.txt`. Historical releases remain on [GitHub Releases](https://github.com/Eason4869/deskpet/releases).
+Material ZIP filenames retain their actual `0.11.0-dev.3` material version; their release location and index use application version `0.11.3`. This does not make the application a prerelease. Verify downloads against `SHA256.txt`. Historical releases remain on [GitHub Releases](https://github.com/Eason4869/deskpet/releases).
 
 ## Get started
 

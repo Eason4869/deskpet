@@ -2,6 +2,21 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3) — 2026-10-28 · Stable
+
+Published from main, combining the 0.11.2 and 0.11.3 development work since 0.11.1. Assets include Windows installer/portable/standalone application, source and both macOS preview architectures. Five official companion packs retain independent material version `0.11.0-dev.3`; their release location, pack index and application assets use `0.11.3`. Historical development entries and source tags retain their original status; `0.11.3-dev.2` has no separate Release.
+
+- Adds native outbound QQ, WeChat, Feishu, DingTalk and WeCom messaging without a public IP, developer server or additional bot runtime. Remote text conversations use isolated identities, bounded queues/context and encrypted profiles, with no Agent tools. Maintenance and exit stop connections.
+- Improves cancellation, deduplication, stopping, WeChat polling/extra verification, Feishu authentication/heartbeat and DingTalk registration readiness. WPF shows platform logos, status and descriptions; owned connection dialogs generate QR codes by default and offer manual credentials. QQ, Feishu and DingTalk QR flows follow AstrBot; WeCom follows Tencent Octop. Feishu uses domestic Feishu endpoints only.
+- Makes sender and group ID restrictions optional: an empty list leaves that dimension unrestricted, while existing nonempty limits remain active. Group messages still require an actual bot mention. Closing the dialog or switching to manual mode cancels QR polling; cancelled login does not save credentials.
+- Sets affection and interaction-greeting feedback to about 0.9 seconds including entrance and exit. Interaction greetings use a 10% chance without changing actual affection scoring. Holiday albums show only the current companion's unlocked, saved cards, retaining historical paging, exports and recovery.
+- Builds settings pages and AI editors on demand, removes hidden controls, duplicate provider lists and unrelated refreshes, and coalesces scale/volume saves. WPF explicit application/project saves use background transactions and publish only after persistence succeeds. Failures retain drafts; concurrent edits, maintenance draining, restoring defaults and exit remain protected. Failed exit saves cancel closing.
+- Fixes asynchronous persona saves clearing the wrong conversation, duplicate/late guide actions and old save callbacks hiding newer failures. Refreshes complete companion download windows, disables maximization on both UIs and preserves application-owned preparation when the view closes.
+- Shows WPF sidebar section arrows on hover. Recent hides project conversations by default with a persistent context-menu toggle. Disables maximization on confirmation dialogs, adds slim cache-maintenance scrollbars, sizes the holiday retry button to its content and aligns image/settings search text, placeholders and carets.
+- Adds messaging protocol simulations, core, lifecycle, audit and UI regressions, plus settings-save and exit safeguards. Packaged Windows acceptance covers live QR generation on all five platforms, mouse interaction to switch to manual mode and unclipped light/dark dialogs at widths of 680 and 500.
+
+**Verification limits:** real-account QR authorization, incoming messages and replies remain unverified. QR generation does not establish successful real login or message round trips. These WPF UI changes do not establish matching macOS UI acceptance; real Mac login is also unverified. macOS packages remain ad-hoc platform previews without Developer ID signing or notarization. See [messaging channels](docs/im-channels.md); historical development records follow.
+
 ## [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2) — 2026-10-28 · Source preview (no Release)
 
 - Replaces the WPF messaging settings page with five platform rows showing logos, status and descriptions. Each opens an owned connection dialog, generates a live QR code by default and offers manual credentials. Closing or switching to manual mode cancels QR polling.
