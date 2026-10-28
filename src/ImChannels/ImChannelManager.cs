@@ -40,11 +40,11 @@ namespace Dafeiyu.ImChannels
                 }finally{edits.Release();}Notify();
             }
         }
-        public async Task StartAsync(string id)
+        public async Task StartAsync(string id,CancellationToken token=default(CancellationToken))
         {
             var snapshot=settings().Copy();using(maintenance.EnterActivity()){
-                await edits.WaitAsync().ConfigureAwait(false);try{Require();var copy=Profiles.Single(x=>x.Id==id);if(copy.Kind!="weixin"&&(String.IsNullOrWhiteSpace(copy.AppId)||String.IsNullOrWhiteSpace(copy.Secret))||copy.Kind=="weixin"&&String.IsNullOrEmpty(copy.Secret))throw new InvalidOperationException("im.authFailed");
-                    CheckBotOwner(copy);await StopRuntime(id).ConfigureAwait(false);copy.Enabled=true;var next=Profiles.ToList();next[next.FindIndex(x=>x.Id==id)]=copy;store.Save(next);lock(gate)profiles=next;StartRuntime(copy,snapshot);
+                await edits.WaitAsync(token).ConfigureAwait(false);try{Require();token.ThrowIfCancellationRequested();var copy=Profiles.Single(x=>x.Id==id);if(copy.Kind!="weixin"&&(String.IsNullOrWhiteSpace(copy.AppId)||String.IsNullOrWhiteSpace(copy.Secret))||copy.Kind=="weixin"&&String.IsNullOrEmpty(copy.Secret))throw new InvalidOperationException("im.authFailed");
+                    CheckBotOwner(copy);await StopRuntime(id).ConfigureAwait(false);token.ThrowIfCancellationRequested();copy.Enabled=true;var next=Profiles.ToList();next[next.FindIndex(x=>x.Id==id)]=copy;store.Save(next);lock(gate)profiles=next;StartRuntime(copy,snapshot);
                 }finally{edits.Release();}
             }
         }
@@ -88,8 +88,8 @@ namespace Dafeiyu.ImChannels
                 foreach(string key in runtime.Seen.Where(x=>DateTimeOffset.UtcNow-x.Value>TimeSpan.FromMinutes(10)).Select(x=>x.Key).ToArray())runtime.Seen.Remove(key);
                 string identity=scope+":"+message.Id;if(runtime.Seen.ContainsKey(identity))return false;
                 if(message.Text=="/stop"){
-                    if(runtime.Scope==scope&&runtime.ActiveCancel!=null){try{runtime.ActiveCancel.Cancel();}catch(ObjectDisposedException){}}
                     var kept=runtime.Queue.Where(x=>x.Scope!=scope).ToArray();int removed=runtime.Queue.Count-kept.Length;runtime.Queue.Clear();foreach(var item in kept)runtime.Queue.Enqueue(item);for(int n=0;n<removed&&runtime.Signal.Wait(0);n++){}
+                    if(runtime.Scope==scope&&runtime.ActiveCancel!=null){try{runtime.ActiveCancel.Cancel();}catch(ObjectDisposedException){}}
                     if(runtime.Seen.Count<4096)runtime.Seen[identity]=DateTimeOffset.UtcNow;return true;
                 }
                 if(runtime.Seen.Count>=4096)return false;

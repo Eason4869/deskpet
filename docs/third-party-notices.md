@@ -175,3 +175,8 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+## Messaging service logos
+
+QQ, WeChat, Feishu, WeCom and DingTalk identification artwork is adapted from IconPark, Simple Icons, Allogo, TDesign Icons and MingCute. Source attribution, modifications, full Apache-2.0, CC0-1.0 and MIT terms, and trademark disclaimers are included in the [IM logo artwork notices](../assets/im-logos.LICENSE.txt). These artwork licenses grant no trademark rights or endorsement.

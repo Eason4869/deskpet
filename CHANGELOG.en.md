@@ -2,6 +2,16 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2) — 2026-10-28 · Source preview (no Release)
+
+- Replaces the WPF messaging settings page with five platform rows showing logos, status and descriptions. Each opens an owned connection dialog, generates a live QR code by default and offers manual credentials. Closing or switching to manual mode cancels QR polling.
+- Bases QQ, Feishu and DingTalk QR flows on AstrBot and WeCom on Tencent Octop; Feishu uses domestic Feishu endpoints. Optional access limits start collapsed. Empty sender and group ID lists each mean unrestricted access for that dimension; existing nonempty limits remain effective. Group messages still require an actual bot mention.
+- Shows WPF sidebar section arrows on hover. Recent hides project conversations by default, with a persistent context-menu toggle.
+- Disables maximization on WPF data-action confirmations, applies slim scrollbars to cache maintenance and sizes the holiday album retry button to its content. Aligns placeholder text, entered text and carets in image generation and settings search fields.
+- Retains dev.1 lazy settings, transactional background application/project saves and concurrent-edit, maintenance and exit safeguards; see the historical entry below.
+- Adds simulated QR protocol regressions (39 Feishu, 29 WeCom and 55 QQ/DingTalk checks) and passes 39 core messaging checks plus lifecycle, audit and UI regressions. Packaged Windows acceptance covers live QR generation on all five platforms, mouse interaction to switch to manual mode, and unclipped light/dark dialogs at widths of 680 and 500.
+- Real-account QR authorization, incoming messages and replies remain unverified. These Windows UI changes do not establish matching macOS UI acceptance. macOS packages remain ad-hoc previews without Developer ID signing or notarization. See [messaging channels](docs/im-channels.md).
+
 ## 0.11.3-dev.1 — 2026-10-28 · Development preview
 
 - Lazily creates settings pages and AI service editors and reuses scroll containers. Empty provider pages skip hidden details; saved connection fields and model dialogs are built when opened.

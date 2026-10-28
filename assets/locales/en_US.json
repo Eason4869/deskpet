@@ -4707,7 +4707,7 @@
   "im.binding": "Bound companion:",
   "im.users": "Allowed sender IDs (one per line)",
   "im.groups": "Allowed group IDs (one per line)",
-  "im.allowHint": "An empty sender list blocks all conversations. Groups also require an allowed group and an @mention. Send a message, then add your ID shown below.",
+  "im.allowHint": "Leave blank to allow any sender or group. Enter IDs to restrict access. Group messages must still @mention the bot.",
   "im.save": "Save",
   "im.connect": "Connect",
   "im.pause": "Pause",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "DingTalk",
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "Open platform website",
-  "im.verificationRequired": "WeChat requires additional verification. Cancel sign-in, complete verification in WeChat, then scan a new code."
+  "im.verificationRequired": "WeChat requires additional verification. Cancel sign-in, complete verification in WeChat, then scan a new code.",
+  "im.back": "Back to channels",
+  "im.notConfigured": "Not configured",
+  "im.cardDescription": "Chat with your companion in {0}.",
+  "im.scanConnect": "Connect with QR code",
+  "im.scanHelp": "Scan with your phone to create or bind a bot. Credentials stay on this computer. The bot connects after authorization.",
+  "im.manualConnect": "Enter credentials manually",
+  "im.accessOptions": "Access limits (optional)"
 }

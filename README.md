@@ -1,9 +1,9 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**开发预览 [0.11.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3-dev.1)**：减少首次进入 AI 设置的隐藏控件构建；全局与项目配置显式保存改为后台事务，补齐维护、退出和并发编辑保护；美化全量角色包下载窗口并取消最大化。
+**源码预览 [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2)（无 Release）**：完善 Windows 消息渠道平台列表与独立连接弹窗，五平台默认扫码、支持手动填写和可选访问限制；精简侧栏“最近”，修正搜索输入对齐、确认框与缓存窗口。保留 dev.1 的设置按需创建、后台保存及维护、退出保护。
 
 
-本预览同时包含[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。当前为文字对话，真实账号验收尚未完成。
+本预览同时包含[消息渠道](docs/im-channels.md)：用户自建 QQ、微信、飞书、钉钉、企业微信连接，本地出站直连，无需公网 IP 或开发者服务器。五平台真实二维码生成及 Windows 弹窗交互已验证；当前仅支持文字对话，真实账号扫码授权与消息往返尚未验收。
 
 > **当前正式版：[0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 

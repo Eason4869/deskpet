@@ -9,6 +9,7 @@ namespace Dafeiyu.Tests
 {
     public static class ImChannelTests
     {
+        public static int Main(){try{return RunAll();}catch(Exception error){Console.Error.WriteLine(error);return 1;}}
         static int checks;
         static void Check(bool value,string name){if(!value)throw new Exception(name);checks++;}
         static void Reject(Action action,string name){try{action();}catch{checks++;return;}throw new Exception(name);}
@@ -16,9 +17,13 @@ namespace Dafeiyu.Tests
         {
             var profile=new ImChannelProfile{Kind="qq",Name="bot",AppId="app",Secret="secret",PetName="pet",Persona="private persona"};
             var msg=new ImMessage{Id="1",Sender="alice",Chat="room",IsGroup=true,Mentioned=true,Text="hello",Time=DateTimeOffset.UtcNow};
-            Check(!profile.Allows(msg),"empty list must deny");
-            profile.Users.Add("alice");Check(!profile.Allows(msg),"group also needs allowlist");
+            Check(profile.Allows(msg),"empty optional restrictions permit mentioned group messages");
+            var direct=msg.Copy();direct.IsGroup=false;Check(profile.Allows(direct),"direct messages need no allowlist by default");
+            profile.Users.Add("alice");Check(profile.Allows(msg),"empty group restriction permits mentioned groups");
+            var stranger=msg.Copy();stranger.Sender="bob";Check(!profile.Allows(stranger),"configured sender restriction still applies");
             profile.Chats.Add("room");Check(profile.Allows(msg),"both scopes permitted");
+            var otherRoom=msg.Copy();otherRoom.Chat="other-room";Check(!profile.Allows(otherRoom),"configured group restriction still applies");
+            var noSender=msg.Copy();noSender.Sender="";Check(!profile.Allows(noSender),"missing sender is never admitted");
             msg.Mentioned=false;Check(!profile.Allows(msg),"group needs real mention");msg.Mentioned=true;
             var bob=msg.Copy();bob.Sender="bob";Check(msg.Scope(profile.Id)!=bob.Scope(profile.Id),"sender scope isolated");
             Check(msg.Scope("a")!=msg.Scope("b"),"channel scope isolated");

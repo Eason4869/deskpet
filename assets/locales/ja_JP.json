@@ -4707,7 +4707,7 @@
   "im.binding": "連携キャラクター：",
   "im.users": "許可する送信者 ID（1行に1つ）",
   "im.groups": "許可するグループ ID（1行に1つ）",
-  "im.allowHint": "送信者リストが空の場合、会話はすべて拒否されます。グループでは許可するグループの指定とボットへのメンションも必要です。まずメッセージを送り、下に表示される ID を追加してください。",
+  "im.allowHint": "空欄なら送信者やグループを制限しません。IDを入力すると対象を限定します。グループではボットへのメンションが必要です。",
   "im.save": "保存",
   "im.connect": "接続",
   "im.pause": "一時停止",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "DingTalk",
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "プラットフォームのサイトを開く",
-  "im.verificationRequired": "WeChat で追加認証が必要です。ログインを中止し、WeChat で認証を完了してから、新しいコードをスキャンしてください。"
+  "im.verificationRequired": "WeChat で追加認証が必要です。ログインを中止し、WeChat で認証を完了してから、新しいコードをスキャンしてください。",
+  "im.back": "メッセージ連携に戻る",
+  "im.notConfigured": "未設定",
+  "im.cardDescription": "{0} でパートナーとテキストで会話できます。",
+  "im.scanConnect": "QRコードで接続",
+  "im.scanHelp": "スマートフォンで読み取り、ボットを作成または連携します。認証情報はこのPCに保存され、承認後に接続します。",
+  "im.manualConnect": "手動で設定",
+  "im.accessOptions": "アクセス制限（任意）"
 }

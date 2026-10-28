@@ -25,13 +25,15 @@ def collect_runtime_files(project_root, app_root):
              dict(source=str(project_root/'templates/runtime-readme.en.md'), destination='docs/readme.en.md'),
              dict(source=str(project_root/'CHANGELOG.en.md'), destination='docs/changelog.en.md', link_base='')]
     plan += [dict(source=str(project_root/'docs'/name), destination='docs/'+name) for name in USER_DOCS]
+    # Legacy updaters accept Markdown under docs/, while the source notice stays verbatim.
+    plan.append(dict(source=str(project_root/'assets/im-logos.LICENSE.txt'), destination='docs/im-logos-license.md'))
     destinations={item['destination'] for item in plan}
     document_destinations={Path(item['source']).relative_to(project_root).as_posix():item['destination']
                            for item in plan if item['destination'].endswith('.md')}
     source=(project_root/'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')
     version=re.search(r'DisplayVersion="([^"]+)"',source)[1]
     for item in plan:
-        if not item['destination'].endswith('.md'):continue
+        if not item['destination'].endswith('.md') or Path(item['source']).suffix=='.txt':continue
         content=Path(item['source']).read_text(encoding='utf-8-sig')
         def link(match):
             label,target=match.group(1),match.group(2)

@@ -1,9 +1,9 @@
 ﻿[简体中文](README.md) | [English](README.en.md)
 
-**Development preview [0.11.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3-dev.1):** defers hidden AI settings controls, moves explicit application and project configuration saves to guarded background transactions, protects maintenance and exit, and refreshes the complete companion download window with maximization disabled.
+**Source preview [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2) (no Release):** improves the Windows messaging platform list and owned connection dialogs, with QR login by default, manual credentials and optional access limits. Refines Recent, search input alignment, confirmation dialogs and cache maintenance. Retains dev.1 lazy settings, background saves and maintenance/exit protection.
 
 
-This preview also includes [messaging channels](docs/im-channels.md) for user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Text only; real-account acceptance is pending.
+This preview also includes [messaging channels](docs/im-channels.md) for user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Live QR generation for all five platforms and Windows dialog interaction have been checked. Text only; real-account QR authorization and message round trips remain unverified.
 
 > **Current stable release: [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
 

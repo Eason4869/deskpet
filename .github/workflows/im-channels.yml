@@ -5,6 +5,8 @@ on:
       - 'src/**'
       - 'desktop/**'
       - 'assets/locales/**'
+      - 'assets/im-logos.LICENSE.txt'
+      - 'docs/third-party-notices.md'
       - 'vendor/qrcoder/**'
       - 'docs/im-channels*'
       - 'tests/**'
@@ -38,6 +40,8 @@ jobs:
         run: dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -m:1 -nr:false
       - name: Protocol, cancellation, authorization and translations
         run: dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --im-channels-only
+      - name: Official bot registration and credential decryption
+        run: dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --im-registration-only
       - name: Language resource contracts
         run: python tools/verify_language_packs.py
       - name: Runtime guide packaging
@@ -50,8 +54,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          ./Build.ps1 -Target ImChannelUiTests
-          if ($LASTEXITCODE) { throw 'WPF messaging checks failed' }
+          foreach ($target in @('ImChannelTests','FeishuRegistrationTests','OfficialBotRegistrationTests','WecomRegistrationTests','ImChannelUiTests')) {
+            ./Build.ps1 -Target $target
+            if ($LASTEXITCODE) { throw ('WPF messaging checks failed: ' + $target) }
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:

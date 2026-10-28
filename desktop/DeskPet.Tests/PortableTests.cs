@@ -30,6 +30,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--relationship-presentation-only")return RelationshipPresentationTests.Main();
             if(args.Length==1 && args[0]=="--relationships-only")return RelationshipIdentityTests.Main() | RelationshipRulesTests.Main() | RelationshipStoreTests.Main() | RelationshipPresentationTests.Main();
             if(args.Length==4&&args[0]=="--system-language-fixture")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return SystemLanguageTests.RunFixture(args[1],args[2],args[3]);}
+            if(args.Length==1&&args[0]=="--im-registration-only"){FeishuRegistrationTests.RunAll().GetAwaiter().GetResult();OfficialBotRegistrationTests.RunAll().GetAwaiter().GetResult();WecomRegistrationTests.RunAll().GetAwaiter().GetResult();return 0;}
             if(args.Length==1&&args[0]=="--im-channels-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImChannelTests.RunAll(protector);}
             if(args.Length==1&&args[0]=="--speech-language-only")return SpeechLanguagePolicyTests.RunAll();
             if(args.Length==1&&args[0]=="--system-language-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return SystemLanguageTests.RunAll();}

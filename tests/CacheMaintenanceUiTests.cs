@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -37,6 +38,9 @@ namespace Dafeiyu.Tests
                 var close=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool owned=false;close.Tick+=delegate{var dialog=app.Windows.OfType<CacheMaintenanceWindow>().FirstOrDefault();if(dialog!=null){owned=dialog.Owner==window;close.Stop();dialog.Close();}};close.Start();Click(clean);Check(owned&&pet.IsVisible,"about opens owned dialog; close leaves pet alive");
                 string path=Path.Combine(root,"updates",new string('a',32));using(CacheResourceLease.Acquire(root,path))File.WriteAllBytes(Path.Combine(path,"package.zip"),new byte[123]);File.SetLastWriteTimeUtc(Path.Combine(path,"package.zip"),DateTime.UtcNow.AddDays(-8));Directory.SetLastWriteTimeUtc(path,DateTime.UtcNow.AddDays(-8));
                 var cache=new CacheMaintenanceWindow(root){Owner=window};cache.Show();Wait(cache.PendingOperation);
+                Check(cache.ResizeMode==ResizeMode.CanMinimize||cache.ResizeMode==ResizeMode.NoResize,"cache dialog disallows maximize");
+                cache.Height=340;Pump();var scroll=Find<ScrollViewer>(cache, "");var bar=scroll==null?null:scroll.Template.FindName("PART_VerticalScrollBar",scroll) as ScrollBar;
+                Check(bar!=null&&cache.Resources.Contains(typeof(ScrollBar))&&ReferenceEquals(bar.Style,cache.Resources[typeof(ScrollBar)]),"cache dialog uses the shared slim scrollbar style");
                 Check(cache.Scan.TotalBytes==123&&Find<Button>(cache,"CleanCache").IsEnabled,"async scan renders actual cleanable bytes");
                 Check(Find<TextBlock>(cache,"CacheSummary").Text==CachePresentation.FormatBytes(123)&&Find<TextBlock>(cache,"CacheUpdates").Text==CachePresentation.FormatBytes(123)&&Find<TextBlock>(cache,"CacheDownloads").Text==CachePresentation.FormatBytes(0),"visible cache total and categories reflect actual scan fields");
                 CaptureStates(cache,root,"nonzero");

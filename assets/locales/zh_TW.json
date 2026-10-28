@@ -4707,7 +4707,7 @@
   "im.binding": "綁定夥伴：",
   "im.users": "允許的傳送者 ID（每行一個）",
   "im.groups": "允許的群組 ID（每行一個）",
-  "im.allowHint": "傳送者清單為空時拒絕所有對話。群聊還需允許該群組並 @機器人。先傳送訊息，再將下方顯示的 ID 加入允許清單。",
+  "im.allowHint": "留空不限制傳送者或群組；填寫後僅允許列出的 ID。群組中仍需 @ 機器人。",
   "im.save": "儲存",
   "im.connect": "連線",
   "im.pause": "暫停",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "釘釘",
   "im.platform.wecom": "企業微信",
   "im.openPlatform": "開啟平台網站",
-  "im.verificationRequired": "微信要求額外驗證。請取消登入，在微信中完成驗證後重新掃碼。"
+  "im.verificationRequired": "微信要求額外驗證。請取消登入，在微信中完成驗證後重新掃碼。",
+  "im.back": "返回訊息渠道",
+  "im.notConfigured": "尚未設定",
+  "im.cardDescription": "在 {0} 中與夥伴進行文字對話。",
+  "im.scanConnect": "掃碼連接",
+  "im.scanHelp": "用手機掃碼建立或綁定機器人。憑證儲存在本機，掃碼成功後即可連接。",
+  "im.manualConnect": "手動填寫",
+  "im.accessOptions": "存取限制（選填）"
 }

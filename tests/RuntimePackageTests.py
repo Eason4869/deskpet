@@ -72,10 +72,13 @@ class RuntimePackageTests(unittest.TestCase):
             destinations={item['destination'] for item in plan}
             self.assertFalse(any(p.startswith(('templates/','previews/','data/')) for p in destinations))
             self.assertIn('docs/third-party-notices.md',destinations)
+            self.assertIn('docs/im-logos-license.md',destinations)
             self.assertIn('docs/holiday-outfits.md',destinations)
             stage=root/'fresh'
             stage_runtime(plan,stage)
             write_inno_files(plan,stage,root/'files.iss')
+            self.assertEqual((stage/'docs/im-logos-license.md').read_bytes(),(project/'assets/im-logos.LICENSE.txt').read_bytes())
+            self.assertIn('](im-logos-license.md)',(stage/'docs/third-party-notices.md').read_text(encoding='utf-8'))
             self.assertEqual({p.relative_to(stage).as_posix() for p in stage.rglob('*') if p.is_file()},destinations)
             self.assertNotIn('recursesubdirs',(root/'files.iss').read_text(encoding='utf-8'))
             self.assertEqual((app/'templates/private.md').read_text(),'private')

@@ -4707,7 +4707,7 @@
   "im.binding": "Compagno associato:",
   "im.users": "ID mittenti consentiti (uno per riga)",
   "im.groups": "ID gruppi consentiti (uno per riga)",
-  "im.allowHint": "Un elenco di mittenti vuoto blocca tutte le conversazioni. Anche i gruppi devono essere autorizzati e menzionare il bot. Invia un messaggio, poi aggiungi l’ID mostrato sotto.",
+  "im.allowHint": "Lascia vuoto per consentire tutti i mittenti e gruppi. Gli ID limitano l’accesso. Nei gruppi è comunque necessario menzionare il bot.",
   "im.save": "Salva",
   "im.connect": "Connetti",
   "im.pause": "Sospendi",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "DingTalk",
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "Apri il sito della piattaforma",
-  "im.verificationRequired": "WeChat richiede una verifica aggiuntiva. Annulla l’accesso, completa la verifica in WeChat e scansiona un nuovo codice."
+  "im.verificationRequired": "WeChat richiede una verifica aggiuntiva. Annulla l’accesso, completa la verifica in WeChat e scansiona un nuovo codice.",
+  "im.back": "Torna ai canali",
+  "im.notConfigured": "Non configurato",
+  "im.cardDescription": "Chatta con il tuo compagno su {0}.",
+  "im.scanConnect": "Collega con codice QR",
+  "im.scanHelp": "Scansiona per creare o collegare un bot. Le credenziali restano su questo computer. Il bot si connette dopo l’autorizzazione.",
+  "im.manualConnect": "Configurazione manuale",
+  "im.accessOptions": "Limiti di accesso (facoltativi)"
 }

@@ -4707,7 +4707,7 @@
   "im.binding": "绑定伙伴：",
   "im.users": "允许的发送者 ID（每行一个）",
   "im.groups": "允许的群 ID（每行一个）",
-  "im.allowHint": "发送者列表为空时拒绝所有对话。群聊还需允许该群并 @机器人。先发送一条消息，再将下方显示的 ID 加入允许列表。",
+  "im.allowHint": "留空不限制发送者或群聊；填写后仅允许列出的 ID。群聊仍需 @ 机器人。",
   "im.save": "保存",
   "im.connect": "连接",
   "im.pause": "暂停",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "钉钉",
   "im.platform.wecom": "企业微信",
   "im.openPlatform": "打开平台网站",
-  "im.verificationRequired": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。"
+  "im.verificationRequired": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。",
+  "im.back": "返回消息渠道",
+  "im.notConfigured": "未配置",
+  "im.cardDescription": "在 {0} 中与伙伴进行文字对话。",
+  "im.scanConnect": "扫码连接",
+  "im.scanHelp": "用手机扫码创建或绑定机器人。凭据保存在本机，扫码成功后即可连接。",
+  "im.manualConnect": "手动填写",
+  "im.accessOptions": "访问限制（可选）"
 }

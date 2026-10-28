@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,7 +18,7 @@ namespace Dafeiyu.Tests
         static readonly string[] Names={"简体中文","繁體中文","English","日本語","한국어","Français (France)","Deutsch (Deutschland)","हिन्दी (भारत)","Bahasa Indonesia","Italiano (Italia)","Português (Brasil)","Español (Latinoamérica)","Español (España)"};
         static readonly string[] MenuLabels={"语言","語言","Language","言語","언어","Langue","Sprache","भाषा","Bahasa","Lingua","Idioma","Idioma","Idioma"};
         static readonly string[] CompanionLabels={"桌面伙伴","桌面夥伴","Desktop Companion","デスクトップコンパニオン","데스크톱 동반자","Compagnon de bureau","Desktopbegleiter","डेस्कटॉप साथी","Teman desktop","Compagno desktop","Companhia de desktop","Compañía de escritorio","Compañero de escritorio"};
-        static readonly string[] Hashes={"4447a34999fcf6e06d63c4a85bb621dcfa15bae1a146d7cf00fc05aad303efe2","e7c907fcdc5e13e02b72d2da1fc569cd1da1edff39ef606ec5ec53bb58c76ec2","074b9a705efc8d647067e7ede336ef8988cc6675042e98abded54eff225facb4","c2c0a937fd36c8e2dbe301d7d68ca05cae80e9adea24e903314404cc608b4edc","98a00f986ac9b6d808d54dee3066073cf6904ce770320e207eca623a044191f3","3e0b69f3465cb96b6529579457e61868d1b57892656e204948f90abd786d8e45","cf1686758184546fd2fe59453d0288b4471daa4c0165f8bf0a392ed3d6873164","6b8a810d7719ba03e3497dc21c09c83dfaca65b96ac684ac34bc1aef1172629a","c4f5a632fc66763dffb1d0837e8a84efef0a1a1938bf4a1a8334896492171b1a","5bd936078d32298e4a5433e665fba75df5b88e7db52c327c1cecb47a81d84b91","a812c0bc079af5603eb8b8dba3b8d1cd40f69828483fa624453c144b37205c87","8e6bd002cf0847f7c17c79970a83d06addb09402c9e9753a18384d1a1ffc8a36","176497486472ad970dd0ea805c50ee5e26be1a2b43986553b4b3d50ef8f665e6"};
+        static readonly string[] Hashes={"92394edb61ab561775509b8a75813311bf1782c79eb14029fc9f6b0737e63f59","d6d0be29af0f52c0a8ea82dde74f3f686fe7ae3e484c3f780874b2f8d7c1d8fc","47b420819acdc127fa970f00b3be51af19ce0669aa41f7b8bcbc8d8c25c0b67c","1ba14de56cc3cf513d81c342f5e3f87d901c8df68272df051e1b24f0028bb892","d581ff53c6703a1ad070c4282c56915efafad4f09acbae3f3784c335e8be2977","ad5df794029f97916ad1a0781cde089a9ea4a42725da0fd4d5cb322f36d0d409","ecbec9384fb570a6a9dc539521330d5ec12fc51e5582eec263fcbb646967296a","e4b2c95d6a9616d3c4259a5a9d73e9692f47094567fc666e5210e706a75303e2","c445a6d695d90229d89f73e3ca4bd1fd517182518e554f056d389a4f5b4a9cc8","a4163cd5eb8e9b2ca2d5bc5a4518c13560fd1d1f6c18fb7aa7f08c9426beb3f6","6dc2540bcbda6febd069e62856908ff4b2e5e4b168221780dab25b1c22175c6c","bec7af83c772d2554bf38074c19a349ce6a2f9638f19bf4b82f4bcdec4f22619","3d499da25b735e74c23ebe31e0976236f71dae2a26dc8cfa19f417fa7b23b586"};
         static void Check(bool yes,string why){if(!yes)throw new Exception(why);checks++;Console.WriteLine("PASS "+why);}
         static object Call(Type type,string method,params object[] args)
         {

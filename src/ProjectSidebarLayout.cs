@@ -13,7 +13,7 @@ namespace Dafeiyu
         const string ProjectDragFormat="DeskPet.Project";
         string Signature()
         {
-            return workEntry+"|"+personaId+"|"+String.Join(",",catalog.QuickConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived+"="+c.Status))+"|"+String.Join(",",catalog.SidebarSectionExpansion.Select(x=>x.Key+"="+x.Value))+"|"+activeConversationId+"|"+catalog.RecentIncludeProjects+"|"+String.Join(",",catalog.UnassignedConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived))+"|"+String.Join("|",catalog.Sections.Select(s=>s.Id+"="+s.Name+"="+s.Mode))+"|"+String.Join("|",catalog.Projects.Select(p=>p.Id+"="+p.Name+"="+p.SectionId+"="+p.Pinned+"="+p.Archived+"="+String.Join(",",p.Conversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.Archived+"="+c.HasUnreadCompletion+"="+c.Pinned))))+"|"+String.Join(",",catalog.SidebarExpansion.OrderBy(x=>x.Key).Select(x=>x.Key+"="+x.Value))+ConversationOrderSignature();
+            return workEntry+"|"+personaId+"|"+String.Join(",",catalog.QuickConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived+"="+c.Status))+"|"+String.Join(",",catalog.SidebarSectionExpansion.Select(x=>x.Key+"="+x.Value))+"|"+activeConversationId+"|"+catalog.RecentShowProjectConversations+"|"+String.Join(",",catalog.UnassignedConversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.HasUnreadCompletion+"="+c.Pinned+"="+c.Archived))+"|"+String.Join("|",catalog.Sections.Select(s=>s.Id+"="+s.Name+"="+s.Mode))+"|"+String.Join("|",catalog.Projects.Select(p=>p.Id+"="+p.Name+"="+p.SectionId+"="+p.Pinned+"="+p.Archived+"="+String.Join(",",p.Conversations.Select(c=>c.Id+"="+c.Name+"="+c.SectionId+"="+c.Mode+"="+c.PetId+"="+c.Status+"="+c.Archived+"="+c.HasUnreadCompletion+"="+c.Pinned))))+"|"+String.Join(",",catalog.SidebarExpansion.OrderBy(x=>x.Key).Select(x=>x.Key+"="+x.Value))+ConversationOrderSignature();
         }
         internal SidebarSection CreateSection(string name)
         {
@@ -101,8 +101,8 @@ namespace Dafeiyu
         void AddRecent()
         {
             var header=SectionToggle("recent",TextResources.Get("projectSidebarLayout.addRecent.sectionToggle"));header.Margin=new Thickness(12,20,12,7);Children.Add(header);if(!SectionIsExpanded("recent"))return;
-            var owner=ProjectCatalogStore.UnassignedProject(catalog);var records=catalog.UnassignedConversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=owner,Conversation=c})
-                .Concat(catalog.Projects.Where(p=>!p.Archived).SelectMany(p=>p.Conversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=p,Conversation=c})));
+            var owner=ProjectCatalogStore.UnassignedProject(catalog);var records=catalog.UnassignedConversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=owner,Conversation=c});
+            if(catalog.RecentShowProjectConversations)records=records.Concat(catalog.Projects.Where(p=>!p.Archived).SelectMany(p=>p.Conversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=p,Conversation=c})));
             if(workEntry==false)records=records.Concat(catalog.QuickConversations.Where(c=>!c.Archived&&!c.Pinned&&Visible(c)).Select(c=>new{Project=ProjectCatalogStore.QuickProject(catalog),Conversation=c}));
             foreach(var pair in OrderedRows(records,x=>x.Conversation,"recent").Take(30))AddConversation(pair.Project,pair.Conversation,true,false,"recent");
         }

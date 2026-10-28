@@ -77,7 +77,7 @@ namespace Dafeiyu
                 var next=Button(()=>(TextResources.Get("holidayKeepsake.next")),async delegate{page++;await RefreshAsync();});next.IsEnabled=page+1<result.PageCount;next.Name="HolidayNextPage";
                 pager.Children.Add(back);pager.Children.Add(Text(()=>(TextResources.Format("holidayKeepsake.pageNumber",page+1,result.PageCount)),13));pager.Children.Add(next);Children.Add(pager);
             }
-            var retry=Button(()=>(TextResources.Get("holidayKeepsake.retry")),async delegate{await retryEncounter();if(!disposed)await RefreshAsync();});retry.Name="HolidayRetry";Children.Add(retry);
+            var retry=Button(()=>(TextResources.Get("holidayKeepsake.retry")),async delegate{await retryEncounter();if(!disposed)await RefreshAsync();});retry.Name="HolidayRetry";retry.HorizontalAlignment=HorizontalAlignment.Left;retry.Margin=new Thickness(0,8,0,8);Children.Add(retry);
             foreach(var key in captures.Keys.Where(x=>!keep.Contains(x)).ToArray()){captures[key].Dispose();captures.Remove(key);}
             if(focus!=null){var replacement=HomeVisual.ResolveFocus(this,focus);if(replacement!=null)replacement.Focus();}
         }

@@ -51,7 +51,7 @@ namespace Dafeiyu.Tests
                 var adapter=new Adapter();var started=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);var cancelled=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);int calls=0;
                 using(var manager=new ImChannelManager(root,()=>new PetSettings(),new Dafeiyu.Maintenance.DataMaintenanceGate(),p=>adapter,async (p,m,c)=>{Interlocked.Increment(ref calls);started.TrySetResult(true);try{await Task.Delay(-1,c);}catch(OperationCanceledException){cancelled.TrySetResult(true);throw;}return "never";})){
                     var profile=new ImChannelProfile{Kind="qq",Name="test",PetName="pet",AppId="app",Secret="secret"};profile.Users.Add("alice");
-                    await manager.SaveAsync(profile);await manager.StartAsync(profile.Id);await adapter.Ready.Task;
+                    await manager.SaveAsync(profile);using(var cancelledStart=new CancellationTokenSource()){cancelledStart.Cancel();bool cancelledBeforeStart=false;try{await manager.StartAsync(profile.Id,cancelledStart.Token);}catch(OperationCanceledException){cancelledBeforeStart=true;}Check(cancelledBeforeStart&&!manager.Profiles.Single().Enabled&&!adapter.Ready.Task.IsCompleted,"cancelled registration cannot enable or start a saved bot");}await manager.StartAsync(profile.Id);await adapter.Ready.Task;
                     var duplicateBot=profile.Copy();duplicateBot.Id=Guid.NewGuid().ToString("N");await manager.SaveAsync(duplicateBot);bool refused=false;try{await manager.StartAsync(duplicateBot.Id);}catch(InvalidOperationException){refused=true;}Check(refused,"same bot cannot be connected by two profiles");await manager.DeleteAsync(duplicateBot.Id);
                     Check(!adapter.Receive(new ImMessage{Id="unknown",Sender="bob",Chat="bob",Text="hi"}),"unknown sender must not enter queue");
                     var message=new ImMessage{Id="one",Sender="alice",Chat="alice",Text="hello"};Check(adapter.Receive(message),"valid admitted");await started.Task;
@@ -61,7 +61,7 @@ namespace Dafeiyu.Tests
                     Check(!adapter.Receive(new ImMessage{Id="overflow",Sender="alice",Chat="alice",Text="overflow"}),"queue rejects excess without spawning work");
                     Check(adapter.Receive(new ImMessage{Id="stop",Sender="alice",Chat="alice",Text="/stop"}),"stop admitted out of band");
                     Check(await Task.WhenAny(cancelled.Task,Task.Delay(2000))==cancelled.Task,"stop cancels active generation promptly");
-                    profile.Users.Clear();await manager.SaveAsync(profile);Check(adapter.Sent==0,"revoked generation never sends");Check(calls==1,"only authorized input calls model");
+                    profile.Users.Clear();profile.Users.Add("revoked-other");await manager.SaveAsync(profile);Check(adapter.Sent==0,"revoked generation never sends");Check(calls==1,"only authorized input calls model");
                     await manager.DeleteAsync(profile.Id);Check(manager.Profiles.Count==0,"delete removes profile");
                     using(var duplicate=new ImChannelManager(root,()=>new PetSettings(),new Dafeiyu.Maintenance.DataMaintenanceGate()))Check(duplicate.Warning.Length>0,"second host cannot own channels");
                 }

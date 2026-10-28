@@ -4707,7 +4707,7 @@
   "im.binding": "Teman terhubung:",
   "im.users": "ID pengirim yang diizinkan (satu per baris)",
   "im.groups": "ID grup yang diizinkan (satu per baris)",
-  "im.allowHint": "Daftar pengirim kosong memblokir semua percakapan. Grup juga harus diizinkan dan menyebut bot. Kirim pesan, lalu tambahkan ID yang ditampilkan di bawah.",
+  "im.allowHint": "Kosongkan untuk mengizinkan semua pengirim dan grup. Isi ID untuk membatasi akses. Grup tetap harus menyebut bot.",
   "im.save": "Simpan",
   "im.connect": "Hubungkan",
   "im.pause": "Jeda",
@@ -4748,5 +4748,12 @@
   "im.platform.dingtalk": "DingTalk",
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "Buka situs platform",
-  "im.verificationRequired": "WeChat memerlukan verifikasi tambahan. Batalkan proses masuk, selesaikan verifikasi di WeChat, lalu pindai kode baru."
+  "im.verificationRequired": "WeChat memerlukan verifikasi tambahan. Batalkan proses masuk, selesaikan verifikasi di WeChat, lalu pindai kode baru.",
+  "im.back": "Kembali ke kanal",
+  "im.notConfigured": "Belum dikonfigurasi",
+  "im.cardDescription": "Mengobrol dengan pendamping Anda di {0}.",
+  "im.scanConnect": "Hubungkan lewat kode QR",
+  "im.scanHelp": "Pindai untuk membuat atau menautkan bot. Kredensial disimpan di komputer ini. Bot terhubung setelah diizinkan.",
+  "im.manualConnect": "Konfigurasi manual",
+  "im.accessOptions": "Batas akses (opsional)"
 }

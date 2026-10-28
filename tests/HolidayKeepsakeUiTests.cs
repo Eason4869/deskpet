@@ -29,6 +29,7 @@ namespace Dafeiyu.Tests
                     Check(view.SavedCount==0&&view.DecodedCount==0&&!All<HolidayCardPreview>(view).Any(),"locked holiday has no rendered or decoded card even when scene resources are available");
                     Check(!All<ComboBox>(view).Any(x=>x.Name=="HolidayPreviewChoice"),"locked holiday selector is absent from an owned-only album");
                     Check(All<TextBlock>(view).Any(x=>x.Text==TextResources.Get("holidayKeepsake.empty")),"locked album retains its empty state");
+                    var retry=All<Button>(view).Single(x=>x.Name=="HolidayRetry");Check(retry.HorizontalAlignment==HorizontalAlignment.Left&&retry.ActualWidth<250,"holiday retry button remains compact");Capture(window,Path.Combine(root,"holiday-retry.png"));
                     var time=new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero);
                     var earned=await runtime.ObserveAsync(new HolidayKeepsakeEncounter("official:e-bao","e-bao","Saved name",time),Catalog());
                     Check(earned.Results.Single().Status==HolidayKeepsakeStatus.Saved,"eligible holiday encounter unlocks an actual saved card");
