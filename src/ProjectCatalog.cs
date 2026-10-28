@@ -52,8 +52,9 @@ namespace Dafeiyu
         [DataMember] public Dictionary<string,List<string>> SidebarConversationOrder=new Dictionary<string,List<string>>();
         [DataMember] public Dictionary<string,string> SidebarSectionLabels=new Dictionary<string,string>();
         [DataMember] public bool RecentIncludeProjects=true;
+        [DataMember] public bool RecentShowProjectConversations;
         [DataMember] public List<SidebarSection> Sections=new List<SidebarSection>{new SidebarSection{Id="projects",Name=TextResources.Get("projectCatalog.sections.name")}};
-        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects};copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.SidebarConversationOrder=(SidebarConversationOrder??new Dictionary<string,List<string>>()).ToDictionary(x=>x.Key,x=>new List<string>(x.Value??new List<string>()));copy.SidebarSectionLabels=new Dictionary<string,string>(SidebarSectionLabels??new Dictionary<string,string>());return copy;}
+        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects,RecentShowProjectConversations=RecentShowProjectConversations};copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.SidebarConversationOrder=(SidebarConversationOrder??new Dictionary<string,List<string>>()).ToDictionary(x=>x.Key,x=>new List<string>(x.Value??new List<string>()));copy.SidebarSectionLabels=new Dictionary<string,string>(SidebarSectionLabels??new Dictionary<string,string>());return copy;}
     }
     public sealed partial class ProjectCatalogStore
     {
@@ -97,9 +98,10 @@ namespace Dafeiyu
                 // holding the same short writer lease used through atomic replace.
                 using(var writeLease=new FileStream(path+".write.lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
                 {
+                    MergeUnpublishedConfigurations(copy);Validate(copy);
                     if(BeforeSave!=null)BeforeSave(copy);
                     using(var stream=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(ProjectCatalog)).WriteObject(stream,copy);}
-                    AtomicFile.Commit(temp,path);if(AfterSave!=null)AfterSave(copy);
+                    AtomicFile.Commit(temp,path);ObservePublishedConfigurations(copy);if(AfterSave!=null)AfterSave(copy);
                 }
             }
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -38,7 +39,7 @@ namespace Dafeiyu
             Background=ThemeManager.Surface;
             var shell=new DockPanel{LastChildFill=true};
             notice=LocalizedUi.Text(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.text")),11,AgentUi.Muted);notice.Name="WorkSettingsNotice";notice.VerticalAlignment=VerticalAlignment.Center;notice.Margin=new Thickness(0,0,12,0);
-            var save=LocalizedUi.Button(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.text.alternativeA")),true);save.Name="SaveWorkSettings";save.Margin=new Thickness(0);save.Click+=delegate{Save();};
+            var save=LocalizedUi.Button(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.text.alternativeA")),true);save.Name="SaveWorkSettings";save.Margin=new Thickness(0);save.Click+=async delegate{await SaveAsync();};
             var footer=new DockPanel{LastChildFill=true,Margin=new Thickness(24,14,24,16)};DockPanel.SetDock(save,Dock.Right);footer.Children.Add(save);footer.Children.Add(notice);var footerBorder=new Border{Child=footer,BorderBrush=AgentUi.Line,BorderThickness=new Thickness(0,1,0,0)};DockPanel.SetDock(footerBorder,Dock.Bottom);shell.Children.Add(footerBorder);
             var tabs=new SettingsPageHeader(()=>(TextResources.Get("workSettingsPanel.workSettingsPanel.tabsSettingsPageHeader")),()=>(""),()=>(new[]{TextResources.Get("workSettingsPanel.workSettingsPanel.tabsSettingsPageHeader.alternativeA"),TextResources.Get("workSettingsPanel.workSettingsPanel.tabsSettingsPageHeader.alternativeB"),TextResources.Get("workSettingsPanel.workSettingsPanel.tabsSettingsPageHeader.alternativeC")}),new[]{"WorkSettingsGeneralTab","WorkSettingsPromptTab","WorkSettingsArchivedTab"}){Margin=new Thickness(24,22,24,18)};scopeLabel=tabs.Description;scopeLabel.Name="WorkSettingsScope";DockPanel.SetDock(tabs,Dock.Top);shell.Children.Add(tabs);
             var content=new StackPanel{Margin=new Thickness(24,0,24,24)};
@@ -111,13 +112,17 @@ namespace Dafeiyu
             sendShortcut.SelectedIndex=pet.Settings.SendOnEnter?0:1;followUp.SelectedIndex=pet.Settings.FollowUpBehavior=="steer"?1:0;
             if(baseline!=null&&project==null){baseline.ShowPredictedMessages=pet.Settings.ShowPredictedMessages;baseline.PlainTextEditor=pet.Settings.PlainTextEditor;baseline.ShowContextUsage=pet.Settings.ShowContextUsage;baseline.SendOnEnter=pet.Settings.SendOnEnter;baseline.FollowUpBehavior=pet.Settings.FollowUpBehavior;}
         }
-        bool SavePrompt()
+        async Task<bool> SavePromptAsync(Func<Action<PetSettings>,Task<bool>> commit)
         {
-            string value=workPrompt.Text.Trim();if(value.Length<1 || value.Length>16000){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.savePrompt.notice")));return false;}string previous=pet.Settings.AgentSystemPrompt;pet.Settings.AgentSystemPrompt=value;pet.SaveSettings();if(!String.IsNullOrEmpty(pet.Notice)){pet.Settings.AgentSystemPrompt=previous;notice.Text=pet.Notice;return false;}workPrompt.Text=value;promptBaseline=value;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.savePrompt.notice.alternativeA")));return true;
+            string submitted=workPrompt.Text,value=submitted.Trim();if(value.Length<1 || value.Length>16000){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.savePrompt.notice")));return false;}
+            if(!await commit(target=>target.AgentSystemPrompt=value)){notice.Text=pet.Notice;return false;}
+            if(workPrompt.Text==submitted)workPrompt.Text=value;promptBaseline=value;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.savePrompt.notice.alternativeA")));return true;
         }
-        public bool Save()
+        public bool Save(){return SaveCoreAsync(change=>Task.FromResult(pet.CommitSettingsNow(change)),false).GetAwaiter().GetResult();}
+        public Task<bool> SaveAsync(){return pet.RunSettingsEditAsync(this,()=>SaveCoreAsync(change=>pet.PersistSettingsAsync(change),true));}
+        async Task<bool> SaveCoreAsync(Func<Action<PetSettings>,Task<bool>> commit,bool backgroundProject)
         {
-            if(promptVisible)return SavePrompt();
+            if(promptVisible)return await SavePromptAsync(commit);
             if(pet.Workspaces.OpenWorkspaces.Any(w=>(project==null||w.ProjectId==project.Id)&&(w.Session.IsBusy||w.Queue.HasPending))||pet.Conversation.IsBusy){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.save.notice")));return false;}
             PetSettings candidate;string projectNameValue;
             try
@@ -139,20 +144,31 @@ namespace Dafeiyu
                 if(!fullAccessConfirmed&&baseline.AgentApprovalMode!=AgentApprovalMode.Full&&!PermissionChangeDialog.ConfirmFullAccess(Window.GetWindow(this)))return false;
             }else if(candidate.AgentApprovalMode==AgentApprovalMode.Legacy&&candidate.AgentFullAccess&&!baseline.AgentFullAccess&&!fullAccessConfirmed){if(!PermissionChangeDialog.ConfirmFullAccess(Window.GetWindow(this)))return false;
             }else if(baseline.AgentSandboxEnabled&&!candidate.AgentSandboxEnabled){if(!PermissionChangeDialog.Confirm(Window.GetWindow(this),TextResources.Get("workSettingsPanel.save.permissionChangeDialogConfirm"),TextResources.Get("workSettingsPanel.save.permissionChangeDialogConfirm.alternativeA")))return false;}
-            var previous=pet.Settings.Copy();var previousProject=project==null?null:project.Copy();
+            var saveProject=project;var previousProject=saveProject==null||backgroundProject?null:ProjectCatalogStore.ConfigurationSnapshot(saveProject);bool projectCommitted=false;
             try
             {
-                if(project!=null)
+                if(saveProject!=null)
                 {
-                    Action apply=delegate{project.Name=projectNameValue;ApplyProjectFields(candidate,project);pet.ProjectStore.Save(pet.Projects);};
-                    if(!pet.TryChangeWorkBindings(new[]{project.Id},null,apply)){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.save.notice")));return false;}
-                    foreach(var workspaceOwner in pet.Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==project.Id))workspaceOwner.FollowProject(project);
-                }else{ApplyWorkFields(candidate,pet.Settings);pet.SaveSettings();}
-                if(project==null && !String.IsNullOrEmpty(pet.Notice)){ApplyWorkFields(previous,pet.Settings);notice.Text=pet.Notice;return false;}
+                    using(backgroundProject?await pet.Workspaces.BeginProjectConfigurationAsync(saveProject.Id):pet.Workspaces.BeginProjectConfigurationAsync(saveProject.Id).GetAwaiter().GetResult()){
+                    if(backgroundProject){
+                        var original=ProjectCatalogStore.ConfigurationSnapshot(saveProject);var edited=ProjectCatalogStore.ConfigurationSnapshot(saveProject);edited.Name=projectNameValue;ApplyProjectFields(candidate,edited);
+                        await pet.ChangeWorkBindingsAsync(new[]{saveProject.Id},null,async delegate{
+                            using(var publication=await pet.ProjectStore.SaveProjectConfigurationAsync(original,edited)){
+                                if(pet.Projects.Projects.Any(p=>p.Id==saveProject.Id))publication.Publish(saveProject);
+                            }
+                        },false);
+                    }else{
+                        Action apply=delegate{saveProject.Name=projectNameValue;ApplyProjectFields(candidate,saveProject);pet.ProjectStore.Save(pet.Projects);};
+                        if(!pet.TryChangeWorkBindings(new[]{saveProject.Id},null,apply)){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.save.notice")));return false;}
+                    }
+                    projectCommitted=true;
+                    foreach(var workspaceOwner in pet.Workspaces.OpenWorkspaces.Where(w=>w.ProjectId==saveProject.Id))workspaceOwner.FollowProject(saveProject);
+                    }
+                }else if(!await commit(target=>ApplyWorkFields(candidate,target))){notice.Text=pet.Notice;return false;}
                 // Establish the clean baseline before refreshing other views, which may re-enter this panel.
                 string promptDraft=workPrompt.Text;bool promptDirty=promptDraft!=promptBaseline;baseline=null;RefreshState();if(promptDirty)workPrompt.Text=promptDraft;pet.RefreshChatAppearance();LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("workSettingsPanel.save.notice.alternativeA")));return true;
             }
-            catch(Exception e){if(project==null)ApplyWorkFields(previous,pet.Settings);else if(previousProject!=null){project.Name=previousProject.Name;ApplyProjectFields(ProjectSettings(previousProject),project);}if(!ValidationError(e))throw;notice.Text=TextResources.Format("workSettingsPanel.save.noticeEMessage",AgentJobUiText.Error(e));return false;}
+            catch(Exception e){if(!backgroundProject&&saveProject!=null&&previousProject!=null&&!projectCommitted){saveProject.Name=previousProject.Name;ApplyProjectFields(ProjectSettings(previousProject),saveProject);}if(!ValidationError(e))throw;notice.Text=TextResources.Format("workSettingsPanel.save.noticeEMessage",AgentJobUiText.Error(e));return false;}
         }
         static PetSettings ProjectSettings(ProjectDefinition value){var result=new PetSettings();result.AgentApprovalMode=value.ApprovalMode;result.AgentSandboxReadDirectories=value.SandboxReadDirectories;result.AgentSandboxEnabled=value.SandboxEnabled;result.AgentTrustProjectInstructions=value.TrustProjectInstructions;result.AgentGlobalInstructions=value.GlobalInstructions;result.AgentSkillsDirectory=value.SkillsDirectory;result.AgentTerminalPolicy=value.TerminalPolicy;result.AgentCommandTimeoutSeconds=value.CommandTimeoutSeconds;result.AgentBackgroundJobTimeoutSeconds=value.BackgroundJobTimeoutSeconds;result.AgentFullAccess=value.FullAccess;result.AgentWorkspace=value.Workspace;result.AgentPlanMode=value.PlanMode;result.AgentGoal=value.Goal;result.AgentBackupFiles=value.BackupFiles;result.AgentContextTokenLimit=value.ContextTokenLimit;return result;}
         static void ApplyProjectFields(PetSettings from,ProjectDefinition to){to.ApprovalMode=from.AgentApprovalMode;to.SandboxReadDirectories=from.AgentSandboxReadDirectories;to.SandboxEnabled=from.AgentSandboxEnabled;to.TrustProjectInstructions=from.AgentTrustProjectInstructions;to.GlobalInstructions=from.AgentGlobalInstructions;to.SkillsDirectory=from.AgentSkillsDirectory;to.TerminalPolicy=from.AgentTerminalPolicy;to.CommandTimeoutSeconds=from.AgentCommandTimeoutSeconds;to.BackgroundJobTimeoutSeconds=from.AgentBackgroundJobTimeoutSeconds;to.FullAccess=from.AgentFullAccess;to.Workspace=from.AgentWorkspace;to.PlanMode=from.AgentPlanMode;to.Goal=from.AgentGoal;to.BackupFiles=from.AgentBackupFiles;to.ContextTokenLimit=from.AgentContextTokenLimit;}
@@ -162,7 +178,7 @@ namespace Dafeiyu
             to.AgentFullAccess=from.AgentFullAccess;to.AgentWorkspace=from.AgentWorkspace;to.AgentPlanMode=from.AgentPlanMode;to.AgentGoal=from.AgentGoal;
             to.AgentBackupFiles=from.AgentBackupFiles;to.AgentContextTokenLimit=from.AgentContextTokenLimit;to.ShowPredictedMessages=from.ShowPredictedMessages;to.PlainTextEditor=from.PlainTextEditor;to.ShowContextUsage=from.ShowContextUsage;to.SendOnEnter=from.SendOnEnter;to.FollowUpBehavior=from.FollowUpBehavior;to.AgentDetailedProcess=from.AgentDetailedProcess;
         }
-        static bool ValidationError(Exception e){return e is ArgumentException || e is InvalidOperationException || e is IOException || e is UnauthorizedAccessException || e is NotSupportedException || e is System.Security.SecurityException;}
+        static bool ValidationError(Exception e){return e is ArgumentException || e is InvalidOperationException || e is System.Runtime.Serialization.SerializationException || e is IOException || e is UnauthorizedAccessException || e is NotSupportedException || e is System.Security.SecurityException;}
         static string ValidateDirectory(string text,bool restricted)
         {
             text=(text??"").Trim();if(text.Length==0 || !Path.IsPathRooted(text))throw new InvalidOperationException(TextResources.Get("workSettingsPanel.validateDirectory.text"));

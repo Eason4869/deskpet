@@ -42,7 +42,7 @@ internal sealed class CompanionHomePage : ScrollViewer, IDisposable
     public CompanionHomePage(DesktopController owner)
     {
         this.owner=owner;model=new RelationshipHomeModel(owner.Relationships);
-            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,()=>owner.Holidays.Catalog,async delegate{var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.DataDirectory);
+            holidayAlbum=new HolidayKeepsakeAlbumView(owner.HolidayKeepsakes,async delegate{var top=TopLevel.GetTopLevel(this) as Window;await owner.ObserveHolidayEncounter(IsVisible&&top!=null&&top.IsVisible&&top.WindowState!=WindowState.Minimized,HolidayEncounterKind.CompanionHome,true);},()=>!disposed&&identity==owner.RelationshipCompanionId,owner.DataDirectory);
             holidayPulse.Interval=TimeSpan.FromSeconds(1);holidayPulse.Tick+=delegate{ObserveShownHome();};
             AttachedToVisualTree+=delegate{holidayPulse.Start();ObserveShownHome();};DetachedFromVisualTree+=delegate{holidayPulse.Stop();};
 Name="CompanionHomePage";
@@ -64,7 +64,7 @@ Name="CompanionHomePage";
     {
         if(disposed)return;string id=owner.RelationshipCompanionId;int version=++revision;
         if(identity!=id){identity=id;scenes.SetIdentity(id);View=null;body.Children.Clear();body.Children.Add(Label(()=>(TextResources.Get("relationship.home.loading"))));}
-        var holiday=holidayAlbum.SetIdentityAsync(id,owner.Skin.OfficialCharacterId,owner.Skin.DisplayName);
+        var holiday=holidayAlbum.SetIdentityAsync(id);
             var view=await model.LoadAsync(id,RelationshipTime.Current());
             await holiday;
         if(disposed)return;

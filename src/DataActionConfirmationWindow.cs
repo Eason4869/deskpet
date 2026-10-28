@@ -14,6 +14,7 @@ namespace Dafeiyu
         public DataActionConfirmationWindow(string title,string scope,Func<Task<string>> action,Func<Task<string>> flushPending=null)
         {
             execute=action;flush=flushPending;PendingOperation=Task.FromResult(0);Name="DataActionConfirmation";Title=title;Width=520;SizeToContent=SizeToContent.Height;MaxHeight=560;MinWidth=380;MinHeight=340;WindowStartupLocation=WindowStartupLocation.CenterOwner;ShowInTaskbar=false;
+            ResizeMode=ResizeMode.CanMinimize;
             Background=ThemeManager.Surface;Foreground=Ui.Ink;FontFamily=new FontFamily("Global User Interface");
             var grid=new Grid{Margin=new Thickness(20)};grid.RowDefinitions.Add(new RowDefinition());grid.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var body=new StackPanel();body.Children.Add(DataManagementVisual.Header("warning",()=> (title),21));var text=Ui.Text(scope,13);text.Name="DataActionScope";text.Foreground=Ui.Muted;text.Margin=new Thickness(0,16,0,16);body.Children.Add(text);status=Ui.Text("",13);status.Name="DataActionStatus";body.Children.Add(status);grid.Children.Add(Ui.Scroll(body));

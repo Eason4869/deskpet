@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
@@ -19,7 +19,35 @@ internal static class HolidayKeepsakeUiChecks
     static readonly string[] Characters={"e-bao","dafeiyu","marfu","xiaobei","gugugaga"};
     static HolidayCatalog Catalog()=>new(Characters.Select(c=>new OutfitDefinition(c,"halloween-2026","halloween","fixture", "1.0.0",true,false,Array.Empty<OutfitClipDefinition>(),null,null,null,null)));
     static readonly RelationshipTime Earned=new(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.FromHours(8));
-    internal static int RunLifecycle(){TextResources.ConfigureStartupLanguage("zh_CN");string output=Path.GetFullPath("work/localization-completion/holiday-ui/lifecycle-only");Directory.CreateDirectory(output);Frames(output);return count;}
+    internal static int RunLifecycle(){TextResources.ConfigureStartupLanguage("zh_CN");OwnedOnly();string output=Path.GetFullPath("work/localization-completion/holiday-ui/lifecycle-only");Directory.CreateDirectory(output);Frames(output);return count;}
+    static void OwnedOnly()
+    {
+        string root=Path.GetFullPath("work/holiday-owned-only/avalonia-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+        var runtime=new HolidayKeepsakeRuntime(root,new Dafeiyu.Maintenance.DataMaintenanceGate(),new HolidayCalendar(),HolidayKeepsakeRegistry.BuiltIn,new RelationshipSceneProvider(asset=>File.OpenRead(Path.Combine("assets",asset.RelativePath))),new HolidayKeepsakeSceneValidator(),action=>Dispatcher.UIThread.Post(action));
+        using(var view=new HolidayKeepsakeAlbumView(runtime,()=>Task.FromResult(true),()=>true,root)){
+            var window=new Window{Content=view,Width=900,Height=760};window.Show();
+            try{
+                Complete(view.SetIdentityAsync("official:e-bao"));
+                Check(view.SavedCount==0&&view.DecodedCount==0&&!view.GetLogicalDescendants().OfType<HolidayCardPreview>().Any(),"locked holiday has no rendered or decoded card even when scene resources are available");
+                Check(!view.GetLogicalDescendants().OfType<ComboBox>().Any(x=>x.Name=="HolidayPreviewChoice"),"locked holiday selector is absent from an owned-only album");
+                Check(view.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.Text==TextResources.Get("holidayKeepsake.empty")),"locked album retains its empty state");
+                var time=new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero);
+                var earned=Result(runtime.ObserveAsync(new HolidayKeepsakeEncounter("official:e-bao","e-bao","Saved name",time),Catalog()));
+                Check(earned.Results.Single().Status==HolidayKeepsakeStatus.Saved,"eligible holiday encounter unlocks an actual saved card");
+                Complete(view.RefreshAsync());
+                var card=view.GetLogicalDescendants().OfType<HolidayCardPreview>().Single().Capture.Data;
+                Check(view.SavedCount==1&&view.DecodedCount==1&&card.Record!=null&&card.CompanionId=="official:e-bao"&&card.HolidayId=="halloween"&&card.InstanceKey=="halloween:20261031"&&card.Name=="Saved name","unlocked album renders only the exact saved holiday and companion facts");
+                Complete(view.SetIdentityAsync("official:marfu"));
+                Check(view.SavedCount==0&&view.DecodedCount==0&&!view.GetLogicalDescendants().OfType<HolidayCardPreview>().Any(),"switching to an unowned companion clears the previous unlocked card and adds no preview");
+                Complete(runtime.ObserveAsync(new HolidayKeepsakeEncounter("official:marfu","marfu","Saved Marfu",time),Catalog()));Complete(view.RefreshAsync());
+                card=view.GetLogicalDescendants().OfType<HolidayCardPreview>().Single().Capture.Data;
+                Check(view.SavedCount==1&&view.DecodedCount==1&&card.Record!=null&&card.CompanionId=="official:marfu"&&card.Name=="Saved Marfu","the other companion displays only its own unlocked card");
+                Complete(view.SetIdentityAsync("imported:fixture"));
+                Check(view.SavedCount==0&&view.DecodedCount==0&&!view.GetLogicalDescendants().OfType<HolidayCardPreview>().Any(),"an imported identity cannot display an official companion's unlocked holiday");
+            }finally{window.Close();}
+        }
+        Complete(runtime.ShutdownAsync());
+    }
     internal static int Run(string language="zh_CN",bool sample=false)
     {
         TextResources.ConfigureStartupLanguage(language);
@@ -115,10 +143,10 @@ internal static class HolidayKeepsakeUiChecks
     {
         TextResources.ConfigureStartupLanguage("zh_CN");
         foreach(bool incompatible in new[]{true,false})using(var fixture=new HolidayKeepsakePresentationChecks.BetweenReadsFixture(Path.GetFullPath("work/localization-completion/holiday-ui/r1/native-ui-"+Guid.NewGuid().ToString("N")),new HolidayKeepsakeSceneValidator()))
-        using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>fixture.CapturedCatalog,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
+        using(var view=new HolidayKeepsakeAlbumView(fixture.Runtime,()=>Task.FromResult(true),()=>true,fixture.DirectoryPath)){
             var window=new Window{Width=900,Height=760,Content=new ScrollViewer{Content=view}};window.Show();
             try{
-                Complete(view.SetIdentityAsync(fixture.Saved.CompanionId,fixture.Saved.CharacterId,fixture.Saved.CompanionName));
+                Complete(view.SetIdentityAsync(fixture.Saved.CompanionId));
                 Check(view.SavedCount==2&&view.DecodedCount==2,"healthy real-store page displays both retained scenes before phase failure");
                 Complete(fixture.StartFailure(()=>view.RefreshAsync(),incompatible));
                 Check(fixture.MutationRan&&view.SavedCount==2&&view.DecodedCount==0,"between-read failure preserves actual saved count without inventing images");
@@ -139,9 +167,9 @@ internal static class HolidayKeepsakeUiChecks
         string file=Path.Combine(root,"commemorations/holiday-state.json");File.WriteAllText(file,"{broken-owned-fixture");byte[] original=File.ReadAllBytes(file);
         var runtime=new HolidayKeepsakeRuntime(root,new Dafeiyu.Maintenance.DataMaintenanceGate(),new HolidayCalendar(),HolidayKeepsakeRegistry.BuiltIn,new RelationshipSceneProvider(asset=>File.OpenRead(Path.Combine("assets",asset.RelativePath))),new HolidayKeepsakeSceneValidator());
         try{foreach(var error in new Exception[]{new IOException("owned IO"),new UnauthorizedAccessException("owned access"),new System.ComponentModel.Win32Exception(5),new InvalidOperationException("owned shell")}){
-            int launches=0;using var view=new HolidayKeepsakeAlbumView(runtime,()=>Catalog(),()=>Task.FromResult(true),()=>true,root,path=>{Check(path==root,"folder launcher receives exact owned data directory");launches++;if(launches<=2)throw error;});
+            int launches=0;using var view=new HolidayKeepsakeAlbumView(runtime,()=>Task.FromResult(true),()=>true,root,path=>{Check(path==root,"folder launcher receives exact owned data directory");launches++;if(launches<=2)throw error;});
             var window=new Window{Content=view,Width=800,Height=600};window.Show();
-            try{Complete(view.SetIdentityAsync("official:e-bao","e-bao","Owned"));
+            try{Complete(view.SetIdentityAsync("official:e-bao"));
                 var button=view.GetLogicalDescendants().OfType<Button>().Single(x=>x.Content as string==TextResources.Get("relationship.home.openDataFolder"));
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Check(view.GetLogicalDescendants().OfType<TextBlock>().Any(x=>x.IsEffectivelyVisible&&x.Text==TextResources.Get("relationship.home.folderFailed")),"album visibly reports expected folder launch failure "+error.GetType().Name);

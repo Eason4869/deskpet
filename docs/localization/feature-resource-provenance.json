@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+  "resourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
   "translationMethod": "assistant-authored",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
@@ -902,6 +902,11 @@
           "count": 1
         },
         {
+          "file": "src/ConversationWorkspaceManager.cs",
+          "contextHash": "4ed1d0df6524b160359c35fdea552b03b05520ba12be24513f04e767f530aec0",
+          "count": 1
+        },
+        {
           "file": "src/DataActionConfirmationWindow.cs",
           "contextHash": "ba27a3d07f75d17fa9cb65c29a4eac1b611d073d5a12eaef3a451f5d0a6a3c29",
           "count": 1
@@ -927,6 +932,26 @@
           "count": 1
         },
         {
+          "file": "src/PetExplicitSettingsPersistence.cs",
+          "contextHash": "0af635b4a69575635a95b9d3949e99215af6eb45b7a30c1209548113cc3a1640",
+          "count": 1
+        },
+        {
+          "file": "src/PetExplicitSettingsPersistence.cs",
+          "contextHash": "1fcd90ace8054df065e5416ff65508361b20c11c822eab8a3e5b8f0361ffd1c8",
+          "count": 1
+        },
+        {
+          "file": "src/PetExplicitSettingsPersistence.cs",
+          "contextHash": "91b6e6873f7f2d4b6c114be08e14d0c24a0749cea6f3af15be905b6362ec8b74",
+          "count": 1
+        },
+        {
+          "file": "src/PetExplicitSettingsPersistence.cs",
+          "contextHash": "dc940540eb1df15e7bfd0053822d8590f54d18d6847e93f264b618f1d64045a3",
+          "count": 1
+        },
+        {
           "file": "src/PetUninstall.cs",
           "contextHash": "05d28b2e7eff82593acc6763f5497d9b3928dce93d7fccff320167881b33fc47",
           "count": 1
@@ -947,9 +972,39 @@
           "count": 1
         },
         {
+          "file": "src/ProjectCatalog.Configuration.cs",
+          "contextHash": "d75fdd98ceed222c944fbbca191273b3eea2913b9c39b62bbf7089f8956ceae1",
+          "count": 1
+        },
+        {
           "file": "src/Settings.cs",
-          "contextHash": "1b4c309a8aae06b8d9939ea9e81efecf3906ce4b6705688fac40dd4caba2b612",
+          "contextHash": "08a70fdb5bb0aa58599155f86efb2603d6d5d3dc2f8495d36e0d975df7425f41",
+          "count": 1
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "13aad68030c29bd8549d6f998e6bfa3fcddd1a9159168176bd284249e2575d8e",
           "count": 2
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "1d4de89f59af75f64c4bab2074bfea7cd462b5a1abac49efb64d52768afc0e56",
+          "count": 1
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "abc35a19a5bc542b36a9f0750fc7b820910d482dbdde9e5be7d7462c452d2f97",
+          "count": 1
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "bcb01070e01b3d1fc1e8fdccb037ffb883944a942ab7137c219c472c146621b6",
+          "count": 1
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "cffcbb56f6bc95561a326ec612862860dc2ee55226c184a685612785c505df9e",
+          "count": 1
         }
       ],
       "translations": {
@@ -1693,6 +1748,16 @@
           "count": 1
         },
         {
+          "file": "src/PetExplicitSettingsPersistence.cs",
+          "contextHash": "3e8d13c86a98acb32335c1b9506fde50a8f0b501371d5cae36ad1d0c11451b14",
+          "count": 1
+        },
+        {
+          "file": "src/PetPreferencePersistence.cs",
+          "contextHash": "25bbe66679eab21123fb4079d4cdb147cd8cea1ced1e109f41518fefd7868134",
+          "count": 1
+        },
+        {
           "file": "src/PetWindow.cs",
           "contextHash": "3ee530722a64a47e6a7cb9494c22137adfb86b6a2a3c7685ee5f5c8fe0bd3146",
           "count": 1
@@ -2025,7 +2090,7 @@
         },
         {
           "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
-          "contextHash": "a62e460005231642947fbdac3fcd14891cab75559ee76c3fa322c2553b55c304",
+          "contextHash": "cc04846bb3b44c68e13c9b39379a2f047308ea0ee249d70854f671be2951c460",
           "count": 1
         },
         {
@@ -2468,18 +2533,7 @@
       "originKey": "holidayKeepsake.locked",
       "originValueSha256": "530f74febd412c31bfc7dc6f76b60a25c066162d666ae52f11e595e51e0fa220",
       "textSha256": "530f74febd412c31bfc7dc6f76b60a25c066162d666ae52f11e595e51e0fa220",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/HolidayKeepsakeAlbumView.cs",
-          "contextHash": "fbbfa2f6ab5e0fc0d9922d665a31ad4ed56e414717f7432e6705e55a8653a58f",
-          "count": 1
-        },
-        {
-          "file": "src/HolidayKeepsakeAlbumView.cs",
-          "contextHash": "fbbfa2f6ab5e0fc0d9922d665a31ad4ed56e414717f7432e6705e55a8653a58f",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "65eeef5fd782b74850b11cb109cf4362141377506262d5932c3dcc2a3b013775",
         "en_US": "986ac6eff2e81c3467da83528100ae742d8e0bd14fa67b9a3d78d97f844fb415",
@@ -2912,7 +2966,7 @@
         },
         {
           "file": "src/HolidayKeepsakeAlbumView.cs",
-          "contextHash": "3abe47e30dd3cdfe13df7ba711d174b63714b80f0ef1fd8686d9eec3d2eea21c",
+          "contextHash": "6fd261463067e859e1860a6b3fd979f79ae43c2d339995589c62176a672be66a",
           "count": 1
         }
       ],
@@ -3064,18 +3118,7 @@
       "originKey": "holidayKeepsake.unavailable",
       "originValueSha256": "16b52e6269b3691a072f83666cc261566a45d9262c70d2bce30185df56838f67",
       "textSha256": "16b52e6269b3691a072f83666cc261566a45d9262c70d2bce30185df56838f67",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/HolidayKeepsakeAlbumView.cs",
-          "contextHash": "00ab88d041ab5d1e3592fecd7318725fa33601e446d3af79b6b4e26a56c38b0d",
-          "count": 1
-        },
-        {
-          "file": "src/HolidayKeepsakeAlbumView.cs",
-          "contextHash": "00ab88d041ab5d1e3592fecd7318725fa33601e446d3af79b6b4e26a56c38b0d",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "253459174c64efe2973e4be6904bd4577b60910f77047f8513ce5a9f469b2433",
         "en_US": "c540312b28e851c93cbe22299d8d72ca2eb67d31a2d2a93aeffe2c3ea61a8797",
@@ -3148,6 +3191,1708 @@
         "pt_BR": "f14ce0bcfad5c875b14614d7144d4948056f7438a7f16a30ba2707d370ce06c6",
         "zh_CN": "a5c7e091cef6f84eb10b3b57c5d5dabc45bb46df240ae74ff85a277a101e3239",
         "zh_TW": "9658cd9936bd0f1eec9f32143ed899ffd4e73cd0ec6600d48dfe58d3c56d1e4c"
+      }
+    },
+    {
+      "key": "im.accessOptions",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.accessOptions",
+      "originValueSha256": "d606325bd76c246ee5cd689536a3f60c3f69417a9d9f219ef820ad11d66c5731",
+      "textSha256": "d606325bd76c246ee5cd689536a3f60c3f69417a9d9f219ef820ad11d66c5731",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "c383824d3bf9bf72a28b6562bfc22eb677d61212b959f4d252e0f74a86dd950e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "d71244822e9bf4385921cc2f0ea1e2e05100deeed214340bbe6af77ad434206e",
+        "en_US": "c8a0a35ce309b0536440b18bba37d22ce871b67ed5280e36345c91fc1f2a27e1",
+        "es_419": "b85f5baa6308ddd5f74a876dabcdc949223b69282f819ce21f9cc66ad508b86c",
+        "es_ES": "b85f5baa6308ddd5f74a876dabcdc949223b69282f819ce21f9cc66ad508b86c",
+        "fr_FR": "508ee734298171384692487c8e129c57de982f7bae5226d67fdffb1ff05eff76",
+        "hi_IN": "00386aaa5fe749a759c4a1c8730ed426d5db64df666bd354f42b7ea90b347a95",
+        "id_ID": "6936430d077655c38847d9a8b04da6b4a2835ed4ab0f6b366741010af4849342",
+        "it_IT": "33671f005fdd8db17b50aefd6d97be0180620bad68eb50fbe2ced61d505e2e01",
+        "ja_JP": "45d500eb79e8d0317c835c5505f52cd749b83d7120246ebe3d34fe2674733e47",
+        "ko_KR": "cbf1eb21c9ab25787101fa8929685e561d2a4f5e1dc72cbd6404296148e14a4f",
+        "pt_BR": "48481a20bbda8b0c3df61511ccf43ab4a50495f9b7e8883a76e5747fa96347ed",
+        "zh_CN": "d606325bd76c246ee5cd689536a3f60c3f69417a9d9f219ef820ad11d66c5731",
+        "zh_TW": "c1f5c16d546165bbadda2d9324dee2f55addc084e62558884420056dc1d669dc"
+      }
+    },
+    {
+      "key": "im.add",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.add",
+      "originValueSha256": "7dc997cb01142b1223f9cb25924b3c08a8334fcccd5bfb8b79eae9617c8acd52",
+      "textSha256": "7dc997cb01142b1223f9cb25924b3c08a8334fcccd5bfb8b79eae9617c8acd52",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "aae0bfe02bb96d81ff35dc9d6ae565d25df378cf6a05e59dee7445e85ace1a7e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "c0ae3284a91f7dea15078d36925d037b1998da09392df0c8235be3f4d9550d80",
+        "en_US": "685f88ae3db24ee15edd7e342447d933e018a46d99e8878c21ce3065d93c21a9",
+        "es_419": "615fb51a687fc703f812579b5ddbbd903d91bd7eb6dcc5a83cbd2e3ee8f2821a",
+        "es_ES": "ddeb2514105c48ee42b9bd18c891dc7aed336b9a21b4bdde50825774a3b9921c",
+        "fr_FR": "5da443011ab16356118647705d740f0a93551f2b0f70f73c35c4b7682195c1c9",
+        "hi_IN": "81ce4dd5fb786cfe18e9961c9166a630962b108f46175547d495928e67cc0c86",
+        "id_ID": "8c4382125eedbd2be5dabc2e5f23453c58d6629f50c8a297aa1c3fce5ac96430",
+        "it_IT": "2cbaba361856c98330655b1ea2502f29cfe412ce837d166a823af9c797c79c35",
+        "ja_JP": "a6c1c777129fb322e7154e4d7e749082b094610985549746670c178d949d3587",
+        "ko_KR": "9752f9237ef5d32f0a41ab18a3af010f28e7ca877fc2ccd5e07bb5aaac5644ab",
+        "pt_BR": "68754287e1d2bd96d0450ba368ecc52691da0c99ccfdb18b63f88cfd9922edfd",
+        "zh_CN": "7dc997cb01142b1223f9cb25924b3c08a8334fcccd5bfb8b79eae9617c8acd52",
+        "zh_TW": "64aa4df80127c52d07559ef7e7b1714ea6978fe00cec5240587aea2e1ce348ef"
+      }
+    },
+    {
+      "key": "im.allowHint",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.allowHint",
+      "originValueSha256": "1165240367890e50459d2d63a4dfeefc274978e2f693f9c56179e997201b7c02",
+      "textSha256": "43b35db48abbbf2cbdb5be076857fe4929c7c8918dba9af392514e030f2b9533",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "f0406e6cce79f928976d01c59e7a0f0796abde01ced632179007240b313d36bb",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "f707515faead3c6a9000ec073e7fd6d7bc95da2665a03a45d4079b4d37f905c5",
+        "en_US": "836c22b95e035281922a82ff938f896df1708a313aa065471a20253b75c5d168",
+        "es_419": "fc0d22c45cadc803f55964b62eaf18561177a71b270b77d889f65d38016d1a67",
+        "es_ES": "30eef59bb3040f377f187641a51d481233f3a39262c95bcb78b557843c2357c0",
+        "fr_FR": "44c85fd850263626bed6861cadd2cf7d6d2d056db4a3a480fe2f52b924d6ca94",
+        "hi_IN": "f6291031ec1fbfeb9d36aed5d0110b2cf512ab771010538663b8bfe6b68223f6",
+        "id_ID": "890ae62e14ef64f3340071a46322a24451947e974d7d580ba0d96472becec3d8",
+        "it_IT": "387c3e0e9a07af2f69060cea7d2dff80e0964f26160326a53d1699ecf1e540dd",
+        "ja_JP": "100b45a39927e240fe693ce73c7a4892c4c47719a233b5d0889c8244562588de",
+        "ko_KR": "a13161dc5cf36eb3c1c471e5ce3b4b523ce79f9dc17599c736551a41e792717b",
+        "pt_BR": "cb7b79a5d814375b5ba344b7de383389c1a08fe0dda4b8ab9d1c405493828f76",
+        "zh_CN": "43b35db48abbbf2cbdb5be076857fe4929c7c8918dba9af392514e030f2b9533",
+        "zh_TW": "9d6a1b586e153f166aa97329046bb7f9cbedaa1b81644dcbd670eafe36dc765b"
+      }
+    },
+    {
+      "key": "im.appId",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.appId",
+      "originValueSha256": "2fc25118b484b22f2b7e1a2df8dafb524f28384e37fc7778d4f5fdfa8225950c",
+      "textSha256": "2fc25118b484b22f2b7e1a2df8dafb524f28384e37fc7778d4f5fdfa8225950c",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "325d1b81f329a2e8cf072225c3f82e5e27deea2caf76b72dfe9fb3cfbbe183fe",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "dbc82b4aa1b8c99298fe5a090c5190cddfda3784ccf31b67a4d0e248d790e7c6",
+        "en_US": "2fc25118b484b22f2b7e1a2df8dafb524f28384e37fc7778d4f5fdfa8225950c",
+        "es_419": "f74e9abb36bd8063759648a984a7e7d3ca495cdfd22f3f76c26f5ed1f9162f65",
+        "es_ES": "f74e9abb36bd8063759648a984a7e7d3ca495cdfd22f3f76c26f5ed1f9162f65",
+        "fr_FR": "eaa12a4fc21ad2e2b2c829fed6fc5ae0c06d20f2987db7b6f70e98025a6b6ffe",
+        "hi_IN": "9936c67e39bab5d574a5b22010458bfba16772a0e91eedb39c9a50f7d301c42b",
+        "id_ID": "f8f077ba07054f1216622fe2cbdac39576beceb51cb30eeac6b3fcda642379e0",
+        "it_IT": "53f040a36db83bbc765b661f829e786c7f6eee922d51cbc4615dfd32922af246",
+        "ja_JP": "13f3482974c1729d5c500acfcc5e3447d563ec331ac6ce881c3ee00952f0f134",
+        "ko_KR": "0f608fd67998cc5290806602c2136f2c95e0a7fe596b4d627d5587be0353ee5b",
+        "pt_BR": "eefbd71f6d16c3412e4ec6a81e30ab51cc72b0202b491d9954326962c0023645",
+        "zh_CN": "2fc25118b484b22f2b7e1a2df8dafb524f28384e37fc7778d4f5fdfa8225950c",
+        "zh_TW": "2fc25118b484b22f2b7e1a2df8dafb524f28384e37fc7778d4f5fdfa8225950c"
+      }
+    },
+    {
+      "key": "im.authFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.authFailed",
+      "originValueSha256": "6a4fae143073361f644a25930d05b647cd63a491065f7808ecb7ca28ba4ad6ae",
+      "textSha256": "6a4fae143073361f644a25930d05b647cd63a491065f7808ecb7ca28ba4ad6ae",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "631617eddc79534f233dba0b65629033bc1949bc384d715f23b97dc5a30903bb",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "e0f7e2967cda0e875e825344c39488e69b97cf875dbb428bf3a2912f882890a1",
+        "en_US": "404817c5bd6e2ea8e44d997a6a30aefba9540da01f52df5737e526f58a02b699",
+        "es_419": "c29d83d67325d0aa811ba70fb5e358d3a3de77cf89f117013e17a638081fd198",
+        "es_ES": "9b6e6d70f35ef3d1f111b2d2efd2496e9211f226c32bb3502fecd0a73c0cdf51",
+        "fr_FR": "812c9265ba51d5d9bff03cdb73b802a8a089f871c52cf9e7c9b1ea7da721730a",
+        "hi_IN": "d5a65f797ed7b12e75c1491c6ac5ecd88f26899b2b0cc246c888545b28ee7a6b",
+        "id_ID": "a2fa96bb246234724e5311eab1c5d7a4e12fe4c8f9ca56044d3654566da4b5d8",
+        "it_IT": "09ab3dafdc656c8f185254a48c9ee3e6fb62ac54ac814072965361ce1386c53f",
+        "ja_JP": "f1da09f6f4edbac8d7f08e562505028e4d2529adccc2989dfd66f4ad3860858e",
+        "ko_KR": "2ae5bcf93ccbc15db560201839b07b70b63ee56b15ea10b5bec7afb106a64996",
+        "pt_BR": "e6ce0a9c43c2edba16caa20b297696d94fb25de34897915874e0cfb567427012",
+        "zh_CN": "6a4fae143073361f644a25930d05b647cd63a491065f7808ecb7ca28ba4ad6ae",
+        "zh_TW": "4293d778b35e352ebb72c9c37baf0c3112b301c30e0de9474a035f93abc5b0bc"
+      }
+    },
+    {
+      "key": "im.binding",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.binding",
+      "originValueSha256": "136a7769549e6cda8cb1be79e16909bcc7cc891bc9f424bb7735550ba89c72b5",
+      "textSha256": "136a7769549e6cda8cb1be79e16909bcc7cc891bc9f424bb7735550ba89c72b5",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "b16eecd00b79ce8b0036c98915b78b0d5d286583a143ad7027544459f5bfd90d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "84e89f457b74484cfca4db03ce0f4db1da18f181bfc64ca033075969f92c4fa9",
+        "en_US": "885f1dc958f895e251e58f880e43d9cb9984ce75946891eaaeba9ef567cbf9ee",
+        "es_419": "1fb7d7e21485f3af6542267c8f0bceb29d91ac9972faac51c4db39aa3dd81e45",
+        "es_ES": "1fb7d7e21485f3af6542267c8f0bceb29d91ac9972faac51c4db39aa3dd81e45",
+        "fr_FR": "015e8da276326d8e55aefa82926e5428346500f28bb1f3ecc8a3468cb231900e",
+        "hi_IN": "43da6b88651a07a8a210675eba99888d496483c39b798d43d256b02aed2e5d33",
+        "id_ID": "424eb84e35690152f0b3047c7ef9900bb190ea9e7079ea8af8e6d6fbd193e87d",
+        "it_IT": "b81c0302429b229deb311a25b04054c01936cda524e5cba6352a942e8beba947",
+        "ja_JP": "5959c7c8a50ae523a6b71a3b1d545bb02d6b1e61646316f50052aa85fd062874",
+        "ko_KR": "eadf629b1b1a79464750305cd71ee69aea7a48be70d2d955cd4b8a9df432e327",
+        "pt_BR": "366139a150e1be3a9043b4e07b7672db49db76866598fe2dac472655def8a652",
+        "zh_CN": "136a7769549e6cda8cb1be79e16909bcc7cc891bc9f424bb7735550ba89c72b5",
+        "zh_TW": "c99e9946daf6867f004d42808c69d7e025bc8518cf96ae42c1ca09f27ebc5d7c"
+      }
+    },
+    {
+      "key": "im.cancelLogin",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.cancelLogin",
+      "originValueSha256": "531c764f9b4eea01c1b07f238c7ee34e7e85da853cc013dedace963dc7fba68f",
+      "textSha256": "531c764f9b4eea01c1b07f238c7ee34e7e85da853cc013dedace963dc7fba68f",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "080b73a40f73953704eca12956b87ee1bc7ddf1b0e7a0a8c94849efe64b2929e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b9ddaf750994299d7443a03f22a726e844e62bf55233a9ef8e660a80e67efd66",
+        "en_US": "9effa0b7488496eeaed3bf526cf18bab53952e8a502008e7889eaf9840c012c7",
+        "es_419": "3db8ed430775a2ec577f047c1d11c49646a72396e3b15b4e4adbd18c26d84b52",
+        "es_ES": "3db8ed430775a2ec577f047c1d11c49646a72396e3b15b4e4adbd18c26d84b52",
+        "fr_FR": "107d55e7615e081dd892c032e14c7b8a42f30f3cdc9573ab4424cb20940ac397",
+        "hi_IN": "16949e01c25bef01c9cf806a7f2aa171f6f20c0d0f5a1d8cdb0369bbfee7ca13",
+        "id_ID": "952d0dc4c8e9338818e6cb0aea21772a187f447af184959638159e4b17a86265",
+        "it_IT": "657d5f3f7130ecce07856bb922d6d5ceefbf1fbfc971b8e49ed1732575e9457b",
+        "ja_JP": "bc19f7918aeefa9464ad36a1454954c3e9a3060d83950eecfe8c897e3002ceb0",
+        "ko_KR": "b31fed0320df8789c50c9ea10775c1c40c180c32f13fe2f7a3d17e15a3ac3929",
+        "pt_BR": "894be0f9018c62a5b3b79b7dd405a5a82ff3e31f32a27ebbf7c689b954f7cd22",
+        "zh_CN": "531c764f9b4eea01c1b07f238c7ee34e7e85da853cc013dedace963dc7fba68f",
+        "zh_TW": "64cbe8ce848a988757f01801fd540940ba636c5b9c3b21d5f1a4a93e95cea7ce"
+      }
+    },
+    {
+      "key": "im.cardDescription",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.cardDescription",
+      "originValueSha256": "49ee084e34dd673f2db7f113ccfb9472b3585bedb30bed74fa77df3bf15a142e",
+      "textSha256": "49ee084e34dd673f2db7f113ccfb9472b3585bedb30bed74fa77df3bf15a142e",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "3e3c919793002f0d0d216974098fd3e1a6e93c35466365adbf61fdb4562ed301",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "6f644b60a6cbe03edbb699cd9b0248f2dd0dcb2295e3a467626c731306dea105",
+        "en_US": "3d0ddda9e57ead5f91c509876b96dc98f80a2c326d06f27bb4f04c6a7e966118",
+        "es_419": "70dc4d9ea21772c768c4444e973875a9d8e1f8c525c583629b6e6f549be6d564",
+        "es_ES": "70dc4d9ea21772c768c4444e973875a9d8e1f8c525c583629b6e6f549be6d564",
+        "fr_FR": "7293533015444229d496f80135da818463ef82f1cbf96634ec302af83eb4a2bc",
+        "hi_IN": "3d392030551c812729be62bd25a222f8aa64d8e047a07ff4fe053c7de277ddde",
+        "id_ID": "a579fff2e1b352819b4c879b263b91cd898771b61ad69b9e0cd1b822c93a4b32",
+        "it_IT": "8a4c78d8e6942251fba683ccfc9ac944b86365ca9aceb953b02aecf3761bdd79",
+        "ja_JP": "482bf1d8b3d70a48e6ad2f2f9cf78b78f9e9d55dd46105a1425f02a6632ed610",
+        "ko_KR": "1b72bfaa1203e6e382b955f58a2ed98ffdf2fbaff5e1b41f85603aa8f557bff3",
+        "pt_BR": "a2402351ca80033a93594079016d2a50654e4df271a1d0e52c26eb615dda6a0a",
+        "zh_CN": "49ee084e34dd673f2db7f113ccfb9472b3585bedb30bed74fa77df3bf15a142e",
+        "zh_TW": "00318b6cf460bac7967cbdda0cd845fd188d592468aab17e664a4844ca3b3987"
+      }
+    },
+    {
+      "key": "im.connect",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.connect",
+      "originValueSha256": "a5574109f0208e899feb6b620feb3f1f686aded4ec939631420afc1bec51c400",
+      "textSha256": "a5574109f0208e899feb6b620feb3f1f686aded4ec939631420afc1bec51c400",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "070ce27e159ebc8e7c755cd5688430a01c435cdf53508d22fcff41c2bae86894",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0eefbbbcecf606d830f2e50876ce8f469c176210dad9b6bf7f9e9196bf60dd0f",
+        "en_US": "1a2303ede07493acc7caaa7c737f3c52bcc9cf04372be19ed1b0af6b9f2c791e",
+        "es_419": "3b0b0fdfe2e3a691cd74f988612c6997feab43bb1fadd343a0616ef885349b3c",
+        "es_ES": "3b0b0fdfe2e3a691cd74f988612c6997feab43bb1fadd343a0616ef885349b3c",
+        "fr_FR": "2a10feebacc015831e700a9fe80bb9d4e291c46ecaa151c4fe80f9c95119ca1d",
+        "hi_IN": "a6389a546a74560343a33f538dc3725fad33776e3c6659b63cdeb351f5fee625",
+        "id_ID": "dea824a4a107a4a46ed5290087593f550e017992e8db666e1739fd1eb0ade008",
+        "it_IT": "112975e54c821fdf626fff39b5ea338e321ea29eb01f25320a535484e7bb1202",
+        "ja_JP": "d528fb88a6930dfb1092834ac593e4a1bbf55e1fe1b073d3962d057015f3ff2e",
+        "ko_KR": "32dd2947e74266d57d4d1942f993d3d6fd7020925a48546002c6228346af05ee",
+        "pt_BR": "3b0b0fdfe2e3a691cd74f988612c6997feab43bb1fadd343a0616ef885349b3c",
+        "zh_CN": "a5574109f0208e899feb6b620feb3f1f686aded4ec939631420afc1bec51c400",
+        "zh_TW": "d318a71724d4bd9793030ead5a54b5d601358336817f87764c54ac206667c807"
+      }
+    },
+    {
+      "key": "im.connected",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.connected",
+      "originValueSha256": "5be0323e8adcaeae8a644b6e8e4ad05864ec03c7b841504f91c911ff06dabd6d",
+      "textSha256": "5be0323e8adcaeae8a644b6e8e4ad05864ec03c7b841504f91c911ff06dabd6d",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "4a10bd3d536e6dda01e4fed53ed7ecae4f33f5f5f9f35e6d7089d80a9e564718",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0338189c985eee9c190291f07c97fdd16bff676256302cf45690b80bb6fcbb9a",
+        "en_US": "22965568d22a14ee17af055d2870b50afcfe9fd94a83eec3196e266932297bb2",
+        "es_419": "7444e37ea660c24cfd6b41770439c893cc43ec1a8c8a2ecf99aa4d826c4f385b",
+        "es_ES": "7444e37ea660c24cfd6b41770439c893cc43ec1a8c8a2ecf99aa4d826c4f385b",
+        "fr_FR": "e92b0f99086360d0b4b718b3aa5b3c816588a8f6859485c9a09bc619a0a5c536",
+        "hi_IN": "05f56d2653f2da3cebc3ca6039fa16e4861cf276347d72bcc50f937d4e7dec59",
+        "id_ID": "9f88a59d365bc20833aaed0ab8e66eee13e65dfa13aedb2a5a6f3215edc0e064",
+        "it_IT": "075d9e8cef437209b63fbca20e330dcc100e5fba73f797ac74f8676979a9ad98",
+        "ja_JP": "5f22f0bb58682b4a9bdee8646968d2895f6911055599d5f26cd1d931e78d37ba",
+        "ko_KR": "90704df74930d55b270a4f9bf0d33e27dfbc91011158b39fbe3a670ea48498e4",
+        "pt_BR": "7444e37ea660c24cfd6b41770439c893cc43ec1a8c8a2ecf99aa4d826c4f385b",
+        "zh_CN": "5be0323e8adcaeae8a644b6e8e4ad05864ec03c7b841504f91c911ff06dabd6d",
+        "zh_TW": "866cb506850cee2ea317935ea5e21ba7e0d4c1a603bb867584e31913121480b8"
+      }
+    },
+    {
+      "key": "im.connecting",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.connecting",
+      "originValueSha256": "8be0ea36a9bba286a545597e58d201764ab2bf3dc1a9d494a7968838fb2c7597",
+      "textSha256": "8be0ea36a9bba286a545597e58d201764ab2bf3dc1a9d494a7968838fb2c7597",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "c98020d43309efb7b71b35b8fb04efade04e6f2b22a1ed99d1042f48c252863e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "9b227e1fa3bdcfcec0fc7c9364fa2a852ae5496647ddb3915b85e04f39440b33",
+        "en_US": "72021eb70e91b4d58254586a8519393a281eb830c165bf1ec42a5057d425bcaf",
+        "es_419": "cc190ab9f5ec058f941222106ddd3221afc9bc03929aac82552c30f9b086c2de",
+        "es_ES": "cc190ab9f5ec058f941222106ddd3221afc9bc03929aac82552c30f9b086c2de",
+        "fr_FR": "280398acb03081df0c3d915fed8668cb45138ee5855af3a330288759054082f1",
+        "hi_IN": "9697d9b0fd5cbdd2239dd5d327908cb6bc7b918647e5d3a8944f603a530ed24c",
+        "id_ID": "96671607636172e7ac97b892592f4c44dfc3c8d7268856505788ff79c8fe4d6d",
+        "it_IT": "8e229392b566ce838c8c42816d2d18f2e84d5c5353f357c8ee75968a60b7c7a0",
+        "ja_JP": "f2bca118f7b0e3ac50b63052a9a14c57042302d1ebe908be721f7be70314d24d",
+        "ko_KR": "1eaa373c390c0c799ced8aa68683a05ea746477600bb58267fb401ddfe85199e",
+        "pt_BR": "cc190ab9f5ec058f941222106ddd3221afc9bc03929aac82552c30f9b086c2de",
+        "zh_CN": "8be0ea36a9bba286a545597e58d201764ab2bf3dc1a9d494a7968838fb2c7597",
+        "zh_TW": "ebce8ef6c6af31d0a2360a2768fff93ac04ec641d26809d2afd2dc39821470c0"
+      }
+    },
+    {
+      "key": "im.connectionReplaced",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.connectionReplaced",
+      "originValueSha256": "813331d93f5b31839c39337300cc4df838bde5e787177e7ceb37da340b5a6e03",
+      "textSha256": "813331d93f5b31839c39337300cc4df838bde5e787177e7ceb37da340b5a6e03",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "e901d60acf6a73ba29bf8cda9064e1443c89e390a0081e3351d7f02e5db6ce5e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "681cb2d13b2cb3ff230a164ed5fa4dd7773944622d90721d8ff181591ab2ccfc",
+        "en_US": "546c5534668a9a4d74dbf53d95401034f418084a78223413a0d3b1094f385377",
+        "es_419": "6e257a3c0c38f3de1904240e3fea752a53770bf6c0e99b2edf766550d51012c7",
+        "es_ES": "6e257a3c0c38f3de1904240e3fea752a53770bf6c0e99b2edf766550d51012c7",
+        "fr_FR": "cc03cd4f1e3c8af013d52864928472fff5bf6e7a8a2ec893645d285ffeeb07a4",
+        "hi_IN": "30a6a81ec35f30694e6fec726877ff41d1907f0da6eac11eca81628d3f6ee6c9",
+        "id_ID": "955d806977ae230db414befc82457123e4e6237b504de1daddefe4f77e87b486",
+        "it_IT": "581842333823c497e7183c0b7b8b2c9d01c24e267373497cf062012f4bd59bb6",
+        "ja_JP": "e065540d8a308c0d4bd6add8ead54955a9f9e53b214843dd589f7c6598fce1e3",
+        "ko_KR": "7f5d7d77bca12de376b33daaabda84d969e25ef1e73b9c2d7b1c520d15f321d8",
+        "pt_BR": "afd456cd6a51c6256620c91f11cf21134aa0a1c6bbcacf92fe566a3d34f8328a",
+        "zh_CN": "813331d93f5b31839c39337300cc4df838bde5e787177e7ceb37da340b5a6e03",
+        "zh_TW": "a29cbea1f61702159fbd0402e1cc527c44cbd2823da2e29d671bb28cebc09da6"
+      }
+    },
+    {
+      "key": "im.contextCleared",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.contextCleared",
+      "originValueSha256": "c2eb4b68aed88360dfae64f59937a9e25e99ae2fca8ad4b6081520b7708ed56b",
+      "textSha256": "c2eb4b68aed88360dfae64f59937a9e25e99ae2fca8ad4b6081520b7708ed56b",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "f90cc295233fd08b992e5ec359c07d99387623f6c0513e4893a2e711ed72daca",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "20a3c33c194e09b943301d2a97cd4aa57893a88365715fc04b77118788727144",
+        "en_US": "909a3046fcc098513b7857c322dbc14aab5f9642658b47b82b8f6fdf166614c6",
+        "es_419": "bd2405f98b6ef31c89f03cef769231a774bb60b42899b066da76c11132b11435",
+        "es_ES": "77bb7edfa49e89af3c60aeae116305181508887f22f3fc58e0a1c18456c43200",
+        "fr_FR": "4fea558ead790ef887a6bb31ec7033f97a6dd911fb8c766bf26ff013694eea92",
+        "hi_IN": "18642de44da7f88138291d235fc18134d3b901ef39147c8d5b1809a4920a73a8",
+        "id_ID": "9c725da46037f239b201abfb8b1f1dd85c602e12d6f46cf64346dbafc1616efe",
+        "it_IT": "6535783b9ba38315dd6b6764c583969be52895a2a8d76d05bcc6daaffd37360d",
+        "ja_JP": "8c284a5d9273758393bdb76b9fa6bd4945cb4bb532adeeea21adfb890bce4d4b",
+        "ko_KR": "901994a14c911e28909a11f45fc1f708d738bf21eab045826eee9d3614596869",
+        "pt_BR": "c9f450c2e9b211bf38b568b25a54dba0f62b3358846e65309beb2c8ab928ff10",
+        "zh_CN": "c2eb4b68aed88360dfae64f59937a9e25e99ae2fca8ad4b6081520b7708ed56b",
+        "zh_TW": "aa28caf53b1170ecd4ab36f7dd31497f3ced453ef7e5b0c01bef8945bd601b01"
+      }
+    },
+    {
+      "key": "im.delete",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.delete",
+      "originValueSha256": "92e11347ed70b031574660996f6ae434d5f44dd6663dd5d5674f6f5387965e9f",
+      "textSha256": "92e11347ed70b031574660996f6ae434d5f44dd6663dd5d5674f6f5387965e9f",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "dadbb36d802932d2f740d6e012db2bbeee276823be5dcf459357f3cd6d8a5265",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "4a908353d3f5ddecf3b57184d490dc59bd23c297541ffca3ca88de38fce969c6",
+        "en_US": "e960651babb1d7478b4be3995517dfe400a637964866472e175a9b71983776b1",
+        "es_419": "dd3d5e67dd73cc16f3b8a862c975182a3894a8bae1777f081428ef66993c9265",
+        "es_ES": "dd3d5e67dd73cc16f3b8a862c975182a3894a8bae1777f081428ef66993c9265",
+        "fr_FR": "554b491dfccbddb4568cc9f71190f7b4728ef9d3a4ea9b653119af893348eac5",
+        "hi_IN": "b7f77912dce4cb778c7d13f4aa4b2c442ad42da41cdde8215fbea193974ec51e",
+        "id_ID": "8c6969ae4530ba21c8ab29e642daf1e7c77211d8aac0dc037aa88553b1379321",
+        "it_IT": "f2a0b145238e531daed9d1b9d28871ea2706bdae8d7e455650d6c96010c9a1a5",
+        "ja_JP": "b99209f35473801eb788e8bb8556b9b75c9be69ff76e8e5b88a8eb2010a079ff",
+        "ko_KR": "94e1090193a77be12a9cd587a77e13e257ca066ca8532b989c3a63a6e3feea24",
+        "pt_BR": "138cc6f361d2d8e0cd0c937e29e52a921cdf79ae6cab914bbdd8ba0c0d308e5e",
+        "zh_CN": "92e11347ed70b031574660996f6ae434d5f44dd6663dd5d5674f6f5387965e9f",
+        "zh_TW": "ad22c2d1b90b061e02e59c4916a29aae7b986769ea3dd2a63afaf2062ed9436b"
+      }
+    },
+    {
+      "key": "im.deliveryFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.deliveryFailed",
+      "originValueSha256": "85b74137c1c32223311721bde9f4ca0fa92d26b10f4f7d8331cdb53b58d107a2",
+      "textSha256": "85b74137c1c32223311721bde9f4ca0fa92d26b10f4f7d8331cdb53b58d107a2",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "3aa27161e59528270ca2f6a1ba3480d1c9054e0f3a696bfdc0cd1902c806a597",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "32bc909f4018a858357a41bddeb375d2f7e2af97d019c3a97156fd1c11e56347",
+        "en_US": "e7b3d73271453021afd1a5d66fa9309c662c9500bbb859e75fc69451715ab31d",
+        "es_419": "dda39d98d6237be64edd585cb6c5696bb5e47320b6a4963a536bcf5af01dc106",
+        "es_ES": "b1102e6214599d100287068f0a574b3e4803e3693372a1c429d85959ef13b537",
+        "fr_FR": "60edd39f7eb18d7129a9d43559111c6cee9508e791d2faf671e9c3cc0067a7ec",
+        "hi_IN": "75043c2d413ef457150e3661d7baaa3b8a727a0c39f3cc29226ce7b8a6121790",
+        "id_ID": "923fd45bc62d891f26873e0a661fe7b3611a421a7d1fab4f4c397b63763e3341",
+        "it_IT": "16f93340d88aee64d6eb4a94bc8887f0a40c5564f3a6e4badaec22b459488ea2",
+        "ja_JP": "cd06d389e89bf7a67c6b43b134d3af3afcbb5452930f37e7e4618bb3e74c28aa",
+        "ko_KR": "ad75b0584d9522d12a5abec38dd57e9434d9d301eaf2fee97ae3c061b78649fa",
+        "pt_BR": "322610d078e615247e0fa5854535d5901c13718ee770abd3ddf74c86f2e6b422",
+        "zh_CN": "85b74137c1c32223311721bde9f4ca0fa92d26b10f4f7d8331cdb53b58d107a2",
+        "zh_TW": "12f917942d8e61f15f86a70b5d5883d5ecd90e85e74b68a315af1307c0a630d6"
+      }
+    },
+    {
+      "key": "im.deliveryUncertain",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.deliveryUncertain",
+      "originValueSha256": "f5e3f3aa00f07fd33e65e100c4ae8e4e739748e3d92fdb62946d5764173e2fda",
+      "textSha256": "f5e3f3aa00f07fd33e65e100c4ae8e4e739748e3d92fdb62946d5764173e2fda",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "b63ef3f8c351565c31137a1a26bc050edf2a310697446cfb94b1fc88ef957084",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5a59b26dedfc151e415b3e3dd104c2a5b8b22c03449e811e38368b018bfbe206",
+        "en_US": "663c38702a772addf12fea41c82890f78596f41231a3608eb30eb638b9906003",
+        "es_419": "50bfec3d1d4e18a9e59a33bff01fafa9a1ddb690bd8ea30d7283a4dfe28ba75c",
+        "es_ES": "20d875c91f7461fb257279759e9d87af54f091fe38995f140dda541a4e49186b",
+        "fr_FR": "71bf990da237877121aed35a84a3c2d2ae5fe5273475255f15e2f33defc8f249",
+        "hi_IN": "861ec734c0ec1a29030d7da22ba567c727571bade626c25a372249caef220bc5",
+        "id_ID": "c69b3d02f080b780d5b914676b4a13870b7cc6e6516ff137549f29253744f356",
+        "it_IT": "1cb37e3316c532c1266268f8e52235ea8b8fc264326bda24971197fd72787f22",
+        "ja_JP": "afce2eba44ed1109bf228187e8374411567157e274054845a096f0a47e081b32",
+        "ko_KR": "df4ff152416d8d21dbb71dc949dbe700cbbab8e797afddfbbdb8c8a926a3d032",
+        "pt_BR": "fcf2e132c8961f22ae17bb4c19d357fd6595516130eccf3f303bea3bfe1c7e8e",
+        "zh_CN": "f5e3f3aa00f07fd33e65e100c4ae8e4e739748e3d92fdb62946d5764173e2fda",
+        "zh_TW": "ed591956fd09cb11c94ac623116804dc28147f93911a966ee9d6e429f6d1895a"
+      }
+    },
+    {
+      "key": "im.disconnected",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.disconnected",
+      "originValueSha256": "0ec4f02472b2b3d831c1301bb850162695471e58ca1de993539c03ad4a7636cf",
+      "textSha256": "0ec4f02472b2b3d831c1301bb850162695471e58ca1de993539c03ad4a7636cf",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "a11ae1112e09cbd7c253fc81beb9f4daf93bf9d7c1f8db3ce2350bf812bf9d3c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b75c80120d5acc829ca25ccf7403a722920b67ece68f19d4957f8ee923be40d8",
+        "en_US": "03fce459b729b4fa809f82be09b1cf126fa61a4e0c55b96b38cfd4d011c4c51b",
+        "es_419": "2aa87d1b421bab9648ee5cb5635400bfa92e7cbc74c75a1ed28a2fab5889a08c",
+        "es_ES": "2aa87d1b421bab9648ee5cb5635400bfa92e7cbc74c75a1ed28a2fab5889a08c",
+        "fr_FR": "438ae9a91448949adde9b869adea72f39251e98bebfadb1f445be624e0b6c917",
+        "hi_IN": "330d45d13269479ab7cd648edfcb9ca657d2c2c50bfea5b8b199193bae9b3f7c",
+        "id_ID": "c8c3291e43ec9a5ab740e2bafc311ba9b05e7c269e2f62ca0df00962d38341c4",
+        "it_IT": "eecdb536609b6c170e1cc3761a8e83bbe60c3261c6e41def8ff17dfd94553f89",
+        "ja_JP": "19f361abd640f1f0958a75c783cda2bfeee76eba4f4882902f19ee8684aed416",
+        "ko_KR": "9fd84b2c497a0f3932917dc2fd37d8505a56d35f8e587bef578e4fda8ddda935",
+        "pt_BR": "a95f635b7ff1434a96c2cbdc63c237e0dd91aa79a6e0afd5dac9abfaf3eaa429",
+        "zh_CN": "0ec4f02472b2b3d831c1301bb850162695471e58ca1de993539c03ad4a7636cf",
+        "zh_TW": "19297a0f3c1cc0e83ab98ac28c0a4a86403c296809931748ab8ae87b12d2ded2"
+      }
+    },
+    {
+      "key": "im.endpointRejected",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.endpointRejected",
+      "originValueSha256": "cf15aac71ee53bb49789ff8abe84208ae2168873038f5e3a6581e16c4ebce210",
+      "textSha256": "cf15aac71ee53bb49789ff8abe84208ae2168873038f5e3a6581e16c4ebce210",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "5bd175ea451029f65c8a411028682621ec38d2aba47a901646fd92535f5fc488",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "f44bb15982de1c3dd5dacdf4fb67a09f1f903169e8ac96b818cff1b8aeb956a1",
+        "en_US": "6fdf9c9188b502d61ec186377703f42741160c59a9ecb4fede02763c0c37b119",
+        "es_419": "2c837d7c68f058666bbdbe57767dfb1919c84722df936d75ff9ab8aa165149a9",
+        "es_ES": "f8f615a8bdde106e40efdf47e5ec3f997f504934fbc5abae2a58c8231242f04b",
+        "fr_FR": "d15710fac713519ebfc0e983a748d30902ccff721bf79223ee746399ddeaea95",
+        "hi_IN": "4078c21469a5cbb5e9feb0c1a9bac3d05f02398b0e5823c1578208a427348a66",
+        "id_ID": "3dece848da4665b43131fa5842f30d63f85ed5267f172619e265ba5e031fc0a2",
+        "it_IT": "a7b57e4d5006bb60cd843d4ee28eecff30de4127dec3d2856512fe2993337963",
+        "ja_JP": "3f61847cbe9f0644b2235c5b1137cb4f9434ed3f9c3e1ae230ea5695c92ea4c8",
+        "ko_KR": "af4f323db5e58bf97817aef46da6586533d7c9a83cf5c6ffd3d31e08356f0584",
+        "pt_BR": "ab213ee8569d88de6755c97d54aec5686a238aa80e695afed6e81068ea1b07f8",
+        "zh_CN": "cf15aac71ee53bb49789ff8abe84208ae2168873038f5e3a6581e16c4ebce210",
+        "zh_TW": "17f0be84601e6bb4b135ed2c398f29609b4e2bfec55071de1bffea39f5eff4e2"
+      }
+    },
+    {
+      "key": "im.failed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.failed",
+      "originValueSha256": "aaefa50dbfb5150371f5858f93294d90743e2d2a6307ccca38cd4722fd52cc90",
+      "textSha256": "aaefa50dbfb5150371f5858f93294d90743e2d2a6307ccca38cd4722fd52cc90",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "6d7428dd1b6ae19890deb79a01a316604b322a8b18990c0d29910c878e6bed80",
+          "count": 1
+        },
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "d701e1d091e73c6336711a823288e09a7c0af7e09cfdc2878b394294b023646e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a69888c6fb0d5bb6157ac0cce29abd95b6bc1d905cd4a9fc4205ecc50566b372",
+        "en_US": "e844f3d6d6dd4798b5297f7a5143fa85c3a147b36cbbfe77e7dbf9e9575702d2",
+        "es_419": "6a3f8617367ceb249ddbb1d6ce3f684bdb53deb1916b78c70cbac949b08314b1",
+        "es_ES": "625614413dd96d0c3b8c2385c325f908ec9c15ed84d6b5379558e22469905d94",
+        "fr_FR": "5bccf0265094a2951d415fd9a1712880d928676da47a6b3e1a7e60dacc45a842",
+        "hi_IN": "1455503605a7992f958da426288e753bcca67ad6371680fdbc4acaa88badb71d",
+        "id_ID": "b951cd50fd8f85969881790c32b38b8fe8ed21ddf41d27758b92960b2d3db55f",
+        "it_IT": "ae1bd5d156ebac304460076d3679424555be58e563c9974e34d33fcea853d1ad",
+        "ja_JP": "f50ad707ab809152418aed4867888e11e41ef165e9b6d6e37a37359ce0f5d9da",
+        "ko_KR": "858282593b15e7eb8815692c6d4bae03fa756a33f2691f9e1a4548535a9f4d63",
+        "pt_BR": "0b71a1841bf8c23f3ae1e343d469643a8026681151445f3215de0480d4cbe0fe",
+        "zh_CN": "aaefa50dbfb5150371f5858f93294d90743e2d2a6307ccca38cd4722fd52cc90",
+        "zh_TW": "dd3e0ec0f07391049e666d16e3453de716394a3f5ed29b3d93f7969b6dde3bd5"
+      }
+    },
+    {
+      "key": "im.groups",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.groups",
+      "originValueSha256": "6e3da9fe512c4eb5f089fb9bf778ab8427034c489a56946e6301470dfe5dd4eb",
+      "textSha256": "6e3da9fe512c4eb5f089fb9bf778ab8427034c489a56946e6301470dfe5dd4eb",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "1eedead322a35a4499b169dae72336af195943a345d6f9b43abb4dd26c5c8596",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "458d804c7d82fa7d12d0297d9bd5eedb8594713356e7d8f4e8180b0f3fc6895d",
+        "en_US": "a7296e1f837496f7b5720927b74871ee0ccca062a6de28c6c92a4001a4ec7a44",
+        "es_419": "c5c4716d1b9451eeeba1ff8614b3e5ff3f14a2b84fe17333376d172369ae6745",
+        "es_ES": "c5c4716d1b9451eeeba1ff8614b3e5ff3f14a2b84fe17333376d172369ae6745",
+        "fr_FR": "edff743112bbd4b8114814c0f3896cc4263d80a7017eeaa80a4a11d104532c45",
+        "hi_IN": "29f877462bdff9f1952051d0b4150b469c47338456825f77e4c6bfce70dd1de1",
+        "id_ID": "5fbb0b99f862f3e7ce85c99d8beb7a85b38de693b5664bfab7f2aefc78031647",
+        "it_IT": "2a7d18c7aa1685851c4312f40949a8bdc06a1fcb5701990ccf3045ae21756f7e",
+        "ja_JP": "4c7a662e5ce112f4ab4dc92a5e7358d076f5206838201dcbbb8ecaae92cdcc9c",
+        "ko_KR": "98e99e4811959542368adae0a0c7e65e4afe23f0e643e1a99e48df6bbdb3549d",
+        "pt_BR": "013a498669b00df78196e47e89a043ebd24659b591d85d3f144eca54846598c8",
+        "zh_CN": "6e3da9fe512c4eb5f089fb9bf778ab8427034c489a56946e6301470dfe5dd4eb",
+        "zh_TW": "89e1925296ae56b79414ceea36da909d11081b5242dfc31711e821f110de62de"
+      }
+    },
+    {
+      "key": "im.help",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.help",
+      "originValueSha256": "1f69625e486c898b7d92d1e705e139076a545b60e0f3c7feb4eaeafbe0c36d1b",
+      "textSha256": "1f69625e486c898b7d92d1e705e139076a545b60e0f3c7feb4eaeafbe0c36d1b",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "64193d67412506b5542a05f8ed707bbc5bb2ca72dd41ac87e6ed7835bca2a684",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "19f7dc9d66718050e9f7f75c8b9c07e741a3453139494cefe363f31d2bd69536",
+        "en_US": "bf61d5b555816ee4eb80e9ee83dc446bb61df4df38539016da3e8690095a0ba8",
+        "es_419": "fdb9631f844f5a0b0409e2329205d609b5457e13cf8464b301aedf5a4b7d6a7c",
+        "es_ES": "fdb9631f844f5a0b0409e2329205d609b5457e13cf8464b301aedf5a4b7d6a7c",
+        "fr_FR": "c4b9a4d9d353190f3f00309736423dc7d54d564bf89d69dee72e72d9e0bcc5d5",
+        "hi_IN": "07f57138314e77f24f7ca339426c3d04796fe3d8ce3a2dde547967408735709a",
+        "id_ID": "3e5152f753c2792675979228994eb9aec996792495c7f4299aeaf4249db406fc",
+        "it_IT": "d78c4be4a14eb894063504e78130e193ffa2b96d39a0efe930cace98f7175249",
+        "ja_JP": "076353d2ddc83324f2a297a7a5dd948c582adde19664b17b8d1c55cb55f3cb8a",
+        "ko_KR": "677ab9a3bee6b5ca0a716d396636985020e89e395564b00e0b78112f11d03156",
+        "pt_BR": "48111163e9f016431b9b74c9bfda9582a98740358139e2e22b1b593789d0f0fd",
+        "zh_CN": "1f69625e486c898b7d92d1e705e139076a545b60e0f3c7feb4eaeafbe0c36d1b",
+        "zh_TW": "489b35dc5b9167785f970716752f1125bce94e377b3be457b38ff219533fdd9b"
+      }
+    },
+    {
+      "key": "im.httpFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.httpFailed",
+      "originValueSha256": "8b19af11e1be5a21bd7eb5bf7ee2d684c934fbfd91242f6d6c004199ee4adf4e",
+      "textSha256": "8b19af11e1be5a21bd7eb5bf7ee2d684c934fbfd91242f6d6c004199ee4adf4e",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "625dcaeaf23aedb52b5d6077f52824bf8d940a64f58e0f5673f164be55f93980",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a62c5e6bcdc37c0d48a5daa2bd6d6bd95695061213ef144771265b8abeecbad0",
+        "en_US": "f8eac86eb54a1e6f6769ffd8948543b680d460abaa56a3494c237f9690f719c8",
+        "es_419": "153cb767a2b725fe159824f28e213a72536c27e03ec655441ef06a4a626a3f45",
+        "es_ES": "5cfdf191c9039ee5bc09c5318cf0e0d7c9298342e7de9b2ef1daeeef27008284",
+        "fr_FR": "d13cc9633ffc2ae1c071f7cad4753de40525ece9af469ccbae258f370b9c12a9",
+        "hi_IN": "d8ffc99bc06dcddf89214f08583e83c093b86745c5221bb110618882325f8ee6",
+        "id_ID": "5ba2aacfe55f3f6d95e5c1dd242f9742aea2acd019036098a4389d18f1204ea6",
+        "it_IT": "885f79dc256e8980d6abbe3310a3ba28a936101617b7db1f64ae4b47bb4ebd9d",
+        "ja_JP": "0984f0783278f3e6adad37870bf14b1cd291192a8cddc2ac4e8bafad9d8066a8",
+        "ko_KR": "cb700204c7500a31cd0817adab53e05be5ba97ac3db12d0af9c452dfcddce478",
+        "pt_BR": "15198f3d917bdffb5f85b037d81c2f4df8a6d4e12fd121351c476fd02b19f384",
+        "zh_CN": "8b19af11e1be5a21bd7eb5bf7ee2d684c934fbfd91242f6d6c004199ee4adf4e",
+        "zh_TW": "3920cae3ac7aa7474fbbfc73811e7a88f796a01a41df94b25a6939cd9edd76ef"
+      }
+    },
+    {
+      "key": "im.invalidConfig",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.invalidConfig",
+      "originValueSha256": "7f17a1269136f8fc4348db6006a36dee595a684acca76cdf514b4be162896f6a",
+      "textSha256": "7f17a1269136f8fc4348db6006a36dee595a684acca76cdf514b4be162896f6a",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "cfd16a5b3c953769b7a1600541c5616584e8616d53b7b20e529d83d6ace8e731",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0475b27d7b2fbba9f90ab4d3719a0d5eb93c374efdfbb2d2635362e131b25bfe",
+        "en_US": "09f0f31ed5f057b330503bc2e42cc66ff623f328fa40412e62f50dcaf58ac49b",
+        "es_419": "575c6034dad024a6704ea14ce423c9a2e9ca1fff6b961d0286f71e35a7b0f090",
+        "es_ES": "c76595c86faf32134685d065d3ad69f6687e1467aaecc161487e896b52ffb641",
+        "fr_FR": "262f452f051485c2991d03cc49c5dfbc5e8b9529aeff3a087c8b2b0090f81e9e",
+        "hi_IN": "b75050617ac0eba31840910e2762edafdbb848f106775765afcb4b499bc54969",
+        "id_ID": "aac9389bd352d17313327c958540cc2665ef4fd8df5a0e0b5ff77da654852457",
+        "it_IT": "440f04aa60473495821a20e5a74fa3674ed91fe7203259fd04288d4424212cb0",
+        "ja_JP": "bf1bd9a1ebc8248c806cac4e3d69a8cad56a7db224007a35c06ba00b43bdf639",
+        "ko_KR": "db51bfdd91af3dd6376389fc6ad7969077f349a405aaac6a97760466c8ae43c9",
+        "pt_BR": "18e4baa2d873744a2de3bc99655d7b7730ab97f697f8b58442dae29e8ec5a45e",
+        "zh_CN": "7f17a1269136f8fc4348db6006a36dee595a684acca76cdf514b4be162896f6a",
+        "zh_TW": "587352e476b321ea11668ce72d440be5646746969b39b54ae575016bb814e2bd"
+      }
+    },
+    {
+      "key": "im.lastSender",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.lastSender",
+      "originValueSha256": "024854f316f0c7a962079f34240b96fee36467610b6f7493eb7d8db082fd97eb",
+      "textSha256": "024854f316f0c7a962079f34240b96fee36467610b6f7493eb7d8db082fd97eb",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "7dbf0f8f6df78503e65bbeaa7d8c9bca95b1b68c7bd99ba0acf0c13d74cff6be",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "48e1264712f97d8aea398c9558a7b00c0c83cd76c3180239c85aeef872b6fec2",
+        "en_US": "0c4ea419dcf8c8124a954ae6b4c06891e23197ed280ab744cf8977bf1e93022b",
+        "es_419": "43888299facd1795393f49235580fbe3f21bc618f4618f79e849909a7fff40c6",
+        "es_ES": "43888299facd1795393f49235580fbe3f21bc618f4618f79e849909a7fff40c6",
+        "fr_FR": "c8121e07db824b83a008cf14e599f40cc277349f2e7d2a0d69520dcf75478163",
+        "hi_IN": "d17a1eac2b6962d735a9493ddbd713e1b7e153614a3bee8840c58af8eff9a05c",
+        "id_ID": "1030662380b4f0c2e1431307f717ef97e8a617af0ba0633c57ee61635408d552",
+        "it_IT": "e7a8c7d71c33f2c7ff07e9c37849e427888117f03b3982e4bdd6cf26cee01888",
+        "ja_JP": "6b525ed07ab4c81bc78a680c655809bf3ca209db25157d5b729b242276445b53",
+        "ko_KR": "f50a0345ab96e57c7597b6c18bbeb0b360f48b314130f98e78aa0ea7531d0e0a",
+        "pt_BR": "9312269394333880a1b241b9557a6e305d5427ec479d07e784f881250f4144f2",
+        "zh_CN": "024854f316f0c7a962079f34240b96fee36467610b6f7493eb7d8db082fd97eb",
+        "zh_TW": "29016b743bd2c15c74f97e94993f5f506eacd68b7a0ff60406f684ea37ba5732"
+      }
+    },
+    {
+      "key": "im.localOnly",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.localOnly",
+      "originValueSha256": "c56d325ead171e6c48ed62471a7cc8faf6a7129cb5507549a2a33bab0a7ca040",
+      "textSha256": "c56d325ead171e6c48ed62471a7cc8faf6a7129cb5507549a2a33bab0a7ca040",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "63f026ac718b4d90d9dc5b09ea6052a4bfae933f612c02a48222c0a436cdbaf5",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "d0352ff4871955d8b0446eba9397d368dca795067c2b35c48582ec4bebfcae3e",
+        "en_US": "897fd1015f7b93a86f824f37ab76222a646a653d166ae048bc5d76d6d00261c9",
+        "es_419": "6e102663576ded9caacc39a89abd76373b5ba0f3578b64303185aad59bd88b85",
+        "es_ES": "e45930636f183cd13ccde0e3f68d556e584693828262d395a26d9f9990b4874e",
+        "fr_FR": "aacde72202dd03445b198c47b5c662e99d6a391a8c0b3bdec87e10e26e49dd36",
+        "hi_IN": "a91b3ff5e6cf9152a0808de43e4c372835b3e98a62acd679f6c50ba514a2eaca",
+        "id_ID": "1e21184476eb4b7c905c5e75996cbab244e6a9d1bcb69e8cff1e28e5464e5bfe",
+        "it_IT": "74d5e97c90a9a64cc693d12da9ef549c21c7177fbd8e53ccd6fd023b767d7817",
+        "ja_JP": "18a876b662a2dd13e4b132a44db699bfc79d9c990e8503b1d48532ba2f1d99b8",
+        "ko_KR": "e90cb5560e9c7dea69da421a77f8fc0c966ed73a59bb7e57fb79cd078cac287b",
+        "pt_BR": "51f59f1103ef4f538184a349e8daa8f17046674f78437e2294a165bb0d6b9a0c",
+        "zh_CN": "c56d325ead171e6c48ed62471a7cc8faf6a7129cb5507549a2a33bab0a7ca040",
+        "zh_TW": "3e65f95b930875d8e2079d2770dd39ac4b8ac7085466d36bbea85f3072bceae8"
+      }
+    },
+    {
+      "key": "im.login",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.login",
+      "originValueSha256": "9e0181f35fc50bf55169557866ece0508bd993af8f7c766865f2f642854cf3ab",
+      "textSha256": "9e0181f35fc50bf55169557866ece0508bd993af8f7c766865f2f642854cf3ab",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "1627b30caac54a334070a1f3ffb8b516aad8a6705c437a22f79499ba29fc4327",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "8619927b10eac82c675addab0ed1fa864e474e7541c41cc718008aeee84d5beb",
+        "en_US": "22ac438c9091ac81c9edd1be883bd5e1851e3d98154ee105c20d2694901dd4da",
+        "es_419": "2270b83847b051a548d1bc2b6f01dbe23144c0cf619d693a3cb46cce4bd993c7",
+        "es_ES": "2270b83847b051a548d1bc2b6f01dbe23144c0cf619d693a3cb46cce4bd993c7",
+        "fr_FR": "42590dc42dda3dc6581cff9650260a79c5de9fd4fb0c8cf1053c61ad1350d6b6",
+        "hi_IN": "c9c9681de78167900fc2607828594ea4354b226ac23a9a9efcccf12525a7effd",
+        "id_ID": "3fa9d890725a6038cb26016f07370b094026e2b87ebf5a1bbd2960c442a84f10",
+        "it_IT": "a67b2b1094ce00010291f78dab90bd6625028f383d4790de5ea0dd852609ba70",
+        "ja_JP": "ce415e11b99e1c8a78ddb2bf0b029a25d73e42e3aca53a2fd7a5d627c943028c",
+        "ko_KR": "3e7e2431d1609c882bb6a255c405ff76aff4706798aa29bc7e299a4e783662a3",
+        "pt_BR": "d8b83bfa8081e472292e37d79cc0787703c864ce4ff364dc13e642d1f24486f6",
+        "zh_CN": "9e0181f35fc50bf55169557866ece0508bd993af8f7c766865f2f642854cf3ab",
+        "zh_TW": "1b703e4d6648ad5aca8a46f3fed569555e1a7ef3a9f294b1dc8932b4dfba33a3"
+      }
+    },
+    {
+      "key": "im.manualConnect",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.manualConnect",
+      "originValueSha256": "6e382d9250f8dc10dd617b089e6a11192f33733eb31106b4f610b07966106850",
+      "textSha256": "6e382d9250f8dc10dd617b089e6a11192f33733eb31106b4f610b07966106850",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "22b53177dc7feb3e5ce59bb2d45497e9651a0d288f5cce62dd86ff915e922c4d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "26da17e1263578694aa2d91ee2da92c49b3d1bc2c79fd39d008e007bd8f1f818",
+        "en_US": "4a6334a2aaf204bf7140eacb29bd2836dd5abf1cb41dd37599921df532d7fb0b",
+        "es_419": "75ff2c020b6d9d71fb2bfbbe010ff6642a1cc7bd27c6795d711f7eabed13b4fe",
+        "es_ES": "75ff2c020b6d9d71fb2bfbbe010ff6642a1cc7bd27c6795d711f7eabed13b4fe",
+        "fr_FR": "17eaa7eb66d865bde98f39b7d5ee82804e77cebe695695f7b7ca5403a480b8a0",
+        "hi_IN": "8d7e35111e2587feac85fe5c5a2faeb0e671f99ca72787ca72277d031ec227f6",
+        "id_ID": "78f97980d29406abafbbfadb3604aff052f3e66b9b9cb98512586d629e76819d",
+        "it_IT": "a10397bfbabea3564241c86c087c37ae70d408f05ac2053dcd95ee6423cadc96",
+        "ja_JP": "0d8ce0a324a0715f84a03d31a2e96d04db152bda168906445cef46f1e2d7e23e",
+        "ko_KR": "f51737c31531d51011a451228be82b99f79387fd201b5a723a67bf4ac5e7797e",
+        "pt_BR": "eb2e7856f69c6e4da81808bfadb903020f0beb836753194827e6d9c4e12ccef7",
+        "zh_CN": "6e382d9250f8dc10dd617b089e6a11192f33733eb31106b4f610b07966106850",
+        "zh_TW": "70e911c934ebfa56f373fb7c1b746b55d54655d3823904149454540d4442e266"
+      }
+    },
+    {
+      "key": "im.modelFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.modelFailed",
+      "originValueSha256": "811fa2e8b76d457f752b6b6860e47c2ff4c2ce21a66c4adf7575e83476adf1d2",
+      "textSha256": "811fa2e8b76d457f752b6b6860e47c2ff4c2ce21a66c4adf7575e83476adf1d2",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "f65107a51d520f796fb54e33e8b5df4736146ebae6d0bcbd639117c3b6189341",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "57b1cb83c2d721d4fecaeada6c118d4606fdcbdb9787bc622d56bf37823849ba",
+        "en_US": "213c24cfb20883d869af08c6aa5df62bed2f96dec18697e139d02c060150a281",
+        "es_419": "0fd0987bf6eed6335db8ebff0c0d37338033c484c37945aba212b2e8484bbb16",
+        "es_ES": "5ae9d0b60945605f7c50194196d9d1d97a4397cdb3f2940ffaf9481e8332adbc",
+        "fr_FR": "300543879ece0711f38ad5c4808cf383dde1b3d605a402220e438630d88237c8",
+        "hi_IN": "71d7aae727c7a131c4c95d823ce035fb12189b6aa4865b9419e867dfcecf0cdd",
+        "id_ID": "970b9528655cd16d1dc2152a3dc0e608d0a4bb0c2a8f4a9744ed23100595b759",
+        "it_IT": "a1bab83130a0c2862192dbefc9cd0791ad4597ffdc83d84715549e2ded27214c",
+        "ja_JP": "dc4297496ff360b7a0fcaaa77bfafa63b3baa5f23b81fb595cf67a15cd0c7bfe",
+        "ko_KR": "31bfb5168d1e1bc3f2ac4a25d9e784e6b03981a94d3015039a7aab6074bd0a3b",
+        "pt_BR": "8931e60015aca699fae5ccff7f757ca3616b76263f26116e6a7b9c77dbe19f44",
+        "zh_CN": "811fa2e8b76d457f752b6b6860e47c2ff4c2ce21a66c4adf7575e83476adf1d2",
+        "zh_TW": "4f098a6e058fcabe41d3f4cd20b3ce7cfbe9f5cef949e7aad1f0789270d0cf6c"
+      }
+    },
+    {
+      "key": "im.name",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.name",
+      "originValueSha256": "228c3ac9032f4b69efcbc2141e8b6036406c6844d277b198ba8266ad508d9af8",
+      "textSha256": "228c3ac9032f4b69efcbc2141e8b6036406c6844d277b198ba8266ad508d9af8",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "590086f4acde9458c97cc198c0d76c218b9572eb2f21ee968acb5dafeab4119d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "af8723a02691739136e1f52ad594050033c58169b4680f422e0db0b82a1ad8d0",
+        "en_US": "686d4d5d8ecd1a794780995589b9ff883f601e3b208c45979ac509ce7d7bcdd1",
+        "es_419": "ae4ffb04f178b6820d067c0c4f3def5c136abf20bcf2885e65aede292ac6e236",
+        "es_ES": "ae4ffb04f178b6820d067c0c4f3def5c136abf20bcf2885e65aede292ac6e236",
+        "fr_FR": "4d34d7ce45337856602ecc438cdbced0a7b575a9218de44b1231f3bcf9415963",
+        "hi_IN": "4ff103867ccd4b11c92971c05defa5b7b33da067963b7d79c7ebdde7e7b9c126",
+        "id_ID": "a9e3f87d45c77f5815d07952b05b2c8ed43b2c41f5e6db31fb7101c4398fc913",
+        "it_IT": "6cf17d36e7986651ae45c5e4096444ab3c82327421bda233a5c6e2201d343b4e",
+        "ja_JP": "d858e725ac4ba4239d6ddf259dc1e1af77df87916412fdc8a616035b47a2de5c",
+        "ko_KR": "c770a5b777181266918ede09710011637637aa13b4b62d77d05e600492a3bb93",
+        "pt_BR": "bf09c0a4277f399d7e38b9e4dfa1f8fe4f3d7f2f97e2b08a1a6162bee9d11c76",
+        "zh_CN": "228c3ac9032f4b69efcbc2141e8b6036406c6844d277b198ba8266ad508d9af8",
+        "zh_TW": "ae0e2dfaf9178401f78321f7b69088c45d77efcbea87f581249f227d444838ed"
+      }
+    },
+    {
+      "key": "im.notConfigured",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.notConfigured",
+      "originValueSha256": "80a57e03f0717f9106a3154ec94c249dd1019831c8d8e3a354b619e55ba49753",
+      "textSha256": "80a57e03f0717f9106a3154ec94c249dd1019831c8d8e3a354b619e55ba49753",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "3e3c919793002f0d0d216974098fd3e1a6e93c35466365adbf61fdb4562ed301",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "2fed0df55aacc2a56daf8743f6d36d0eb6677ddf28c00c3162071e193e099eb7",
+        "en_US": "dd1841d295024256e8884cb898d863cb17333ef927fefae59368238e401c6ef0",
+        "es_419": "8cbe82eda079e7137c48bd770ec473fafd23a3c347b6f44c032e81737e3bdb26",
+        "es_ES": "8cbe82eda079e7137c48bd770ec473fafd23a3c347b6f44c032e81737e3bdb26",
+        "fr_FR": "73c1defc777818f5059f9c55c7d3f9a80e5eb9ccbfd877bf110e17a83408cbde",
+        "hi_IN": "25fd4b007ba12e85f02f221da859fddeb508fac6f08fff4437919def2ee07850",
+        "id_ID": "fa9c8cf660a0cf0479b18aaa85c42b0d0bb11a3a0639f4ccb6e76732d821edb9",
+        "it_IT": "ab4de7b28a0c33b13b1f94262a92479e45801fd21e78c8eefffd7979d36b334a",
+        "ja_JP": "6213305916949e4cb658c65cce44c82b2db645dce0b3d4a4e8dc6783abc4ba9a",
+        "ko_KR": "9182f8fe0e7c868e9976af1c12e1325b6f27b4da6295e08d266208a513a0b534",
+        "pt_BR": "c6a53920248ca189bd7f8fa2e16d69fccf4bc1c0877cc48e3fa660755556be39",
+        "zh_CN": "80a57e03f0717f9106a3154ec94c249dd1019831c8d8e3a354b619e55ba49753",
+        "zh_TW": "b795fc5e6760c2ed2662f177ad042e99c8666a0ff149feef53664e12d2c81453"
+      }
+    },
+    {
+      "key": "im.openPlatform",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.openPlatform",
+      "originValueSha256": "e62f05adc89929fdf1bab5df8efd445e3a9359ad9817883e9cfd0fe545e006df",
+      "textSha256": "e62f05adc89929fdf1bab5df8efd445e3a9359ad9817883e9cfd0fe545e006df",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "d58c23d7d42b57364e872850133ed525fa043c2b947e8ffb807beab90e55d312",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "32bc98d0b77a5185ca751c607d91a10c99a3a4a869d602b0b7f79c7db3fe6758",
+        "en_US": "9e5d48d7d61bced9420fe4e6c0e0ee7f90a1f6f36b3e7a23ed8158b539e4e6db",
+        "es_419": "39c3058a32b0b57a97d8c833ed634d7674df6e766feaedf58e4abdd274e0079a",
+        "es_ES": "39c3058a32b0b57a97d8c833ed634d7674df6e766feaedf58e4abdd274e0079a",
+        "fr_FR": "43590d7bcc09306ab5f6db58d6c058327e82a53957c4b7a57a6cffb02f7991ca",
+        "hi_IN": "2d2387d554c27f8725282111587c14c1ea3d172a820697c73ebe3de1af44e069",
+        "id_ID": "19c7121ce8202aa63f8081f3bf27141b4ffa31c7664eb03d6322b535d01fd6a5",
+        "it_IT": "abd261f064acf781a288ddd317005df6e4d9f09c02bf9420c78f29b2aea161ad",
+        "ja_JP": "eb90deb4871a7b7d2ac3aa1857973cf03062bf2b90a465168704391a3f809efe",
+        "ko_KR": "2adff1400f16b4d0e2710813e2729c43f5cb7d304f65e6f69662c576856c6bad",
+        "pt_BR": "91d2ef22a36b480be5be21d7eb17b9bfe5168b86511feedda6601e75ceda648d",
+        "zh_CN": "e62f05adc89929fdf1bab5df8efd445e3a9359ad9817883e9cfd0fe545e006df",
+        "zh_TW": "d603f2fd96f0d874b1e599e24da8144fb7ccee582cf4d80cf2bd1868f2b4554e"
+      }
+    },
+    {
+      "key": "im.pause",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.pause",
+      "originValueSha256": "8d12fc0d4eb26021d93db693a076e474b8fc6e01f8808666744816c8ba72b746",
+      "textSha256": "8d12fc0d4eb26021d93db693a076e474b8fc6e01f8808666744816c8ba72b746",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "de1647945a8b80e9a083c5d843db3fd5ad13ac179fa3f1a54319bd42eab1780a",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "75a303be13179a94127b73818e9a85b9462a7e472de87f9ac250a12fd05d6bce",
+        "en_US": "858e4ba7a29fd38b630ed73a79e2738333b3fc6778fafa90252f5556c1262fdc",
+        "es_419": "cd25ee5b1db8f5b0aaf73d23695c2ece0eb6e8792cbc4e618013555411e5eafa",
+        "es_ES": "cd25ee5b1db8f5b0aaf73d23695c2ece0eb6e8792cbc4e618013555411e5eafa",
+        "fr_FR": "bc3327aef9c55d67520e9b85d7815a62bbffd18b1bf75577f650f06bdc688fb7",
+        "hi_IN": "c8ef3a287b21f281cea8610910f0cb7e1f5bed90de5828b1c84cbd06a620c69e",
+        "id_ID": "5cf5b9f7006144c6a66876ebba9ebedc39c73ab13f70d2b4489a904d031497ca",
+        "it_IT": "7bf1480eaf6ee82b7d6c6d4d508c790316bd8bd561ac5a27268a0e558239f97c",
+        "ja_JP": "b8aaf2c6e030a4d9f47c0d48e88284bc38c394ce91402f634f60e7878edbd824",
+        "ko_KR": "dec330ec318c8cb3cf59a9a71f81c2c62191dd8c090abe4862d64c0318ad8a27",
+        "pt_BR": "cd25ee5b1db8f5b0aaf73d23695c2ece0eb6e8792cbc4e618013555411e5eafa",
+        "zh_CN": "8d12fc0d4eb26021d93db693a076e474b8fc6e01f8808666744816c8ba72b746",
+        "zh_TW": "2c35e9a3a4ed909f9e825a1627842693420713bf9b41502e7e872f0fd99cd6d2"
+      }
+    },
+    {
+      "key": "im.paused",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.paused",
+      "originValueSha256": "eb0c326b60ae897a19080c0b21565029be8da614a7dd6ecad97da24f4cb8fc90",
+      "textSha256": "eb0c326b60ae897a19080c0b21565029be8da614a7dd6ecad97da24f4cb8fc90",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "bf607ac75befc7595596c00eaaddf1655e39d6691f8d95e86de7d8df217a93ee",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "02a733f1648a31265b9198b0ebfd612c52b52cdbd04fea60154e89f9375f2423",
+        "en_US": "e159b06187d369a0615f66ce577582b5c983d4ea59b3a62b702049f61753f0bf",
+        "es_419": "c28d816de9826906782f2894238fb8c361cc1cfe888022469be0aed79fd001cf",
+        "es_ES": "c28d816de9826906782f2894238fb8c361cc1cfe888022469be0aed79fd001cf",
+        "fr_FR": "ff129984f4a1c75543abb0b74a03fb0e608124346ce4eaf10738eabad3b2b94f",
+        "hi_IN": "791ce7a32c758994e24fad15d959eeb5e21d5bf135a1cb5436d946cb7394b7b5",
+        "id_ID": "5aa225ad14b2806353f4647a954e8c25889fdec749bfa0f4ee9447496eafbc8f",
+        "it_IT": "743f8e855e9f490781ca32b1c1c08ed5ca47c2ac77c7857e8ebcdf1eeac393ae",
+        "ja_JP": "dcb721fdf7fb7ed955dcfe11c746a7907471d707c95151fbfba60728f66b18fb",
+        "ko_KR": "2329cab891e1b260b51fd1bbd0dcf51d3f579b4c536da3d8c936c805492ee4a0",
+        "pt_BR": "d455cfb682d3705f35a598a9c7c21ba29132310c93beae34361e5084861c827e",
+        "zh_CN": "eb0c326b60ae897a19080c0b21565029be8da614a7dd6ecad97da24f4cb8fc90",
+        "zh_TW": "30d72ffb86907c384babcc8d901ebe645fd985bc8028b732f0167c76e6f17513"
+      }
+    },
+    {
+      "key": "im.payloadTooLarge",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.payloadTooLarge",
+      "originValueSha256": "45d251da34a78e8f1f3caec854afdc8297d4519cdf63beb63953a8f27cc5ccd4",
+      "textSha256": "45d251da34a78e8f1f3caec854afdc8297d4519cdf63beb63953a8f27cc5ccd4",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "7edb4b142d3e2787403c0820d9bf41c6c1de8fd84f67e181c17372ece63c3818",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5d5dc7b21e36dbe974f5c717e52d091dcda62cbb14a6b50cde50aa9c689f97d0",
+        "en_US": "3018a2a6283095423abc3948f3d81f1fb492f4d1de60da2743a96672ff92e610",
+        "es_419": "9f69e70e77b45a0816a21906213c71697ce46a9810d2f5722ef53146a9ca7ecb",
+        "es_ES": "9f69e70e77b45a0816a21906213c71697ce46a9810d2f5722ef53146a9ca7ecb",
+        "fr_FR": "fe6f5a53a1885cad9ac7099ed288b9a81ff91b2a1b8709a6e7d009e17d4eb56f",
+        "hi_IN": "45a8e67930f598688993d9e43a931e19ac515e7dfa12069cb60ad22535156739",
+        "id_ID": "e7e19d7faa3dd88427164f8a0567aa2eee3c27f00c0e71abbea60a18d1df6815",
+        "it_IT": "5aa9228dee8514c8dcec60bad9f91b975f77dcdb6aed5536a13cfee83886b1fd",
+        "ja_JP": "3057cd96eef22f0a506723e415505200f7829fd82bf7c4130faaa7564931c2f2",
+        "ko_KR": "f0763781d1d20ddb55b9225de1d5767f8113e35c8e33b9f74acf23bf0773aa0e",
+        "pt_BR": "3896447d5e64d7e01f52522ba0a624ddada84e5ef30f8377fb022c5e9c21fa67",
+        "zh_CN": "45d251da34a78e8f1f3caec854afdc8297d4519cdf63beb63953a8f27cc5ccd4",
+        "zh_TW": "054d1a3cb0e4d40ebd36d46807b0cd8517bec751bc324ffd9b69f36ac707b824"
+      }
+    },
+    {
+      "key": "im.platform",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform",
+      "originValueSha256": "910887705c7a66d2def73b2eaefc48f808d48b7c635762f45d00718123c0be5f",
+      "textSha256": "910887705c7a66d2def73b2eaefc48f808d48b7c635762f45d00718123c0be5f",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "1b0a29facfc22ad4dc9422362e5222abeba3806d91eb4f7d4e01b3274c092592",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "cdf648878bc01354ece4ab85c12169b13babf2d32b13dddcbb04c47dc8055a70",
+        "en_US": "c78ffe19571018fbc93a78873969046fe1a80c3d21e5d20fbb2ca17c7c53a144",
+        "es_419": "5d7325dd007ccc28def0e4ba780259263991da78d5673fdce5fa667fa2daf57f",
+        "es_ES": "5d7325dd007ccc28def0e4ba780259263991da78d5673fdce5fa667fa2daf57f",
+        "fr_FR": "5ee2ea8e63ba3870653856d9db7ee325ab001223fa6da8bcc18e3d79bb22e0b3",
+        "hi_IN": "4c6cd0aa64368b389e62b6cbea7923e76716dedf373c6f758926dc64c6eb618a",
+        "id_ID": "c78ffe19571018fbc93a78873969046fe1a80c3d21e5d20fbb2ca17c7c53a144",
+        "it_IT": "029e24a7631576439493f5365a431a564e5b1e1abfd52074f301e764731ca60d",
+        "ja_JP": "4bf4082c3f317cf61d530d1aa6091dc56ad2700d9004c7cadbeada7e82b88616",
+        "ko_KR": "e56c7fcf61e194b640383bb573942a4e1988d7d93f7bf21865743a99d0559289",
+        "pt_BR": "5d7325dd007ccc28def0e4ba780259263991da78d5673fdce5fa667fa2daf57f",
+        "zh_CN": "910887705c7a66d2def73b2eaefc48f808d48b7c635762f45d00718123c0be5f",
+        "zh_TW": "910887705c7a66d2def73b2eaefc48f808d48b7c635762f45d00718123c0be5f"
+      }
+    },
+    {
+      "key": "im.platform.dingtalk",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform.dingtalk",
+      "originValueSha256": "27389885c97c4ab1912d6bf130d177aa97c1834d870c8d7e287c256a7422e251",
+      "textSha256": "27389885c97c4ab1912d6bf130d177aa97c1834d870c8d7e287c256a7422e251",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "53b2e1784949febaa1170fc04d658c7453be360041b7fe5c0d8be045b2b871f2",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "en_US": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "es_419": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "es_ES": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "fr_FR": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "hi_IN": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "id_ID": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "it_IT": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "ja_JP": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "ko_KR": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "pt_BR": "02bd6f0992ef54f97735202203867a7135c9eee29dc6716a34b64423b8240e0a",
+        "zh_CN": "27389885c97c4ab1912d6bf130d177aa97c1834d870c8d7e287c256a7422e251",
+        "zh_TW": "1cece6dc7625e8b3bf6e680a4dfb6f5cdd9f4df235588f1b277339f3c10b3a7f"
+      }
+    },
+    {
+      "key": "im.platform.feishu",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform.feishu",
+      "originValueSha256": "7e4419d1de2510947e6b7674779a2c8048f9d1cb749877606ab7fa9b3adbb1fc",
+      "textSha256": "7e4419d1de2510947e6b7674779a2c8048f9d1cb749877606ab7fa9b3adbb1fc",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "f00acddf153a9122ac16b3a3a768cbe20cdea00f0abce1bcbbc7d5247d683745",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "en_US": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "es_419": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "es_ES": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "fr_FR": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "hi_IN": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "id_ID": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "it_IT": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "ja_JP": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "ko_KR": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "pt_BR": "b129c975c34253eee7f7120397b14a6f9ca9abaf5a087063d43fceb6ed36633b",
+        "zh_CN": "7e4419d1de2510947e6b7674779a2c8048f9d1cb749877606ab7fa9b3adbb1fc",
+        "zh_TW": "23e68267b2fa6dfa0932309af555baf9c93eaed4faebf8a74bb5bbe6115f7a36"
+      }
+    },
+    {
+      "key": "im.platform.qq",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform.qq",
+      "originValueSha256": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+      "textSha256": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "a5c76de75f48f2a3c2782d74d9388f974dd57bdb6885cc669c21657d1cbeb12c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "en_US": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "es_419": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "es_ES": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "fr_FR": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "hi_IN": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "id_ID": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "it_IT": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "ja_JP": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "ko_KR": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "pt_BR": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "zh_CN": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8",
+        "zh_TW": "2f04a3aa051f1f60d695f6c44c0c3d383973dfd446ace8962664a76bb10e31a8"
+      }
+    },
+    {
+      "key": "im.platform.wecom",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform.wecom",
+      "originValueSha256": "f3943a7b368154d1ed5562f324e65f1aea9884bb85492c5791ee86831b5ec85d",
+      "textSha256": "f3943a7b368154d1ed5562f324e65f1aea9884bb85492c5791ee86831b5ec85d",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "fbe5eb067132dc3bbd0dda32819ee48d45a03688fa7910bf369d3a9b75f153f1",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "en_US": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "es_419": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "es_ES": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "fr_FR": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "hi_IN": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "id_ID": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "it_IT": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "ja_JP": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "ko_KR": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "pt_BR": "bdaaeb53f318727802138582069f5cc25df739fa84e15b9cb8e3ae02caabbeb2",
+        "zh_CN": "f3943a7b368154d1ed5562f324e65f1aea9884bb85492c5791ee86831b5ec85d",
+        "zh_TW": "a2e08f8b552515c6af4f544b0b1c6e598c43aab588421df6d9a348c4880d5bad"
+      }
+    },
+    {
+      "key": "im.platform.weixin",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platform.weixin",
+      "originValueSha256": "81b430b69643518018b5c10df96d0e1172cfdf1a034fbb3e6f104532a49b9030",
+      "textSha256": "81b430b69643518018b5c10df96d0e1172cfdf1a034fbb3e6f104532a49b9030",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "b1c271ff1a8de323af8337f78c55cc44e5c81cd1a245182491afd7514bfb3dc8",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "en_US": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "es_419": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "es_ES": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "fr_FR": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "hi_IN": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "id_ID": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "it_IT": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "ja_JP": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "ko_KR": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "pt_BR": "b583907ae9880000e44fb109177ce1b7b5d17d6ed48d85671c0fe55a0b9ad46f",
+        "zh_CN": "81b430b69643518018b5c10df96d0e1172cfdf1a034fbb3e6f104532a49b9030",
+        "zh_TW": "81b430b69643518018b5c10df96d0e1172cfdf1a034fbb3e6f104532a49b9030"
+      }
+    },
+    {
+      "key": "im.platformFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.platformFailed",
+      "originValueSha256": "ffecf9843b5db20e356819da10f4c29dc5706aceb4e94f2c6cea898d50197f7c",
+      "textSha256": "ffecf9843b5db20e356819da10f4c29dc5706aceb4e94f2c6cea898d50197f7c",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "976d923a9a628a060e2dcd0d21ca529f3564de5b619087d5ed71c13d62589921",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "13e9ea59264a4e50141b486bf706a83d611a39a7f90d91139a9f41fedbdf45fa",
+        "en_US": "502ad52a84e3addd397de7b178d1ebb28c82a07a7df33584bede61defb84594c",
+        "es_419": "59f8c9a1f859ce1d7a610e609cac0e03df81c81842232359b7e2afc412f7473d",
+        "es_ES": "6f9610fc5c93605caa51593d055152efa1e7302986d21519e2cc081dc7389901",
+        "fr_FR": "8ea2f62083c07fb14d7b5d2df7d6c55ef52e8472f9ff1c755f4b274c195e5c20",
+        "hi_IN": "9846c2109448e2a18e9ca2c480f03acc51e55d7592837148027b9a6a4f1fcc7b",
+        "id_ID": "2e0860c1061277377d3bf290da07c548f8e20c71894b8693051b84218c3c96a4",
+        "it_IT": "ff4dbd51081707892c3a50a9030e624dccf50dbc6c8e69c990cbad89a8329762",
+        "ja_JP": "03ba4eb7ae8b543f8852fa10056b5e836969e8713ee9d1761c7881ce0289b94f",
+        "ko_KR": "74b188b85389240dd917ab0ed2b28a125bf80cd14e3b77ea635b87a25e2aef22",
+        "pt_BR": "eb8a7530dca458f92c2f75480bf94739b577547fcf187011b2b45bb6acd22597",
+        "zh_CN": "ffecf9843b5db20e356819da10f4c29dc5706aceb4e94f2c6cea898d50197f7c",
+        "zh_TW": "6051017c8a1fb12ea00341f4c8dd3cbb2d503330ad4b7d2ac6bf499aa4d46d7c"
+      }
+    },
+    {
+      "key": "im.protocolFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.protocolFailed",
+      "originValueSha256": "7b6eb579514338704880c168de61267902caa93ea5fa744e80a5e136fd9c60f5",
+      "textSha256": "7b6eb579514338704880c168de61267902caa93ea5fa744e80a5e136fd9c60f5",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "81dd3b13bbe7e45213206b36d47ca72fa695e89d30bf44cb580d42767f45465c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1cbd307318a5b308b4cbf7f6af59d50cd867e30a2902cc19395b92e1b71088ab",
+        "en_US": "01bad73cf862298525eda8efb022b81d9c3974293f2ee668054614748149dbb3",
+        "es_419": "274853a36d168fb30fd4a9973ccefc50185a6a76ab2e269f5f9c32327d5a8147",
+        "es_ES": "7c9d4bfc81955410fd31c17826e64f561d15ce27f4a1ad232541da0fca109a2d",
+        "fr_FR": "7664443e9d3d74b427abe7f084e82e42a6406d6e7a416fcdfee7c122e2801bb0",
+        "hi_IN": "9a08a2a5e41181a38e4c9b61e452a5e691ffd078fa9dd2a96be6ec3d712d0179",
+        "id_ID": "f11d2eebdca38e9f7daeffe88f3c8e466296b64bbf02df58684306a7299d9849",
+        "it_IT": "814d4f1c1ee558ecf62e795d0a2473560dd7938848b64c02c385ec5d62deda2c",
+        "ja_JP": "54aafc87a11422e5d3acc6a810df3bfb9b26112abc91dd6b4bdaf1340cc865e2",
+        "ko_KR": "0c760f5664fb53f3fd804490d2b46d980cd5a8cf546377947aa923b9ad6d85c3",
+        "pt_BR": "2819bfd360ff72b40570625bff2be2d5754f8667ef1c9e6359233d6c76e12984",
+        "zh_CN": "7b6eb579514338704880c168de61267902caa93ea5fa744e80a5e136fd9c60f5",
+        "zh_TW": "cdab09cb3bfde047b909c487ae548582117dd909397ceabf0fc7f0bfd1e861a6"
+      }
+    },
+    {
+      "key": "im.qrExpired",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.qrExpired",
+      "originValueSha256": "e0ab6d45cf817d994b908b1d3641acd8faef0b7592c4097f003b1365e95bd8fa",
+      "textSha256": "e0ab6d45cf817d994b908b1d3641acd8faef0b7592c4097f003b1365e95bd8fa",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "a0a57b725b16ffd54f7a30e65ce0dddddb0135dae6a30842ea9cde14aaf22ad6",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "48d85ef34e4c984c7d3c2ad0f542c3db9df113c09bfd619951b269532a419470",
+        "en_US": "9decc42676ccea8cce27424998ebb35eb7f82df77703b3cbb364007f32d16031",
+        "es_419": "c69e4d2c75db9d3225da47dc4241a598b18bb37009599c579b2d238629334bb1",
+        "es_ES": "682cc32457ee107aa483c4858628adba07b69b88f3e9527e81d566939c9ee76e",
+        "fr_FR": "6e02fce781d1028cf7ba8578248bb67f782df7c26a9829232c83a7eccdcff9c0",
+        "hi_IN": "fae2fe5de98198fe2fa057ed2b6e745e1a179cbf2d8d3d53da4e6e62cffd3e4f",
+        "id_ID": "c64dc402aa4c8c8b1ba7da92a48f8de22acc2fe46905d05177974faede7ac466",
+        "it_IT": "dbb0282d160d50f553460cb540f6f4fb3f5a6b6926f1f20685dd91b56e44e2c1",
+        "ja_JP": "476a72f82cd13a2acbf8a3c04f446d703887ab12e85e6c52efa1c91686780d8d",
+        "ko_KR": "00b1af23d32907f39ce0c53ec65caab1bd46ffd18646e18ee30ba8f90e88df16",
+        "pt_BR": "7f8a8248b3df3950dbb7541e0581892305b27c8f375af597ea63a434379c5401",
+        "zh_CN": "e0ab6d45cf817d994b908b1d3641acd8faef0b7592c4097f003b1365e95bd8fa",
+        "zh_TW": "46fd3620f6a62288121b914151ea86bba62a1968894fcad8d6c6dffb1e06605b"
+      }
+    },
+    {
+      "key": "im.reconnecting",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.reconnecting",
+      "originValueSha256": "04f4755b0ad9992f6672791980bdf0a5c94fc83250ec17d8970556564cf1b85d",
+      "textSha256": "04f4755b0ad9992f6672791980bdf0a5c94fc83250ec17d8970556564cf1b85d",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "c02b632835c2f28d08334e092084fc166dd18ef624745e703c4931085dfa2062",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "d267b50d390efef7f527b55918d8c9f1c1d8bf40af604f80d76a3d740920d97b",
+        "en_US": "c1189037142791a4023c86782ebfe9f4608a49467e2bfbd2b780e267b78d302a",
+        "es_419": "2c08111d4f7243e0ac34a062aff69c506ed95fdb254fb0c7d2b1ffdda8cf121d",
+        "es_ES": "2c08111d4f7243e0ac34a062aff69c506ed95fdb254fb0c7d2b1ffdda8cf121d",
+        "fr_FR": "6dd94fd1a64cf9c5ad6e1443ee7bf351274e81d6506be46cdc89ecf105101d8d",
+        "hi_IN": "174bc91ceb3ccbfcfad3ed7e9f7013f259921459a22f691173b248a4904b57f7",
+        "id_ID": "fd420ef90e4053d138f9a553ce7cc018a22936cb1a933a3cee4b61ce0471c52d",
+        "it_IT": "040bc157dbdd6aeec9ff4c75dcf2c4950fdf0c5dcdf09065309d078067ab480e",
+        "ja_JP": "492074b34430f0cd8ce64a936753703720cf50cba3d342481e0623d780e9b084",
+        "ko_KR": "e2d810575fb025f35c0988ee92a639b55393bb65dc5a92f3987f7113f81f20a9",
+        "pt_BR": "2c08111d4f7243e0ac34a062aff69c506ed95fdb254fb0c7d2b1ffdda8cf121d",
+        "zh_CN": "04f4755b0ad9992f6672791980bdf0a5c94fc83250ec17d8970556564cf1b85d",
+        "zh_TW": "8ccb8530377fe71befffd7ca704752911db9918177ede3e650f07ef9609cd7c8"
+      }
+    },
+    {
+      "key": "im.replyExpired",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.replyExpired",
+      "originValueSha256": "21049c25394730893141e4bead2b42fb51892a8c4c53076e7c10ef0305181fe3",
+      "textSha256": "21049c25394730893141e4bead2b42fb51892a8c4c53076e7c10ef0305181fe3",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "c5ec4ca8cfe4dc7fd02d5d64d02c91cd408145086b90f0dcf3f39e4604cc806e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "e1e3c033518d445347403f9a41ed1f0ea2489b28e47367c5dc702f9b860538a8",
+        "en_US": "67533856164bbf2b5d2a725e4ea3b982c4966182c86352bcaa20dd32f2b40af2",
+        "es_419": "91baf458b44be195d06eb31575da282bdda4e0be97450f5269190fdc9448b6c3",
+        "es_ES": "7a38ea9df75f6893222e87f3dcbc28e36aa5262250253a3cdb0e063eb245b218",
+        "fr_FR": "371dff9bc920100be782ef18d373e3fad565350d53a6b16a6e7ad0c394988186",
+        "hi_IN": "1da042890e6a2da8d67dc9a580c7641b340de32d50ea8227250eaba758751ae4",
+        "id_ID": "87f2e619f0f01102f3e7eb234389ff8150efd523890f579ca8219dd48105cbb5",
+        "it_IT": "1c8379ef9e102949eb7176f6fdca74bd98df666d23d31510f9558d55da66ae75",
+        "ja_JP": "5b5cdcbee95339f991824a616d5e8a2bb958a3c0df3109d14b8d08932e3791b5",
+        "ko_KR": "ec2453bac0f996793944176b41d432dece6b842e0fd6eb197b4a1dcbbddb89bd",
+        "pt_BR": "59210b0702d28ea3ae0a86b9002398a6aad19e9c0c736a0992804f763d5b33e0",
+        "zh_CN": "21049c25394730893141e4bead2b42fb51892a8c4c53076e7c10ef0305181fe3",
+        "zh_TW": "60e95e96f730e694e397a0ca4bf737ae330fc4b46961918f03f90fca92636ae9"
+      }
+    },
+    {
+      "key": "im.save",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.save",
+      "originValueSha256": "a3030bf8f16dc63c6b277564c68f78a3be5abe5f2907c51826dee7184ff793fd",
+      "textSha256": "a3030bf8f16dc63c6b277564c68f78a3be5abe5f2907c51826dee7184ff793fd",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "d58aaacfaa24b033267d288140117b208f74d7afdbd8879d373b3529ad251393",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "f6b2ff39f540eb8164628b1f1a838aea1eb673394253fa603d8935297eaaf36e",
+        "en_US": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d",
+        "es_419": "13e51a210f45ed1b09bd6dfc2f64b834b06ed81424464750ca47a9eceb7da7ea",
+        "es_ES": "13e51a210f45ed1b09bd6dfc2f64b834b06ed81424464750ca47a9eceb7da7ea",
+        "fr_FR": "71dc74873e23107dfda512ec806b4cf4b98270b4937e2bcc4202b8a79359d6b5",
+        "hi_IN": "a539ca94d76d178480fb0a8d6f8ec7c1468d970cb5d0f17031dd076381120cdf",
+        "id_ID": "051093df9158bde084fefb92d82ad75181e788e85664891f0ede4c6b60991cab",
+        "it_IT": "c5997e85ae513c0789bc816b1230a6b9d097d897b5485f4e88fd79b0d1ba7333",
+        "ja_JP": "a3030bf8f16dc63c6b277564c68f78a3be5abe5f2907c51826dee7184ff793fd",
+        "ko_KR": "5fb926229090001c0a61d0ca8909524ecbe038017748f156cfb17d813cc20660",
+        "pt_BR": "aef7cd5b2081351dcd4b3767cc84f77797ee1a945e758e8013961c283304b947",
+        "zh_CN": "a3030bf8f16dc63c6b277564c68f78a3be5abe5f2907c51826dee7184ff793fd",
+        "zh_TW": "dba44ed3f54f2012941c8fb13fc2a13c4960a6df4b89166424f17ae9d796521f"
+      }
+    },
+    {
+      "key": "im.scanConnect",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.scanConnect",
+      "originValueSha256": "b431a37597fca22f9542a28a8f35a0624e4eea2277dafc0ffbbe5a45f9932de1",
+      "textSha256": "b431a37597fca22f9542a28a8f35a0624e4eea2277dafc0ffbbe5a45f9932de1",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "154cc6c75053cb8f845306965396c6f42201a969b40dd53873011cfafdd830a7",
+          "count": 1
+        },
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "22b53177dc7feb3e5ce59bb2d45497e9651a0d288f5cce62dd86ff915e922c4d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "fc1b9e19a9a932aa5a6d380a2f0f8570c9e07f726d5e3fd806541952fff98e0b",
+        "en_US": "f11d5c1593d2a6b0c265da4d53aa9c671132768fdab8642d9e8465052f586213",
+        "es_419": "5d0910e2c93edceb57128a8a168eacee86e2ba9b61cebe8927b52159494e3050",
+        "es_ES": "5d0910e2c93edceb57128a8a168eacee86e2ba9b61cebe8927b52159494e3050",
+        "fr_FR": "f04482ea5bb62e5f3566ea4e3224a8a0a3461f717aefc65e71a7800bdaad0812",
+        "hi_IN": "2616a1dd663a55970d94474b39d2000fdb8b11d266b646f4948370dabb4dd699",
+        "id_ID": "7854f512444a7f3e124b8e9c04565aec0c3c376493c63d2166874a8675f8d77d",
+        "it_IT": "f93fbb104dcc9979643d2ca61e548be891dc320894c3df93332d3a310390dcc7",
+        "ja_JP": "bd633db59c9893f7e60e97a77677e884c983e466134209f63ddf9b78b9e1f61d",
+        "ko_KR": "3842d4e43caa5acf0e149fc172f545197c134b622715f29b862eebb892123523",
+        "pt_BR": "8efccd63a9edd3710d83cc77757e83b0c7f4512aaab8ae12aa5a08b3767081fb",
+        "zh_CN": "b431a37597fca22f9542a28a8f35a0624e4eea2277dafc0ffbbe5a45f9932de1",
+        "zh_TW": "40e6ef77cfceec0e34680e820711aceefd7cb3e8baadcaea16eff25287d714dd"
+      }
+    },
+    {
+      "key": "im.scanHelp",
+      "originCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "originKey": "im.scanHelp",
+      "originValueSha256": "5510ae77c487a1697c6b9ce832bdd3003b7ad879ed0b5813fde1c7d1b5350966",
+      "textSha256": "5510ae77c487a1697c6b9ce832bdd3003b7ad879ed0b5813fde1c7d1b5350966",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannelSettingsPanel.cs",
+          "contextHash": "a7ebe682b930e1061e91ae897f4a54fe4f08bb69036c3353a3bfcc32dd83b2cb",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "8b2a4ced15eae942ef2e737166102d8d88c22dec7908348fbb22d8d6a6ef87ce",
+        "en_US": "42bfb51c64081a38f8cc51e9b61711bac928db6daea4cf7f9c9877b568fced7b",
+        "es_419": "c7398cec47839975225ad7528d6e89e6b6532679e5b7206f2c09e916782ab2f9",
+        "es_ES": "2039fa7c9252d00908beadd4833ef31121cc1232b4f0f226d588b2e3cd3adae5",
+        "fr_FR": "81f3d1be250fc603def5e4973d7484da489c8711c9cf2d0af544976d4b069668",
+        "hi_IN": "1e7d481b2f659306fa44f928971e460eb109ffaf31c1616043f2a6a88532fc88",
+        "id_ID": "f02e9d1ce6b56f2f04ce787ecfca9a50144d1a9f66e7829df6122feebdfe2a90",
+        "it_IT": "a82941ea409f98bf829bf0e15ab2000901eef1afdb2ab5700c491a264f4fbfa2",
+        "ja_JP": "943c7a902adf55464e013708dfb0ba068d6647fb398cb7bfa1f1bcd69ecffe09",
+        "ko_KR": "0e7378fc1a13d62fe589c9951a03fc20214de6509aaba4e035e3df4614e5496e",
+        "pt_BR": "b9d6b3ab9c2f9a5ffd0e0e1865219b6c2d65b8503c98b94884e6cf8d13d23926",
+        "zh_CN": "5510ae77c487a1697c6b9ce832bdd3003b7ad879ed0b5813fde1c7d1b5350966",
+        "zh_TW": "487158f07c02754ce11826a5fec7153fbf24319fd582a2a113820fd9132312ed"
+      }
+    },
+    {
+      "key": "im.secret",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.secret",
+      "originValueSha256": "e957eb53b04afb3a88762ba3f92ae9c382fb4dafe4ed3972d2d1699db389e613",
+      "textSha256": "e957eb53b04afb3a88762ba3f92ae9c382fb4dafe4ed3972d2d1699db389e613",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "659469b71a2f098ccacd3872bc042bfee8ab4ce5a8d405afc8594a593e6b1d69",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "129019db4c373ab9f38e977e95c4dee0339d77651909dcd0a936dec5c754f287",
+        "en_US": "e957eb53b04afb3a88762ba3f92ae9c382fb4dafe4ed3972d2d1699db389e613",
+        "es_419": "29a956a0cacdd40a81e4efbe1c654151394cb71b9d583987a21222fd173a6091",
+        "es_ES": "29a956a0cacdd40a81e4efbe1c654151394cb71b9d583987a21222fd173a6091",
+        "fr_FR": "1a7a8743e6e91be3fb178bb6f4273ee1b95170ee6d8d4d80d1dd48e2a4e1da2a",
+        "hi_IN": "86b980d7a2afc4623890fa20285b05f623cb9a8b50d22d054f849f637b8f6a7e",
+        "id_ID": "7298a5063852b8e9b75074cfd9b0731e70f8a0d28f78569db9fbbe9da6805b31",
+        "it_IT": "061d77473a0b797eb890a69e3c41554467aef2976c975cfebaf389dbc59a329b",
+        "ja_JP": "a2c4e74f28f93bb8e7b0cb8d1a93de54fe5e382737d97d0696eec00b36e7f931",
+        "ko_KR": "1fc6b0e0d923e6522a73cc1f78405f71e4ef9fc6306f1c3abb86f982ad594856",
+        "pt_BR": "7f1db219ac6d4e46b20ae4cd92511a2a3553409f0f833422c45ff603e9794786",
+        "zh_CN": "e957eb53b04afb3a88762ba3f92ae9c382fb4dafe4ed3972d2d1699db389e613",
+        "zh_TW": "e957eb53b04afb3a88762ba3f92ae9c382fb4dafe4ed3972d2d1699db389e613"
+      }
+    },
+    {
+      "key": "im.selectWeixin",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.selectWeixin",
+      "originValueSha256": "1aa507f4342ec0603efcbe7de52bbbfac9d308e4a252539f3f23b4d6a26350bc",
+      "textSha256": "1aa507f4342ec0603efcbe7de52bbbfac9d308e4a252539f3f23b4d6a26350bc",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "9b8934d4234d19cb218209b60255ca0e82fee9af2fe0e4b66a33cacc67146280",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "acb48af88f2d06f917f01e0bb3944562f8d7dc337d202b1815185a594e7300f0",
+        "en_US": "16550b9bef68ea1f10474078d03ac9ab72459d4820a9242bb85d65f6a64ab708",
+        "es_419": "6b524d0ddc6290b3eae98128bfe5cba816daab0c4785932d262be807131c63c7",
+        "es_ES": "6b524d0ddc6290b3eae98128bfe5cba816daab0c4785932d262be807131c63c7",
+        "fr_FR": "0d9b2ede95cf206b80d2ba1a37239941e5734591263d8ab801e115022a630a78",
+        "hi_IN": "e00164d9755f82e38ca07e9871d6b8140b17026eee97633311e8a4a7717e67b7",
+        "id_ID": "2908e7c4b26afd10f73d03e57f7a8eb3372dd3f620b5c60052f3800ec73a7fbe",
+        "it_IT": "15e9add10545a455ae6a627f29f2b15faf5492a91eb054dd3c0bc880f2f4ca45",
+        "ja_JP": "66ed379104c7a8ebe4398c5fa476ef771b2b61b1c0b50a4874a6742c27095cf1",
+        "ko_KR": "fb88c1060cd526d3cb6273b7e5e014f3bb0a3182e45d7a8378fd6ae7efccb923",
+        "pt_BR": "71d70fd1896a6b16c2c55135131add79a043af222752a490bfc26d58de887097",
+        "zh_CN": "1aa507f4342ec0603efcbe7de52bbbfac9d308e4a252539f3f23b4d6a26350bc",
+        "zh_TW": "2b53a69629c46e4844edaa962e657d470fd24e3ce4a9b598cfb46199c3800fb5"
+      }
+    },
+    {
+      "key": "im.sessionLimit",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.sessionLimit",
+      "originValueSha256": "7d38b03d01433ea665168e7a7ef84ef3502dbfd169955c1d24e73c0973d58ac7",
+      "textSha256": "7d38b03d01433ea665168e7a7ef84ef3502dbfd169955c1d24e73c0973d58ac7",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "ea4bad0a092408e1749d364a8022fac8049cbdff7d05864beb40c6a849483ee8",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "282ebb60ca295628a121f483524d20f1f89ecd21ae3b275c7952ff80e561e64d",
+        "en_US": "6dd3235adf9a06c309601b64dab036b6e81d414b5579dcbebe3a148b9ed9acb8",
+        "es_419": "a8e39c471a250bc4f4e97f1477571a250f09633d8f70824e2cd3bcc3f2a3d6d3",
+        "es_ES": "bc6a303068845d4ca4be41f2e3bc09c773922fa2475498e9144d241ea2a6e644",
+        "fr_FR": "42080adda04da27080cb13d7723f9f3c3ab5256f7b95a9669c08c0c19c41d509",
+        "hi_IN": "084a6630bebd327981001bb2d4c22ca02face067a1f0ac96ac6d73d7cf9f25f9",
+        "id_ID": "f7de82abff529b1dde90b2868c7cd313240fcae61761c788720f28309f1d396b",
+        "it_IT": "4f96f9290dc79ee581206d60fde2c2809d215d4be74a65d5cf24021e8b42c2eb",
+        "ja_JP": "566afca56e54156278287db4668af4d0b3cf9e966a344ece5f9542c167c4d5eb",
+        "ko_KR": "b55fe99fd760e327dc40bdfe605c1b7c371762847e9776935cc2cc0228d976b3",
+        "pt_BR": "ba10ebdcfbb6b8c1555ce4c0aadca2808f341970977f0911c9cc65b493725697",
+        "zh_CN": "7d38b03d01433ea665168e7a7ef84ef3502dbfd169955c1d24e73c0973d58ac7",
+        "zh_TW": "3c08bf751ead1c04680b4f4c7c1f45b6d67efa2a333cab0d8394d68668dc5017"
+      }
+    },
+    {
+      "key": "im.storageFailed",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.storageFailed",
+      "originValueSha256": "3d019cfb572044cd5f2cced74bc6a6abaf89a3225d20d2557d1b99200f222202",
+      "textSha256": "3d019cfb572044cd5f2cced74bc6a6abaf89a3225d20d2557d1b99200f222202",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "124b211243147632dba9bd8d946a3b7532ed8609afcff35d1304155879c3cc33",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "35d268e19612596def80dda69d01216e908faa7f06d398b12fade910e159fb0b",
+        "en_US": "6f16e1ca5748fdf4ff525456fa454b578ffd7494f2f2c4a7e2fb48df8a3bc92f",
+        "es_419": "f0f420a1c1f4379d64cc96b79cec0581e13c2f65d032e168fee66e21a1955c7e",
+        "es_ES": "b4e5310dd98f45fa0de1e52ec3274ebedea32054f4fa8864df3e3147ffd1c967",
+        "fr_FR": "3e0697bc885bc257b2f2b0eb03d4348282a9c19b90473d4ac7294550f05dbe93",
+        "hi_IN": "f9d53b3e46e9c6aa92520d5514ce1e099e5480547c4c5b59c1aa47f43914938e",
+        "id_ID": "ddcd8794d6151f55397b0dac38855c7953ebcf7accbe00578fdcaa3be05a3d93",
+        "it_IT": "040ffa68a87524bda500a54e3b0048d808bc115c8e9a29cc5eeb3eb9a7c13161",
+        "ja_JP": "b2be3c24b22d5f3b2eff354adb3e8951a974e3b00a2470fa884686f2b279a367",
+        "ko_KR": "70a0c53a0c2aa16155456f3f04da379fbf8a248cb24cedc777d71c43e7a43913",
+        "pt_BR": "a4896a35d2134b9282ea34fc111b39b0e8c73bfadeb5c88670b60d44c63e3d14",
+        "zh_CN": "3d019cfb572044cd5f2cced74bc6a6abaf89a3225d20d2557d1b99200f222202",
+        "zh_TW": "6602d8715f550053f355786ce5ba881094cce4211e527d776f49183a4f7b9b5b"
+      }
+    },
+    {
+      "key": "im.subtitle",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.subtitle",
+      "originValueSha256": "c78772f10d8c762f609ed16a06228243316e1eb36455c118ed85619acfa67007",
+      "textSha256": "c78772f10d8c762f609ed16a06228243316e1eb36455c118ed85619acfa67007",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "1e2c603a5e4ed091c203b6f9251a4da7bca1fde9f134909b80b7fdb9e619e726",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "3102bb5619c0d528197fc46780dbe2b15c631d923dfb6685d092eb650bbb0f6e",
+        "en_US": "9e1a07397aec94ea9086a73262af9ad39a7cf17d0afa5d77fa449e7068248f06",
+        "es_419": "0cbb5b906154715d0a83fb6e060b619153dfee077774c265535c977c701d4bf4",
+        "es_ES": "20ba664af20cb64059874214ab653b140e8f6dd12d625712b78b73e210307126",
+        "fr_FR": "c9a1e0029360e6f935b4da12159699fe19b175caee3eaeec9d70a6dcb280899e",
+        "hi_IN": "26eb482e2ca314229461eecd40a2526e06fb5b8f7867f09aaa920fd06bc272c7",
+        "id_ID": "be9ffd86b3dc12979c75d8bcd630aea81a5c0570e2cf018dd48f431e9f285da1",
+        "it_IT": "400b3ab9f7a62a037c9423a9420b15861807481d979132213b5a5979d1737079",
+        "ja_JP": "07fae9c77a31bfe0a480c28265a0b9f0383649d7777cc549c77a0fc7bd079f4c",
+        "ko_KR": "09438d4ae9887e31d620e3c64f3bcf8346bbabef24e35a072b8c713d7e799571",
+        "pt_BR": "9556df9b89b3340de2275868441b73031bde7f5b45c7b21fc08169482b598ce9",
+        "zh_CN": "c78772f10d8c762f609ed16a06228243316e1eb36455c118ed85619acfa67007",
+        "zh_TW": "58139fcc0f79fe1a6f265d5858f509b81950ecf4eb7c88130223af859007f15f"
+      }
+    },
+    {
+      "key": "im.textOnly",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.textOnly",
+      "originValueSha256": "dc3d98e6f18ba7843577aa1311e169adf2993b2b8969caddc5a1ae525d35e791",
+      "textSha256": "dc3d98e6f18ba7843577aa1311e169adf2993b2b8969caddc5a1ae525d35e791",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "e9b64f62d76c1dbe6c17c51234190a81e2d2b4afa46184113d6d7cbcb5b643ca",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "4453bdb373dd12e1f0c66525d4695a7c641e0c13d8d5aa7248d0444cf0e8b722",
+        "en_US": "f9a0f68c6f06d1a6535fbb4e9ddd4455524e4a6e5c00ac4b86f6d7a7df99e8b5",
+        "es_419": "b85daec389e2c8736d03d77214471ea9585b1d892ea79d9c51a451fd1192089a",
+        "es_ES": "856c2855fb57927df099de419efb8698fb26df1ee6ffbdb4ce12f291be2bbe39",
+        "fr_FR": "928039fe63c354de0c2cc97aa7126c146180d99b7fe2212b47fffbbf7bdb9801",
+        "hi_IN": "b3b2504e5ac08f44996f0683aba06cf9fc808d4337e4d2908a2d6e955c1a68ce",
+        "id_ID": "f6b95146ea7aa182cba90bb5868f82187fe69bb38f8b59b4e0ae3296c33936b8",
+        "it_IT": "3964734d30a1be6d537efbe15d7bcf7dcbf0c4bf6f3646bfe523ecf726d18fc3",
+        "ja_JP": "5bf4ebf072db4d2d2bcb9daaf823a10fd6c8567722f233b0fb39547435955533",
+        "ko_KR": "29d19101f682bc6d028c87f310bc4a1f4fb2dda743d20254ff681f59af51bd5d",
+        "pt_BR": "b0067832cae19b44f4dfaa44babf35233c7c74d2162a7ce745e109dcd5dc7c5d",
+        "zh_CN": "dc3d98e6f18ba7843577aa1311e169adf2993b2b8969caddc5a1ae525d35e791",
+        "zh_TW": "540e6c2e424e7704ec1891c44774043de83cf3e31170537d4edf58a43bb08136"
+      }
+    },
+    {
+      "key": "im.title",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.title",
+      "originValueSha256": "77709784cd633551e14bd2be0b96be779a6fda5ccd021c4fd96dec760ddca016",
+      "textSha256": "77709784cd633551e14bd2be0b96be779a6fda5ccd021c4fd96dec760ddca016",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "2aa94a7eafbd1572a553856baa7b5876d3378267209edf5a0555d22b84bbd348",
+          "count": 1
+        },
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "a29cfbb6f72c8a695f13586db85c9166c9ebf58c8184e86ab03da8381e685d4b",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "a94e9feb2afb654be23c416077ed63c768398e7e2c3277304cfbd49feb4ad931",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "dd49c316603304c1b484d04af5a9bfaee0b2002968e253f5e8133cb85b713433",
+        "en_US": "bb751dbc7da5ac148cdc799bce3a88c4e32589fbeddbc445a88c67f2dc471d89",
+        "es_419": "f86aa946ffcc49c6b81058c42d4823c477b63065e2bd534931316909fca7466a",
+        "es_ES": "f86aa946ffcc49c6b81058c42d4823c477b63065e2bd534931316909fca7466a",
+        "fr_FR": "f3a6ecf7a3d889d49b8d3bf876188445ffac7c3ba9f96a96e98fdcc2733979dc",
+        "hi_IN": "9f9a9cdd657a048a173ac6985b1892ac0e0c07ed43961a58b2903def193f3913",
+        "id_ID": "98e6d563dc09fc047da3517a2a38f37a5d75d561e7133601cff4971ad5d76a21",
+        "it_IT": "b8a3a9180d7244b8f211dfac3db1e84de972ffedce2658342ea460e615079df9",
+        "ja_JP": "25f397ebdc2c152081b1cd379c57e9dc0b8b0fbfcecb2abf365f06947bf0ac36",
+        "ko_KR": "b879b95d397cd7fcde9f1c465a5b31cf8390ae8e8a7e756c5dc8630d070ef211",
+        "pt_BR": "b633143d3d564cdf9900611763dfdf07a1009013eeff18d5ab3716455360e45e",
+        "zh_CN": "77709784cd633551e14bd2be0b96be779a6fda5ccd021c4fd96dec760ddca016",
+        "zh_TW": "6df8d0642d01fdf75a8c56397e6e827fd5a963fdfbf682ee9c13b3a9f42b018d"
+      }
+    },
+    {
+      "key": "im.unsaved",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.unsaved",
+      "originValueSha256": "3e203559fec379b09fbdbc5299d3f474898613be55839b5f956598a63090e7dd",
+      "textSha256": "3e203559fec379b09fbdbc5299d3f474898613be55839b5f956598a63090e7dd",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "5e3c669481b840b5624541cb06fe5a554ce053dc2603d9f69067eeac37ba4fda",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5dde2dda32b8df3d551a07ccf138cf8d540b5a1fc490a6109ffd2d1bf98112bd",
+        "en_US": "46330a92dd31d18c92f6653a8bc36218d8ef6de2d9071b18f00637dd2d547ff5",
+        "es_419": "79f3c6a5a17cd5b9243b22423fef1c1ce76bae5a8556ea5e5c0b65362b7ecce4",
+        "es_ES": "905ce281e4cac585254d8891ffef39f232072747a3e0899b7224fcd34891a682",
+        "fr_FR": "f16c40c11b1ec8ee63ce2453415c9339ee2794c8ad405cd93517db8d825719e5",
+        "hi_IN": "aaf457c6c7e5635bf27af486f395686b045780d8cd1d5ec8c669bc1779a5d435",
+        "id_ID": "6e51cea6a26e656a74c9d8933f6a1a610698ded4dc247ce349bcd17cbadd2093",
+        "it_IT": "443c70430316256038f4f13ffe86fbc34cce69d840bd3be431391a13a59805cb",
+        "ja_JP": "44648aa680e71974680d262db64c64d6ed0cde0c816a77c148ff269e35a3e7a4",
+        "ko_KR": "f62b90ed55160ed13ac4f19cfdee38c3d5adefddb75056726b7e15af889444df",
+        "pt_BR": "309560e336ce86bbbd00cb06cd254c7b5eb2c0aef5dd4d7992ee88c1836c8d7a",
+        "zh_CN": "3e203559fec379b09fbdbc5299d3f474898613be55839b5f956598a63090e7dd",
+        "zh_TW": "e743d1dbb0dc11950f823aae643af5eaff29b4fe25dd250f12a4c00bdfb51273"
+      }
+    },
+    {
+      "key": "im.users",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.users",
+      "originValueSha256": "245860b3a04b847c498a536fa705f1de4b82a8a5db10b6f47954d0f17b1f3414",
+      "textSha256": "245860b3a04b847c498a536fa705f1de4b82a8a5db10b6f47954d0f17b1f3414",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "4fed64489d6a3c41d02fdb629cd32123c106241802e828b4204e9f33e4e667a2",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "f71294585bc56dc8f84f87341ee1d582cefc4d9d6bc3a84cd6674096dcdbedf6",
+        "en_US": "4df9b8f37cc7c39af7ea12bc896c0d427276d4956d5edd3a6c9fdabbdf021a83",
+        "es_419": "01a205c003ceea648a90b36dd1e6fb43aa59d5d27b19b0f2e7da1dbd1f3d5ce3",
+        "es_ES": "01a205c003ceea648a90b36dd1e6fb43aa59d5d27b19b0f2e7da1dbd1f3d5ce3",
+        "fr_FR": "a8cd2c5725019ac6babd14116cdf5859ea3f775669ac5ab60ba3be19d453cd89",
+        "hi_IN": "1ad768a9e2a046ca00b7be3fefc208f078218c27cb2e6c4e025e0ab49b3b1eba",
+        "id_ID": "3040efe5461ac4997abc5a66c15824f43ceb6ba4c6b94e1b36f230a8884bc643",
+        "it_IT": "e9948d22fb6212565f8927b80bd86341c1203c2d88bd1001c68d1cf65b9b3064",
+        "ja_JP": "e8822dc704b6a3e7b634f39942c2dc7f739525c092e19d605d2ae1de54195445",
+        "ko_KR": "940e29fa04f47cb5c115083ade9140a0eb5e1a486796dbd1596a235306e95787",
+        "pt_BR": "4d2420a402c0638222c57e861da2e4afaccd80f7fe9eabc2e95ee6a7f501a900",
+        "zh_CN": "245860b3a04b847c498a536fa705f1de4b82a8a5db10b6f47954d0f17b1f3414",
+        "zh_TW": "a010796ec331d4582f95d4e9b7488dd54e94e97fee4faf4885f05f69e33332de"
+      }
+    },
+    {
+      "key": "im.verificationRequired",
+      "originCommit": "b31597228972074d308d955ff7af38ebd44d4ee5",
+      "originKey": "im.verificationRequired",
+      "originValueSha256": "818a90a48a844ca30f83559db55297937ff5ae01acd1870dfff5f1102f644b85",
+      "textSha256": "818a90a48a844ca30f83559db55297937ff5ae01acd1870dfff5f1102f644b85",
+      "sourceReferences": [
+        {
+          "file": "src/ImChannels/ImText.cs",
+          "contextHash": "d8b6eedf98e96f4f39a256ca4002e14a2c53fc9891b411d072f79ad7fd389e63",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "40959bb5eea058d312b5f9cefa8f6e7435b5b08893c2606dce8c08a9e309de4c",
+        "en_US": "ba841e72504ed10d223f46b03e7f77291d3a67fc0136997b91148f0b51935300",
+        "es_419": "203c50d1d42644c429bd5a3a2b0c7b37582ab46dffdf97e9770f5c27c71db37a",
+        "es_ES": "203c50d1d42644c429bd5a3a2b0c7b37582ab46dffdf97e9770f5c27c71db37a",
+        "fr_FR": "5bd3f818a9a6527e04ba3e4d8d0f96efeb3254d1fac08774c5183519373d60a0",
+        "hi_IN": "6f2d9541dafed711297416082255873ebb6a4ddcf8c465b55d7991cfa83140d3",
+        "id_ID": "f5749371ab3c2bb5cb72ddd5f1ef669c393963873657700a2cdc8fe7f9005112",
+        "it_IT": "76afcdf601c149d5a2eda6869e5494d6794c359881b709dce34bf12c5f6f2e57",
+        "ja_JP": "e2e52b3cd8fdb4c819dddfc194e3bca55d1e28be09dac9f56ee4999bb07345e8",
+        "ko_KR": "0f5073e7cf6ed0a528f01ac194084c2240ede465bdc1e59df65d62e633f05996",
+        "pt_BR": "cbaf97c31f9809371c6ba46c845ee70896ea1d1dd671fc9be9e23a2d89993020",
+        "zh_CN": "818a90a48a844ca30f83559db55297937ff5ae01acd1870dfff5f1102f644b85",
+        "zh_TW": "1c9f98723820923f36cb6179a7d15a1dda7ef74134479bbd65589dfe7c6c20a6"
       }
     },
     {
@@ -3859,7 +5604,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/RelationshipFeedbackWindow.cs",
-          "contextHash": "28712900b77627235ff984974774ec51cd2f689b0b2444bbd98769c15e674e7f",
+          "contextHash": "b04c64265d233bf054fd4aa5fc22cb4a185c011bce8493192cd394e3788dc174",
           "count": 1
         },
         {
@@ -6579,7 +8324,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "f72908d65587e06b0d86a4b5b5a64da993682e40590ca0543bb8eb692d5fd0cf",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6587,7 +8332,7 @@
       "value": "（暂无）",
       "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6595,7 +8340,7 @@
       "value": "\n最近聊天背景：\n",
       "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6603,7 +8348,7 @@
       "value": "\n请以当前伙伴的语气写一句新的主动问候。",
       "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6611,7 +8356,7 @@
       "value": "\n最近已显示的问候（避免重复）：\n",
       "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6619,7 +8364,7 @@
       "value": "当前本地时间：",
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6627,7 +8372,7 @@
       "value": "桌面伙伴.exe",
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6635,7 +8380,7 @@
       "value": "编辑",
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6643,7 +8388,7 @@
       "value": "编辑",
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6651,7 +8396,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6659,7 +8404,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6667,7 +8412,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6675,7 +8420,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6683,7 +8428,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6691,7 +8436,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6699,7 +8444,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6707,7 +8452,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6715,7 +8460,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6723,7 +8468,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6731,7 +8476,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "3a76247f14b8d266e2e7c942c092e4e16807dbd1cc949ffedfa34f750e41ee70",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6739,7 +8484,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6747,7 +8492,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "53b1629aa17e9c919d98b652a814450cff32c5acc5b0c4abb55273af49d831b3",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6755,7 +8500,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6763,7 +8508,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66e086e03730e51a3dcc13111c167c6b1c7ddefd1d1efb9df3ed1aaf646bc9c0",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6771,7 +8516,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6779,7 +8524,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a765e5e64fbfbf9e15a5c00840829eef94c692015a9e00a7cceb7c98f2244ae4",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6787,7 +8532,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6795,7 +8540,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6803,7 +8548,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6811,7 +8556,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6819,7 +8564,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6827,7 +8572,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6835,7 +8580,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6843,7 +8588,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6851,7 +8596,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "e3daa0322d06d926f576500e489abef69dfed6bb8350e5e35ababe8ca9bbaf9d",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -6859,7 +8604,7 @@
       "value": "桌面伙伴维护助手：校验更新包与卸载交接，保留用户数据",
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
-      "sourceCommit": "7f02913d400fb4a75103bc888dddbd9e766c0e3b",
+      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     }
   ]

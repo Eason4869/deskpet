@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -51,8 +51,8 @@ namespace Dafeiyu.Tests
                 var shortcut=(TextBox)settings.FindControl("Hotkeytab");string savedShortcut=shortcut.Text;shortcut.Text="Ctrl+Alt+Shift+F12";settings.SelectGeneralSection(0);settings.SelectGeneralSection(1);settings.RefreshState();Pump();Check(((TextBox)settings.FindControl("Hotkeytab")).Text=="Ctrl+Alt+Shift+F12","switching general tabs and refreshing retains a shortcut draft");shortcut.Text=savedShortcut;
                 settings.SelectGeneralSection(2);Pump();Check(settings.FindControl("SaveChatHistory")!=null&&settings.FindControl("Hotkeyquick")==null,"chat history is separate from shortcut editing");
                 settings.SelectGeneralSection(0);ThemeManager.Apply(cfg.ThemeMode);settings.SelectNavigation(0);Pump();
-                Check(nav.Items.Count==5,"five primary settings destinations with MCP moved to the shell");
-                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","通用","关于"}),"navigation combines companion and persona");
+                Check(nav.Items.Count==6,"six primary settings destinations including local messaging channels");
+                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","通用","关于","消息渠道"}),"navigation combines companion and persona");
                 var categorySearch=settings.FindControl("SettingsCategorySearch") as TextBox;Check(categorySearch!=null,"settings sidebar provides category search");categorySearch.Text="模型";Pump();Check(nav.Items.Cast<ListBoxItem>().Where(i=>i.Visibility==Visibility.Visible).Select(i=>(string)i.Content).SequenceEqual(new[]{"模型配置"}),"sidebar search filters categories without changing their route indices");categorySearch.Text="";Pump();Check(nav.Items.Cast<ListBoxItem>().All(i=>i.Visibility==Visibility.Visible),"clearing category search restores all settings destinations");
                 bool guide=false;settings.GuideRequested+=delegate {guide=true;};Click(settings,"OpenOnboarding");Check(guide,"sidebar guide entry invokes guide event");
                 settings.SelectPage(2);Pump();var model=(TextBox)settings.FindControl("TextProviderName");string original=model.Text;model.Text="navigation-draft";

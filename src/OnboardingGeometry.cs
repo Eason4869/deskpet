@@ -18,7 +18,7 @@ namespace Dafeiyu
             if (target != null) target.IsVisibleChanged -= TargetVisibilityChanged;
             if (layer != null && highlight != null) layer.Remove(highlight); target = null; layer = null; highlight = null;
         }
-        private void OwnerClosing(object sender, CancelEventArgs args) { ownerClosing = true; Close(); }
+        private void OwnerClosing(object sender, CancelEventArgs args) { if(advancing){args.Cancel=true;closeOwnerAfterAdvance=true;closeAfterAdvance=true;return;}ownerClosing = true; Close(); }
         private void OwnerVisibilityChanged(object sender, DependencyPropertyChangedEventArgs args) { PositionNearTarget(); }
         private void OwnerMoved(object sender, EventArgs args) { PositionNearTarget(); }
         private void OwnerSized(object sender, SizeChangedEventArgs args) { if (highlight != null) highlight.InvalidateVisual(); PositionNearTarget(); }

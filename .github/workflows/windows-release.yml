@@ -10,6 +10,10 @@ on:
         description: Publish after verification (default is build only)
         default: false
         type: boolean
+      draft_only:
+        description: Retain verified draft for macOS asset promotion before publication
+        default: false
+        type: boolean
 permissions:
   contents: read
 env:
@@ -98,6 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_DRAFT_ONLY: ${{ inputs.draft_only }}
         run: |
           $ErrorActionPreference = 'Stop'
           git fetch origin main dev --tags
@@ -133,8 +138,11 @@ jobs:
           if ($LASTEXITCODE) { throw 'Draft creation failed (existing releases are never overwritten)' }
           gh release upload $env:RELEASE_TAG @files work/artifacts/SHA256.txt
           if ($LASTEXITCODE) { throw 'Upload failed; draft retained' }
-          $remote = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          $draftId = gh release view $env:RELEASE_TAG --json databaseId --jq .databaseId
+          if ($LASTEXITCODE -or $draftId -notmatch '^[1-9][0-9]*$') { throw 'Draft ID lookup failed; draft retained' }
+          $remote = gh api "repos/$env:GITHUB_REPOSITORY/releases/$draftId" | ConvertFrom-Json
           if ($LASTEXITCODE) { throw 'Uploaded release lookup failed' }
+          if (!$remote.draft -or $remote.tag_name -ne $env:RELEASE_TAG -or [bool]$remote.prerelease -ne [bool]$expected.prerelease) { throw 'Draft release identity mismatch' }
           foreach ($name in $hashes.Keys) {
             $asset = @($remote.assets | Where-Object name -eq $name)
             if ($asset.Count -ne 1 -or $asset[0].digest -ne ('sha256:' + $hashes[$name])) { throw "Remote digest mismatch: $name; draft retained" }
@@ -142,5 +150,9 @@ jobs:
           $latestArguments = @(LatestArguments)
           python tools/verify_windows_release.py --tag $env:RELEASE_TAG --output work/checked-final.json @latestArguments
           if ($LASTEXITCODE) { throw 'Latest changed; draft retained' }
+          if ($env:RELEASE_DRAFT_ONLY -eq 'true') {
+            Write-Output 'Verified draft retained for platform asset promotion.'
+            exit 0
+          }
           gh release edit $env:RELEASE_TAG --draft=false "--latest=$($expected.make_latest)"
           if ($LASTEXITCODE) { throw 'Publish failed; inspect draft state' }

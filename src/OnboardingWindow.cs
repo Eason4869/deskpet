@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -70,30 +71,44 @@ namespace Dafeiyu
         void CancelApprovalDemo(){var cancel=approvalDemo;if(cancel!=null)cancel.Cancel();}
         void ActionButton(Func<string> caption, string name, Action action) { var b = LocalizedUi.Button(caption,name=="GuidePreparePacks"); b.Name = name;if(name=="GuidePreparePacks"||name=="GuidePackProgress"){b.Content=LocalizedUi.With(new TextBlock{TextWrapping=TextWrapping.Wrap,MaxWidth=250},"Text",caption);} b.Margin = new Thickness(0, 0, 0, 7); b.HorizontalAlignment = HorizontalAlignment.Left; b.Click += delegate { try { action(); } catch (Exception e) { LocalizedUi.Set(status,"Text",()=>(TextResources.Format("onboardingWindow.actionButton.statusEMessage",e.Message))); } }; actions.Children.Add(b); }
         bool Applies(OnboardingLesson lesson) { if (lesson.Branch == "cloud" || lesson.Branch == "system") { var toggle = settings.FindControl("UseCloudVoice") as CheckBox; return (toggle != null ? toggle.IsChecked == true : pet.Settings.UseCloudVoice) == (lesson.Branch == "cloud"); } if (lesson.Branch == "unknown-context") { return pet.Settings.Text == null || pet.Settings.Text.ContextWindowTokens <= 0; } return true; }
-        bool CanLeave() { if (pet.LiveActive || pet.DictationActive) { LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.canLeave.status"))); return false; } return true; }
+        bool CanLeave() { if(advancing)return false; if (pet.LiveActive || pet.DictationActive) { LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.canLeave.status"))); return false; } return true; }
         void Move(int direction) { if (!CanLeave()) return; int candidate = index + direction; while (candidate >= 0 && candidate < OnboardingLessons.All.Length && !Applies(OnboardingLessons.All[candidate])) candidate += direction; if (candidate >= 0 && candidate < OnboardingLessons.All.Length) { index = candidate; Navigate(); } }
         void Skip(bool chapter) { if (!CanLeave() || Current.Action=="complete") return; int before = Step, last=OnboardingLessons.All.Length-1; do { if (!Completed && !pet.Settings.OnboardingSkippedLessons.Contains(CurrentLessonId)) pet.Settings.OnboardingSkippedLessons.Add(CurrentLessonId); index++; } while (chapter && index < last && Step == before); if(index>last)index=last; while (index < last && !Applies(Current)) index++; Navigate(); }
         void InteractionCompleted(string action) { gestureDone = true; RefreshReadiness(); }
-        void Advance()
+        bool advancing,closeAfterAdvance,closeOwnerAfterAdvance;
+        bool AdvanceStillCurrent(string lesson){return !finished&&!closeAfterAdvance&&CurrentLessonId==lesson;}
+        async void Advance()
         {
-            RefreshReadiness(); if (!next.IsEnabled) return; try
-            {
-                string a = Current.Action; if (a.StartsWith("ai") && !settings.SaveGuideAiSection(Int32.Parse(a.Substring(2)))) throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text"));
-                if(a=="language"){SaveGuideLanguage();return;}
-                if (a == "persona") { Click(settings.FindControl("SavePersona")); if (((TextBox)settings.FindControl("PersonaPrompt")).Text != pet.Settings.SystemPrompt || !String.IsNullOrEmpty(pet.Notice)) throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeA")); }
-                if (a == "greeting") { pet.Settings.GreetingMinMinutes = Int32.Parse(((TextBox)settings.FindControl("GreetingMinMinutes")).Text); pet.Settings.GreetingMaxMinutes = Int32.Parse(((TextBox)settings.FindControl("GreetingMaxMinutes")).Text); pet.ConfigureGreetings(); }
-                if (a == "hotkey") { string error; if (!pet.UpdateHotkey("quick", ((TextBox)settings.FindControl("Hotkeyquick")).Text, out error)) throw new InvalidOperationException(error); }
-                if ((a == "work-save" || a == "prompt-save") && !((WorkSettingsPanel)settings.FindControl("WorkSettingsPanel")).Save()) throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeB"));
-                if (a == "network" && !settings.SaveGuideNetwork()) throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeC"));
-                if (index == OnboardingLessons.All.Length - 1) { Finish("completed"); return; }
-                if (a.EndsWith("-test") && !pet.Settings.OnboardingVerifiedLessons.Contains(CurrentLessonId)) pet.Settings.OnboardingVerifiedLessons.Add(CurrentLessonId); if (!Completed) pet.Settings.OnboardingCompletedLessons.Add(CurrentLessonId); pet.Settings.OnboardingSkippedLessons.Remove(CurrentLessonId);
-                Move(1);
+            if(advancing)return;RefreshReadiness();if(!next.IsEnabled)return;
+            string requested=CurrentLessonId;advancing=true;next.IsEnabled=false;
+            try{
+                string a=Current.Action;
+                if(a.StartsWith("ai")){if(!await settings.SaveGuideAiSectionAsync(Int32.Parse(a.Substring(2))))throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text"));if(!AdvanceStillCurrent(requested))return;}
+                if(a=="language"){await SaveGuideLanguageAsync();return;}
+                if(a=="persona"){
+                    if(!await settings.SaveGuidePersonaAsync())throw new InvalidOperationException(pet.Notice);if(!AdvanceStillCurrent(requested))return;
+                    if(((TextBox)settings.FindControl("PersonaPrompt")).Text!=pet.Settings.SystemPrompt)throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeA"));
+                }
+                if(a=="greeting"){pet.Settings.GreetingMinMinutes=Int32.Parse(((TextBox)settings.FindControl("GreetingMinMinutes")).Text);pet.Settings.GreetingMaxMinutes=Int32.Parse(((TextBox)settings.FindControl("GreetingMaxMinutes")).Text);pet.ConfigureGreetings();}
+                if(a=="hotkey"){string error;if(!pet.UpdateHotkey("quick",((TextBox)settings.FindControl("Hotkeyquick")).Text,out error))throw new InvalidOperationException(error);}
+                if(a=="work-save"||a=="prompt-save"){if(!await ((WorkSettingsPanel)settings.FindControl("WorkSettingsPanel")).SaveAsync())throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeB"));if(!AdvanceStillCurrent(requested))return;}
+                if(a=="network"){if(!await settings.SaveGuideNetworkAsync())throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeC"));if(!AdvanceStillCurrent(requested))return;}
+                if(!AdvanceStillCurrent(requested))return;
+                if(index==OnboardingLessons.All.Length-1){advancing=false;Finish("completed");return;}
+                if(a.EndsWith("-test")&&!pet.Settings.OnboardingVerifiedLessons.Contains(requested))pet.Settings.OnboardingVerifiedLessons.Add(requested);
+                if(!Completed)pet.Settings.OnboardingCompletedLessons.Add(requested);pet.Settings.OnboardingSkippedLessons.Remove(requested);
+                advancing=false;Move(1);
+            }catch(Exception e){if(!(e is InvalidOperationException||e is ArgumentException||e is System.IO.IOException||e is UnauthorizedAccessException))throw;if(!finished){status.Visibility=Visibility.Visible;status.Text=e.Message;}}
+            finally{
+                advancing=false;
+                if(closeOwnerAfterAdvance){closeOwnerAfterAdvance=false;closeAfterAdvance=false;settingsHost.Close();}
+                else if(closeAfterAdvance){closeAfterAdvance=false;Close();}
+                else if(!finished)RefreshReadiness();
             }
-            catch (Exception e) { if (!(e is InvalidOperationException || e is ArgumentException || e is System.IO.IOException || e is UnauthorizedAccessException)) throw; status.Visibility=Visibility.Visible;status.Text = e.Message; }
         }
         void RefreshReadiness()
         {
-            if (finished || navigating) return; bool ready = true; string reason = ""; string a = Current.Action; var control = a == "nonempty" || a == "url" ? FindTarget(Current.Target) : null;
+            if (finished || navigating || advancing) return; bool ready = true; string reason = ""; string a = Current.Action; var control = a == "nonempty" || a == "url" ? FindTarget(Current.Target) : null;
             if(a=="language"){next.IsEnabled=languagePicker!=null&&languagePicker.SelectedItem!=null;LocalizedUi.Set(next,"Content",()=>TextResources.Get("onboarding.language.applyContinue"));return;}
             if(a=="prepare-packs"){LocalizedUi.Set(status,"Text",()=>(pet.OfficialPreparation.StatusText));LocalizedUi.Set(next,"Content",()=>(pet.OfficialPreparation.State==OfficialCompanionPreparationState.Running?TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeC"):TextResources.Get("onboarding.prepare.later")));}
             if(a=="approval-demo"){ready=approvalDemoReviewed;reason=TextResources.Get("onboardingWindow.refreshReadiness.reason");}
@@ -149,10 +164,10 @@ namespace Dafeiyu
             languagePicker.SelectionChanged+=delegate{RefreshReadiness();};
             LocalizedUi.Set(next,"Content",()=>TextResources.Get("onboarding.language.applyContinue"));
         }
-        void SaveGuideLanguage()
+        async Task SaveGuideLanguageAsync()
         {
-            UiLanguageChange.ApplyAndContinueGuide(pet.Store,pet.Settings,((UiLanguageChoice)languagePicker.SelectedItem).Code);
-            index=Array.FindIndex(OnboardingLessons.All,item=>item.Id=="welcome");NavigateCore(false);
+            if(!await pet.ChangeLanguageAsync(((UiLanguageChoice)languagePicker.SelectedItem).Code,true))throw new System.IO.IOException(pet.Notice);
+            if(finished||closeAfterAdvance)return;index=Array.FindIndex(OnboardingLessons.All,item=>item.Id=="welcome");NavigateCore(false);
         }
         void ExploreIndependently()
         {
@@ -237,12 +252,27 @@ namespace Dafeiyu
         FrameworkElement FindTarget(string name) { if (Step == 14) return Application.Current.Windows.OfType<ChatWindow>().Where(w => w.IsVisible).SelectMany(w => Walk(w)).OfType<FrameworkElement>().FirstOrDefault(e => e.Name == name); return settings.FindControl(name); }
         static IEnumerable<DependencyObject> Walk(DependencyObject node) { yield return node; for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) foreach (var x in Walk(VisualTreeHelper.GetChild(node, i))) yield return x; }
         static void Click(FrameworkElement e) { var b = e as Button; if (b != null && b.IsEnabled) b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
-        async void TestText() { if (textTest != null) return; if (!settings.SaveGuideAiSection(0)) { LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status"))); return; } var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(25)); textTest = cancel; string requested = CurrentLessonId; LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status.alternativeA"))); try { using (var api = new ApiClient()) { var reply = await api.ChatAsync(pet.Settings.Text.Copy(), new[] { new ChatMessage("user", TextResources.Get("onboardingWindow.testText.apiChatAsync")) }, cancel.Token); if (finished || CurrentLessonId != requested) return; textTestSucceeded = !String.IsNullOrWhiteSpace(reply); LocalizedUi.Set(status,"Text",()=>(textTestSucceeded ? TextResources.Get("onboardingWindow.testText.statusTextTestSucceeded") : TextResources.Get("onboardingWindow.testText.statusTextTestSucceeded.alternativeA"))); } } catch (Exception) { if (!finished && CurrentLessonId == requested) LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status.alternativeB"))); } finally { if (ReferenceEquals(textTest, cancel)) textTest = null; cancel.Dispose(); if (!finished) RefreshReadiness(); } }
+        async void TestText()
+        {
+            if(textTest!=null||finished)return;
+            string requested=CurrentLessonId;var cancel=new CancellationTokenSource(TimeSpan.FromSeconds(25));textTest=cancel;textTestSucceeded=false;
+            try{
+                if(!await settings.SaveGuideAiSectionAsync(0)){if(!finished&&CurrentLessonId==requested&&!cancel.IsCancellationRequested)LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status")));return;}
+                if(finished||CurrentLessonId!=requested||cancel.IsCancellationRequested||!ReferenceEquals(textTest,cancel))return;
+                LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status.alternativeA")));
+                using(var api=new ApiClient()){
+                    var reply=await api.ChatAsync(pet.Settings.Text.Copy(),new[]{new ChatMessage("user",TextResources.Get("onboardingWindow.testText.apiChatAsync"))},cancel.Token);
+                    if(finished||CurrentLessonId!=requested||cancel.IsCancellationRequested||!ReferenceEquals(textTest,cancel))return;
+                    textTestSucceeded=!String.IsNullOrWhiteSpace(reply);LocalizedUi.Set(status,"Text",()=>(textTestSucceeded?TextResources.Get("onboardingWindow.testText.statusTextTestSucceeded"):TextResources.Get("onboardingWindow.testText.statusTextTestSucceeded.alternativeA")));
+                }
+            }catch(Exception){if(!finished&&CurrentLessonId==requested&&!cancel.IsCancellationRequested)LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status.alternativeB")));}
+            finally{if(ReferenceEquals(textTest,cancel))textTest=null;cancel.Dispose();if(!finished&&CurrentLessonId==requested)RefreshReadiness();}
+        }
         void ReleaseScopes() { if (focusScope != null) { focusScope.Dispose(); focusScope = null; } if (petScope != null) { petScope.Dispose(); petScope = null; } foreach (var s in otherScopes) s.Dispose(); otherScopes.Clear(); }
         void RestoreNetworkPreview() { if (networkPreview != null) { networkPreview.IsExpanded = networkWasExpanded; networkPreview = null; } }
         void Persist() { pet.Settings.OnboardingLessonId = CurrentLessonId; pet.Settings.OnboardingStep = Step; pet.SaveSettings(); }
-        void Finish(string state) { if (finished||!SaveGuideProgress(delegate{pet.Settings.OnboardingState=state;if(state=="completed"&&!Completed)pet.Settings.OnboardingCompletedLessons.Add(CurrentLessonId);})) return; finished = true; Close(); }
-        void ClosingGuide(object sender, CancelEventArgs e) { CancelApprovalDemo();if (!finished) { pet.Settings.OnboardingState = "deferred"; Persist(); finished = true; } }
+        void Finish(string state) { if (advancing||finished||!SaveGuideProgress(delegate{pet.Settings.OnboardingState=state;if(state=="completed"&&!Completed)pet.Settings.OnboardingCompletedLessons.Add(CurrentLessonId);})) return; finished = true; Close(); }
+        void ClosingGuide(object sender, CancelEventArgs e) { if(advancing){closeAfterAdvance=true;e.Cancel=true;return;}CancelApprovalDemo();if (!finished) { pet.Settings.OnboardingState = "deferred"; Persist(); finished = true; } }
         void RefreshLanguageNavigation(object sender,EventArgs args){if(finished)return;updatingContents=true;try{contents.ItemsSource=OnboardingLessons.Chapters.Select((s,i)=>(i+1)+" · "+s).ToArray();contents.SelectedIndex=Step;}finally{updatingContents=false;}}
         void ClosedGuide(object sender, EventArgs args) { TextResources.LanguageChanged-=RefreshLanguageNavigation; readiness.Stop(); if (textTest != null) textTest.Cancel(); pet.GuideWorkspacePractice = false; RestoreNetworkPreview(); ReleaseScopes(); RemoveHighlight(); pet.SetGuideLock(false); pet.SetGuideInteraction(""); pet.GuideInteractionCompleted -= InteractionCompleted; settingsHost.Closing -= OwnerClosing; settingsHost.LocationChanged -= OwnerMoved; settingsHost.SizeChanged -= OwnerSized; settingsHost.StateChanged -= OwnerMoved; settingsHost.IsVisibleChanged -= OwnerVisibilityChanged; if(!ownerClosing && pet.Settings.OnboardingState=="completed")pet.ShowChat();else if (!ownerClosing && !settingsHost.IsVisible && settingsHost.IsLoaded) ShowSettingsHost(); }
 static Button Small(System.Func<string> text, string name){return LocalizedUi.With(Small(text(),name),"Content",text);}    }

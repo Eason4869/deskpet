@@ -416,6 +416,11 @@ namespace Dafeiyu
             var view=new PetSettings{Text=(connection ?? new ConnectionSettings()).Copy(),TextProviders=group.Providers,ActiveTextProviderId=group.ActiveProviderId};view.EnsureTextProviders();
             group.Providers=view.TextProviders;group.ActiveProviderId=view.ActiveTextProviderId;return view;
         }
+        public ServiceProviderSettings ProviderSnapshot(string kind)
+        {
+            var view=ProviderView(kind);view.EnsureTextProviders();
+            return new ServiceProviderSettings{Providers=view.TextProviders,ActiveProviderId=view.ActiveTextProviderId}.Copy();
+        }
         public void ApplyProviders(string kind,List<TextProviderSettings> providers,string active,ConnectionSettings connection)
         {
             if(kind=="text"){TextProviders=providers;ActiveTextProviderId=active;Text=connection;return;}
@@ -443,7 +448,7 @@ namespace Dafeiyu
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var images=new List<ImageGenerationProvider>();if(ImageProviders!=null)foreach(var provider in ImageProviders)if(provider!=null)images.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
+            return new PetSettings { ThemeMode=ThemeMode,UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
                 ImageGenerationConcurrency=ImageGenerationConcurrency,ImageGenerationMotionEnabled=ImageGenerationMotionEnabled,ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
@@ -451,14 +456,17 @@ namespace Dafeiyu
         }
     }
 
-    public sealed class SettingsStore
+    public sealed partial class SettingsStore
     {
         private readonly string path;
-        readonly System.Threading.SemaphoreSlim writes=new System.Threading.SemaphoreSlim(1,1);
-        string committedLanguage;
+        readonly WriteState writeState;
+        System.Threading.SemaphoreSlim writes{get{return writeState.Gate;}}
+        string committedLanguage{get{return writeState.Language;}set{writeState.Language=value;}}
+        int completedSnapshotWrites;
+        internal int CompletedSnapshotWrites{get{return System.Threading.Volatile.Read(ref completedSnapshotWrites);}}
         public string Warning { get; private set; }
         public string DirectoryPath { get { return Path.GetDirectoryName(path); } }
-        public SettingsStore(string filePath) { path = Path.GetFullPath(filePath); }
+        public SettingsStore(string filePath) { path = Path.GetFullPath(filePath);writeState=GetWriteState(path); }
         public PetSettings Load()
         {
             Warning = "";
@@ -496,10 +504,15 @@ namespace Dafeiyu
             if(settings==null)throw new ArgumentNullException("settings");
             SaveLanguageSelection(settings,code,false);
         }
-        internal void SaveLanguageSelection(PetSettings settings,string code,bool guide)
+        internal void SaveLanguageSelection(PetSettings settings,string code,bool guide){SaveLanguageSelectionCore(settings,code,guide,false);}
+        internal System.Threading.Tasks.Task SaveLanguageSelectionAsync(PetSettings detached,string code,bool guide)
+        {return System.Threading.Tasks.Task.Run(()=>SaveLanguageSelectionCore(detached,code,guide,true));}
+        void SaveLanguageSelectionCore(PetSettings settings,string code,bool guide,bool ownsPublication)
         {
-            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            if(!ownsPublication&&(System.Threading.Volatile.Read(ref writeState.Resetting)!=0||System.Threading.Volatile.Read(ref writeState.Publishing)!=0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            writes.Wait();
             try{
+                if(!ownsPublication&&(System.Threading.Volatile.Read(ref writeState.Resetting)!=0||System.Threading.Volatile.Read(ref writeState.Publishing)!=0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
                 var json=new System.Web.Script.Serialization.JavaScriptSerializer{MaxJsonLength=16*1024*1024,RecursionLimit=128};
                 Dictionary<string,object> values;
                 try{
@@ -518,8 +531,10 @@ namespace Dafeiyu
                     string output="{"+String.Join(",",values.Select(pair=>json.Serialize(pair.Key)+":"+(string)pair.Value))+"}";
                     var bytes=new UTF8Encoding(false).GetBytes(output);stream.Write(bytes,0,bytes.Length);stream.Flush(true);
                 }
+                if(BeforeLanguageCommit!=null)BeforeLanguageCommit();
                 AtomicFile.Commit(temporary,path);
                 committedLanguage=normalized;settings.UiLanguage=normalized;
+                if(guide){long order=System.Threading.Interlocked.Increment(ref writeState.Order);foreach(string field in new[]{"OnboardingLessonId","OnboardingStep","OnboardingState"})writeState.Fields[field]=order;}
                 if(guide){settings.OnboardingLessonId="welcome";settings.OnboardingStep=0;settings.OnboardingState="deferred";}
                 Warning="";
             }finally{writes.Release();}
@@ -562,8 +577,9 @@ namespace Dafeiyu
         }
         public void Save(PetSettings settings)
         {
-            if(!writes.Wait(0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
-            try{settings.Normalize();SaveSnapshot(settings);}finally{writes.Release();}
+            if((System.Threading.Volatile.Read(ref writeState.Resetting)!=0||System.Threading.Volatile.Read(ref writeState.Publishing)!=0))throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            writes.Wait();
+            try{if((System.Threading.Volatile.Read(ref writeState.Resetting)!=0||System.Threading.Volatile.Read(ref writeState.Publishing)!=0))throw new IOException(TextResources.Get("dataMaintenance.busy"));settings.Normalize();SaveSnapshot(settings,System.Threading.Interlocked.Increment(ref writeState.Order));}finally{writes.Release();}
         }
         // Save a detached candidate before publishing preferences. Deliberately
         // avoid Normalize here: provider migration is outside this operation.
@@ -571,19 +587,25 @@ namespace Dafeiyu
         {
             if(settings==null)throw new ArgumentNullException("settings");
             if(gate==null)throw new ArgumentNullException("gate");
-            using(await gate.BeginAsync()){
-                await writes.WaitAsync();
-                try{var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));CopyPreferences(candidate,settings);}
-                finally{writes.Release();}
-            }
+            if(System.Threading.Interlocked.CompareExchange(ref writeState.Resetting,1,0)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
+            try{using(await gate.BeginAsync()){
+                if(System.Threading.Volatile.Read(ref writeState.Publishing)!=0)throw new IOException(TextResources.Get("dataMaintenance.busy"));
+                var candidate=Snapshot(settings);CopyPreferences(new PetSettings(),candidate);
+                await WriteExactCandidateAsync(candidate);CopyPreferences(candidate,settings);
+            }}finally{System.Threading.Volatile.Write(ref writeState.Resetting,0);}
         }
-        // Snapshot on the caller's UI context; only durable I/O runs on a worker.
-        // Position autosaves must not migrate retained provider configuration.
-        public async System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        // Snapshot on the caller's UI context; lock ownership and durable I/O
+        // stay entirely on the worker, so synchronous saves cannot deadlock UI.
+        public System.Threading.Tasks.Task SaveExactSnapshotAsync(PetSettings settings)
+        {if((System.Threading.Volatile.Read(ref writeState.Resetting)!=0||System.Threading.Volatile.Read(ref writeState.Publishing)!=0))throw new IOException(TextResources.Get("dataMaintenance.busy"));return WriteExactCandidateAsync(Snapshot(settings));}
+        internal System.Threading.Tasks.Task SaveDetachedSnapshotAsync(PetSettings candidate){return WriteExactCandidateAsync(candidate,true);}
+        System.Threading.Tasks.Task WriteExactCandidateAsync(PetSettings candidate,bool normalize=false)
         {
-            await writes.WaitAsync();
-            try{var candidate=Snapshot(settings);await System.Threading.Tasks.Task.Run(()=>SaveSnapshot(candidate));}
-            finally{writes.Release();}
+            long order=System.Threading.Interlocked.Increment(ref writeState.Order);
+            return System.Threading.Tasks.Task.Run(delegate{
+                if(BeforeExactSave!=null)BeforeExactSave();
+                writes.Wait();try{if(normalize)candidate.Normalize();SaveSnapshot(candidate,order);}finally{writes.Release();}
+            });
         }
         internal static PetSettings Snapshot(PetSettings settings)
         {
@@ -608,8 +630,20 @@ namespace Dafeiyu
             target.ImageGalleryLayout=source.ImageGalleryLayout;
             target.Hotkeys=new Dictionary<string,string>(source.Hotkeys);target.LocalShortcuts=new Dictionary<string,string>(source.LocalShortcuts);
         }
-        void SaveSnapshot(PetSettings settings)
+        void SaveSnapshot(PetSettings settings,long order)
         {
+            if(writeState.LastFull>order)throw new IOException("A newer configuration has already been saved.");
+            if(writeState.Fields.Any(p=>p.Value>order)){
+                PetSettings latest;
+                using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))latest=(PetSettings)new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream);
+                foreach(var item in writeState.Fields.Where(p=>p.Value>order))switch(item.Key){
+                    case "Scale":settings.Scale=latest.Scale;break;case "Volume":settings.Volume=latest.Volume;break;
+                    case "X":settings.X=latest.X;break;case "Y":settings.Y=latest.Y;break;
+                    case "OnboardingLessonId":settings.OnboardingLessonId=latest.OnboardingLessonId;break;
+                    case "OnboardingStep":settings.OnboardingStep=latest.OnboardingStep;break;
+                    case "OnboardingState":settings.OnboardingState=latest.OnboardingState;break;
+                }
+            }
             if(committedLanguage!=null)settings.UiLanguage=committedLanguage;
             Directory.CreateDirectory(DirectoryPath);
             string temporary = path + ".tmp";
@@ -618,6 +652,8 @@ namespace Dafeiyu
                 using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
                 { new DataContractJsonSerializer(typeof(PetSettings)).WriteObject(stream, settings); stream.Flush(true); }
                 AtomicFile.Commit(temporary,path);
+                writeState.LastFull=Math.Max(writeState.LastFull,order);
+                System.Threading.Interlocked.Increment(ref completedSnapshotWrites);
                 Warning = "";
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }

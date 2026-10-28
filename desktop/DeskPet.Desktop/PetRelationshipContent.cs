@@ -34,6 +34,7 @@ internal sealed partial class PetWindow
         string id=owner.RelationshipCompanionId;
         if(!owner.Relationships.TryEnqueueUserInteraction(id,userOrigin,started,out var completion,out var eventId))return;
         int epoch=++relationshipContentEpoch,revision=relationshipActionRevision,suppression=owner.Relationships.FeedbackSuppressionVersion;var skin=owner.Skin;var pack=owner.RelationshipPack;string locale=TextResources.CurrentLanguage;bool admitted=RelationshipInteractionAllowed(id);
+        if(!RelationshipFeedbackPolicy.ShowInteraction(random.NextDouble()))return;
         try{
             await completion;
             if(!admitted||epoch!=relationshipContentEpoch||revision!=relationshipActionRevision||!ReferenceEquals(skin,owner.Skin)||!RelationshipInteractionAllowed(id)||suppression!=owner.Relationships.FeedbackSuppressionVersion||owner.Relationships.PendingCount!=0||owner.Relationships.RequiresRestart||owner.Relationships.Warning.Length!=0)return;

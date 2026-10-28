@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,9 +10,11 @@ namespace Dafeiyu
     {
         readonly ListBox choices;
         readonly TextBlock notice;
-        readonly Action<string> save;
+        readonly Func<string,Task<bool>> save;bool saving;
         internal string SelectedLanguage {get{return (string)((ListBoxItem)choices.SelectedItem).Tag;}}
-        internal LanguagePickerWindow(string selected,Action<string> saveSelection)
+        internal LanguagePickerWindow(string selected,Action<string> saveSelection):this(selected,code=>{saveSelection(code);return Task.FromResult(true);}){}
+        internal static LanguagePickerWindow CreateAsync(string selected,Func<string,Task<bool>> saveSelection){return new LanguagePickerWindow(selected,saveSelection);}
+        LanguagePickerWindow(string selected,Func<string,Task<bool>> saveSelection)
         {
             Name="LanguagePickerWindow";save=saveSelection;
             LocalizedUi.Window(this,()=>(TextResources.Get("menus.language")),640,560);
@@ -35,8 +38,14 @@ namespace Dafeiyu
             var footer=new StackPanel{Margin=new Thickness(0,16,0,0)};notice=Ui.Text("",12,Ui.Muted);notice.Name="LanguageSelectionNotice";footer.Children.Add(notice);
             var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
             var cancel=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")));cancel.Name="CancelLanguageSelection";cancel.IsCancel=true;cancel.Click+=delegate{Close();};actions.Children.Add(cancel);
-            var confirm=LocalizedUi.Button(()=>(TextResources.Get("common.save")));confirm.Name="SaveLanguageSelection";confirm.IsDefault=true;confirm.Margin=new Thickness(10,0,0,0);confirm.Click+=delegate{try{save(SelectedLanguage);Close();}catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException))throw;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));}};actions.Children.Add(confirm);footer.Children.Add(actions);Grid.SetRow(footer,2);body.Children.Add(footer);
+            var confirm=LocalizedUi.Button(()=>(TextResources.Get("common.save")));confirm.Name="SaveLanguageSelection";confirm.IsDefault=true;confirm.Margin=new Thickness(10,0,0,0);confirm.Click+=async delegate{
+                if(saving)return;string selectedCode=SelectedLanguage;saving=true;body.IsEnabled=false;bool close=false;
+                try{close=await save(selectedCode);if(!close)LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));}
+                catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is System.Security.SecurityException))throw;LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));}
+                finally{saving=false;body.IsEnabled=true;}if(close)Close();
+            };actions.Children.Add(confirm);footer.Children.Add(actions);Grid.SetRow(footer,2);body.Children.Add(footer);
             confirm.IsEnabled=choices.SelectedItem!=null;choices.SelectionChanged+=delegate{confirm.IsEnabled=choices.SelectedItem!=null;};
+            Closing+=delegate(object sender,System.ComponentModel.CancelEventArgs args){if(saving)args.Cancel=true;};
             DialogUi.Apply(this,body);Loaded+=delegate{choices.ScrollIntoView(choices.SelectedItem);choices.Focus();};
         }
     }

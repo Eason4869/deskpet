@@ -36,6 +36,7 @@ namespace Dafeiyu
                 next.SidebarSectionLabels=current.SidebarSectionLabels;
                 next.Sections=current.Sections;
                 next.RecentIncludeProjects=current.RecentIncludeProjects;
+                next.RecentShowProjectConversations=current.RecentShowProjectConversations;
             };
             store.AfterSave=next=>baseline=ProjectCatalogStore.WorkBindingSignature(next);
         }

@@ -8,7 +8,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
 {
     private readonly DesktopController owner;
     private readonly string kind;
-    private readonly PetSettings view;
+    private readonly ServiceProviderSettings view;
     private readonly ComboBox providers = new() { MinWidth = 180, MaxWidth = 280, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
     private readonly TextBox name = Ui.Input(), address = Ui.Input(), key = Ui.Input(), model = Ui.Input(), alias = Ui.Input(), proxy = Ui.Input();
     private readonly ComboBox protocol = new() { ItemsSource = new[] { "auto", "openai", "anthropic", "mimo", "gemini-live" } };
@@ -23,7 +23,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     public ProviderEditor(DesktopController controller, string service)
     {
         owner = controller; kind = service; Spacing = 12;
-        view = owner.Settings.Copy().ProviderView(kind); view.EnsureTextProviders();
+        view = owner.Settings.ProviderSnapshot(kind);
         key.PasswordChar = '●';
         var presets = LocalizedUi.With(new ComboBox { ItemsSource = ServicePresets.For(kind), PlaceholderText = TextResources.Get("providerEditor.providerEditor.placeholderText") },"PlaceholderText",()=>(TextResources.Get("providerEditor.providerEditor.placeholderText")));
         presets.SelectionChanged += (_, _) =>
@@ -51,11 +51,11 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         Children.Add(SettingsVisual.Wrap(LocalizedUi.AsyncButton(()=>(TextResources.Get("providerEditor.providerEditor.asyncButton")), FetchAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeD")), CancelFetch)));
         Children.Add(new ScrollViewer { Content = found, MaxHeight = 220 }); Children.Add(notice);
         Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeE")), Save));
-        ReloadProviders(view.ActiveTextProviderId);
+        ReloadProviders(view.ActiveProviderId);
     }
     private void ReloadProviders(string id)
     {
-        loading = true; providers.ItemsSource = null; providers.ItemsSource = view.TextProviders; selected = view.TextProviders.FirstOrDefault(p => p.Id == id) ?? view.TextProviders[0]; providers.SelectedItem = selected; loading = false; LoadFields();
+        loading = true; providers.ItemsSource = null; providers.ItemsSource = view.Providers; selected = view.Providers.FirstOrDefault(p => p.Id == id) ?? view.Providers[0]; providers.SelectedItem = selected; loading = false; LoadFields();
     }
     private void LoadFields()
     {
@@ -78,13 +78,13 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     }
     private void AddProvider()
     {
-        try { Capture(); CancelFetch(); if (view.TextProviders.Count >= 32) throw new InvalidOperationException(TextResources.Get("providerEditor.addProvider.text")); var item = new TextProviderSettings(); view.TextProviders.Add(item); ReloadProviders(item.Id); } catch (Exception e) { owner.Error(e); }
+        try { Capture(); CancelFetch(); if (view.Providers.Count >= 32) throw new InvalidOperationException(TextResources.Get("providerEditor.addProvider.text")); var item = new TextProviderSettings(); view.Providers.Add(item); ReloadProviders(item.Id); } catch (Exception e) { owner.Error(e); }
     }
     private void RemoveProvider()
     {
         if (selected == null) return;
-        if (view.TextProviders.Count == 1) { owner.Error(new InvalidOperationException(TextResources.Get("providerEditor.removeProvider.ownerError"))); return; }
-        CancelFetch(); view.TextProviders.Remove(selected); ReloadProviders(view.TextProviders[0].Id);
+        if (view.Providers.Count == 1) { owner.Error(new InvalidOperationException(TextResources.Get("providerEditor.removeProvider.ownerError"))); return; }
+        CancelFetch(); view.Providers.Remove(selected); ReloadProviders(view.Providers[0].Id);
     }
     private void AddModel()
     {
@@ -125,8 +125,8 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         {
             if (owner.Session.IsBusy || owner.Live.IsActive) throw new InvalidOperationException(TextResources.Get("providerEditor.save.text"));
             Capture(); if (selected == null) return;
-            view.ActiveTextProviderId = selected.Id; view.Text = selected.Connection.Copy();
-            owner.Settings.ApplyProviders(kind, view.TextProviders.Select(p => p.Copy()).ToList(), selected.Id, selected.Connection.Copy());
+            view.ActiveProviderId = selected.Id;
+            owner.Settings.ApplyProviders(kind, view.Providers.Select(p => p.Copy()).ToList(), selected.Id, selected.Connection.Copy());
             owner.Save(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.save.notice")));
         }
         catch (Exception e) { owner.Error(e); }

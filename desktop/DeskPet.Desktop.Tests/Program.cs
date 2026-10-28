@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -45,6 +45,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--preparation-ui")){Console.WriteLine("PreparationUiChecks: "+PreparationUiChecks.Run(Path.Combine(directory,"preparation-ui"))+" passed");return;}
+    if(args.Contains("--settings-lazy")){Console.WriteLine("SettingsLazyChecks: "+SettingsLazyChecks.Run(Path.Combine(directory,"settings-lazy"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-fresh="))){Console.WriteLine("ProfileFresh: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-fresh"),args.Single(a=>a.StartsWith("--profile-fresh=")).Split('=')[1],freshOnly:true)+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-art="))){Console.WriteLine("ProfileArtwork: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-art"),args.Single(a=>a.StartsWith("--profile-art=")).Split('=')[1])+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-type="))){Console.WriteLine("ProfileTypography: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-typography"),args.Single(a=>a.StartsWith("--profile-type=")).Split('=')[1],true)+" passed");return;}
@@ -61,6 +63,8 @@ try
         Console.WriteLine("MaintenanceDefaultSequence: "+(sequence+assertions)+" passed");return;
     }
     if(args.Any(a=>a.StartsWith("--stage-track-layout="))){Console.WriteLine("StageTrackLayout: "+CompanionHomeUiChecks.RunStageTrackLayout(Path.Combine(directory,"stage-track"),args.Single(a=>a.StartsWith("--stage-track-layout=")).Split('=')[1])+" passed");return;}
+    if(args.Contains("--im-channels-ui-all-locales")){foreach(var locale in new[]{"zh_CN","zh_TW","en_US","ja_JP","ko_KR","fr_FR","de_DE","hi_IN","id_ID","it_IT","pt_BR","es_419","es_ES"})Console.WriteLine("ImChannels UI "+locale+": "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"im-channels-"+locale),locale,true)+" passed");return;}
+    if(args.Contains("--im-channels-ui")){Console.WriteLine("ImChannels UI: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"im-channels"),"zh_CN",true)+" passed");return;}
     if(args.Any(a=>a.StartsWith("--feature-navigation-ui="))){var locale=args.Single(a=>a.StartsWith("--feature-navigation-ui=")).Split('=')[1];Console.WriteLine("FeatureNavigationUiChecks: "+FeatureNavigationUiChecks.Run(Path.Combine(directory,"feature-navigation"),locale)+" passed");return;}
     if(args.Contains("--deferred-cache-only")){Console.WriteLine("PASS: "+CompleteCompanionChecks.RunDeferred(Path.Combine(directory,"deferred"))+" render-deferred cache checks");return;}
     if(args.Contains("--composer-drafts-only")){Console.WriteLine("PASS: "+ComposerDraftUiChecks.Run(Path.Combine(directory,"composer-drafts"))+" native composer draft isolation checks");return;}

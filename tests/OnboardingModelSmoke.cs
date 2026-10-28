@@ -21,6 +21,7 @@ namespace Dafeiyu.Tests
         static int passed;
         [STAThread] public static int Main()
         {
+            AppDomain.CurrentDomain.UnhandledException+=delegate(object sender,UnhandledExceptionEventArgs args){var error=args.ExceptionObject as Exception;if(error!=null)Console.Error.WriteLine("Unhandled type="+error.GetType().FullName+" stack="+error.StackTrace);};
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
             string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"onboarding-models-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
             try

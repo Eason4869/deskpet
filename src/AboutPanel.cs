@@ -44,7 +44,7 @@ namespace Dafeiyu
             channelNotice=Ui.Text("",11,Ui.Muted);update.Children.Add(channelNotice);
             channel.SelectionChanged+=delegate{if(!initializing){updates.ChangeChannel(channel.SelectedIndex==1?UpdateChannel.Preview:UpdateChannel.Stable);Refresh();}};
             status=Ui.Text("",12);status.Name="UpdateStatus";status.Margin=new Thickness(0,6,0,8);update.Children.Add(status);
-            var actions=new WrapPanel();check=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeA")),true);check.Name="CheckUpdates";check.Click+=async delegate{if(updates.IsReadyToInstall)await updates.InstallPendingNowAsync();else if(SaveNetwork())await updates.CheckAndUpdateAsync(true);};actions.Children.Add(check);
+            var actions=new WrapPanel();check=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeA")),true);check.Name="CheckUpdates";check.Click+=async delegate{if(updates.IsReadyToInstall)await updates.InstallPendingNowAsync();else if(await SaveNetworkAsync())await updates.CheckAndUpdateAsync(true);};actions.Children.Add(check);
             cancel=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeB")));cancel.Name="CancelUpdate";cancel.Click+=delegate{updates.Cancel();};actions.Children.Add(cancel);update.Children.Add(actions);
             progress=new ProgressBar{Name="UpdateProgress",Minimum=0,Maximum=100,Height=5,Margin=new Thickness(0,12,0,0),Visibility=Visibility.Collapsed};update.Children.Add(progress);
             progressLabel=Ui.Text("",11,Ui.Blue);update.Children.Add(progressLabel);routeLabel=Ui.Text("",11,Ui.Muted);routeLabel.Name="UpdateRoute";routeLabel.Margin=new Thickness(0,6,0,0);update.Children.Add(routeLabel);
@@ -59,13 +59,13 @@ namespace Dafeiyu
             builtinMirrors=new RadioButton[mirrorPresets.Length];
             foreach(int i in Enumerable.Range(0,mirrorPresets.Length).OrderBy(index=>mirrorPresets[index].Length)){var option=Choice(()=> (mirrorPresets[i]),i==0?"DefaultUpdateMirror":"BuiltinUpdateMirror"+i,"UpdateMirrorChoice",savedMirror==mirrorPresets[i]);option.Tag=mirrorPresets[i];builtinMirrors[i]=option;AddMirrorRow(option,mirrorPresets[i],i.ToString());}
             customMirror=Choice(()=> (TextResources.Get("aboutPanel.aboutPanel.choice.alternativeB")),"CustomUpdateMirror","UpdateMirrorChoice",custom && savedMirror!=null);AddMirrorRow(customMirror,TextResources.Get("aboutPanel.aboutPanel.addMirrorRow"),"Custom");
-            mirrorAddress=Ui.Field(custom?pet.Settings.UpdateMirrorAddress:"");mirrorAddress.Name="UpdateMirrorAddress";mirrorAddress.Margin=new Thickness(22,0,0,7);mirrorAddress.LostFocus+=delegate{if(customMirror.IsChecked==true)SaveNetwork();};mirrorOptions.Children.Add(mirrorAddress);mirrorAddress.TextChanged+=delegate{if(!initializing){SetMirrorResult(customMirror,TextResources.Get("aboutPanel.aboutPanel.setMirrorResult"),null);Refresh();}};
+            mirrorAddress=Ui.Field(custom?pet.Settings.UpdateMirrorAddress:"");mirrorAddress.Name="UpdateMirrorAddress";mirrorAddress.Margin=new Thickness(22,0,0,7);mirrorAddress.LostFocus+=async delegate{if(customMirror.IsChecked==true)await SaveNetworkAsync();};mirrorOptions.Children.Add(mirrorAddress);mirrorAddress.TextChanged+=delegate{if(!initializing){SetMirrorResult(customMirror,TextResources.Get("aboutPanel.aboutPanel.setMirrorResult"),null);Refresh();}};
             testMirror=LocalizedUi.Button(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeC")));testMirror.Name="TestUpdateMirror";testMirror.HorizontalAlignment=HorizontalAlignment.Left;testMirror.FontSize=12;testMirror.Margin=new Thickness(10,0,0,0);testMirror.Click+=async delegate{await TestMirrorsAsync();};mirrorHeading.Children.Add(testMirror);
             mirrorOptions.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeD")),11,Ui.Muted));networkBody.Children.Add(mirrorOptions);
             proxy=Choice(()=> (TextResources.Get("aboutPanel.aboutPanel.choice.alternativeC")),"UpdateProxy","UpdateNetworkMode",pet.Settings.UpdateUseProxy);networkBody.Children.Add(proxy);
-            proxyOptions=new StackPanel{Margin=new Thickness(24,0,0,9)};proxyAddress=Ui.Field(ProxyConfiguration.DisplayAddress(pet.Settings.UpdateProxyAddress));proxyAddress.Name="UpdateProxyAddress";proxyAddress.LostFocus+=delegate{SaveNetwork();};proxyOptions.Children.Add(proxyAddress);proxyOptions.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeE")),11,Ui.Muted));networkBody.Children.Add(proxyOptions);
+            proxyOptions=new StackPanel{Margin=new Thickness(24,0,0,9)};proxyAddress=Ui.Field(ProxyConfiguration.DisplayAddress(pet.Settings.UpdateProxyAddress));proxyAddress.Name="UpdateProxyAddress";proxyAddress.LostFocus+=async delegate{await SaveNetworkAsync();};proxyOptions.Children.Add(proxyAddress);proxyOptions.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("aboutPanel.aboutPanel.text.alternativeE")),11,Ui.Muted));networkBody.Children.Add(proxyOptions);
             networkNotice=Ui.Text("",11,Ui.Muted);networkNotice.Name="UpdateNetworkNotice";networkBody.Children.Add(networkNotice);network.Content=networkBody;panel.Children.Add(network);
-            foreach(var option in new[]{direct,mirror,proxy,customMirror}.Concat(builtinMirrors))option.Checked+=delegate{if(!initializing){RefreshNetwork();SaveNetwork();Refresh();}};
+            foreach(var option in new[]{direct,mirror,proxy,customMirror}.Concat(builtinMirrors))option.Checked+=async delegate{if(!initializing){RefreshNetwork();await SaveNetworkAsync();Refresh();}};
             panel.Children.Add(new Border{Height=1,Background=Ui.Line,Margin=new Thickness(0,0,0,15)});panel.Children.Add(Heading(()=>(TextResources.Get("aboutPanel.aboutPanel.heading.alternativeA")),14));
             var repository=Ui.Text("",12,Ui.Blue);repository.Name="RepositoryUrl";repository.Margin=new Thickness(0,5,0,10);
             var link=new Hyperlink(new Run(ReleaseInfo.RepositoryUrl)){NavigateUri=new Uri(ReleaseInfo.RepositoryUrl)};link.RequestNavigate+=delegate(object sender,System.Windows.Navigation.RequestNavigateEventArgs args){args.Handled=true;Open(ReleaseInfo.RepositoryUrl);};repository.Inlines.Add(link);panel.Children.Add(repository);
@@ -84,11 +84,18 @@ namespace Dafeiyu
             try{if(proxy.IsChecked==true)ProxyConfiguration.Endpoint(ProxyConfiguration.Normalize(proxyAddress.Text));if(mirror.IsChecked==true){string address=GitHubUpdates.MirrorPrefix(SelectedMirror);if(!testedMirrors.Contains(address) && address!=savedMirror)throw new InvalidOperationException(TextResources.Get("aboutPanel.validateNetwork.text"));}error="";return true;}
             catch(InvalidOperationException e){error=e.Message;return false;}
         }
-        internal bool SaveNetwork()
+        internal bool SaveNetwork(){return SaveNetworkCoreAsync(change=>Task.FromResult(pet.CommitSettingsNow(change))).GetAwaiter().GetResult();}
+        internal Task<bool> SaveNetworkAsync(){return pet.RunSettingsEditAsync(this,()=>SaveNetworkCoreAsync(change=>pet.PersistSettingsAsync(change)));}
+        async Task<bool> SaveNetworkCoreAsync(Func<Action<PetSettings>,Task<bool>> commit)
         {
             if(initializing || disposed)return false;string error;if(!ValidateNetwork(out error)){networkNotice.Text=mirror.IsChecked==true && String.IsNullOrEmpty(SelectedMirror)?TextResources.Get("aboutPanel.saveNetwork.trueStringIsNullOrEmpty"):error;return false;}
-            try{string proxyValue=pet.Settings.UpdateProxyAddress,mirrorValue=pet.Settings.UpdateMirrorAddress;if(proxy.IsChecked==true){proxyValue=ProxyConfiguration.DisplayAddress(proxyAddress.Text);ProxyConfiguration.Endpoint(proxyValue);}if(mirror.IsChecked==true)mirrorValue=GitHubUpdates.MirrorPrefix(SelectedMirror);pet.Settings.UpdateUseProxy=proxy.IsChecked==true;pet.Settings.UpdateUseMirror=mirror.IsChecked==true;pet.Settings.UpdateProxyAddress=proxyValue;if(proxy.IsChecked==true)proxyAddress.Text=proxyValue;pet.Settings.UpdateMirrorAddress=mirrorValue;if(mirror.IsChecked==true)savedMirror=mirrorValue;pet.SaveSettings();LocalizedUi.Set(networkNotice,"Text",()=>(TextResources.Get("aboutPanel.saveNetwork.networkNotice")));return true;}
-            catch(InvalidOperationException e){networkNotice.Text=e.Message;updates.ReportValidation(e.Message);return false;}
+            try{
+                bool useProxy=proxy.IsChecked==true,useMirror=mirror.IsChecked==true;
+                string proxyValue=pet.Settings.UpdateProxyAddress,mirrorValue=pet.Settings.UpdateMirrorAddress;
+                if(useProxy){proxyValue=ProxyConfiguration.DisplayAddress(proxyAddress.Text);ProxyConfiguration.Endpoint(proxyValue);}if(useMirror)mirrorValue=GitHubUpdates.MirrorPrefix(SelectedMirror);
+                if(!await commit(target=>{target.UpdateUseProxy=useProxy;target.UpdateUseMirror=useMirror;target.UpdateProxyAddress=proxyValue;target.UpdateMirrorAddress=mirrorValue;})){networkNotice.Text=pet.Notice;return false;}
+                if(useProxy)proxyAddress.Text=proxyValue;if(useMirror)savedMirror=mirrorValue;LocalizedUi.Set(networkNotice,"Text",()=>(TextResources.Get("aboutPanel.saveNetwork.networkNotice")));return true;
+            }catch(InvalidOperationException e){networkNotice.Text=e.Message;updates.ReportValidation(e.Message);return false;}
         }
         void AddMirrorRow(RadioButton option,string address,string suffix)
         {

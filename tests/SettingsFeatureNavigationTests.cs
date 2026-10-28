@@ -18,10 +18,11 @@ namespace Dafeiyu.Tests
     // Actual WPF textbox/list/route coverage. Runs only on the caller's owned desktop.
     public static class SettingsFeatureNavigationTests
     {
-        static int checks;static Application app;static PetWindow pet;
+        static int checks;static Application app;static PetWindow pet;static bool layoutBoundary;static string phase="startup",isolatedTheme;
         static void Check(bool condition,string reason){if(!condition)throw new Exception(reason);checks++;Console.WriteLine("PASS "+reason);}
         static IEnumerable<T> All<T>(DependencyObject root)where T:DependencyObject{if(root==null)yield break;if(root is T)yield return(T)root;for(int i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in All<T>(VisualTreeHelper.GetChild(root,i)))yield return child;}
-        static T Named<T>(DependencyObject root,string name)where T:FrameworkElement{var matches=All<T>(root).Where(c=>c.Name==name).ToArray();if(matches.Length!=1)throw new Exception("Expected one "+typeof(T).Name+" "+name+" found "+matches.Length+" in "+root.GetType().Name);return matches[0];}
+        static T Named<T>(DependencyObject root,string name)where T:FrameworkElement{var element=root as FrameworkElement;if(element!=null){element.ApplyTemplate();element.UpdateLayout();}var matches=All<T>(root).Where(c=>c.Name==name).ToArray();if(matches.Length!=1)throw new Exception("Expected one "+typeof(T).Name+" "+name+" found "+matches.Length+" in "+root.GetType().Name);return matches[0];}
+        static void Trace(string value){phase=value;using(var process=System.Diagnostics.Process.GetCurrentProcess())Console.WriteLine("NAVIGATION_PHASE "+phase+" private_bytes="+process.PrivateMemorySize64+" managed_bytes="+GC.GetTotalMemory(false));Console.Out.Flush();}
         static void Click(Button button){button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}
         static void Key(UIElement control,System.Windows.Input.Key key){control.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(control),0,key){RoutedEvent=Keyboard.PreviewKeyDownEvent});}
         [DllImport("user32.dll",EntryPoint="PostMessageW",SetLastError=true)]static extern bool PostMessage(IntPtr window,uint message,IntPtr key,IntPtr flags);
@@ -33,13 +34,15 @@ namespace Dafeiyu.Tests
         {
             TextResources.ConfigureStartupLanguage(locale);
             string root=Path.GetFullPath(Path.Combine("work","feature-navigation","wpf-"+locale+"-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
-            var cfg=new PetSettings{UiLanguage=locale,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,SaveChatHistory=false,ReadReplies=false,AgentWorkspace=Path.Combine(root,"workspace")};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+            var cfg=new PetSettings{UiLanguage=locale,AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,SaveChatHistory=false,ReadReplies=false,AgentWorkspace=Path.Combine(root,"workspace")};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="offline-fixture"};
+            if(isolatedTheme!=null){cfg.ThemeMode=isolatedTheme;ThemeManager.Apply(isolatedTheme);}
             var store=new SettingsStore(Path.Combine(root,"data","settings.json"));store.Save(cfg);
             pet=new PetWindow(null,cfg,store,null);pet.ShowChat();await Task.Delay(130);
             var chat=app.Windows.OfType<ChatWindow>().Single();chat.Width=1100;chat.Height=800;
             var draft=Named<MarkdownEditor>(chat,"MessageInput");draft.Text="S3 unsent composer";
             pet.ShowSettings();await Task.Delay(100);var page=Named<SettingsPage>(chat,"SettingsPage");
             chat.UpdateLayout();page.UpdateLayout();var search=Named<TextBox>(page,"SettingsCategorySearch");var navigation=Named<ListBox>(page,"SettingsNavigation");
+            search.Focus();await Task.Delay(40);var searchHint=((Grid)search.Parent).Children.OfType<TextBlock>().Single();var caret=search.GetRectFromCharacterIndex(0);var hintOrigin=searchHint.TranslatePoint(new Point(),search);Check(!caret.IsEmpty&&Math.Abs(hintOrigin.X-caret.X)<=.5&&Math.Abs(hintOrigin.Y-caret.Y)<=.5&&searchHint.FontSize==search.FontSize,"settings search placeholder aligns with the insertion point");Check(caret.X>=28&&caret.X<=36,"settings search applies its icon inset once");Capture(chat,Path.Combine(root,"search-placeholder-focused.png"));
             string history=Path.Combine(root,"data","history","s3-navigation-sentinel.json");Directory.CreateDirectory(Path.GetDirectoryName(history));File.WriteAllText(history,"owned history must survive navigation");string cache=Path.Combine(root,"data","updates","s3-navigation-sentinel.bin");Directory.CreateDirectory(Path.GetDirectoryName(cache));File.WriteAllText(cache,"owned cache must survive navigation");
             await pet.FlushDeferredSettingsAsync();string settingsHash=Hash(Path.Combine(root,"data","settings.json"));
             string historyHash=Hash(history),cacheHash=Hash(cache);
@@ -52,7 +55,7 @@ namespace Dafeiyu.Tests
             Check(Named<Button>(page,"ClearCache").IsKeyboardFocusWithin,"first cache search focuses the real action without clicking");
             Check(!app.Windows.OfType<CacheMaintenanceWindow>().Any()&&!app.Windows.OfType<DataActionConfirmationWindow>().Any(),"search does not open cleanup or confirmation dialogs");
             search.Text=(string)((ListBoxItem)navigation.Items[0]).Content;Key(search,System.Windows.Input.Key.Enter);await Task.Delay(30);Check(chat.CurrentPage=="settings"&&page.SelectedNavigationIndex==0,"exact category title keeps ordinary companion settings route");
-            search.Text="";page.SelectAiSection(0);await Task.Delay(40);var model=Named<TextBox>(page,"TextProviderName");string modelBefore=model.Text;model.Text="S3 unsaved provider";
+            search.Text="";page.SelectAiSection(0);if(!layoutBoundary)await Task.Delay(40);var model=Named<TextBox>(page,"TextProviderName");string modelBefore=model.Text;model.Text="S3 unsaved provider";
             page.SelectGeneralSection(1);await Task.Delay(40);var shortcut=Named<TextBox>(page,"Hotkeytab");string shortcutBefore=shortcut.Text;shortcut.Text="Ctrl+Alt+Shift+F12";
             string[] labels={TextResources.Get("dataManagement.title"),TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.restorePreferences")};
             string[] targets={"GeneralHistoryTab","ClearAllHistory","RestoreDefaultPreferences"};
@@ -82,8 +85,8 @@ namespace Dafeiyu.Tests
             Check(!app.Windows.OfType<DataActionConfirmationWindow>().Any()&&!app.Windows.OfType<CacheMaintenanceWindow>().Any()&&!app.Windows.OfType<UninstallConfirmationWindow>().Any(),"all search routes avoid destructive dialog creation");
             page.SelectGeneralSection(0);page.SelectPage(6);search.Text=TextResources.Get("dataManagement.clearHistory");page.SelectPage(7);chat.UpdateLayout();Check(Named<FrameworkElement>(page,"QuietMode").IsVisible,"legacy General route ignores a stale feature search and retains its selected subpage");
             search.Text=TextResources.Get("cache.title");Key(search,System.Windows.Input.Key.Down);Key(navigation,System.Windows.Input.Key.Enter);await Task.Delay(40);Check(page.IsOnAboutPage,"Down then Enter follows actual navigation list");
-            foreach(string theme in new[]{"light","dark"}){
-                ThemeManager.Apply(theme);chat.Width=1100;search.Text=TextResources.Get("dataManagement.clearHistory");Key(search,System.Windows.Input.Key.Enter);await Task.Delay(50);Capture(chat,Path.Combine(root,"search-"+theme+".png"));
+            foreach(string theme in isolatedTheme==null?new[]{"light","dark"}:new[]{isolatedTheme}){
+                Trace(theme+":apply-theme");ThemeManager.Apply(theme);chat.Width=1100;search.Text="";search.Focus();await Task.Delay(50);caret=search.GetRectFromCharacterIndex(0);hintOrigin=searchHint.TranslatePoint(new Point(),search);Check(!caret.IsEmpty&&Math.Abs(hintOrigin.X-caret.X)<=.5&&Math.Abs(hintOrigin.Y-caret.Y)<=.5,"settings search caret stays aligned in "+theme);search.Text=TextResources.Get("dataManagement.clearHistory");Key(search,System.Windows.Input.Key.Enter);await Task.Delay(50);Trace(theme+":capture-search");Capture(chat,Path.Combine(root,"search-"+theme+".png"));
                 chat.Width=620;await Task.Delay(70);Check(!search.IsVisible&&navigation.Items.OfType<ListBoxItem>().All(x=>x.Visibility==Visibility.Visible),"narrow layout keeps all normal destinations "+theme);page.SelectGeneralSection(2);await Task.Delay(40);Check(Named<Button>(page,"ClearAllHistory").IsVisible&&Named<Button>(page,"OpenPreservedAttachments").IsVisible,"narrow data actions and attachment entry remain reachable "+theme);Capture(chat,Path.Combine(root,"narrow-"+theme+".png"));
                 page.SelectNavigation(0);await Task.Delay(20);Check(Named<Button>(page,"OpenCompanionHome").IsVisible,"narrow companion settings includes actual home link");Click(Named<Button>(page,"OpenCompanionHome"));await Task.Delay(80);Check(chat.CurrentPage=="companion"&&ReferenceEquals(home,Named<CompanionHomePage>(chat,"CompanionHomePage")),"normal related link opens same home without search");Click(Named<Button>(chat,"AppBack"));await Task.Delay(40);
             }
@@ -91,6 +94,6 @@ namespace Dafeiyu.Tests
             Console.WriteLine("Settings feature navigation: "+locale+" "+checks+" passed; captures="+root);
             Console.WriteLine("Keyboard evidence: initial cache entry uses Win32 Enter key messages to the fixture's own HWND and actual keyboard focus; remaining cases use routed WPF preview key events. No user-desktop SendInput or macOS acceptance is claimed.");
         }
-        [STAThread]public static int Main(string[] args){if(args.Length==1&&args[0]=="--compile-only")return 0;string locale=args.Length==0?"en_US":args[0];app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int exit=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(locale);exit=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();return exit;}
+        [STAThread]public static int Main(string[] args){if(args.Length==1&&args[0]=="--compile-only")return 0;string locale=args.Length==0?"en_US":args[0];layoutBoundary=args.Contains("--layout-boundary");isolatedTheme=args.FirstOrDefault(a=>a.StartsWith("--theme="));if(isolatedTheme!=null){isolatedTheme=isolatedTheme.Substring(8);if(isolatedTheme!="light"&&isolatedTheme!="dark")return 2;}app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};app.DispatcherUnhandledException+=delegate(object sender,System.Windows.Threading.DispatcherUnhandledExceptionEventArgs error){Console.Error.WriteLine("NAVIGATION_DISPATCHER_FAILURE phase="+phase+" "+error.Exception);};AppDomain.CurrentDomain.UnhandledException+=delegate(object sender,UnhandledExceptionEventArgs error){Console.Error.WriteLine("NAVIGATION_UNHANDLED_FAILURE phase="+phase+" "+error.ExceptionObject);};int exit=1;app.Dispatcher.BeginInvoke(new Action(async delegate{try{await Run(locale);exit=0;}catch(Exception e){Console.Error.WriteLine(e);}finally{foreach(var window in app.Windows.OfType<Window>().ToArray())window.Close();if(pet!=null)pet.Close();app.Shutdown();}}));app.Run();Console.WriteLine("NAVIGATION_PROCESS_EXIT locale="+locale+" result="+exit+" phase="+phase);return exit;}
     }
 }

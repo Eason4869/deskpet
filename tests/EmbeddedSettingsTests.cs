@@ -27,7 +27,7 @@ namespace Dafeiyu.Tests
                 Check(type.GetProperty("HostWindow")!=null && type.GetMethod("SelectNavigation")!=null && type.GetEvent("NavigationChanged")!=null,"page exposes host and navigation contract");
                 if(args.Contains("--contract-only"))return 0;
                 app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
-                var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
+                var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";cfg.Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="offline-fixture"};
                 string scratch=Path.Combine(Directory.GetCurrentDirectory(),"work","embedded-settings-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(scratch);
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(scratch,"settings.json")),null);
                 var page=(UserControl)Activator.CreateInstance(type,new object[]{pet});disposable=(IDisposable)page;

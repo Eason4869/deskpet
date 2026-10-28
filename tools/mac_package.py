@@ -115,6 +115,7 @@ def create_bundle(publish: Path, app: Path, arch: str, version: str, mode: str, 
     resources = contents / 'Resources'
     resources.mkdir()
     shutil.copy2(icon, resources / 'DeskPet.icns')
+    shutil.copy2(ROOT / 'assets/im-logos.LICENSE.txt', resources / 'im-logos.LICENSE.txt')
     for name in native:
         (contents / 'MacOS' / name).chmod(0o755)
     info = {

@@ -1,6 +1,58 @@
-# Changelog
+﻿# Changelog
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
+
+## [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3) — 2026-10-28 · Stable
+
+Published from main, combining the 0.11.2 and 0.11.3 development work since 0.11.1. Assets include Windows installer/portable/standalone application, source and both macOS preview architectures. Five official companion packs retain independent material version `0.11.0-dev.3`; their release location, pack index and application assets use `0.11.3`. Historical development entries and source tags retain their original status; `0.11.3-dev.2` has no separate Release.
+
+- Adds native outbound QQ, WeChat, Feishu, DingTalk and WeCom messaging without a public IP, developer server or additional bot runtime. Remote text conversations use isolated identities, bounded queues/context and encrypted profiles, with no Agent tools. Maintenance and exit stop connections.
+- Improves cancellation, deduplication, stopping, WeChat polling/extra verification, Feishu authentication/heartbeat and DingTalk registration readiness. WPF shows platform logos, status and descriptions; owned connection dialogs generate QR codes by default and offer manual credentials. QQ, Feishu and DingTalk QR flows follow AstrBot; WeCom follows Tencent Octop. Feishu uses domestic Feishu endpoints only.
+- Makes sender and group ID restrictions optional: an empty list leaves that dimension unrestricted, while existing nonempty limits remain active. Group messages still require an actual bot mention. Closing the dialog or switching to manual mode cancels QR polling; cancelled login does not save credentials.
+- Sets affection and interaction-greeting feedback to about 0.9 seconds including entrance and exit. Interaction greetings use a 10% chance without changing actual affection scoring. Holiday albums show only the current companion's unlocked, saved cards, retaining historical paging, exports and recovery.
+- Builds settings pages and AI editors on demand, removes hidden controls, duplicate provider lists and unrelated refreshes, and coalesces scale/volume saves. WPF explicit application/project saves use background transactions and publish only after persistence succeeds. Failures retain drafts; concurrent edits, maintenance draining, restoring defaults and exit remain protected. Failed exit saves cancel closing.
+- Fixes asynchronous persona saves clearing the wrong conversation, duplicate/late guide actions and old save callbacks hiding newer failures. Refreshes complete companion download windows, disables maximization on both UIs and preserves application-owned preparation when the view closes.
+- Shows WPF sidebar section arrows on hover. Recent hides project conversations by default with a persistent context-menu toggle. Disables maximization on confirmation dialogs, adds slim cache-maintenance scrollbars, sizes the holiday retry button to its content and aligns image/settings search text, placeholders and carets.
+- Adds messaging protocol simulations, core, lifecycle, audit and UI regressions, plus settings-save and exit safeguards. Packaged Windows acceptance covers live QR generation on all five platforms, mouse interaction to switch to manual mode and unclipped light/dark dialogs at widths of 680 and 500.
+
+**Verification limits:** real-account QR authorization, incoming messages and replies remain unverified. QR generation does not establish successful real login or message round trips. These WPF UI changes do not establish matching macOS UI acceptance; real Mac login is also unverified. macOS packages remain ad-hoc platform previews without Developer ID signing or notarization. See [messaging channels](docs/im-channels.md); historical development records follow.
+
+## [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2) — 2026-10-28 · Source preview (no Release)
+
+- Replaces the WPF messaging settings page with five platform rows showing logos, status and descriptions. Each opens an owned connection dialog, generates a live QR code by default and offers manual credentials. Closing or switching to manual mode cancels QR polling.
+- Bases QQ, Feishu and DingTalk QR flows on AstrBot and WeCom on Tencent Octop; Feishu uses domestic Feishu endpoints. Optional access limits start collapsed. Empty sender and group ID lists each mean unrestricted access for that dimension; existing nonempty limits remain effective. Group messages still require an actual bot mention.
+- Shows WPF sidebar section arrows on hover. Recent hides project conversations by default, with a persistent context-menu toggle.
+- Disables maximization on WPF data-action confirmations, applies slim scrollbars to cache maintenance and sizes the holiday album retry button to its content. Aligns placeholder text, entered text and carets in image generation and settings search fields.
+- Retains dev.1 lazy settings, transactional background application/project saves and concurrent-edit, maintenance and exit safeguards; see the historical entry below.
+- Adds simulated QR protocol regressions (39 Feishu, 29 WeCom and 55 QQ/DingTalk checks) and passes 39 core messaging checks plus lifecycle, audit and UI regressions. Packaged Windows acceptance covers live QR generation on all five platforms, mouse interaction to switch to manual mode, and unclipped light/dark dialogs at widths of 680 and 500.
+- Real-account QR authorization, incoming messages and replies remain unverified. These Windows UI changes do not establish matching macOS UI acceptance. macOS packages remain ad-hoc previews without Developer ID signing or notarization. See [messaging channels](docs/im-channels.md).
+
+## 0.11.3-dev.1 — 2026-10-28 · Development preview
+
+- Lazily creates settings pages and AI service editors and reuses scroll containers. Empty provider pages skip hidden details; saved connection fields and model dialogs are built when opened.
+- Removes duplicate provider list construction, unrelated voice refreshes and full configuration copies. Scale and volume edits are coalesced, with preview-only pointer dragging.
+- WPF explicit saves for AI, images, global Work/prompt settings, MCP, personas, network, language and model selection commit on workers and publish configuration only after persistence succeeds. Failed saves retain drafts.
+- Project Work settings use a separate background field transaction that preserves concurrent renames, chats and sidebar data. New requests for that project are blocked during publication; existing busy work is refused rather than automatically cancelled.
+- Maintenance and exit drain pending saves. Restoring defaults protects disk commit and in-memory publication; failed exit configuration saves cancel closing and restore the windows.
+- Fixes asynchronous persona saves clearing the wrong conversation, duplicate or late guide actions, and older completion callbacks hiding newer save failures.
+- Refreshes the complete companion download window and disables maximization on both UIs. Closing the progress view preserves application-owned preparation; Stop still cancels it.
+- Adds WPF, shared-core and native settings lifecycle regressions. macOS remains an ad-hoc preview without Developer ID signing or notarization; messaging channels still await real-account acceptance.
+
+## 0.11.2-dev.2 — 2026-10-27 · Development branch (no Release)
+
+- Affection gains and interaction greetings now last about 0.9 seconds including entrance and exit; merging gains or adding stage/greeting content does not restart the lifetime.
+- Interaction greetings use a 10% chance. Affection scoring and actual gain notifications keep their existing rules.
+- Holiday albums show only the current companion’s unlocked, saved keepsakes. Remove locked-card previews while retaining historical paging, exports and recovery.
+- Apply and verify both WPF and Avalonia behavior, including hit/miss probability branches, real scoring, unlocks and companion switches. main 0.11.1 and the existing v0.11.2-dev.1 source tag remain unchanged.
+
+## 0.11.2-dev.1 — 2026-10-27 · Source preview (no Release)
+
+Based on main 0.11.1, submitted to dev; stable main remains unchanged.
+
+- Native outbound messaging for QQ, WeChat, Feishu, DingTalk and WeCom, with credentials/QR login, allowlists and lifecycle controls under Settings → Messaging channels. No public IP, developer server or additional bot runtime.
+- Isolated identities, bounded context/queues, encrypted profiles and no remote Agent tools. All 52 messaging strings are translated in all 13 locales.
+- Fix cancellation races, stop at dedup capacity, WeChat poll timeouts/extra verification, Feishu auth/heartbeat, DingTalk registration readiness and cancelled QR saves. Include an offline guide and Windows/macOS CI checks.
+- See the [plan audit](docs/im-channels-plan-audit.md) and [verification record](docs/im-channels-acceptance.md). Real-account and real Mac login acceptance remain pending; this source tag does not provide installable Release assets.
 
 ## [0.11.1](https://github.com/Eason4869/deskpet/releases/tag/v0.11.1) — 2026-10-27 · Stable
 

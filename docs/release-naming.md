@@ -2,19 +2,19 @@
 
 所有可安装包、运行 ZIP、源码、外观和模板包含版本号；平台包显式区分 Windows 与 macOS，Mac 再区分 CPU。Windows 提供安装／便携包，macOS 按双架构提供预览包；实际版本与附件以 Release 为准。
 
-运行包、源码及模板使用应用发行版本；官方完整伙伴 ZIP 使用独立素材版本，包内 `pack_version` 不因应用发版抬高。0.11.1 的附件如下：
+运行包、源码及模板使用应用发行版本；官方完整伙伴 ZIP 使用独立素材版本，包内 `pack_version` 不因应用发版抬高。0.11.3 的附件如下：
 
 | 用途 | 当前命名 |
 | --- | --- |
-| Windows 安装（推荐） | `DeskPet-Windows-Setup-0.11.1.exe` |
-| Windows 便携 | `DeskPet-Windows-0.11.1.zip` |
-| 独立主程序（需完整运行目录） | `DeskPet-Windows-App-0.11.1.exe` |
-| Mac Apple Silicon 预览 | `DeskPet-macOS-0.11.1-arm64-preview.dmg` / `.zip` |
-| Mac Intel 预览 | `DeskPet-macOS-0.11.1-x86_64-preview.dmg` / `.zip` |
-| 源码 | `DeskPet-Source-0.11.1.zip` |
+| Windows 安装（推荐） | `DeskPet-Windows-Setup-0.11.3.exe` |
+| Windows 便携 | `DeskPet-Windows-0.11.3.zip` |
+| 独立主程序（需完整运行目录） | `DeskPet-Windows-App-0.11.3.exe` |
+| Mac Apple Silicon 预览 | `DeskPet-macOS-0.11.3-arm64-preview.dmg` / `.zip` |
+| Mac Intel 预览 | `DeskPet-macOS-0.11.3-x86_64-preview.dmg` / `.zip` |
+| 源码 | `DeskPet-Source-0.11.3.zip` |
 | 五个官方完整角色包 | `DeskPet-Companion-<id>-0.11.0-dev.3.zip`，ID 为 `e-bao`、`dafeiyu`、`marfu`、`xiaobei`、`gugugaga` |
-| 官方角色目录 | `DeskPet-Companions-0.11.1.json` |
-| 创作模板 | `DeskPet-Skin-Template-v2-0.11.1.zip` |
+| 官方角色目录 | `DeskPet-Companions-0.11.3.json` |
+| 创作模板 | `DeskPet-Skin-Template-v2-0.11.3.zip` |
 | 校验 | `SHA256.txt`，覆盖上述全部 15 个实际分发文件，不包含自身 |
 
 合计 16 个附件。ZIP 中的 `0.11.0-dev.3` 是实际素材版本，不改变应用正式通道。0.5.6 的旧安装名及更早外观命名仍保留为历史兼容，既有附件不覆盖。
@@ -52,7 +52,7 @@ Windows EXE 的 AssemblyVersion/FileVersion 保持数字四段（例如 `0.9.5.0
 
 `.github/workflows/windows-release.yml` 接收已存在的不可变 tag，默认 `publish=false`：只构建和上传私有 CI artifact，不创建 Release。工作流校验干净源码、HEAD/tag、main/dev 祖先归属、版本数值、应用与 helper 身份、ZIP/安装器及摘要。
 
-用户后续授权发布时才设置 publish=true：共享发布队列串行执行，正式 latest 必须递增；创建草稿、上传完整附件、逐项验证 GitHub digest，最后一次复核 latest 后公开。查询失败即停止，dev 永不设置 latest。`SHA256.txt` 覆盖最终实际附件，不包含自身。Mac 仍使用已有独立构建/签名流程，数字 bundle 版本与完整显示版本分开，不把 Windows 预览通道冒充 Mac 正式签名。
+设置 publish=true 时：共享发布队列串行执行，正式 latest 必须递增；创建草稿、上传完整附件、逐项验证 GitHub digest，最后一次复核 latest 后公开。查询失败即停止，dev 永不设置 latest。`SHA256.txt` 覆盖最终实际附件，不包含自身。跨平台发布可同时设置 draft_only=true，完成 Windows 摘要验证后保留草稿，待相同 main 提交的 macOS 构建通过并提升附件、核对最终 SHA256 清单后再公开。默认 draft_only=false 保持原有发布行为。Mac 仍使用已有独立构建/签名流程，数字 bundle 版本与完整显示版本分开，不把 Windows 预览通道冒充 Mac 正式签名。
 
 正式发布先核对双语 README／CHANGELOG 和用户教程，再通过 PR 合入 main；完整验证通过后在精确合并提交打不可变 tag，构建、校验并上传全部附件，最后公开 Release 并设置 stable latest。0.11.1 的历史 dev.N 标签保留，后续开发预览使用更高语义版本，不覆盖既有标签或附件。
 

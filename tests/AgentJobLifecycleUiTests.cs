@@ -17,7 +17,7 @@ namespace Dafeiyu.Tests
             {
                 var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,ReadReplies=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,OnboardingState="completed"};
                 foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-                pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);pet.Show();pet.SetPaused(true);
+                pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root.Path,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
                 Exception failure=null;
                 try
                 {
@@ -74,6 +74,7 @@ namespace Dafeiyu.Tests
                     await AgentJobExitHost.WaitAsync(()=>host.HasExited&&owned.All(process=>process.HasExited),mode=="kill"?5000:10000,mode+" host and tree exit");
                     Check(elapsed.ElapsedMilliseconds<=(mode=="kill"?5000:10000),mode+" host and process tree meet the exit budget");
                     if(mode!="kill")Check(host.ExitCode==0&&File.Exists(Path.Combine(root.Path,"exit.complete")),mode+" exit confirms cleanup before closing");
+                    Check(!Directory.EnumerateFiles(root.Path,"*.part",SearchOption.AllDirectories).Any(),mode+" exit fixture leaves no unrelated role downloads");
                     string id=File.ReadAllText(Path.Combine(root.Path,"job.id"));
                     using(var store=new AgentJobStore(root.Path,new Clock()))
                     {

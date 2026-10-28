@@ -285,9 +285,12 @@ internal static class CompanionHomeUiChecks
             Check(Named<Expander>(page,"CompanionGrowthRules").IsExpanded&&Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded&&page.GetLogicalDescendants().OfType<Expander>().First(x=>x.Name=="RelationshipCardPreview").IsExpanded,"real saved growth preserves rules, settings and preview expansion");
             Check(Math.Abs(page.Offset.Y-priorOffset)<2,"real saved growth preserves reasonable scroll offset");
             RelationshipFeedbackWindow? savedNotice=null;feedbackDeadline.Restart();while(savedNotice==null){if(feedbackDeadline.ElapsedMilliseconds>10000)throw new TimeoutException("Saved feedback notice not displayed");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);savedNotice=(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner);}
+            // Isolate the saved-settings observer from automatic expiry. Motion tests
+            // separately verify the real deadline and that SetInteraction cannot renew it.
+            ((System.Threading.Timer)typeof(RelationshipFeedbackWindow).GetField("lifetime",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(savedNotice)!).Dispose();Dispatcher.UIThread.RunJobs();
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-capture-observation");CaptureFeedback(savedNotice,"gain");Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();byte[] settingsBytes=File.ReadAllBytes(file);using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllText(file,"{broken");
-            // Observe settings-driven dismissal on the same saved notice with a
-            // readable response, independently of the short ordinary-gain timeout.
+            Complete(Task.Delay(RelationshipFeedbackPolicy.LifetimeMilliseconds+200));
+            // A failed save must preserve this notice even beyond its ordinary deadline.
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-failure-observation");
             var failedFeedback=Named<ToggleSwitch>(page,"RelationshipFeedbackEnabled");failedFeedback.IsChecked=false;failedFeedback.RaiseEvent(new RoutedEventArgs(ToggleSwitch.ClickEvent));Complete(page.PendingSettings);
             Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");using(var fixtureLease=new RelationshipStore(directory).Acquire())File.WriteAllBytes(file,settingsBytes);Complete(page.RefreshAsync());Named<Expander>(page,"CompanionRelationshipSettings").IsExpanded=true;Dispatcher.UIThread.RunJobs();

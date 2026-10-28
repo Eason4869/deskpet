@@ -147,3 +147,36 @@ THE SOFTWARE.
 Local card titles use modified static subsets of Noto Serif, Noto Serif CJK (SC/TC/JP/KR), and Noto Serif Devanagari, licensed under the SIL Open Font License 1.1. The modified families are named DeskPet Keepsake Latin/SC/TC/JP/KR/Devanagari. CJK copyright: © 2017–2024 Adobe (http://www.adobe.com/). Latin/Devanagari copyright: 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic and https://github.com/notofonts/devanagari). Original copyright and license name records remain embedded in the subsets.
 
 Verbatim upstream licenses are in assets/fonts/relationships/OFL-CJK.txt, OFL-Latin.txt, and OFL-Devanagari.txt and embedded with the fonts in both desktop hosts. Immutable source commits, hashes, byte counts, modifications, regeneration commands, and scope are recorded in docs/companion-relationship/stage-keepsake-art-assets.md and assets/fonts/relationships/manifest.json. Asset preparation tools are not runtime dependencies; no operating-system fonts are redistributed.
+
+
+## QRCoder 1.6.0 (MIT)
+
+Source: https://github.com/codebude/QRCoder/tree/v1.6.0
+
+Fixed binaries, package SHA256 and original license: vendor/qrcoder/provenance.txt and vendor/qrcoder/LICENSE.txt. The library generates login QR images locally. The appropriate assembly and license are embedded in both desktop builds.
+
+The MIT License (MIT)
+
+Copyright (c) 2013-2018 Raffael Herrmann
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+## Messaging service logos
+
+QQ, WeChat, Feishu, WeCom and DingTalk identification artwork is adapted from IconPark, Simple Icons, Allogo, TDesign Icons and MingCute. Source attribution, modifications, full Apache-2.0, CC0-1.0 and MIT terms, and trademark disclaimers are included in the [IM logo artwork notices](../assets/im-logos.LICENSE.txt). These artwork licenses grant no trademark rights or endorsement.

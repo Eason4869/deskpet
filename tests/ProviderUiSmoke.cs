@@ -17,7 +17,7 @@ namespace Dafeiyu.Tests
             FindIn<Button>(item,"AddDiscoveredModel").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
   static int passed;
-  [STAThread] public static int Main()
+  [STAThread] public static int Main(string[] args)
   {
    var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};
    // Raised test events must resume on the same dispatcher as real WPF input.
@@ -26,7 +26,8 @@ namespace Dafeiyu.Tests
    PetWindow pet=null;SettingsWindow window=null;
    try {
     CheckAudioPages(folder);
-    CheckSeparateVoiceTests(folder);
+    if(!args.Contains("--without-device-playback"))CheckSeparateVoiceTests(folder);
+    else Console.WriteLine("INFO device playback/Live preview is excluded by explicit fixture mode; no real audio acceptance is claimed.");
     CheckCatalog(folder);
     CheckCatalogLifecycle();
     CheckCatalogInvalidation();
@@ -70,7 +71,14 @@ namespace Dafeiyu.Tests
    }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
    finally{if(window!=null)window.Close();if(pet!=null)pet.Close();Pump();app.Shutdown();}
   }
-  static T Find<T>(SettingsWindow w,string name) where T:FrameworkElement {if(name.StartsWith("TextService")){var details=w.FindControl("TextConnectionDetails") as Expander;if(details!=null)details.IsExpanded=true;w.UpdateLayout();}var result=w.FindControl(name) as T;if(result==null)throw new Exception("Missing "+name);return result;}
+  static T Find<T>(SettingsWindow w,string name) where T:FrameworkElement {if(name.StartsWith("TextService")){var details=w.FindControl("TextConnectionDetails") as Expander;if(details!=null)details.IsExpanded=true;w.UpdateLayout();}var result=w.FindControl(name) as T;
+   // These legacy assertions exercise model drafts; modal presentation is covered by ModelConfigurationSmoke.
+   if(result==null&&(name=="TextProviderNewModel"||name=="TextModelDisplayName"||name=="AddTextModel")){
+    var editor=FindEditor(w);var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+    typeof(TextProviderEditor).GetMethod("EnsureModelForm",flags).Invoke(editor,null);
+    result=FindIn<T>((DependencyObject)typeof(TextProviderEditor).GetField("modelForm",flags).GetValue(editor),name);
+   }
+   if(result==null)throw new Exception("Missing "+name);return result;}
   static void CheckCatalog(string folder)
   {
    using(var server=new ApiTests.Fixture("{\"data\":[{\"id\":\"remote-b\"},{\"id\":\" remote-a \"},{\"id\":\"remote-a\"}]}"))
@@ -105,6 +113,7 @@ namespace Dafeiyu.Tests
     } finally{host.Close();Pump();}
    }
   }
+  static TextProviderEditor FindEditor(DependencyObject root){var editor=root as TextProviderEditor;if(editor!=null)return editor;foreach(object item in LogicalTreeHelper.GetChildren(root)){var child=item as DependencyObject;if(child==null)continue;editor=FindEditor(child);if(editor!=null)return editor;}return null;}
   static T FindIn<T>(DependencyObject root,string name) where T:FrameworkElement {var element=root as T;if(element!=null && element.Name==name)return element;foreach(object child in LogicalTreeHelper.GetChildren(root)){var node=child as DependencyObject;if(node==null)continue;var result=FindIn<T>(node,name);if(result!=null)return result;}return null;}
   static void CheckCatalogLifecycle()
   {
@@ -145,6 +154,7 @@ namespace Dafeiyu.Tests
     try {
      host.Show();Until(()=>FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==1);
      Check(FindIn<Button>((ListBoxItem)FindIn<ListBox>(editor,"DiscoveredTextModels").Items[0],"AddDiscoveredModel")!=null,"candidate has an individual add action");
+     editor.ExpandConnection();Pump();
      FindIn<TextBox>(editor,"TextServiceUrl").Text=second.Url+"/v1";Pump();
      Check(FindIn<ListBox>(editor,"DiscoveredTextModels").Items.Count==0,"changing a connection immediately clears old candidates and checked selections");
      Until(()=>FindIn<TextBlock>(editor,"TextProviderNotice").Text.Contains("401"));
@@ -219,7 +229,7 @@ namespace Dafeiyu.Tests
     var session=new GeminiLiveSession(()=>new GeminiLiveSocket(),()=>mic,()=>output);
     typeof(PetWindow).GetField("live",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).SetValue(pet,session);
     try{
-     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");try{Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));}catch(Exception e){throw new Exception("speech fixture notice: "+Find<TextBlock>(window,"ConnectionNotice").Text,e);}
+     window.Show();window.SelectAiSection(2);Pump();Click(window,"PreviewSpeech");try{Until(()=>Find<TextBlock>(window,"ConnectionNotice").Text.Contains("朗读测试完成"));}catch(Exception e){Console.WriteLine("TTS fixture path="+tts.Path+" busy="+pet.Conversation.IsBusy+" speechRevision="+window.Page.GuideSpeechTestRevision);throw new Exception("speech fixture notice: "+Find<TextBlock>(window,"ConnectionNotice").Text,e);}
      Check(tts.Path=="/v1/audio/speech" && tts.Authorization=="Bearer tts-only-key" && tts.Body.Contains("tts-1") && liveServer.Setup==null && !mic.Started,"speech test performs its own HTTP TTS request and playback without opening Live or a microphone");
      window.SelectAiSection(3);Pump();Click(window,"PreviewLive");Until(()=>mic.Started);
      Check(window.Content is LiveCallView && liveServer.Setup.Contains("models/live-fixture-model") && liveServer.Setup.Contains("Kore"),"Live test uses the actual WebSocket setup with its own model and voice, even with an invalid text draft");
@@ -238,7 +248,10 @@ namespace Dafeiyu.Tests
    Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{try{var picker=Application.Current.Windows.Cast<Window>().Single(w=>w.Title=="选择服务商");if(capture!=null){picker.UpdateLayout();Capture(picker,capture);}FindIn<Button>(picker,"ChooseProvider_"+brand).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));}catch(Exception e){failure=e;}}));
    FindIn<Button>(editor,addName).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();if(failure!=null)throw new Exception("adding a provider must open the manufacturer picker",failure);
   }
-  static void Click(SettingsWindow w,string name){if(name=="AddTextProvider"){ChooseProvider(w,"custom");return;}Find<Button>(w,name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();}
+  static void Click(SettingsWindow w,string name){if(name=="AddTextProvider"){ChooseProvider(w,"custom");return;}Find<Button>(w,name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+   var owner=(PetWindow)typeof(SettingsPage).GetField("pet",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(w.Page);
+   var pending=(System.Threading.Tasks.Task<bool>)typeof(PetWindow).GetField("explicitSettingsSave",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(owner);
+   if(pending!=null){var deadline=DateTime.UtcNow.AddSeconds(15);while(!pending.IsCompleted){if(DateTime.UtcNow>deadline)throw new TimeoutException("settings save did not complete");Pump();System.Threading.Thread.Sleep(1);}pending.GetAwaiter().GetResult();Pump();}}
   static void Check(bool ok,string name){if(!ok)throw new Exception(name);passed++;Console.WriteLine("PASS "+name);}
   static bool Inside(FrameworkElement e,Window w){Rect r=e.TransformToAncestor(w).TransformBounds(new Rect(e.RenderSize));return e.IsVisible && r.Left>=0 && r.Top>=0 && r.Right<=w.ActualWidth && r.Bottom<=w.ActualHeight;}
   static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(80)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}

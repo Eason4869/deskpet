@@ -15,6 +15,24 @@ namespace Dafeiyu
         {
             Maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();this.dataRoot=dataRoot;this.personaId=personaId;this.apiFactory=apiFactory;this.speechFactory=speechFactory;this.recorderFactory=recorderFactory;this.settings=settings;this.saveHistory=saveHistory;
         }
+        readonly object bindingGatesLock=new object();readonly Dictionary<string,WeakReference> bindingGates=new Dictionary<string,WeakReference>(StringComparer.Ordinal);
+        Dafeiyu.Maintenance.DataMaintenanceGate ProjectBindingGate(string projectId)
+        {
+            lock(bindingGatesLock){
+                foreach(string id in bindingGates.Where(pair=>!pair.Value.IsAlive).Select(pair=>pair.Key).ToArray())bindingGates.Remove(id);
+                WeakReference weak;var binding=bindingGates.TryGetValue(projectId,out weak)?weak.Target as Dafeiyu.Maintenance.DataMaintenanceGate:null;
+                if(binding==null){binding=new Dafeiyu.Maintenance.DataMaintenanceGate();bindingGates[projectId]=new WeakReference(binding);}return binding;
+            }
+        }
+        internal async Task<IDisposable> BeginProjectConfigurationAsync(string projectId)
+        {
+            var reservation=await ProjectBindingGate(projectId).BeginAsync().ConfigureAwait(false);
+            try{
+                var owners=OpenWorkspaces.Where(workspace=>workspace.ProjectId==projectId).ToArray();
+                if(owners.Any(workspace=>workspace.Session.IsBusy||workspace.Queue.HasPending))throw new InvalidOperationException(TextResources.Get("dataMaintenance.busy"));
+                return reservation;
+            }catch{reservation.Dispose();throw;}
+        }
         ComposerDraftStore composerDrafts;
         internal void BindDraft(ConversationWorkspace workspace,string role)
         {
@@ -45,8 +63,9 @@ namespace Dafeiyu
         internal IList<ConversationWorkspace> AllOwnedWorkspaces {get{lock(gate)return workspaces.ToArray();}}
         public bool Busy {get{lock(gate)return closing.Count>0||workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
         public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null)
-        {using(Maintenance.EnterActivity()){
+        {
             if(project==null||conversation==null)throw new ArgumentNullException("conversation");
+            using(Maintenance.EnterActivity())using(ProjectBindingGate(project.Id).EnterActivity()){
             lock(gate)
             {
                 if(disposed)throw new ObjectDisposedException("ConversationWorkspaceManager");
@@ -54,6 +73,7 @@ namespace Dafeiyu
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
                 var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride,Maintenance);
+                workspace.Session.RequestActivityAdmission=()=>ProjectBindingGate(workspace.ProjectId).EnterActivity();
                 workspace.Session.ConfigureRelationships(Relationships,RelationshipCompanion);
                 workspace.Session.ApprovalProvider=ApprovalProvider;
                 workspace.Session.QuestionProvider=QuestionProvider;

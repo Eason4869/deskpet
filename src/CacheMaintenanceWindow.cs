@@ -18,6 +18,7 @@ namespace Dafeiyu
         public CacheMaintenanceWindow(string dataRoot)
         {
             service=new CacheMaintenanceService(dataRoot);LocalizedUi.Set(this,"Title",()=>(TextResources.Get("cache.title")));Width=500;Height=440;MinWidth=380;MinHeight=340;WindowStartupLocation=WindowStartupLocation.CenterOwner;ShowInTaskbar=false;
+            ResizeMode=ResizeMode.CanMinimize;SlimScrollBars.Install(this);
             Background=ThemeManager.Surface;Foreground=Ui.Ink;FontFamily=new FontFamily("Global User Interface");
             var grid=new Grid{Margin=new Thickness(20)};grid.RowDefinitions.Add(new RowDefinition());grid.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var body=new StackPanel();body.Children.Add(DataManagementVisual.Header("folder",()=> (Title),18));var label=LocalizedUi.Text(()=>(TextResources.Get("cache.spaceLabel")),12,Ui.Muted);label.Margin=new Thickness(0,16,0,0);body.Children.Add(label);summary=Ui.Text("",32);summary.FontWeight=FontWeights.SemiBold;summary.Name="CacheSummary";summary.Margin=new Thickness(0,4,0,14);body.Children.Add(summary);

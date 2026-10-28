@@ -57,6 +57,7 @@ class MacPackagingTests(unittest.TestCase):
             self.assertTrue((self.app / 'Contents/MacOS/DeskPet').stat().st_mode & 0o111)
         result = validate_bundle(self.app, 'arm64', '0.5.5', 'preview')
         self.assertEqual(4, len(result['native_binaries']))
+        self.assertEqual((self.app/'Contents/Resources/im-logos.LICENSE.txt').read_bytes(),(Path(__file__).resolve().parents[1]/'assets/im-logos.LICENSE.txt').read_bytes())
 
     def test_dev_display_identity_keeps_numeric_platform_version(self):
         create_bundle(self.publish, self.app, 'arm64', '0.9.5-dev.2', 'preview', self.icon, commit='a'*40)

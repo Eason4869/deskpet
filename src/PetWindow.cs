@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -300,7 +300,7 @@ namespace Dafeiyu
                 if(Settings.X.HasValue && Settings.Y.HasValue) DesktopInterop.Move(handle,new Point(Settings.X.Value,Settings.Y.Value));
                 else ReturnHome();
                 DesktopInterop.ClampWindow(handle); lastCursor=DesktopInterop.Cursor(); previousTick=watch.Elapsed.TotalSeconds;
-                UpdateFrame(); timer.Start();
+                UpdateFrame(); timer.Start();RestoreImChannels();
             };
             using(Stream stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Icon")) trayIcon=(System.Drawing.Icon)new System.Drawing.Icon(stream).Clone();
             trayMenu=new TrayContextMenu();
@@ -688,6 +688,7 @@ namespace Dafeiyu
         {ApplySettingsCore(true);}
         internal string ApplyRestoredPreferences()
         {
+            pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();
             Relationships.InvalidateFeedback();
             ThemeManager.Apply(Settings.ThemeMode);DismissGreeting(true);
             if(quietItem!=null)quietItem.IsChecked=Settings.QuietMode;
@@ -702,14 +703,9 @@ namespace Dafeiyu
             CancelHolidayEffects();
             StopManualRun();
             RecordPetInteraction();
-            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility(); Rect before=handle==IntPtr.Zero ? Rect.Empty : DesktopInterop.Bounds(handle);
-            Width=192*Settings.Scale; Height=208*Settings.Scale; Topmost=Settings.Topmost;
+            if(persist)Settings.Normalize();if((Settings.LockPosition || Settings.ClickThrough) && dragging){CancelInteraction();if(persist)SavePosition();}if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);if((Settings.QuietMode || Settings.LockPosition) && walking){walking=false;Animation.Play("idle",0);}PollVisibility();
+            ApplyScaleGeometry(persist);Topmost=Settings.Topmost;
             if(!Settings.Wander && walking) { walking=false; Animation.Play("idle",0); }
-            if(handle!=IntPtr.Zero) Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate
-            {
-                if(closing) return; Rect after=DesktopInterop.Bounds(handle);
-                DesktopInterop.Move(handle,new Point(before.Left,before.Bottom-after.Height)); DesktopInterop.ClampWindow(handle); if(persist)SavePosition();
-            }));
             UpdateFrame(); if(persist)SaveSettings(); if(preferences!=null) preferences.RefreshState();
         }
         private bool ActivateSkin(SkinDefinition skin)
@@ -990,7 +986,7 @@ namespace Dafeiyu
             if(open!=null)open.FollowProject(to);
             if(chat!=null)chat.RefreshAppearance();return true;
         }
-        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.Version=previous.Version;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;Projects.SidebarConversationOrder=previous.SidebarConversationOrder;Projects.SidebarSectionLabels=previous.SidebarSectionLabels;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
+        void RestoreProjectCatalog(ProjectCatalog previous){Projects.Projects.Clear();Projects.Projects.AddRange(previous.Projects);Projects.ActiveProjectId=previous.ActiveProjectId;Projects.Sections=previous.Sections;Projects.UnassignedConversations=previous.UnassignedConversations;Projects.QuickConversations=previous.QuickConversations;Projects.Version=previous.Version;Projects.OwnershipVersion=previous.OwnershipVersion;Projects.LegacyRootImported=previous.LegacyRootImported;Projects.RecentIncludeProjects=previous.RecentIncludeProjects;Projects.RecentShowProjectConversations=previous.RecentShowProjectConversations;Projects.SidebarConversationOrder=previous.SidebarConversationOrder;Projects.SidebarSectionLabels=previous.SidebarSectionLabels;foreach(var workspace in Workspaces.OpenWorkspaces){var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==workspace.Id))??(Projects.UnassignedConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.UnassignedProject(Projects,Settings):Projects.QuickConversations.Any(c=>c.Id==workspace.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):null);if(project!=null)workspace.FollowProject(project);}}
         void ShowProjectSaveError(Exception error){MessageBox.Show(AgentJobUiText.Error(error),TextResources.Get("petWindow.showProjectSaveError.messageBoxShow"),MessageBoxButton.OK,MessageBoxImage.Warning);}
         public void OpenProjectWorkspace(ProjectDefinition project)
         {
@@ -1169,11 +1165,17 @@ namespace Dafeiyu
             catch(Exception){deferredSettingsSave=true;return TextResources.Get("dataManagement.pendingSaveFailed");}
         }
         public void SaveSettings()
+        {TrySaveSettings();}
+        internal bool TrySaveSettings()
         {
-            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return;}
-            try { Store.Save(Settings);deferredSettingsSave=false;if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
+            if(explicitSettingsSave!=null){deferredSettingsSave=true;return false;}
+            settingsSaveRevision++;
+            if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return false;}
+            CompleteScaleLayout();bool saved=false;
+            try { Store.Save(Settings);saved=true;deferredSettingsSave=false;if(preferenceSaves!=null&&Dispatcher.CheckAccess()){pendingPreferences=null;preferenceSaves.MarkSaved();}if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notice=Store.Warning; }
             catch(Exception e) { if(!(e is IOException || e is UnauthorizedAccessException)) throw; Notice=TextResources.Get("petWindow.saveSettings.notice"); }
             if(preferences!=null) preferences.ShowNotice(Notice);
+            return saved;
         }
         private void SavePosition()
         { if(handle==IntPtr.Zero) return; Rect bounds=DesktopInterop.Bounds(handle); Settings.X=bounds.Left; Settings.Y=bounds.Top; SaveSettings(); }
@@ -1182,7 +1184,8 @@ namespace Dafeiyu
             if(uninstallPreparing)return;
             if(!exitPrepared)
             {
-                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;closing=true;
+                args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;
+                closing=true;
                 // Close can be requested before Application.Run or from a host with
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
@@ -1191,19 +1194,45 @@ namespace Dafeiyu
         }
         void CleanupClosedWindow()
         {
+            if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();if(explicitSettingsMaintenance!=null)explicitSettingsMaintenance.Dispose();exitWindowEnabled.Clear();
+            if(imChannels!=null)imChannels.Dispose();
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
             DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
         }
+        bool timerRunningBeforeExit;
+        readonly System.Collections.Generic.Dictionary<Window,bool> exitWindowEnabled=new System.Collections.Generic.Dictionary<Window,bool>();
+        void FreezeExitUi()
+        {
+            timerRunningBeforeExit=timer.IsEnabled;timer.Stop();exitWindowEnabled.Clear();
+            if(Application.Current!=null)foreach(Window window in Application.Current.Windows){exitWindowEnabled[window]=window.IsEnabled;window.IsEnabled=false;}
+        }
+        void ResumeCancelledExit()
+        {
+            foreach(var item in exitWindowEnabled)if(item.Key.IsLoaded)item.Key.IsEnabled=item.Value;
+            exitWindowEnabled.Clear();if(timerRunningBeforeExit)timer.Start();ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();
+        }
+        async Task<bool> PersistBeforeExitAsync()
+        {
+            var pending=explicitSettingsSave;if(pending!=null&&!await pending)return false;
+            if(!await FlushPreferenceSavesAsync())return false;
+            CompleteScaleLayout();
+            if(handle!=IntPtr.Zero){var bounds=DesktopInterop.Bounds(handle);Settings.X=bounds.Left;Settings.Y=bounds.Top;}
+            try{await Store.SaveExactSnapshotAsync(Settings);pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();deferredSettingsSave=false;return true;}
+            catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is System.Runtime.Serialization.SerializationException||error is ArgumentException||error is InvalidOperationException))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");if(preferences!=null)preferences.ShowNotice(Notice);return false;}
+        }
         async void PrepareCloseOnDispatcherAsync()
         {
-            if(!await StopAgentJobsForExitAsync()){ApplicationRestart.Requested=false;closing=false;ReleaseMaintenanceExit();return;}
+            FreezeExitUi();
+            if(!await PersistBeforeExitAsync()){ResumeCancelledExit();return;}
+            if(imChannels!=null)await imChannels.StopAllAsync();
+            if(!await StopAgentJobsForExitAsync()){ResumeCancelledExit();return;}
             foreach(var jobWindow in agentJobWindows.ToArray())jobWindow.Close();
             DisposeRelationshipFeedback();await HolidayKeepsakes.ShutdownAsync();DisposeOfficialCompanions();DisposeHoliday();imageRepairExitDrain=FreezeImageRepairAdmission();DismissGreeting();if(guide!=null)guide.Close();if(palette!=null)palette.Close();CancelInteraction();
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
-            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}var exitSettings=Settings.Copy();
-            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(exitSettings),out applicationExitDrain);}
+            var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}
+            try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(),out applicationExitDrain);}
             catch(OperationCanceledException){}finally{exitPrepared=true;Dispatcher.BeginInvoke(new Action(Close));}
         }
 

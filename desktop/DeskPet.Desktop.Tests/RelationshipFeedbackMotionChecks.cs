@@ -11,50 +11,31 @@ internal static class RelationshipFeedbackMotionChecks
 {
     internal static int Run(string directory)
     {
-        int checks=0;
-        void Check(bool condition,string description){if(!condition)throw new Exception(description);checks++;Console.WriteLine("PASS "+description);}
-        void Pause(int milliseconds){var watch=System.Diagnostics.Stopwatch.StartNew();var frame=new DispatcherFrame();using(var timer=new System.Threading.Timer(_=>Dispatcher.UIThread.Post(()=>{if(watch.ElapsedMilliseconds>=milliseconds)frame.Continue=false;}),null,0,10))Dispatcher.UIThread.PushFrame(frame);}
-        void Until(Func<bool> condition,int milliseconds,string description){var watch=System.Diagnostics.Stopwatch.StartNew();while(!condition()){if(watch.ElapsedMilliseconds>=milliseconds)throw new TimeoutException(description);Pause(10);}}
-        RelationshipFeedbackNotice Gain(string id,int points=1){var notice=new RelationshipFeedbackNotice{CompanionId=id,AwardedPoints=points,Milestones=new List<RelationshipMilestone>()};notice.EventIds.Add(Guid.NewGuid().ToString("N"));return notice;}
-        static Border Card(RelationshipFeedbackWindow window){var outer=(Border)window.Content!;return outer.Child is Border inner?inner:outer;}
-        static double Offset(Border card)=>((TranslateTransform)card.RenderTransform!).Y;
-        void Inside(RelationshipFeedbackWindow window,Border card,string description){var top=card.TranslatePoint(new Point(0,0),window)!.Value;var bottom=card.TranslatePoint(new Point(0,card.Bounds.Height),window)!.Value;Check(top.Y>=-.5&&bottom.Y<=window.Bounds.Height+.5,description+": top="+top.Y+" bottom="+bottom.Y+" window="+window.Bounds.Height);}
-
-        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());
-        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=TextResources.CurrentLanguage,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
-        var lifetime=new ClassicDesktopStyleApplicationLifetime();using var owner=new DesktopController(lifetime,new FixtureRuntime(directory));owner.Pet.Show();
+        int checks=0;void Check(bool yes,string text){if(!yes)throw new Exception(text);checks++;Console.WriteLine("PASS "+text);}
+        void Pause(int ms){var watch=System.Diagnostics.Stopwatch.StartNew();var frame=new DispatcherFrame();using(var timer=new System.Threading.Timer(_=>Dispatcher.UIThread.Post(()=>{if(watch.ElapsedMilliseconds>=ms)frame.Continue=false;}),null,0,10))Dispatcher.UIThread.PushFrame(frame);}
+        void Until(Func<bool> yes,int ms){var watch=System.Diagnostics.Stopwatch.StartNew();while(!yes()){if(watch.ElapsedMilliseconds>=ms)throw new TimeoutException("brief feedback visibility");Pause(10);}}
+        RelationshipFeedbackNotice Gain(string id){return new RelationshipFeedbackNotice{CompanionId=id,AwardedPoints=1,Milestones=new List<RelationshipMilestone>()};}
+        static Border Card(RelationshipFeedbackWindow w)=>((Border)w.Content!).Child is Border c?c:(Border)w.Content!;
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=TextResources.CurrentLanguage,AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,OnboardingState="completed",Wander=false,FollowCursor=false,HideOnFullscreen=false});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new FixtureRuntime(directory));owner.Pet.Show();
         try{
-            var ordinary=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));ordinary.Show();
-            var card=Card(ordinary);Check(card.RenderTransform is TranslateTransform&&card.Opacity<=.15&&Offset(card)>=8,"ordinary gain begins below its final position and transparent");
-            Inside(ordinary,card,"ordinary gain card fits the transparent window during entry");
-            Until(()=>card.Opacity>.05,500,"ordinary entrance begins");Check(ordinary.IsVisible&&card.Opacity<.9&&Offset(card)>1&&Offset(card)<12,"ordinary gain visibly rises and fades in between its endpoints: opacity="+card.Opacity+" y="+Offset(card));
-            Until(()=>card.Opacity>=.95,500,"ordinary entrance completes");Check(ordinary.IsVisible&&Math.Abs(Offset(card))<1,"ordinary gain rises and fades in within 200ms");
-            Pause(750);Check(ordinary.IsVisible&&card.Opacity>=.95&&Math.Abs(Offset(card))<1,"ordinary gain holds fully visible for about one second");
-            // A busy native UI can resume after the hold deadline; the exit clock
-            // starts on its first delivered pulse, not at a guessed wall-clock phase.
-            System.Threading.Thread.Sleep(350);
-            Until(()=>!ordinary.IsVisible||(card.Opacity<.9&&Offset(card)<-1),500,"ordinary exit begins after UI resumes");Check(ordinary.IsVisible&&card.Opacity<.9&&Offset(card)<-1,"ordinary gain fades upward during its 250ms exit: opacity="+card.Opacity+" y="+Offset(card));Inside(ordinary,card,"ordinary gain card fits the transparent window during exit");
-            Pause(260);Check(!ordinary.IsVisible,"ordinary gain closes after its short exit");
-
-            var merged=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));merged.Show();var mergedCard=Card(merged);
-            Until(()=>mergedCard.Opacity>=.95,500,"merge fixture enters");Until(()=>mergedCard.Opacity<.9,1800,"merge fixture begins exit");Check(merged.IsVisible&&Offset(mergedCard)<0,"late merge fixture reaches the upward exit");
-            double beforeOpacity=mergedCard.Opacity,beforeOffset=Offset(mergedCard);merged.Merge(Gain(owner.RelationshipCompanionId));
-            Check(Math.Abs(mergedCard.Opacity-beforeOpacity)<.05&&Math.Abs(Offset(mergedCard)-beforeOffset)<.5,"late merge extends notice without replaying its entrance or jumping");
-            Pause(180);Check(merged.IsVisible&&mergedCard.Opacity>=.95&&Math.Abs(Offset(mergedCard))<1,"late merge settles smoothly back to readable position");
-            Pause(650);Check(merged.IsVisible&&mergedCard.Opacity>=.95,"merged points retain a new readable hold");merged.Close();
-
-            var interaction=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));interaction.Show();
-            Pause(300);var interactionCard=Card(interaction);double interactionOpacity=interactionCard.Opacity,interactionOffset=Offset(interactionCard);interaction.SetInteraction("A saved interaction response",Guid.NewGuid().ToString("N"));
-            Check(Math.Abs(interactionCard.Opacity-interactionOpacity)<.05&&Math.Abs(Offset(interactionCard)-interactionOffset)<.5,"interaction extends the notice without replaying its entrance");
-            Pause(6600);Check(interaction.IsVisible&&Card(interaction).Opacity>=.95,"interaction response remains readable for seven seconds after insertion");
-            Pause(800);Check(!interaction.IsVisible,"interaction response exits after its seven-second hold");
-
-            var milestoneNotice=Gain(owner.RelationshipCompanionId);milestoneNotice.Milestones.Add(new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-25"});
-            var milestone=new RelationshipFeedbackWindow(owner,milestoneNotice);milestone.Show();
-            Pause(6800);Check(milestone.IsVisible&&Card(milestone).Opacity>=.95,"milestone remains readable for seven seconds");
-            Pause(750);Check(!milestone.IsVisible,"milestone exits after its seven-second hold");
-            Check(!ordinary.ShowActivated&&!ordinary.ShowInTaskbar,"animated notice remains passive");
-            return checks;
+            var startup=owner.Relationships.FlushAsync();Until(()=>startup.IsCompleted,5000);startup.GetAwaiter().GetResult();Pause(600);
+            ((RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner))?.Close();
+            var ordinary=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));ordinary.Show();var card=Card(ordinary);
+            Check(card.Opacity<=.15&&((TranslateTransform)card.RenderTransform!).Y>=8,"gain begins transparent below its resting position");
+            Until(()=>card.Opacity>=.95,500);Check(ordinary.IsVisible&&Math.Abs(((TranslateTransform)card.RenderTransform!).Y)<1,"brief gain becomes clearly visible");
+            Pause(1000);Check(!ordinary.IsVisible,"ordinary gain closes within one second including animation");
+            var interaction=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));interaction.Show();interaction.SetInteraction("A brief greeting",Guid.NewGuid().ToString("N"));Until(()=>Card(interaction).Opacity>=.95,500);Pause(1000);Check(!interaction.IsVisible,"greeting has the same one-second lifetime");
+            var stageNotice=Gain(owner.RelationshipCompanionId);stageNotice.Milestones.Add(new RelationshipMilestone{StageId="familiar",EarnedLocalDate="2026-10-27"});var stage=new RelationshipFeedbackWindow(owner,stageNotice);stage.Show();Until(()=>Card(stage).Opacity>=.95,500);Pause(1000);Check(!stage.IsVisible,"milestone content does not extend the notice");
+            var merged=new RelationshipFeedbackWindow(owner,Gain(owner.RelationshipCompanionId));merged.Show();Until(()=>Card(merged).Opacity>=.95,500);Pause(400);double before=Card(merged).Opacity;merged.Merge(Gain(owner.RelationshipCompanionId));merged.SetInteraction("Late greeting",Guid.NewGuid().ToString("N"));Check(Math.Abs(Card(merged).Opacity-before)<.05,"merge updates content without restarting entrance");Pause(650);Check(!merged.IsVisible,"late gain and greeting do not restart the one-second lifetime");
+            Check(!ordinary.ShowActivated&&!ordinary.ShowInTaskbar,"brief notice remains passive");
+            typeof(PetWindow).GetField("random",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.SetValue(owner.Pet,new MissGreetingRandom());
+            RelationshipFeedbackWindow? Notice()=>(RelationshipFeedbackWindow?)typeof(DesktopController).GetField("relationshipNotice",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner);
+            int scoreBefore=owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score;owner.Pet.UserInteract("petting");var flush=owner.Relationships.FlushAsync();Until(()=>flush.IsCompleted,3000);flush.GetAwaiter().GetResult();
+            Until(()=>Notice()?.IsVisible==true&&Notice()!.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==TextResources.Format("relationship.feedback.gain",1)),3000);
+            // Collapsed ScrollViewer content can remain logically realized; inspect its containing area.
+            Check(owner.RelationshipService.GetSnapshot(owner.RelationshipCompanionId).State.Score==scoreBefore+1&&!Notice()!.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Name=="RelationshipInteraction"&&t.Parent is ScrollViewer area&&area.IsVisible),"greeting probability never suppresses or changes a real gain");Notice()!.Close();
+            owner.Pet.UserInteract("petting");flush=owner.Relationships.FlushAsync();Until(()=>flush.IsCompleted,3000);flush.GetAwaiter().GetResult();Pause(500);Check(Notice()?.IsVisible!=true,"probability miss with no gain creates no popup");return checks;
         }finally{owner.Pet.Close();owner.Dispose();owner.ImageServicesShutdown.GetAwaiter().GetResult();}
     }
     internal static int RunPlacement(string directory)
@@ -90,6 +71,7 @@ internal static class RelationshipFeedbackMotionChecks
             return checks;
         }finally{notice?.Close();owner.Pet.Close();owner.Dispose();owner.ImageServicesShutdown.GetAwaiter().GetResult();}
     }
+    sealed class MissGreetingRandom:Random {public override double NextDouble(){return .9;}}
     sealed class FixtureRuntime(string directory):DesktopRuntime
     {
         public override string DataDirectory=>directory;public override bool ShowTray=>false;

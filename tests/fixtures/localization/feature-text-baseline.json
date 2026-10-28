@@ -542,6 +542,354 @@
       "argument_count": 0
     },
     {
+      "key": "im.accessOptions",
+      "expected": "访问限制（可选）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.add",
+      "expected": "添加连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.allowHint",
+      "expected": "留空不限制发送者或群聊；填写后仅允许列出的 ID。群聊仍需 @ 机器人。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.appId",
+      "expected": "App ID / Client ID / Bot ID",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.authFailed",
+      "expected": "身份验证失败，请检查凭据或重新登录。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.binding",
+      "expected": "绑定伙伴：",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.cancelLogin",
+      "expected": "取消登录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.cardDescription",
+      "expected": "在 {0} 中与伙伴进行文字对话。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "im.connect",
+      "expected": "连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.connected",
+      "expected": "已连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.connecting",
+      "expected": "正在连接…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.connectionReplaced",
+      "expected": "连接已被其他客户端接管。请先暂停其他连接，再手动重连。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.contextCleared",
+      "expected": "已开始新对话。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.delete",
+      "expected": "删除连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.deliveryFailed",
+      "expected": "请求或回复失败，可能无法确认投递结果；桌宠不会自动重发。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.deliveryUncertain",
+      "expected": "无法确认回复是否已送达。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.disconnected",
+      "expected": "连接已关闭。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.endpointRejected",
+      "expected": "平台返回了不受支持的网络地址。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.failed",
+      "expected": "操作失败，请检查配置与网络。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.groups",
+      "expected": "允许的群 ID（每行一个）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.help",
+      "expected": "发送文字即可对话。/new 新建对话；/stop 取消你的当前请求；/help 查看指令。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.httpFailed",
+      "expected": "平台请求失败，请检查网络与权限。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.invalidConfig",
+      "expected": "请检查连接名称、凭据、绑定伙伴与允许的 ID。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.lastSender",
+      "expected": "最近发送者 / 群：",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.localOnly",
+      "expected": "仅文字对话，无法访问桌面文件或 Agent 工具。上下文仅保留在内存中，断开即清除。更换模型后需重新连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.login",
+      "expected": "微信扫码登录",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.manualConnect",
+      "expected": "手动填写",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.modelFailed",
+      "expected": "模型未完成回复，请检查模型配置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.name",
+      "expected": "连接名称",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.notConfigured",
+      "expected": "未配置",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.openPlatform",
+      "expected": "打开平台网站",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.pause",
+      "expected": "暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.paused",
+      "expected": "已暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.payloadTooLarge",
+      "expected": "平台消息超过大小限制。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform",
+      "expected": "平台",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform.dingtalk",
+      "expected": "钉钉",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform.feishu",
+      "expected": "飞书",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform.qq",
+      "expected": "QQ",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform.wecom",
+      "expected": "企业微信",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platform.weixin",
+      "expected": "微信",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.platformFailed",
+      "expected": "平台拒绝了请求，请检查机器人权限与回复限制。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.protocolFailed",
+      "expected": "无法处理平台响应。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.qrExpired",
+      "expected": "登录二维码已过期，请重新登录。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.reconnecting",
+      "expected": "连接中断，正在重连…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.replyExpired",
+      "expected": "回复时限已过，请发送新消息。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.save",
+      "expected": "保存",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.scanConnect",
+      "expected": "扫码连接",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.scanHelp",
+      "expected": "用手机扫码创建或绑定机器人。凭据保存在本机，扫码成功后即可连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.secret",
+      "expected": "App Secret / Bot Secret",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.selectWeixin",
+      "expected": "请先选择微信平台。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.sessionLimit",
+      "expected": "会话数量已达上限，请重新连接以清除内存中的上下文。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.storageFailed",
+      "expected": "无法安全读取连接数据，请检查文件权限或恢复备份；原有数据已保留。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.subtitle",
+      "expected": "连接你创建的机器人。电脑需保持联网，桌宠需保持运行。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.textOnly",
+      "expected": "此连接目前仅支持文字消息。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.title",
+      "expected": "消息渠道",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.unsaved",
+      "expected": "请先保存编辑，再选择其他连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.users",
+      "expected": "允许的发送者 ID（每行一个）",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "im.verificationRequired",
+      "expected": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "onboarding.language.applyContinue",
       "expected": "应用并继续",
       "format": false,

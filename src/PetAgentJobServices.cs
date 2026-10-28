@@ -56,8 +56,8 @@ namespace Dafeiyu
         }
         Task OnCatalogUiAsync(Func<Task> mutation)
         {return Dispatcher.CheckAccess()?mutation():Dispatcher.InvokeAsync(mutation).Task.Unwrap();}
-        internal Task ChangeWorkBindingsAsync(string[] projects,string conversationId,Func<Task> change)
-        {return new AgentJobCatalogGuard(AgentJobs).RunAsync(projects,conversationId,true,()=>OnCatalogUiAsync(change),CancellationToken.None);}
+        internal Task ChangeWorkBindingsAsync(string[] projects,string conversationId,Func<Task> change,bool stopActive=true)
+        {return new AgentJobCatalogGuard(AgentJobs).RunAsync(projects,conversationId,stopActive,()=>OnCatalogUiAsync(change),CancellationToken.None);}
 
         async Task<bool> StopAgentJobsForExitAsync()
         {
