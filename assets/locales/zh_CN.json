@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "企业微信",
   "im.openPlatform": "打开平台网站",
   "im.verificationRequired": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。",
-  "im.back": "返回消息渠道",
   "im.notConfigured": "未配置",
   "im.cardDescription": "在 {0} 中与伙伴进行文字对话。",
   "im.scanConnect": "扫码连接",

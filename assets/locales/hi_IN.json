@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "प्लेटफ़ॉर्म वेबसाइट खोलें",
   "im.verificationRequired": "WeChat में अतिरिक्त सत्यापन आवश्यक है। साइन इन रद्द करें, WeChat में सत्यापन पूरा करें और नया कोड स्कैन करें।",
-  "im.back": "चैनलों पर वापस जाएँ",
   "im.notConfigured": "कॉन्फ़िगर नहीं है",
   "im.cardDescription": "{0} में अपने साथी से चैट करें।",
   "im.scanConnect": "QR कोड से कनेक्ट करें",
