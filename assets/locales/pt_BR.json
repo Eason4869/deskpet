@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "Abrir site da plataforma",
   "im.verificationRequired": "O WeChat exige verificação adicional. Cancele o login, conclua a verificação no WeChat e escaneie um novo código.",
-  "im.back": "Voltar aos canais",
   "im.notConfigured": "Não configurado",
   "im.cardDescription": "Converse com seu companheiro no {0}.",
   "im.scanConnect": "Conectar por código QR",

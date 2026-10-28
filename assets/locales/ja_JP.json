@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "プラットフォームのサイトを開く",
   "im.verificationRequired": "WeChat で追加認証が必要です。ログインを中止し、WeChat で認証を完了してから、新しいコードをスキャンしてください。",
-  "im.back": "メッセージ連携に戻る",
   "im.notConfigured": "未設定",
   "im.cardDescription": "{0} でパートナーとテキストで会話できます。",
   "im.scanConnect": "QRコードで接続",

@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "Buka situs platform",
   "im.verificationRequired": "WeChat memerlukan verifikasi tambahan. Batalkan proses masuk, selesaikan verifikasi di WeChat, lalu pindai kode baru.",
-  "im.back": "Kembali ke kanal",
   "im.notConfigured": "Belum dikonfigurasi",
   "im.cardDescription": "Mengobrol dengan pendamping Anda di {0}.",
   "im.scanConnect": "Hubungkan lewat kode QR",

@@ -4749,7 +4749,6 @@
   "im.platform.wecom": "WeCom",
   "im.openPlatform": "플랫폼 웹사이트 열기",
   "im.verificationRequired": "WeChat에서 추가 인증이 필요합니다. 로그인을 취소하고 WeChat에서 인증을 완료한 후 새 코드를 스캔하세요.",
-  "im.back": "메시지 채널로 돌아가기",
   "im.notConfigured": "설정되지 않음",
   "im.cardDescription": "{0}에서 파트너와 대화하세요.",
   "im.scanConnect": "QR 코드로 연결",
