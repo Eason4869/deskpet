@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +13,7 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1&&args[0]=="--image-input-router-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageInputRouterTests.Main();}
             if(args.Length==1&&args[0]=="--image-model-resolver-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageModelResolverTests.Main();}
             if(args.Length==1&&args[0]=="--official-maintenance-only")return OfficialCompanionTests.MaintenanceOnly();
             if(args.Length==1&&args[0]=="--official-optimization-only")return OfficialCompanionTests.OptimizationOnly();
@@ -141,7 +142,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { ImageModelResolverTests.Main, ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { ImageInputRouterTests.Main, ImageModelResolverTests.Main, ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,
