@@ -288,7 +288,7 @@ namespace Dafeiyu
             }
             bool preprocessing=request.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage));if(preprocessing&&op.ImagePreprocessing!=null)op.ImagePreprocessing(true);
             var projection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),request,token).ConfigureAwait(false);
-            if(!projection.Available)throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"));
+            if(!projection.Available)throw new ApiException(projection.Route.Route==ImageRouteKind.Unavailable?TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"):"Image description failed ("+projection.Notice+").",projection.Notice);
 
             request=projection.Messages.ToList();ConversationLog.BudgetRequest(request);
             lock(gate) {
@@ -342,7 +342,7 @@ namespace Dafeiyu
             var state=op.Workspace.TaskState;if(state.Guidance==null)state.Guidance=new List<AgentGuidance>();var fresh=new List<AgentGuidance>();var accepted=new List<AgentGuidance>();
             foreach(var guide in pending){
                 if(state.Guidance.Any(g=>g.Id==guide.Id && g.Revision==guide.Revision)){accepted.Add(guide);continue;}
-                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var guidanceProjection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),new[]{message},cancel).ConfigureAwait(false);if(!guidanceProjection.Available)throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"));message=guidanceProjection.Messages[0];var proposed=result.Concat(new[]{message}).ToList();
+                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var guidanceProjection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),new[]{message},cancel).ConfigureAwait(false);if(!guidanceProjection.Available)throw new ApiException(guidanceProjection.Route.Route==ImageRouteKind.Unavailable?TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"):"Image description failed ("+guidanceProjection.Notice+").",guidanceProjection.Notice);message=guidanceProjection.Messages[0];var proposed=result.Concat(new[]{message}).ToList();
                 var candidate=state.Copy();candidate.Guidance.Add(guide.Copy());
                 string blocked=!AgentTaskStore.FitsCheckpoint(candidate)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint"):op.Workspace.GuidanceFits!=null && !op.Workspace.GuidanceFits(proposed)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint.alternativeA"):null;
                 if(blocked!=null){if(fresh.Count==0)throw new ApiException(blocked);LastNotice=blocked;break;}

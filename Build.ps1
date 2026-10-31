@@ -22,7 +22,7 @@ if ($Target -eq 'App') {
     $destination = Join-Path $workRoot ($Target + '.exe')
     $sourceNames = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | ForEach-Object { $_.FullName.Substring((Join-Path $projectRoot 'src').Length + 1) })
     $sources = @($sourceNames | ForEach-Object { Join-Path $projectRoot ('src\' + $_) } | Where-Object { Test-Path -LiteralPath $_ }) + @((Join-Path $projectRoot ('tests\' + $Target + '.cs')))
-    if ($Target -eq 'ModelConfigurationSmoke' -or $Target -eq 'ContextUsageTests' -or $Target -eq 'UiSmoke' -or $Target -eq 'ChatSmoke' -or $Target -eq 'AudioSmoke' -or $Target -eq 'LiveTests' -or $Target -eq 'UpdateTests' -or $Target -eq 'ProxyTests' -or $Target -eq 'ProviderUiSmoke' -or $Target -eq 'OnboardingModelSmoke') { $sources += Join-Path $projectRoot 'tests\ApiTests.cs' }
+    if ($Target -eq 'ImageInputRouterTests' -or $Target -eq 'ModelConfigurationSmoke' -or $Target -eq 'ContextUsageTests' -or $Target -eq 'UiSmoke' -or $Target -eq 'ChatSmoke' -or $Target -eq 'AudioSmoke' -or $Target -eq 'LiveTests' -or $Target -eq 'UpdateTests' -or $Target -eq 'ProxyTests' -or $Target -eq 'ProviderUiSmoke' -or $Target -eq 'OnboardingModelSmoke') { $sources += Join-Path $projectRoot 'tests\ApiTests.cs' }
     if ($Target -eq 'ChatSmoke' -or $Target -eq 'ProviderUiSmoke') { $sources += Join-Path $projectRoot 'tests\LiveTests.cs' }
     if ($Target -eq 'MenuSmoke' -or $Target -eq 'GuideMenuSmoke') {
         & $compiler @('/nologo','/codepage:65001','/target:winexe',('/out:' + (Join-Path $workRoot 'MenuBlankFixture.exe'))) @references (Join-Path $projectRoot 'tests\MenuBlankFixture.cs')

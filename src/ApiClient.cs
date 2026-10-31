@@ -13,7 +13,9 @@ namespace Dafeiyu
 {
     public sealed class ApiException : Exception
     {
-        public ApiException(string safeMessage) : base(safeMessage) { }
+        public string Code {get;private set;}
+        public ApiException(string safeMessage) : this(safeMessage,"") { }
+        public ApiException(string safeMessage,string code) : base(safeMessage) { Code=code??""; }
     }
     public interface IConversationApi : IDisposable
     {
@@ -334,13 +336,13 @@ namespace Dafeiyu
             catch (OperationCanceledException)
             {
                 if (cancel.IsCancellationRequested) throw;
-                throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"));
+                throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"),"timeout");
             }
             catch (Exception e)
             {
                 if(!(e is HttpRequestException || e is IOException || e is ObjectDisposedException)) throw;
                 if(cancel.IsCancellationRequested) throw new OperationCanceledException(cancel);
-                if(token.IsCancellationRequested) throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"));
+                if(token.IsCancellationRequested) throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"),"timeout");
                 throw new ApiException(e is HttpRequestException ? (settings.UseProxy ? TextResources.Get("apiClient.sendAsync.text.alternativeB") : TextResources.Get("apiClient.sendAsync.text.alternativeC")) : TextResources.Get("apiClient.sendAsync.text.alternativeD"));
             }
             }
