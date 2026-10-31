@@ -46,6 +46,8 @@ namespace Dafeiyu.Tests
                 release.SetResult(true);Wait((Task<bool>)Call(asyncScheduler,"FlushAsync"));Check(!Pending(asyncScheduler),"async save drains before flush completes");((IDisposable)asyncScheduler).Dispose();
                 var cfg=new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,SaveChatHistory=false,OnboardingState="completed"};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 var store=new SettingsStore(path);store.Save(cfg);pet=new PetWindow(null,cfg,store,null);pet.Show();
+                // Showing the pet queues a real visit write; drain startup producers before reserving maintenance.
+                Wait(pet.AgentJobs.InitializeAsync());Wait(pet.Relationships.FlushAsync());
                 var firstMaintenance=pet.DataMaintenance.BeginAsync();Wait(firstMaintenance);bool firstDragSafe=true;
                 using(firstMaintenance.Result){try{Call(pet,"BeginPreferenceEdit");Call(pet,"EndPreferenceEdit");}catch(InvalidOperationException){firstDragSafe=false;}}
                 Check(firstDragSafe,"first preference drag during maintenance does not register a producer or throw");
