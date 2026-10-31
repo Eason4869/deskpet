@@ -236,6 +236,12 @@ namespace Dafeiyu
         [DataMember] public bool AutoSleepEnabled { get; set; }
         [DataMember] public bool GreetingEnabled { get; set; }
         [DataMember] public bool AiGreetingEnabled { get; set; }
+        [DataMember] public ModelReference ImageDescriptionModel {get;set;}
+        [IgnoreDataMember] public ImageDescriptionOverride ImageDescriptionOverride {get;set;}
+        [DataMember] public bool DesktopObservationEnabled {get;set;}
+        [DataMember] public int DesktopObservationConsentVersion {get;set;}
+        [DataMember] public string DesktopObservationConsentDestination {get;set;}
+        [DataMember] public List<string> DesktopObservationExcludedApps {get;set;}
         [DataMember] public int GreetingMinMinutes { get; set; }
         [DataMember] public int GreetingMaxMinutes { get; set; }
         [DataMember] public string SkinId { get; set; }
@@ -296,6 +302,7 @@ namespace Dafeiyu
             LocalShortcuts=ShortcutCatalog.Defaults();
             Hotkeys=new Dictionary<string,string> { {"quick","Ctrl+Alt+Space"},{"hide","Ctrl+Alt+H"},{"quiet","Ctrl+Alt+D"},{"passthrough","Ctrl+Alt+P"} };
             Scale = 1.25; Volume = 50; Topmost = true; FollowCursor = true; Wander = false; StumbleEnabled=true;AutoSleepEnabled=true;
+            ImageDescriptionModel=null;ImageDescriptionOverride=null;DesktopObservationEnabled=false;DesktopObservationConsentVersion=0;DesktopObservationConsentDestination="";DesktopObservationExcludedApps=new List<string>();
             GreetingEnabled=true; AiGreetingEnabled=false; GreetingMinMinutes=30; GreetingMaxMinutes=60;
             SkinId = "e-bao";
             SelectedCompanionKey = ""; PendingOfficialCompanionId = "";
@@ -315,6 +322,11 @@ namespace Dafeiyu
         }
         public void Normalize()
         {
+            if(ImageDescriptionModel!=null)ImageDescriptionModel.Normalize();
+            if(ImageDescriptionOverride!=null)ImageDescriptionOverride.Normalize();
+            DesktopObservationConsentVersion=Math.Max(0,DesktopObservationConsentVersion);
+            DesktopObservationConsentDestination=(DesktopObservationConsentDestination??"").Trim();
+            DesktopObservationExcludedApps=(DesktopObservationExcludedApps??new List<string>()).Where(a=>!String.IsNullOrWhiteSpace(a)).Select(a=>a.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             ThemeMode=ThemeColors.Normalize(ThemeMode);
             UiLanguage=UiLanguages.Normalize(UiLanguage);
             ImageGenerationConcurrency=Math.Max(1,Math.Min(4,ImageGenerationConcurrency));
@@ -448,7 +460,7 @@ namespace Dafeiyu
             var providers=new List<TextProviderSettings>();if(TextProviders!=null)foreach(var provider in TextProviders)if(provider!=null)providers.Add(provider.Copy());
             var images=new List<ImageGenerationProvider>();if(ImageProviders!=null)foreach(var provider in ImageProviders)if(provider!=null)images.Add(provider.Copy());
             var audioProviders=new Dictionary<string,ServiceProviderSettings>();if(AudioProviders!=null)foreach(var pair in AudioProviders)if(pair.Value!=null)audioProviders[pair.Key]=pair.Value.Copy();
-            return new PetSettings { ThemeMode=ThemeMode,UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
+            return new PetSettings { ImageDescriptionModel=ImageDescriptionModel==null?null:ImageDescriptionModel.Copy(),ImageDescriptionOverride=ImageDescriptionOverride==null?null:ImageDescriptionOverride.Copy(),DesktopObservationEnabled=DesktopObservationEnabled,DesktopObservationConsentVersion=DesktopObservationConsentVersion,DesktopObservationConsentDestination=DesktopObservationConsentDestination,DesktopObservationExcludedApps=new List<string>(DesktopObservationExcludedApps??new List<string>()),ThemeMode=ThemeMode,UiLanguage=UiLanguage,ShowProjectSidebar=ShowProjectSidebar,OnboardingLessonId=OnboardingLessonId,OnboardingCompletedLessons=new List<string>(OnboardingCompletedLessons??new List<string>()),OnboardingSkippedLessons=new List<string>(OnboardingSkippedLessons??new List<string>()),OnboardingVerifiedLessons=new List<string>(OnboardingVerifiedLessons??new List<string>()),AgentSystemPrompt=AgentSystemPrompt,AgentCommandTimeoutSeconds=AgentCommandTimeoutSeconds,AgentBackgroundJobTimeoutSeconds=AgentBackgroundJobTimeoutSeconds,AgentTerminalPolicy=AgentTerminalPolicy,AgentApprovalMode=AgentApprovalMode,AgentSandboxEnabled=AgentSandboxEnabled,AgentSandboxReadDirectories=AgentSandboxReadDirectories,AgentTrustProjectInstructions=AgentTrustProjectInstructions,AgentGlobalInstructions=AgentGlobalInstructions,AgentSkillsDirectory=AgentSkillsDirectory,McpServers=(McpServers??new List<McpServerConfiguration>()).Where(s=>s!=null).Take(16).Select(s=>s.Copy()).ToList(),AgentFullAccess=AgentFullAccess,AgentBackupFiles=AgentBackupFiles,AgentContextTokenLimit=AgentContextTokenLimit,GitHubRepository=GitHubRepository,GitHub=GitHub==null?null:GitHub.Copy(),ShowPredictedMessages=ShowPredictedMessages,PlainTextEditor=PlainTextEditor,ShowContextUsage=ShowContextUsage,SendOnEnter=SendOnEnter,FollowUpBehavior=FollowUpBehavior,AgentDetailedProcess=AgentDetailedProcess,AgentPlanMode=AgentPlanMode,AgentGoal=AgentGoal,AgentEnabled=AgentEnabled,AgentWorkspace=AgentWorkspace,AudioProviders=audioProviders,TextProviders=providers,ActiveTextProviderId=ActiveTextProviderId,OnboardingState=OnboardingState,OnboardingStep=OnboardingStep,OnboardingVersion=OnboardingVersion,LastOnboardingSeries=LastOnboardingSeries,SaveChatHistory=SaveChatHistory,QuietMode=QuietMode,HideOnFullscreen=HideOnFullscreen,ClickThrough=ClickThrough,LockPosition=LockPosition,LocalShortcuts=new Dictionary<string,string>(LocalShortcuts??ShortcutCatalog.Defaults()),Hotkeys=new Dictionary<string,string>(Hotkeys),Scale=Scale,Volume=Volume,Topmost=Topmost,FollowCursor=FollowCursor,Wander=Wander,SkinId=SkinId,SelectedCompanionKey=OfficialCompanionIdentity.NormalizePickerKey(SelectedCompanionKey),PendingOfficialCompanionId=OfficialCompanionProfiles.IsOfficialId(PendingOfficialCompanionId)?PendingOfficialCompanionId:"",X=X,Y=Y,
                 ImageGenerationConcurrency=ImageGenerationConcurrency,ImageGenerationMotionEnabled=ImageGenerationMotionEnabled,ImageGalleryLayout=ImageGalleryLayout,ImageProviders=images,ActiveImageProviderId=ActiveImageProviderId,AutoSleepEnabled=AutoSleepEnabled,StumbleEnabled=StumbleEnabled,GreetingEnabled=GreetingEnabled,AiGreetingEnabled=AiGreetingEnabled,GreetingMinMinutes=GreetingMinMinutes,GreetingMaxMinutes=GreetingMaxMinutes,
                 ReadReplies=ReadReplies,UseCloudVoice=UseCloudVoice,VoiceUsesTextService=VoiceUsesTextService,VoiceName=VoiceName,SystemPrompt=SystemPrompt,
                 SpeechUsesTextService=SpeechUsesTextService,VoiceMode=VoiceMode,LiveVoice=LiveVoice,Live=Live.Copy(),PersonaProfileVersion=PersonaProfileVersion,VoiceProfileVersion=VoiceProfileVersion,VoiceProfiles=voiceProfiles,
@@ -619,7 +631,7 @@ namespace Dafeiyu
             target.ThemeMode=source.ThemeMode;target.Scale=source.Scale;target.Volume=source.Volume;
             target.Topmost=source.Topmost;target.FollowCursor=source.FollowCursor;target.Wander=source.Wander;
             target.StumbleEnabled=source.StumbleEnabled;target.AutoSleepEnabled=source.AutoSleepEnabled;
-            target.GreetingEnabled=source.GreetingEnabled;target.AiGreetingEnabled=source.AiGreetingEnabled;
+            target.GreetingEnabled=source.GreetingEnabled;target.AiGreetingEnabled=source.AiGreetingEnabled;target.DesktopObservationEnabled=source.DesktopObservationEnabled;
             target.GreetingMinMinutes=source.GreetingMinMinutes;target.GreetingMaxMinutes=source.GreetingMaxMinutes;
             target.QuietMode=source.QuietMode;target.HideOnFullscreen=source.HideOnFullscreen;
             target.ClickThrough=source.ClickThrough;target.LockPosition=source.LockPosition;

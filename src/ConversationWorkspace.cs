@@ -66,6 +66,7 @@ namespace Dafeiyu
         public PetSettings EffectiveSettings()
         {
             var cfg=settings().Copy();
+            cfg.ImageDescriptionOverride=Definition.ImageDescriptionOverride==null?null:Definition.ImageDescriptionOverride.Copy();
             if(project.Id!=ProjectCatalogStore.UnassignedProjectId && project.Id!=ProjectCatalogStore.QuickProjectId){
                 cfg.AgentWorkspace=project.Workspace;cfg.AgentGoal=project.Goal;cfg.AgentFullAccess=project.FullAccess;cfg.AgentBackupFiles=project.BackupFiles;cfg.AgentPlanMode=project.PlanMode;
                 cfg.AgentCommandTimeoutSeconds=project.CommandTimeoutSeconds;cfg.AgentBackgroundJobTimeoutSeconds=project.BackgroundJobTimeoutSeconds;cfg.AgentTerminalPolicy=project.TerminalPolicy;
