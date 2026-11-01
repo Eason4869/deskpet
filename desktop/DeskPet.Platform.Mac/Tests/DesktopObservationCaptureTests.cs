@@ -63,6 +63,44 @@ internal static class DesktopObservationCaptureTests
         native.PreflightGate.Dispose(); native.PreflightGate = null;
         native.Reset(); native.Accept = false;
         Check(await capture.CaptureForegroundAsync(new(), default) == null && capture.GetStatus() == DesktopCaptureStatus.Ready, "native refusal releases slot");
+        await LateResultsSkipCurrentness();
+    }
+    private static async Task LateResultsSkipCurrentness()
+    {
+        var failures = new List<Exception>();
+        foreach (bool timeout in new[] { false, true })
+        {
+            try { await LateResultSkipsCurrentness(timeout); }
+            catch (Exception error) { failures.Add(error); }
+        }
+        if (failures.Count != 0) throw new AggregateException(failures);
+    }
+    private static async Task LateResultSkipsCurrentness(bool timeout)
+    {
+        string reason = timeout ? "timeout" : "cancellation";
+        var native = new Fake();
+        var capture = new MacDesktopObservation(native);
+        using var cancel = new CancellationTokenSource();
+        var pending = capture.CaptureForegroundAsync(new(), cancel.Token);
+        await native.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        if (timeout) await Reject<TimeoutException>(pending);
+        else { cancel.Cancel(); await Reject<OperationCanceledException>(pending); }
+        int callsBeforeLateResult = Volatile.Read(ref native.CurrentCalls);
+        native.ThrowOnCurrent = true;
+        var bytes = Png(32, 20);
+        native.Complete(bytes);
+        await Eventually(() => bytes.All(b => b == 0) && capture.GetStatus() == DesktopCaptureStatus.Ready);
+        bool noLateCurrentness = Volatile.Read(ref native.CurrentCalls) == callsBeforeLateResult;
+        Check(bytes.All(b => b == 0), reason + " late result zeroed without waiting on currentness");
+        // Prove reuse by accepting and completing a new job in a separate adapter.
+        var nextNative = new Fake();
+        var next = new MacDesktopObservation(nextNative);
+        var nextPending = next.CaptureForegroundAsync(new(), default);
+        await nextNative.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        nextNative.Complete(Png(32, 20));
+        using var frame = await nextPending;
+        Check(frame != null, reason + " late result releases slot for another adapter");
+        Check(noLateCurrentness, reason + " late result never calls native currentness");
     }
     private static async Task Eventually(Func<bool> condition)
     { using var timeout = new CancellationTokenSource(2000); while (!condition()) await Task.Delay(10, timeout.Token); }
@@ -76,13 +114,19 @@ internal static class DesktopObservationCaptureTests
     {
         internal DesktopCaptureStatus Status = DesktopCaptureStatus.Ready;
         internal bool Current = true, Accept = true;
-        internal int Starts;
+        internal int Starts, CurrentCalls;
+        internal bool ThrowOnCurrent;
         internal ManualResetEventSlim? PreflightGate;
         internal TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private Action<byte[]?>? completion;
         public DesktopCaptureStatus GetStatus() { PreflightGate?.Wait(); return Status; }
         public DesktopObservationIdentity GetForeground() => new(123, 456, 789, 0, "com.example.front", "private", "", 0, 0, 800, 600);
-        public bool IsCurrent(DesktopObservationIdentity target) => Current;
+        public bool IsCurrent(DesktopObservationIdentity target)
+        {
+            Interlocked.Increment(ref CurrentCalls);
+            if (ThrowOnCurrent) throw new InvalidOperationException("Late currentness must not run");
+            return Current;
+        }
         public bool Begin(DesktopObservationIdentity target, Action<byte[]?> completed) { Starts++; completion = completed; Started.TrySetResult(); return Accept; }
         internal void Complete(byte[] bytes) => completion!(bytes);
         internal void Reset() { Started = new(TaskCreationOptions.RunContinuationsAsynchronously); completion = null; }

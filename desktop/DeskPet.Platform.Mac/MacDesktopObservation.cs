@@ -43,6 +43,8 @@ public sealed class MacDesktopObservation : IDesktopObservationCapture
                 var completion = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
                 if (!native.Begin(target, value => completion.SetResult(value))) return null;
                 bytes = await completion.Task.ConfigureAwait(false);
+                // A finished caller no longer needs native/UI currentness; clear late bytes in finally.
+                if (token.IsCancellationRequested) return null;
                 if (bytes == null || !ValidPngBounds(bytes) || !native.IsCurrent(target)) return null;
                 var frame = new DesktopObservationFrame(bytes, DateTimeOffset.UtcNow, target);
                 bytes = null;

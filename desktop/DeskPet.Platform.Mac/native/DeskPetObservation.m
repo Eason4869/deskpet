@@ -181,8 +181,8 @@ int dp_observation_begin(const char *target, DPObservationCallback callback, voi
                         SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:selected];
                         [SCScreenshotManager captureImageWithFilter:filter configuration:configuration completionHandler:^(CGImageRef image, NSError *captureError) {
                             @autoreleasepool {
-                                CFMutableDataRef png = !captureError && ObservationCurrent(expected) ? ObservationEncode(image) : NULL;
-                                if (png && (!ObservationCurrent(expected) || NSProcessInfo.processInfo.systemUptime >= deadline)) {
+                                CFMutableDataRef png = !captureError && NSProcessInfo.processInfo.systemUptime < deadline && ObservationCurrent(expected) ? ObservationEncode(image) : NULL;
+                                if (png && (NSProcessInfo.processInfo.systemUptime >= deadline || !ObservationCurrent(expected))) {
                                     CFIndex size = CFDataGetLength(png); memset_s(CFDataGetMutableBytePtr(png), size, 0, size); CFRelease(png); png = NULL;
                                 }
                                 ObservationFinish(callback, context, png ? DPObservationReady : DPObservationSkipped, png);

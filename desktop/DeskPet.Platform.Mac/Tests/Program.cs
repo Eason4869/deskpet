@@ -7,6 +7,12 @@ if (args.Length == 2 && args[0] == "--speech-process-child")
     File.WriteAllText(args[1], Environment.ProcessId.ToString());
     Console.In.ReadToEnd(); Thread.Sleep(30000); return;
 }
+if (args.Contains("--observation-only"))
+{
+    try { DesktopObservationCaptureTests.Run().GetAwaiter().GetResult(); }
+    catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+    return;
+}
 var checks = 0;
 void Check(bool ok, string name) { if (!ok) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
 void Reject<T>(Action action, string name) where T : Exception { try { action(); } catch (T) { Check(true, name); return; } throw new Exception(name); }
