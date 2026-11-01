@@ -147,7 +147,8 @@ namespace Dafeiyu.Tests
         static int Fixture(string[] args)
         {
             SetProcessDpiAwarenessContext(new IntPtr(-4));
-            using (var form = new Form { Text = args[1], StartPosition = FormStartPosition.Manual, Location = new Point(150,150), Size = new Size(420,300), FormBorderStyle = FormBorderStyle.None, BackColor = args.Length > 2 && args[2] == "black" ? Color.Black : Color.CadetBlue })
+            // Keep a CI-like size ceiling on the synthetic window regardless of the host display.
+            using (var form = new Form { Text = args[1], StartPosition = FormStartPosition.Manual, Location = new Point(150,150), Size = new Size(420,300), MaximumSize = new Size(800,600), FormBorderStyle = FormBorderStyle.None, BackColor = args.Length > 2 && args[2] == "black" ? Color.Black : Color.CadetBlue })
             {
                 var timer = new System.Windows.Forms.Timer { Interval = 25000 }; timer.Tick += delegate { form.Close(); }; timer.Start();
                 form.Shown += delegate
@@ -177,6 +178,7 @@ namespace Dafeiyu.Tests
         }
         static void Native()
         {
+            AutomaticEncodingLimits();
             SetProcessDpiAwarenessContext(new IntPtr(-4)); Process fixture = null, background = null, black = null, protectedWindow = null;
             var capture = new WindowsDesktopObservationCapture();
             try
@@ -204,13 +206,26 @@ namespace Dafeiyu.Tests
                 Console.WriteLine("Native fixture DPI: " + GetDpiForWindow(fixture.MainWindowHandle));
                 var excluded = new DesktopCaptureOptions(new[] { fixture.MainModule.FileName });
                 Check(capture.CaptureForegroundAsync(excluded, CancellationToken.None).GetAwaiter().GetResult() == null, "stable executable path exclusion prevents image");
-                SetWindowPos(fixture.MainWindowHandle, IntPtr.Zero, -100, 80, 1600, 1000, 0x14); Foreground(fixture);
+                // Native geometry is independent of encoder limits and fits a small CI desktop.
+                bool positioned = SetWindowPos(fixture.MainWindowHandle, IntPtr.Zero, -100, 80, 640, 480, 0x14);
+                int positionError = Marshal.GetLastWin32Error();
+                Foreground(fixture);
+                NativeRect bounds;
+                bool measured = GetWindowRect(fixture.MainWindowHandle, out bounds);
+                Console.WriteLine("Native requested=(-100,80,640,480), SetWindowPos=" + positioned + ", error=" + positionError +
+                    ", GetWindowRect=" + measured + ", actual=" + bounds + ", maxTrack=" + SystemInformation.MaxWindowTrackSize +
+                    ", virtualScreen=" + SystemInformation.VirtualScreen + ", alive=" + !fixture.HasExited + ", foreground=" + (GetForegroundWindow() == fixture.MainWindowHandle));
+                Check(positioned && measured && bounds.Left == -100 && bounds.Top == 80 && bounds.Right - bounds.Left == 640 && bounds.Bottom - bounds.Top == 480,
+                    "controlled negative-coordinate fixture reaches requested physical bounds");
                 using (var frame = capture.CaptureForegroundAsync(new DesktopCaptureOptions(), CancellationToken.None).GetAwaiter().GetResult())
                 {
-                    Check(frame != null && frame.Target.X == -100 && frame.Target.Width == 1600, "physical bounds support negative desktop coordinates");
+                    Console.WriteLine("Native captured=" + (frame == null ? "null" : "(" + frame.Target.X + "," + frame.Target.Y + "," + frame.Target.Width + "," + frame.Target.Height + ")"));
+                    Check(frame != null && frame.Target.X == bounds.Left && frame.Target.Y == bounds.Top &&
+                        frame.Target.Width == bounds.Right - bounds.Left && frame.Target.Height == bounds.Bottom - bounds.Top,
+                        "captured physical bounds exactly match negative-coordinate native window");
                     using(var stream = new MemoryStream(frame.EncodedPng)) using(var image = new Bitmap(stream))
                         Check(image.Width <= 1280 && image.Height <= 1280 && (long)image.Width * image.Height <= 1000000 && frame.EncodedPng.Length <= 2 * 1024 * 1024, "automatic PNG enforces independent size limits");
-                    SetWindowPos(fixture.MainWindowHandle, IntPtr.Zero, -100, 80, 700, 500, 0x14);
+                    Check(SetWindowPos(fixture.MainWindowHandle, IntPtr.Zero, -100, 80, 700, 500, 0x14), "controlled fixture resize succeeds");
                     Check(!capture.IsCurrent(frame), "resize invalidates frame");
                 }
                 using(var own = new Form { Text = "Own synthetic window", Size = new Size(300,200) })
@@ -240,6 +255,36 @@ namespace Dafeiyu.Tests
             }
             finally { foreach(var p in new[] { fixture, background, black, protectedWindow }) if(p != null) { try { if(!p.HasExited) { p.Kill(); p.WaitForExit(3000); } } finally { p.Dispose(); } } }
         }
+        static void AutomaticEncodingLimits()
+        {
+            // These inputs exceed each automatic limit independently of the native display size.
+            using (var wide = new Bitmap(4000, 1000))
+            {
+                using (var graphics = Graphics.FromImage(wide)) graphics.Clear(Color.CadetBlue);
+                byte[] png = ApplicationSnapshots.Encode(wide, CancellationToken.None, true);
+                using (var stream = new MemoryStream(png)) using (var image = new Bitmap(stream))
+                    Check(image.Width == 1280 && image.Height == 320, "automatic encoder reduces oversized long edge to 1280");
+            }
+            using (var square = new Bitmap(1600, 1600))
+            {
+                using (var graphics = Graphics.FromImage(square)) graphics.Clear(Color.CadetBlue);
+                byte[] png = ApplicationSnapshots.Encode(square, CancellationToken.None, true);
+                using (var stream = new MemoryStream(png)) using (var image = new Bitmap(stream))
+                    Check(image.Width == 1000 && image.Height == 1000, "automatic encoder independently reduces area to one million pixels");
+            }
+            using (var noisy = new Bitmap(1250, 800, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
+            {
+                var data = noisy.LockBits(new Rectangle(0, 0, 1250, 800), System.Drawing.Imaging.ImageLockMode.WriteOnly, noisy.PixelFormat);
+                try { var pixels = new byte[data.Stride * 800]; new Random(7348).NextBytes(pixels); Marshal.Copy(pixels, 0, data.Scan0, pixels.Length); }
+                finally { noisy.UnlockBits(data); }
+                byte[] manual = ApplicationSnapshots.Encode(noisy, CancellationToken.None, false);
+                Check(manual.Length > 2 * 1024 * 1024, "synthetic noise exceeds automatic byte cap while already within dimension and pixel caps");
+                byte[] automatic = ApplicationSnapshots.Encode(noisy, CancellationToken.None, true);
+                using (var stream = new MemoryStream(automatic)) using (var image = new Bitmap(stream))
+                    Check(automatic.Length <= 2 * 1024 * 1024 && image.Width < 1250 && image.Height < 800,
+                        "automatic encoder reduces high entropy image to two MiB byte cap");
+            }
+        }
         [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr context);
         [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
         [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
@@ -250,7 +295,13 @@ namespace Dafeiyu.Tests
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern bool SetWindowText(IntPtr window, string text);
-        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+        struct NativeRect
+        {
+            public int Left, Top, Right, Bottom;
+            public override string ToString() { return "(" + Left + "," + Top + "," + (Right - Left) + "," + (Bottom - Top) + ")"; }
+        }
+        [DllImport("user32.dll", SetLastError=true)] static extern bool GetWindowRect(IntPtr window, out NativeRect bounds);
+        [DllImport("user32.dll", SetLastError=true)] static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
 #endif
     }
 }
