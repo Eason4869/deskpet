@@ -15,6 +15,18 @@ namespace Dafeiyu
     }
     public static class ImageModelResolver
     {
+        public static System.Collections.Generic.IList<ModelReference> Candidates(PetSettings settings)
+        {
+            if(settings==null)throw new ArgumentNullException("settings");
+            var result=new System.Collections.Generic.List<ModelReference>();
+            foreach(var original in settings.TextProviders??new System.Collections.Generic.List<TextProviderSettings>()){
+                if(original==null)continue;var provider=original.Copy();provider.Normalize();
+                foreach(var model in provider.Models){var connection=provider.Connection.Copy();connection.Model=model;provider.ApplyModelCapabilities(connection);
+                    if(AgentCapabilityResolver.Resolve(new PetSettings{Text=connection},null).Images==CapabilitySupport.Supported)result.Add(new ModelReference{ProviderId=provider.Id,ModelId=model});
+                }
+            }
+            return result;
+        }
         public static ImageRouteSnapshot Resolve(PetSettings settings,ImageDescriptionOverride selection)
         {
             if(settings==null)throw new ArgumentNullException("settings");

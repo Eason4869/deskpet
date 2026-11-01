@@ -1,4 +1,4 @@
-﻿using Avalonia;
+锘縰sing Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -119,7 +119,7 @@ internal sealed partial class DesktopController : IDisposable
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings,DataMaintenance);
         Session.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);
-        Queue = new ConversationQueue(Session, () => Settings, () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
+        Queue = new ConversationQueue(Session, () => WorkBindings.RootSettings(Session.PersonaId), () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
         Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput,DataMaintenance);
         Live.RelationshipCompanion=()=>RelationshipCompanionId;
         Live.LogicalTurnCommitted += turn =>
@@ -138,7 +138,7 @@ internal sealed partial class DesktopController : IDisposable
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
-        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.DisplayName, IsVisible = true };
+        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet 路 " + Skin.DisplayName, IsVisible = true };
         tray.Clicked += (_, _) => ShowPet();
         var menu = new NativeMenu();
         void Add(Func<string> text, Action action) { var item = LocalizedUi.With(new NativeMenuItem(text()),"Header",text); item.Click += (_, _) => action(); menu.Items.Add(item); }
@@ -176,6 +176,16 @@ internal sealed partial class DesktopController : IDisposable
     internal ChatWindow? WorkApprovalHost(string session)=>chatHosts.FirstOrDefault(host=>host.IsVisible&&host.QuestionSessionId==session);
     private void Notify() {Observation.Invalidate();Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });}
     bool deferredSettingsSave;
+    internal void SaveProviderDraft(string kind,ServiceProviderSettings view,ModelReference? imageModel,bool imageChanged,bool providerChanged)
+    {
+        using(DataMaintenance.EnterActivity()){
+            var draft=Settings.Copy();var selected=view.Providers.Single(p=>p.Id==view.ActiveProviderId);
+            if(providerChanged)draft.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
+            if(imageChanged)draft.ImageDescriptionModel=imageModel?.Copy();store.Save(draft);
+            if(providerChanged)Settings.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
+            if(imageChanged)Settings.ImageDescriptionModel=imageModel?.Copy();deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;Notify();
+        }
+    }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     internal async Task<string> FlushDeferredSettingsAsync()
     {

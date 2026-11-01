@@ -77,7 +77,7 @@ namespace Dafeiyu
         {
             get
             {
-                if(inputQueue==null){inputQueue=new ConversationQueue(Conversation,()=>Settings,()=>Skin.Name,Path.Combine(Store.DirectoryPath,"queued-messages.json"));inputQueue.Changed+=delegate{if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};}
+                if(inputQueue==null){inputQueue=new ConversationQueue(Conversation,()=>ConversationSettings(Conversation),()=>Skin.Name,Path.Combine(Store.DirectoryPath,"queued-messages.json"));inputQueue.Changed+=delegate{if(!closing)Dispatcher.BeginInvoke(new Action(ConversationChanged));};}
                 return inputQueue;
             }
         }
@@ -191,6 +191,7 @@ namespace Dafeiyu
                 string path=Path.Combine(Store.DirectoryPath,"projects.json");
                 var persisted=File.Exists(path)?new ProjectCatalogStore(path).Load():new ProjectCatalog();
                 if(ProjectCatalogStore.WorkBindingSignature(persisted)!=baseline)throw new IOException(TextResources.Get("agent.jobs.ui.bindingChanged"));
+                ProjectCatalogStore.PreserveImageDescriptionOverrides(persisted,catalog);
                 if(ProjectCatalogStore.WorkBindingSignature(catalog)!=baseline)try{AgentJobs.EnsureWritable();}catch(Exception error){throw new IOException(AgentJobUiText.Error(error),error);}
             };
             projectCatalogStore.AfterSave=catalog=>baseline=ProjectCatalogStore.WorkBindingSignature(catalog);
@@ -741,8 +742,29 @@ namespace Dafeiyu
         }
         internal PetSettings ConversationSettings(ConversationSession session)
         {
-            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var cfg=workspace==null?Settings.Copy():workspace.EffectiveSettings();if(workspace==null&&session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}return cfg;
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var cfg=workspace==null?Settings.Copy():workspace.EffectiveSettings();ImageDescriptionOverride imageOverride;if(workspace==null&&Projects.LegacyImageDescriptionOverrides.TryGetValue(session.PersonaId,out imageOverride))cfg.ImageDescriptionOverride=imageOverride.Copy();if(workspace==null&&session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}return cfg;
         }
+        sealed class ImageDescriptionDraft {internal ImageDescriptionOverride Value;}
+        System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft> imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();
+        internal ImageDescriptionOverride ConversationImageDescriptionDraft(ConversationSession session)
+        {ImageDescriptionDraft value;return imageDescriptionDrafts.TryGetValue(session,out value)?value.Value:ConversationSettings(session).ImageDescriptionOverride;}
+        internal void SetConversationImageDescription(ConversationSession session,ImageDescriptionOverride value)
+        {
+            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var next=value==null?new ImageDescriptionOverride{Mode="inherit"}:value.Copy();imageDescriptionDrafts.Remove(session);imageDescriptionDrafts.Add(session,new ImageDescriptionDraft{Value=next});
+            if(workspace!=null&&workspace.IsDraft){workspace.Definition.ImageDescriptionOverride=next;imageDescriptionDrafts.Remove(session);return;}
+            ProjectStore.SaveImageDescriptionOverride(workspace==null?session.PersonaId:null,workspace==null?null:workspace.Id,next);
+            if(workspace==null){if(next.Mode=="inherit")Projects.RemoveLegacyImageDescriptionOverride(session.PersonaId);else Projects.LegacyImageDescriptionOverrides[session.PersonaId]=next.Copy();}
+            else workspace.Definition.ImageDescriptionOverride=next.Copy();imageDescriptionDrafts.Remove(session);
+        }
+        internal void ClearImageDescriptionAfterHistory(ConversationSession session,ConversationWorkspace workspace,string persona)
+        {
+            if(workspace==null){ProjectStore.SaveImageDescriptionOverride(persona,null,null);Projects.RemoveLegacyImageDescriptionOverride(persona);}
+            else if(workspace.IsDraft)workspace.Definition.ImageDescriptionOverride=null;
+            else{ProjectStore.SaveImageDescriptionOverride(null,workspace.Id,null);workspace.Definition.ImageDescriptionOverride=null;}
+            imageDescriptionDrafts.Remove(session);
+        }
+        internal void ClearAllImageDescriptionOverrides()
+        {ProjectStore.ClearImageDescriptionOverrides();Projects.ClearImageDescriptionOverrides();foreach(var workspace in Workspaces.OpenWorkspaces)workspace.Definition.ImageDescriptionOverride=null;imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();}
         internal void SetConversationPlanMode(ConversationSession session,bool enabled){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentPlanMode=enabled;});}
         internal void SetConversationGoal(ConversationSession session,string goal){UpdateConversationSettings(session,delegate(PetSettings cfg){cfg.AgentGoal=goal;});}
         void UpdateConversationSettings(ConversationSession session,Action<PetSettings> update)

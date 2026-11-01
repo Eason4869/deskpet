@@ -4821,5 +4821,12 @@
   "imageDescription.unavailable": "图片转述不可用，请检查对话模型和图片转述模型的配置。",
   "imageDescription.timeout": "图片转述超时，请检查服务后重试。",
   "imageDescription.network": "图片转述服务连接失败，请检查配置和网络后重试。",
-  "imageDescription.failed": "图片转述失败，请检查服务后重试。"
+  "imageDescription.failed": "图片转述失败，请检查服务后重试。",
+  "imageDescription.title": "图片转述模型",
+  "imageDescription.help": "当对话模型不支持图片输入时，调用图片转述模型来获取图片描述。留空代表不使用。",
+  "imageDescription.none": "不使用",
+  "imageDescription.inherit": "跟随全局",
+  "imageDescription.invalid": "指定的模型不可用",
+  "imageDescription.direct": "当前对话模型直接识图",
+  "imageDescription.described": "使用图片转述模型"
 }

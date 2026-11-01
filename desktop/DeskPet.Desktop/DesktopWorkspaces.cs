@@ -44,6 +44,19 @@ internal sealed class DesktopWorkspaces
     internal void SelectModel(string id,string provider,string model)
     {lock(settingsGate)models[id]=(provider,model);owner.NotifyWorkChanged();}
     internal Task RenameArchiveAsync(string project,string conversation,string name,bool archived) => Catalog.ChangeConversationAsync(project,conversation,name,archived,CancellationToken.None);
+    internal PetSettings RootSettings(string persona)
+    {var settings=owner.Settings.Copy();if(Snapshot.LegacyImageDescriptionOverrides.TryGetValue(persona,out var value))settings.ImageDescriptionOverride=value.Copy();return settings;}
+    private readonly Dictionary<string,ImageDescriptionOverride> imageDrafts=new();
+    internal ImageDescriptionOverride? ImageDescriptionDraft(ConversationWorkspace? workspace,string persona)
+    {var key=workspace?.Id??("root:"+persona);return imageDrafts.TryGetValue(key,out var draft)?draft:(workspace==null?RootSettings(persona).ImageDescriptionOverride:workspace.Definition.ImageDescriptionOverride);}
+    internal void SaveImageDescription(ConversationWorkspace? workspace,string persona,ImageDescriptionOverride? value)
+    {
+        var key=workspace?.Id??("root:"+persona);imageDrafts[key]=value?.Copy()??new ImageDescriptionOverride{Mode="inherit"};
+        if(!Catalog.TrySaveImageDescriptionOverride(workspace?.ProjectId,workspace?.Id,workspace==null?persona:null,value))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));
+        if(workspace!=null)workspace.Definition.ImageDescriptionOverride=value?.Mode=="inherit"?null:value?.Copy();imageDrafts.Remove(key);owner.NotifyWorkChanged();
+    }
+    internal void ClearImageDescriptionOverrides()
+    {Catalog.ClearImageDescriptionOverrides();foreach(var workspace in Manager.OpenWorkspaces)workspace.Definition.ImageDescriptionOverride=null;imageDrafts.Clear();owner.NotifyWorkChanged();}
     internal PetSettings ProjectSettings(string id)
     {
         var workspace=Manager.OpenWorkspaces.FirstOrDefault(value=>value.ProjectId==id);if(workspace!=null)return workspace.EffectiveSettings();

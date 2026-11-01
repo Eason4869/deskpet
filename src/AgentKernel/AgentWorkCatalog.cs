@@ -37,6 +37,7 @@ namespace Dafeiyu
                 next.Sections=current.Sections;
                 next.RecentIncludeProjects=current.RecentIncludeProjects;
                 next.RecentShowProjectConversations=current.RecentShowProjectConversations;
+                ProjectCatalogStore.PreserveImageDescriptionOverrides(current,next);
             };
             store.AfterSave=next=>baseline=ProjectCatalogStore.WorkBindingSignature(next);
         }
@@ -87,6 +88,12 @@ namespace Dafeiyu
             }
             token.ThrowIfCancellationRequested();
             return await workspaces.CreateWorkspaceAsync(project,conversation,settingsOverride).ConfigureAwait(false);
+        }
+        public void ClearImageDescriptionOverrides(){lock(gate){store.ClearImageDescriptionOverrides();catalog.ClearImageDescriptionOverrides();}}
+        public bool TrySaveImageDescriptionOverride(string projectId,string conversationId,string personaId,ImageDescriptionOverride value)
+        {
+            Action save=delegate{lock(gate){store.SaveImageDescriptionOverride(personaId,conversationId,value);var next=catalog.Copy();if(!String.IsNullOrEmpty(personaId)){if(value==null||value.Mode=="inherit")next.RemoveLegacyImageDescriptionOverride(personaId);else next.LegacyImageDescriptionOverrides[personaId]=value.Copy();}else{var target=ProjectCatalogStore.AllConversations(next).Single(c=>c.Id==conversationId);target.ImageDescriptionOverride=value==null||value.Mode=="inherit"?null:value.Copy();}catalog=next;}};
+            if(String.IsNullOrEmpty(conversationId)){save();return true;}return mutations.TryRun(new[]{projectId},conversationId,save);
         }
         public bool TryChangeProject(string projectId,Action<ProjectDefinition> change)
         {

@@ -15,8 +15,8 @@ internal sealed partial class ChatWindow
         binding?.ProjectId??"",binding?.Id??"");
     internal ConversationSession BoundSession=>ProactiveBinding?.Session??boundSession??owner.Session;
     internal ConversationQueue BoundQueue=>ProactiveBinding?.Queue??boundQueue??owner.Queue;
-    internal PetSettings EffectiveSettings()=>ProactiveBinding?.EffectiveSettings()??binding?.EffectiveSettings()??owner.Settings;
-    private Func<PetSettings> CaptureSettings(){if(ProactiveBinding!=null)return ProactiveBinding.EffectiveSettings;var source=binding;return source==null?()=>owner.Settings:source.EffectiveSettings;}
+    internal PetSettings EffectiveSettings()=>ProactiveBinding?.EffectiveSettings()??binding?.EffectiveSettings()??owner.WorkBindings.RootSettings(BoundSession.PersonaId);
+    private Func<PetSettings> CaptureSettings(){if(ProactiveBinding!=null)return ProactiveBinding.EffectiveSettings;var source=binding;return source==null?()=>owner.WorkBindings.RootSettings(owner.Session.PersonaId):source.EffectiveSettings;}
     internal void FreezeForExit(){chatPage.IsEnabled=false;imageWorkspace.IsEnabled=false;}
     private async Task StopBoundAsync(){var queue=BoundQueue;var session=BoundSession;await owner.Dictation.CancelAsync(this);await queue.PauseAsync();await session.StopAsync();}
     internal async Task BindWorkAsync(string? projectId,string? conversationId)

@@ -4821,5 +4821,12 @@
   "imageDescription.unavailable": "चित्र विवरण उपलब्ध नहीं है। बातचीत और चित्र विवरण मॉडल की सेटिंग जाँचें।",
   "imageDescription.timeout": "चित्र विवरण का समय समाप्त हो गया। सेवा जाँचकर फिर प्रयास करें।",
   "imageDescription.network": "चित्र विवरण सेवा से कनेक्ट नहीं हो सका। सेटिंग और नेटवर्क जाँचकर फिर प्रयास करें।",
-  "imageDescription.failed": "चित्र विवरण विफल हुआ। सेवा जाँचकर फिर प्रयास करें।"
+  "imageDescription.failed": "चित्र विवरण विफल हुआ। सेवा जाँचकर फिर प्रयास करें।",
+  "imageDescription.title": "चित्र विवरण मॉडल",
+  "imageDescription.help": "जब बातचीत मॉडल चित्र नहीं लेता, तो यह मॉडल चित्र का विवरण देता है। उपयोग न करने के लिए खाली छोड़ें।",
+  "imageDescription.none": "उपयोग न करें",
+  "imageDescription.inherit": "वैश्विक सेटिंग अपनाएँ",
+  "imageDescription.invalid": "चुना गया मॉडल उपलब्ध नहीं है",
+  "imageDescription.direct": "बातचीत मॉडल चित्र सीधे समझता है",
+  "imageDescription.described": "चित्र विवरण मॉडल का उपयोग"
 }

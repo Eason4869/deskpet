@@ -4821,5 +4821,12 @@
   "imageDescription.unavailable": "Die Bildbeschreibung ist nicht verfügbar. Prüfe die Einstellungen des Gesprächs- und Bildbeschreibungsmodells.",
   "imageDescription.timeout": "Zeitüberschreitung bei der Bildbeschreibung. Prüfe den Dienst und versuche es erneut.",
   "imageDescription.network": "Der Bildbeschreibungsdienst ist nicht erreichbar. Prüfe Einstellungen und Netzwerk und versuche es erneut.",
-  "imageDescription.failed": "Die Bildbeschreibung ist fehlgeschlagen. Prüfe den Dienst und versuche es erneut."
+  "imageDescription.failed": "Die Bildbeschreibung ist fehlgeschlagen. Prüfe den Dienst und versuche es erneut.",
+  "imageDescription.title": "Bildbeschreibungsmodell",
+  "imageDescription.help": "Wenn das Gesprächsmodell keine Bilder annimmt, beschreibt dieses Modell die Bilder. Leer lassen, um es nicht zu verwenden.",
+  "imageDescription.none": "Nicht verwenden",
+  "imageDescription.inherit": "Globale Einstellung verwenden",
+  "imageDescription.invalid": "Ausgewähltes Modell nicht verfügbar",
+  "imageDescription.direct": "Gesprächsmodell verarbeitet Bilder direkt",
+  "imageDescription.described": "Bildbeschreibungsmodell wird verwendet"
 }
