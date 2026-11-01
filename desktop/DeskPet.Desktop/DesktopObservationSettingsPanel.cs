@@ -100,7 +100,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
         string value=transientStatus??(permissionGranted.HasValue?(permissionGranted.Value?TextResources.Get("desktopObservation.permissionReopen"):TextResources.Get("desktopObservation.permissionRequired")):(owner.ObservationPaused?TextResources.Get("desktopObservation.paused"):DesktopObservationUiText.ReasonText(reason)));
         if(transientStatus==null&&!permissionGranted.HasValue&&reason==ObservationReason.Allowed&&!owner.ObservationPaused)
         {
-            value=owner.Observation.Capture.GetStatus() switch{DesktopCaptureStatus.UnsupportedPlatform=>TextResources.Get("desktopObservation.unsupportedPlatform"),DesktopCaptureStatus.PermissionRequired=>TextResources.Get("desktopObservation.permissionRequired"),DesktopCaptureStatus.Ready=>DesktopObservationUiText.ReasonText(owner.ObservationReason==ObservationReason.Disabled?ObservationReason.Allowed:owner.ObservationReason),_=>TextResources.Get("desktopObservation.reason.CaptureUnavailable")};
+            value=owner.Observation.Capture.GetStatus() switch{DesktopCaptureStatus.UnsupportedPlatform=>TextResources.Get("desktopObservation.unsupportedPlatform"),DesktopCaptureStatus.PermissionRequired=>TextResources.Get("desktopObservation.permissionRequired"),DesktopCaptureStatus.Ready=>DesktopObservationUiText.ReasonText(owner.ObservationReason==ObservationReason.Disabled?ObservationReason.Allowed:owner.ObservationReason),_=>TextResources.Get("desktopObservation.reason.captureUnavailable")};
         }
         status.Text=value;permission.IsEnabled=OperatingSystem.IsMacOS();
         LocalizedUi.Set(pause,"Content",()=>owner.ObservationPaused?TextResources.Get("desktopObservation.resume"):TextResources.Get("desktopObservation.pause"));
@@ -123,7 +123,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
     private async Task TestAsync(bool upload)
     {
         var settings=owner.GlobalObservationSettings();
-        if(!settings.DesktopObservationEnabled){transientStatus=TextResources.Get("desktopObservation.reason.Disabled");return;}
+        if(!settings.DesktopObservationEnabled){transientStatus=TextResources.Get("desktopObservation.reason.disabled");return;}
         if(upload)
         {
             // Every upload test visibly confirms its exact current destinations.
@@ -138,8 +138,8 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
                 if(!confirmed){transientStatus=TextResources.Get("desktopObservation.saveFailed");return;}
                 settings=owner.GlobalObservationSettings();
             }
-            if(DesktopObservationConsent.Destination(settings)!=digest||DesktopObservationConsent.Destination(owner.GlobalObservationSettings())!=digest){transientStatus=TextResources.Get("desktopObservation.reason.ConsentRequired");return;}
-            if(!owner.Observation.TryBeginManualTest(DateTime.UtcNow)){transientStatus=TextResources.Get("desktopObservation.reason.Busy");return;}
+            if(DesktopObservationConsent.Destination(settings)!=digest||DesktopObservationConsent.Destination(owner.GlobalObservationSettings())!=digest){transientStatus=TextResources.Get("desktopObservation.reason.consentRequired");return;}
+            if(!owner.Observation.TryBeginManualTest(DateTime.UtcNow)){transientStatus=TextResources.Get("desktopObservation.reason.busy");return;}
         }
         for(int seconds=3;seconds>0;seconds--){transientStatus=TextResources.Format("desktopObservation.countdown",seconds);Refresh();await Task.Delay(1000,lifetime.Token);}
         transientStatus=null;
