@@ -11,7 +11,7 @@ internal sealed class DataManagementView:StackPanel
     {
         Spacing=12;var service=new HistoryMaintenanceService(owner.DataDirectory,owner.DataMaintenance,owner.ImageTasks);var status=Ui.Text("");status.Name="DataManagementStatus";
         var clear=SettingsVisual.Button(()=> (TextResources.Get("dataManagement.clearHistory")),()=>{
-            var dialog=new DataActionConfirmationWindow(TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.historyScope"),async()=>{var result=await service.ClearAllAsync();if(result.Status==Dafeiyu.Maintenance.HistoryMaintenanceStatus.Complete)owner.WorkBindings.ClearImageDescriptionOverrides();return DataManagementPresentation.Describe(result);},owner.FlushDeferredSettingsAsync);_=dialog.ShowDialog(host);
+            var dialog=new DataActionConfirmationWindow(TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.historyScope"),async()=>{await owner.Observation.DrainAsync();var result=await service.ClearAllAsync();if(result.Status==Dafeiyu.Maintenance.HistoryMaintenanceStatus.Complete){owner.WorkBindings.ClearImageDescriptionOverrides();owner.ClearProactiveForMaintenance();}return DataManagementPresentation.Describe(result);},owner.FlushDeferredSettingsAsync);_=dialog.ShowDialog(host);
         },true);clear.Name="ClearAllHistory";
         var reset=SettingsVisual.Button(()=> (TextResources.Get("dataManagement.restorePreferences")),()=>{
             var dialog=new DataActionConfirmationWindow(TextResources.Get("dataManagement.restorePreferences"),TextResources.Get("dataManagement.preferenceScope"),async()=>{

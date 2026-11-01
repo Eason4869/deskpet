@@ -105,6 +105,7 @@ internal sealed partial class DesktopController
     public Task SelectSkinAsync(PetSkin skin) => SelectSkinAsync(skin, CompanionSelectionOrigin.Settings);
     internal async Task SelectSkinAsync(PetSkin requested, CompanionSelectionOrigin origin)
     {
+        Observation.Invalidate();
         if ((origin!=CompanionSelectionOrigin.Onboarding&&ExplainGuideCompanions()) || exiting) return;
         long token = officialCompanions.BeginSelection();
         latestCompanionToken = token; companionSelectionGeneration++;

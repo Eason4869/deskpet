@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/ProjectCatalog.Ordinary.cs" Link="Shared/ProjectCatalog.Ordinary.cs" />
     <Compile Include="../../src/Proactive/*.cs" Link="Shared/Proactive/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../vendor/qrcoder/netstandard2.0/QRCoder.dll" LogicalName="Dafeiyu.QRCoder.dll" />
     <EmbeddedResource Include="../../vendor/qrcoder/LICENSE.txt" LogicalName="Dafeiyu.QRCoder.LICENSE.txt" />

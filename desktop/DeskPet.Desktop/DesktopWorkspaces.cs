@@ -16,6 +16,9 @@ internal sealed class DesktopWorkspaces
     internal ConversationWorkspaceManager Manager { get; }
     private AgentWorkCatalog Catalog => catalog??=new AgentWorkCatalog(directory,Jobs);
     internal ProjectCatalog Snapshot => Catalog.Snapshot;
+    internal bool AdmitOrdinary(ConversationDefinition definition)=>Catalog.TrySaveOrdinaryConversation(definition);
+    internal bool SaveProactiveImageDescription(string conversationId,ImageDescriptionOverride? value)=>Catalog.TrySaveImageDescriptionOverride(ProjectCatalogStore.UnassignedProjectId,conversationId,null,value);
+    internal ConversationDefinition[] ProactiveConversations(string persona)=>new ProjectCatalogStore(Path.Combine(directory,"projects.json")).Load().UnassignedConversations.Where(row=>row.Mode=="chat"&&row.Origin=="proactive"&&row.PetId==persona&&!row.Archived&&Guid.TryParseExact(row.Id,"N",out _)).OrderByDescending(row=>row.LastOpenedUtcTicks).Select(row=>row.Copy()).ToArray();
     internal DesktopWorkspaces(DesktopController owner,DesktopRuntime runtime,Func<string,AgentJobApplicationService>? jobsFactory=null)
     {
         this.owner=owner;directory=owner.DataDirectory;
