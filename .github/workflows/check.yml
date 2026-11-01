@@ -14,11 +14,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Check proactive core test registration
+      - name: Check proactive core and UI test registration
         shell: powershell
         run: |
           python tests/ProactiveRegistrationTests.py
-          if ($LASTEXITCODE) { throw 'Proactive core test registration failed' }
+          if ($LASTEXITCODE) { throw 'Proactive core and UI test registration failed' }
       - name: Check background job acceptance registration
         shell: powershell
         run: |
@@ -78,6 +78,19 @@ jobs:
           if ($LASTEXITCODE) { throw 'Windows desktop observation policy tests failed' }
           powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -Target DesktopObservationServiceTests
           if ($LASTEXITCODE) { throw 'Windows desktop observation service tests failed' }
+      - name: Execute proactive Windows UI tests
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -Target DesktopObservationHostTests
+          if ($LASTEXITCODE) { throw 'DesktopObservationHostTests failed' }
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -Target DesktopObservationUiTests
+          if ($LASTEXITCODE) { throw 'DesktopObservationUiTests failed' }
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -Target ProactiveConversationUiTests
+          if ($LASTEXITCODE) { throw 'ProactiveConversationUiTests failed' }
+          & work/ExplicitSettingsSaveTests.exe --image-picker
+          if ($LASTEXITCODE) { throw 'Explicit settings --image-picker failed' }
+          & work/ExplicitSettingsSaveTests.exe --owner-draft
+          if ($LASTEXITCODE) { throw 'Explicit settings --owner-draft failed' }
       - name: Bounded keepsake title and holiday UI checks
         shell: powershell
         run: |
@@ -189,6 +202,14 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop restore failed' }
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 --no-restore
           if ($LASTEXITCODE) { throw 'Desktop build failed' }
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-host-only
+          if ($LASTEXITCODE) { throw 'Avalonia --proactive-host-only failed' }
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-admission-only
+          if ($LASTEXITCODE) { throw 'Avalonia --proactive-admission-only failed' }
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-reply-only
+          if ($LASTEXITCODE) { throw 'Avalonia --proactive-reply-only failed' }
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-settings-only
+          if ($LASTEXITCODE) { throw 'Avalonia --proactive-settings-only failed' }
           $testDll = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
           dotnet $testDll --first-home-visit
           if ($LASTEXITCODE) { throw 'Actual native first companion home Visit failed' }

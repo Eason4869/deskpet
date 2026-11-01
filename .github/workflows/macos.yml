@@ -145,6 +145,11 @@ jobs:
         run: |
           set -euo pipefail
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-host-only | tee "$REPORT_ROOT/proactive-host-only.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-admission-only | tee "$REPORT_ROOT/proactive-admission-only.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-reply-only | tee "$REPORT_ROOT/proactive-reply-only.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --proactive-settings-only | tee "$REPORT_ROOT/proactive-settings-only.log"
+          dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --feature-navigation-ui=zh_CN | tee "$REPORT_ROOT/feature-navigation-ui-zh_CN.log"
           # The default headless suite includes feedback motion and placement checks.
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll | tee "$REPORT_ROOT/headless-ui.log"
           dotnet desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll --data-management-ui-only | tee "$REPORT_ROOT/data-management-ui.log"

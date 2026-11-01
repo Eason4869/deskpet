@@ -1,9 +1,9 @@
-"""Guard executable core-test paths; behavioral suites still run separately in CI.
+"""Guard executable core/UI test paths; behavior still runs separately in CI.
 
-UI registration belongs to the UI integration task. Real foreground third-party
-application compatibility remains controlled manual acceptance, outside CI.
+Real foreground third-party application compatibility remains manual acceptance.
 """
 from pathlib import Path
+import fnmatch
 import re
 import sys
 import unittest
@@ -19,6 +19,17 @@ CORE = {
     'DesktopObservationPolicyTests': '--desktop-observation-policy-only',
     'DesktopObservationServiceTests': '--desktop-observation-policy-only',
 }
+WINDOWS_UI = ('DesktopObservationHostTests', 'DesktopObservationUiTests', 'ProactiveConversationUiTests')
+AVALONIA_UI = {
+    '--proactive-host-only': 'RunHost',
+    '--proactive-admission-only': 'RunAdmission',
+    '--proactive-reply-only': 'RunReply',
+    '--proactive-settings-only': 'RunSettings',
+}
+UI_PROJECT = 'desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj'
+UI_DLL = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
+UI_RUNNER = 'desktop/DeskPet.Desktop.Tests/Program.cs'
+UI_CHECKS = 'desktop/DeskPet.Desktop.Tests/ProactiveConversationChecks.cs'
 PORTABLE_PROJECT = 'desktop/DeskPet.Tests/DeskPet.Tests.csproj'
 PORTABLE_DLL = 'desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll'
 MAC_PROJECT = 'desktop/DeskPet.Platform.Mac/Tests/DeskPet.Platform.Mac.Tests.csproj'
@@ -70,6 +81,50 @@ def focused_route(runner, flag, suite):
         return False
     branch = re.split(r'\bif\s*\(', runner[condition.end():], maxsplit=1)[0]
     return re.search(r'\breturn\s+[^;]*?\b' + re.escape(suite) + r'\.Main\s*\(', branch) is not None
+
+
+def csharp_code(text):
+    tokens = r'@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/'
+    return re.sub(tokens, lambda m: '' if m[0].startswith(('//', '/*')) else m[0], text, flags=re.S)
+
+
+def braced_body(text, opening):
+    """Read one C# body, ignoring braces in strings."""
+    depth = 0
+    for token in re.finditer(r'@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|[{}]', text[opening:]):
+        if token[0] == '{':
+            depth += 1
+        elif token[0] == '}':
+            depth -= 1
+            if depth == 0:
+                return text[opening + 1:opening + token.start()]
+    return ''
+
+
+def method_body(text, name):
+    text = csharp_code(text)
+    match = re.search(r'\b(?:public|internal)\s+static\s+int\s+' + re.escape(name) + r'\s*\([^)]*\)\s*{', text)
+    return braced_body(text, match.end() - 1) if match else ''
+
+
+def compiled_ui_source(path):
+    """Support SDK implicit Compile items as well as explicit includes/removes."""
+    project = ET.fromstring(source(UI_PROJECT))
+    inherited = ET.fromstring(source('desktop/Directory.Build.props'))
+    relative = str(Path(path).relative_to('desktop/DeskPet.Desktop.Tests')).replace('\\', '/')
+    defaults = {'EnableDefaultItems': True, 'EnableDefaultCompileItems': True}
+    for tree in (inherited, project):
+        for prop in ('EnableDefaultItems', 'EnableDefaultCompileItems'):
+            for item in tree.iter(prop):
+                defaults[prop] = (item.text or '').lower() != 'false'
+    compiled = project.get('Sdk') == 'Microsoft.NET.Sdk' and all(defaults.values())
+    for item in project.iter('Compile'):
+        for action in ('Include', 'Remove'):
+            for pattern in item.get(action, '').replace('\\', '/').split(';'):
+                if pattern and (fnmatch.fnmatchcase(relative, pattern) or
+                                (pattern.startswith('**/') and fnmatch.fnmatchcase(relative, pattern[3:]))):
+                    compiled = action == 'Include'
+    return compiled
 
 
 class RegistrationTests(unittest.TestCase):
@@ -159,6 +214,172 @@ class RegistrationTests(unittest.TestCase):
         # No foreground third-party app capture is eligible for unattended CI.
         for name in ('check.yml', 'macos.yml'):
             self.assertNotIn('DesktopObservationCompatibilityTests', '\n'.join('\n'.join(b) for b in run_blocks(source('.github/workflows/' + name))))
+
+    def required_source(self, path):
+        try:
+            return csharp_code(source(path))
+        except FileNotFoundError:
+            self.fail(path + ' source is mandatory')
+
+    def test_windows_ui_targets_compile_entries_and_propagate_failures(self):
+        build = source('Build.ps1')
+        targets = re.search(r'ValidateSet\((.*?)\)', build)[1]
+        for suite in WINDOWS_UI + ('ExplicitSettingsSaveTests',):
+            with self.subTest(suite=suite):
+                self.assertTrue("'" + suite + "'" in targets, suite + ' must be a Build target')
+                fixture = self.required_source('tests/' + suite + '.cs')
+                body = method_body(fixture, 'Main')
+                self.assertIn('new Application', body)
+                self.assertRegex(body, r'(?s)catch\s*\(Exception \w+\)\s*{[^{}]*return 1;')
+        # The core guard follows the same generic source/compiler/execution path.
+        for flag in ('--image-picker', '--owner-draft'):
+            fixture = self.required_source('tests/ExplicitSettingsSaveTests.cs')
+            matches = list(re.finditer(r'if\s*\(args.Contains\("' + flag + r'"\)\)\s*{', fixture))
+            branches = [braced_body(fixture, match.end() - 1) for match in matches]
+            self.assertTrue(any('Check(' in body and 'return 0;' in body for body in branches),
+                            flag + ' must execute assertions, not just prepare settings')
+
+    def test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks(self):
+        runner = self.required_source(UI_RUNNER)
+        fixture = self.required_source(UI_CHECKS)
+        for path in (UI_RUNNER, UI_CHECKS,
+                     'desktop/DeskPet.Desktop.Tests/WorkBindingUiChecks.cs',
+                     'desktop/DeskPet.Desktop.Tests/FeatureNavigationUiChecks.cs'):
+            with self.subTest(path=path):
+                self.required_source(path)
+                self.assertTrue(compiled_ui_source(path), path + ' must be compiled')
+        match = re.search(r'if\s*\(args.Any\(arg=>arg.StartsWith\("--proactive-"\)\)\)\s*{', runner)
+        self.assertIsNotNone(match, 'focused proactive dispatcher is mandatory')
+        branch = braced_body(runner, match.end() - 1)
+        self.assertRegex(branch, r'catch\(Exception \w+\)\{[^{}]*Environment.ExitCode\s*=\s*1;')
+        self.assertRegex(branch, r'return;\s*$')
+        self.assertNotIn('return;', branch.split('int count=', 1)[0],
+                         'focused dispatcher cannot return before running checks')
+        for flag, method in AVALONIA_UI.items():
+            with self.subTest(flag=flag):
+                self.assertRegex(branch, r'args.Contains\("' + flag + r'"\)\s*\?\s*ProactiveConversationChecks\.' + method + r'\(')
+                body = method_body(fixture, method)
+                self.assertIn('Check(', body)
+                self.assertIn('throw new Exception', body)
+                self.assertRegex(body, r'return checks;\s*$')
+                self.assertNotRegex(body, r'^\s*return\b')
+        for flag, suite in (('--work-binding-ui=', 'WorkBindingUiChecks'),
+                            ('--feature-navigation-ui=', 'FeatureNavigationUiChecks')):
+            match = re.search(r'if\s*\(args.Any\([^;\n]*StartsWith\("' + flag + r'"\)[^;\n]*?\)\s*{', runner)
+            self.assertIsNotNone(match, flag + ' needs a real dispatcher')
+            self.assertIn(suite + '.Run(', braced_body(runner, match.end() - 1))
+            body = method_body(self.required_source('desktop/DeskPet.Desktop.Tests/' + suite + '.cs'), 'Run')
+            self.assertIn('Check(', body)
+            self.assertIn('throw new Exception', body)
+
+    def test_windows_ci_executes_ui_targets_and_explicit_image_modes(self):
+        workflow = source('.github/workflows/check.yml')
+        blocks = run_blocks(workflow)
+        baseline = re.search(r'(?s)foreach \(\$target in @\((.*?)\)\) \{(.*?)if \(\$failedTargets.Count', workflow)
+        self.assertIsNotNone(baseline, 'default Windows target execution is mandatory')
+        self.assertIn("'ExplicitSettingsSaveTests'", baseline[1])
+        self.assertIn('& .\\Build.ps1 -Target $target', baseline[2])
+        self.assertIn('if ($LASTEXITCODE -ne 0) { throw', baseline[2])
+        for suite in WINDOWS_UI:
+            with self.subTest(suite=suite):
+                self.assertTrue(checked_command(blocks,
+                    r'powershell -NoProfile -ExecutionPolicy Bypass -File \.\\Build\.ps1 -Target ' + suite, True))
+        # The existing default suite builds this executable; reuse it for the new modes.
+        for flag in ('--image-picker', '--owner-draft'):
+            command = '& work/ExplicitSettingsSaveTests.exe ' + flag
+            self.assertTrue(checked_command(blocks, re.escape(command), True))
+            self.assertLess(baseline.start(), workflow.index(command))
+
+    def test_both_ci_workflows_execute_built_avalonia_ui_flags(self):
+        for name, windows in (('check.yml', True), ('macos.yml', False)):
+            workflow = source('.github/workflows/' + name)
+            if not windows:
+                self.assertIn('\n  preview:\n', workflow)
+                workflow = workflow.split('\n  preview:\n', 1)[1]
+            blocks = run_blocks(workflow)
+            build = 'dotnet build ' + UI_PROJECT + ' -c Release'
+            for flag in AVALONIA_UI:
+                with self.subTest(workflow=name, flag=flag):
+                    command = 'dotnet ' + UI_DLL + ' ' + flag
+                    self.assertTrue(checked_command(blocks, re.escape(command) + r'(?: \| tee .*?)?', windows))
+                    self.assertLess(workflow.index(build), workflow.index(command))
+            # Locale routes call the same WorkBindingUiChecks.Run as --work-binding-ui-only.
+            work = ('dotnet ' + UI_DLL + " ('--work-binding-ui='+$locale)" if windows else
+                    'dotnet ' + UI_DLL + ' --work-binding-ui="$locale"')
+            navigation = ('dotnet ' + UI_DLL + " ('--feature-navigation-ui='+$locale)" if windows else
+                          'dotnet ' + UI_DLL + ' --feature-navigation-ui=zh_CN')
+            for command in (work, navigation):
+                self.assertTrue(checked_command(blocks, re.escape(command) + r'(?: \| tee .*?)?', windows))
+                self.assertLess(workflow.index(build), workflow.index(command))
+            self.assertIn("foreach ($locale in @('zh_CN'," if windows else 'for locale in zh_CN ', workflow)
+            if not windows:
+                self.assertIn('- arch: arm64', workflow)
+                self.assertIn('- arch: x86_64', workflow)
+                self.assertIn('runs-on: ${{ matrix.runner }}', workflow)
+
+    def test_ui_guard_rejects_compile_dispatch_failure_and_ci_omissions(self):
+        self.required_source(UI_CHECKS)
+        mutations = (
+            (UI_PROJECT, '</Project>', '<ItemGroup><Compile Remove="ProactiveConversationChecks.cs" /></ItemGroup></Project>',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_PROJECT, '</Project>', '<PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup></Project>',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_RUNNER, 'ProactiveConversationChecks.RunHost()', '0',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_RUNNER, 'args.Contains("--proactive-host-only")?ProactiveConversationChecks.RunHost()',
+             'false?ProactiveConversationChecks.RunHost()',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_RUNNER, 'Environment.ExitCode=1;', 'Environment.ExitCode=0;',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_RUNNER, 'int count=args.Contains("--proactive-host-only")', 'return;int count=args.Contains("--proactive-host-only")',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            (UI_RUNNER, 'WorkBindingUiChecks.Run(', 'RemovedWorkBindingChecks.Run(',
+             'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
+            ('Build.ps1', "'DesktopObservationHostTests',", '',
+             'test_windows_ui_targets_compile_entries_and_propagate_failures'),
+            ('.github/workflows/check.yml', '-Target DesktopObservationUiTests', '-Target CoreTests',
+             'test_windows_ci_executes_ui_targets_and_explicit_image_modes'),
+            ('.github/workflows/check.yml', '-Target DesktopObservationHostTests',
+             '-Target DesktopObservationHostTests -TestArguments --compile-only',
+             'test_windows_ci_executes_ui_targets_and_explicit_image_modes'),
+            ('.github/workflows/check.yml', "if ($LASTEXITCODE) { throw 'DesktopObservationUiTests failed' }",
+             "Write-Output 'failure swallowed'",
+             'test_windows_ci_executes_ui_targets_and_explicit_image_modes'),
+            ('.github/workflows/check.yml', "'ExplicitSettingsSaveTests',", '',
+             'test_windows_ci_executes_ui_targets_and_explicit_image_modes'),
+            ('.github/workflows/check.yml', 'ExplicitSettingsSaveTests.exe --owner-draft', 'ExplicitSettingsSaveTests.exe',
+             'test_windows_ci_executes_ui_targets_and_explicit_image_modes'),
+            ('.github/workflows/check.yml', UI_DLL + ' --proactive-settings-only', UI_DLL + ' --not-a-suite',
+             'test_both_ci_workflows_execute_built_avalonia_ui_flags'),
+            ('.github/workflows/macos.yml', UI_DLL + ' --proactive-reply-only', UI_DLL + ' --not-a-suite',
+             'test_both_ci_workflows_execute_built_avalonia_ui_flags'),
+            ('.github/workflows/macos.yml', '--feature-navigation-ui=zh_CN', '--feature-navigation-ui=en_US',
+             'test_both_ci_workflows_execute_built_avalonia_ui_flags'),
+            ('.github/workflows/macos.yml', '- arch: x86_64', '- arch: removed',
+             'test_both_ci_workflows_execute_built_avalonia_ui_flags'),
+        )
+        read = source
+        for path, before, after, check in mutations:
+            with self.subTest(path=path, mutation=before):
+                original = read(path)
+                self.assertIn(before, original)
+                def mutated(candidate):
+                    return original.replace(before, after) if candidate == path else read(candidate)
+                result = unittest.TestResult()
+                with patch(__name__ + '.source', side_effect=mutated):
+                    RegistrationTests(check).run(result)
+                self.assertFalse(result.wasSuccessful(), 'UI registration omission escaped: ' + before)
+                self.assertFalse(result.errors, 'mutation must fail a contract assertion, not crash')
+        # A real check class replaced by a constant-success stub must also fail.
+        original = read(UI_CHECKS)
+        body = method_body(original, 'RunReply')
+        self.assertTrue(body)
+        with patch(__name__ + '.source', side_effect=lambda path:
+                   original.replace(body, 'return 0;') if path == UI_CHECKS else read(path)):
+            result = unittest.TestResult()
+            RegistrationTests('test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks').run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertFalse(result.errors)
 
     def test_guard_rejects_comment_only_compilation_only_and_swallowed_results(self):
         command = r'powershell -NoProfile -ExecutionPolicy Bypass -File \.\\Build\.ps1 -Target ImageModelResolverTests'
