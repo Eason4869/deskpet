@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Could not save changes. Try again.",
   "desktopObservation.noDestination": "No receiving service available",
   "desktopObservation.consentTitle": "Confirm screen capture",
-  "desktopObservation.consentBody": "The current active window will be sent to: {0}. Sensitive content in the window may be included. Exclude apps you do not want to share.",
+  "desktopObservation.consentBody": "The services below will receive information from the active window. Sensitive content may be included; exclude apps you do not want to share.\\n{0}",
   "desktopObservation.consentAccept": "Allow",
   "desktopObservation.consentCancel": "Cancel",
   "desktopObservation.bundleIdLabel": "App bundle identifier",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Use global setting",
   "imageDescription.invalid": "Selected model unavailable",
   "imageDescription.direct": "Current conversation model handles images",
-  "imageDescription.described": "Using image description model"
+  "imageDescription.described": "Using image description model",
+  "desktopObservation.imageDestination": "Image sent to: {0}",
+  "desktopObservation.textDestination": "Image description sent to: {0}"
 }

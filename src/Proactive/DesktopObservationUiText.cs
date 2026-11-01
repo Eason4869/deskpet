@@ -48,6 +48,27 @@ namespace Dafeiyu
             return builder.Uri.AbsoluteUri;
         }
 
+        public static string ReceivingSummary(PetSettings settings)
+        {
+            if (settings == null) return "";
+            try
+            {
+                var route = ImageModelResolver.Resolve(settings, null);
+                if (route.Route == ImageRouteKind.Unavailable) return "";
+                var imageConnection = route.Route == ImageRouteKind.Direct ? route.ConversationConnection : route.DescriptionConnection;
+                string image = SafeAddress(ApiClient.Endpoint(imageConnection, ApiClient.ChatPath(imageConnection)).AbsoluteUri);
+                if (image.Length == 0) return "";
+                string result = TextResources.Format("desktopObservation.imageDestination", image);
+                if (route.Route == ImageRouteKind.Described)
+                {
+                    string text = SafeAddress(ApiClient.Endpoint(route.ConversationConnection, ApiClient.ChatPath(route.ConversationConnection)).AbsoluteUri);
+                    if (text.Length == 0) return "";
+                    result += "\n" + TextResources.Format("desktopObservation.textDestination", text);
+                }
+                return result;
+            }
+            catch (ApiException) { return ""; }
+        }
         public static string[] Destinations(PetSettings settings)
         {
             if (settings == null) return new string[0];

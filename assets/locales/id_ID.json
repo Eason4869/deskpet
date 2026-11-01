@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Tidak dapat menyimpan perubahan. Coba lagi.",
   "desktopObservation.noDestination": "Tidak ada layanan penerimaan yang tersedia",
   "desktopObservation.consentTitle": "Konfirmasikan tangkapan layar",
-  "desktopObservation.consentBody": "Jendela aktif saat ini akan dikirim ke: {0}. Konten sensitif di jendela mungkin disertakan. Kecualikan aplikasi yang tidak ingin Anda bagikan.",
+  "desktopObservation.consentBody": "Layanan di bawah ini akan menerima informasi dari jendela aktif. Konten sensitif mungkin disertakan; kecualikan aplikasi yang tidak ingin Anda bagikan.\n{0}\\n{0}",
   "desktopObservation.consentAccept": "Mengizinkan",
   "desktopObservation.consentCancel": "Membatalkan",
   "desktopObservation.bundleIdLabel": "Pengidentifikasi paket aplikasi",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Ikuti pengaturan global",
   "imageDescription.invalid": "Model yang dipilih tidak tersedia",
   "imageDescription.direct": "Model percakapan menangani gambar langsung",
-  "imageDescription.described": "Menggunakan model deskripsi gambar"
+  "imageDescription.described": "Menggunakan model deskripsi gambar",
+  "desktopObservation.imageDestination": "Gambar dikirim ke: {0} {0}",
+  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}"
 }

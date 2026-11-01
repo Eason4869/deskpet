@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Änderungen konnten nicht gespeichert werden. Versuchen Sie es erneut.",
   "desktopObservation.noDestination": "Kein Empfangsdienst verfügbar",
   "desktopObservation.consentTitle": "Bestätigen Sie die Bildschirmaufnahme",
-  "desktopObservation.consentBody": "Das aktuell aktive Fenster wird gesendet an: {0}. Möglicherweise sind vertrauliche Inhalte im Fenster enthalten. Schließen Sie Apps aus, die Sie nicht teilen möchten.",
+  "desktopObservation.consentBody": "Die folgenden Dienste erhalten Informationen aus dem aktiven Fenster. Es können sensible Inhalte enthalten sein; Schließen Sie Apps aus, die Sie nicht teilen möchten.\nSCHREIBTISCHPLATZHALTERZERO\\n{0}",
   "desktopObservation.consentAccept": "Erlauben",
   "desktopObservation.consentCancel": "Stornieren",
   "desktopObservation.bundleIdLabel": "App-Bundle-ID",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Globale Einstellung verwenden",
   "imageDescription.invalid": "Ausgewähltes Modell nicht verfügbar",
   "imageDescription.direct": "Gesprächsmodell verarbeitet Bilder direkt",
-  "imageDescription.described": "Bildbeschreibungsmodell wird verwendet"
+  "imageDescription.described": "Bildbeschreibungsmodell wird verwendet",
+  "desktopObservation.imageDestination": "Bild gesendet an: {0} {0}",
+  "desktopObservation.textDestination": "Bildbeschreibung gesendet an: {0} {0}"
 }

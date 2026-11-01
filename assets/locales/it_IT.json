@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Impossibile salvare le modifiche. Riprova.",
   "desktopObservation.noDestination": "Nessun servizio di ricezione disponibile",
   "desktopObservation.consentTitle": "Conferma l'acquisizione dello schermo",
-  "desktopObservation.consentBody": "La finestra attualmente attiva verrà inviata a: {0}. Potrebbero essere inclusi contenuti sensibili nella finestra. Escludi le app che non desideri condividere.",
+  "desktopObservation.consentBody": "I servizi sottostanti riceveranno informazioni dalla finestra attiva. Potrebbero essere inclusi contenuti sensibili; escludi le app che non desideri condividere.\nDESKPETPLACEWAYZERO\\n{0}",
   "desktopObservation.consentAccept": "Permettere",
   "desktopObservation.consentCancel": "Cancellare",
   "desktopObservation.bundleIdLabel": "Identificatore dell'app bundle",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Usa impostazione globale",
   "imageDescription.invalid": "Modello selezionato non disponibile",
   "imageDescription.direct": "Il modello di conversazione elabora direttamente le immagini",
-  "imageDescription.described": "Uso del modello di descrizione immagini"
+  "imageDescription.described": "Uso del modello di descrizione immagini",
+  "desktopObservation.imageDestination": "Immagine inviata a: {0} {0}",
+  "desktopObservation.textDestination": "Descrizione dell'immagine inviata a: {0} {0}"
 }

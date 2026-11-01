@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Não foi possível salvar as alterações. Tente novamente.",
   "desktopObservation.noDestination": "Nenhum serviço de recebimento disponível",
   "desktopObservation.consentTitle": "Confirme a captura de tela",
-  "desktopObservation.consentBody": "A janela ativa atual será enviada para: {0}. Conteúdo confidencial na janela pode ser incluído. Exclua aplicativos que você não deseja compartilhar.",
+  "desktopObservation.consentBody": "Os serviços abaixo receberão informações da janela ativa. Conteúdo sensível pode ser incluído; exclua aplicativos que você não deseja compartilhar.\n{0}\\n{0}",
   "desktopObservation.consentAccept": "Permitir",
   "desktopObservation.consentCancel": "Cancelar",
   "desktopObservation.bundleIdLabel": "Identificador do pacote de aplicativos",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Usar configuração global",
   "imageDescription.invalid": "Modelo selecionado indisponível",
   "imageDescription.direct": "O modelo de conversa processa imagens diretamente",
-  "imageDescription.described": "Usando modelo de descrição de imagem"
+  "imageDescription.described": "Usando modelo de descrição de imagem",
+  "desktopObservation.imageDestination": "Imagem enviada para: {0} {0}",
+  "desktopObservation.textDestination": "Descrição da imagem enviada para: {0} {0}"
 }

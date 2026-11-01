@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "No se pudieron guardar los cambios. Intentar otra vez.",
   "desktopObservation.noDestination": "No hay servicio de recepción disponible",
   "desktopObservation.consentTitle": "Confirmar captura de pantalla",
-  "desktopObservation.consentBody": "La ventana activa actual se enviará a: {0}. Es posible que se incluya contenido confidencial en la ventana. Excluye aplicaciones que no quieras compartir.",
+  "desktopObservation.consentBody": "Los servicios a continuación recibirán información desde la ventana activa. Se puede incluir contenido sensible; excluya las aplicaciones que no desea compartir.\nDESKETPLACEHOLDERZERO\\n{0}",
   "desktopObservation.consentAccept": "Permitir",
   "desktopObservation.consentCancel": "Cancelar",
   "desktopObservation.bundleIdLabel": "Identificador del paquete de aplicaciones",
@@ -4828,5 +4828,7 @@
   "imageDescription.inherit": "Usar configuración global",
   "imageDescription.invalid": "El modelo seleccionado no está disponible",
   "imageDescription.direct": "El modelo de conversación procesa imágenes directamente",
-  "imageDescription.described": "Se usa el modelo de descripción de imágenes"
+  "imageDescription.described": "Se usa el modelo de descripción de imágenes",
+  "desktopObservation.imageDestination": "Imagen enviada a: {0} {0}",
+  "desktopObservation.textDestination": "Descripción de la imagen enviada a: {0} {0}"
 }
