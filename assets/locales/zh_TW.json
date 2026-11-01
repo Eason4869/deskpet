@@ -4825,5 +4825,6 @@
   "desktopObservation.historyMore": "顯示更多",
   "desktopObservation.disabled": "已關閉",
   "desktopObservation.model": "對話模型",
-  "desktopObservation.routeConfigure": "請設定支援圖片的對話模型或圖片轉述模型。"
+  "desktopObservation.routeConfigure": "請設定支援圖片的對話模型或圖片轉述模型。",
+  "desktopObservation.lastObserved": "最近觀察: {0}"
 }

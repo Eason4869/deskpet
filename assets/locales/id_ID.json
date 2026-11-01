@@ -4825,5 +4825,6 @@
   "desktopObservation.historyMore": "Tampilkan lebih banyak",
   "desktopObservation.disabled": "Mati",
   "desktopObservation.model": "Model percakapan",
-  "desktopObservation.routeConfigure": "Gunakan model percakapan berkemampuan gambar atau model deskripsi gambar."
+  "desktopObservation.routeConfigure": "Gunakan model percakapan berkemampuan gambar atau model deskripsi gambar.",
+  "desktopObservation.lastObserved": "Terakhir diamati: {0}"
 }

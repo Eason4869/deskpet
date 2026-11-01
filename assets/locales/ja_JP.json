@@ -4825,5 +4825,6 @@
   "desktopObservation.historyMore": "もっと見る",
   "desktopObservation.disabled": "オフ",
   "desktopObservation.model": "会話モデル",
-  "desktopObservation.routeConfigure": "画像対応の会話モデルまたは画像説明モデルを使用します。"
+  "desktopObservation.routeConfigure": "画像対応の会話モデルまたは画像説明モデルを使用します。",
+  "desktopObservation.lastObserved": "最後に観測された: {0}"
 }

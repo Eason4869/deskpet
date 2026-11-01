@@ -4825,5 +4825,6 @@
   "desktopObservation.historyMore": "Mostrar más",
   "desktopObservation.disabled": "Apagado",
   "desktopObservation.model": "Modelo de conversación",
-  "desktopObservation.routeConfigure": "Utilice un modelo de conversación con capacidad de imagen o un modelo de descripción de imagen."
+  "desktopObservation.routeConfigure": "Utilice un modelo de conversación con capacidad de imagen o un modelo de descripción de imagen.",
+  "desktopObservation.lastObserved": "último observado: {0}"
 }

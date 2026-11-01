@@ -4825,5 +4825,6 @@
   "desktopObservation.historyMore": "더 보기",
   "desktopObservation.disabled": "끄다",
   "desktopObservation.model": "대화 모델",
-  "desktopObservation.routeConfigure": "이미지 지원 대화 모델이나 이미지 설명 모델을 사용하세요."
+  "desktopObservation.routeConfigure": "이미지 지원 대화 모델이나 이미지 설명 모델을 사용하세요.",
+  "desktopObservation.lastObserved": "마지막으로 관찰됨: {0}"
 }
