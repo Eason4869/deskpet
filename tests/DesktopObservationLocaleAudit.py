@@ -6,11 +6,13 @@ formatted = {'countdown', 'consentBody', 'imageDestination', 'textDestination', 
 sentinels = re.compile(r'PLACE(?:HOLDER|WAY)ZERO|PLATZHALTERZERO|प्लेसहोल्डरशून्य|プレースホルダーゼロ', re.I)
 keys = None
 for path in Path('assets/locales').glob('*.json'):
-    old = json.loads(subprocess.check_output(['git', '-c', 'safe.directory=E:/workspace/deskpet/proactive-wpf-0.11.4-dev.1', 'show', base + ':' + path.as_posix()], encoding='utf-8'))
+    old = json.loads(subprocess.check_output(['git', '-c', 'safe.directory=' + Path.cwd().as_posix(), 'show', base + ':' + path.as_posix()], encoding='utf-8'))
     current = json.loads(path.read_bytes())
     added = {k: v for k, v in current.items() if k.startswith('desktopObservation.')}
     assert all(current[k] == v for k, v in old.items()), path
-    assert len(added) == 69 and len(current) == len(old) + 69, path
+    assert len(added) == 69, path
+    image_keys = {k for k in current if k.startswith('imageDescription.') and k not in old}
+    assert len(image_keys) == 11 and set(current) - set(old) == set(added) | image_keys, path
     for key, value in added.items():
         assert re.fullmatch(r'[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)*', key), (path, key)
         assert value.strip() and not sentinels.search(value), (path, key, value)
