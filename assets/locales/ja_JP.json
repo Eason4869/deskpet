@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "オフ",
   "desktopObservation.model": "会話モデル",
   "desktopObservation.routeConfigure": "画像対応の会話モデルまたは画像説明モデルを使用します。",
-  "desktopObservation.lastObserved": "最後に観測された: {0}"
+  "desktopObservation.lastObserved": "最後に観測された: {0}",
+  "desktopObservation.switchCompanion": "元のコンパニオンに切り替えて返信します。"
 }

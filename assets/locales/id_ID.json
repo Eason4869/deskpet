@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "Mati",
   "desktopObservation.model": "Model percakapan",
   "desktopObservation.routeConfigure": "Gunakan model percakapan berkemampuan gambar atau model deskripsi gambar.",
-  "desktopObservation.lastObserved": "Terakhir diamati: {0}"
+  "desktopObservation.lastObserved": "Terakhir diamati: {0}",
+  "desktopObservation.switchCompanion": "Beralih kembali ke pendamping asli untuk membalas."
 }

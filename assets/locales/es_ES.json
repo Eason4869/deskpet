@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "Apagado",
   "desktopObservation.model": "Modelo de conversación",
   "desktopObservation.routeConfigure": "Utilice un modelo de conversación con capacidad de imagen o un modelo de descripción de imagen.",
-  "desktopObservation.lastObserved": "último observado: {0}"
+  "desktopObservation.lastObserved": "último observado: {0}",
+  "desktopObservation.switchCompanion": "Vuelve al compañero original para responder."
 }

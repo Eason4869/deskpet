@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "Aus",
   "desktopObservation.model": "Gesprächsmodell",
   "desktopObservation.routeConfigure": "Verwenden Sie ein bildfähiges Konversationsmodell oder ein Bildbeschreibungsmodell.",
-  "desktopObservation.lastObserved": "Zuletzt beobachtet: {0}"
+  "desktopObservation.lastObserved": "Zuletzt beobachtet: {0}",
+  "desktopObservation.switchCompanion": "Wechseln Sie zurück zum ursprünglichen Begleiter, um zu antworten."
 }

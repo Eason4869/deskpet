@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "끄다",
   "desktopObservation.model": "대화 모델",
   "desktopObservation.routeConfigure": "이미지 지원 대화 모델이나 이미지 설명 모델을 사용하세요.",
-  "desktopObservation.lastObserved": "마지막으로 관찰됨: {0}"
+  "desktopObservation.lastObserved": "마지막으로 관찰됨: {0}",
+  "desktopObservation.switchCompanion": "답장하려면 원래 컴패니언으로 다시 전환하세요."
 }

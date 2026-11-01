@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "बंद",
   "desktopObservation.model": "वार्तालाप मॉडल",
   "desktopObservation.routeConfigure": "एक छवि-सक्षम वार्तालाप मॉडल या एक छवि विवरण मॉडल का उपयोग करें।",
-  "desktopObservation.lastObserved": "अंतिम बार देखा गया: {0}"
+  "desktopObservation.lastObserved": "अंतिम बार देखा गया: {0}",
+  "desktopObservation.switchCompanion": "उत्तर देने के लिए मूल साथी पर वापस जाएँ।"
 }

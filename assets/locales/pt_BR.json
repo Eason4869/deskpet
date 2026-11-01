@@ -4826,5 +4826,6 @@
   "desktopObservation.disabled": "Desligado",
   "desktopObservation.model": "Modelo de conversa",
   "desktopObservation.routeConfigure": "Use um modelo de conversa compatível com imagem ou um modelo de descrição de imagem.",
-  "desktopObservation.lastObserved": "Última observação: {0}"
+  "desktopObservation.lastObserved": "Última observação: {0}",
+  "desktopObservation.switchCompanion": "Volte para o complemento original para responder."
 }
