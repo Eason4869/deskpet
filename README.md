@@ -7,6 +7,8 @@
 
 > **当前正式版：[0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 
+**开发源码预览 0.11.4-dev.1（无 Release）**：新增默认关闭的当前活动窗口感知主动发言，以及普通聊天可选的图片转述兜底。使用前需确认模型服务接收范围；功能、隐私与验证边界见[桌面感知与图片转述](docs/proactive-desktop.md)。该预览不提供独立安装附件，不属于下方 0.11.3 正式包。
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">

@@ -7,6 +7,8 @@ This release adds [messaging channels](docs/im-channels.md) for user-owned QQ, W
 
 > **Current stable release: [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
 
+**Development source preview 0.11.4-dev.1 (no Release):** adds opt-in proactive speech based on the current foreground window and an optional image-description fallback for ordinary chat. Confirm which model services receive content before enabling it. See [desktop observation and image descriptions](docs/proactive-desktop.en.md) for usage, privacy and validation limits. This preview has no separate installable assets and is not included in the 0.11.3 stable packages below.
+
 <div align="center">
   <picture>
     <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">
