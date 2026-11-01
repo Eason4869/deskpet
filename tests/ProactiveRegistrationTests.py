@@ -221,6 +221,17 @@ class RegistrationTests(unittest.TestCase):
         except FileNotFoundError:
             self.fail(path + ' source is mandatory')
 
+    def test_both_ci_workflows_execute_observation_locale_audit(self):
+        fixture = source('tests/DesktopObservationLocaleAudit.py')
+        self.assertIn("value.count('{0}')", fixture)
+        self.assertIn('body.count(image) == body.count(text) == 1', fixture)
+        for name, windows in (('check.yml', True), ('macos.yml', False)):
+            workflow = source('.github/workflows/' + name)
+            if not windows:
+                workflow = workflow.split('\n  preview:\n', 1)[1]
+            command = ('python ' if windows else 'python3 ') + 'tests/DesktopObservationLocaleAudit.py'
+            self.assertTrue(checked_command(run_blocks(workflow), re.escape(command), windows), name)
+
     def test_windows_ui_targets_compile_entries_and_propagate_failures(self):
         build = source('Build.ps1')
         targets = re.search(r'ValidateSet\((.*?)\)', build)[1]
@@ -320,6 +331,12 @@ class RegistrationTests(unittest.TestCase):
     def test_ui_guard_rejects_compile_dispatch_failure_and_ci_omissions(self):
         self.required_source(UI_CHECKS)
         mutations = (
+            ('.github/workflows/check.yml', 'python tests/DesktopObservationLocaleAudit.py', '# python tests/DesktopObservationLocaleAudit.py',
+             'test_both_ci_workflows_execute_observation_locale_audit'),
+            ('.github/workflows/check.yml', "if ($LASTEXITCODE) { throw 'Observation locale audit failed' }", "if ($LASTEXITCODE) { Write-Host 'ignored' }",
+             'test_both_ci_workflows_execute_observation_locale_audit'),
+            ('.github/workflows/macos.yml', 'python3 tests/DesktopObservationLocaleAudit.py', '# python3 tests/DesktopObservationLocaleAudit.py',
+             'test_both_ci_workflows_execute_observation_locale_audit'),
             (UI_PROJECT, '</Project>', '<ItemGroup><Compile Remove="ProactiveConversationChecks.cs" /></ItemGroup></Project>',
              'test_avalonia_ui_sources_compile_and_dispatch_real_failing_checks'),
             (UI_PROJECT, '</Project>', '<PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup></Project>',

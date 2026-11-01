@@ -119,6 +119,7 @@ jobs:
           python3 -m pip install -r tools/fonts/requirements.txt
           python3 tools/fonts/relationship_title_fonts.py --check
           python3 tools/fonts/test_relationship_title_fonts.py
+          python3 tests/DesktopObservationLocaleAudit.py
           python3 tests/LocalizationAuditTests.py
           python3 tests/HelperResourceTests.py
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"

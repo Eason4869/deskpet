@@ -38,6 +38,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Title corpus/font integrity failed' }
           python tools/fonts/test_relationship_title_fonts.py
           if ($LASTEXITCODE) { throw 'Title corpus freshness regression failed' }
+          python tests/DesktopObservationLocaleAudit.py
+          if ($LASTEXITCODE) { throw 'Observation locale audit failed' }
           python tests/LocalizationAuditTests.py
           if ($LASTEXITCODE) { throw 'Localization audit regression failed' }
           python tests/HelperResourceTests.py
