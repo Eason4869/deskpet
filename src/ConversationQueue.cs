@@ -66,7 +66,7 @@ namespace Dafeiyu
             if(contents==null||contents.Any(p=>p.Value==null))throw new SerializationException();return contents.Any(p=>p.Value.Count!=0);
         }
         static string Validate(string text){text=(text??"").Trim();if(text.Length==0 || text.Length>8000)throw new ApiException(TextResources.Get("conversationQueue.validate.text"));return text;}
-        void Writable(){if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));if(!persistenceAdmitted())throw new InvalidOperationException(TextResources.Get("desktopObservation.reason.Busy"));if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
+        void Writable(){if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));if(!persistenceAdmitted())throw new InvalidOperationException(TextResources.Get("desktopObservation.reason.busy"));if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
         void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));string temp=path+".tmp";

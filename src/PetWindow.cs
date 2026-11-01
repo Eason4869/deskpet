@@ -1085,10 +1085,10 @@ namespace Dafeiyu
             if(!GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview))return;
             CancelPendingGreeting();var cancellation=new CancellationTokenSource();greetingRequest=cancellation;greetingPreview=preview;greetingObservation=!preview && Settings.DesktopObservationEnabled;int generation=greetingGeneration;
             RefreshHoliday();var holiday=Holidays==null?null:Holidays.CreateGreetingContext(random.NextDouble());long holidayRevision=Holidays==null?0:Holidays.Revision;DateTime holidayTime=HolidayLocalTime(),holidayDate=holidayTime.Date;
-            string skinId=Skin.Id,relationshipId=RelationshipCompanionId;var capturedSkin=Skin;var capturedPack=RelationshipPack;int relationshipSettingsVersion=Relationships.SettingsVersion;var snapshot=Settings.Copy();List<string> recent;
+            string skinId=Skin.Id,relationshipId=RelationshipCompanionId;var capturedSkin=Skin;var capturedPack=RelationshipPack;int relationshipSettingsVersion=Relationships.SettingsVersion;long observationSnapshotEpoch=System.Threading.Interlocked.Read(ref observationEpoch);var snapshot=Settings.Copy();List<string> recent;
             if(!recentGreetings.TryGetValue(skinId,out recent)){recent=new List<string>();recentGreetings[skinId]=recent;}
             try {
-                RelationshipExperienceContent stage=preview?null:await new RelationshipExperience(Relationships).ReadAsync(relationshipId,capturedPack,TextResources.CurrentLanguage);
+                RelationshipExperienceContent stage=preview?null:await (GreetingRelationshipReader==null?new RelationshipExperience(Relationships).ReadAsync(relationshipId,capturedPack,TextResources.CurrentLanguage):GreetingRelationshipReader(relationshipId,capturedPack,TextResources.CurrentLanguage));
                 string stageWelcome=RelationshipWelcome(stage);
                 IList<ChatMessage> memory=null;bool memoryFailed=false;
                 if(snapshot.AiGreetingEnabled)try {if(companionMemory==null)companionMemory=new CompanionMemory(()=>Conversation);memory=companionMemory.Capture(skinId);}
@@ -1098,7 +1098,8 @@ namespace Dafeiyu
                 if(!preview && snapshot.DesktopObservationEnabled)
                 {
                     snapshot.ImageDescriptionOverride=null;
-                    decision=await GenerateObservationAsync(snapshot,skinId,capturedSkin.Name,memory,recent,cancellation.Token,DesktopObservationMode.Automatic);
+                    if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId || !ReferenceEquals(capturedSkin,Skin) || RelationshipCompanionId!=relationshipId || relationshipSettingsVersion!=Relationships.SettingsVersion || !GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),false))return;
+                    decision=await GenerateObservationAsync(snapshot,skinId,capturedSkin.Name,memory,recent,cancellation.Token,DesktopObservationMode.Automatic,observationSnapshotEpoch);
                     if(decision==null)return;
                     if(decision.Kind==ProactiveDecisionKind.Skip){decision.Dispose();return;}
                     line=decision.Message;
@@ -1113,7 +1114,7 @@ namespace Dafeiyu
                 if(greeting==null)greeting=new GreetingBubbleWindow(this);
                 string eventId=null;
                 if(!preview) eventId=decision!=null && decision.CandidateEvent!=null ? decision.CandidateEvent.Id : Guid.NewGuid().ToString("N");
-                if(decision!=null && (System.Threading.Interlocked.Read(ref observationResultEpoch)!=System.Threading.Interlocked.Read(ref observationEpoch) || !ObservationInputCurrent() || observationPaused || !Settings.DesktopObservationEnabled || !DesktopObservationConsent.IsConfirmed(ObservationSettingsSnapshot())))return;
+                if(decision!=null && (System.Threading.Interlocked.Read(ref observationResultEpoch)!=System.Threading.Interlocked.Read(ref observationEpoch) || !ObservationInputCurrent() || observationPaused || !Settings.DesktopObservationEnabled || !DesktopObservationConsent.IsConfirmed(ObservationSettingsSnapshot()) || !ObservationTargetCurrent(decision) || System.Threading.Interlocked.Read(ref observationResultEpoch)!=System.Threading.Interlocked.Read(ref observationEpoch) || !ObservationInputCurrent()))return;
                 greeting.ShowGreeting(line,eventId);
                 if(greeting.IsVisible){recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);}
                 if(!preview&&greeting.IsVisible){
@@ -1121,7 +1122,7 @@ namespace Dafeiyu
                     observationEvents.Register(shown);RememberProactiveEvent(eventId,snapshot);RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);
                 }
                 if(!Paused)PlayAction("waving",1.2);
-                } finally { if(decision!=null)decision.Dispose(); }
+                } finally { if(decision!=null){ReleaseObservationTarget(decision);decision.Dispose();} }
             }
             catch(OperationCanceledException){}
             finally {if(Object.ReferenceEquals(greetingRequest,cancellation))greetingRequest=null;cancellation.Dispose();}

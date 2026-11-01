@@ -21,7 +21,7 @@ namespace Dafeiyu
                 try{
                     var prepared=await Task.Run(()=>TextResources.PrepareLanguage(code));
                     await Store.SaveLanguageSelectionAsync(Settings.Copy(),code,guide);
-                    Settings.UiLanguage=UiLanguages.Normalize(code);if(guide){Settings.OnboardingLessonId="welcome";Settings.OnboardingStep=0;Settings.OnboardingState="deferred";}
+                    InvalidateObservation(true);Settings.UiLanguage=UiLanguages.Normalize(code);if(guide){Settings.OnboardingLessonId="welcome";Settings.OnboardingStep=0;Settings.OnboardingState="deferred";}
                     TextResources.ApplyLanguage(prepared);if(deferredSettingsSave)return await PersistSettingsAsync(delegate{});return true;
                 }catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
             });
@@ -60,7 +60,7 @@ namespace Dafeiyu
         {
             Dispatcher.VerifyAccess();InvalidateObservation(true);if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
             settingsSaveRevision++;
-            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);change(Settings);Notice=Store.Warning;return true;}
+            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);InvalidateObservation(true);change(Settings);Notice=Store.Warning;return true;}
             catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
         }
         static bool SettingsSaveError(Exception error)
@@ -76,7 +76,7 @@ namespace Dafeiyu
                 }while(deferredSettingsSave);
                 // Publish only the submitted fields. Other runtime settings may
                 // have changed while the worker was committing this candidate.
-                change(Settings);
+                InvalidateObservation(true);change(Settings);
                 if(ReferenceEquals(pendingPreferences,submittedPreferences)){pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();}
                 if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency;
                 if(revision==settingsSaveRevision){Notice=Store.Warning;if(preferences!=null)preferences.ShowNotice(Notice);}return true;
