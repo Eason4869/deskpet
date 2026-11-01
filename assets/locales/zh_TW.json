@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "圖片描述傳送至：{0}",
   "desktopObservation.history": "主動發言對話",
   "desktopObservation.historyEmpty": "還沒有主動發言對話。",
-  "desktopObservation.historyMore": "顯示更多"
+  "desktopObservation.historyMore": "顯示更多",
+  "desktopObservation.disabled": "已關閉",
+  "desktopObservation.model": "對話模型",
+  "desktopObservation.routeConfigure": "請設定支援圖片的對話模型或圖片轉述模型。"
 }

@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "Descripción de la imagen enviada a: {0} {0}",
   "desktopObservation.history": "Conversaciones proactivas",
   "desktopObservation.historyEmpty": "Aún no hay conversaciones proactivas.",
-  "desktopObservation.historyMore": "Mostrar más"
+  "desktopObservation.historyMore": "Mostrar más",
+  "desktopObservation.disabled": "Apagado",
+  "desktopObservation.model": "Modelo de conversación",
+  "desktopObservation.routeConfigure": "Utilice un modelo de conversación con capacidad de imagen o un modelo de descripción de imagen."
 }

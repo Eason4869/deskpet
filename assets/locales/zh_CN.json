@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "图片描述发送至：{0}",
   "desktopObservation.history": "主动发言对话",
   "desktopObservation.historyEmpty": "还没有主动发言对话。",
-  "desktopObservation.historyMore": "显示更多"
+  "desktopObservation.historyMore": "显示更多",
+  "desktopObservation.disabled": "已关闭",
+  "desktopObservation.model": "对话模型",
+  "desktopObservation.routeConfigure": "请配置支持图片的对话模型或图片转述模型。"
 }

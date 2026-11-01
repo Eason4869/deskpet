@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "Image description sent to: {0}",
   "desktopObservation.history": "Proactive conversations",
   "desktopObservation.historyEmpty": "No proactive conversations yet.",
-  "desktopObservation.historyMore": "Show more"
+  "desktopObservation.historyMore": "Show more",
+  "desktopObservation.disabled": "Off",
+  "desktopObservation.model": "Conversation model",
+  "desktopObservation.routeConfigure": "Use an image-capable conversation model or an image description model."
 }

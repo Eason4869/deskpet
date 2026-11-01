@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "छवि विवरण यहां भेजा गया: {0} {0}",
   "desktopObservation.history": "सक्रिय बातचीत",
   "desktopObservation.historyEmpty": "अभी तक कोई सक्रिय बातचीत नहीं हुई.",
-  "desktopObservation.historyMore": "और दिखाएँ"
+  "desktopObservation.historyMore": "और दिखाएँ",
+  "desktopObservation.disabled": "बंद",
+  "desktopObservation.model": "वार्तालाप मॉडल",
+  "desktopObservation.routeConfigure": "एक छवि-सक्षम वार्तालाप मॉडल या एक छवि विवरण मॉडल का उपयोग करें।"
 }

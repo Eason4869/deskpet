@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "다음 주소로 이미지 설명 전송: {0} {0}",
   "desktopObservation.history": "적극적인 대화",
   "desktopObservation.historyEmpty": "아직 적극적인 대화가 없습니다.",
-  "desktopObservation.historyMore": "더 보기"
+  "desktopObservation.historyMore": "더 보기",
+  "desktopObservation.disabled": "끄다",
+  "desktopObservation.model": "대화 모델",
+  "desktopObservation.routeConfigure": "이미지 지원 대화 모델이나 이미지 설명 모델을 사용하세요."
 }

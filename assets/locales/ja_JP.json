@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}",
   "desktopObservation.history": "積極的な会話",
   "desktopObservation.historyEmpty": "まだ積極的な会話はありません。",
-  "desktopObservation.historyMore": "もっと見る"
+  "desktopObservation.historyMore": "もっと見る",
+  "desktopObservation.disabled": "オフ",
+  "desktopObservation.model": "会話モデル",
+  "desktopObservation.routeConfigure": "画像対応の会話モデルまたは画像説明モデルを使用します。"
 }

@@ -4822,5 +4822,8 @@
   "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}",
   "desktopObservation.history": "Percakapan proaktif",
   "desktopObservation.historyEmpty": "Belum ada percakapan proaktif.",
-  "desktopObservation.historyMore": "Tampilkan lebih banyak"
+  "desktopObservation.historyMore": "Tampilkan lebih banyak",
+  "desktopObservation.disabled": "Mati",
+  "desktopObservation.model": "Model percakapan",
+  "desktopObservation.routeConfigure": "Gunakan model percakapan berkemampuan gambar atau model deskripsi gambar."
 }
