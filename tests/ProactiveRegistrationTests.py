@@ -30,6 +30,7 @@ UI_PROJECT = 'desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj'
 UI_DLL = 'desktop/DeskPet.Desktop.Tests/bin/Release/net10.0/DeskPet.Desktop.Tests.dll'
 UI_RUNNER = 'desktop/DeskPet.Desktop.Tests/Program.cs'
 UI_CHECKS = 'desktop/DeskPet.Desktop.Tests/ProactiveConversationChecks.cs'
+COMPOSER_CHECKS = 'desktop/DeskPet.Desktop.Tests/ComposerLayoutUiChecks.cs'
 PORTABLE_PROJECT = 'desktop/DeskPet.Tests/DeskPet.Tests.csproj'
 PORTABLE_DLL = 'desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll'
 MAC_PROJECT = 'desktop/DeskPet.Platform.Mac/Tests/DeskPet.Platform.Mac.Tests.csproj'
@@ -327,6 +328,128 @@ class RegistrationTests(unittest.TestCase):
                 self.assertIn('- arch: arm64', workflow)
                 self.assertIn('- arch: x86_64', workflow)
                 self.assertIn('runs-on: ${{ matrix.runner }}', workflow)
+
+    def test_composer_geometry_compiles_and_runs_first_in_the_default_ui_suite(self):
+        fixture = self.required_source(COMPOSER_CHECKS)
+        self.assertTrue(compiled_ui_source(COMPOSER_CHECKS), 'composer fixture must be SDK-compiled')
+        body = method_body(fixture, 'Run')
+        self.assertRegex(body, r'if\s*\(!value\)\s*throw new Exception')
+        self.assertRegex(body, r'Check\(s\.Model\.Width\s*>\s*0[^;]*s\.Model\.Right\s*<=\s*s\.Fallback\.Left')
+        self.assertRegex(body, r'Check\(s\.Width\s*!=\s*390[^;]*s\.Model\.Width\s*>=\s*60')
+        self.assertRegex(body, r'Check\(samples\[1\]\.Model\.Width\s*<\s*samples\[0\]\.Model\.Width')
+        self.assertIn('return assertions;', body)
+        self.assertNotRegex(body, r'^\s*return\b')
+        runner = self.required_source(UI_RUNNER)
+        outer = re.search(r'\btry\s*{', runner[runner.index('Directory.CreateDirectory(directory);'):])
+        offset = runner.index('Directory.CreateDirectory(directory);')
+        self.assertIsNotNone(outer)
+        default = braced_body(runner, offset + outer.end() - 1)
+        # Drop nested branch bodies: a focused-only call cannot register a default check.
+        top = []
+        depth = 0
+        for token in re.finditer(r'@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|[{}]|[^{}"]+', default):
+            if token[0] == '{':
+                depth += 1
+            elif token[0] == '}':
+                depth -= 1
+            elif depth == 0:
+                top.append(token[0])
+        top = ''.join(top)
+        call = re.search(r'\bassertions\s*\+=\s*ComposerLayoutUiChecks\.Run\s*\(', top)
+        self.assertIsNotNone(call, 'default UI must accumulate real composer assertions')
+        self.assertNotRegex(top[:call.start()], r'\breturn\s*;')
+        first = re.search(r'\bassertions\s*\+=', top)
+        self.assertEqual(first.start(), call.start(), 'geometry must run before other default UI checks')
+        self.assertRegex(runner[offset + outer.end() + len(default):], r'^}\s*finally\s*{',
+                         'default assertion exceptions must escape rather than be swallowed')
+
+    def test_both_ci_workflows_build_and_execute_default_ui_with_failure_propagation(self):
+        for name, windows in (('check.yml', True), ('macos.yml', False)):
+            with self.subTest(workflow=name):
+                workflow = source('.github/workflows/' + name)
+                if not windows:
+                    workflow = workflow.split('\n  preview:\n', 1)[1]
+                blocks = run_blocks(workflow)
+                build = r'dotnet build ' + re.escape(UI_PROJECT) + r' -c Release(?: [^|]*)?'
+                if windows:
+                    candidates = []
+                    for block in blocks:
+                        text = '\n'.join(block)
+                        alias = re.search(r"\$(\w+)\s*=\s*'" + re.escape(UI_DLL) + "'", text)
+                        if alias is None:
+                            continue
+                        loop = re.search(r'foreach\s*\(\$(\w+)\s+in\s+@\(([^)]*)\)\)\s*{', text)
+                        if loop is None or not re.search(r"(?:^|,)\s*''\s*(?:,|$)", loop[2]):
+                            continue
+                        body = braced_body(text, loop.end() - 1)
+                        var, dll = re.escape(loop[1]), re.escape(alias[1])
+                        dispatch = r'if\s*\(\$' + var + r'\)\s*{\s*dotnet \$' + dll + r' \$' + var + r'\s*}\s*else\s*{\s*dotnet \$' + dll + r'\s*}'
+                        execution = re.search(dispatch, body)
+                        if execution is not None and re.match(r"\s*if \(\$LASTEXITCODE(?: -ne 0)?\) \{ throw ", body[execution.end():]):
+                            candidates.append((block, loop.start(), text))
+                    self.assertTrue(candidates, 'Windows must execute the empty-argument default UI and propagate failure')
+                    self.assertTrue(any(checked_command([block], build, True) and
+                                        re.search(build, text).start() < at for block, at, text in candidates),
+                                    'checked UI build must precede default execution')
+                else:
+                    command = r'dotnet ' + re.escape(UI_DLL) + r'(?: 2>&1)?(?: \| tee [^;]+)?'
+                    self.assertTrue(any(checked_command([block], command, False) and
+                                        checked_command([block], build, False) and
+                                        next(i for i, line in enumerate(block) if re.fullmatch(build, line)) <
+                                        next(i for i, line in enumerate(block) if re.fullmatch(command, line))
+                                        for block in blocks), 'macOS must build then execute the default UI with pipefail')
+
+    def test_composer_guard_rejects_missing_source_compile_runner_and_default_ci(self):
+        self.test_composer_geometry_compiles_and_runs_first_in_the_default_ui_suite()
+        self.test_both_ci_workflows_build_and_execute_default_ui_with_failure_propagation()
+        source_check = 'test_composer_geometry_compiles_and_runs_first_in_the_default_ui_suite'
+        ci_check = 'test_both_ci_workflows_build_and_execute_default_ui_with_failure_propagation'
+        mutations = [
+            (COMPOSER_CHECKS, None, None, source_check),
+            (UI_PROJECT, r'</Project>', '<ItemGroup><Compile Remove="ComposerLayoutUiChecks.cs" /></ItemGroup></Project>', source_check),
+            (UI_PROJECT, r'</Project>', '<PropertyGroup><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup></Project>', source_check),
+            (COMPOSER_CHECKS, r'if\s*\(!value\)\s*throw new Exception', 'if (false) throw new Exception', source_check),
+            (COMPOSER_CHECKS, r's\.Model\.Width\s*>\s*0', 'true', source_check),
+            (UI_RUNNER, r'assertions\s*\+=\s*ComposerLayoutUiChecks\.Run\([^;]+;', 'assertions += 0;', source_check),
+            (UI_RUNNER, r'assertions\s*\+=\s*ComposerLayoutUiChecks\.Run\([^;]+;', '// ComposerLayoutUiChecks.Run(directory);', source_check),
+            (UI_RUNNER, r'assertions\s*\+=\s*(ComposerLayoutUiChecks\.Run\([^;]+;)', r'\1', source_check),
+            (UI_RUNNER, r'(assertions\s*\+=\s*ComposerLayoutUiChecks\.Run\([^;]+;)', r'if(args.Contains("--focused")){\1}', source_check),
+            (UI_RUNNER, r'(assertions\s*\+=\s*ComposerLayoutUiChecks\.Run\([^;]+;)', r'return;\1', source_check),
+            ('.github/workflows/check.yml', r"@\('', '--data-management-ui-only'", "@('--data-management-ui-only'", ci_check),
+            ('.github/workflows/check.yml', r'else\s*{\s*dotnet \$testDll\s*}', 'else { dotnet $testDll --proactive-host-only }', ci_check),
+            ('.github/workflows/check.yml', r"if \(\$LASTEXITCODE\) { throw \('Desktop acceptance failed: ' \+ \$arguments\) }", "Write-Host 'ignored'", ci_check),
+            ('.github/workflows/check.yml', r'dotnet build ' + re.escape(UI_PROJECT) + r'[^\n]+', '# removed UI build', ci_check),
+            ('.github/workflows/macos.yml', r'dotnet ' + re.escape(UI_DLL) + r' \| tee "\$REPORT_ROOT/headless-ui.log"', 'dotnet ' + UI_DLL + ' --proactive-host-only | tee "$REPORT_ROOT/headless-ui.log"', ci_check),
+            ('.github/workflows/macos.yml', r'dotnet build ' + re.escape(UI_PROJECT) + r' -c Release[^\n]+', '# removed UI build', ci_check),
+            ('.github/workflows/macos.yml', r'set -euo pipefail', 'set -eu', ci_check),
+        ]
+        read = source
+        for path, pattern, replacement, check in mutations:
+            with self.subTest(path=path, mutation=pattern):
+                original = read(path)
+                if pattern is not None:
+                    changed, count = re.subn(pattern, replacement, original)
+                    self.assertGreater(count, 0, 'mutation must change an actual input')
+                def mutated(candidate):
+                    if candidate != path:
+                        return read(candidate)
+                    if pattern is None:
+                        raise FileNotFoundError(candidate)
+                    return changed
+                result = unittest.TestResult()
+                with patch(__name__ + '.source', side_effect=mutated):
+                    RegistrationTests(check).run(result)
+                self.assertFalse(result.wasSuccessful(), 'composer registration omission escaped: ' + str(pattern))
+                self.assertFalse(result.errors, 'mutation must fail an assertion rather than crash')
+        original = read(COMPOSER_CHECKS)
+        body = method_body(original, 'Run')
+        self.assertTrue(body)
+        with patch(__name__ + '.source', side_effect=lambda path:
+                   original.replace(body, 'return 0;') if path == COMPOSER_CHECKS else read(path)):
+            result = unittest.TestResult()
+            RegistrationTests(source_check).run(result)
+        self.assertFalse(result.wasSuccessful(), 'constant-success composer stub must fail')
+        self.assertFalse(result.errors)
 
     def test_ui_guard_rejects_compile_dispatch_failure_and_ci_omissions(self):
         self.required_source(UI_CHECKS)
