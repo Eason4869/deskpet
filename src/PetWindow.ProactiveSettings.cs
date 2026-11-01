@@ -58,10 +58,10 @@ namespace Dafeiyu
                 }
             }catch(Exception){if(!closing && !sessionLocked)MessageBox.Show(TextResources.Get("desktopObservation.previewEmpty"),TextResources.Get("desktopObservation.previewLocal"));}
         }
+        internal bool TryBeginManualObservation(DateTime now){if(now-lastObservationTest<TimeSpan.FromSeconds(10))return false;lastObservationTest=now;return true;}
         internal async Task TestObservationAsync()
         {
-            if(DateTime.UtcNow-lastObservationTest<TimeSpan.FromSeconds(10))return;
-            lastObservationTest=DateTime.UtcNow;
+            if(!TryBeginManualObservation(DateTime.UtcNow))return;
             var snapshot=ObservationSettingsSnapshot();var summary=DesktopObservationUiText.ReceivingSummary(snapshot);
             if(observationPaused){MessageBox.Show(TextResources.Get("desktopObservation.paused"),TextResources.Get("desktopObservation.uploadTest"));return;}
             var context=new DesktopObservationContext(snapshot,Skin.Id,Skin.Name,null,null,DateTime.Now,true,true,()=>true,DesktopObservationMode.ManualTest);var admission=observationPolicy.TryBegin(context,DateTime.UtcNow);
