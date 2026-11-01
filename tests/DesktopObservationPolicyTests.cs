@@ -18,7 +18,14 @@ namespace Dafeiyu.Tests
         {return new DesktopObservationContext(settings??Settings(),"dafeiyu","大肥鱼",null,null,new DateTime(2026,11,2,12,0,0),due,eligible,current??(()=>true),manual?DesktopObservationMode.ManualTest:DesktopObservationMode.Automatic);}
         public static int Main()
         {
-            try{Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+            try{DestinationLabels();Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+        }
+        static void DestinationLabels()
+        {
+            Check(DesktopObservationUiText.SafeAddress("https://alice:secret@example.com/v1/chat?token=secret#private")=="https://example.com/v1/chat", "address strips secrets");
+            Check(DesktopObservationUiText.SafeAddress("not a url")=="", "invalid address is hidden");
+            var addresses=DesktopObservationUiText.Destinations(Settings());
+            Check(addresses.Length==1 && addresses[0]=="http://127.0.0.1:1/v1/chat/completions", "direct route shows actual endpoint");
         }
         static void Gates()
         {
