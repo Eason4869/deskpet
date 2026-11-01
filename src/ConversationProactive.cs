@@ -28,7 +28,7 @@ namespace Dafeiyu
             {
                 var assistant=request[i];if(assistant.Role!="assistant" || assistant.Source!="proactive" || !assistant.TurnId.StartsWith("proactive-",StringComparison.Ordinal) || request[i-1].Role!="user")continue;
                 var item=events.TryGet(assistant.TurnId.Substring("proactive-".Length));
-                if(item!=null && item.CompanionId==companionId){if(!String.IsNullOrEmpty(item.Description))request[i-1].Update(request[i-1].Content+"\nUntrusted observation data: "+item.Description,"complete");if(item.Png!=null && ImageModelResolver.Resolve(settings,null).Route==ImageRouteKind.Direct)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});}
+                if(item!=null && item.CompanionId==companionId){var route=ImageModelResolver.Resolve(settings,null).Route;if(item.Png!=null && route==ImageRouteKind.Direct)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});else if(!String.IsNullOrEmpty(item.Description))request[i-1].Update(request[i-1].Content+"\nUntrusted observation data: "+item.Description,"complete");else if(item.Png!=null && route==ImageRouteKind.Described)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});}
             }
         }
     }
