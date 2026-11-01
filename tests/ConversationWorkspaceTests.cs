@@ -35,6 +35,8 @@ namespace Dafeiyu.Tests
                 var temporary=new ConversationDefinition{Id="transient",Name="reply",Mode="chat",PetId="pet"};
                 using(var draft=ConversationWorkspace.Create(project,temporary,root,"pet",()=>new Api(),()=>new Speech(),()=>null,Settings,()=>true,transient:true))
                 {
+                    draft.Session.AttachProactive(new ProactiveEvent("event","pet","Hello",null,DateTime.UtcNow,null,null));
+                    Check(draft.Session.History.Messages.Count==1,"proactive event appears in transient history");
                     Check(!Directory.Exists(draft.DataDirectory),"unanswered proactive workspace creates no directory");
                     bool rejected=false;try{draft.Queue.Enqueue("unsent");}catch(InvalidOperationException){rejected=true;}
                     Check(rejected,"unadmitted queue rejects persistence and model work");
