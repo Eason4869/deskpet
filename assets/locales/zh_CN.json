@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "观察超时，请稍后重试。",
   "desktopObservation.reason.Cancelled": "已取消。",
   "desktopObservation.imageDestination": "图片发送至：{0}",
-  "desktopObservation.textDestination": "图片描述发送至：{0}"
+  "desktopObservation.textDestination": "图片描述发送至：{0}",
+  "desktopObservation.history": "主动发言对话",
+  "desktopObservation.historyEmpty": "还没有主动发言对话。",
+  "desktopObservation.historyMore": "显示更多"
 }

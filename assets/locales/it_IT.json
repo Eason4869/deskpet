@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "Timeout dell'osservazione. Riprova più tardi.",
   "desktopObservation.reason.Cancelled": "Annullato.",
   "desktopObservation.imageDestination": "Immagine inviata a: {0} {0}",
-  "desktopObservation.textDestination": "Descrizione dell'immagine inviata a: {0} {0}"
+  "desktopObservation.textDestination": "Descrizione dell'immagine inviata a: {0} {0}",
+  "desktopObservation.history": "Conversazioni proattive",
+  "desktopObservation.historyEmpty": "Nessuna conversazione proattiva ancora.",
+  "desktopObservation.historyMore": "Mostra di più"
 }

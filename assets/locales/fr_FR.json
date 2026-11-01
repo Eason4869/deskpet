@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "L'observation a expiré. Réessayez plus tard.",
   "desktopObservation.reason.Cancelled": "Annulé.",
   "desktopObservation.imageDestination": "Image envoyée à : {0} {0}",
-  "desktopObservation.textDestination": "Description de l'image envoyée à : {0} {0}"
+  "desktopObservation.textDestination": "Description de l'image envoyée à : {0} {0}",
+  "desktopObservation.history": "Conversations proactives",
+  "desktopObservation.historyEmpty": "Aucune conversation proactive pour l’instant.",
+  "desktopObservation.historyMore": "Afficher plus"
 }

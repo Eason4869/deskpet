@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "監視がタイムアウトしました。後でもう一度試してください。",
   "desktopObservation.reason.Cancelled": "キャンセル。",
   "desktopObservation.imageDestination": "画像の送信先: {0} {0}",
-  "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}"
+  "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}",
+  "desktopObservation.history": "積極的な会話",
+  "desktopObservation.historyEmpty": "まだ積極的な会話はありません。",
+  "desktopObservation.historyMore": "もっと見る"
 }

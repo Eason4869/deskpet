@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "अवलोकन का समय समाप्त हो गया. बाद में पुन: प्रयास।",
   "desktopObservation.reason.Cancelled": "रद्द कर दिया गया.",
   "desktopObservation.imageDestination": "छवि यहां भेजी गई: {0} {0}",
-  "desktopObservation.textDestination": "छवि विवरण यहां भेजा गया: {0} {0}"
+  "desktopObservation.textDestination": "छवि विवरण यहां भेजा गया: {0} {0}",
+  "desktopObservation.history": "सक्रिय बातचीत",
+  "desktopObservation.historyEmpty": "अभी तक कोई सक्रिय बातचीत नहीं हुई.",
+  "desktopObservation.historyMore": "और दिखाएँ"
 }

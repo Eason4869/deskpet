@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "測試超時，請稍後重試。",
   "desktopObservation.reason.Cancelled": "已取消。",
   "desktopObservation.imageDestination": "圖片傳送至：{0}",
-  "desktopObservation.textDestination": "圖片描述傳送至：{0}"
+  "desktopObservation.textDestination": "圖片描述傳送至：{0}",
+  "desktopObservation.history": "主動發言對話",
+  "desktopObservation.historyEmpty": "還沒有主動發言對話。",
+  "desktopObservation.historyMore": "顯示更多"
 }

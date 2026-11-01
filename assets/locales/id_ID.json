@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "Waktu observasi telah habis. Coba lagi nanti.",
   "desktopObservation.reason.Cancelled": "Dibatalkan.",
   "desktopObservation.imageDestination": "Gambar dikirim ke: {0} {0}",
-  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}"
+  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}",
+  "desktopObservation.history": "Percakapan proaktif",
+  "desktopObservation.historyEmpty": "Belum ada percakapan proaktif.",
+  "desktopObservation.historyMore": "Tampilkan lebih banyak"
 }

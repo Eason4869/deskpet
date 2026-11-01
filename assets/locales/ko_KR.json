@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "관찰 시간이 초과되었습니다. 나중에 다시 시도하세요.",
   "desktopObservation.reason.Cancelled": "취소.",
   "desktopObservation.imageDestination": "이미지 전송 대상: {0} {0}",
-  "desktopObservation.textDestination": "다음 주소로 이미지 설명 전송: {0} {0}"
+  "desktopObservation.textDestination": "다음 주소로 이미지 설명 전송: {0} {0}",
+  "desktopObservation.history": "적극적인 대화",
+  "desktopObservation.historyEmpty": "아직 적극적인 대화가 없습니다.",
+  "desktopObservation.historyMore": "더 보기"
 }

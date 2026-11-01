@@ -4819,5 +4819,8 @@
   "desktopObservation.reason.TotalTimeout": "Observation timed out. Try again later.",
   "desktopObservation.reason.Cancelled": "Cancelled.",
   "desktopObservation.imageDestination": "Image sent to: {0}",
-  "desktopObservation.textDestination": "Image description sent to: {0}"
+  "desktopObservation.textDestination": "Image description sent to: {0}",
+  "desktopObservation.history": "Proactive conversations",
+  "desktopObservation.historyEmpty": "No proactive conversations yet.",
+  "desktopObservation.historyMore": "Show more"
 }
