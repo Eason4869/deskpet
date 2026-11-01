@@ -1,4 +1,4 @@
-锘縰sing Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
@@ -67,7 +67,7 @@ internal sealed partial class DesktopController : IDisposable
     public string DataDirectory { get; }
     public bool GuideLocked => guide != null || openingGuide;
     public bool HasOpenPanel => ObservationBlockingPanel(false);
-    internal bool ObservationBlockingPanel(bool manual)=>GuideLocked||chatHosts.Any(host=>host.IsVisible)||(!manual&&settingsWindow?.IsVisible==true)||liveWindow?.IsVisible==true;
+    internal bool ObservationBlockingPanel(bool manual)=>GuideLocked||chatHosts.Any(host=>host.IsVisible)||proactiveHistory?.IsVisible==true||(!manual&&settingsWindow?.IsVisible==true)||liveWindow?.IsVisible==true;
     public event Action? Changed;
     public DesktopController(IClassicDesktopStyleApplicationLifetime desktop, DesktopRuntime? runtime = null, Func<GeneratedImageStore, ImageGenerationClient>? imageClientFactory = null, HolidayController? holidays = null, Func<SpriteAssets>? spriteAssetsFactory = null, Func<Func<OfficialCompanionInstallation, CancellationToken, Task>, IOfficialCompanionSource>? officialSourceFactory = null,Func<string,AgentJobApplicationService>? jobsFactory=null)
     {
@@ -138,12 +138,13 @@ internal sealed partial class DesktopController : IDisposable
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
         using var icon = SpriteAssets.OpenAsset("pet.ico");
-        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet 路 " + Skin.DisplayName, IsVisible = true };
+        tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "DeskPet · " + Skin.DisplayName, IsVisible = true };
         tray.Clicked += (_, _) => ShowPet();
         var menu = new NativeMenu();
         void Add(Func<string> text, Action action) { var item = LocalizedUi.With(new NativeMenuItem(text()),"Header",text); item.Click += (_, _) => action(); menu.Items.Add(item); }
         Add(()=>TextResources.Get("desktopController.desktopController.text"), ShowPet); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeA"), () => ShowChat(true)); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeB"), () => ShowChat(false));
         Add(()=>TextResources.Get("desktopObservation.replyLast"),ReplyLastProactive);
+        Add(()=>TextResources.Get("desktopObservation.history"),ShowProactiveHistory);
         Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeC"), () => Pet.ShowPalette()); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeD"), ShowSettings); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeE"), ShowGuide); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeF"), ShowAbout); Add(()=>TextResources.Get("desktopController.desktopController.text.alternativeG"), () => Run(ExitAsync));
         tray.Menu = menu;
         TrayIcon.SetIcons(Application.Current!, new TrayIcons { tray });
@@ -174,10 +175,11 @@ internal sealed partial class DesktopController : IDisposable
     }
     internal void NotifyWorkChanged()=>Notify();
     internal ChatWindow? WorkApprovalHost(string session)=>chatHosts.FirstOrDefault(host=>host.IsVisible&&host.QuestionSessionId==session);
-    private void Notify() {Observation.Invalidate();Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });}
+    private void Notify() {Observation.Invalidate(false);Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });}
     bool deferredSettingsSave;
     internal void SaveProviderDraft(string kind,ServiceProviderSettings view,ModelReference? imageModel,bool imageChanged,bool providerChanged)
     {
+        Observation.Invalidate();
         using(DataMaintenance.EnterActivity()){
             var draft=Settings.Copy();var selected=view.Providers.Single(p=>p.Id==view.ActiveProviderId);
             if(providerChanged)draft.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
@@ -201,11 +203,12 @@ internal sealed partial class DesktopController : IDisposable
     internal void ApplyRestoredPreferences()
     {
         DesktopTheme.Apply(Settings.ThemeMode);RegisterHotkeys();ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
-        foreach(var session in new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(w=>w.Session)).Concat(proactiveBindings.Values.Select(b=>b.Session)).Distinct())session.SetVolume(Settings.Volume);
+        foreach(var session in new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(w=>w.Session)).Concat(ProactiveBindingsSnapshot().Select(b=>b.Session)).Distinct())session.SetVolume(Settings.Volume);
         Live.SetVolume(Settings.Volume);Pet.ApplySettings();Pet.ConfigureGreetings();Notify();
     }
     public void SetUiLanguage(string code)
     {
+        Observation.Invalidate();
         UiLanguageChange.Apply(store,Settings,code);
         Notify();
     }
@@ -320,6 +323,7 @@ internal sealed partial class DesktopController : IDisposable
     }
     private async Task DrainApplicationForExitAsync()
     {
+        await ObservationSettingsIdle;
         await Observation.DrainAsync();
         await DrainProactiveBindingsAsync();
         if(imChannels!=null)await imChannels.StopAllAsync();
@@ -348,6 +352,7 @@ internal sealed partial class DesktopController : IDisposable
         companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();imageNoticeTimer.Stop();
+        proactiveHistory?.Close();
         imageNotification?.Close();
         ImageTasks.Changed-=ImageTaskCompleted;
         Session.AgentTaskChanged -= Notify;
@@ -356,6 +361,7 @@ internal sealed partial class DesktopController : IDisposable
         foreach(var binding in hotkeys)binding.Dispose();
         ImageServicesShutdown=Task.Run(async()=>
         {
+            await ObservationSettingsIdle;
             await Observation.DrainAsync();await DrainProactiveBindingsAsync();
             try{await applicationExitDrain;}catch(Exception){}
             await HolidayKeepsakes.ShutdownAsync();

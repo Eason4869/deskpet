@@ -70,7 +70,7 @@ internal sealed partial class PetWindow : Window
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
         PointerExited += (_, _) => LeaveHolidayHover();
-        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty)owner.Relationships.InvalidateFeedback();};
+        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty){owner.Relationships.InvalidateFeedback();owner.Observation.Invalidate();}};
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
@@ -126,6 +126,7 @@ internal sealed partial class PetWindow : Window
         void Add(System.Func<string> label, Action command) { var item = LocalizedUi.With(new MenuItem { Header = label() },"Header",()=> (label())); item.Click += (_, _) => command(); items.Add(item); }
         Add(()=> (TextResources.Get("petWindow.buildMenu.text")), () => owner.ShowChat(true)); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeA")), () => owner.ShowChat(false));
         Add(()=>TextResources.Get("desktopObservation.replyLast"),owner.ReplyLastProactive);
+        Add(()=>TextResources.Get("desktopObservation.history"),owner.ShowProactiveHistory);
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
         Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
@@ -221,6 +222,7 @@ internal sealed partial class PetWindow : Window
     private void SavePosition() { owner.Settings.X = Position.X; owner.Settings.Y = Position.Y; owner.Save(); }
     private void Tick()
     {
+        if(owner.Settings.DesktopObservationEnabled&&owner.Observation.Service.IsBusy)owner.ObserveObservationInput();
         var now = clock.Elapsed.TotalSeconds; var gap = now - lastTime; var dt = Math.Clamp(gap, 0, .125); lastTime = now;
         if(IsPetVisible&&now>=keepsakeFrameAt){keepsakeFrameAt=now+1;sprite.InvalidateVisual();}
         var nativeWindow = NativeWindowHandle;

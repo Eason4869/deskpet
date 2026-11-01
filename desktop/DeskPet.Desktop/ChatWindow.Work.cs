@@ -52,6 +52,7 @@ internal sealed partial class ChatWindow
     private void ChangeWorkSetting(Action<PetSettings> change)=>ChangeWorkSettingFor(binding?.ProjectId,change);
     private void ChangeWorkSettingFor(string? projectId,Action<PetSettings> change)
     {
+        if(ProactiveBinding!=null)return;
         if(projectId==null){change(owner.Settings);owner.Save();return;}
         var settings=owner.WorkBindings.ProjectSettings(projectId);change(settings);
         if(!owner.WorkBindings.TryChangeProject(projectId,project=>{project.PlanMode=settings.AgentPlanMode;project.Goal=settings.AgentGoal;}))throw new InvalidOperationException(TextResources.Get("agent.jobs.ui.bindingBusy"));

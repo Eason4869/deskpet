@@ -7,14 +7,16 @@ namespace DeskPet.Desktop;
 
 internal sealed partial class PetWindow
 {
-    internal bool ObservationEligible(bool manual=false)=>sessionInteractive&&IsVisible&&!fullscreenHidden&&!Paused&&!dragging&&!holidayPlayback.Active&&!holidayTransition.Active&&action=="idle"&&!owner.Settings.QuietMode&&!owner.ObservationPaused&&!owner.ObservationBlockingPanel(manual)&&!owner.HolidayBusinessBusy&&!owner.DataMaintenance.IsMaintenanceActive&&!owner.RelationshipNoticeVisible&&!owner.IsExiting;
+    internal bool ObservationEligible(bool manual=false)=>sessionInteractive&&IsVisible&&!fullscreenHidden&&!owner.ObservationFullscreen&&!Paused&&!dragging&&!holidayPlayback.Active&&!holidayTransition.Active&&action=="idle"&&!owner.Settings.QuietMode&&!owner.ObservationPaused&&!owner.ObservationBlockingPanel(manual)&&!owner.HolidayBusinessBusy&&!owner.DataMaintenance.IsMaintenanceActive&&!owner.RelationshipNoticeVisible&&!owner.IsExiting;
     private async Task ShowObservationAsync()
     {
         if(!ObservationEligible())return;
+        owner.ObserveObservationInput();
         var host=owner.Observation;long epoch=host.Epoch;var settings=owner.GlobalObservationSettings();
         var skin=owner.Skin;var relationship=owner.RelationshipCompanionId;int revision=owner.Relationships.SettingsVersion;
         IList<ChatMessage>? memory=null;try{memory=new CompanionMemory(()=>owner.Session).Capture(skin.Id);}catch(Exception error)when(error is IOException or UnauthorizedAccessException or InvalidOperationException){}
-        using var decision=await host.GenerateAsync(settings,skin.Id,skin.Name,memory,recentGreetings.ToArray(),HolidayLocalNow(),true,true);
+        using var decision=await host.GenerateAsync(settings,skin.Id,skin.Name,memory,recentGreetings.ToArray(),HolidayLocalNow(),true,true,current:()=>revision==owner.Relationships.SettingsVersion);
+        owner.ObserveObservationInput();
         owner.ObservationReason=decision.Reason;owner.RefreshObservationStatus();
         if(decision.Kind==ProactiveDecisionKind.Skip||!host.IsCurrent(epoch)||!ObservationEligible()||!ReferenceEquals(skin,owner.Skin)||relationship!=owner.RelationshipCompanionId||revision!=owner.Relationships.SettingsVersion||!host.IsForegroundCurrent())return;
         var item=decision.CandidateEvent??new ProactiveEvent(Guid.NewGuid().ToString("N"),skin.Id,decision.Message,null,DateTime.UtcNow,"","");

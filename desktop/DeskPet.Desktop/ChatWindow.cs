@@ -50,6 +50,7 @@ internal sealed partial class ChatWindow : Window
     private readonly Button routeBack, routeForward;
     private readonly TextBlock partnerName = Ui.Text("", 14);
     private bool nativePaste, closed;
+    private Button? resumeQueue,holdQueue;
     private int uploadEpoch;
     private readonly record struct UploadContext(string Persona, int Epoch);
     private string? activeDraftKey;
@@ -63,7 +64,7 @@ internal sealed partial class ChatWindow : Window
     {
         owner = controller; quick = isQuick;ProactiveBinding=proactiveBinding; persona = proactiveBinding?.CompanionId??owner.Skin.Id;
         draft.Text = LoadDraft();
-        draft.TextChanged += (_, _) => SaveDraft();
+        draft.PropertyChanged += (_, change) => {if(change.Property==TextBox.TextProperty)SaveDraft();};
         LocalizedUi.Set(this,"Title",()=>(quick ? TextResources.Get("chatWindow.chatWindow.titleQuick") : TextResources.Get("chatWindow.chatWindow.titleQuick.alternativeA"))); Width = quick ? 470 : 880; Height = quick ? 520 : 730;
         MinWidth = 390; MinHeight = 400;
         Background = DesktopTheme.Surface; Foreground = DesktopTheme.Brush("#000000");
@@ -79,7 +80,7 @@ internal sealed partial class ChatWindow : Window
         AddHandler(DragDrop.DropEvent, AttachmentDrop, RoutingStrategies.Bubble, handledEventsToo: true);
         history = new ScrollViewer { Content = messages, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         var root = new DockPanel { Margin = new Thickness(16), LastChildFill = true };
-        partnerAvatar = new AvatarView { Name = "ChatPartnerAvatar", Assets = avatarAssets, Skin = owner.Skin, Width = 28, Height = 28 }; LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName)); partnerName.VerticalAlignment = VerticalAlignment.Center;
+        partnerAvatar = new AvatarView { Name = "ChatPartnerAvatar", Assets = avatarAssets, Skin = ChatCompanion, Width = 28, Height = 28 }; LocalizedUi.Set(partnerName,"Text",()=>(ChatCompanion.DisplayName)); partnerName.VerticalAlignment = VerticalAlignment.Center;
         var profileMenu=CreateProfileMenu();
         var profileButton=new Button{Name="ShellAvatar",Content=partnerAvatar,Width=28,Height=28,MinWidth=0,MinHeight=0,Padding=new Thickness(0),BorderThickness=new Thickness(0),Background=Brushes.Transparent,CornerRadius=new CornerRadius(8),ContextMenu=profileMenu};
         profileButton.Click+=(_,_)=>profileMenu.Open(profileButton);
@@ -116,7 +117,8 @@ internal sealed partial class ChatWindow : Window
         DockPanel.SetDock(composer, Dock.Bottom); root.Children.Add(composer);
         if (!quick)
         {
-            var sidebar = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeC")), 17), Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeD")), () => Try(BoundQueue.Resume)), LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeE")), () => Try(BoundQueue.Hold))), new ScrollViewer { Content = queue, MaxHeight = 400 }, LocalizedUi.AsyncButton(()=>(TextResources.Get("chatWindow.chatWindow.asyncButton")), ExportAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeF")), ConfirmClear));
+            resumeQueue=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeD")),()=>Try(BoundQueue.Resume));holdQueue=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeE")),()=>Try(BoundQueue.Hold));
+            var sidebar = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeC")), 17), Ui.Row(resumeQueue,holdQueue), new ScrollViewer { Content = queue, MaxHeight = 400 }, LocalizedUi.AsyncButton(()=>(TextResources.Get("chatWindow.chatWindow.asyncButton")), ExportAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeF")), ConfirmClear));
             sidebar.Width = 245; sidebar.Margin = new Thickness(18, 8, 0, 8); DockPanel.SetDock(sidebar, Dock.Right); root.Children.Add(sidebar);
         }
         root.Children.Add(history); chatPage = root; imageWorkspace = new ImageWorkspacePage(owner, this);
@@ -132,6 +134,7 @@ internal sealed partial class ChatWindow : Window
             if(ProactiveBinding!=null)ProactiveBinding.SelectModel(item.Provider,item.Model);else if(binding==null){owner.Settings.SelectTextModel(item.Provider,item.Model);owner.Save();}else owner.WorkBindings.SelectModel(binding.Id,item.Provider,item.Model);
         };
         owner.RegisterChatHost(this);
+        if(ProactiveBinding!=null){ProactiveBinding.ComposerChanged+=RefreshProactiveComposer;Closed+=(_,_)=>ProactiveBinding.ComposerChanged-=RefreshProactiveComposer;}
         owner.Changed += Refresh; Closed += (_, _) => { closed = true; DisposeCompanionRoutes(); owner.ChatHostClosed(this); imageWorkspace.Dispose(); foreach (var view in rendered.Values) view.DisposeImages(); uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); SaveDraft(); owner.ComposerDrafts.Flush();owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
         Refresh();
         history.SizeChanged += (_, _) => ResizeBubbles();
@@ -195,7 +198,7 @@ internal sealed partial class ChatWindow : Window
         menu.Opening += (_, _) => { cut.IsEnabled = !draft.IsReadOnly && draft.SelectionStart != draft.SelectionEnd; copy.IsEnabled = draft.SelectionStart != draft.SelectionEnd; paste.IsEnabled = !draft.IsReadOnly && Clipboard != null; all.IsEnabled = !string.IsNullOrEmpty(draft.Text); }; draft.ContextMenu = menu;
     }
     private UploadContext UploadTarget() => new(DraftKey, uploadEpoch);
-    private bool Current(UploadContext context) => !closed && IsVisible && DraftKey == context.Persona && (binding!=null||owner.Skin.Id==persona) && uploadEpoch == context.Epoch;
+    private bool Current(UploadContext context) => !closed && IsVisible && DraftKey == context.Persona && (ProactiveBinding!=null||binding!=null||owner.Skin.Id==persona) && uploadEpoch == context.Epoch;
     private void PasteNativeText()
     {
         nativePaste = true; try { draft.Paste(); } finally { nativePaste = false; }
@@ -242,7 +245,7 @@ internal sealed partial class ChatWindow : Window
     }
     private void DraftKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && OperatingSystem.IsWindows()) { SelectMode(!EffectiveSettings().AgentEnabled); e.Handled = true; return; }
+        if (ProactiveBinding==null&&e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && OperatingSystem.IsWindows()) { SelectMode(!EffectiveSettings().AgentEnabled); e.Handled = true; return; }
         if (e.Key == Key.Enter && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))) { Send(); e.Handled = true; }
     }
     private void SelectMode(bool work)
@@ -258,8 +261,8 @@ internal sealed partial class ChatWindow : Window
         var label = LocalizedUi.With(new TextBlock { Text = work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA"), FontSize = 12, Foreground = DesktopTheme.Brush("#9299A3"), VerticalAlignment = VerticalAlignment.Center, RenderTransform = new TranslateTransform(0, 4) },"Text",()=>(work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA")));
         var content = Ui.Row(ModeIcon(work), label); content.RenderTransform = new TranslateTransform(-4, 0); modeButton.Content = content;
         conversationMode.IsChecked = !work; workMode.IsChecked = work;
-        if(ProactiveBinding!=null)workMode.IsEnabled=false;
-        LocalizedUi.Tooltip(modeButton,()=>(OperatingSystem.IsWindows() ? (work ? TextResources.Get("chatWindow.refreshMode.toolTipSetTip") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeA")) + TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeB") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeC")));
+        if(ProactiveBinding!=null){workMode.IsEnabled=false;modeButton.IsEnabled=false;planMode.IsEnabled=false;goalMenu.IsEnabled=false;}
+        LocalizedUi.Tooltip(modeButton,()=>ProactiveBinding!=null?TextResources.Get("chatWindow.chatWindow.menuLabel.alternativeE"):(OperatingSystem.IsWindows() ? (work ? TextResources.Get("chatWindow.refreshMode.toolTipSetTip") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeA")) + TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeB") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeC")));
     }
     private static Control ModeIcon(bool work)
     {
@@ -293,8 +296,9 @@ internal sealed partial class ChatWindow : Window
         if (owner.Live.IsActive) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError"))); return; }
         if (owner.Dictation.IsBusy) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError.alternativeA"))); return; }
         var text = (draft.Text ?? "").Trim(); if (text.Length == 0 && Files.Count == 0) return;
+        if(ProactiveBinding!=null&&proactiveAdmissionPending)return;
         owner.Observation.Invalidate(false);
-        if(ProactiveBinding!=null){owner.Run(()=>SendProactiveAsync(text));return;}
+        if(ProactiveBinding!=null&&!ProactiveBinding.Accepted){if(!proactiveAdmissionPending)owner.Run(()=>SendProactiveAsync(text));return;}
         try { BoundQueue.Enqueue(text, Files); uploadEpoch++; Files.Clear(); RefreshAttachments(); draft.Text = ""; RefreshAction(); } catch (Exception e) { owner.Error(e); }
     }
     private async Task PickAttachmentsAsync()
@@ -330,7 +334,7 @@ internal sealed partial class ChatWindow : Window
     {
         if (closed) return;
         if (owner.Live.IsActive || owner.Dictation.IsBusy) throw new InvalidOperationException(TextResources.Get("chatWindow.addAttachments.text"));
-        var combined = ChatAttachment.Snapshot(Files.Concat(loaded)); Files.Clear(); Files.AddRange(combined); RefreshAttachments(); RefreshAction();
+        var combined = ChatAttachment.Snapshot(Files.Concat(loaded)); Files.Clear(); Files.AddRange(combined);ProactiveBinding?.NotifyAttachmentsChanged(); RefreshAttachments(); RefreshAction();
     }
     private void DisposeAttachmentImages() { foreach (var bitmap in attachmentImages) bitmap.Dispose(); attachmentImages.Clear(); }
     private void RefreshAttachments()
@@ -350,7 +354,7 @@ internal sealed partial class ChatWindow : Window
             }
             var label = new TextBlock { Text = file.Name, FontSize = 11, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 5, 8, 4) };
             var grid = new Grid(); var content = new StackPanel { Spacing = 0 }; content.Children.Add(preview); content.Children.Add(label); grid.Children.Add(content);
-            var remove = Ui.Button("×", () => { Files.Remove(file); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
+            var remove = Ui.Button("×", () => { Files.Remove(file);ProactiveBinding?.NotifyAttachmentsChanged(); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
             var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = DesktopTheme.Brush("#E5E7EB"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
         }
     }
@@ -359,6 +363,7 @@ internal sealed partial class ChatWindow : Window
         RefreshMode();
         bool hasDraft = !string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0;
         primary.Content = hasDraft ? "↑" : BoundSession.IsBusy ? "■" : "≋";
+        primary.IsEnabled=ProactiveBinding==null||hasDraft||BoundSession.IsBusy;
         LocalizedUi.Tooltip(primary,()=>(hasDraft ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip") : BoundSession.IsBusy ? TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeA") : TextResources.Get("chatWindow.refreshAction.toolTipSetTip.alternativeB")));
         addAttachment.IsEnabled = !owner.Live.IsActive && !owner.Dictation.IsBusy;
     }
@@ -381,11 +386,13 @@ internal sealed partial class ChatWindow : Window
         RefreshQuestions();
         if(workJobsButton!=null)workJobsButton.IsEnabled=binding!=null&&!owner.IsExiting;
         draft.IsEnabled=!owner.IsExiting;models.IsEnabled=!owner.IsExiting;
-        partnerAvatar.Skin = owner.Skin; LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName));
+        if(resumeQueue!=null)resumeQueue.IsEnabled=ProactiveBinding==null||ProactiveBinding.Accepted;
+        if(holdQueue!=null)holdQueue.IsEnabled=ProactiveBinding==null||ProactiveBinding.Accepted;
+        partnerAvatar.Skin = ChatCompanion; LocalizedUi.Set(partnerName,"Text",()=>(ChatCompanion.DisplayName));
         if (ProactiveBinding==null&&binding==null && persona != owner.Skin.Id) { uploadEpoch++; SaveDraft(); persona = owner.Skin.Id; draft.Text = LoadDraft(); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         SynchronizeDraftScope();
         LocalizedUi.Set(status,"Text",()=>(BoundSession.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + BoundSession.LastNotice + " " + owner.Dictation.LastNotice + " " + BoundQueue.Notice + " " + BoundSession.HistoryWarning+" "+owner.ComposerDrafts.Warning));
-        LocalizedUi.Set(this,"Title",()=>(TextResources.Get("chatWindow.refresh.ownerSkinName") + owner.Skin.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"))));
+        LocalizedUi.Set(this,"Title",()=>(TextResources.Get("chatWindow.refresh.ownerSkinName") + ChatCompanion.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"))));
         var followBottom = history.Offset.Y + history.Viewport.Height + 80 >= history.Extent.Height;
         RefreshModels(); RefreshAction();
         var visible = BoundSession.History.Messages.TakeLast(quick ? 20 : 400).ToList();
@@ -434,9 +441,9 @@ internal sealed partial class ChatWindow : Window
     }
     private void PopulateImageDescriptionMenu(ContextMenu menu)
     {
-        var targetBinding=binding;var targetSession=BoundSession;string targetPersona=targetSession.PersonaId;
-        var current=owner.WorkBindings.ImageDescriptionDraft(targetBinding,targetPersona);var mode=current?.Mode??"inherit";var cfg=EffectiveSettings();var items=new List<object>();
-        void ApplySelection(ImageDescriptionOverride? value){if(targetBinding==null&&targetSession.PersonaId!=targetPersona)return;if(targetBinding?.IsDisposed==true)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));owner.WorkBindings.SaveImageDescription(targetBinding,targetPersona,value);}
+        var targetBinding=binding;var targetProactive=ProactiveBinding;var targetSession=BoundSession;string targetPersona=targetSession.PersonaId;
+        var current=targetProactive!=null?targetProactive.Fallback:owner.WorkBindings.ImageDescriptionDraft(targetBinding,targetPersona);var mode=current?.Mode??"inherit";var cfg=EffectiveSettings();var items=new List<object>();
+        void ApplySelection(ImageDescriptionOverride? value){if(targetBinding==null&&targetSession.PersonaId!=targetPersona)return;if(targetBinding?.IsDisposed==true)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));if(targetProactive!=null)targetProactive.SetFallback(value);else owner.WorkBindings.SaveImageDescription(targetBinding,targetPersona,value);}
         void Add(Func<string> label,bool selected,ImageDescriptionOverride? value){var item=LocalizedUi.With(new MenuItem{ToggleType=MenuItemToggleType.Radio,IsChecked=selected},"Header",label);item.Click+=(_,_)=>Try(()=>ApplySelection(value));items.Add(item);}
         Add(()=>TextResources.Get("imageDescription.inherit"),mode=="inherit",null);Add(()=>TextResources.Get("imageDescription.none"),mode=="disabled",new ImageDescriptionOverride{Mode="disabled"});
         var route=ImageModelResolver.Resolve(cfg,null).Route;items.Add(LocalizedUi.With(new MenuItem{IsEnabled=false},"Header",()=>route==ImageRouteKind.Direct?TextResources.Get("imageDescription.direct"):route==ImageRouteKind.Described?TextResources.Get("imageDescription.described"):TextResources.Get("imageDescription.unavailable")));
@@ -446,7 +453,7 @@ internal sealed partial class ChatWindow : Window
     }
     private void ConfirmClear()
     {
-        var target=BoundSession;var targetBinding=binding;var targetPersona=target.PersonaId;var confirm = LocalizedUi.Window(()=>(TextResources.Get("chatWindow.confirmClear.window")), LocalizedUi.Text(()=>(TextResources.Get("chatWindow.confirmClear.text"))), 420, 240);
-        confirm.Content = new Border { Padding = new Thickness(20), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Format("chatWindow.confirmClear.template",owner.Skin.DisplayName))), LocalizedUi.Button(()=>(TextResources.Get("chatWindow.confirmClear.text.alternativeA")), () => { if(targetBinding==null&&target.PersonaId!=targetPersona){confirm.Close();return;}owner.Run(async()=>{if(await target.ClearWithCompletion())owner.WorkBindings.SaveImageDescription(targetBinding,targetPersona,null);});confirm.Close(); }), LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), confirm.Close)) }; confirm.Show(this);
+        var target=BoundSession;var targetBinding=binding;var targetProactive=ProactiveBinding;var targetPersona=target.PersonaId;var confirm = LocalizedUi.Window(()=>(TextResources.Get("chatWindow.confirmClear.window")), LocalizedUi.Text(()=>(TextResources.Get("chatWindow.confirmClear.text"))), 420, 240);
+        confirm.Content = new Border { Padding = new Thickness(20), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Format("chatWindow.confirmClear.template",owner.Skin.DisplayName))), LocalizedUi.Button(()=>(TextResources.Get("chatWindow.confirmClear.text.alternativeA")), () => { if(targetBinding==null&&target.PersonaId!=targetPersona){confirm.Close();return;}owner.Run(async()=>{if(await target.ClearWithCompletion()){if(targetProactive!=null)targetProactive.SetFallback(null);else owner.WorkBindings.SaveImageDescription(targetBinding,targetPersona,null);}});confirm.Close(); }), LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), confirm.Close)) }; confirm.Show(this);
     }
 }

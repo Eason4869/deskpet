@@ -20,6 +20,8 @@ internal abstract class DesktopRuntime
     public virtual Task<bool> RequestMicrophoneAccessAsync() => MacServices.RequestMicrophoneAccessAsync();
     public virtual IDesktopObservationCapture CreateDesktopObservationCapture()=>MacServices.CreateDesktopObservationCapture();
     public virtual Task<bool> RequestScreenCaptureAccessAsync()=>MacServices.RequestScreenCaptureAccessAsync();
+    public virtual TimeSpan ObservationIdleTime=>MacServices.IsSupported?MacServices.GetIdleTime():TimeSpan.MaxValue;
+    public virtual bool ObservationFullscreen=>MacServices.IsSupported&&MacServices.IsFrontApplicationFullscreen();
 }
 
 internal sealed class MacRuntime : DesktopRuntime
