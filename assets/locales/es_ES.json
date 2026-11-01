@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "El modelo devolvió una respuesta no válida. Vuelve a intentarlo más tarde.",
   "desktopObservation.reason.ModelTimeout": "Se agotó el tiempo de espera de la solicitud del modelo. Inténtalo más tarde.",
   "desktopObservation.reason.TotalTimeout": "La prueba expiró. Inténtalo más tarde.",
-  "desktopObservation.reason.Cancelled": "Cancelado."
+  "desktopObservation.reason.Cancelled": "Cancelado.",
+  "imageDescription.unavailable": "La descripción de imágenes no está disponible. Revisa la configuración de los modelos de conversación y descripción de imágenes.",
+  "imageDescription.timeout": "La descripción de imágenes ha agotado el tiempo de espera. Revisa el servicio y vuelve a intentarlo.",
+  "imageDescription.network": "No se ha podido conectar al servicio de descripción de imágenes. Revisa la configuración y la red y vuelve a intentarlo.",
+  "imageDescription.failed": "La descripción de imágenes ha fallado. Revisa el servicio y vuelve a intentarlo."
 }

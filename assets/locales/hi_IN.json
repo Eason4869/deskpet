@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "मॉडल ने अमान्य प्रतिक्रिया दी. बाद में पुन: प्रयास।",
   "desktopObservation.reason.ModelTimeout": "मॉडल अनुरोध का समय समाप्त हो गया. बाद में प्रयास करें।",
   "desktopObservation.reason.TotalTimeout": "परीक्षण का समय समाप्त हो गया. बाद में प्रयास करें।",
-  "desktopObservation.reason.Cancelled": "रद्द कर दिया गया."
+  "desktopObservation.reason.Cancelled": "रद्द कर दिया गया.",
+  "imageDescription.unavailable": "चित्र विवरण उपलब्ध नहीं है। बातचीत और चित्र विवरण मॉडल की सेटिंग जाँचें।",
+  "imageDescription.timeout": "चित्र विवरण का समय समाप्त हो गया। सेवा जाँचकर फिर प्रयास करें।",
+  "imageDescription.network": "चित्र विवरण सेवा से कनेक्ट नहीं हो सका। सेटिंग और नेटवर्क जाँचकर फिर प्रयास करें।",
+  "imageDescription.failed": "चित्र विवरण विफल हुआ। सेवा जाँचकर फिर प्रयास करें।"
 }

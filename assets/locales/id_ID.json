@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "Model mengembalikan respons yang tidak valid. Coba lagi nanti.",
   "desktopObservation.reason.ModelTimeout": "Waktu permintaan model telah habis. Coba nanti.",
   "desktopObservation.reason.TotalTimeout": "Waktu tes telah habis. Coba nanti.",
-  "desktopObservation.reason.Cancelled": "Dibatalkan."
+  "desktopObservation.reason.Cancelled": "Dibatalkan.",
+  "imageDescription.unavailable": "Deskripsi gambar tidak tersedia. Periksa pengaturan model percakapan dan deskripsi gambar.",
+  "imageDescription.timeout": "Waktu deskripsi gambar habis. Periksa layanan dan coba lagi.",
+  "imageDescription.network": "Tidak dapat terhubung ke layanan deskripsi gambar. Periksa pengaturan dan jaringan, lalu coba lagi.",
+  "imageDescription.failed": "Deskripsi gambar gagal. Periksa layanan dan coba lagi."
 }

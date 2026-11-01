@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "O modelo retornou uma resposta inválida. Tente novamente mais tarde.",
   "desktopObservation.reason.ModelTimeout": "A solicitação do modelo expirou. Tente mais tarde.",
   "desktopObservation.reason.TotalTimeout": "O teste expirou. Tente mais tarde.",
-  "desktopObservation.reason.Cancelled": "Cancelado."
+  "desktopObservation.reason.Cancelled": "Cancelado.",
+  "imageDescription.unavailable": "A descrição de imagem está indisponível. Verifique as configurações dos modelos de conversa e de descrição de imagem.",
+  "imageDescription.timeout": "A descrição de imagem excedeu o tempo limite. Verifique o serviço e tente novamente.",
+  "imageDescription.network": "Não foi possível conectar ao serviço de descrição de imagem. Verifique as configurações e a rede e tente novamente.",
+  "imageDescription.failed": "A descrição de imagem falhou. Verifique o serviço e tente novamente."
 }

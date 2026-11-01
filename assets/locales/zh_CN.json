@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "模型返回的内容无效，请稍后重试。",
   "desktopObservation.reason.ModelTimeout": "模型请求超时，请稍后重试。",
   "desktopObservation.reason.TotalTimeout": "测试超时，请稍后重试。",
-  "desktopObservation.reason.Cancelled": "已取消。"
+  "desktopObservation.reason.Cancelled": "已取消。",
+  "imageDescription.unavailable": "图片转述不可用，请检查对话模型和图片转述模型的配置。",
+  "imageDescription.timeout": "图片转述超时，请检查服务后重试。",
+  "imageDescription.network": "图片转述服务连接失败，请检查配置和网络后重试。",
+  "imageDescription.failed": "图片转述失败，请检查服务后重试。"
 }

@@ -4817,5 +4817,9 @@
   "desktopObservation.reason.InvalidResponse": "Il modello ha restituito una risposta non valida. Riprova più tardi.",
   "desktopObservation.reason.ModelTimeout": "La richiesta del modello è scaduta. Riprova più tardi.",
   "desktopObservation.reason.TotalTimeout": "Il test è scaduto. Riprova più tardi.",
-  "desktopObservation.reason.Cancelled": "Annullato."
+  "desktopObservation.reason.Cancelled": "Annullato.",
+  "imageDescription.unavailable": "La descrizione dell’immagine non è disponibile. Controlla le impostazioni dei modelli di conversazione e descrizione delle immagini.",
+  "imageDescription.timeout": "Tempo scaduto per la descrizione dell’immagine. Controlla il servizio e riprova.",
+  "imageDescription.network": "Impossibile connettersi al servizio di descrizione delle immagini. Controlla impostazioni e rete, poi riprova.",
+  "imageDescription.failed": "Descrizione dell’immagine non riuscita. Controlla il servizio e riprova."
 }
