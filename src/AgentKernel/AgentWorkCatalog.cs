@@ -42,6 +42,13 @@ namespace Dafeiyu
             store.AfterSave=next=>baseline=ProjectCatalogStore.WorkBindingSignature(next);
         }
         public ProjectCatalog Snapshot {get{lock(gate)return catalog.Copy();}}
+        public bool TrySaveOrdinaryConversation(ConversationDefinition definition)
+        {
+            if(definition==null)throw new ArgumentNullException("definition");
+            var copy=definition.Copy();
+            return mutations.TryRun(new[]{ProjectCatalogStore.UnassignedProjectId},copy.Id,()=>
+            {lock(gate){catalog=store.SaveOrdinaryConversation(copy).Copy();}});
+        }
         public async Task<ProjectDefinition> CreateProjectAsync(string name,string directory,CancellationToken token)
         {
             ProjectDefinition created=null;

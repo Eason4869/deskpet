@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -11,7 +11,7 @@ namespace Dafeiyu
         void InitializeUsageTracking(){try{UsageTracking.Initialize(UsageStats);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException))throw;Notice=TextResources.Get("petAppShell.initializeUsageTracking.notice");}}
         internal ChatWindow EnsureAppWindow()
         {
-            if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.OwnsPet(this)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));var owned=chat;chat.Closed+=delegate{if(ReferenceEquals(chat,owned)){chat=null;if(preferences!=null){preferences.Dispose();preferences=null;}var ignored=CloseConversationWorkspacesAsync();}};}return chat;
+            if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.OwnsPet(this) && !IsProactiveWindow(w)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));var owned=chat;chat.Closed+=delegate{if(ReferenceEquals(chat,owned)){chat=null;if(preferences!=null){preferences.Dispose();preferences=null;}var ignored=CloseConversationWorkspacesAsync();}};}return chat;
         }
         internal void ShowAppWindow(ChatWindow window){if(!window.IsVisible)window.Show();if(window.WindowState==WindowState.Minimized)window.WindowState=WindowState.Normal;window.Activate();}
         internal void ShowMcpPage(bool edit=false){var window=EnsureAppWindow();window.ShowMcpPage(edit);ShowAppWindow(window);}

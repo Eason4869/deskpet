@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -43,7 +44,7 @@ namespace Dafeiyu
         public bool HasUnsavedWorkEdits {get{return work!=null && work.HasUnsavedChanges;}}
         public event Action<int> NavigationChanged;
         public event Action GuideRequested;
-        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString();}}
+        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString() || observationDraftEnabled!=pet.Settings.DesktopObservationEnabled || (observationExcludedDraft!=null && !observationExcludedDraft.SequenceEqual(pet.Settings.DesktopObservationExcludedApps,StringComparer.OrdinalIgnoreCase));}}
         public SettingsPage(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
@@ -126,7 +127,7 @@ namespace Dafeiyu
             var minutes=LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeQ")),12,Ui.Muted);minutes.Margin=new Thickness(8,0,0,0);minutes.VerticalAlignment=VerticalAlignment.Center;interval.Children.Add(minutes);hello.Children.Add(interval);
             greetingMin.LostFocus+=delegate {SaveGreetingInterval();};greetingMax.LostFocus+=delegate {SaveGreetingInterval();};
             var preview=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeR")));preview.Name="PreviewGreeting";preview.HorizontalAlignment=HorizontalAlignment.Left;preview.Click+=delegate {pet.RestorePet();pet.PreviewGreeting();};hello.Children.Add(preview);
-            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeS")),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));
+            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeS")),11,Ui.Muted));hello.Children.Add(CreateObservationSettingsGroup());greetingPage.Children.Add(GlassSurface.Card(hello));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
             persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
@@ -252,7 +253,7 @@ namespace Dafeiyu
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
             top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
-            RefreshAutoStart();if(IsVisible)RefreshActiveCategory();
+            RefreshAutoStart();if(observationGroup!=null)RefreshObservation();if(IsVisible)RefreshActiveCategory();
         }
         private void HolidayWardrobeChanged(object sender,EventArgs args)
         {if(disposed)return;if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(RefreshHolidayLayout));return;}RefreshHolidayLayout();}

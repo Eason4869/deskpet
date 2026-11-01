@@ -18,7 +18,29 @@ namespace Dafeiyu.Tests
         {return new DesktopObservationContext(settings??Settings(),"dafeiyu","大肥鱼",null,null,new DateTime(2026,11,2,12,0,0),due,eligible,current??(()=>true),manual?DesktopObservationMode.ManualTest:DesktopObservationMode.Automatic);}
         public static int Main()
         {
-            try{Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+            try{DestinationLabels();ReasonLabels();Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+        }
+        static void DestinationLabels()
+        {
+            Check(DesktopObservationUiText.SafeAddress("https://alice:secret@example.com/v1/chat?token=secret#private")=="https://example.com/v1/chat", "address strips secrets");
+            Check(DesktopObservationUiText.SafeAddress("not a url")=="", "invalid address is hidden");
+            var addresses=DesktopObservationUiText.Destinations(Settings());
+            Check(addresses.Length==1 && addresses[0]=="http://127.0.0.1:1/v1/chat/completions", "direct route shows actual endpoint");
+            var fallback = new TextProviderSettings { Id="vision", Connection=new ConnectionSettings { BaseUrl="https://vision.example/v1", Model="image" }, Models=new List<string> { "image" } };
+            fallback.ModelCapabilities["image"]=new ModelCapabilitySetting { Images=CapabilitySupport.Supported };fallback.Normalize();
+            var described=Settings();described.Text.ImageSupport=CapabilitySupport.Unsupported;described.TextProviders=new List<TextProviderSettings>{fallback};described.ImageDescriptionModel=new ModelReference{ProviderId="vision",ModelId="image"};described.ImageDescriptionOverride=null;
+            addresses=DesktopObservationUiText.Destinations(described);
+            Check(addresses.Length==2 && addresses[0]=="https://vision.example/v1/chat/completions" && addresses[1]=="http://127.0.0.1:1/v1/chat/completions", "described route identifies both destinations");
+            string summary=DesktopObservationUiText.ReceivingSummary(described);
+            Check(summary.Contains(TextResources.Format("desktopObservation.imageDestination",addresses[0])) && summary.Contains(TextResources.Format("desktopObservation.textDestination",addresses[1])),"described consent labels image and text recipients separately");
+            summary=DesktopObservationUiText.ReceivingSummary(Settings());
+            Check(summary==TextResources.Format("desktopObservation.imageDestination","http://127.0.0.1:1/v1/chat/completions"),"direct consent only identifies image recipient");
+        }
+        static void ReasonLabels()
+        {
+            foreach(ObservationReason reason in Enum.GetValues(typeof(ObservationReason)))
+                Check(DesktopObservationUiText.ReasonText(reason)==TextResources.Get("desktopObservation.reason."+reason),"every reason has a literal localized key");
+            Check(DesktopObservationUiText.ReasonText((ObservationReason)Int32.MaxValue)==TextResources.Get("desktopObservation.reason.Ineligible"),"unknown reason uses safe fallback");
         }
         static void Gates()
         {

@@ -249,7 +249,7 @@ namespace Dafeiyu
 
         public PetWindow(SpriteAtlas source,PetSettings settings,SettingsStore store,EventWaitHandle wakeSignal)
         {
-            atlas=source; Settings=settings; Store=store;Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);},DataMaintenance); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
+            atlas=source; Settings=settings; Store=store;InitializeObservation();Relationships=new RelationshipRuntime(Store.DirectoryPath,action=>{if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(action);},DataMaintenance); wake=wakeSignal; InitializeAgentJobs(); Settings.Normalize();ThemeManager.Apply(Settings.ThemeMode);ManagedSkillLibrary.ActiveDirectory=System.IO.Path.Combine(Store.DirectoryPath,"skills");InitializeUsageTracking();
             idleSleep=new IdleSleepSchedule(watch.Elapsed.TotalSeconds,random.NextDouble);
             nextWalk=WanderSchedule.Next(watch.Elapsed.TotalSeconds,random.NextDouble());
             Catalog=new SkinCatalog(store.DirectoryPath);Catalog.CompanionRemoved+=OfficialCompanionHidden;
@@ -260,7 +260,7 @@ namespace Dafeiyu
             try { atlas=Skin.Load(); }
             catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
             interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
-            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
+            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);ProactiveCompanionChanged(Skin.Id);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
             ResetGreetingSchedule();
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;
             Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
@@ -310,6 +310,7 @@ namespace Dafeiyu
             clickThroughItem=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.petWindow.header.alternativeB"),Name="TrayClickThrough",Icon=UiIcons.Image("pointer",Ui.Muted),IsCheckable=true,IsChecked=Settings.ClickThrough},"Header",()=>(TextResources.Get("petWindow.petWindow.header.alternativeB")));clickThroughItem.Click+=delegate {Dispatcher.BeginInvoke(new Action(delegate {SetClickThrough(!Settings.ClickThrough);}));};trayMenu.Items.Add(clickThroughItem);
             trayMenu.Opening+=delegate {visibilityItem.IsChecked=visibility.UserVisible;quietItem.IsChecked=Settings.QuietMode;clickThroughItem.IsChecked=Settings.ClickThrough;};
             AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray")),ShowQuickChat,"TrayQuickChat","chat");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeA")),ShowChat,"TrayFullChat","full-view");AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeB")),ShowSettings,"TraySettings","settings");
+            var replyLast=LocalizedUi.With(new MenuItem{Name="TrayReplyLast",Header=TextResources.Get("desktopObservation.replyLast")},"Header",()=>TextResources.Get("desktopObservation.replyLast"));replyLast.Click+=delegate{OpenProactiveReply(LastProactiveEvent());};trayMenu.Opening+=delegate{replyLast.IsEnabled=HasLastProactiveEvent();};trayMenu.Items.Add(replyLast);
             AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeC")),ReturnHome,"TrayReturnHome","back");
             trayMenu.Items.Add(new Separator());AddTray(()=> (TextResources.Get("petWindow.petWindow.addTray.alternativeD")),Close,"TrayExit","close");
             tray=LocalizedUi.With(new Forms.NotifyIcon { Icon=trayIcon,Text=TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName),Visible=true },"Text",()=>(TextResources.Format("petWindow.petWindow.skinName",Skin.DisplayName)));tray.BalloonTipClicked+=OpenImageTaskNotification;
@@ -340,7 +341,8 @@ namespace Dafeiyu
             menu.StaysOpen=false;menu.Opened+=delegate {Dispatcher.BeginInvoke(DispatcherPriority.Input,new Action(delegate {if(menu.IsOpen && !GuideActive && !DesktopInterop.ForegroundBelongsToPet())DesktopInterop.ForegroundMenu(menu);}));};
             AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu"),ShowQuickChat);AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeA"),ShowChat); var appearance=LocalizedUi.With(new MenuItem{Header=TextResources.Get("petWindow.createMenu.header"),Name="QuickAppearanceMenu"},"Header",()=>(TextResources.Get("petWindow.createMenu.header")));menu.Items.Add(appearance);
             menu.Opened+=delegate{RefreshAppearanceMenu(appearance);};RefreshAppearanceMenu(appearance);
-            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings); menu.Items.Add(new Separator());
+            AddMenu(menu,()=>TextResources.Get("petWindow.createMenu.addMenu.alternativeB"),ShowSettings);
+            var replyLast=LocalizedUi.With(new MenuItem{Name="ReplyLastGreeting",Header=TextResources.Get("desktopObservation.replyLast")},"Header",()=>TextResources.Get("desktopObservation.replyLast"));replyLast.Click+=delegate{OpenProactiveReply(LastProactiveEvent());};menu.Opened+=delegate{replyLast.IsEnabled=HasLastProactiveEvent();};menu.Items.Add(replyLast);menu.Items.Add(new Separator());
             var actions=LocalizedUi.With(new MenuItem { Header=TextResources.Get("petWindow.createMenu.header.alternativeA") },"Header",()=>(TextResources.Get("petWindow.createMenu.header.alternativeA")));
             for(int i=0;i<AnimationPlayer.States.Length;i++)
             {
@@ -406,7 +408,7 @@ namespace Dafeiyu
             if(fullscreen && greeting!=null && greeting.IsVisible)greeting.Hide();
             if(greetingSchedule.TryTake(now,allowed && greetingRequest==null))ShowGreeting();
         }
-        private void RecordPetInteraction(){if(idleSleep!=null)idleSleep.Touch(watch.Elapsed.TotalSeconds);}
+        private void RecordPetInteraction(){InvalidateObservation();if(idleSleep!=null)idleSleep.Touch(watch.Elapsed.TotalSeconds);}
         internal bool ProbeAutoSleep(double now,double systemIdle)
         {
             bool allowed=!closing && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && Animation.State=="idle" &&
@@ -420,7 +422,7 @@ namespace Dafeiyu
         {
             return !closing && !Settings.QuietMode && (preview || Settings.GreetingEnabled) && (preview || !RelationshipNoticeVisible) && IsPetVisible && !Paused && !dragging && !walking && !interaction.Active && !HolidayPlaying && !holidayTransition.Active && !clickTimer.IsEnabled && !sessionLocked && !DialogueBusy && !DictationActive && !HasQueuedMessages && (!GuideActive || (preview && guide.TargetName=="GreetingEnabled")) && (updates==null || !updates.HasRestartCountdown) &&
                 (ContextMenu==null || !ContextMenu.IsOpen) && !trayMenu.Visible && (palette==null || !palette.IsVisible) &&
-                !WindowInUse(quick) && (!WindowInUse(chat) || (preview && preferences!=null && Object.ReferenceEquals(preferences.HostWindow,chat))) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
+                !ProactiveWindowsVisible() && !WindowInUse(quick) && (!WindowInUse(chat) || (preview && preferences!=null && Object.ReferenceEquals(preferences.HostWindow,chat))) && (preview || !WindowInUse(preferences==null?null:preferences.HostWindow)) && !fullscreen;
         }
         private static bool WindowInUse(Window window){return window!=null && window.IsVisible && window.WindowState!=WindowState.Minimized;}
         private void RenderFrame(object sender,EventArgs args)
@@ -719,7 +721,7 @@ namespace Dafeiyu
             {
                 using(DataMaintenance.EnterActivity()){
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
-                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
+                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();System.Threading.Volatile.Write(ref activeProactiveCompanionId,"");atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);ProactiveCompanionChanged(skin.Id);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName))); tray.Text=Title;
@@ -951,12 +953,12 @@ namespace Dafeiyu
             if(navigation!=conversationNavigationRevision||closing)return;
             project=workspace.Project;conversation=workspace.Definition;
             if(!ProjectCatalogStore.VisibleForPet(conversation,Skin.Id))return;
-            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();
+            WatchConversationTitle(project,conversation,workspace);if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();
         }
         async Task CloseConversationWorkspacesAsync()
         {
             if(closing)return;
-            var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)try{await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);}catch(Exception){Notice=TextResources.Get("petWindow.closeConversationWorkspacesAsync.notice");}
+            var open=Workspaces.OpenWorkspaces.Where(w=>!Object.ReferenceEquals(w,quickWorkspace) && !IsProactiveWorkspace(w)).ToArray();foreach(var workspace in open){foreach(var project in Projects.Projects){var conversation=project.Conversations.FirstOrDefault(c=>c.Id==workspace.Id);if(conversation!=null){conversation.Status="idle";break;}}}try{ProjectStore.Save(Projects);}catch(Exception){ }foreach(var workspace in open)try{await Workspaces.CloseWorkspaceAsync(workspace.Id).ConfigureAwait(false);}catch(Exception){Notice=TextResources.Get("petWindow.closeConversationWorkspacesAsync.notice");}
         }
         // New chats remain drafts until the first submission; their project is chosen in the composer.
         public void NewActiveConversation(){BeginDraftConversation(null,chat==null?Settings.AgentEnabled:chat.WorkEntry);}
@@ -976,7 +978,7 @@ namespace Dafeiyu
             if(closing || IsUpdating || ReturnToGuide())return;
             conversationNavigationRevision++;
             var workspace=CreateDraftConversation(project,workEntry??Settings.AgentEnabled,sectionId);
-            if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,workspace);chat.SwitchWorkspace(workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);
+            if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,workspace);chat.SwitchWorkspace(workspace);chat.Closed+=delegate{chat=null;var ignored=CloseConversationWorkspacesAsync();};}else chat.SwitchWorkspace(workspace);
             if(!chat.IsVisible)chat.Show();chat.Activate();
         }
         internal Action PrepareConversationSubmission(ConversationWorkspace workspace)
@@ -1027,7 +1029,7 @@ namespace Dafeiyu
         internal void OpenChatBrowserLink(Uri uri){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenBrowserLink(uri);}
         internal void OpenChatProjectFacts(AgentTaskState task){ShowChat();if(chat!=null&&chat.IsVisible)chat.OpenProjectFacts(task);}
         public void ShowChat()
-        {if(closing || IsUpdating || ReturnToGuide())return;conversationNavigationRevision++;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:quickWorkspace.Definition;quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
+        {if(closing || IsUpdating || ReturnToGuide())return;conversationNavigationRevision++;RecordPetInteraction();if(call!=null){call.Activate();return;}if(quickWorkspace!=null && quick!=null && quick.IsVisible){var project=ProjectCatalogStore.FindProject(Projects,quickWorkspace.ProjectId,Settings);var definition=project==null?null:quickWorkspace.Definition;quick.Hide();if(definition!=null){OpenProjectConversation(project,definition);return;}}if(quick!=null)quick.Hide();DismissGreeting();if(chat!=null){chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();return;}if(chat==null){chat=(Application.Current==null?null:Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible && !IsProactiveWindow(w)))??new ChatWindow(this,CreateDraftConversation(null,Settings.AgentEnabled));chat.Closed+=delegate {chat=null;var ignored=CloseConversationWorkspacesAsync();};}chat.ShowHomePage();if(!chat.IsVisible)chat.Show();if(chat.WindowState==WindowState.Minimized)chat.WindowState=WindowState.Normal;chat.Activate();}
         bool IsConversationVisible(string id){return (chat!=null&&chat.IsVisible&&chat.ConversationId==id)||(quick!=null&&quick.IsVisible&&quickWorkspace!=null&&quickWorkspace.Id==id);}
         void NotifyProjectsChanged(){var changed=ProjectsChanged;if(changed!=null)changed();}
         async Task ReleaseQuickWorkspaceAsync(ConversationWorkspace workspace)
@@ -1074,14 +1076,14 @@ namespace Dafeiyu
         public void ConfigureGreetings(){Settings.Normalize();DismissGreeting(true);SaveSettings();}
         private void ResetGreetingSchedule(){greetingSchedule=new GreetingSchedule(DateTime.UtcNow,Settings.GreetingMinMinutes,Settings.GreetingMaxMinutes,random.NextDouble);}
         private void CancelPendingGreeting(bool retry=true)
-        {greetingGeneration++;relationshipContentEpoch++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
-        private void DismissGreeting(bool restartTimer=false){CancelPendingGreeting(!restartTimer);if(greeting!=null)greeting.Hide();if(restartTimer)ResetGreetingSchedule();}
+        {InvalidateObservation();greetingGeneration++;relationshipContentEpoch++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !greetingObservation && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
+        private void DismissGreeting(bool restartTimer=false){if(restartTimer)InvalidateObservation(true);CancelPendingGreeting(!restartTimer);if(greeting!=null)greeting.Hide();if(restartTimer)ResetGreetingSchedule();}
         public void PreviewGreeting(){if(!closing && IsPetVisible)RunGreeting(true);}
         private void ShowGreeting(){RunGreeting(false);}
         private async void RunGreeting(bool preview)
         {
             if(!GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview))return;
-            CancelPendingGreeting();var cancellation=new CancellationTokenSource();greetingRequest=cancellation;greetingPreview=preview;int generation=greetingGeneration;
+            CancelPendingGreeting();var cancellation=new CancellationTokenSource();greetingRequest=cancellation;greetingPreview=preview;greetingObservation=!preview && Settings.DesktopObservationEnabled;int generation=greetingGeneration;
             RefreshHoliday();var holiday=Holidays==null?null:Holidays.CreateGreetingContext(random.NextDouble());long holidayRevision=Holidays==null?0:Holidays.Revision;DateTime holidayTime=HolidayLocalTime(),holidayDate=holidayTime.Date;
             string skinId=Skin.Id,relationshipId=RelationshipCompanionId;var capturedSkin=Skin;var capturedPack=RelationshipPack;int relationshipSettingsVersion=Relationships.SettingsVersion;var snapshot=Settings.Copy();List<string> recent;
             if(!recentGreetings.TryGetValue(skinId,out recent)){recent=new List<string>();recentGreetings[skinId]=recent;}
@@ -1092,14 +1094,34 @@ namespace Dafeiyu
                 if(snapshot.AiGreetingEnabled)try {if(companionMemory==null)companionMemory=new CompanionMemory(()=>Conversation);memory=companionMemory.Capture(skinId);}
                 catch(Exception error){if(!(error is IOException || error is UnauthorizedAccessException || error is InvalidOperationException || error is System.Runtime.Serialization.SerializationException))throw;memoryFailed=true;}
                 int phrase=random.Next(GreetingPhrases.Count);
-                string line=memoryFailed ? GreetingService.Fallback(skinId,capturedSkin.Name,holidayTime,phrase,recent,holiday,stageWelcome) : await GreetingGenerator.GenerateAsync(snapshot,skinId,capturedSkin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday,stageWelcome,stage==null?null:stage.AiContext);
+                ProactiveDecision decision=null;string line;
+                if(!preview && snapshot.DesktopObservationEnabled)
+                {
+                    snapshot.ImageDescriptionOverride=null;
+                    decision=await GenerateObservationAsync(snapshot,skinId,capturedSkin.Name,memory,recent,cancellation.Token,DesktopObservationMode.Automatic);
+                    if(decision==null)return;
+                    if(decision.Kind==ProactiveDecisionKind.Skip){decision.Dispose();return;}
+                    line=decision.Message;
+                }
+                else line=memoryFailed ? GreetingService.Fallback(skinId,capturedSkin.Name,holidayTime,phrase,recent,holiday,stageWelcome) : await GreetingGenerator.GenerateAsync(snapshot,skinId,capturedSkin.Name,memory,holidayTime,phrase,recent,cancellation.Token,holiday,stageWelcome,stage==null?null:stage.AiContext);
+                try {
                 RefreshHoliday();if(HolidayLocalTime().Date!=holidayDate || Holidays!=null && (Holidays.Revision!=holidayRevision || holiday!=null && !Holidays.IsGreetingCurrent(holiday)))return;
                 if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId||!ReferenceEquals(capturedSkin,Skin)||RelationshipCompanionId!=relationshipId||relationshipSettingsVersion!=Relationships.SettingsVersion)return;
                 if(snapshot.GreetingEnabled!=Settings.GreetingEnabled || snapshot.AiGreetingEnabled!=Settings.AiGreetingEnabled || snapshot.SystemPrompt!=Settings.SystemPrompt || !SameGreetingConnection(snapshot.Text,Settings.Text) || !GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview)){CancelPendingGreeting();return;}
                 greetingRequest=null;
-                recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);
+
                 if(greeting==null)greeting=new GreetingBubbleWindow(this);
-                greeting.ShowGreeting(line);if(!preview&&greeting.IsVisible){RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);}if(!Paused)PlayAction("waving",1.2);
+                string eventId=null;
+                if(!preview) eventId=decision!=null && decision.CandidateEvent!=null ? decision.CandidateEvent.Id : Guid.NewGuid().ToString("N");
+                if(decision!=null && (System.Threading.Interlocked.Read(ref observationResultEpoch)!=System.Threading.Interlocked.Read(ref observationEpoch) || !ObservationInputCurrent() || observationPaused || !Settings.DesktopObservationEnabled || !DesktopObservationConsent.IsConfirmed(ObservationSettingsSnapshot())))return;
+                greeting.ShowGreeting(line,eventId);
+                if(greeting.IsVisible){recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);}
+                if(!preview&&greeting.IsVisible){
+                    var shown=decision!=null && decision.CandidateEvent!=null?decision.CandidateEvent:new ProactiveEvent(eventId,skinId,line,null,DateTime.UtcNow,null,null);
+                    observationEvents.Register(shown);RememberProactiveEvent(eventId,snapshot);RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);
+                }
+                if(!Paused)PlayAction("waving",1.2);
+                } finally { if(decision!=null)decision.Dispose(); }
             }
             catch(OperationCanceledException){}
             finally {if(Object.ReferenceEquals(greetingRequest,cancellation))greetingRequest=null;cancellation.Dispose();}
@@ -1108,7 +1130,7 @@ namespace Dafeiyu
         {return first!=null && second!=null && first.BaseUrl==second.BaseUrl && first.Model==second.Model && first.EncryptedKey==second.EncryptedKey && first.Protocol==second.Protocol && first.UseProxy==second.UseProxy && first.ProxyAddress==second.ProxyAddress;}
         private void SessionChanged(object sender,Microsoft.Win32.SessionSwitchEventArgs args)
         {
-            if(closing)return;Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate
+            if(closing)return;if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionLock)InvalidateObservation(true);Relationships.InvalidateFeedback();Dispatcher.BeginInvoke(new Action(delegate
             {
                 if(closing)return;if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionLock)sessionLocked=true;
                 if(args.Reason==Microsoft.Win32.SessionSwitchReason.SessionUnlock)sessionLocked=false;CancelHolidayEffects();RefreshHoliday();DismissGreeting(true);
@@ -1196,6 +1218,7 @@ namespace Dafeiyu
         {TrySaveSettings();}
         internal bool TrySaveSettings()
         {
+            InvalidateObservation(!Settings.DesktopObservationEnabled);
             if(explicitSettingsSave!=null){deferredSettingsSave=true;return false;}
             settingsSaveRevision++;
             if(DataMaintenance.IsMaintenanceActive){deferredSettingsSave=true;return false;}
@@ -1213,7 +1236,7 @@ namespace Dafeiyu
             if(!exitPrepared)
             {
                 args.Cancel=true;if(closing||!AdmitMaintenanceExit())return;
-                closing=true;
+                closing=true;InvalidateObservation(true);CancelPendingGreeting(false);
                 // Close can be requested before Application.Run or from a host with
                 // no SynchronizationContext. Enter the dispatcher before any await.
                 Dispatcher.BeginInvoke(new Action(PrepareCloseOnDispatcherAsync));return;
@@ -1224,10 +1247,11 @@ namespace Dafeiyu
         {
             if(preferenceSaves!=null)preferenceSaves.Dispose();if(preferenceMaintenance!=null)preferenceMaintenance.Dispose();if(explicitSettingsMaintenance!=null)explicitSettingsMaintenance.Dispose();exitWindowEnabled.Clear();
             if(imChannels!=null)imChannels.Dispose();
+            foreach(var binding in proactiveReplies.Values.ToArray()){if(binding.Full!=null)binding.Full.Close();if(binding.Quick!=null)binding.Quick.Close();}
             if(quick!=null)quick.Close();if(chat!=null)chat.Close();if(conversation!=null){conversation.StateChanged-=ConversationChanged;conversation.HistoryChanged-=ConversationMemoryChanged;}if(preferences!=null)preferences.Dispose();
             Microsoft.Win32.SystemEvents.SessionSwitch-=SessionChanged;Microsoft.Win32.SystemEvents.PowerModeChanged-=PowerChanged;if(greeting!=null)greeting.Close();if(updateNotice!=null)updateNotice.Close();
             Microsoft.Win32.SystemEvents.TimeChanged-=HolidayTimeChanged;
-            DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
+            InvalidateObservation(true);if(observationMaintenance!=null)observationMaintenance.Dispose();observationEvents.Dispose();DisposeAgentJobs();DisposeImageServices();tray.Visible=false;tray.Dispose();trayMenu.Dispose();trayIcon.Dispose();ReleaseMaintenanceExit();
         }
         bool timerRunningBeforeExit;
         readonly System.Collections.Generic.Dictionary<Window,bool> exitWindowEnabled=new System.Collections.Generic.Dictionary<Window,bool>();

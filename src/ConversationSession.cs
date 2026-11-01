@@ -68,6 +68,9 @@ namespace Dafeiyu
         public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning,draftStore==null?"":draftStore.Warning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
         public event Action<ChatMessage> MessageAdded;
+        // An optional owner transaction, after image validation and before the first
+        // real user turn enters history. Failure admits neither history nor model work.
+        public Func<Task> BeforeUserTurnAcceptedAsync {get;set;}
         public event Action<ChatMessage> MessageUpdated;
         public event Action HistoryChanged;
         private sealed class Operation
@@ -195,7 +198,7 @@ namespace Dafeiyu
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeB"));
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
             Operation op=Begin(settings,ConversationStage.Thinking);
-            op.AgentStarted=onAgentStarted;op.ImagePreprocessing=onImagePreprocessing;op.KernelInputId=kernelInputId;op.DeferredKernel=files.Any(f=>f.IsImage)||op.History.Messages.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage))||(steeringContext!=null&&steeringContext.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage)))||(resumeTask!=null&&resumeTask.Guidance!=null&&resumeTask.Guidance.Any(g=>g.Attachments!=null&&g.Attachments.Any(a=>a.IsImage)));op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
+            op.AgentStarted=onAgentStarted;op.ImagePreprocessing=onImagePreprocessing;op.KernelInputId=kernelInputId;op.DeferredKernel=BeforeUserTurnAcceptedAsync!=null||files.Any(f=>f.IsImage)||op.History.Messages.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage))||(steeringContext!=null&&steeringContext.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage)))||(resumeTask!=null&&resumeTask.Guidance!=null&&resumeTask.Guidance.Any(g=>g.Attachments!=null&&g.Attachments.Any(a=>a.IsImage)));op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
             op.Attachments=files;op.ResumeTask=resumeTask==null?null:resumeTask.Copy();
             if(relationshipCompanionId!=null)op.RelationshipCompanionId=relationshipCompanionId;
             if(!String.IsNullOrWhiteSpace(kernelInputId))op.RelationshipEventId="input-"+kernelInputId;
@@ -292,8 +295,14 @@ namespace Dafeiyu
             if(!projection.Available)throw new ApiException(ImageInputFailure(projection.Notice),projection.Notice);
 
             request=projection.Messages.ToList();ConversationLog.BudgetRequest(request);
+            token.ThrowIfCancellationRequested();
+            var admission=BeforeUserTurnAcceptedAsync;
+            bool admitted=!op.Regenerating&&op.GuidanceId==null&&(op.Source=="text"||op.Source=="asr")&&admission!=null;
+            if(admitted)await admission().ConfigureAwait(false);
             lock(gate) {
-                token.ThrowIfCancellationRequested();if(disposed)throw new OperationCanceledException(token);
+                // Successful durable owner admission is the linearization point.
+                // Cancellation during that transaction still records this real turn.
+                if(!admitted){token.ThrowIfCancellationRequested();if(disposed)throw new OperationCanceledException(token);}
                 if(op.DeferredKernel)StartInputStep(op,text);
                 op.ProcessingTime.Restart();
                 if(op.Regenerating){op.History.StartProcessing(op.ReplyId,op.Snapshot.AgentEnabled,skinId:op.Snapshot.SkinId);UpdateReply(op,"","pending",false);}
@@ -303,6 +312,7 @@ namespace Dafeiyu
             }
             SetStage(ConversationStage.Thinking);string answer;
             try {
+                token.ThrowIfCancellationRequested();
                 var streaming=api as IStreamingConversationApi;
                 var reasoning=api as IReasoningConversationApi;
                 var agent=api as IAgentConversationApi;
