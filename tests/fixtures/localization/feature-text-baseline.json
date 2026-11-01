@@ -1494,6 +1494,30 @@
       "expected": "卸载",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "imageDescription.unavailable",
+      "expected": "图片转述不可用，请检查对话模型和图片转述模型的配置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.timeout",
+      "expected": "图片转述超时，请检查服务后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.network",
+      "expected": "图片转述服务连接失败，请检查配置和网络后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.failed",
+      "expected": "图片转述失败，请检查服务后重试。",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }
