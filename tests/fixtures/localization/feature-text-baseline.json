@@ -344,6 +344,420 @@
       "argument_count": 0
     },
     {
+      "key": "desktopObservation.addApp",
+      "expected": "添加应用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.bundleIdHint",
+      "expected": "输入应用的包标识符。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.bundleIdInvalid",
+      "expected": "请输入有效的包标识符。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.bundleIdLabel",
+      "expected": "应用包标识符",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.configure",
+      "expected": "配置模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.confirm",
+      "expected": "确认服务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.consentAccept",
+      "expected": "允许",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.consentBody",
+      "expected": "以下服务将接收来自活动窗口的内容，可能包含敏感信息；请排除不希望分享的应用。\n{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "desktopObservation.consentCancel",
+      "expected": "取消",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.consentTitle",
+      "expected": "确认屏幕采集",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.countdown",
+      "expected": "请在 {0} 秒内切换到目标窗口。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "desktopObservation.disabled",
+      "expected": "已关闭",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.enabled",
+      "expected": "结合当前窗口内容主动发言",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.excludedApps",
+      "expected": "排除的应用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.help",
+      "expected": "主动发言到期时，桌宠可能截取当前活动应用窗口并发送到已配置的服务。排除的应用不会被采集。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.history",
+      "expected": "主动发言对话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.historyEmpty",
+      "expected": "还没有主动发言对话。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.historyMore",
+      "expected": "显示更多",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.imageDestination",
+      "expected": "图片发送至：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "desktopObservation.lastObserved",
+      "expected": "最近观察: {0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "desktopObservation.model",
+      "expected": "对话模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.noDestination",
+      "expected": "没有可用的接收服务",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.pause",
+      "expected": "暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.paused",
+      "expected": "已暂停",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.permission",
+      "expected": "屏幕录制权限",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.permissionReopen",
+      "expected": "权限已更改；若仍无法采集，请重启桌宠。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.permissionRequired",
+      "expected": "请在系统设置中允许屏幕录制。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.preview",
+      "expected": "仅在本地预览",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.previewEmpty",
+      "expected": "未采集到可用窗口。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.previewHelp",
+      "expected": "预览仅保留在本机，不会上传。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.previewLocal",
+      "expected": "仅在本地预览",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.allowed",
+      "expected": "准备就绪",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.busy",
+      "expected": "采集或模型请求正忙，请稍后再试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.cancelled",
+      "expected": "已取消。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.captureTimeout",
+      "expected": "采集超时，请尝试其他窗口。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.captureUnavailable",
+      "expected": "无法采集屏幕，请检查权限和活动窗口。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.consentRequired",
+      "expected": "确认接收服务后恢复。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.cooldown",
+      "expected": "发生错误后暂时暂停，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.disabled",
+      "expected": "请先开启主动发言和 AI 主动发言。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.duplicateMessage",
+      "expected": "最近显示过相似发言。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.duplicateScene",
+      "expected": "最近已观察过此窗口。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.excluded",
+      "expected": "此应用已排除。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.hourlyLimit",
+      "expected": "已达到每小时观察上限，请稍后再试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.ineligible",
+      "expected": "当前暂不可用，请关闭聊天或退出安静模式。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.invalidConfiguration",
+      "expected": "请检查模型连接设置。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.invalidResponse",
+      "expected": "模型返回的内容无效，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.minimumInterval",
+      "expected": "等待最小间隔。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.modelFailed",
+      "expected": "模型请求失败，请检查连接。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.modelSkip",
+      "expected": "本次无需发言。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.modelTimeout",
+      "expected": "模型请求超时，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.noFrame",
+      "expected": "未采集到可用窗口。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.noRoute",
+      "expected": "请配置支持图片的模型或图片转述模型。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.notDue",
+      "expected": "等待下一次主动发言。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.stale",
+      "expected": "活动窗口已改变，请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reason.totalTimeout",
+      "expected": "观察超时，请稍后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.removeApp",
+      "expected": "移除",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.reply",
+      "expected": "回复",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.replyLast",
+      "expected": "回复刚才的话",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.resume",
+      "expected": "恢复",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.routeConfigure",
+      "expected": "请配置支持图片的对话模型或图片转述模型。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.routeDescribed",
+      "expected": "先转述图片，再将描述发送给对话模型。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.routeDirect",
+      "expected": "当前模型直接接收图片。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.routeUnavailable",
+      "expected": "请配置支持图片的模型。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.saveFailed",
+      "expected": "保存失败，请重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.switchCompanion",
+      "expected": "请切回原来的伙伴后再回复。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.textDestination",
+      "expected": "图片描述发送至：{0}",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "desktopObservation.title",
+      "expected": "屏幕感知主动发言",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.unsupportedPlatform",
+      "expected": "此平台不支持屏幕采集。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "desktopObservation.uploadTest",
+      "expected": "上传测试一次",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "holidayKeepsake.albumTitle",
       "expected": "节日纪念",
       "format": false,
@@ -886,6 +1300,72 @@
     {
       "key": "im.verificationRequired",
       "expected": "微信要求额外验证。请取消登录，在微信中完成验证后重新扫码。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.described",
+      "expected": "使用图片转述模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.direct",
+      "expected": "当前对话模型直接识图",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.failed",
+      "expected": "图片转述失败，请检查服务后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.help",
+      "expected": "当对话模型不支持图片输入时，调用图片转述模型来获取图片描述。留空代表不使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.inherit",
+      "expected": "跟随全局",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.invalid",
+      "expected": "指定的模型不可用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.network",
+      "expected": "图片转述服务连接失败，请检查配置和网络后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.none",
+      "expected": "不使用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.timeout",
+      "expected": "图片转述超时，请检查服务后重试。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.title",
+      "expected": "图片转述模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.unavailable",
+      "expected": "图片转述不可用，请检查对话模型和图片转述模型的配置。",
       "format": false,
       "argument_count": 0
     },
@@ -1492,72 +1972,6 @@
     {
       "key": "uninstall.title",
       "expected": "卸载",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.unavailable",
-      "expected": "图片转述不可用，请检查对话模型和图片转述模型的配置。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.timeout",
-      "expected": "图片转述超时，请检查服务后重试。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.network",
-      "expected": "图片转述服务连接失败，请检查配置和网络后重试。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.failed",
-      "expected": "图片转述失败，请检查服务后重试。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.title",
-      "expected": "图片转述模型",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.help",
-      "expected": "当对话模型不支持图片输入时，调用图片转述模型来获取图片描述。留空代表不使用。",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.none",
-      "expected": "不使用",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.inherit",
-      "expected": "跟随全局",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.invalid",
-      "expected": "指定的模型不可用",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.direct",
-      "expected": "当前对话模型直接识图",
-      "format": false,
-      "argument_count": 0
-    },
-    {
-      "key": "imageDescription.described",
-      "expected": "使用图片转述模型",
       "format": false,
       "argument_count": 0
     }

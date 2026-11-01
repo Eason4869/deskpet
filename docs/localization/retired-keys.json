@@ -43,5 +43,6 @@
   "holidayKeepsake.locked": "0.11.2-dev.2 hides unowned holiday preview cards. Retain the original translations and historical text contracts.",
   "holidayKeepsake.unavailable": "0.11.2-dev.2 hides unowned holiday preview cards. Retain the original translations and historical text contracts.",
   "imageGenerationSettings.save.text": "0.11.3-dev.1 uses the shared asynchronous settings-save failure notice; the unused private synchronous image save wrapper was removed. Original translations remain unchanged as historical evidence.",
-  "conversationSession.sendTextAsync.text.alternativeA": "The image route now reports localized configuration and service failures for direct or fallback models; the old unsupported-only wording is retained as protected historical text."
+  "conversationSession.sendTextAsync.text.alternativeA": "The image route now reports localized configuration and service failures for direct or fallback models; the old unsupported-only wording is retained as protected historical text.",
+  "petWindow.showGreetingAsync.text": "The Avalonia greeting bubble formerly used this generic chat button in desktop/DeskPet.Desktop/PetWindow.cs; the proactive greeting now opens a reply bound to the original displayed message. Retain the historical translations and independent baseline."
 }
