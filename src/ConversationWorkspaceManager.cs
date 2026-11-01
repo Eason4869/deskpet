@@ -62,7 +62,7 @@ namespace Dafeiyu
         public IList<ConversationWorkspace> OpenWorkspaces {get{lock(gate)return workspaces.Where(w=>!closing.ContainsKey(w.Id)).ToArray();}}
         internal IList<ConversationWorkspace> AllOwnedWorkspaces {get{lock(gate)return workspaces.ToArray();}}
         public bool Busy {get{lock(gate)return closing.Count>0||workspaces.Any(w=>w.Session.IsBusy || w.Queue.IsRunning);}}
-        public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null,bool transient=false)
+        public ConversationWorkspace CreateWorkspace(ProjectDefinition project,ConversationDefinition conversation,Func<PetSettings> settingsOverride=null,bool transient=false,Func<bool> ownerAllowed=null,Func<string> requestName=null)
         {
             if(project==null||conversation==null)throw new ArgumentNullException("conversation");
             using(Maintenance.EnterActivity())using(ProjectBindingGate(project.Id).EnterActivity()){
@@ -72,7 +72,7 @@ namespace Dafeiyu
                 if(closing.ContainsKey(conversation.Id))throw new InvalidOperationException(TextResources.Get("conversationWorkspaceManager.createWorkspace.text"));
                 var existing=workspaces.SingleOrDefault(w=>w.Id==conversation.Id);
                 if(existing!=null)return existing;
-                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride,Maintenance,transient);
+                var workspace=ConversationWorkspace.Create(project,conversation,dataRoot,personaId,apiFactory,speechFactory,recorderFactory,settings,saveHistory,settingsOverride,Maintenance,transient,ownerAllowed,requestName);
                 workspace.Session.RequestActivityAdmission=()=>ProjectBindingGate(workspace.ProjectId).EnterActivity();
                 workspace.Session.ConfigureRelationships(Relationships,RelationshipCompanion);
                 workspace.Session.ApprovalProvider=ApprovalProvider;

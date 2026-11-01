@@ -88,6 +88,7 @@ namespace Dafeiyu
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{if(closed)return;if(follow){if(Math.Abs(scroll.VerticalOffset-offset)<1||scroll.ScrollableHeight-scroll.VerticalOffset<32)scroll.ScrollToEnd();}else scroll.ScrollToVerticalOffset(offset);}));
         }
         internal System.Collections.Generic.List<ChatAttachment> SnapshotPendingAttachments(ConversationSession expected){return ReferenceEquals(session,expected)&&composer!=null?composer.SnapshotPendingAttachments():new System.Collections.Generic.List<ChatAttachment>();}
+        internal void ClearPendingAttachments(ConversationSession expected){if(ReferenceEquals(session,expected) && composer!=null)composer.ReplacePendingAttachments(new ChatAttachment[0]);}
         internal void ReplacePendingAttachments(System.Collections.Generic.IEnumerable<ChatAttachment> files){if(composer!=null)composer.ReplacePendingAttachments(files);}
         public void SwitchWorkspace(ConversationWorkspace replacement)
         {

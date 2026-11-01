@@ -259,7 +259,7 @@ namespace Dafeiyu
             try { atlas=Skin.Load(); }
             catch {if(Skin.IsOfficial)Settings.PendingOfficialCompanionId=Skin.BuiltinCharacterId;Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
             interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
-            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
+            PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);ProactiveCompanionChanged(Skin.Id);Settings.SelectedCompanionKey=Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
             ResetGreetingSchedule();
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;
             Microsoft.Win32.SystemEvents.PowerModeChanged+=PowerChanged;
@@ -720,7 +720,7 @@ namespace Dafeiyu
             {
                 using(DataMaintenance.EnterActivity()){
                 var replacement=skin.Load();var replacementInteractions=InteractionAtlas.LoadForSkin(skin);
-                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
+                Relationships.InvalidateFeedback();if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();System.Threading.Volatile.Write(ref activeProactiveCompanionId,"");atlas=replacement;interactionAtlas=replacementInteractions;Skin=skin;interaction.Configure(Skin);PersonaProfiles.Activate(Settings,skin.Id,skin.SystemPrompt,skin.VoiceRecommendations,skin.BuiltinCharacterId);ProactiveCompanionChanged(skin.Id);Settings.SelectedCompanionKey=skin.PickerKey;if(conversation!=null)conversation.SelectPersona(skin.Id);
                 DismissGreeting(true);
                 motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1; walking=false; gazeActive=false; Animation=Skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday(); UpdateFrame();Relationships.EnqueueVisit(RelationshipCompanionId,IsPetVisible);
                 LocalizedUi.Set(this,"Title",()=>(TextResources.Format("petWindow.activateSkin.titleSkinName",skin.DisplayName))); tray.Text=Title;
@@ -1081,11 +1081,13 @@ namespace Dafeiyu
                 if(cancellation.IsCancellationRequested || generation!=greetingGeneration || Skin.Id!=skinId||!ReferenceEquals(capturedSkin,Skin)||RelationshipCompanionId!=relationshipId||relationshipSettingsVersion!=Relationships.SettingsVersion)return;
                 if(snapshot.GreetingEnabled!=Settings.GreetingEnabled || snapshot.AiGreetingEnabled!=Settings.AiGreetingEnabled || snapshot.SystemPrompt!=Settings.SystemPrompt || !SameGreetingConnection(snapshot.Text,Settings.Text) || !GreetingAllowed(DesktopInterop.ForegroundIsFullScreen(handle),preview)){CancelPendingGreeting();return;}
                 greetingRequest=null;
-                recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);
+
                 if(greeting==null)greeting=new GreetingBubbleWindow(this);
                 string eventId=null;
                 if(!preview) eventId=decision!=null && decision.CandidateEvent!=null ? decision.CandidateEvent.Id : Guid.NewGuid().ToString("N");
+                if(decision!=null && (System.Threading.Interlocked.Read(ref observationResultEpoch)!=System.Threading.Interlocked.Read(ref observationEpoch) || !ObservationInputCurrent() || observationPaused || !Settings.DesktopObservationEnabled || !DesktopObservationConsent.IsConfirmed(ObservationSettingsSnapshot())))return;
                 greeting.ShowGreeting(line,eventId);
+                if(greeting.IsVisible){recent.Add(line);while(recent.Count>8)recent.RemoveAt(0);}
                 if(!preview&&greeting.IsVisible){
                     var shown=decision!=null && decision.CandidateEvent!=null?decision.CandidateEvent:new ProactiveEvent(eventId,skinId,line,null,DateTime.UtcNow,null,null);
                     observationEvents.Register(shown);RememberProactiveEvent(eventId,snapshot);RememberRelationshipWelcome(stage,line);if(Holidays!=null)Holidays.MarkGreetingShown(holiday);

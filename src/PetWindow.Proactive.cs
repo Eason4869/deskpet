@@ -19,7 +19,7 @@ namespace Dafeiyu
         internal Func<IDesktopObservationCapture> ObservationCaptureFactory=()=>new WindowsDesktopObservationCapture();
         internal Func<IConversationApi> ObservationApiFactory=()=>new ApiClient(TimeSpan.FromSeconds(8));
         internal Func<uint?> ObservationInputTick=delegate{uint tick;return DesktopInterop.TryLastInputTick(out tick)?(uint?)tick:null;};
-        long observationEpoch;long observedInput;int lastObservationReason=-1;DateTime lastAutomaticObservationUtc;
+        long observationEpoch;long observedInput;long observationResultEpoch;int lastObservationReason=-1;DateTime lastAutomaticObservationUtc;
         readonly object observationStartGate=new object();
         readonly System.Collections.Generic.List<Window> observationPreviews=new System.Collections.Generic.List<Window>();
         CancellationTokenSource manualObservationCancel;
@@ -84,15 +84,16 @@ namespace Dafeiyu
                 if(preferences!=null)preferences.RefreshObservation();
                 var decision=await pending;var currentInput=ObservationInputTick();
                 if(epoch!=Interlocked.Read(ref observationEpoch)||!currentInput.HasValue||currentInput.Value!=lastInput.Value||settingsSignature!=ObservationSettingsSignature(ObservationSettingsSnapshot())){decision.Dispose();return null;}
-                Interlocked.Exchange(ref lastObservationReason,(int)decision.Reason);if(mode==DesktopObservationMode.Automatic && (decision.Kind!=ProactiveDecisionKind.Skip || decision.Reason==ObservationReason.ModelSkip || decision.Reason==ObservationReason.DuplicateMessage))lastAutomaticObservationUtc=DateTime.UtcNow;
+                Interlocked.Exchange(ref observationResultEpoch,epoch);Interlocked.Exchange(ref lastObservationReason,(int)decision.Reason);if(mode==DesktopObservationMode.Automatic && (decision.Kind!=ProactiveDecisionKind.Skip || decision.Reason==ObservationReason.ModelSkip || decision.Reason==ObservationReason.DuplicateMessage))lastAutomaticObservationUtc=DateTime.UtcNow;
                 if(preferences!=null)preferences.RefreshObservation();return decision;
             } finally { if(service==null)activity.Dispose();else {var ignored=ReleaseObservationActivityAsync(service,activity);} }
         }
+        bool ObservationInputCurrent(){var tick=ObservationInputTick();return tick.HasValue && tick.Value==(uint)Interlocked.Read(ref observedInput);}
         sealed class ObservationCurrentCapture : IDesktopObservationCapture
         {
             readonly PetWindow owner;readonly IDesktopObservationCapture inner;
             internal ObservationCurrentCapture(PetWindow owner,IDesktopObservationCapture inner){this.owner=owner;this.inner=inner;}
-            bool Current(){var tick=owner.ObservationInputTick();return tick.HasValue && tick.Value==(uint)Interlocked.Read(ref owner.observedInput);}
+            bool Current(){return owner.ObservationInputCurrent();}
             public DesktopCaptureStatus GetStatus(){return inner.GetStatus();}
             public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel){return Current()?inner.CaptureForegroundAsync(options,cancel):Task.FromResult<DesktopObservationFrame>(null);}
             public bool IsCurrent(DesktopObservationFrame frame){return Current() && inner.IsCurrent(frame);}

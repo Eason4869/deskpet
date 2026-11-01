@@ -39,7 +39,7 @@ namespace Dafeiyu
         public bool LocalAgentSupported {get{return localAgentSupported;}set{localAgentSupported=value;}}
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
-        public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null,bool transient=false)
+        public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null,bool transient=false,Func<bool> ownerAllowed=null,Func<string> requestName=null)
         {
             maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();using(maintenance.EnterActivity()){
             if(project==null || conversation==null)throw new ArgumentNullException("project");
@@ -57,7 +57,7 @@ namespace Dafeiyu
             if(model==null)model=new AgentSessionModel(conversation.Id,project.Id,conversation.Id);
             if(model.RecoveryState=="running")model.RecoveryState="interrupted";
             workspace.Session.ConfigureKernelSession(model,kernelStore);
-            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,delegate{return conversation.Name;},Path.Combine(workspace.DataDirectory,"queued-messages.json"),()=>workspace.persistenceAdmitted);
+            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,requestName??delegate{return conversation.Name;},Path.Combine(workspace.DataDirectory,"queued-messages.json"),()=>workspace.persistenceAdmitted,ownerAllowed);
             return workspace;
         }
         }

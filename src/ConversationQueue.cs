@@ -30,14 +30,14 @@ namespace Dafeiyu
         readonly ConversationSession session;readonly Func<PetSettings> settings;readonly Func<string> name;readonly string path;
         readonly object gate;readonly Dictionary<string,List<QueuedMessage>> queues;
         readonly HashSet<string> paused=new HashSet<string>();bool running,steering,disposed,loadFailed;QueuedMessage inFlight;
-        readonly IDisposable maintenanceRegistration;readonly Func<bool> persistenceAdmitted;
+        readonly IDisposable maintenanceRegistration;readonly Func<bool> persistenceAdmitted,ownerAllowed;
         Task runTask=Task.FromResult(0);public string Notice {get;private set;}int pauseRevision;
         public int PauseRevision {get{lock(gate)return pauseRevision;}}
         public Task FlushAsync(){lock(gate)return runTask;}
         public event Action Changed;
-        public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path,Func<bool> persistenceAdmitted=null)
+        public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path,Func<bool> persistenceAdmitted=null,Func<bool> ownerAllowed=null)
         {
-            this.session=session;this.persistenceAdmitted=persistenceAdmitted??(()=>true);using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
+            this.session=session;this.persistenceAdmitted=persistenceAdmitted??(()=>true);this.ownerAllowed=ownerAllowed??(()=>true);using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
             queues=new Dictionary<string,List<QueuedMessage>>();
             if(File.Exists(path))try
             {
@@ -66,7 +66,7 @@ namespace Dafeiyu
             if(contents==null||contents.Any(p=>p.Value==null))throw new SerializationException();return contents.Any(p=>p.Value.Count!=0);
         }
         static string Validate(string text){text=(text??"").Trim();if(text.Length==0 || text.Length>8000)throw new ApiException(TextResources.Get("conversationQueue.validate.text"));return text;}
-        void Writable(){if(!persistenceAdmitted())throw new InvalidOperationException("Conversation has not been admitted.");if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
+        void Writable(){if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));if(!persistenceAdmitted())throw new InvalidOperationException(TextResources.Get("desktopObservation.reason.Busy"));if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
         void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));string temp=path+".tmp";
@@ -173,10 +173,11 @@ namespace Dafeiyu
             catch{lock(gate){paused.Add(persona);}throw;}
             finally{lock(gate)steering=false;Announce();Kick();}
         }}
+        internal void OwnerChanged(){Announce();Kick();}
         void SessionChanged(){Announce();Kick();}
         void Kick()
         {
-            lock(gate){if(disposed || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || Current.Count==0)return;IDisposable admission;try{admission=session.EnterRequestActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
+            lock(gate){if(disposed || !ownerAllowed() || running || steering || session.IsBusy || paused.Contains(session.PersonaId) || Current.Count==0)return;IDisposable admission;try{admission=session.EnterRequestActivity();}catch(InvalidOperationException){return;}running=true;runTask=RunAsync(session.PersonaId,admission);}
         }
         async Task RunAsync(string persona,IDisposable admission)
         {
@@ -192,7 +193,7 @@ namespace Dafeiyu
                     QueuedMessage entry;bool alreadyCompleted=false;
                     lock(gate)
                     {
-                        if(disposed || steering || paused.Contains(persona) || session.PersonaId!=persona || Current.Count==0 || session.IsBusy)return;
+                        if(disposed || !ownerAllowed() || steering || paused.Contains(persona) || session.PersonaId!=persona || Current.Count==0 || session.IsBusy)return;
                         if(!String.IsNullOrEmpty(session.HistoryWarning) || !String.IsNullOrEmpty(session.AgentTaskWarning)){paused.Add(persona);Notice=TextResources.Get("conversationQueue.runAsync.notice");return;}
                         entry=Current[0];var current=session.CurrentAgentTask;
                         if(entry.IsGuidance && current!=null && SameProject(entry.Workspace,current.Workspace) && (current.Guidance??new List<AgentGuidance>()).Any(g=>g.Id==entry.Id && g.Revision==entry.Revision)){
@@ -202,7 +203,7 @@ namespace Dafeiyu
                     }
                     Announce();
                     if(alreadyCompleted)continue;bool agentStarted=false,imagePreprocessing=false;
-                    try{var cfg=settings();if(entry.ConversationOnly && !entry.IsGuidance){cfg=cfg.Copy();cfg.AgentEnabled=false;}if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text"));AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text.alternativeA"));}}await session.SendTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume,kernelInputId:entry.Id,relationshipCompanionId:entry.RelationshipCompanionId??"",guidanceId:entry.IsGuidance?entry.Id:null,onAgentStarted:()=>agentStarted=true,onImagePreprocessing:value=>imagePreprocessing=value);}
+                    try{if(!ownerAllowed())throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));var cfg=settings();if(entry.ConversationOnly && !entry.IsGuidance){cfg=cfg.Copy();cfg.AgentEnabled=false;}if(entry.IsGuidance && !String.IsNullOrEmpty(entry.Workspace) && (!cfg.AgentEnabled || !SameProject(entry.Workspace,cfg.AgentWorkspace)))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text"));AgentTaskState resume=null;if(entry.IsGuidance && cfg.AgentEnabled && SameProject(entry.Workspace,cfg.AgentWorkspace)){var current=session.CurrentAgentTask;if(current!=null && SameProject(current.Workspace,cfg.AgentWorkspace)){resume=current;if(resume.Guidance==null)resume.Guidance=new List<AgentGuidance>();if(!resume.Guidance.Any(g=>g.Id==entry.Id && g.Revision==entry.Revision))resume.Guidance.Add(new AgentGuidance{Id=entry.Id,Text=entry.Text,Revision=entry.Revision,Attachments=ChatAttachment.Snapshot(entry.Attachments)});if(!AgentTaskStore.FitsCheckpoint(resume))throw new ApiException(TextResources.Get("conversationQueue.runAsync.text.alternativeA"));}}await session.SendTextAsync(entry.Text,cfg,name(),entry.Context,entry.Attachments,resume,kernelInputId:entry.Id,relationshipCompanionId:entry.RelationshipCompanionId??"",guidanceId:entry.IsGuidance?entry.Id:null,onAgentStarted:()=>agentStarted=true,onImagePreprocessing:value=>imagePreprocessing=value);}
                     catch(OperationCanceledException){lock(gate){if(imagePreprocessing){queues[persona].Insert(0,entry);try{Save();}catch(IOException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeD");}catch(UnauthorizedAccessException){Notice=TextResources.Get("conversationQueue.runAsync.notice.alternativeE");}}paused.Add(persona);}return;}
                     catch(Exception e)
                     {

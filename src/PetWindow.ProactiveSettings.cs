@@ -77,7 +77,7 @@ namespace Dafeiyu
                 {
                     if(decision==null || cancellation.IsCancellationRequested || epoch!=Interlocked.Read(ref observationEpoch))return;
                     string result=decision.Kind==ProactiveDecisionKind.Speak?decision.Message:DesktopObservationUiText.ReasonText(decision.Reason);
-                    MessageBox.Show(result,TextResources.Get("desktopObservation.uploadTest"));
+                    decision.Dispose();MessageBox.Show(result,TextResources.Get("desktopObservation.uploadTest"));
                 }
             }catch(OperationCanceledException){}finally{Interlocked.CompareExchange(ref manualObservationCancel,null,cancellation);cancellation.Dispose();}
         }

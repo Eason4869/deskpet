@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Dafeiyu
 {
@@ -15,10 +16,10 @@ namespace Dafeiyu
             internal ConversationWorkspace Workspace;
             internal QuickChatWindow Quick;
             internal ChatWindow Full;
-            internal bool Accepted;
+            internal bool Accepted,RestoreQuick,RestoreFull;internal long DraftRevision;
         }
         readonly Dictionary<string,ReplyBinding> proactiveReplies=new Dictionary<string,ReplyBinding>(StringComparer.Ordinal);
-        string lastProactiveEventId;
+        string lastProactiveEventId;string activeProactiveCompanionId;
         readonly Dictionary<string,string> lastProactiveByCompanion=new Dictionary<string,string>(StringComparer.Ordinal);
         void RememberProactiveEvent(string id,PetSettings settings)
         {
@@ -34,7 +35,7 @@ namespace Dafeiyu
             try {
             if(item.CompanionId!=Skin.Id || !proactiveReplies.TryGetValue(eventId,out binding))return;
             RecordPetInteraction();
-            if(binding.Full!=null && binding.Full.IsVisible){binding.Full.SwitchWorkspace(binding.Workspace);binding.Full.Activate();return;}
+            if(binding.Full!=null){binding.Full.SwitchWorkspace(binding.Workspace);if(!binding.Full.IsVisible)binding.Full.Show();binding.Full.Activate();return;}
             if(binding.Quick!=null){if(!binding.Quick.IsVisible)binding.Quick.Show();binding.Quick.Activate();binding.Quick.FocusInput();return;}
             if(binding.Workspace==null)
             {
@@ -43,7 +44,7 @@ namespace Dafeiyu
                 if(binding.Accepted){definition=ProjectCatalogStore.AllConversations(Projects).FirstOrDefault(c=>c.Id==binding.WorkspaceId && c.PetId==binding.CompanionId);if(definition==null)return;}
                 else definition=new ConversationDefinition{Id=binding.WorkspaceId,Name=TextResources.Get("projectCatalog.createConversation.nameStringIsNullOrWhiteSpace"),Mode="chat",Origin="proactive",PetId=binding.CompanionId,SectionId=ProjectCatalogStore.DefaultChatSectionId,ImageDescriptionOverride=binding.Fallback.Copy(),CreatedUtcTicks=DateTime.UtcNow.Ticks,LastOpenedUtcTicks=DateTime.UtcNow.Ticks};
                 var project=Projects.Projects.FirstOrDefault(p=>p.Conversations.Any(c=>c.Id==definition.Id))??(Projects.QuickConversations.Any(c=>c.Id==definition.Id)?ProjectCatalogStore.QuickProject(Projects,Settings):ProjectCatalogStore.UnassignedProject(Projects,Settings));
-                var workspace=Workspaces.CreateWorkspace(project,definition,transient:!binding.Accepted);binding.Workspace=workspace;
+                var workspace=Workspaces.CreateWorkspace(project,definition,transient:!binding.Accepted,ownerAllowed:()=>String.Equals(Volatile.Read(ref activeProactiveCompanionId),binding.CompanionId,StringComparison.Ordinal),requestName:()=>binding.CompanionName);binding.Workspace=workspace;
                 workspace.Session.ConfigureRelationships(Relationships,()=>binding.RelationshipId);workspace.Session.ProactiveEvents=observationEvents;observationEvents.BindConversation(eventId,binding.CompanionId,workspace.Id);workspace.Session.AttachProactive(item);
                 workspace.Session.BeforeUserTurnAcceptedAsync=()=>PromoteProactiveAsync(binding);
                 WatchAcceptedProactiveTitle(binding,project,definition);
@@ -65,6 +66,7 @@ namespace Dafeiyu
         async Task PromoteProactiveAsync(ReplyBinding binding)
         {
             await Dispatcher.InvokeAsync(new Action(delegate{
+                if(!ProactiveOwnerCurrent(binding))throw new InvalidOperationException(TextResources.Get("desktopObservation.switchCompanion"));
                 if(binding.Accepted)return;
                 if(closing || binding.Workspace==null)throw new InvalidOperationException(TextResources.Get("desktopObservation.saveFailed"));
                 ProjectCatalog latest=null;
@@ -73,6 +75,37 @@ namespace Dafeiyu
                 try{RestoreProjectCatalog(latest);NotifyProjectsChanged();}catch(Exception){Notice=TextResources.Get("desktopObservation.saveFailed");}
             }));
         }
+        bool ProactiveOwnerCurrent(ReplyBinding binding){return String.Equals(Volatile.Read(ref activeProactiveCompanionId),binding.CompanionId,StringComparison.Ordinal);}
+        internal bool ProactiveSessionOwnerCurrent(ConversationSession session){var binding=proactiveReplies.Values.FirstOrDefault(b=>b.Workspace!=null && ReferenceEquals(b.Workspace.Session,session));return binding==null || ProactiveOwnerCurrent(binding);}
+        void ProactiveCompanionChanged(string companionId)
+        {
+            Volatile.Write(ref activeProactiveCompanionId,companionId);
+            foreach(var binding in proactiveReplies.Values.ToArray())
+            {
+                if(!ProactiveOwnerCurrent(binding))
+                {
+                    if(binding.Full!=null && binding.Full.IsVisible){binding.RestoreFull=true;binding.Full.Hide();}
+                    if(binding.Quick!=null && binding.Quick.IsVisible){binding.RestoreQuick=true;binding.Quick.Hide();}
+                }
+                else
+                {
+                    if(binding.RestoreFull && binding.Full!=null){ShowWithoutActivation(binding.Full);binding.RestoreFull=false;}
+                    if(binding.RestoreQuick && binding.Quick!=null){ShowWithoutActivation(binding.Quick);binding.RestoreQuick=false;}
+                }
+                if(binding.Workspace!=null && binding.Workspace.Queue!=null)binding.Workspace.Queue.OwnerChanged();
+            }
+        }
+        ReplyBinding ProactiveBindingFor(ConversationSession session){return proactiveReplies.Values.FirstOrDefault(b=>b.Workspace!=null && ReferenceEquals(b.Workspace.Session,session));}
+        internal void NoteProactiveDraftChanged(ConversationSession session){var binding=ProactiveBindingFor(session);if(binding!=null)binding.DraftRevision++;}
+        internal long ProactiveDraftRevision(ConversationSession session){var binding=ProactiveBindingFor(session);return binding==null?0:binding.DraftRevision;}
+        internal void AcknowledgeProactiveSubmission(ConversationSession session,long revision)
+        {
+            var binding=ProactiveBindingFor(session);if(binding==null || binding.DraftRevision!=revision)return;
+            if(binding.Quick!=null)binding.Quick.ReplacePendingAttachments(new ChatAttachment[0]);
+            if(binding.Full!=null)binding.Full.ClearPendingAttachments(session);
+            session.InputDraft="";
+        }
+        static void ShowWithoutActivation(System.Windows.Window window){bool activate=window.ShowActivated;window.ShowActivated=false;window.Show();window.ShowActivated=activate;}
         internal bool IsProactiveTransient(ConversationSession session)
         {return proactiveReplies.Values.Any(b=>b.Workspace!=null && ReferenceEquals(b.Workspace.Session,session) && !b.Accepted);}
         internal async Task SendProactiveAsync(ConversationSession session,string text,IList<ChatAttachment> attachments,Action admitted)
