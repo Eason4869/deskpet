@@ -4768,7 +4768,7 @@
   "desktopObservation.excludedApps": "排除的应用",
   "desktopObservation.addApp": "添加应用",
   "desktopObservation.removeApp": "移除",
-  "desktopObservation.countdown": "请在 {0} 秒内切换到要预览的窗口。",
+  "desktopObservation.countdown": "请在 {0} 秒内切换到目标窗口。",
   "desktopObservation.previewLocal": "仅在本地预览",
   "desktopObservation.testUpload": "此测试会上传当前窗口。",
   "desktopObservation.replyLast": "回复刚才的话",
@@ -4816,6 +4816,6 @@
   "desktopObservation.reason.ModelFailed": "模型请求失败，请检查连接。",
   "desktopObservation.reason.InvalidResponse": "模型返回的内容无效，请稍后重试。",
   "desktopObservation.reason.ModelTimeout": "模型请求超时，请稍后重试。",
-  "desktopObservation.reason.TotalTimeout": "测试超时，请稍后重试。",
+  "desktopObservation.reason.TotalTimeout": "观察超时，请稍后重试。",
   "desktopObservation.reason.Cancelled": "已取消。"
 }

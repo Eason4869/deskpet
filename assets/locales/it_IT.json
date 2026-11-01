@@ -4768,7 +4768,7 @@
   "desktopObservation.excludedApps": "App escluse",
   "desktopObservation.addApp": "Aggiungi app",
   "desktopObservation.removeApp": "Rimuovere",
-  "desktopObservation.countdown": "Passa alla finestra per visualizzare l'anteprima in {0} secondi.",
+  "desktopObservation.countdown": "Passa alla finestra di destinazione entro {0} secondi.",
   "desktopObservation.previewLocal": "Solo anteprima locale",
   "desktopObservation.testUpload": "Questo test carica la finestra corrente.",
   "desktopObservation.replyLast": "Rispondi all'ultimo saluto",
@@ -4816,6 +4816,6 @@
   "desktopObservation.reason.ModelFailed": "La richiesta del modello non è riuscita. Controlla la connessione.",
   "desktopObservation.reason.InvalidResponse": "Il modello ha restituito una risposta non valida. Riprova più tardi.",
   "desktopObservation.reason.ModelTimeout": "La richiesta del modello è scaduta. Riprova più tardi.",
-  "desktopObservation.reason.TotalTimeout": "Il test è scaduto. Riprova più tardi.",
+  "desktopObservation.reason.TotalTimeout": "Timeout dell'osservazione. Riprova più tardi.",
   "desktopObservation.reason.Cancelled": "Annullato."
 }
