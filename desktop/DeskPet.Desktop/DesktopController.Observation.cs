@@ -16,6 +16,7 @@ internal sealed partial class DesktopController
     internal PetSettings GlobalObservationSettings(){var settings=Settings.Copy();settings.ImageDescriptionOverride=null;return settings;}
     internal void PauseObservation(bool value){ObservationPaused=value;Observation.Invalidate();ObservationChanged?.Invoke();}
     internal void RefreshObservationStatus()=>ObservationChanged?.Invoke();
+    internal void RefreshObservationModels(ConnectionSettings connection){Observation.Policy.RefreshModels(connection);ObservationReason=ObservationReason.Allowed;Observation.Invalidate(false);ObservationChanged?.Invoke();}
     internal Task<bool> RequestScreenCaptureAccessAsync()=>runtime.RequestScreenCaptureAccessAsync();
     internal bool ObservationFullscreen=>runtime.ObservationFullscreen;
     internal void ObserveObservationInput()=>Observation.ObserveInputIdle(runtime.ObservationIdleTime,System.Diagnostics.Stopwatch.GetElapsedTime(0));

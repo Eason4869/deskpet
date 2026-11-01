@@ -117,6 +117,52 @@ namespace Dafeiyu
     public sealed class DesktopObservationPolicy
     {
         readonly object gate = new object();
+        readonly Dictionary<string,long> imageRefreshVersions=new Dictionary<string,long>(StringComparer.Ordinal);
+        readonly Dictionary<string,string> rejectedImages=new Dictionary<string,string>(StringComparer.Ordinal);
+        static string EndpointIdentity(ConnectionSettings connection)
+        {
+            using(var hash=SHA256.Create())return Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(
+                (connection.Protocol??"")+"\n"+(connection.BaseUrl??""))));
+        }
+        static string ImageIdentity(ConnectionSettings connection)
+        {
+            // Keep credentials and private destinations out of retained latch metadata.
+            using(var hash=SHA256.Create())return Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(
+                EndpointIdentity(connection)+"\n"+(connection.Model??"")+"\n"+(connection.ApiKey??"")+"\n"+
+                connection.ImageSupport+"\n"+connection.UseProxy+"\n"+(connection.ProxyAddress??""))));
+        }
+        internal long ImageRefreshVersion(ConnectionSettings connection)
+        {
+            lock(gate){long version;return imageRefreshVersions.TryGetValue(EndpointIdentity(connection),out version)?version:0;}
+        }
+        internal void RejectImage(ConnectionSettings connection,long version)
+        {
+            lock(gate)
+            {
+                // A response that started before an explicit refresh cannot undo that refresh.
+                if(ImageRefreshVersion(connection)==version)rejectedImages[ImageIdentity(connection)]=EndpointIdentity(connection);
+            }
+        }
+        // Only explicit successful model-list refresh calls this; ticks and unrelated saves never do.
+        public void RefreshModels(ConnectionSettings connection)
+        {
+            lock(gate)
+            {
+                string endpoint=EndpointIdentity(connection);imageRefreshVersions[endpoint]=ImageRefreshVersion(connection)+1;
+                foreach(var key in rejectedImages.Where(p=>p.Value==endpoint).Select(p=>p.Key).ToArray())rejectedImages.Remove(key);
+            }
+        }
+        static ConnectionSettings ImageReceiver(PetSettings settings)
+        {
+            var route=ImageModelResolver.Resolve(settings,null);
+            return route.Route==ImageRouteKind.Unavailable?null:route.Route==ImageRouteKind.Described?route.DescriptionConnection:route.ConversationConnection;
+        }
+        public void RefreshConfiguration(PetSettings previous,PetSettings current)
+        {
+            var before=ImageReceiver(previous);var after=ImageReceiver(current);
+            if(after==null || (before!=null && ImageIdentity(before)==ImageIdentity(after)))return;
+            lock(gate){string endpoint=EndpointIdentity(after);imageRefreshVersions[endpoint]=ImageRefreshVersion(after)+1;rejectedImages.Remove(ImageIdentity(after));}
+        }
         readonly List<DateTime> attempts = new List<DateTime>();
         readonly Dictionary<string, DateTime> scenes = new Dictionary<string, DateTime>(StringComparer.Ordinal);
         DateTime? lastAttempt, cooldown;
@@ -154,6 +200,7 @@ namespace Dafeiyu
                 }
                 if (reason != ObservationReason.Allowed) return new ObservationAdmission(reason, attempts.Count, failures);
                 if (context.Mode == DesktopObservationMode.ManualTest) return new ObservationAdmission(reason, attempts.Count, failures);
+                if(rejectedImages.ContainsKey(ImageIdentity(context.Route.Route==ImageRouteKind.Described?context.Route.DescriptionConnection:context.Route.ConversationConnection)))return new ObservationAdmission(ObservationReason.NoRoute,attempts.Count,failures);
                 if (cooldown.HasValue && now < cooldown.Value) return new ObservationAdmission(ObservationReason.Cooldown, attempts.Count, failures, cooldown);
                 if (attempts.Count >= 4) return new ObservationAdmission(ObservationReason.HourlyLimit, attempts.Count, failures, attempts.Min().AddHours(1));
                 if (lastAttempt.HasValue && now < lastAttempt.Value.AddMinutes(10)) return new ObservationAdmission(ObservationReason.MinimumInterval, attempts.Count, failures, lastAttempt.Value.AddMinutes(10));

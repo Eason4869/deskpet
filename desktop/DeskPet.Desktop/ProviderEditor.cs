@@ -128,6 +128,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         {
             var result = await owner.Api.ListModelsAsync(snapshot, cancellation.Token);
             if (cancellation.IsCancellationRequested || tokenRevision != revision || selected.Id != providerId) return;
+            if(kind=="text")owner.RefreshObservationModels(snapshot);
             var checks = new List<CheckBox>();
             foreach (var id in result.Take(500)) { var check = new CheckBox { Content = id, Tag = id, IsChecked = selected.Models.Contains(id) }; checks.Add(check); found.Children.Add(check); }
             found.Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.fetchAsync.text")), () =>

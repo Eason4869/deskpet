@@ -70,6 +70,8 @@ namespace Dafeiyu
             internal Task Abandoned;
             internal Action CleanupLate;
             internal IConversationApi Api;
+            internal ConnectionSettings ImageReceiver;
+            internal long ImageRefreshVersion;
             internal DesktopObservationFrame Frame;
             internal ObservationAdmission Admission;
             internal int Attempted, Failed;
@@ -154,6 +156,11 @@ namespace Dafeiyu
             }
             catch (StepTimeout error) { decision = FailureIfCurrent(context, operation, error.Reason); }
             catch (OperationCanceledException) { decision = Skip(context, ObservationReason.Cancelled); }
+            catch (ApiException error)
+            {
+                if(error.Code=="image-unsupported" && operation.ImageReceiver!=null){decision=FailureIfCurrent(context,operation,ObservationReason.NoRoute);}
+                else decision=FailureIfCurrent(context,operation,ObservationReason.ModelFailed);
+            }
             catch (Exception)
             {
                 // Provider/native exceptions may contain window titles, paths, tokens and error
@@ -210,6 +217,8 @@ namespace Dafeiyu
             operation.ThrowIfCancelled();
             var image = ChatAttachment.CreateImage("desktop-observation.png", frame.EncodedPng);
             operation.Api = factory();
+            operation.ImageReceiver=context.RouteKind==ImageRouteKind.Described?context.Route.DescriptionConnection:context.Route.ConversationConnection;
+            operation.ImageRefreshVersion=policy.ImageRefreshVersion(operation.ImageReceiver);
             if (!IsCurrent(context, operation)) return Skip(context, ObservationReason.Stale);
             operation.ThrowIfCancelled();
             string description = null;
@@ -222,11 +231,11 @@ namespace Dafeiyu
                 {
                     MarkAttempt(context, operation);
                     using (UsageTracking.BeginScope("image-description"))
-                        return await new ImageDescriptionService(operation.Api).DescribeAsync(context.Route.DescriptionConnection,
-                            new[] { image }, 240, token).ConfigureAwait(false);
+                        return await new ImageDescriptionService(operation.Api).DescribeAutomaticObservationAsync(context.Route.DescriptionConnection, image, token).ConfigureAwait(false);
                 }, 8, ObservationReason.ModelTimeout).ConfigureAwait(false);
                 description = descriptions[0];
                 if (!IsCurrent(context, operation)) return Skip(context, ObservationReason.Stale);
+                operation.ImageReceiver=null;
                 reply = await ChatAsync(context, operation, Messages(context, null, description), "greeting").ConfigureAwait(false);
             }
             else reply = await ChatAsync(context, operation, Messages(context, image, null), "desktop-observation").ConfigureAwait(false);
@@ -269,7 +278,19 @@ namespace Dafeiyu
         {
             var token = operation.Lifetime.Token; operation.ThrowIfCancelled();
             // Task.Run includes synchronous portions of a noncooperative adapter/transport.
-            var pending = Task.Run(() => { operation.ThrowIfCancelled(); return start(); });
+            var receiver=operation.ImageReceiver;long refreshVersion=operation.ImageRefreshVersion;
+            var pending = Task.Run(async () =>
+            {
+                operation.ThrowIfCancelled();
+                try{return await start().ConfigureAwait(false);}
+                catch(ApiException error)
+                {
+                    // Record even a late rejection after the caller timed out. A relevant
+                    // explicit refresh supersedes this attempt; scene/UI epochs do not.
+                    if(error.Code=="image-unsupported" && receiver!=null)policy.RejectImage(receiver,refreshVersion);
+                    throw;
+                }
+            });
             using (var timer = CancellationTokenSource.CreateLinkedTokenSource(token))
             {
                 Task winner = await Task.WhenAny(pending, clock.Delay(TimeSpan.FromSeconds(seconds), timer.Token), operation.CancellationRequested.Task).ConfigureAwait(false);
@@ -294,13 +315,13 @@ namespace Dafeiyu
                 text = GreetingService.Fallback(context.CompanionId, context.CompanionName, context.LocalTime, 0, context.Recent);
             return new ProactiveDecision(ProactiveDecisionKind.OrdinaryFallback, reason, DesktopObservationContext.Limit(text, 80), context);
         }
+        static bool EpochCurrent(DesktopObservationContext context){try{return context.Current();}catch(Exception){return false;}}
         ProactiveDecision FailureIfCurrent(DesktopObservationContext context, Operation operation, ObservationReason reason)
         {
             if (operation.CallerCancel.IsCancellationRequested) return Skip(context, ObservationReason.Cancelled);
             // Only the cheap epoch predicate is consulted on a failure. In particular, never
             // perform another native/foreground query after timeout or cancellation.
-            try { if (!context.Current()) return Skip(context, ObservationReason.Stale); }
-            catch (Exception) { return Skip(context, ObservationReason.Stale); }
+            if(!EpochCurrent(context))return Skip(context,ObservationReason.Stale);
             return Failure(context, operation, reason);
         }
         static ProactiveDecision Skip(DesktopObservationContext context, ObservationReason reason)

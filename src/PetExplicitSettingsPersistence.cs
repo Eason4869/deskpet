@@ -60,7 +60,7 @@ namespace Dafeiyu
         {
             Dispatcher.VerifyAccess();InvalidateObservation(true);if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
             settingsSaveRevision++;
-            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);InvalidateObservation(true);change(Settings);Notice=Store.Warning;return true;}
+            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);InvalidateObservation(true);var previousObservationSettings=Settings.Copy();change(Settings);observationPolicy.RefreshConfiguration(previousObservationSettings,Settings);Notice=Store.Warning;return true;}
             catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
         }
         static bool SettingsSaveError(Exception error)
@@ -76,7 +76,7 @@ namespace Dafeiyu
                 }while(deferredSettingsSave);
                 // Publish only the submitted fields. Other runtime settings may
                 // have changed while the worker was committing this candidate.
-                InvalidateObservation(true);change(Settings);
+                InvalidateObservation(true);var previousObservationSettings=Settings.Copy();change(Settings);observationPolicy.RefreshConfiguration(previousObservationSettings,Settings);
                 if(ReferenceEquals(pendingPreferences,submittedPreferences)){pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();}
                 if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency;
                 if(revision==settingsSaveRevision){Notice=Store.Warning;if(preferences!=null)preferences.ShowNotice(Notice);}return true;

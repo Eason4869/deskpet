@@ -187,7 +187,7 @@ namespace Dafeiyu
                     using(var response=await (settings.UseProxy?proxyHttp:http).SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false))
                     using(token.Register(response.Dispose))
                     {
-                        CheckResponse(response,true);
+                        await CheckResponseAsync(response,true,token).ConfigureAwait(false);
                         if(response.Content.Headers.ContentLength>MaxJsonBytes)throw new ApiException(TextResources.Get("nativeAgentClient.readAgentStreamResponseAsync.text"));
                         using(Stream stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                             return await AgentEventReader.ReadAsync(stream,anthropic,onDelta,onReasoning,token).ConfigureAwait(false);

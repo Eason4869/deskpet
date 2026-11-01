@@ -12,13 +12,61 @@ namespace Dafeiyu.Tests
         static int checks;
         static void Check(bool value,string name){checks++;if(!value)throw new Exception(name);}
         public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("DesktopObservationServiceTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
-        static async Task Run(){await Gates();await Routes();await Output();await Races();await Deadlines();await Accounting();await AdditionalBoundaries();await BlockingCancellation();await StaleTotalTimeout();await TargetSceneDeduplication();}
+        static async Task Run(){await RejectedRoutes();await Gates();await Routes();await Output();await Races();await Deadlines();await Accounting();await AdditionalBoundaries();await BlockingCancellation();await StaleTotalTimeout();await TargetSceneDeduplication();}
         sealed class Fixture
         {
             public readonly Clock Clock=new Clock();public readonly Capture Capture=new Capture();public readonly Api Api=new Api();public readonly DesktopObservationPolicy Policy=new DesktopObservationPolicy();
             public DesktopObservationService Service;
             public Fixture(){Service=new DesktopObservationService(Policy,Capture,()=>Api,Clock,bytes=>"small-normalized-scene");Capture.Clock=Clock;}
             public Task<ProactiveDecision> Generate(DesktopObservationContext c=null,CancellationToken cancel=default(CancellationToken)){return Service.GenerateAsync(c??DesktopObservationPolicyTests.Context(),cancel);}
+        }
+        static async Task RejectedRoutes()
+        {
+            foreach(bool described in new[]{false,true})
+            {
+                var f=new Fixture();var settings=described?Described():DesktopObservationPolicyTests.Settings();var context=DesktopObservationPolicyTests.Context(settings);
+                f.Api.Failure=new ApiException("private body","image-unsupported");
+                using(var d=await f.Generate(context))Check(d.Kind==ProactiveDecisionKind.OrdinaryFallback && d.Reason==ObservationReason.NoRoute,"explicit image rejection safe unavailable fallback");
+                f.Clock.Advance(TimeSpan.FromHours(2));settings.Volume++;settings.SystemPrompt="unrelated edit";
+                using(var d=await f.Generate(DesktopObservationPolicyTests.Context(settings)))Check(d.Reason==ObservationReason.NoRoute && f.Capture.Calls==1 && f.Api.Calls==1,"rejected receiver latched after cooldown and unrelated settings");
+                var unrelatedSettings=settings.Copy();unrelatedSettings.Topmost=!settings.Topmost;f.Policy.RefreshConfiguration(settings,unrelatedSettings);
+                Check(f.Policy.TryBegin(DesktopObservationPolicyTests.Context(unrelatedSettings),f.Clock.UtcNow).Reason==ObservationReason.NoRoute,"unrelated explicit configuration save preserves rejection");
+                var route=ImageModelResolver.Resolve(settings,null);var receiver=described?route.DescriptionConnection:route.ConversationConnection;
+                var unrelated=receiver.Copy();unrelated.BaseUrl="http://127.0.0.1:9998/v1";f.Policy.RefreshModels(unrelated);
+                using(var d=await f.Generate(context))Check(d.Reason==ObservationReason.NoRoute && f.Capture.Calls==1,"unrelated endpoint refresh preserves latch");
+                var changed=settings.Copy();changed.Text.Model="different";if(described)changed.Text.ImageSupport=CapabilitySupport.Supported;changed.DesktopObservationConsentDestination=DesktopObservationConsent.Destination(changed);
+                Check(f.Policy.TryBegin(DesktopObservationPolicyTests.Context(changed),f.Clock.UtcNow).Allowed,"other effective image model identity eligible");
+                f.Policy.RefreshModels(receiver);f.Api.Failure=null;if(described)f.Api.Replies.Enqueue("[\"scene\"]");
+                using(var d=await f.Generate(context))Check(d.Kind==ProactiveDecisionKind.Speak && f.Capture.Calls==2,"explicit relevant refresh permits capture retry");
+                f.Clock.Advance(TimeSpan.FromHours(2));f.Api.Failure=new ApiException("reject again","image-unsupported");using(var d=await f.Generate(context)){}
+                f.Policy.RefreshConfiguration(settings,changed);f.Policy.RefreshConfiguration(changed,settings);
+                Check(f.Policy.TryBegin(context,f.Clock.UtcNow.AddHours(2)).Allowed,"explicit effective model/configuration changes reset relevant identity");
+            }
+            foreach(bool described in new[]{false,true})
+            {
+                var f=new Fixture();var settings=described?Described():DesktopObservationPolicyTests.Settings();var route=ImageModelResolver.Resolve(settings,null);var receiver=described?route.DescriptionConnection:route.ConversationConnection;
+                f.Api.Pending=new TaskCompletionSource<string>();var pending=f.Generate(DesktopObservationPolicyTests.Context(settings));await Until(()=>f.Api.Calls==1);
+                f.Policy.RefreshModels(receiver);f.Api.Pending.SetException(new ApiException("private late rejection","image-unsupported"));using(var d=await pending){}
+                f.Clock.Advance(TimeSpan.FromHours(2));Check(f.Policy.TryBegin(DesktopObservationPolicyTests.Context(settings),f.Clock.UtcNow).Allowed,"late rejection cannot re-poison refreshed receiver identity");
+            }
+            foreach(bool described in new[]{false,true})
+            {
+                var f=new Fixture();var settings=described?Described():DesktopObservationPolicyTests.Settings();int epoch=0;
+                f.Api.Pending=new TaskCompletionSource<string>();var context=DesktopObservationPolicyTests.Context(settings,current:()=>Volatile.Read(ref epoch)==0);var pending=f.Generate(context);await Until(()=>f.Api.Calls==1);
+                Interlocked.Increment(ref epoch);f.Api.Pending.SetException(new ApiException("private late rejection","image-unsupported"));
+                using(var d=await pending)Check(d.Kind==ProactiveDecisionKind.Skip && d.Reason==ObservationReason.Stale,"unrelated scene/settings epoch invalidates rejected attempt display");
+                Check(f.Policy.TryBegin(DesktopObservationPolicyTests.Context(settings),f.Clock.UtcNow.AddHours(2)).Reason==ObservationReason.NoRoute,"unrelated in-flight invalidation preserves valid receiver rejection");
+            }
+            foreach(bool described in new[]{false,true})foreach(bool refresh in new[]{false,true})
+            {
+                var f=new Fixture();var settings=described?Described():DesktopObservationPolicyTests.Settings();var route=ImageModelResolver.Resolve(settings,null);
+                f.Api.Pending=new TaskCompletionSource<string>();var pending=f.Generate(DesktopObservationPolicyTests.Context(settings));await Until(()=>f.Api.Calls==1 && f.Clock.DelayCount>=2);
+                f.Clock.Advance(TimeSpan.FromSeconds(8));using(var d=await pending)Check(d.Kind==ProactiveDecisionKind.OrdinaryFallback,"timeout returns bounded fallback before late provider failure");
+                if(refresh)f.Policy.RefreshModels(described?route.DescriptionConnection:route.ConversationConnection);
+                f.Api.Pending.SetException(new ApiException("late private body","image-unsupported"));await f.Service.WaitForIdleAsync();
+                Check(f.Policy.TryBegin(DesktopObservationPolicyTests.Context(settings),f.Clock.UtcNow.AddHours(2)).Reason==(refresh?ObservationReason.Allowed:ObservationReason.NoRoute),refresh?"refresh defeats image rejection arriving after timeout":"image rejection arriving after timeout still latches receiver");
+            }
+            {var f=new Fixture();f.Api.Failure=new ApiException("network");using(var d=await f.Generate()){}f.Clock.Advance(TimeSpan.FromHours(2));f.Api.Failure=null;using(var d=await f.Generate())Check(d.Kind==ProactiveDecisionKind.Speak && f.Capture.Calls==2,"ordinary network error recovers normally");}
         }
         static async Task Gates()
         {
@@ -42,7 +90,7 @@ namespace Dafeiyu.Tests
                 Check(d.CandidateEvent.CompanionId=="dafeiyu" && d.CandidateEvent.Description==null && f.Capture.Last.IsDisposed,"candidate has companion identity; direct has no caption; frame disposed");
                 string prompt=String.Join("\n",f.Api.Messages[0].Select(m=>m.Content));Check(!prompt.Contains("private-app") && !prompt.Contains("secret-window-title") && !prompt.Contains("127.0.0.1") && prompt.Contains("untrusted"),"prompt excludes native identity and settings; image instructions untrusted");
             }
-            f=new Fixture();f.Api.Replies.Enqueue("[\"a safe scene\"]");using(var d=await f.Generate(DesktopObservationPolicyTests.Context(Described()))){Check(d.Kind==ProactiveDecisionKind.Speak && f.Api.Calls==2,"explicit described route uses at most caption and greeting calls");Check(f.Api.Connections[0].Model=="vision" && f.Api.Connections[1].Model=="actual-chat","caption and text use existing model references");Check(d.CandidateEvent.Description=="a safe scene" && f.Api.Messages[1].All(m=>m.Attachments==null || m.Attachments.Count==0),"bounded caption reused on event and text route sends no image");}
+            f=new Fixture();f.Api.Replies.Enqueue("[\"a safe scene\"]");using(var d=await f.Generate(DesktopObservationPolicyTests.Context(Described()))){Check(d.Kind==ProactiveDecisionKind.Speak && f.Api.Calls==2,"explicit described route uses at most caption and greeting calls");Check(f.Api.Connections[0].Model=="vision" && f.Api.Connections[1].Model=="actual-chat","caption and text use existing model references");Check(String.Join("\n",f.Api.Messages[0].Select(m=>m.Content)).Contains("240 characters") && String.Join("\n",f.Api.Messages[0].Select(m=>m.Content)).Contains("coarse"),"automatic fallback transmits coarse 240 character purpose");Check(d.CandidateEvent.Description=="a safe scene" && f.Api.Messages[1].All(m=>m.Attachments==null || m.Attachments.Count==0),"bounded caption reused on event and text route sends no image");}
             f=new Fixture();f.Api.Replies.Enqueue("[\""+new string('x',241)+"\"]");using(var d=await f.Generate(DesktopObservationPolicyTests.Context(Described())))Check(d.Kind==ProactiveDecisionKind.OrdinaryFallback && f.Api.Calls==1,"oversized caption stops before greeting; local fallback only");
         }
         static async Task Output()

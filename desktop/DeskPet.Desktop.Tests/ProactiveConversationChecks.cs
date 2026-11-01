@@ -290,6 +290,27 @@ internal static class ProactiveConversationChecks
         var testConsent=window.OwnedWindows.Single(dialog=>dialog.Title==TextResources.Get("desktopObservation.consentTitle"));
         var accept=testConsent.GetLogicalDescendants().OfType<Button>().Single(button=>(button.Content as TextBlock)?.Text==TextResources.Get("desktopObservation.consentAccept"));accept.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));Until(()=>DesktopObservationConsent.IsConfirmed(owner.GlobalObservationSettings()));
         Check(owner.ObservationPaused&&DesktopObservationConsent.IsConfirmed(new SettingsStore(Path.Combine(directory,"settings.json")).Load()),"explicit test confirms the current destination durably while retaining privacy pause");
+        // Exercise the actual explicit model-refresh UI entry point against a local HTTP catalog.
+        var portProbe=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);portProbe.Start();int port=((System.Net.IPEndPoint)portProbe.LocalEndpoint).Port;portProbe.Stop();
+        string endpoint="http://127.0.0.1:"+port+"/";
+        using(var catalog=new System.Net.HttpListener())
+        {
+            catalog.Prefixes.Add(endpoint);catalog.Start();
+            var reply=Task.Run(async()=>{var response=await catalog.GetContextAsync();byte[] body=System.Text.Encoding.UTF8.GetBytes("{\"data\":[{\"id\":\"fixture\"}]}");response.Response.ContentType="application/json";response.Response.ContentLength64=body.Length;await response.Response.OutputStream.WriteAsync(body);response.Response.Close();});
+            var connection=new ConnectionSettings{BaseUrl=endpoint+"v1",Model="fixture",ImageSupport=CapabilitySupport.Supported};
+            var provider=new TextProviderSettings{Id="refresh",Name="Refresh",Connection=connection.Copy(),Models=new List<string>{"fixture"}};provider.ModelCapabilities["fixture"]=new ModelCapabilitySetting{Images=CapabilitySupport.Supported};
+            owner.Settings.ApplyProviders("text",new List<TextProviderSettings>{provider},provider.Id,connection.Copy());owner.Settings.DesktopObservationEnabled=owner.Settings.GreetingEnabled=owner.Settings.AiGreetingEnabled=true;
+            owner.Settings.DesktopObservationConsentVersion=DesktopObservationConsent.Version;owner.Settings.DesktopObservationConsentDestination=DesktopObservationConsent.Destination(owner.Settings);
+            var rejection=new Api{Pending=new TaskCompletionSource<string>()};rejection.Pending.SetException(new ApiException("private rejected body","image-unsupported"));
+            var service=new DesktopObservationService(owner.Observation.Policy,new Capture{Status=DesktopCaptureStatus.Ready},()=>rejection);
+            var context=new DesktopObservationContext(owner.GlobalObservationSettings(),owner.Skin.Id,owner.Skin.Name,null,null,DateTime.Now,true,true,()=>true);
+            using(var result=service.GenerateAsync(context,CancellationToken.None).GetAwaiter().GetResult())Check(result.Reason==ObservationReason.NoRoute,"Avalonia receiver rejection is latched");
+            owner.Settings.Topmost=!owner.Settings.Topmost;owner.Save();
+            Check(owner.Observation.Policy.TryBegin(context,DateTime.UtcNow.AddHours(2)).Reason==ObservationReason.NoRoute,"unrelated Avalonia settings save preserves rejected receiver");
+            using var editor=new ProviderEditor(owner,"text");owner.ObservationReason=ObservationReason.NoRoute;long epoch=owner.Observation.Epoch;
+            var refresh=(Task)typeof(ProviderEditor).GetMethod("FetchAsync",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.Invoke(editor,null)!;Wait(refresh);Wait(reply);
+            Check(owner.Observation.Policy.TryBegin(context,DateTime.UtcNow.AddHours(2)).Allowed && owner.Observation.Epoch>epoch && owner.ObservationReason==ObservationReason.Allowed,"actual explicit Avalonia HTTP model refresh clears matching latch and invalidates old attempts");
+        }
         window.Close();owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);DesktopTheme.Apply("light");return checks;
     }
     private sealed class Runtime(string directory,ISecretProtector? protector=null):DesktopRuntime

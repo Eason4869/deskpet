@@ -43,6 +43,29 @@ namespace Dafeiyu.Tests
     var recent=(Dictionary<string,List<string>>)typeof(PetWindow).GetField("recentGreetings",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);
     var stored=(System.Collections.IDictionary)typeof(ProactiveEventStore).GetField("events",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(events);
     Check((long)epochField.GetValue(pet)==finalEpoch && tick==finalTick && (bubble==null || !bubble.IsVisible) && !recent[pet.Skin.Id].Contains("Fresh observation") && stored.Count==1 && capture.Last.IsDisposed,"changed native target with unchanged epoch and input does not show or register a greeting, and clears the frame");
+    foreach(bool timeout in new[]{false,true})
+    {
+     pet.PlayAction("idle",0);capture.Current=true;capture.LastCheck=null;api.Answer=new TaskCompletionSource<string>();var clock=new TimeoutClock();
+     var captureType=typeof(PetWindow).GetNestedType("ObservationCurrentCapture",System.Reflection.BindingFlags.NonPublic);
+     var tracked=(IDesktopObservationCapture)Activator.CreateInstance(captureType,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic,null,new object[]{pet,capture},null);
+     var service=new DesktopObservationService(new DesktopObservationPolicy(),tracked,()=>api,clock);
+     typeof(PetWindow).GetField("observationService",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(pet,service);
+     callsBefore=api.Calls;int recentBefore=recent[pet.Skin.Id].Count;int eventsBefore=stored.Count;
+     InvokeGreeting(pet);PumpUntil(()=>api.Calls==callsBefore+1 && (!timeout || clock.ModelStarted));
+     finalEpoch=(long)epochField.GetValue(pet);finalTick=tick;int capturesAtRequest=capture.Calls;capture.Current=false;
+     if(timeout)clock.Timeout.TrySetResult(true);else api.Answer.SetException(new ApiException("private provider error"));
+     PumpUntil(()=>!GreetingPending(pet));Pump();
+     Check((long)epochField.GetValue(pet)==finalEpoch && tick==finalTick && (bubble==null || !bubble.IsVisible) && recent[pet.Skin.Id].Count==recentBefore && stored.Count==eventsBefore && capture.Calls==capturesAtRequest,"changed native target with unchanged epoch/input rejects "+(timeout?"timeout":"failure")+" fallback without bubble/event/recent/recapture");
+     var targets=(System.Collections.IDictionary)typeof(PetWindow).GetField("observationTargets",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);
+     Check(targets.Count==0,"request-local foreground identity cleared after "+(timeout?"timeout":"failure"));
+     if(timeout)api.Answer.TrySetResult("{\"speak\":false,\"message\":\"\"}");PumpUntil(()=>service.WaitForIdleAsync().IsCompleted);
+    }
+    var lifetimePolicy=(DesktopObservationPolicy)typeof(PetWindow).GetField("observationPolicy",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet);
+    var receiver=ImageModelResolver.Resolve(settings,null).ConversationConnection;lifetimePolicy.RejectImage(receiver,lifetimePolicy.ImageRefreshVersion(receiver));
+    settings.Topmost=!settings.Topmost;pet.SaveSettings();var admissionContext=new DesktopObservationContext(settings,pet.Skin.Id,pet.Skin.Name,null,null,DateTime.Now,true,true,()=>true);
+    Check(lifetimePolicy.TryBegin(admissionContext,DateTime.UtcNow.AddHours(2)).Reason==ObservationReason.NoRoute,"ordinary WPF settings save does not re-enable rejected receiver");
+    typeof(PetWindow).GetField("lastObservationReason",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(pet,(int)ObservationReason.NoRoute);finalEpoch=(long)epochField.GetValue(pet);pet.RefreshObservationModels(receiver);
+    Check(lifetimePolicy.TryBegin(admissionContext,DateTime.UtcNow.AddHours(2)).Allowed && (long)epochField.GetValue(pet)>finalEpoch && pet.LastObservationReason==null,"explicit WPF model refresh clears matching latch and invalidates old attempts");
     Console.WriteLine("DesktopObservationHostTests: "+checks+" assertions passed");return 0;
    }catch(Exception error){Console.WriteLine("FAIL "+error);return 1;}finally{if(pet!=null){pet.Close();Pump();}app.Shutdown();}
   }
@@ -51,6 +74,11 @@ namespace Dafeiyu.Tests
   static void Pump(){var frame=new DispatcherFrame();var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(30)};timer.Tick+=delegate{timer.Stop();frame.Continue=false;};timer.Start();Dispatcher.PushFrame(frame);}
   static void InvokeGreeting(PetWindow pet){typeof(PetWindow).GetMethod("ShowGreeting",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(pet,null);}
   static bool GreetingPending(PetWindow pet){return typeof(PetWindow).GetField("greetingRequest",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(pet)!=null;}
+  sealed class TimeoutClock:IClock
+  {
+   public DateTime UtcNow{get{return DateTime.UtcNow;}}public volatile bool ModelStarted;public TaskCompletionSource<bool> Timeout=new TaskCompletionSource<bool>();
+   public Task Delay(TimeSpan duration,CancellationToken cancel){if(duration==TimeSpan.FromSeconds(8)){ModelStarted=true;return Timeout.Task;}return Task.Delay(duration,cancel);}
+  }
   sealed class Capture:IDesktopObservationCapture
   {
    public int Calls;public bool ThrowCurrent;public volatile bool Current=true;public int CurrentChecks;public ManualResetEventSlim LastCheck;public DesktopObservationFrame Last;public bool Block;public TaskCompletionSource<DesktopObservationFrame> Release=new TaskCompletionSource<DesktopObservationFrame>();public DesktopCaptureStatus GetStatus(){return DesktopCaptureStatus.Ready;}public bool IsCurrent(DesktopObservationFrame f){if(ThrowCurrent)throw new InvalidOperationException("fixture");if(Interlocked.Increment(ref CurrentChecks)==3 && LastCheck!=null)LastCheck.Set();return Current;}

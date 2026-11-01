@@ -39,7 +39,7 @@ namespace Dafeiyu
         {
             if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
             if(sections[index]!=null)return;
-            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;var textSection=new StackPanel();textSection.Children.Add(CreateDescriptionPicker());textSection.Children.Add(text);sections[index]=textSection;}
+            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;text.ModelsRefreshed=pet.RefreshObservationModels;var textSection=new StackPanel();textSection.Children.Add(CreateDescriptionPicker());textSection.Children.Add(text);sections[index]=textSection;}
             else if(index==1){recognition=new TextProviderEditor(pet.Settings,"asr");sections[index]=recognition;}
             else if(index==2){CreateSpeechEditor();sections[index]=synthesis;}
             else if(index==3){CreateLiveEditor();sections[index]=live;}

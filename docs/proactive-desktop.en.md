@@ -38,7 +38,7 @@ The existing default greeting schedule remains **30–60 minutes**. Automatic im
 
 Quiet mode, lock, sleep, fullscreen, hidden or paused state, chat/voice activity, an active draft panel, onboarding, update countdowns and maintenance block observation. Resuming starts a fresh wait without a backlog. The target is rechecked before capture, before upload and after generation; changes to the window, companion or relevant settings discard stale results.
 
-The same target and thumbnail digest are not uploaded again within 30 minutes; this does not detect every semantically identical view. Skip, cancellation, privacy gates, missing consent or a changed foreground end the attempt quietly. Ordinary capture/network failures may produce a local greeting without screen claims. They do not recapture every five seconds; repeated failures enter a cooldown.
+The same target and thumbnail digest are not uploaded again within 30 minutes; this does not detect every semantically identical view. Skip, cancellation, privacy gates, missing consent or a changed foreground end the attempt quietly. Ordinary capture/network failures may produce a local greeting without screen claims. They do not recapture every five seconds; repeated failures enter a cooldown. If the model receiving images explicitly rejects image input, that automatic observation route pauses until you explicitly refresh its model list or change the relevant model/image-capability configuration in language model settings. Saving unrelated settings does not resume that route; ordinary network errors still recover under the cooldown rules.
 
 ## Images and replies
 

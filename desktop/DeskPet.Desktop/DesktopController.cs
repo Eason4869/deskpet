@@ -184,8 +184,9 @@ internal sealed partial class DesktopController : IDisposable
             var draft=Settings.Copy();var selected=view.Providers.Single(p=>p.Id==view.ActiveProviderId);
             if(providerChanged)draft.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
             if(imageChanged)draft.ImageDescriptionModel=imageModel?.Copy();store.Save(draft);
+            var previousObservationSettings=Settings.Copy();
             if(providerChanged)Settings.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
-            if(imageChanged)Settings.ImageDescriptionModel=imageModel?.Copy();deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;Notify();
+            if(imageChanged)Settings.ImageDescriptionModel=imageModel?.Copy();Observation.Policy.RefreshConfiguration(previousObservationSettings,Settings);if(kind=="text"&&(providerChanged||imageChanged))ObservationReason=ObservationReason.Allowed;deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;Notify();
         }
     }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }

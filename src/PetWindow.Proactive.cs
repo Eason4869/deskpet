@@ -22,13 +22,14 @@ namespace Dafeiyu
         internal Func<string,RelationshipPackContent,string,Task<RelationshipExperienceContent>> GreetingRelationshipReader;
         long observationEpoch;long observedInput;long observationResultEpoch;int lastObservationReason=-1;DateTime lastAutomaticObservationUtc;
         readonly object observationStartGate=new object();
-        readonly System.Collections.Generic.Dictionary<string,DesktopObservationIdentity> observationTargets=new System.Collections.Generic.Dictionary<string,DesktopObservationIdentity>();
+        readonly System.Collections.Generic.Dictionary<ProactiveDecision,DesktopObservationIdentity> observationTargets=new System.Collections.Generic.Dictionary<ProactiveDecision,DesktopObservationIdentity>();
         DesktopObservationIdentity observationTarget;long observationCaptureEpoch;bool observationAdmission;
         readonly System.Collections.Generic.List<Window> observationPreviews=new System.Collections.Generic.List<Window>();
         CancellationTokenSource manualObservationCancel;
         bool observationPaused;
         bool greetingObservation;
         IDisposable observationMaintenance;
+        internal void RefreshObservationModels(ConnectionSettings connection){observationPolicy.RefreshModels(connection);Interlocked.Exchange(ref lastObservationReason,-1);InvalidateObservation();if(preferences!=null)preferences.RefreshObservation();}
         void InitializeObservation(){observationMaintenance=DataMaintenance.Register(()=>{InvalidateObservation(true);return Task.FromResult(0);});}
         internal DesktopObservationService ObservationService
         {
@@ -89,19 +90,19 @@ namespace Dafeiyu
                 if(preferences!=null)preferences.RefreshObservation();
                 var decision=await pending;var currentInput=ObservationInputTick();
                 if(epoch!=Interlocked.Read(ref observationEpoch)||!currentInput.HasValue||currentInput.Value!=lastInput.Value||settingsSignature!=ObservationSettingsSignature(ObservationSettingsSnapshot())){decision.Dispose();return null;}
-                if(mode==DesktopObservationMode.Automatic && decision.CandidateEvent!=null){lock(observationStartGate){if(observationTarget==null || observationTarget.TargetId!=decision.CandidateEvent.TargetId || epoch!=Interlocked.Read(ref observationEpoch)){decision.Dispose();return null;}observationTargets[decision.CandidateEvent.Id]=observationTarget;}}
+                if(mode==DesktopObservationMode.Automatic && decision.Kind!=ProactiveDecisionKind.Skip){lock(observationStartGate){if(observationTarget==null || epoch!=Interlocked.Read(ref observationEpoch)){decision.Dispose();return null;}observationTargets.Clear();observationTargets[decision]=observationTarget;}}
                 Interlocked.Exchange(ref observationResultEpoch,epoch);Interlocked.Exchange(ref lastObservationReason,(int)decision.Reason);if(mode==DesktopObservationMode.Automatic && (decision.Kind!=ProactiveDecisionKind.Skip || decision.Reason==ObservationReason.ModelSkip || decision.Reason==ObservationReason.DuplicateMessage))lastAutomaticObservationUtc=DateTime.UtcNow;
                 if(preferences!=null)preferences.RefreshObservation();return decision;
             } finally { if(admitted)lock(observationStartGate){observationAdmission=false;observationTarget=null;}if(service==null)activity.Dispose();else {var ignored=ReleaseObservationActivityAsync(service,activity);} }
         }
         bool ObservationTargetCurrent(ProactiveDecision decision)
         {
-            if(decision.CandidateEvent==null)return true;
-            DesktopObservationIdentity target;lock(observationStartGate){if(!observationTargets.TryGetValue(decision.CandidateEvent.Id,out target))return false;}
+            if(decision.Kind==ProactiveDecisionKind.Skip)return true;
+            DesktopObservationIdentity target;lock(observationStartGate){if(!observationTargets.TryGetValue(decision,out target))return false;}
             try{using(var metadata=new DesktopObservationFrame(new byte[0],DateTimeOffset.UtcNow,target))return observationCapture!=null && observationCapture.IsCurrent(metadata);}
             catch(Exception error){if(error is InvalidOperationException || error is System.ComponentModel.Win32Exception)return false;throw;}
         }
-        void ReleaseObservationTarget(ProactiveDecision decision){if(decision!=null && decision.CandidateEvent!=null)lock(observationStartGate)observationTargets.Remove(decision.CandidateEvent.Id);}
+        void ReleaseObservationTarget(ProactiveDecision decision){if(decision!=null)lock(observationStartGate)observationTargets.Remove(decision);}
         bool ObservationInputCurrent(){var tick=ObservationInputTick();return tick.HasValue && tick.Value==(uint)Interlocked.Read(ref observedInput);}
         sealed class ObservationCurrentCapture : IDesktopObservationCapture
         {
@@ -110,7 +111,7 @@ namespace Dafeiyu
             bool Current(){return owner.ObservationInputCurrent();}
             public DesktopCaptureStatus GetStatus(){return inner.GetStatus();}
             public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel){return Current()?inner.CaptureForegroundAsync(options,cancel):Task.FromResult<DesktopObservationFrame>(null);}
-            public bool IsCurrent(DesktopObservationFrame frame){if(!Current() || !inner.IsCurrent(frame))return false;lock(owner.observationStartGate){if(owner.observationCaptureEpoch!=Interlocked.Read(ref owner.observationEpoch))return false;owner.observationTarget=frame.Target;return true;}}
+            public bool IsCurrent(DesktopObservationFrame frame){if(!Current() || !inner.IsCurrent(frame))return false;lock(owner.observationStartGate){if(!owner.observationAdmission || owner.observationCaptureEpoch!=Interlocked.Read(ref owner.observationEpoch))return false;owner.observationTarget=frame.Target;return true;}}
         }
         async Task ReleaseObservationActivityAsync(DesktopObservationService service, IDisposable activity)
         { try { await service.WaitForIdleAsync().ConfigureAwait(false); } finally { activity.Dispose();if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(new Action(delegate{if(!closing && preferences!=null)preferences.RefreshObservation();})); } }

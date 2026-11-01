@@ -30,6 +30,7 @@ namespace Dafeiyu
         readonly HashSet<string> unsavedProviders=new HashSet<string>();
         readonly Dictionary<string,IList<string>> catalogs=new Dictionary<string,IList<string>>();
         readonly Dictionary<string,ConnectionSettings> catalogConnections=new Dictionary<string,ConnectionSettings>();
+        public Action<ConnectionSettings> ModelsRefreshed {get;set;}
         public Func<Task<bool>> SaveConnectionAsync {get;set;}
         public readonly StackPanel Options=new StackPanel();
         public readonly StackPanel Extras=new StackPanel();
@@ -251,6 +252,7 @@ namespace Dafeiyu
                 foreach(var pair in capacities)provider.ModelContextWindows[pair.Key]=pair.Value;provider.ServerCapabilities=capabilityMetadata;provider.ApplyModelCapabilities(provider.Connection);RefreshContextDescription();RaiseChanged();
                 catalogs[provider.Id]=found;catalogConnections[provider.Id]=draft.Copy();RefreshModels();feedback.Foreground=Ui.Muted;LocalizedUi.Set(feedback,"Text",()=>(found.Count==0?TextResources.Get("textProviderEditor.fetchModelsAsync.countFoundCount.alternativeA"):TextResources.Format("textProviderEditor.fetchModelsAsync.countFoundCount",found.Count)));
                 var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=false;
+                if(reveal && ModelsRefreshed!=null)ModelsRefreshed(draft);
                 if(reveal && discovered.Items.Count>0)Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(IsVisible && selected==provider)discoveryPanel.BringIntoView();}));
                 });
             }
