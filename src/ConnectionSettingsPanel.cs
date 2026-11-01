@@ -57,7 +57,7 @@ namespace Dafeiyu
         }
         void RefreshDescriptionPicker()
         {
-            if(descriptionModel==null)return;System.Collections.Generic.List<TextProviderSettings> providers;try{providers=text.ReadProviders();}catch(Exception){providers=pet.Settings.TextProviders;}
+            if(descriptionModel==null)return;System.Collections.Generic.List<TextProviderSettings> providers;try{providers=text.PreviewProviders();}catch(Exception){providers=pet.Settings.TextProviders;}
             var cfg=pet.Settings.Copy();cfg.TextProviders=providers;var choices=ImageModelResolver.Candidates(cfg);updatingDescription=true;
             try{descriptionModel.Items.Clear();var empty=LocalizedUi.With(new ComboBoxItem{Tag=null},"Content",()=>TextResources.Get("imageDescription.none"));descriptionModel.Items.Add(empty);ComboBoxItem selected=descriptionDraft==null?empty:null;
                 foreach(var choice in choices){var provider=providers.Find(p=>p.Id==choice.ProviderId);if(provider==null)continue;string label=provider.Name+" · "+provider.DisplayName(choice.ModelId);var labelBlock=new TextBlock{Text=label,TextTrimming=TextTrimming.CharacterEllipsis};var item=new ComboBoxItem{Tag=choice,Content=labelBlock,ToolTip=label+"\n"+choice.ModelId};descriptionModel.Items.Add(item);if(SameReference(choice,descriptionDraft))selected=item;}

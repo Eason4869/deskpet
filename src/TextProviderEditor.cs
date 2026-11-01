@@ -291,6 +291,18 @@ namespace Dafeiyu
             updating=true;RefreshModelForm(selected.Connection.Model);updating=false;RefreshModels();RaiseChanged();
         }
         public ConnectionSettings Preview(){return connection==null?selected.Connection.Copy():connection.Preview();}
+        internal List<TextProviderSettings> PreviewProviders()
+        {
+            var result=new List<TextProviderSettings>();
+            foreach(var provider in drafts){
+                var copy=provider.Copy();
+                if(provider==selected && connection!=null){copy.Name=providerName.Text.Trim();copy.Connection=connection.Draft();}
+                if(IsEmptyInitial(copy))continue;
+                // Normalization adds the current model, so preview only confirmed IDs.
+                if(!copy.Models.Contains(copy.Connection.Model))copy.Connection.Model=copy.Models.Count==0?"":copy.Models[0];
+                result.Add(copy);
+            }return result;
+        }
         public void ExpandConnection(){EnsureDetails();var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=true;}
         public ConnectionSettings Read(){ValidateContextCapacity();Capture();var result=connection==null?selected.Connection.Copy():connection.Read();result.ContextWindowTokens=selected.ContextCapacity(result.Model);selected.ApplyModelCapabilities(result);return result;}
         public TextProviderSettings ReadConnectionProvider(){Capture(false);if(String.IsNullOrWhiteSpace(selected.Name))throw new InvalidOperationException(TextResources.Get("textProviderEditor.readConnectionProvider.text"));return selected.Copy();}
