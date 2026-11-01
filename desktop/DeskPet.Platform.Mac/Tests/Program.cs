@@ -53,6 +53,7 @@ finally { Environment.SetEnvironmentVariable("DESKPET_DATA_DIR", old); }
 if (args.Contains("--native-smoke"))
 {
     Check(OperatingSystem.IsMacOS(), "native smoke requires Mac");
+    Check(Native.ObservationSelfTest() == 1, "native observation guards and ownership ABI without capture or prompts");
     Check(Enum.IsDefined(MacServices.MicrophoneAccess), "microphone status native ABI");
     Check(MacServices.GetIdleTime() >= TimeSpan.Zero, "native idle query");
     Check(Native.SessionInteractive() is 0 or 1, "native session lifecycle ABI");
@@ -76,3 +77,4 @@ if (args.Contains("--native-smoke"))
 Console.WriteLine($"{checks} platform checks passed");
 CaptureLifecycleTests.Run();
 SpeechProcessTests.Run().GetAwaiter().GetResult();
+try { DesktopObservationCaptureTests.Run().GetAwaiter().GetResult(); } catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }

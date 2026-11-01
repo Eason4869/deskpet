@@ -34,3 +34,18 @@ void *dp_hotkey_register(uint32_t key, uint32_t modifiers, void (*callback)(void
 void dp_hotkey_unregister(void *handle);
 int dp_login_status(void);
 int dp_login_set(int enabled);
+
+// Values 0..5 match DesktopCaptureStatus; -1 is an asynchronous safe skip.
+enum { DPObservationReady = 0, DPObservationUnsupported = 1, DPObservationPermissionRequired = 2,
+    DPObservationNonInteractive = 3, DPObservationNoForeground = 4, DPObservationBusy = 5, DPObservationSkipped = -1 };
+typedef void (*DPObservationCallback)(void *context, int status, const uint8_t *bytes, int length);
+int dp_observation_status(void);
+// Caller owns UTF-8 JSON until target_free (clears and frees). All metadata is local only.
+char *dp_observation_target(void);
+void dp_observation_target_free(char *target);
+int dp_observation_current(const char *target);
+// Copies target before returning. 1 => exactly one callback; 0 => no callback.
+// bytes are borrowed for callback duration; native clears/frees after return.
+int dp_observation_begin(const char *target, DPObservationCallback callback, void *context);
+int dp_observation_request_access(void); // explicit user gesture only
+int dp_observation_self_test(void); // permission-free guards and buffer ownership
