@@ -10,6 +10,7 @@ namespace Dafeiyu
     {
         [DataMember] public string Id="",Name=TextResources.Get("projectCatalog.id.name"),Status="idle";[DataMember] public bool NameEdited,Archived,HasUnreadCompletion,Pinned;
         [DataMember] public string Mode="work",PetId="";
+        [DataMember(EmitDefaultValue=false)] public string Origin;
         [DataMember] public ImageDescriptionOverride ImageDescriptionOverride;
         [DataMember] public string SectionId="";
         [DataMember] public bool HasPermissionOverride,SandboxEnabled;[DataMember] public AgentApprovalMode ApprovalMode;
