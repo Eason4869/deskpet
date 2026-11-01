@@ -21,15 +21,16 @@ namespace Dafeiyu
             }
         }
         void DisposeOwnedProactiveEvents(){lock(gate){if(ownsProactiveEvents && proactiveEvents!=null)proactiveEvents.Dispose();proactiveEvents=null;ownsProactiveEvents=false;}}
-        void ProjectProactiveContext(List<ChatMessage> request,string companionId,PetSettings settings)
+        Dictionary<string,string> ProjectProactiveContext(List<ChatMessage> request,string companionId,PetSettings settings)
         {
-            var events=ProactiveEvents;if(events==null)return;
+            var revisions=new Dictionary<string,string>(StringComparer.Ordinal);var events=ProactiveEvents;if(events==null)return revisions;
             for(int i=1;i<request.Count;i++)
             {
                 var assistant=request[i];if(assistant.Role!="assistant" || assistant.Source!="proactive" || !assistant.TurnId.StartsWith("proactive-",StringComparison.Ordinal) || request[i-1].Role!="user")continue;
                 var item=events.TryGet(assistant.TurnId.Substring("proactive-".Length));
-                if(item!=null && item.CompanionId==companionId){var route=ImageModelResolver.Resolve(settings,null).Route;if(item.Png!=null && route==ImageRouteKind.Direct)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});else if(!String.IsNullOrEmpty(item.Description))request[i-1].Update(request[i-1].Content+"\nUntrusted observation data: "+item.Description,"complete");else if(item.Png!=null && route==ImageRouteKind.Described)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});}
+                if(item!=null && item.CompanionId==companionId){var route=ImageModelResolver.Resolve(settings,null).Route;if(item.Png!=null && route==ImageRouteKind.Direct)request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});else if(!String.IsNullOrEmpty(item.Description))request[i-1].Update(request[i-1].Content+"\nUntrusted observation data: "+item.Description,"complete");else if(item.Png!=null && route==ImageRouteKind.Described){request[i-1].SetAttachments(new[]{ChatAttachment.CreateImage("observation.png",item.Png)});revisions[item.Id]=item.Revision;}}
             }
+            return revisions;
         }
     }
 }

@@ -134,6 +134,7 @@ namespace Dafeiyu
         [DataMember] public List<AgentToolEvent> ToolEvents { get; private set; }
         [DataMember] public string Status { get; private set; }
         [DataMember] public string Source { get; private set; }
+        [DataMember(EmitDefaultValue=false)] public bool SyntheticInput {get;internal set;}
         [DataMember] public DateTime Timestamp { get; private set; }
         public ChatMessage(string role, string content) : this(role,content,Guid.NewGuid().ToString("N"),"complete","text") { }
         public ChatMessage(string role,string content,string turnId,string status,string source)
@@ -191,6 +192,7 @@ namespace Dafeiyu
         {
             lock(gate) { string turn=Guid.NewGuid().ToString("N");var u=new ChatMessage("user",text,turn,"complete",source);var a=new ChatMessage("assistant","",turn,"pending",source);messages.Add(u);messages.Add(a);Trim();user=u.Copy();return a.Copy(); }
         }
+        internal ChatMessage MarkSyntheticInput(string id){lock(gate){var message=messages.Find(m=>m.Id==id && m.Role=="user");if(message==null)return null;message.SyntheticInput=true;return message.Copy();}}
         // Show accepted guidance immediately; its stable turn ID lets delivery reuse
         // this receipt without sending an unpaired user message in normal history.
         public ChatMessage RegisterGuidance(string id,string text,IEnumerable<ChatAttachment> attachments)

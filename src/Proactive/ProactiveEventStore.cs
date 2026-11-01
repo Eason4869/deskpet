@@ -16,6 +16,7 @@ namespace Dafeiyu
         public string ModelReference {get;private set;}
         public string Description {get;private set;}
         public string ConversationId {get;internal set;}
+        internal string Revision {get;set;}
         public ProactiveEvent(string id,string companionId,string text,byte[] png,DateTime capturedUtc,string targetId,string modelReference,string description=null)
         {
             if(String.IsNullOrWhiteSpace(id)||String.IsNullOrWhiteSpace(companionId)||String.IsNullOrWhiteSpace(text))throw new ArgumentException("Event ID, companion ID and text are required.");
@@ -25,6 +26,7 @@ namespace Dafeiyu
         }
         internal ProactiveEvent Copy(){var copy=(ProactiveEvent)MemberwiseClone();copy.Png=Png==null?null:(byte[])Png.Clone();return copy;}
         internal void ClearImage(){Png=null;Description=null;}
+        internal void SetDescription(string value){Description=value;}
     }
     public sealed class ProactiveEventStore : IDisposable
     {
@@ -35,11 +37,13 @@ namespace Dafeiyu
         void OnTimer(){lock(gate){if(disposed)return;Expire();Schedule();}}
         public string Register(ProactiveEvent value)
         {
-            if(value==null)throw new ArgumentNullException("value");lock(gate){if(disposed)throw new ObjectDisposedException("ProactiveEventStore");Expire();ProactiveEvent existing;if(events.TryGetValue(value.Id,out existing)){if(existing.CompanionId!=value.CompanionId)throw new InvalidOperationException("Event belongs to another companion.");return existing.Id;}var now=clock().ToUniversalTime();if(value.CapturedUtc>now || now-value.CapturedUtc>=TimeSpan.FromMinutes(15))throw new InvalidOperationException("Proactive event has expired.");events.Add(value.Id,value.Copy());while(events.Values.Count(x=>x.Png!=null)>2 || events.Values.Where(x=>x.Png!=null).Sum(x=>(long)x.Png.Length)>4L*1024*1024){events.Values.Where(x=>x.Png!=null).OrderBy(x=>x.CapturedUtc).First().ClearImage();}Schedule();return value.Id;}
+            if(value==null)throw new ArgumentNullException("value");lock(gate){if(disposed)throw new ObjectDisposedException("ProactiveEventStore");Expire();ProactiveEvent existing;if(events.TryGetValue(value.Id,out existing)){if(existing.CompanionId!=value.CompanionId)throw new InvalidOperationException("Event belongs to another companion.");return existing.Id;}var now=clock().ToUniversalTime();if(value.CapturedUtc>now || now-value.CapturedUtc>=TimeSpan.FromMinutes(15))throw new InvalidOperationException("Proactive event has expired.");var copy=value.Copy();copy.Revision=Guid.NewGuid().ToString("N");events.Add(value.Id,copy);while(events.Values.Count(x=>x.Png!=null)>2 || events.Values.Where(x=>x.Png!=null).Sum(x=>(long)x.Png.Length)>4L*1024*1024){events.Values.Where(x=>x.Png!=null).OrderBy(x=>x.CapturedUtc).First().ClearImage();}Schedule();return value.Id;}
         }
         public ProactiveEvent TryGet(string eventId){lock(gate){Expire();ProactiveEvent value;return eventId!=null && events.TryGetValue(eventId,out value)?value.Copy():null;}}
         public string BindConversation(string eventId,string companionId,string conversationId)
         {lock(gate){Expire();Schedule();ProactiveEvent value;if(eventId==null || !events.TryGetValue(eventId,out value) || value.CompanionId!=companionId)throw new InvalidOperationException("Event does not belong to this companion or has expired.");if(String.IsNullOrWhiteSpace(conversationId))throw new ArgumentException("Conversation ID is required.");if(value.ConversationId==null)value.ConversationId=conversationId;return value.ConversationId;}}
+        internal bool TrySetDescription(string eventId,string companionId,string revision,byte[] expectedPng,string description)
+        {lock(gate){Expire();ProactiveEvent value;if(eventId==null || !events.TryGetValue(eventId,out value) || value.CompanionId!=companionId || value.Revision!=revision || value.Png==null || expectedPng==null || !value.Png.SequenceEqual(expectedPng) || String.IsNullOrWhiteSpace(description) || description.Length>240)return false;value.SetDescription(description);return true;}}
         public void ClearImages(){lock(gate){foreach(var value in events.Values)value.ClearImage();Schedule();}}
         public void Clear(){lock(gate){events.Clear();Schedule();}}
         public void Dispose(){lock(gate){if(disposed)return;disposed=true;events.Clear();timer.Dispose();}}

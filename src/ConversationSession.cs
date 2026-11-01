@@ -99,7 +99,7 @@ namespace Dafeiyu
         private void Save(string id,ConversationLog history,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(store==null||!saveEnabled())return;
-            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
+            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);var all=history.Messages;var accepted=all.Where((m,i)=>m.Source!="proactive" || all.Skip(i+1).Any(next=>next.Role=="user" && next.Source!="guide" && !next.SyntheticInput && next.Status=="complete")).ToList();if(accepted.Count==0)return;imageHistoryWarning="";store.SaveAsync(id,accepted).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning=TextResources.Get("conversationSession.save.imageHistoryWarning");OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
@@ -134,7 +134,7 @@ namespace Dafeiyu
                 if(disposed || (String.IsNullOrWhiteSpace(reply) && (status=="complete" || String.IsNullOrWhiteSpace(user))))return;
                 if(status!="complete" && status!="interrupted" && status!="cancelled" && status!="error")status="interrupted";
                 bool previousRelationshipSuccess=realUserCompletion && history.RelationshipHasSucceeded(logicalTurnId);
-                ChatMessage input;var output=history.BeginTurn(String.IsNullOrWhiteSpace(user)?TextResources.Get("conversationSession.addLiveTurn.historyBeginTurn"):user,"live",out input);output=history.Update(output.Id,reply,status);if(realUserCompletion){history.BindRelationship(output.Id,companionId,logicalTurnId,false,previousRelationshipSuccess);if(status=="complete")history.MarkRelationshipSucceeded(logicalTurnId);}Save(id,history);
+                ChatMessage input;var output=history.BeginTurn(String.IsNullOrWhiteSpace(user)?TextResources.Get("conversationSession.addLiveTurn.historyBeginTurn"):user,"live",out input);if(String.IsNullOrWhiteSpace(user))input=history.MarkSyntheticInput(input.Id);output=history.Update(output.Id,reply,status);if(realUserCompletion){history.BindRelationship(output.Id,companionId,logicalTurnId,false,previousRelationshipSuccess);if(status=="complete")history.MarkRelationshipSucceeded(logicalTurnId);}Save(id,history);
                 if(id==personaId){Emit(input);if(output!=null)Emit(output);}
                 if(realUserCompletion && !previousRelationshipSuccess && status=="complete" && !String.IsNullOrWhiteSpace(user) && !String.IsNullOrWhiteSpace(reply) && Relationships!=null)Relationships.Enqueue(companionId,RelationshipEventType.CompletedConversation,logicalTurnId,completedTime??RelationshipTime.Current());
             }
@@ -278,7 +278,7 @@ namespace Dafeiyu
             persona=ReplyLanguagePolicy.Apply(persona);
             var request=op.Regenerating?op.History.ForRegeneration(op.ReplyId,persona):op.History.ForRequest(persona,text);
             if(!op.Regenerating)request.Last().SetAttachments(op.Attachments);
-            if(!op.Snapshot.AgentEnabled)ProjectProactiveContext(request,op.PersonaId,op.Snapshot);
+            var automaticRevisions=op.Snapshot.AgentEnabled?new Dictionary<string,string>():ProjectProactiveContext(request,op.PersonaId,op.Snapshot);
             if(op.SteeringContext!=null)request.InsertRange(request.Count-1,op.SteeringContext.Select(m=>m.Copy()));
             ConversationLog.BudgetRequest(request);
             // An interrupted guide turn is excluded from ordinary conversation
@@ -288,7 +288,7 @@ namespace Dafeiyu
                 if(!present){var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);request.Insert(request.Count-1,message);}
             }
             bool preprocessing=request.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage));if(preprocessing&&op.ImagePreprocessing!=null)op.ImagePreprocessing(true);
-            var projection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),request,token).ConfigureAwait(false);
+            var automaticStore=ProactiveEvents;var projection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),request,token,(message,image,description)=>{if(automaticStore==null || !message.TurnId.StartsWith("proactive-",StringComparison.Ordinal))return false;string eventId=message.TurnId.Substring("proactive-".Length),revision;return automaticRevisions.TryGetValue(eventId,out revision) && automaticStore.TrySetDescription(eventId,op.PersonaId,revision,Convert.FromBase64String(image.Data),description);}).ConfigureAwait(false);
             if(!projection.Available)throw new ApiException(projection.Route.Route==ImageRouteKind.Unavailable?TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"):"Image description failed ("+projection.Notice+").",projection.Notice);
 
             request=projection.Messages.ToList();ConversationLog.BudgetRequest(request);
