@@ -39,8 +39,8 @@ namespace Dafeiyu.Tests
         static void ReasonLabels()
         {
             foreach(ObservationReason reason in Enum.GetValues(typeof(ObservationReason)))
-                Check(DesktopObservationUiText.ReasonText(reason)==TextResources.Get("desktopObservation.reason."+reason),"every reason has a literal localized key");
-            Check(DesktopObservationUiText.ReasonText((ObservationReason)Int32.MaxValue)==TextResources.Get("desktopObservation.reason.Ineligible"),"unknown reason uses safe fallback");
+                Check(DesktopObservationUiText.ReasonText(reason)==TextResources.Get("desktopObservation.reason."+Char.ToLowerInvariant(reason.ToString()[0])+reason.ToString().Substring(1)),"every reason has a literal localized key");
+            Check(DesktopObservationUiText.ReasonText((ObservationReason)Int32.MaxValue)==TextResources.Get("desktopObservation.reason.ineligible"),"unknown reason uses safe fallback");
         }
         static void Gates()
         {

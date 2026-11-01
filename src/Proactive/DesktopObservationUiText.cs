@@ -10,31 +10,31 @@ namespace Dafeiyu
         {
             switch (reason)
             {
-                case ObservationReason.Allowed: return TextResources.Get("desktopObservation.reason.Allowed");
-                case ObservationReason.Disabled: return TextResources.Get("desktopObservation.reason.Disabled");
-                case ObservationReason.NotDue: return TextResources.Get("desktopObservation.reason.NotDue");
-                case ObservationReason.Ineligible: return TextResources.Get("desktopObservation.reason.Ineligible");
-                case ObservationReason.Stale: return TextResources.Get("desktopObservation.reason.Stale");
-                case ObservationReason.NoRoute: return TextResources.Get("desktopObservation.reason.NoRoute");
-                case ObservationReason.InvalidConfiguration: return TextResources.Get("desktopObservation.reason.InvalidConfiguration");
-                case ObservationReason.ConsentRequired: return TextResources.Get("desktopObservation.reason.ConsentRequired");
-                case ObservationReason.MinimumInterval: return TextResources.Get("desktopObservation.reason.MinimumInterval");
-                case ObservationReason.HourlyLimit: return TextResources.Get("desktopObservation.reason.HourlyLimit");
-                case ObservationReason.Cooldown: return TextResources.Get("desktopObservation.reason.Cooldown");
-                case ObservationReason.Busy: return TextResources.Get("desktopObservation.reason.Busy");
-                case ObservationReason.CaptureUnavailable: return TextResources.Get("desktopObservation.reason.CaptureUnavailable");
-                case ObservationReason.CaptureTimeout: return TextResources.Get("desktopObservation.reason.CaptureTimeout");
-                case ObservationReason.NoFrame: return TextResources.Get("desktopObservation.reason.NoFrame");
-                case ObservationReason.Excluded: return TextResources.Get("desktopObservation.reason.Excluded");
-                case ObservationReason.DuplicateScene: return TextResources.Get("desktopObservation.reason.DuplicateScene");
-                case ObservationReason.ModelSkip: return TextResources.Get("desktopObservation.reason.ModelSkip");
-                case ObservationReason.DuplicateMessage: return TextResources.Get("desktopObservation.reason.DuplicateMessage");
-                case ObservationReason.ModelFailed: return TextResources.Get("desktopObservation.reason.ModelFailed");
-                case ObservationReason.InvalidResponse: return TextResources.Get("desktopObservation.reason.InvalidResponse");
-                case ObservationReason.ModelTimeout: return TextResources.Get("desktopObservation.reason.ModelTimeout");
-                case ObservationReason.TotalTimeout: return TextResources.Get("desktopObservation.reason.TotalTimeout");
-                case ObservationReason.Cancelled: return TextResources.Get("desktopObservation.reason.Cancelled");
-                default: return TextResources.Get("desktopObservation.reason.Ineligible");
+                case ObservationReason.Allowed: return TextResources.Get("desktopObservation.reason.allowed");
+                case ObservationReason.Disabled: return TextResources.Get("desktopObservation.reason.disabled");
+                case ObservationReason.NotDue: return TextResources.Get("desktopObservation.reason.notDue");
+                case ObservationReason.Ineligible: return TextResources.Get("desktopObservation.reason.ineligible");
+                case ObservationReason.Stale: return TextResources.Get("desktopObservation.reason.stale");
+                case ObservationReason.NoRoute: return TextResources.Get("desktopObservation.reason.noRoute");
+                case ObservationReason.InvalidConfiguration: return TextResources.Get("desktopObservation.reason.invalidConfiguration");
+                case ObservationReason.ConsentRequired: return TextResources.Get("desktopObservation.reason.consentRequired");
+                case ObservationReason.MinimumInterval: return TextResources.Get("desktopObservation.reason.minimumInterval");
+                case ObservationReason.HourlyLimit: return TextResources.Get("desktopObservation.reason.hourlyLimit");
+                case ObservationReason.Cooldown: return TextResources.Get("desktopObservation.reason.cooldown");
+                case ObservationReason.Busy: return TextResources.Get("desktopObservation.reason.busy");
+                case ObservationReason.CaptureUnavailable: return TextResources.Get("desktopObservation.reason.captureUnavailable");
+                case ObservationReason.CaptureTimeout: return TextResources.Get("desktopObservation.reason.captureTimeout");
+                case ObservationReason.NoFrame: return TextResources.Get("desktopObservation.reason.noFrame");
+                case ObservationReason.Excluded: return TextResources.Get("desktopObservation.reason.excluded");
+                case ObservationReason.DuplicateScene: return TextResources.Get("desktopObservation.reason.duplicateScene");
+                case ObservationReason.ModelSkip: return TextResources.Get("desktopObservation.reason.modelSkip");
+                case ObservationReason.DuplicateMessage: return TextResources.Get("desktopObservation.reason.duplicateMessage");
+                case ObservationReason.ModelFailed: return TextResources.Get("desktopObservation.reason.modelFailed");
+                case ObservationReason.InvalidResponse: return TextResources.Get("desktopObservation.reason.invalidResponse");
+                case ObservationReason.ModelTimeout: return TextResources.Get("desktopObservation.reason.modelTimeout");
+                case ObservationReason.TotalTimeout: return TextResources.Get("desktopObservation.reason.totalTimeout");
+                case ObservationReason.Cancelled: return TextResources.Get("desktopObservation.reason.cancelled");
+                default: return TextResources.Get("desktopObservation.reason.ineligible");
             }
         }
 
