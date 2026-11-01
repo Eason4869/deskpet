@@ -6,6 +6,38 @@ namespace Dafeiyu
     // Safe display-only labels; consent itself remains bound to the complete route digest.
     public static class DesktopObservationUiText
     {
+        public static string ReasonText(ObservationReason reason)
+        {
+            switch (reason)
+            {
+                case ObservationReason.Allowed: return TextResources.Get("desktopObservation.reason.Allowed");
+                case ObservationReason.Disabled: return TextResources.Get("desktopObservation.reason.Disabled");
+                case ObservationReason.NotDue: return TextResources.Get("desktopObservation.reason.NotDue");
+                case ObservationReason.Ineligible: return TextResources.Get("desktopObservation.reason.Ineligible");
+                case ObservationReason.Stale: return TextResources.Get("desktopObservation.reason.Stale");
+                case ObservationReason.NoRoute: return TextResources.Get("desktopObservation.reason.NoRoute");
+                case ObservationReason.InvalidConfiguration: return TextResources.Get("desktopObservation.reason.InvalidConfiguration");
+                case ObservationReason.ConsentRequired: return TextResources.Get("desktopObservation.reason.ConsentRequired");
+                case ObservationReason.MinimumInterval: return TextResources.Get("desktopObservation.reason.MinimumInterval");
+                case ObservationReason.HourlyLimit: return TextResources.Get("desktopObservation.reason.HourlyLimit");
+                case ObservationReason.Cooldown: return TextResources.Get("desktopObservation.reason.Cooldown");
+                case ObservationReason.Busy: return TextResources.Get("desktopObservation.reason.Busy");
+                case ObservationReason.CaptureUnavailable: return TextResources.Get("desktopObservation.reason.CaptureUnavailable");
+                case ObservationReason.CaptureTimeout: return TextResources.Get("desktopObservation.reason.CaptureTimeout");
+                case ObservationReason.NoFrame: return TextResources.Get("desktopObservation.reason.NoFrame");
+                case ObservationReason.Excluded: return TextResources.Get("desktopObservation.reason.Excluded");
+                case ObservationReason.DuplicateScene: return TextResources.Get("desktopObservation.reason.DuplicateScene");
+                case ObservationReason.ModelSkip: return TextResources.Get("desktopObservation.reason.ModelSkip");
+                case ObservationReason.DuplicateMessage: return TextResources.Get("desktopObservation.reason.DuplicateMessage");
+                case ObservationReason.ModelFailed: return TextResources.Get("desktopObservation.reason.ModelFailed");
+                case ObservationReason.InvalidResponse: return TextResources.Get("desktopObservation.reason.InvalidResponse");
+                case ObservationReason.ModelTimeout: return TextResources.Get("desktopObservation.reason.ModelTimeout");
+                case ObservationReason.TotalTimeout: return TextResources.Get("desktopObservation.reason.TotalTimeout");
+                case ObservationReason.Cancelled: return TextResources.Get("desktopObservation.reason.Cancelled");
+                default: return TextResources.Get("desktopObservation.reason.Ineligible");
+            }
+        }
+
         public static string SafeAddress(string address)
         {
             Uri uri;
