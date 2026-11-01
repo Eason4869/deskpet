@@ -30,14 +30,14 @@ namespace Dafeiyu
         readonly ConversationSession session;readonly Func<PetSettings> settings;readonly Func<string> name;readonly string path;
         readonly object gate;readonly Dictionary<string,List<QueuedMessage>> queues;
         readonly HashSet<string> paused=new HashSet<string>();bool running,steering,disposed,loadFailed;QueuedMessage inFlight;
-        readonly IDisposable maintenanceRegistration;
+        readonly IDisposable maintenanceRegistration;readonly Func<bool> persistenceAdmitted;
         Task runTask=Task.FromResult(0);public string Notice {get;private set;}int pauseRevision;
         public int PauseRevision {get{lock(gate)return pauseRevision;}}
         public Task FlushAsync(){lock(gate)return runTask;}
         public event Action Changed;
-        public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path)
+        public ConversationQueue(ConversationSession session,Func<PetSettings> settings,Func<string> name,string path,Func<bool> persistenceAdmitted=null)
         {
-            this.session=session;using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
+            this.session=session;this.persistenceAdmitted=persistenceAdmitted??(()=>true);using(session.EnterRequestActivity()){gate=session.SynchronizationRoot;this.settings=settings;this.name=name;this.path=path;Notice="";session.GuidanceReader=ReadGuidance;session.GuidanceApplied=AckGuidance;
             queues=new Dictionary<string,List<QueuedMessage>>();
             if(File.Exists(path))try
             {
@@ -66,7 +66,7 @@ namespace Dafeiyu
             if(contents==null||contents.Any(p=>p.Value==null))throw new SerializationException();return contents.Any(p=>p.Value.Count!=0);
         }
         static string Validate(string text){text=(text??"").Trim();if(text.Length==0 || text.Length>8000)throw new ApiException(TextResources.Get("conversationQueue.validate.text"));return text;}
-        void Writable(){if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
+        void Writable(){if(!persistenceAdmitted())throw new InvalidOperationException("Conversation has not been admitted.");if(disposed)throw new ObjectDisposedException("ConversationQueue");if(loadFailed)throw new InvalidOperationException(Notice);}
         void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));string temp=path+".tmp";

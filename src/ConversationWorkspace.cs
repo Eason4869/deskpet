@@ -6,7 +6,8 @@ namespace Dafeiyu
 {
     public sealed class ConversationWorkspace : IDisposable
     {
-        Func<bool> saveHistory;Func<PetSettings> settings;ProjectDefinition project;bool disposed;
+        Func<bool> saveHistory;Func<PetSettings> settings;ProjectDefinition project;bool disposed;volatile bool persistenceAdmitted=true;
+        internal void AdmitPersistence(){persistenceAdmitted=true;}
         public string Id {get;private set;}
         public string ProjectId {get;private set;}
         public string Name {get;private set;}public string ProjectWorkspace {get;private set;}
@@ -37,15 +38,16 @@ namespace Dafeiyu
         public bool LocalAgentSupported {get{return localAgentSupported;}set{localAgentSupported=value;}}
         public ConversationQueue Queue {get;private set;}
         ConversationWorkspace(){}
-        public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null)
+        public static ConversationWorkspace Create(ProjectDefinition project,ConversationDefinition conversation,string dataRoot,string personaId,Func<IConversationApi> apiFactory,Func<IReplySpeech> speechFactory,Func<IAudioRecorder> recorderFactory,Func<PetSettings> settings,Func<bool> saveHistory,Func<PetSettings> settingsOverride=null,Dafeiyu.Maintenance.DataMaintenanceGate maintenance=null,bool transient=false)
         {
             maintenance=maintenance??new Dafeiyu.Maintenance.DataMaintenanceGate();using(maintenance.EnterActivity()){
             if(project==null || conversation==null)throw new ArgumentNullException("project");
             if(String.IsNullOrWhiteSpace(project.Id) || String.IsNullOrWhiteSpace(conversation.Id))throw new ArgumentException(TextResources.Get("conversationWorkspace.create.text"));
             if(apiFactory==null || speechFactory==null || recorderFactory==null || settings==null)throw new ArgumentNullException("factories");
-            var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,saveHistory=saveHistory??delegate{return true;}};
+            var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,persistenceAdmitted=!transient};
+            workspace.saveHistory=delegate{return workspace.persistenceAdmitted && (saveHistory==null || saveHistory());};
             workspace.DataDirectory=ResolveDataDirectory(dataRoot,conversation.Id);
-            Directory.CreateDirectory(workspace.DataDirectory);
+            if(!transient)Directory.CreateDirectory(workspace.DataDirectory);
             workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id,maintenance);
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
@@ -54,7 +56,7 @@ namespace Dafeiyu
             if(model==null)model=new AgentSessionModel(conversation.Id,project.Id,conversation.Id);
             if(model.RecoveryState=="running")model.RecoveryState="interrupted";
             workspace.Session.ConfigureKernelSession(model,kernelStore);
-            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,delegate{return conversation.Name;},Path.Combine(workspace.DataDirectory,"queued-messages.json"));
+            workspace.Queue=new ConversationQueue(workspace.Session,workspace.EffectiveSettings,delegate{return conversation.Name;},Path.Combine(workspace.DataDirectory,"queued-messages.json"),()=>workspace.persistenceAdmitted);
             return workspace;
         }
         }
