@@ -12,7 +12,7 @@ namespace Dafeiyu.Tests
         static int checks;
         static void Check(bool value,string name){checks++;if(!value)throw new Exception(name);}
         public static int Main(){try{Run().GetAwaiter().GetResult();Console.WriteLine("DesktopObservationServiceTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
-        static async Task Run(){await Gates();await Routes();await Output();await Races();await Deadlines();await Accounting();await AdditionalBoundaries();await BlockingCancellation();}
+        static async Task Run(){await Gates();await Routes();await Output();await Races();await Deadlines();await Accounting();await AdditionalBoundaries();await BlockingCancellation();await StaleTotalTimeout();await TargetSceneDeduplication();}
         sealed class Fixture
         {
             public readonly Clock Clock=new Clock();public readonly Capture Capture=new Capture();public readonly Api Api=new Api();public readonly DesktopObservationPolicy Policy=new DesktopObservationPolicy();
@@ -109,11 +109,11 @@ namespace Dafeiyu.Tests
         }
         sealed class Capture:IDesktopObservationCapture
         {
-            public Clock Clock;public int Calls,StatusCalls,CurrentCalls;public bool Empty,Current=true;public DesktopCaptureStatus Status=DesktopCaptureStatus.Ready;public DesktopCaptureOptions Options;public DesktopObservationFrame Last;public TaskCompletionSource<DesktopObservationFrame> Pending;public TaskCompletionSource<bool> BlockPreflight,BlockCurrent;public Action AfterCapture;
+            public Clock Clock;public int Calls,StatusCalls,CurrentCalls;public int BlockCurrentFromCall=1;public long WindowId=1;public bool Empty,Current=true;public DesktopCaptureStatus Status=DesktopCaptureStatus.Ready;public DesktopCaptureOptions Options;public DesktopObservationFrame Last;public TaskCompletionSource<DesktopObservationFrame> Pending;public TaskCompletionSource<bool> BlockPreflight,BlockCurrent;public Action AfterCapture;
             public DesktopCaptureStatus GetStatus(){Interlocked.Increment(ref StatusCalls);if(BlockPreflight!=null)BlockPreflight.Task.GetAwaiter().GetResult();return Status;}
-            public DesktopObservationFrame Frame(){return new DesktopObservationFrame(new byte[]{137,80,78,71,13,10,26,10},new DateTimeOffset(Clock.UtcNow),new DesktopObservationIdentity(1,2,3,4,"private-app","secret-window-title","class",0,0,10,10));}
+            public DesktopObservationFrame Frame(){return new DesktopObservationFrame(new byte[]{137,80,78,71,13,10,26,10},new DateTimeOffset(Clock.UtcNow),new DesktopObservationIdentity(WindowId,2,3,4,"private-app","secret-window-title","class",0,0,10,10));}
             public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel){Options=options;Interlocked.Increment(ref Calls);Last=Empty?null:Frame();if(AfterCapture!=null)AfterCapture();return Pending==null?Task.FromResult(Last):Pending.Task;}
-            public bool IsCurrent(DesktopObservationFrame frame){Interlocked.Increment(ref CurrentCalls);if(BlockCurrent!=null)BlockCurrent.Task.GetAwaiter().GetResult();return Current;}
+            public bool IsCurrent(DesktopObservationFrame frame){int call=Interlocked.Increment(ref CurrentCalls);if(BlockCurrent!=null && call>=BlockCurrentFromCall)BlockCurrent.Task.GetAwaiter().GetResult();return Current;}
         }
         sealed class Api:IConversationApi
         {
@@ -141,6 +141,50 @@ namespace Dafeiyu.Tests
                     f.Api.BlockCancellation.SetResult(true);await f.Service.WaitForIdleAsync();await hostCancel;Check(!f.Service.IsBusy && f.Api.Disposed,"callback release drains operation and disposes transport");
                 }
             }
+        }
+        static async Task StaleTotalTimeout()
+        {
+            foreach(bool described in new[]{false,true})
+            {
+                var f=new Fixture();var settings=described?Described():DesktopObservationPolicyTests.Settings();int epoch=0;
+                f.Capture.BlockCurrent=new TaskCompletionSource<bool>();f.Capture.BlockCurrentFromCall=described?4:3;
+                if(described)f.Api.Replies.Enqueue("[\"scene\"]");
+                var context=DesktopObservationPolicyTests.Context(settings,current:()=>Volatile.Read(ref epoch)==0);
+                var pending=f.Generate(context);
+                await Until(()=>f.Capture.CurrentCalls==f.Capture.BlockCurrentFromCall && f.Api.Calls==(described?2:1));
+                Interlocked.Increment(ref epoch);f.Clock.Advance(TimeSpan.FromSeconds(described?18:10));
+                await Until(()=>pending.IsCompleted);
+                using(var decision=await pending)
+                    Check(decision.Kind==ProactiveDecisionKind.Skip && decision.Reason==ObservationReason.Stale && decision.CandidateEvent==null && decision.Message.Length==0,"stale final currentness returns bounded Skip at total deadline without fallback/event");
+                var admission=f.Policy.TryBegin(DesktopObservationPolicyTests.Context(settings),f.Clock.UtcNow);
+                Check(admission.AutomaticCallsLastHour==1 && admission.ConsecutiveFailures==0 && admission.Reason!=ObservationReason.Cooldown,"invalidated total-timeout work keeps actual quota but never records fallback failure/cooldown");
+                Check(f.Capture.Last.IsDisposed && f.Service.IsBusy && !f.Service.WaitForIdleAsync().IsCompleted && !f.Api.Disposed,"stale deadline clears original PNG but owns blocked currentness until drain");
+                using(var decision=await f.Generate())Check(decision.Reason==ObservationReason.Busy,"stale blocked operation cannot admit replacement work");
+                f.Capture.BlockCurrent.SetResult(true);await f.Service.WaitForIdleAsync();
+                Check(!f.Service.IsBusy && f.Api.Disposed && f.Policy.TryBegin(DesktopObservationPolicyTests.Context(settings),f.Clock.UtcNow).ConsecutiveFailures==0,"late stale currentness completion drains without changing failure accounting");
+            }
+        }
+        static async Task TargetSceneDeduplication()
+        {
+            var f=new Fixture();string firstTarget;
+            using(var decision=await f.Generate())
+            {
+                Check(decision.Kind==ProactiveDecisionKind.Speak,"first target and normalized scene generates speech");
+                firstTarget=decision.CandidateEvent.TargetId;
+            }
+            f.Clock.Advance(TimeSpan.FromMinutes(10));
+            using(var decision=await f.Generate())
+                Check(decision.Reason==ObservationReason.DuplicateScene && f.Api.Calls==1,"same target and normalized digest skips model inside thirty minutes");
+            f.Capture.WindowId=99;
+            using(var decision=await f.Generate())
+                Check(decision.Kind==ProactiveDecisionKind.Speak && decision.CandidateEvent.TargetId!=firstTarget && f.Api.Calls==2,"different captured target with identical normalized digest stays eligible after ten minutes");
+            Check(f.Api.Messages.SelectMany(messages=>messages).All(message=>!message.Content.Contains("99:2:3:4") && !message.Content.Contains("1:2:3:4")),"local dedupe target identity is absent from model prompts");
+            f.Clock.Advance(TimeSpan.FromMinutes(10));
+            using(var decision=await f.Generate())
+                Check(decision.Reason==ObservationReason.DuplicateScene && f.Api.Calls==2,"second target has its own thirty-minute scene dedupe");
+            f.Clock.Advance(TimeSpan.FromMinutes(10));f.Capture.WindowId=1;
+            using(var decision=await f.Generate())
+                Check(decision.Kind==ProactiveDecisionKind.Speak && f.Api.Calls==3,"first target scene becomes eligible at its own thirty-minute expiry");
         }
     }
 }

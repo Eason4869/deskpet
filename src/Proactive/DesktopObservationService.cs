@@ -136,7 +136,7 @@ namespace Dafeiyu
                 {
                     operation.Cancel();
                     operation.ClearFrame();
-                    operation.Complete(Failure(context, operation,
+                    operation.Complete(FailureIfCurrent(context, operation,
                         cancel.IsCancellationRequested ? ObservationReason.Cancelled : ObservationReason.TotalTimeout));
                 }
                 timer.Cancel();
@@ -204,7 +204,8 @@ namespace Dafeiyu
             if (frame.Target == null || options.IsExcluded(frame.Target.ApplicationId)) return Skip(context, ObservationReason.Excluded);
             if (!IsCurrent(context, operation)) return Skip(context, ObservationReason.Stale);
             operation.ThrowIfCancelled();
-            if (context.Mode == DesktopObservationMode.Automatic && !policy.TryObserveScene(fingerprint(frame.EncodedPng), clock.UtcNow))
+            if (context.Mode == DesktopObservationMode.Automatic &&
+                !policy.TryObserveScene(frame.Target.TargetId + "\n" + fingerprint(frame.EncodedPng), clock.UtcNow))
                 return Skip(context, ObservationReason.DuplicateScene);
             operation.ThrowIfCancelled();
             var image = ChatAttachment.CreateImage("desktop-observation.png", frame.EncodedPng);
