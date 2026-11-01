@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "बातचीत मॉडल चित्र सीधे समझता है",
   "imageDescription.described": "चित्र विवरण मॉडल का उपयोग",
   "desktopObservation.imageDestination": "छवि यहां भेजी गई: {0} {0}",
-  "desktopObservation.textDestination": "छवि विवरण यहां भेजा गया: {0} {0}"
+  "desktopObservation.textDestination": "छवि विवरण यहां भेजा गया: {0} {0}",
+  "desktopObservation.history": "सक्रिय बातचीत",
+  "desktopObservation.historyEmpty": "अभी तक कोई सक्रिय बातचीत नहीं हुई.",
+  "desktopObservation.historyMore": "और दिखाएँ"
 }

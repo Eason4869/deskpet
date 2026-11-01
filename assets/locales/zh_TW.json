@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "目前對話模型直接辨識圖片",
   "imageDescription.described": "使用圖片轉述模型",
   "desktopObservation.imageDestination": "圖片傳送至：{0}",
-  "desktopObservation.textDestination": "圖片描述傳送至：{0}"
+  "desktopObservation.textDestination": "圖片描述傳送至：{0}",
+  "desktopObservation.history": "主動發言對話",
+  "desktopObservation.historyEmpty": "還沒有主動發言對話。",
+  "desktopObservation.historyMore": "顯示更多"
 }

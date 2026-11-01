@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "Gesprächsmodell verarbeitet Bilder direkt",
   "imageDescription.described": "Bildbeschreibungsmodell wird verwendet",
   "desktopObservation.imageDestination": "Bild gesendet an: {0} {0}",
-  "desktopObservation.textDestination": "Bildbeschreibung gesendet an: {0} {0}"
+  "desktopObservation.textDestination": "Bildbeschreibung gesendet an: {0} {0}",
+  "desktopObservation.history": "Proaktive Gespräche",
+  "desktopObservation.historyEmpty": "Noch keine proaktiven Gespräche.",
+  "desktopObservation.historyMore": "Mehr anzeigen"
 }

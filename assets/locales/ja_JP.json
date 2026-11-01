@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "会話モデルが画像を直接認識",
   "imageDescription.described": "画像説明モデルを使用",
   "desktopObservation.imageDestination": "画像の送信先: {0} {0}",
-  "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}"
+  "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}",
+  "desktopObservation.history": "積極的な会話",
+  "desktopObservation.historyEmpty": "まだ積極的な会話はありません。",
+  "desktopObservation.historyMore": "もっと見る"
 }

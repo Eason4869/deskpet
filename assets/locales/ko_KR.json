@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "현재 대화 모델이 이미지를 직접 처리",
   "imageDescription.described": "이미지 설명 모델 사용",
   "desktopObservation.imageDestination": "이미지 전송 대상: {0} {0}",
-  "desktopObservation.textDestination": "다음 주소로 이미지 설명 전송: {0} {0}"
+  "desktopObservation.textDestination": "다음 주소로 이미지 설명 전송: {0} {0}",
+  "desktopObservation.history": "적극적인 대화",
+  "desktopObservation.historyEmpty": "아직 적극적인 대화가 없습니다.",
+  "desktopObservation.historyMore": "더 보기"
 }

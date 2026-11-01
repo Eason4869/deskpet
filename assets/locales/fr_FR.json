@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "Le modèle de conversation traite directement les images",
   "imageDescription.described": "Utilisation du modèle de description d’image",
   "desktopObservation.imageDestination": "Image envoyée à : {0} {0}",
-  "desktopObservation.textDestination": "Description de l'image envoyée à : {0} {0}"
+  "desktopObservation.textDestination": "Description de l'image envoyée à : {0} {0}",
+  "desktopObservation.history": "Conversations proactives",
+  "desktopObservation.historyEmpty": "Aucune conversation proactive pour l’instant.",
+  "desktopObservation.historyMore": "Afficher plus"
 }

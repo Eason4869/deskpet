@@ -4830,5 +4830,8 @@
   "imageDescription.direct": "Model percakapan menangani gambar langsung",
   "imageDescription.described": "Menggunakan model deskripsi gambar",
   "desktopObservation.imageDestination": "Gambar dikirim ke: {0} {0}",
-  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}"
+  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}",
+  "desktopObservation.history": "Percakapan proaktif",
+  "desktopObservation.historyEmpty": "Belum ada percakapan proaktif.",
+  "desktopObservation.historyMore": "Tampilkan lebih banyak"
 }
