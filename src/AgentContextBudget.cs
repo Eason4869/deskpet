@@ -30,7 +30,7 @@ namespace Dafeiyu
         }
         // Runs only at a complete protocol boundary. A tool-call message and all
         // its observations are one indivisible unit, including thinking signatures.
-        internal static async Task<bool> PrepareAsync(List<object> history,bool anthropic,AgentWorkspace workspace,Func<string,CancellationToken,Task<string>> summarize,CancellationToken cancel,Func<IList<object>,bool> fitsBytes=null,int overheadTokens=0)
+        internal static async Task<bool> PrepareAsync(List<object> history,bool anthropic,AgentWorkspace workspace,Func<string,CancellationToken,Task<string>> summarize,CancellationToken cancel,Func<IList<object>,bool> fitsBytes=null,int overheadTokens=0,bool preserveProactive=false)
         {
             int limit=workspace.ContextTokenLimit<=0?32768:Math.Max(1024,Math.Min(ModelContextCapacity.Maximum,workspace.ContextTokenLimit));
             var policy=AgentContextPolicy.Resolve(limit,overheadTokens);int inputLimit=policy.InputBudget;Func<IList<object>,bool> fits=items=>EstimateTokens(items)<=inputLimit && (fitsBytes==null || fitsBytes(items));bool required=!fits(history);if(!required && EstimateTokens(history)<policy.CompactAt)return false;
@@ -50,8 +50,9 @@ namespace Dafeiyu
             var users=history.Where(m=>Text(Object(m),"role")=="user" && !IsResult(Object(m),anthropic)).ToList();
             var snapshot=workspace.TaskState;object originalGoal=users.FirstOrDefault(m=>snapshot!=null && ContainsGoal(Object(m),snapshot.Goal));
             object first=users.FirstOrDefault(),last=users.LastOrDefault();var recent=units.LastOrDefault(u=>u.Any(m=>HasCalls(Object(m),anthropic)));
+            var proactive=new HashSet<object>();if(preserveProactive)for(int i=0;i+1<history.Count;i++){var m=Object(history[i]);object content;if(Text(m,"role")!="user" || !m.TryGetValue("content",out content))continue;var extracted=new StringBuilder();DigestContent(content,extracted);if(extracted.ToString().IndexOf("Context: the assistant previously initiated the following conversation.",StringComparison.Ordinal)>=0 && Text(Object(history[i+1]),"role")=="assistant"){proactive.Add(history[i]);proactive.Add(history[i+1]);break;}}
             var kept=new List<object>();var removed=new List<object>();
-            foreach(var unit in units){bool protect=unit.Any(m=>Text(Object(m),"role")=="system" || System.Object.ReferenceEquals(m,first) || System.Object.ReferenceEquals(m,last) || System.Object.ReferenceEquals(m,originalGoal)) || unit==recent;(protect?kept:removed).AddRange(unit);}
+            foreach(var unit in units){bool protect=unit.Any(m=>Text(Object(m),"role")=="system" || System.Object.ReferenceEquals(m,first) || System.Object.ReferenceEquals(m,last) || System.Object.ReferenceEquals(m,originalGoal) || proactive.Contains(m)) || unit==recent;(protect?kept:removed).AddRange(unit);}
             if(removed.Count==0 && !required){workspace.ContextProgress("idle");return false;}
             if(removed.Count==0 || EstimateTokens(kept)>=inputLimit-128 || (fitsBytes!=null && !fitsBytes(kept))){workspace.ContextProgress("limited");throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text"));}
             var digest=new StringBuilder();foreach(object item in removed){cancel.ThrowIfCancellationRequested();var m=Object(item);digest.Append(Text(m,"role")).Append(": ");DigestToolMetadata(m,digest);object content;if(m.TryGetValue("content",out content)){if(content is string)digest.Append((string)content);else DigestContent(content,digest);}digest.AppendLine();if(digest.Length>48000){digest.Length=48000;digest.AppendLine(TextResources.Get("agentContextBudget.prepareAsync.digestAppendLine"));break;}}
@@ -60,7 +61,7 @@ namespace Dafeiyu
             cancel.ThrowIfCancellationRequested();if(summary.Length>6000)summary=summary.Substring(0,6000);
             var task=workspace.TaskState;if(task!=null)task.ContextSummary="";string facts=task==null?"":task.CheckpointText();if(facts.Length>6000)facts=facts.Substring(0,6000);
             string checkpoint=TextResources.Format("agentContextBudget.prepareAsync.checkpointSummaryFacts",summary,facts);
-            var note=new Dictionary<string,object>{{"role","assistant"},{"content",checkpoint}};int insertion=first==null?0:kept.IndexOf(first)+1;kept.Insert(insertion,note);
+            var note=new Dictionary<string,object>{{"role","assistant"},{"content",checkpoint}};int insertion=first==null?0:kept.IndexOf(first)+1;if(first!=null && proactive.Contains(first) && insertion<kept.Count && proactive.Contains(kept[insertion]))insertion++;kept.Insert(insertion,note);
             while(!fits(kept) && checkpoint.Length>256){checkpoint=TextResources.Format("agentContextBudget.prepareAsync.checkpointCheckpointSubstring",checkpoint.Substring(0,checkpoint.Length/2));note["content"]=checkpoint;}
             if(!fits(kept)){workspace.ContextProgress("limited");throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text.alternativeC"));}
             history.Clear();history.AddRange(kept);workspace.RecordCompaction(EstimateTokens(history)+overheadTokens,checkpoint);return true;

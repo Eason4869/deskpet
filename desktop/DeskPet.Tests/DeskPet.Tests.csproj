@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="../../tests/DesktopObservationCaptureTests.cs" Link="Tests/DesktopObservationCaptureTests.cs" />
     <Compile Include="../../tests/FeishuRegistrationTests.cs;../../tests/OfficialBotRegistrationTests.cs;../../tests/WecomRegistrationTests.cs" Link="Tests/%(Filename)%(Extension)" />
+    <Compile Include="../../tests/ProactiveConversationTests.cs" Link="Tests/ProactiveConversationTests.cs" />
     <Compile Include="../../tests/ImageInputRouterTests.cs" Link="Tests/ImageInputRouterTests.cs" />
     <Compile Include="../../tests/ImageModelResolverTests.cs" Link="Tests/ImageModelResolverTests.cs" />
     <Compile Include="../../tests/ImChannelTests.cs;../../tests/ImChannelLifecycleTests.cs;../../tests/ImChannelAuditTests.cs" Link="Tests/ImChannelTests.cs" />

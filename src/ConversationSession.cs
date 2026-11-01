@@ -278,6 +278,7 @@ namespace Dafeiyu
             persona=ReplyLanguagePolicy.Apply(persona);
             var request=op.Regenerating?op.History.ForRegeneration(op.ReplyId,persona):op.History.ForRequest(persona,text);
             if(!op.Regenerating)request.Last().SetAttachments(op.Attachments);
+            if(!op.Snapshot.AgentEnabled)ProjectProactiveContext(request,op.PersonaId,op.Snapshot);
             if(op.SteeringContext!=null)request.InsertRange(request.Count-1,op.SteeringContext.Select(m=>m.Copy()));
             ConversationLog.BudgetRequest(request);
             // An interrupted guide turn is excluded from ordinary conversation
@@ -549,7 +550,7 @@ namespace Dafeiyu
             if(store!=null)store.WarningChanged-=OnWarningChanged;
             if(op!=null)
             { try {op.Cancel.Cancel();}catch(ObjectDisposedException){} if(op.Recorder!=null) op.Recorder.Dispose(); if(!op.Finishing && Stage==ConversationStage.Recording) End(op); }
-            if(imageInputRouter!=null)imageInputRouter.Clear();if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();RetireMaintenanceRegistration();
+            DisposeOwnedProactiveEvents();if(imageInputRouter!=null)imageInputRouter.Clear();if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();RetireMaintenanceRegistration();
             Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),op==null?Task.FromResult(true):op.Complete.Task).ContinueWith(t=>{lock(gate)foreach(var log in histories.Values)log.ReleaseImageUsage();});
         }
     }

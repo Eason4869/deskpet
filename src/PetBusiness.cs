@@ -182,6 +182,11 @@ namespace Dafeiyu
         {
             lock(gate) { string turn=Guid.NewGuid().ToString("N");messages.Add(new ChatMessage("user",user,turn,"complete",source));messages.Add(new ChatMessage("assistant",assistant,turn,"complete",source));Trim(); }
         }
+        public ChatMessage RegisterProactive(string eventId,string text)
+        {
+            if(String.IsNullOrWhiteSpace(eventId) || String.IsNullOrWhiteSpace(text))throw new ArgumentException("A proactive event and text are required.");
+            lock(gate){string turn="proactive-"+eventId;var existing=messages.Find(m=>m.TurnId==turn && m.Role=="assistant" && m.Source=="proactive");if(existing!=null)return existing.Copy();var message=new ChatMessage("assistant",text,turn,"complete","proactive");messages.Add(message);Trim();return message.Copy();}
+        }
         public ChatMessage BeginTurn(string text,string source,out ChatMessage user)
         {
             lock(gate) { string turn=Guid.NewGuid().ToString("N");var u=new ChatMessage("user",text,turn,"complete",source);var a=new ChatMessage("assistant","",turn,"pending",source);messages.Add(u);messages.Add(a);Trim();user=u.Copy();return a.Copy(); }
@@ -212,7 +217,7 @@ namespace Dafeiyu
         }
         public ChatMessage Update(string id,string content,string status,string reasoning=null,long reasoningMilliseconds=0,IEnumerable<AgentToolEvent> tools=null,long? processingMilliseconds=null)
         {
-            lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
+            lock(gate) { var message=messages.Find(m=>m.Id==id);if(message==null)return null;if(message.Source=="proactive")return message.Copy();message.Update(content,status);if(reasoning!=null)message.SetReasoning(reasoning,reasoningMilliseconds);if(tools!=null)message.SetTools(tools);if(processingMilliseconds.HasValue)message.SetProcessingTime(processingMilliseconds.Value);Trim();return message.Copy(); }
         }
         public void Attach(string id,IEnumerable<ChatAttachment> files) { lock(gate){var message=messages.Find(m=>m.Id==id);if(message!=null)message.SetAttachments(files);} }
         public ChatMessage AttachImageTask(string id,string taskId)
@@ -235,7 +240,7 @@ namespace Dafeiyu
             if (!String.IsNullOrWhiteSpace(persona)) result.Add(new ChatMessage("system", persona));
             lock(gate) {
                 var pairs=new List<ChatMessage>();
-                for(int i=0;i+1<messages.Count;i++) { var u=messages[i];var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { var userCopy=u.Copy();var assistantCopy=a.Copy();userCopy.ChangeSummary=null;assistantCopy.ChangeSummary=null;pairs.Add(userCopy);pairs.Add(assistantCopy);i++; } }
+                for(int i=0;i<messages.Count;i++) { var u=messages[i];if(u.Role=="assistant" && u.Source=="proactive" && u.Status=="complete" && u.TurnId.StartsWith("proactive-",StringComparison.Ordinal)){pairs.Add(new ChatMessage("user","Context: the assistant previously initiated the following conversation."));var proactive=u.Copy();proactive.ChangeSummary=null;pairs.Add(proactive);continue;}if(i+1>=messages.Count)continue;var a=messages[i+1];if(u.Role=="user" && a.Role=="assistant" && u.TurnId==a.TurnId && u.Status=="complete" && a.Status=="complete") { var userCopy=u.Copy();var assistantCopy=a.Copy();userCopy.ChangeSummary=null;assistantCopy.ChangeSummary=null;pairs.Add(userCopy);pairs.Add(assistantCopy);i++; } }
                 result.AddRange(pairs);
             }
             result.Add(new ChatMessage("user", user)); return result;
@@ -250,7 +255,7 @@ namespace Dafeiyu
         {
             lock(gate)
             {
-                int index=messages.FindIndex(m=>m.Id==replyId && m.Role=="assistant");if(index<1)throw new InvalidOperationException(TextResources.Get("petBusiness.forRegeneration.text"));
+                int index=messages.FindIndex(m=>m.Id==replyId && m.Role=="assistant");if(index<1 || messages[index].Source=="proactive")throw new InvalidOperationException(TextResources.Get("petBusiness.forRegeneration.text"));
                 var user=messages[index-1];if(user.Role!="user" || user.TurnId!=messages[index].TurnId)throw new InvalidOperationException(TextResources.Get("petBusiness.forRegeneration.text.alternativeA"));
                 var previous=new ConversationLog();previous.Replace(messages.Take(index-1).ToList());var request=previous.ForRequest(persona,user.Content);request.Last().SetAttachments(user.Attachments);return request;
             }

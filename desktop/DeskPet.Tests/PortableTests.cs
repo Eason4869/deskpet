@@ -14,6 +14,7 @@ namespace Dafeiyu.Tests
         public static int Main(string[] args)
         {
             if(args.Length==1&&args[0]=="--desktop-observation-only")return DesktopObservationCaptureTests.Main(new string[0]);
+            if(args.Length==1&&args[0]=="--proactive-conversation-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ProactiveConversationTests.Main();}
             if(args.Length==1&&args[0]=="--image-input-router-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageInputRouterTests.Main(new string[0]);}
             if(args.Length==1&&args[0]=="--image-model-resolver-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageModelResolverTests.Main();}
             if(args.Length==1&&args[0]=="--official-maintenance-only")return OfficialCompanionTests.MaintenanceOnly();
