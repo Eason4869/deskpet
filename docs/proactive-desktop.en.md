@@ -27,9 +27,9 @@ The conversation model menu also offers **follow global / do not use / specific 
 
 ## Local preview, uploaded test and Mac permission
 
-- **Screenshot preview only** stays local and does not upload.
-- **Test once** captures and calls the confirmed model services, incurring usage; fallback can make two calls. It has a ten-second repeat-click guard and does not use the automatic allowance.
-- Settings itself occupies the foreground. Follow the short visible countdown to switch to the target window, or explicitly select a target. An arbitrary background window is not the automatic target. The ordinary greeting preview does not silently start uploading screenshots.
+- **Local preview only** displays the screenshot without calling a service; its button shows a countdown before switching to the actual target window.
+- **Upload test once** is available only when observation, ordinary greetings and AI greetings are enabled, a valid receiving route is confirmed, and no chat task is active. It captures and calls the service, incurring usage; fallback can make two calls. It does not use the automatic allowance and has its own ten-second repeat-click guard.
+- Settings itself occupies the foreground. Follow the preview or upload-test countdown to switch to the actual target window. The ordinary greeting preview does not silently upload screenshots.
 - On **macOS 14+**, use the permission button to request system screen-recording access. Background observation does not open permission prompts. Follow the status after denial or revocation; manually quit and reopen the app if required. Ordinary chat and greetings without screen input remain available.
 
 ## Timing and pause conditions
@@ -48,7 +48,7 @@ Automatic screenshots and their temporary descriptions are excluded from disk, h
 
 The proactive bubble does not take focus and offers reply and close. A **reply to the last message** entry remains available for 15 minutes. Replying creates or reuses an independent ordinary conversation bound to the original event and message, preserving other drafts, chats, projects and Agent sessions. Repeated clicks do not duplicate the opening message.
 
-Unaccepted bubbles remain in memory and do not create persistent history. Once accepted, history saving can retain the opening assistant message, your reply and later answers. The proactive opening cannot be regenerated; subsequent ordinary answers can. While the temporary image remains valid, replying may send the original image again with its capture time, **without a new capture**; later manual replies may incur further usage. After the image or description expires, the conversation can continue from text without claiming access to the original image.
+Unaccepted bubbles remain in memory; opening and closing one without replying creates no conversation, history, queue or draft artifacts. Replying creates or reuses the same proactive conversation. When history saving is enabled, it retains the opening assistant message, your reply and later answers. The companion menu's **Proactive conversations** entry lists accepted conversations for the current companion with paging; after restart, reopening a record loads its original text and actual replies without a new capture or model request. WPF also exposes these conversations in the ordinary chat sidebar. The proactive opening cannot be regenerated; subsequent ordinary answers can. While the temporary image remains valid, replying may send the original image again with its capture time, **without a new capture**; later manual replies may incur further usage. After the image or description expires, the conversation can continue from text without claiming access to the original image.
 
 ## Validation limits
 
