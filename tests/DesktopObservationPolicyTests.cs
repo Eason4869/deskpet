@@ -26,6 +26,11 @@ namespace Dafeiyu.Tests
             Check(DesktopObservationUiText.SafeAddress("not a url")=="", "invalid address is hidden");
             var addresses=DesktopObservationUiText.Destinations(Settings());
             Check(addresses.Length==1 && addresses[0]=="http://127.0.0.1:1/v1/chat/completions", "direct route shows actual endpoint");
+            var fallback = new TextProviderSettings { Id="vision", Connection=new ConnectionSettings { BaseUrl="https://vision.example/v1", Model="image" }, Models=new List<string> { "image" } };
+            fallback.ModelCapabilities["image"]=new ModelCapabilitySetting { Images=CapabilitySupport.Supported };fallback.Normalize();
+            var described=Settings();described.Text.ImageSupport=CapabilitySupport.Unsupported;described.TextProviders=new List<TextProviderSettings>{fallback};described.ImageDescriptionModel=new ModelReference{ProviderId="vision",ModelId="image"};described.ImageDescriptionOverride=null;
+            addresses=DesktopObservationUiText.Destinations(described);
+            Check(addresses.Length==2 && addresses[0]=="https://vision.example/v1/chat/completions" && addresses[1]=="http://127.0.0.1:1/v1/chat/completions", "described route identifies both destinations");
         }
         static void Gates()
         {
