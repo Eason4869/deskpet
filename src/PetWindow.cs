@@ -744,24 +744,30 @@ namespace Dafeiyu
         {
             var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var cfg=workspace==null?Settings.Copy():workspace.EffectiveSettings();ImageDescriptionOverride imageOverride;if(workspace==null&&Projects.LegacyImageDescriptionOverrides.TryGetValue(session.PersonaId,out imageOverride))cfg.ImageDescriptionOverride=imageOverride.Copy();if(workspace==null&&session.PermissionOverride!=null){cfg.AgentApprovalMode=session.PermissionOverride.Mode;cfg.AgentSandboxEnabled=session.PermissionOverride.Sandbox;}return cfg;
         }
-        sealed class ImageDescriptionDraft {internal ImageDescriptionOverride Value;}
+        sealed class ImageDescriptionDraft {internal readonly System.Collections.Generic.Dictionary<string,ImageDescriptionOverride> Values=new System.Collections.Generic.Dictionary<string,ImageDescriptionOverride>();}
         System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft> imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();
+        static string ImageDescriptionDraftKey(ConversationWorkspace workspace,string persona){return workspace==null?"root:"+(persona??""):"workspace:"+workspace.Id;}
+        void RemoveImageDescriptionDraft(ConversationSession session,ConversationWorkspace workspace,string persona)
+        {ImageDescriptionDraft drafts;if(imageDescriptionDrafts.TryGetValue(session,out drafts)){drafts.Values.Remove(ImageDescriptionDraftKey(workspace,persona));if(drafts.Values.Count==0)imageDescriptionDrafts.Remove(session);}}
         internal ImageDescriptionOverride ConversationImageDescriptionDraft(ConversationSession session)
-        {ImageDescriptionDraft value;return imageDescriptionDrafts.TryGetValue(session,out value)?value.Value:ConversationSettings(session).ImageDescriptionOverride;}
+        {var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));string persona=session.PersonaId;ImageDescriptionDraft drafts;ImageDescriptionOverride value;return imageDescriptionDrafts.TryGetValue(session,out drafts)&&drafts.Values.TryGetValue(ImageDescriptionDraftKey(workspace,persona),out value)?value:ConversationSettings(session).ImageDescriptionOverride;}
         internal void SetConversationImageDescription(ConversationSession session,ImageDescriptionOverride value)
+        {var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));SetConversationImageDescription(session,workspace,session.PersonaId,value);}
+        internal void SetConversationImageDescription(ConversationSession session,ConversationWorkspace workspace,string persona,ImageDescriptionOverride value)
         {
-            var workspace=Workspaces.OpenWorkspaces.FirstOrDefault(w=>Object.ReferenceEquals(w.Session,session));var next=value==null?new ImageDescriptionOverride{Mode="inherit"}:value.Copy();imageDescriptionDrafts.Remove(session);imageDescriptionDrafts.Add(session,new ImageDescriptionDraft{Value=next});
-            if(workspace!=null&&workspace.IsDraft){workspace.Definition.ImageDescriptionOverride=next;imageDescriptionDrafts.Remove(session);return;}
-            ProjectStore.SaveImageDescriptionOverride(workspace==null?session.PersonaId:null,workspace==null?null:workspace.Id,next);
-            if(workspace==null){if(next.Mode=="inherit")Projects.RemoveLegacyImageDescriptionOverride(session.PersonaId);else Projects.LegacyImageDescriptionOverrides[session.PersonaId]=next.Copy();}
-            else workspace.Definition.ImageDescriptionOverride=next.Copy();imageDescriptionDrafts.Remove(session);
+            if(workspace!=null&&workspace.IsDisposed)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));
+            var next=value==null?new ImageDescriptionOverride{Mode="inherit"}:value.Copy();var drafts=imageDescriptionDrafts.GetOrCreateValue(session);drafts.Values[ImageDescriptionDraftKey(workspace,persona)]=next;
+            if(workspace!=null&&workspace.IsDraft){workspace.Definition.ImageDescriptionOverride=next;RemoveImageDescriptionDraft(session,workspace,persona);return;}
+            ProjectStore.SaveImageDescriptionOverride(workspace==null?persona:null,workspace==null?null:workspace.Id,next);
+            if(workspace==null){if(next.Mode=="inherit")Projects.RemoveLegacyImageDescriptionOverride(persona);else Projects.LegacyImageDescriptionOverrides[persona]=next.Copy();}
+            else workspace.Definition.ImageDescriptionOverride=next.Copy();RemoveImageDescriptionDraft(session,workspace,persona);
         }
         internal void ClearImageDescriptionAfterHistory(ConversationSession session,ConversationWorkspace workspace,string persona)
         {
             if(workspace==null){ProjectStore.SaveImageDescriptionOverride(persona,null,null);Projects.RemoveLegacyImageDescriptionOverride(persona);}
             else if(workspace.IsDraft)workspace.Definition.ImageDescriptionOverride=null;
             else{ProjectStore.SaveImageDescriptionOverride(null,workspace.Id,null);workspace.Definition.ImageDescriptionOverride=null;}
-            imageDescriptionDrafts.Remove(session);
+            RemoveImageDescriptionDraft(session,workspace,persona);
         }
         internal void ClearAllImageDescriptionOverrides()
         {ProjectStore.ClearImageDescriptionOverrides();Projects.ClearImageDescriptionOverrides();foreach(var workspace in Workspaces.OpenWorkspaces)workspace.Definition.ImageDescriptionOverride=null;imageDescriptionDrafts=new System.Runtime.CompilerServices.ConditionalWeakTable<ConversationSession,ImageDescriptionDraft>();}
