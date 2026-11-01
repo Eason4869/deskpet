@@ -113,6 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 tests/ProactiveRegistrationTests.py | tee "$REPORT_ROOT/proactive-registration.log"
           python3 tests/AgentJobRegistrationTests.py | tee "$REPORT_ROOT/agent-jobs-registration.log"
           python3 tests/FeatureResourceProvenanceTests.py
           python3 -m pip install -r tools/fonts/requirements.txt
@@ -123,6 +124,11 @@ jobs:
           python3 tools/verify_localization.py check --phase complete --report "$REPORT_ROOT/localization-audit.json"
           python3 tools/verify_language_packs.py --report "$REPORT_ROOT/language-pack-audit.json"
           dotnet build desktop/DeskPet.Tests/DeskPet.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --image-model-resolver-only 2>&1 | tee "$REPORT_ROOT/image-model-resolver.log"
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --image-input-router-only 2>&1 | tee "$REPORT_ROOT/image-input-router.log"
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --desktop-observation-only 2>&1 | tee "$REPORT_ROOT/desktop-observation-capture.log"
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --proactive-conversation-only 2>&1 | tee "$REPORT_ROOT/proactive-conversation.log"
+          dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --desktop-observation-policy-only 2>&1 | tee "$REPORT_ROOT/desktop-observation-policy-service.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --live-language-core-only | tee "$REPORT_ROOT/live-language-core.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --report-json "$REPORT_ROOT/core-tests.json" | tee "$REPORT_ROOT/core-tests.log"
           dotnet desktop/DeskPet.Tests/bin/Release/net10.0/DeskPet.Tests.dll --agent-jobs-only 2>&1 | tee "$REPORT_ROOT/agent-jobs-logic.log"
@@ -132,6 +138,7 @@ jobs:
           set -euo pipefail
           bash desktop/DeskPet.Platform.Mac/native/self-test.sh '${{ matrix.arch }}' 2>&1 | tee "$REPORT_ROOT/native-tests.log"
           dotnet build desktop/DeskPet.Platform.Mac/Tests/DeskPet.Platform.Mac.Tests.csproj -c Release -p:BuildInParallel=false -m:1 -nr:false
+          dotnet desktop/DeskPet.Platform.Mac/Tests/bin/Release/net10.0/DeskPet.Platform.Mac.Tests.dll --observation-only 2>&1 | tee "$REPORT_ROOT/platform-observation.log"
           dotnet desktop/DeskPet.Platform.Mac/Tests/bin/Release/net10.0/DeskPet.Platform.Mac.Tests.dll --native-smoke | tee "$REPORT_ROOT/platform-tests.log"
       - name: Avalonia UI and resources regression
         shell: bash
