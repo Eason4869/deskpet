@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Não foi possível salvar as alterações. Tente novamente.",
   "desktopObservation.noDestination": "Nenhum serviço de recebimento disponível",
   "desktopObservation.consentTitle": "Confirme a captura de tela",
-  "desktopObservation.consentBody": "Os serviços abaixo receberão informações da janela ativa. Conteúdo sensível pode ser incluído; exclua aplicativos que você não deseja compartilhar.\n{0}\\n{0}",
+  "desktopObservation.consentBody": "Os serviços abaixo receberão informações da janela ativa. Conteúdo sensível pode ser incluído; exclua aplicativos que você não deseja compartilhar.\n{0}\n{0}",
   "desktopObservation.consentAccept": "Permitir",
   "desktopObservation.consentCancel": "Cancelar",
   "desktopObservation.bundleIdLabel": "Identificador do pacote de aplicativos",

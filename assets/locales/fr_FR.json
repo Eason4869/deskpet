@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Impossible d'enregistrer les modifications. Essayer à nouveau.",
   "desktopObservation.noDestination": "Aucun service de réception disponible",
   "desktopObservation.consentTitle": "Confirmer la capture d'écran",
-  "desktopObservation.consentBody": "Les services ci-dessous recevront les informations de la fenêtre active. Du contenu sensible peut être inclus ; exclure les applications que vous ne souhaitez pas partager.\nBUREAUPLACEHOLDERZERO\\n{0}",
+  "desktopObservation.consentBody": "Les services ci-dessous recevront les informations de la fenêtre active. Du contenu sensible peut être inclus ; exclure les applications que vous ne souhaitez pas partager.\nBUREAUPLACEHOLDERZERO\n{0}",
   "desktopObservation.consentAccept": "Permettre",
   "desktopObservation.consentCancel": "Annuler",
   "desktopObservation.bundleIdLabel": "Identifiant de l'ensemble d'applications",

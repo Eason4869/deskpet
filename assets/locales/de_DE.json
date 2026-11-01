@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Änderungen konnten nicht gespeichert werden. Versuchen Sie es erneut.",
   "desktopObservation.noDestination": "Kein Empfangsdienst verfügbar",
   "desktopObservation.consentTitle": "Bestätigen Sie die Bildschirmaufnahme",
-  "desktopObservation.consentBody": "Die folgenden Dienste erhalten Informationen aus dem aktiven Fenster. Es können sensible Inhalte enthalten sein; Schließen Sie Apps aus, die Sie nicht teilen möchten.\nSCHREIBTISCHPLATZHALTERZERO\\n{0}",
+  "desktopObservation.consentBody": "Die folgenden Dienste erhalten Informationen aus dem aktiven Fenster. Es können sensible Inhalte enthalten sein; Schließen Sie Apps aus, die Sie nicht teilen möchten.\nSCHREIBTISCHPLATZHALTERZERO\n{0}",
   "desktopObservation.consentAccept": "Erlauben",
   "desktopObservation.consentCancel": "Stornieren",
   "desktopObservation.bundleIdLabel": "App-Bundle-ID",

@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Tidak dapat menyimpan perubahan. Coba lagi.",
   "desktopObservation.noDestination": "Tidak ada layanan penerimaan yang tersedia",
   "desktopObservation.consentTitle": "Konfirmasikan tangkapan layar",
-  "desktopObservation.consentBody": "Layanan di bawah ini akan menerima informasi dari jendela aktif. Konten sensitif mungkin disertakan; kecualikan aplikasi yang tidak ingin Anda bagikan.\n{0}\\n{0}",
+  "desktopObservation.consentBody": "Layanan di bawah ini akan menerima informasi dari jendela aktif. Konten sensitif mungkin disertakan; kecualikan aplikasi yang tidak ingin Anda bagikan.\n{0}\n{0}",
   "desktopObservation.consentAccept": "Mengizinkan",
   "desktopObservation.consentCancel": "Membatalkan",
   "desktopObservation.bundleIdLabel": "Pengidentifikasi paket aplikasi",
