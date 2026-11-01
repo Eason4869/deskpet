@@ -33,7 +33,7 @@ namespace Dafeiyu
     {
         private const int MaximumBytes = 4 * 1024 * 1024;
         private static readonly DesktopCaptureWorker captureWorker = new DesktopCaptureWorker();
-        internal static bool CaptureBusy { get { return captureWorker.IsBusy; } }
+        internal static DesktopCaptureWorker CaptureWorker { get { return captureWorker; } }
         private static int iconBusy;
         private static readonly object iconSync = new object();
         private static readonly Dictionary<string, byte[]> executableIcons = new Dictionary<string, byte[]>();
@@ -108,18 +108,10 @@ namespace Dafeiyu
             }
         }
 
-        internal static Task<byte[]> CaptureObservationAsync(DesktopCaptureOptions options, Action<ApplicationSnapshotTarget> selected, CancellationToken cancel)
+        internal static byte[] CaptureObservation(ApplicationSnapshotTarget target, CancellationToken cancel)
         {
-            // Include process identity/path lookup and encoding in the same two-second wait budget.
-            return captureWorker.RunAsync(delegate(CancellationToken lifetime)
-            {
-                if (!InteractiveDesktop()) return null;
-                ApplicationSnapshotTarget target = Foreground(options);
-                if (target == null) return null;
-                selected(target);
-                try { return Capture(target, lifetime, true); }
-                catch (InvalidOperationException) { if (!MatchesObservation(target.ObservationIdentity)) return null; throw; }
-            }, cancel);
+            try { return Capture(target, cancel, true); }
+            catch (InvalidOperationException) { if (!MatchesObservation(target.ObservationIdentity)) return null; throw; }
         }
 
         // Exact foreground only, with no Z-order walk and no icon retrieval.
@@ -178,7 +170,41 @@ namespace Dafeiyu
             finally { CloseDesktop(desktop); }
         }
 
+        internal static bool HasEligibleForeground()
+        {
+            IntPtr handle = GetForegroundWindow(); uint pid;
+            GetWindowThreadProcessId(handle, out pid);
+            if (handle == IntPtr.Zero || pid == 0 || pid == Process.GetCurrentProcess().Id || !Eligible(handle)) return false;
+            uint affinity;
+            return !(GetWindowDisplayAffinity(handle, out affinity) && affinity != 0) && GetForegroundWindow() == handle;
+        }
+
+        // A live Windows process cannot replace its executable image while retaining its PID and
+        // start time. Revalidate that lifetime and cheap window state, without module enumeration.
         internal static bool MatchesObservation(DesktopObservationIdentity expected)
+        {
+            if (expected == null || String.IsNullOrWhiteSpace(expected.ApplicationId) || !Path.IsPathRooted(expected.ApplicationId) || !InteractiveDesktop()) return false;
+            IntPtr previousDpi = IntPtr.Zero;
+            try
+            {
+                try { previousDpi = SetThreadDpiAwarenessContext(new IntPtr(-4)); } catch (EntryPointNotFoundException) { }
+                IntPtr handle = new IntPtr(expected.WindowId);
+                if (GetForegroundWindow() != handle) return false;
+                ValidateIdentity(new ApplicationSnapshotTarget { Handle = handle, ProcessId = expected.ProcessId,
+                    ProcessStartTicks = expected.ProcessStartTicks, WindowThread = expected.WindowThreadId,
+                    OriginalTitle = expected.WindowTitle, WindowClass = expected.WindowClass });
+                Rect bounds; uint affinity;
+                return GetWindowRect(handle, out bounds) && bounds.Left == expected.X && bounds.Top == expected.Y &&
+                    bounds.Right - bounds.Left == expected.Width && bounds.Bottom - bounds.Top == expected.Height &&
+                    !(GetWindowDisplayAffinity(handle, out affinity) && affinity != 0) && GetForegroundWindow() == handle;
+            }
+            catch (ArgumentException) { return false; }
+            catch (InvalidOperationException) { return false; }
+            catch (System.ComponentModel.Win32Exception) { return false; }
+            finally { if (previousDpi != IntPtr.Zero) SetThreadDpiAwarenessContext(previousDpi); }
+        }
+
+        internal static bool MatchesObservationWithApplicationPath(DesktopObservationIdentity expected)
         {
             if (expected == null || !InteractiveDesktop()) return false;
             ApplicationSnapshotTarget current = Foreground(new DesktopCaptureOptions());
@@ -405,31 +431,68 @@ namespace Dafeiyu
     public sealed class WindowsDesktopObservationCapture : IDesktopObservationCapture
     {
         private readonly Func<bool> interactive;
+        private readonly DesktopCaptureWorker worker;
+        private readonly Func<DesktopCaptureOptions, ApplicationSnapshotTarget> foreground;
+        private readonly Func<ApplicationSnapshotTarget, CancellationToken, byte[]> encode;
+        private readonly Func<DesktopObservationIdentity, bool> finalValidation;
         public WindowsDesktopObservationCapture() : this(ApplicationSnapshots.InteractiveDesktop) { }
-        internal WindowsDesktopObservationCapture(Func<bool> interactive) { this.interactive = interactive; }
+        internal WindowsDesktopObservationCapture(Func<bool> interactive) : this(interactive, ApplicationSnapshots.CaptureWorker,
+            ApplicationSnapshots.Foreground, ApplicationSnapshots.CaptureObservation, ApplicationSnapshots.MatchesObservationWithApplicationPath) { }
+        // Native boundaries are injectable, but scheduling, deadline and ownership stay in this adapter.
+        internal WindowsDesktopObservationCapture(Func<bool> interactive, DesktopCaptureWorker worker,
+            Func<DesktopCaptureOptions, ApplicationSnapshotTarget> foreground,
+            Func<ApplicationSnapshotTarget, CancellationToken, byte[]> encode, Func<DesktopObservationIdentity, bool> finalValidation)
+        {
+            this.interactive = interactive; this.worker = worker; this.foreground = foreground;
+            this.encode = encode; this.finalValidation = finalValidation;
+        }
         public DesktopCaptureStatus GetStatus()
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT) return DesktopCaptureStatus.UnsupportedPlatform;
             if (!interactive()) return DesktopCaptureStatus.NonInteractiveDesktop;
-            if (ApplicationSnapshots.CaptureBusy) return DesktopCaptureStatus.Busy;
-            return ApplicationSnapshots.Foreground(new DesktopCaptureOptions()) == null ? DesktopCaptureStatus.NoEligibleForeground : DesktopCaptureStatus.Ready;
+            if (worker.IsBusy) return DesktopCaptureStatus.Busy;
+            // Status is only a cheap preflight. Executable lookup and exclusion admission stay
+            // inside the bounded capture worker, never on a synchronous UI status call.
+            return ApplicationSnapshots.HasEligibleForeground() ? DesktopCaptureStatus.Ready : DesktopCaptureStatus.NoEligibleForeground;
         }
         public async Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options, CancellationToken cancel)
         {
             cancel.ThrowIfCancellationRequested();
             if (options == null) throw new ArgumentNullException("options");
-            if (Environment.OSVersion.Platform != PlatformID.Win32NT || !interactive()) return null;
+            if (!interactive()) return null;
             ApplicationSnapshotTarget target = null;
             DateTimeOffset capturedAt = default(DateTimeOffset);
-            byte[] png = await ApplicationSnapshots.CaptureObservationAsync(options, delegate(ApplicationSnapshotTarget value)
-            { target = value; capturedAt = DateTimeOffset.UtcNow; }, cancel).ConfigureAwait(false);
-            if (png == null) return null;
-            var frame = new DesktopObservationFrame(png, capturedAt, target.ObservationIdentity);
-            if (cancel.IsCancellationRequested || !IsCurrent(frame))
+            byte[] png = await worker.RunAsync(delegate(CancellationToken lifetime)
             {
-                frame.Dispose(); cancel.ThrowIfCancellationRequested(); return null;
+                if (!interactive()) return null;
+                target = foreground(options);
+                if (target == null) return null;
+                capturedAt = DateTimeOffset.UtcNow;
+                byte[] encoded = null;
+                try
+                {
+                    encoded = encode(target, lifetime);
+                    lifetime.ThrowIfCancellationRequested();
+                    if (encoded == null || !finalValidation(target.ObservationIdentity)) return null;
+                    lifetime.ThrowIfCancellationRequested();
+                    byte[] delivered = encoded; encoded = null; return delivered;
+                }
+                finally { if (encoded != null) Array.Clear(encoded, 0, encoded.Length); }
+            }, cancel).ConfigureAwait(false);
+            if (png == null) return null;
+            DesktopObservationFrame frame = null;
+            try
+            {
+                cancel.ThrowIfCancellationRequested();
+                frame = new DesktopObservationFrame(png, capturedAt, target.ObservationIdentity);
+                cancel.ThrowIfCancellationRequested();
+                return frame;
             }
-            return frame;
+            catch
+            {
+                if (frame != null) frame.Dispose(); else Array.Clear(png, 0, png.Length);
+                throw;
+            }
         }
         public bool IsCurrent(DesktopObservationFrame frame)
         {

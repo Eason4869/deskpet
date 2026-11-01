@@ -21,7 +21,9 @@ namespace Dafeiyu.Tests
 #if !DESKTOP_OBSERVATION_PORTABLE
                 if (args.Length > 0 && args[0] == "--fixture") return Fixture(args);
 #endif
-                Contracts(); Worker();
+                if (args.Length > 0 && args[0] == "--adapter-timeout-only") { FinalValidation(false); return 0; }
+                if (args.Length > 0 && args[0] == "--adapter-cancel-only") { FinalValidation(true); return 0; }
+                Contracts(); Worker(); FinalValidation(false); FinalValidation(true);
 #if !DESKTOP_OBSERVATION_PORTABLE
                 Native();
 #endif
@@ -81,6 +83,66 @@ namespace Dafeiyu.Tests
             Check(success[0] == 9 && !worker.IsBusy, "completed capture transfers live bytes and permits next capture");
             release.Dispose(); started.Dispose();
         }
+        // Inject only native boundaries; exercise the actual adapter's deadline, gate and byte ownership.
+#if DESKTOP_OBSERVATION_PORTABLE
+#pragma warning disable CA1416
+#endif
+        static void FinalValidation(bool cancellation)
+        {
+            var worker = new DesktopCaptureWorker();
+            using (var entered = new ManualResetEventSlim()) using (var release = new ManualResetEventSlim())
+            using (var cancel = new CancellationTokenSource())
+            {
+                byte[] encoded = { 137, 80, 78, 71 }; int selections = 0, encodings = 0;
+                var identity = new DesktopObservationIdentity(42, 7, 900, 8, "C:\\fixture\\app.exe", "title", "class", 0, 0, 800, 600);
+                var target = new ApplicationSnapshotTarget { ObservationIdentity = identity };
+                var adapter = new WindowsDesktopObservationCapture(delegate { return true; }, worker,
+                    delegate(DesktopCaptureOptions options) { Interlocked.Increment(ref selections); return target; },
+                    delegate(ApplicationSnapshotTarget value, CancellationToken token) { Interlocked.Increment(ref encodings); return encoded; },
+                    delegate(DesktopObservationIdentity value) { entered.Set(); release.Wait(); return true; });
+                Task<DesktopObservationFrame> capture = null, second = null;
+                var watch = Stopwatch.StartNew();
+                try
+                {
+                    capture = Task.Factory.StartNew(delegate { return adapter.CaptureForegroundAsync(new DesktopCaptureOptions(), cancel.Token); }).Unwrap();
+                    Check(entered.Wait(1000) && encodings == 1 && encoded[0] == 137, "adapter completed encoding before pending final validation");
+                    if (cancellation) cancel.Cancel();
+                    Check(SpinWait.SpinUntil(delegate { return capture.IsCompleted; }, cancellation ? 1000 : 3200),
+                        cancellation ? "adapter cancellation returns while final validation remains pending" : "adapter deadline includes pending final validation");
+                    bool expectedFailure = false;
+                    try { var unexpected = capture.GetAwaiter().GetResult(); if (unexpected != null) unexpected.Dispose(); }
+                    catch (TimeoutException) { expectedFailure = !cancellation; }
+                    catch (OperationCanceledException) { expectedFailure = cancellation; }
+                    Check(expectedFailure && watch.ElapsedMilliseconds < (cancellation ? 1500 : 3500) && (cancellation || watch.ElapsedMilliseconds >= 1800),
+                        "adapter reports timeout/cancellation without delivering a frame");
+                    Check(worker.IsBusy, "pending final validation retains the same worker slot");
+                    second = Task.Factory.StartNew(delegate { return adapter.CaptureForegroundAsync(new DesktopCaptureOptions(), CancellationToken.None); }).Unwrap();
+                    Check(SpinWait.SpinUntil(delegate { return second.IsCompleted; }, 500), "second capture fails promptly while final validation owns worker");
+                    bool busy = false;
+                    try { var unexpected = second.GetAwaiter().GetResult(); if (unexpected != null) unexpected.Dispose(); }
+                    catch (InvalidOperationException) { busy = true; }
+                    Check(busy && selections == 1 && encodings == 1, "pending final validation starts no second capture or encoding worker");
+                    release.Set();
+                    Check(SpinWait.SpinUntil(delegate { return !worker.IsBusy; }, 1500) && encoded[0] == 0 && encoded[3] == 0,
+                        "late final validation clears encoded bytes before worker release");
+                    Console.WriteLine("Adapter final validation " + (cancellation ? "cancellation" : "timeout") + ": passed.");
+                }
+                finally
+                {
+                    release.Set();
+                    foreach (var pending in new[] { capture, second }) if (pending != null)
+                    {
+                        SpinWait.SpinUntil(delegate { return pending.IsCompleted; }, 1500);
+                        if (pending.Status == TaskStatus.RanToCompletion && pending.Result != null) pending.Result.Dispose();
+                        else if (pending.IsFaulted) { var ignored = pending.Exception; }
+                    }
+                    SpinWait.SpinUntil(delegate { return !worker.IsBusy; }, 1500);
+                }
+            }
+        }
+#if DESKTOP_OBSERVATION_PORTABLE
+#pragma warning restore CA1416
+#endif
 #if !DESKTOP_OBSERVATION_PORTABLE
         static int Fixture(string[] args)
         {
