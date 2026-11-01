@@ -32,6 +32,16 @@ namespace Dafeiyu.Tests
                     Check(a.Queue.Items.Count==0 && b.Queue.Items.Count==0,"workspace queues are separate");
                     Check(a.DataDirectory!=b.DataDirectory && File.Exists(Path.Combine(a.DataDirectory,"history"))==false,"workspace storage is namespaced by conversation");
                 }
+                var temporary=new ConversationDefinition{Id="transient",Name="reply",Mode="chat",PetId="pet"};
+                using(var draft=ConversationWorkspace.Create(project,temporary,root,"pet",()=>new Api(),()=>new Speech(),()=>null,Settings,()=>true,transient:true))
+                {
+                    Check(!Directory.Exists(draft.DataDirectory),"unanswered proactive workspace creates no directory");
+                    bool rejected=false;try{draft.Queue.Enqueue("unsent");}catch(InvalidOperationException){rejected=true;}
+                    Check(rejected,"unadmitted queue rejects persistence and model work");
+                    Check(!Directory.Exists(draft.DataDirectory),"unadmitted queue creates no files");
+                    draft.CloseAsync().GetAwaiter().GetResult();
+                    Check(!Directory.Exists(draft.DataDirectory),"closing unanswered workspace leaves no artifacts");
+                }
                 Console.WriteLine("Conversation workspace tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
         }
