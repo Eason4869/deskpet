@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Could not save changes. Try again.",
   "desktopObservation.noDestination": "No receiving service available",
   "desktopObservation.consentTitle": "Confirm screen capture",
-  "desktopObservation.consentBody": "The services below will receive information from the active window. Sensitive content may be included; exclude apps you do not want to share.\\n{0}",
+  "desktopObservation.consentBody": "The services below will receive information from the active window. Sensitive content may be included; exclude apps you do not want to share.\n{0}",
   "desktopObservation.consentAccept": "Allow",
   "desktopObservation.consentCancel": "Cancel",
   "desktopObservation.bundleIdLabel": "App bundle identifier",

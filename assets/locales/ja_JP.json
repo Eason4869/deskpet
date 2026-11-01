@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "変更を保存できませんでした。もう一度やり直してください。",
   "desktopObservation.noDestination": "受信サービスはありません",
   "desktopObservation.consentTitle": "画面キャプチャを確認する",
-  "desktopObservation.consentBody": "以下のサービスは、アクティブなウィンドウから情報を受け取ります。機密性の高いコンテンツが含まれる場合があります。共有したくないアプリを除外します。\nデスクペットプレースホルダーゼロ\\n{0}",
+  "desktopObservation.consentBody": "以下のサービスは、アクティブなウィンドウから情報を受け取ります。機密性の高いコンテンツが含まれる場合があります。共有したくないアプリを除外します。\nデスクペットプレースホルダーゼロ\n{0}",
   "desktopObservation.consentAccept": "許可する",
   "desktopObservation.consentCancel": "キャンセル",
   "desktopObservation.bundleIdLabel": "アプリバンドル識別子",

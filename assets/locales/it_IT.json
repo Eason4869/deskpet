@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Impossibile salvare le modifiche. Riprova.",
   "desktopObservation.noDestination": "Nessun servizio di ricezione disponibile",
   "desktopObservation.consentTitle": "Conferma l'acquisizione dello schermo",
-  "desktopObservation.consentBody": "I servizi sottostanti riceveranno informazioni dalla finestra attiva. Potrebbero essere inclusi contenuti sensibili; escludi le app che non desideri condividere.\nDESKPETPLACEWAYZERO\\n{0}",
+  "desktopObservation.consentBody": "I servizi sottostanti riceveranno informazioni dalla finestra attiva. Potrebbero essere inclusi contenuti sensibili; escludi le app che non desideri condividere.\nDESKPETPLACEWAYZERO\n{0}",
   "desktopObservation.consentAccept": "Permettere",
   "desktopObservation.consentCancel": "Cancellare",
   "desktopObservation.bundleIdLabel": "Identificatore dell'app bundle",

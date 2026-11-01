@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "परिवर्तन सहेजे नहीं जा सके. पुनः प्रयास करें।",
   "desktopObservation.noDestination": "कोई प्राप्ति सेवा उपलब्ध नहीं है",
   "desktopObservation.consentTitle": "स्क्रीन कैप्चर की पुष्टि करें",
-  "desktopObservation.consentBody": "नीचे दी गई सेवाओं को सक्रिय विंडो से जानकारी प्राप्त होगी। संवेदनशील सामग्री शामिल की जा सकती है; उन ऐप्स को बाहर करें जिन्हें आप साझा नहीं करना चाहते हैं।\nडेस्कपेटप्लेसहोल्डरशून्य\\n{0}",
+  "desktopObservation.consentBody": "नीचे दी गई सेवाओं को सक्रिय विंडो से जानकारी प्राप्त होगी। संवेदनशील सामग्री शामिल की जा सकती है; उन ऐप्स को बाहर करें जिन्हें आप साझा नहीं करना चाहते हैं।\nडेस्कपेटप्लेसहोल्डरशून्य\n{0}",
   "desktopObservation.consentAccept": "अनुमति दें",
   "desktopObservation.consentCancel": "रद्द करना",
   "desktopObservation.bundleIdLabel": "ऐप बंडल पहचानकर्ता",
