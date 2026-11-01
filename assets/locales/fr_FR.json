@@ -4754,5 +4754,9 @@
   "im.scanConnect": "Connexion par QR code",
   "im.scanHelp": "Scannez pour créer ou associer un bot. Les identifiants restent sur cet ordinateur. La connexion suit votre autorisation.",
   "im.manualConnect": "Configuration manuelle",
-  "im.accessOptions": "Restrictions d’accès (facultatif)"
+  "im.accessOptions": "Restrictions d’accès (facultatif)",
+  "imageDescription.unavailable": "La description d’image est indisponible. Vérifiez les paramètres des modèles de conversation et de description d’image.",
+  "imageDescription.timeout": "La description d’image a expiré. Vérifiez le service et réessayez.",
+  "imageDescription.network": "Connexion au service de description d’image impossible. Vérifiez les paramètres et le réseau, puis réessayez.",
+  "imageDescription.failed": "La description d’image a échoué. Vérifiez le service et réessayez."
 }

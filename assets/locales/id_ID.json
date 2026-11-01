@@ -4754,5 +4754,9 @@
   "im.scanConnect": "Hubungkan lewat kode QR",
   "im.scanHelp": "Pindai untuk membuat atau menautkan bot. Kredensial disimpan di komputer ini. Bot terhubung setelah diizinkan.",
   "im.manualConnect": "Konfigurasi manual",
-  "im.accessOptions": "Batas akses (opsional)"
+  "im.accessOptions": "Batas akses (opsional)",
+  "imageDescription.unavailable": "Deskripsi gambar tidak tersedia. Periksa pengaturan model percakapan dan deskripsi gambar.",
+  "imageDescription.timeout": "Waktu deskripsi gambar habis. Periksa layanan dan coba lagi.",
+  "imageDescription.network": "Tidak dapat terhubung ke layanan deskripsi gambar. Periksa pengaturan dan jaringan, lalu coba lagi.",
+  "imageDescription.failed": "Deskripsi gambar gagal. Periksa layanan dan coba lagi."
 }

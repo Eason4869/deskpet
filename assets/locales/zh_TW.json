@@ -4754,5 +4754,9 @@
   "im.scanConnect": "掃碼連接",
   "im.scanHelp": "用手機掃碼建立或綁定機器人。憑證儲存在本機，掃碼成功後即可連接。",
   "im.manualConnect": "手動填寫",
-  "im.accessOptions": "存取限制（選填）"
+  "im.accessOptions": "存取限制（選填）",
+  "imageDescription.unavailable": "圖片轉述無法使用，請檢查對話模型和圖片轉述模型的設定。",
+  "imageDescription.timeout": "圖片轉述逾時，請檢查服務後重試。",
+  "imageDescription.network": "圖片轉述服務連線失敗，請檢查設定和網路後重試。",
+  "imageDescription.failed": "圖片轉述失敗，請檢查服務後重試。"
 }

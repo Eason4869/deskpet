@@ -289,7 +289,7 @@ namespace Dafeiyu
             }
             bool preprocessing=request.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage));if(preprocessing&&op.ImagePreprocessing!=null)op.ImagePreprocessing(true);
             var automaticStore=ProactiveEvents;var projection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),request,token,(message,image,description)=>{if(automaticStore==null || !message.TurnId.StartsWith("proactive-",StringComparison.Ordinal))return false;string eventId=message.TurnId.Substring("proactive-".Length),revision;return automaticRevisions.TryGetValue(eventId,out revision) && automaticStore.TrySetDescription(eventId,op.PersonaId,revision,Convert.FromBase64String(image.Data),description);}).ConfigureAwait(false);
-            if(!projection.Available)throw new ApiException(projection.Route.Route==ImageRouteKind.Unavailable?TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"):"Image description failed ("+projection.Notice+").",projection.Notice);
+            if(!projection.Available)throw new ApiException(ImageInputFailure(projection.Notice),projection.Notice);
 
             request=projection.Messages.ToList();ConversationLog.BudgetRequest(request);
             lock(gate) {
@@ -343,7 +343,7 @@ namespace Dafeiyu
             var state=op.Workspace.TaskState;if(state.Guidance==null)state.Guidance=new List<AgentGuidance>();var fresh=new List<AgentGuidance>();var accepted=new List<AgentGuidance>();
             foreach(var guide in pending){
                 if(state.Guidance.Any(g=>g.Id==guide.Id && g.Revision==guide.Revision)){accepted.Add(guide);continue;}
-                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var guidanceProjection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),new[]{message},cancel).ConfigureAwait(false);if(!guidanceProjection.Available)throw new ApiException(guidanceProjection.Route.Route==ImageRouteKind.Unavailable?TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"):"Image description failed ("+guidanceProjection.Notice+").",guidanceProjection.Notice);message=guidanceProjection.Messages[0];var proposed=result.Concat(new[]{message}).ToList();
+                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var guidanceProjection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),new[]{message},cancel).ConfigureAwait(false);if(!guidanceProjection.Available)throw new ApiException(ImageInputFailure(guidanceProjection.Notice),guidanceProjection.Notice);message=guidanceProjection.Messages[0];var proposed=result.Concat(new[]{message}).ToList();
                 var candidate=state.Copy();candidate.Guidance.Add(guide.Copy());
                 string blocked=!AgentTaskStore.FitsCheckpoint(candidate)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint"):op.Workspace.GuidanceFits!=null && !op.Workspace.GuidanceFits(proposed)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint.alternativeA"):null;
                 if(blocked!=null){if(fresh.Count==0)throw new ApiException(blocked);LastNotice=blocked;break;}
@@ -523,6 +523,13 @@ namespace Dafeiyu
             }
             lock(gate) if(Object.ReferenceEquals(active,op)){active=null;RuntimeAction=op.Outcome=="complete"?"review":op.Outcome=="error"?"failed":"idle";TerminalRevision++;}
             if(op.Workspace!=null){op.Workspace.Dispose();op.Workspace=null;}op.Cancel.Dispose();try{SetStage(ConversationStage.Idle);}finally{op.Complete.TrySetResult(true);if(op.Maintenance!=null)op.Maintenance.Dispose();}
+        }
+        static string ImageInputFailure(string code)
+        {
+            if(code=="description-timeout")return TextResources.Get("imageDescription.timeout");
+            if(code=="description-network-error")return TextResources.Get("imageDescription.network");
+            if(code=="description-invalid-result" || code=="description-failed")return TextResources.Get("imageDescription.failed");
+            return TextResources.Get("imageDescription.unavailable");
         }
         public void Clear() {using(Maintenance.EnterActivity()){ lock(gate){if(active!=null)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));History.Clear();if(imageInputRouter!=null)imageInputRouter.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.clear.kernelWarning");}}if(HistoryChanged!=null)HistoryChanged(); }}
         internal async Task SaveHistoryForCloseAsync()

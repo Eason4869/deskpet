@@ -4754,5 +4754,9 @@
   "im.scanConnect": "QRコードで接続",
   "im.scanHelp": "スマートフォンで読み取り、ボットを作成または連携します。認証情報はこのPCに保存され、承認後に接続します。",
   "im.manualConnect": "手動で設定",
-  "im.accessOptions": "アクセス制限（任意）"
+  "im.accessOptions": "アクセス制限（任意）",
+  "imageDescription.unavailable": "画像説明を利用できません。会話モデルと画像説明モデルの設定を確認してください。",
+  "imageDescription.timeout": "画像説明がタイムアウトしました。サービスを確認して再試行してください。",
+  "imageDescription.network": "画像説明サービスに接続できません。設定とネットワークを確認して再試行してください。",
+  "imageDescription.failed": "画像説明に失敗しました。サービスを確認して再試行してください。"
 }

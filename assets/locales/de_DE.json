@@ -4754,5 +4754,9 @@
   "im.scanConnect": "Mit QR-Code verbinden",
   "im.scanHelp": "Scanne den Code, um einen Bot zu erstellen oder zu verknüpfen. Zugangsdaten bleiben auf diesem Computer. Nach der Freigabe wird die Verbindung hergestellt.",
   "im.manualConnect": "Manuell einrichten",
-  "im.accessOptions": "Zugriff einschränken (optional)"
+  "im.accessOptions": "Zugriff einschränken (optional)",
+  "imageDescription.unavailable": "Die Bildbeschreibung ist nicht verfügbar. Prüfe die Einstellungen des Gesprächs- und Bildbeschreibungsmodells.",
+  "imageDescription.timeout": "Zeitüberschreitung bei der Bildbeschreibung. Prüfe den Dienst und versuche es erneut.",
+  "imageDescription.network": "Der Bildbeschreibungsdienst ist nicht erreichbar. Prüfe Einstellungen und Netzwerk und versuche es erneut.",
+  "imageDescription.failed": "Die Bildbeschreibung ist fehlgeschlagen. Prüfe den Dienst und versuche es erneut."
 }
