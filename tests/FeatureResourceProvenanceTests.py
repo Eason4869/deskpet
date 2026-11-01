@@ -77,6 +77,64 @@ class FeatureProvenanceTests(unittest.TestCase):
         result = self.check()
         self.assertTrue(result['success'], result['errors'])
 
+    def test_known_mixed_translation_method_can_pass_with_technical_provenance(self):
+        self.provenance['translationMethod'] = 'mixed-assistant-and-google-translate'
+        self.write('docs/localization/feature-resource-provenance.json', self.provenance)
+        result = self.check()
+        self.assertTrue(result['success'], result['errors'])
+
+    def test_unsupported_translation_methods_are_rejected(self):
+        for method in ['google-translate', 'mixed-assistant-and-google-translate-approved', '', None, [], {}]:
+            with self.subTest(method=method):
+                changed = copy.deepcopy(self.provenance)
+                changed['translationMethod'] = method
+                self.write('docs/localization/feature-resource-provenance.json', changed)
+                result = self.check()
+                self.assertFalse(result['success'])
+                self.assertTrue(any('unsupported review declaration' in error for error in result['errors']), result['errors'])
+
+    def test_mixed_translation_method_cannot_claim_review_approval(self):
+        for field, value in [('nativeHumanReview', 'performed'), ('technicalReview', 'approved')]:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.provenance)
+                changed.update(translationMethod='mixed-assistant-and-google-translate')
+                changed[field] = value
+                self.write('docs/localization/feature-resource-provenance.json', changed)
+                result = self.check()
+                self.assertFalse(result['success'])
+                self.assertTrue(any('unsupported review declaration' in error for error in result['errors']), result['errors'])
+
+    def test_missing_or_unknown_review_declarations_are_rejected(self):
+        for field in ['translationMethod', 'nativeHumanReview', 'technicalReview', 'humanApproved']:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.provenance)
+                changed.update(translationMethod='mixed-assistant-and-google-translate')
+                if field in changed:
+                    del changed[field]
+                else:
+                    changed[field] = True
+                self.write('docs/localization/feature-resource-provenance.json', changed)
+                result = self.check()
+                self.assertFalse(result['success'])
+                self.assertTrue(any('unknown or missing provenance field' in error for error in result['errors']), result['errors'])
+
+    def test_mixed_translation_method_still_rejects_malformed_evidence(self):
+        for field in ['originCommit', 'sourceReferences', 'translations']:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.provenance)
+                changed.update(translationMethod='mixed-assistant-and-google-translate')
+                row = changed['resources'][0]
+                if field == 'originCommit':
+                    row[field] = '0' * 40
+                elif field == 'sourceReferences':
+                    row[field][0]['contextHash'] = '0' * 64
+                else:
+                    row[field]['ja_JP'] = '0' * 64
+                self.write('docs/localization/feature-resource-provenance.json', changed)
+                result = self.check()
+                self.assertFalse(result['success'])
+                self.assertFalse(any('unsupported review declaration' in error for error in result['errors']), result['errors'])
+
     def test_missing_provenance_cannot_exempt_a_prefix(self):
         self.provenance['resources'] = []
         self.write('docs/localization/feature-resource-provenance.json',self.provenance)
