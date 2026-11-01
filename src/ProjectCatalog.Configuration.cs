@@ -75,6 +75,34 @@ namespace Dafeiyu
                 finally{if(!committed&&File.Exists(temporary))File.Delete(temporary);}
             });
         }
+        internal static void PreserveImageDescriptionOverrides(ProjectCatalog current,ProjectCatalog candidate)
+        {
+            candidate.LegacyImageDescriptionOverrides=current.LegacyImageDescriptionOverrides.ToDictionary(pair=>pair.Key,pair=>pair.Value.Copy());
+            var existing=AllConversations(current).ToDictionary(conversation=>conversation.Id);
+            foreach(var conversation in AllConversations(candidate)){ConversationDefinition saved;if(existing.TryGetValue(conversation.Id,out saved))conversation.ImageDescriptionOverride=saved.ImageDescriptionOverride==null?null:saved.ImageDescriptionOverride.Copy();}
+        }
+        // Change only selection fields while holding the same writer lease as catalog saves.
+        public void SaveImageDescriptionOverride(string personaId,string conversationId,ImageDescriptionOverride value)
+        {
+            if(String.IsNullOrEmpty(personaId)==String.IsNullOrEmpty(conversationId))throw new ArgumentException("Specify exactly one selection owner.");
+            var selection=value==null?null:value.Copy();if(selection!=null)selection.Normalize();
+            SaveImageDescriptionChanges(latest=>{
+                if(!String.IsNullOrEmpty(personaId)){if(selection==null||selection.Mode=="inherit")latest.RemoveLegacyImageDescriptionOverride(personaId);else latest.LegacyImageDescriptionOverrides[personaId]=selection.Copy();}
+                else{var target=AllConversations(latest).SingleOrDefault(c=>c.Id==conversationId);if(target==null)throw new InvalidOperationException("Conversation no longer exists.");target.ImageDescriptionOverride=selection==null||selection.Mode=="inherit"?null:selection.Copy();}
+            });
+        }
+        public void ClearImageDescriptionOverrides(){SaveImageDescriptionChanges(latest=>latest.ClearImageDescriptionOverrides());}
+        void SaveImageDescriptionChanges(Action<ProjectCatalog> change)
+        {
+            string temporary=path+".image-selection-"+Guid.NewGuid().ToString("N")+".tmp";bool committed=false;
+            try{lock(gate){if(readFailed)throw new IOException(TextResources.Get("projectCatalog.save.text"));Directory.CreateDirectory(Path.GetDirectoryName(path));
+                using(var lease=new FileStream(path+".write.lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
+                    ProjectCatalog latest;if(File.Exists(path)){using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))latest=(ProjectCatalog)new DataContractJsonSerializer(typeof(ProjectCatalog)).ReadObject(stream);}else latest=new ProjectCatalog();
+                    NormalizeDefaults(latest);Validate(latest);MergeUnpublishedConfigurations(latest);if(BeforeSave!=null)BeforeSave(latest);change(latest);
+                    Validate(latest);using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){new DataContractJsonSerializer(typeof(ProjectCatalog)).WriteObject(stream,latest);stream.Flush(true);}AtomicFile.Commit(temporary,path);committed=true;ObservePublishedConfigurations(latest);if(AfterSave!=null)AfterSave(latest);
+                }}
+            }finally{if(!committed&&File.Exists(temporary))File.Delete(temporary);}
+        }
         void MergeUnpublishedConfigurations(ProjectCatalog candidate)
         {lock(configurationGate){List<ProjectConfigurationPublication> list;if(configurationPublications.TryGetValue(path,out list))foreach(var publication in list)publication.Merge(candidate);}}
         void ObservePublishedConfigurations(ProjectCatalog committed)

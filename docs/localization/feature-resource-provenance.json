@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+  "resourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
   "translationMethod": "assistant-authored",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
@@ -1355,6 +1355,11 @@
         },
         {
           "file": "desktop/DeskPet.Desktop/DataManagementView.cs",
+          "contextHash": "1ba7292db6af1257d7c0d97c1e52b7d6e860cc1a7efdf4712b841be97d75951c",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/DataManagementView.cs",
           "contextHash": "754216856299275f52e7a75fb5edbf5dabb342a0b434c93c6a5af92fd364e62a",
           "count": 1
         },
@@ -1364,18 +1369,13 @@
           "count": 1
         },
         {
-          "file": "desktop/DeskPet.Desktop/DataManagementView.cs",
-          "contextHash": "cd63c59da89583d5754c5d720d2f467871938143f13024b0e8b5920227161e95",
-          "count": 1
-        },
-        {
           "file": "src/DataActionConfirmationWindow.cs",
           "contextHash": "b9994cc3898dbc8a6767c1824ef814f0a5736405dab5dbd016155e40ce83a6b6",
           "count": 1
         },
         {
           "file": "src/DataManagementPanel.cs",
-          "contextHash": "1857f65d05f47202b74d8a0351ac5964d177ab658693df92da3d05887b4946d5",
+          "contextHash": "01f891dcea97acbd131b93e993517b00e8a87463fed2612d6a0d84f3ef2fc55b",
           "count": 1
         },
         {
@@ -1613,12 +1613,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/DataManagementView.cs",
-          "contextHash": "cd63c59da89583d5754c5d720d2f467871938143f13024b0e8b5920227161e95",
+          "contextHash": "1ba7292db6af1257d7c0d97c1e52b7d6e860cc1a7efdf4712b841be97d75951c",
           "count": 1
         },
         {
           "file": "src/DataManagementPanel.cs",
-          "contextHash": "1857f65d05f47202b74d8a0351ac5964d177ab658693df92da3d05887b4946d5",
+          "contextHash": "01f891dcea97acbd131b93e993517b00e8a87463fed2612d6a0d84f3ef2fc55b",
           "count": 1
         }
       ],
@@ -8316,6 +8316,400 @@
         "zh_CN": "06bc14b60f3598a3fde833340ee93e8c934fa6eff21bbd6a6df354528b53af01",
         "zh_TW": "66046513e3ca694e8f11251dcdf24ef0aadf9e711d29ec3a6785fcc9bfcb185b"
       }
+    },
+    {
+      "key": "imageDescription.unavailable",
+      "originCommit": "cb76157b8593d1019691d93cd01b3f207b86d2d6",
+      "originKey": "imageDescription.unavailable",
+      "originValueSha256": "049b1d0c71f627d6ee11d88bee8c109f185905e8f6d3886e4324fb8c70798904",
+      "textSha256": "049b1d0c71f627d6ee11d88bee8c109f185905e8f6d3886e4324fb8c70798904",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "a8c76537a96dccd42cc6a3ea2968f03eab56c2d841af45bc1513da044e0a34cb",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "bde9f71a1efaeab79060befe3459d8485d555910ecc6fdd9cd53ff9d9a500793",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationSession.cs",
+          "contextHash": "0fece1e328b20fd1527211a11cf29577aaf034ef4a6dcc924a3c277af08112af",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "9483d896804b106e3341dd8de917afb98fcf9f6a95d65e8e4686bdf2b730a6ac",
+        "en_US": "70448ce5e0b65070d3386b73d2c0aa8edfc74e62b0c0c0152ccee81a48fac8af",
+        "es_419": "e9805524076b6cbdf6709472c0676c1b7dc8167a29c67eafd54e44fb8ef072e0",
+        "es_ES": "e9805524076b6cbdf6709472c0676c1b7dc8167a29c67eafd54e44fb8ef072e0",
+        "fr_FR": "ed48c0baad95c0144b14fe3ab8482fe1ce157f70098a6b32a38bf4b1bdc2b020",
+        "hi_IN": "c06bf5a828ce2be6f657a7f2416a1f22d1ab954e7e4a8d892f1387cd8895de80",
+        "id_ID": "d49fad97092e229e9bc0ded51c559c79986b58847901fc000cdb3438b6362524",
+        "it_IT": "916e17237201ff1e627f22d09e213a5666ba3543a558b2067a556f53a9aa76da",
+        "ja_JP": "385f4cf1db7b3c043eb93b65dd9f203dfc2a840884bccdc6b39efbd4f9743b2a",
+        "ko_KR": "695dc1f9cd8c31832534a9715ef05f25afc56feb9b999e7d43fcc4550c7d887d",
+        "pt_BR": "7c079f9ee677a1ce9f1cc12b3cb897cc03dbf6cc8a9dab7160298f39326d348c",
+        "zh_CN": "049b1d0c71f627d6ee11d88bee8c109f185905e8f6d3886e4324fb8c70798904",
+        "zh_TW": "64f7641e2133b41e6b3cfc7e3c7e4205230c72e31e41c679790c66ac99bec0f1"
+      }
+    },
+    {
+      "key": "imageDescription.timeout",
+      "originCommit": "cb76157b8593d1019691d93cd01b3f207b86d2d6",
+      "originKey": "imageDescription.timeout",
+      "originValueSha256": "55519f36b902b267642bd98dd33f1f7a2758fbcea73415bb65bc432ddfc58c45",
+      "textSha256": "55519f36b902b267642bd98dd33f1f7a2758fbcea73415bb65bc432ddfc58c45",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationSession.cs",
+          "contextHash": "22eb4adf0a82e3a85a92c6ae3b9b0adfc9bff2ad73166ef75e81156969312155",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "43f13beddc9ee308874f0f08868c5d55960b799507a1ca1c8feb19a16332675d",
+        "en_US": "2fcd3f9a1bcfee4cca9fe327bd9def9f1f763019ba6012021b795d69ac684a18",
+        "es_419": "436aac632414f670cad9f63e5c8b77e4fc7255491d235b0db7a65f536e34f0db",
+        "es_ES": "887d2900d1d8142be1193886432db0a874754b6f681e91bf12a409a7142cf875",
+        "fr_FR": "cef1324cd8c90a2ce518209997f2aaaf298c63b67c3133d69d80a342dfb78b71",
+        "hi_IN": "9233d01289fd14747cd9474cdf1792be553c3b62f52c9da55ac245f45af3f24c",
+        "id_ID": "1bf881a2a8c41dd2d021ca114cd9f3df7079a84c8c67e9c94cce091978637d54",
+        "it_IT": "f78bf3b89869c87f53ea0a5a5a363a62ed0b1045ed46c99fe5958de282e0b386",
+        "ja_JP": "9ce0be819379f75100d52de01bfd6b889bdb13fae6e24ff32be15e2f87d4a392",
+        "ko_KR": "27b2b4a00785cdbf68579bde5d03f5539191d8eebe639489edda814fb06d8dde",
+        "pt_BR": "084983caa4776658b860cf56b730f3a29650c1416ddc7460772262baa9a7ff73",
+        "zh_CN": "55519f36b902b267642bd98dd33f1f7a2758fbcea73415bb65bc432ddfc58c45",
+        "zh_TW": "062ecade5ca5fc12293672f6935764d709906b686dae6c654b61964e2ba01622"
+      }
+    },
+    {
+      "key": "imageDescription.network",
+      "originCommit": "cb76157b8593d1019691d93cd01b3f207b86d2d6",
+      "originKey": "imageDescription.network",
+      "originValueSha256": "4acf65ccd91def24a50280ddbef0b44b0edff471f61605744c98e4eab5b5be59",
+      "textSha256": "4acf65ccd91def24a50280ddbef0b44b0edff471f61605744c98e4eab5b5be59",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationSession.cs",
+          "contextHash": "6ddfd629dd80eb1f943ce82190eb5f54aa979c071c6d459bc5c88d7af136ab3b",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "11c27515849f72b6be22da00ab3f8ab6f1c9055bd29bb8278df7b97e0523c5a0",
+        "en_US": "8db403831662c0998d429eced1c2204cb15a3766d9ea5ee81b6916c875ad4741",
+        "es_419": "c67ff5214350f7df83ec77de4f000221c5f070038cbde3d16a69a3f5670eef14",
+        "es_ES": "58293d2b4099b909dfe0cf0673feb9ffb8179b0ebe5a98aceaad8d67ad929bf4",
+        "fr_FR": "400dcd2047fd526259a8cf9145e0f4ddc4601d91cbf967187d56916e0bf2c4a5",
+        "hi_IN": "af9fd387472a87ba1fe8ceccbc1c731ffb83cb772e4d9b2d6f9ded578f5ee230",
+        "id_ID": "26629008e964cbc9f8966ff7cb6efea52d4ad730a2910c84ab51ea6fc52d69ef",
+        "it_IT": "0874d8e0646276e8fc2ceb80aa728dbde05bff2bf1d2effcf159167c20f54296",
+        "ja_JP": "a2b90546119604fdd3963681dc66077a82289e124f357924742907736382e62f",
+        "ko_KR": "33a23a911730cf1fa4cee9c22cc4dc1c18caad641bbca090e1adebc8f0413225",
+        "pt_BR": "759a383ba217eb2a2b0110abe8b689b56c191aa6cd9334b7762f742b03f91763",
+        "zh_CN": "4acf65ccd91def24a50280ddbef0b44b0edff471f61605744c98e4eab5b5be59",
+        "zh_TW": "0ea3effd501a6f92fb841919fc51c9869fe3816b64330f50d1b67d9e2fb3b299"
+      }
+    },
+    {
+      "key": "imageDescription.failed",
+      "originCommit": "cb76157b8593d1019691d93cd01b3f207b86d2d6",
+      "originKey": "imageDescription.failed",
+      "originValueSha256": "e4efae698161473d86bf1db4a0e3818ea9970f4a295a650fd6980bb5e492334f",
+      "textSha256": "e4efae698161473d86bf1db4a0e3818ea9970f4a295a650fd6980bb5e492334f",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationSession.cs",
+          "contextHash": "c27d2236c031431c95ba42b84beccfc8e02978698e3e048853418d24fc6f6f84",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "28a72f0e0a4285899c761bd4261e19779feb67cca8e8d6a1125043c11e7972ec",
+        "en_US": "8a4fb7aae763b12022d4f7dd6523d5e44d1230c03daf1aee719b5dbacf6b2784",
+        "es_419": "05380af6a8fca4250e7056916411e8970c09c36f9e4ac84648382b83781d0238",
+        "es_ES": "2529df04a0145fee72786b8f9d677efeee1bd70067f3c3aeb50cbcce7f57781b",
+        "fr_FR": "30b724662f2baa76ae11fc4c987649b2a3441e8d99d3341761c72485310c22a6",
+        "hi_IN": "15b54a725c35ae4d3594504cd5934b61fb1db7697ad484e316bbb1585b9b50c1",
+        "id_ID": "7ee707722d6bc25555fae958fbcc49ad89f9256a99abfcc0323d39c23ceb5f6b",
+        "it_IT": "0e34fa27c6d1f3bc1b56106086c1f0e92db8a1af16b72f70aff53700ce7caa80",
+        "ja_JP": "c66db6658132acde5ced0fe9bbcb1b9e85aa68ec3cbe4637da1ce7a47dee44ff",
+        "ko_KR": "03f0964f7b4e49ed35173dcf8fb2da56909004b9feedb99c0433c118386f94c7",
+        "pt_BR": "7fea1298f238ae11c574ff63dbe7c18d7f27f54dc37148202a631bafc0b208d4",
+        "zh_CN": "e4efae698161473d86bf1db4a0e3818ea9970f4a295a650fd6980bb5e492334f",
+        "zh_TW": "b13eb1871dc05f22805c2515d42b29c5ef0d0e9d26b054d30507990d166bdbba"
+      }
+    },
+    {
+      "key": "imageDescription.title",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.title",
+      "originValueSha256": "fa16f2a2e51f650b36c80577fe55ea39ab37f0ef10a4dc5439ab9a306a6c947e",
+      "textSha256": "fa16f2a2e51f650b36c80577fe55ea39ab37f0ef10a4dc5439ab9a306a6c947e",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "0336dca62ae0abe7f77ec8552c8d327100b626d6cf9625829126856d7691b71a",
+          "count": 3
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "bafbebd2f9ee398e45086d5cd4f5258bdf1948ca84d060df513fe0480bbf20d8",
+          "count": 1
+        },
+        {
+          "file": "src/ConnectionSettingsPanel.cs",
+          "contextHash": "11bbccd0ac65b116cd6a0da2e9256e24644aad9d22e4f1485edd3fa9db069316",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "85d6ffbe4f83eec2f7d0d471f1ee74c07c897ddd44d2cd93c83b537b7e61ea7b",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "7ade372dc527f22ab0f7a2920ef39b89f9f1e2cc202e4335283a38f11251457f",
+        "en_US": "a8026d80e938c96f4c278ec7efbec3b06831618aecc49d10b82778ebc10b108b",
+        "es_419": "3ea97d12779761885ff92e0b67a50090484415dded2c02dcd23ca4c39bb48f71",
+        "es_ES": "3ea97d12779761885ff92e0b67a50090484415dded2c02dcd23ca4c39bb48f71",
+        "fr_FR": "dbfcc2f22cc33da727a15d63c3a18ec654451d95ea232f3b9f3e6f841ffc848d",
+        "hi_IN": "513228dda9afe5b878fff8cb0fe24085e5eebc8847285906df6ecd586e00b167",
+        "id_ID": "e7ca5b43c801fd007aa1dfe9ee1625eb2d49153ec65733012601e4733f90cab7",
+        "it_IT": "3411c5c1b8f8f21e2189090c00d359d8ed797de084faf13353584d2e535c20a4",
+        "ja_JP": "eff119afb30df9a4a345976ce421edb9c69a5b20104c61b17be34205b7dcca9c",
+        "ko_KR": "7f5e68faec416fe0a8e7914355ba743fa87e514cf35c7b4157a57158ab464326",
+        "pt_BR": "f876401daecaed6a7fbb070785ed95bd3ab40754356b926f9e9b84fe2cca0d56",
+        "zh_CN": "fa16f2a2e51f650b36c80577fe55ea39ab37f0ef10a4dc5439ab9a306a6c947e",
+        "zh_TW": "81b71cac8595d29d9bf9eda5367ec99c44050d8332f8e3f255111b03529b837e"
+      }
+    },
+    {
+      "key": "imageDescription.help",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.help",
+      "originValueSha256": "aa7ab8a905b0a6b955ef37fd362c179b11a5335e93d30a2f3ff7a9a6e8446204",
+      "textSha256": "aa7ab8a905b0a6b955ef37fd362c179b11a5335e93d30a2f3ff7a9a6e8446204",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "bafbebd2f9ee398e45086d5cd4f5258bdf1948ca84d060df513fe0480bbf20d8",
+          "count": 1
+        },
+        {
+          "file": "src/ConnectionSettingsPanel.cs",
+          "contextHash": "20f9d60935e0d19834e8990ee10149c001e1a863f146b8f1fd2481bb264c4b5a",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1bdb35804158c3b0cfa32dc2129f2af2aee7435d6857c94cde66cc78819b107d",
+        "en_US": "b3762204a2818280df1cabceb6435dce40005fb22dcb825ed4248942a1cc2c91",
+        "es_419": "553ea2e4aaa9c7e6dbce72dd43ac934aad37ac513906d96747353cb8b9dde38b",
+        "es_ES": "553ea2e4aaa9c7e6dbce72dd43ac934aad37ac513906d96747353cb8b9dde38b",
+        "fr_FR": "2b826edb526103e6dd85bd0871b397cf42ee83607de8c6c0ce82b02fa41c344f",
+        "hi_IN": "65ea2639e843aa89a6181f4f33d8876d9e68449ec2c473f1168e0f95623bac6f",
+        "id_ID": "26bcb524c68df7f4ae6ff0f9017b5c9eba1d906a63048ab4a84f6e940ceb9f62",
+        "it_IT": "e5f28682124d8044c301f549d83be37d7f236c136bf5d0f9d477556342639997",
+        "ja_JP": "c4371eccbbf15fc8409bc20d93dc14830e071f30b66c64f93392c575285acb0d",
+        "ko_KR": "6535bb16d65094cd1531181867e4888557305e3a166c54b2ccdc10b2040f253f",
+        "pt_BR": "e1dfc59de6993784b055afa55b502d292e7e677d8552f1431365c0ab0474a2e2",
+        "zh_CN": "aa7ab8a905b0a6b955ef37fd362c179b11a5335e93d30a2f3ff7a9a6e8446204",
+        "zh_TW": "984cc0787e8efe1b67a803c9be997f4dc289da9a0125eb5d80dd6a3b2a5db36b"
+      }
+    },
+    {
+      "key": "imageDescription.none",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.none",
+      "originValueSha256": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4",
+      "textSha256": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "df1f6315d4e0ca0c25bd9df63f553eeb893d1104bb3179557d9bc075a26244a3",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "ea842486564a40a090c8b6350409eede61da6afb3b2543fe38b8e5fb25516bfb",
+          "count": 1
+        },
+        {
+          "file": "src/ConnectionSettingsPanel.cs",
+          "contextHash": "6743378048a1a20131e51f23ecf73fdd2830ac783bec9e9f0119360f696ae28d",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "61afedc197fbb7aef71e89aeab7b6bb64d77efe2bb19656333addf1c6db601cf",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "8ac8428847f4f9f26a6575be0256f897b614fa51567ff8731eb59bbaea013412",
+        "en_US": "dccafe55abe3dd9828919e60e5d9eb7c4a5a166a3232f05476feb51671d40cb1",
+        "es_419": "61b06824ebd1393fe2ef17ca4612717efb410ff0ede619bb7112d278ee6117dd",
+        "es_ES": "61b06824ebd1393fe2ef17ca4612717efb410ff0ede619bb7112d278ee6117dd",
+        "fr_FR": "3eaffc78c39e069e7339469c14f887f803467aa4ace129245f26a203f4bcb16a",
+        "hi_IN": "6e2117e17fac7404559d9a60836dab28a0dc43e44e3fc99dce4d717df472005e",
+        "id_ID": "1d8c6be0ea085b45cbc636f9caa94ccec64fd6cb3a222e4dca95ac6c87d5f400",
+        "it_IT": "d8163fbf00a35a35dc0e5be9ae0f84b298e1fe18a14ea89545c681f65183f790",
+        "ja_JP": "779269001bf360ac38052b57198ce4baecfcebb4c040545257f00e6ede19401b",
+        "ko_KR": "4add32301ef381597818c4e18bc5934c1bf0f968f1c8ce6556353b0090982229",
+        "pt_BR": "e7b0e214ce8a4a4f026bdb0fd9b7f71392dd36ef2c5035079d61a0cd77ed1f78",
+        "zh_CN": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4",
+        "zh_TW": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4"
+      }
+    },
+    {
+      "key": "imageDescription.inherit",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.inherit",
+      "originValueSha256": "bba7ef6ba26fbca53d138b0e130f1fa683b4ce164883dd25a1e9290ad90093c6",
+      "textSha256": "bba7ef6ba26fbca53d138b0e130f1fa683b4ce164883dd25a1e9290ad90093c6",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "df1f6315d4e0ca0c25bd9df63f553eeb893d1104bb3179557d9bc075a26244a3",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "7c643f3475fce3a9c051bc888ce100b3536148083e1c0123fbb381a0761edd48",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "dc49574089e7d8082067bb59cc97e28e850a37b40b56d3f85193bfacc6ee832c",
+        "en_US": "75b7a7fc75c56c4b6f7df243ff99b96e839cb45e2893a0f88864f7b001dbd9a3",
+        "es_419": "517894424445ad35994963635e725cf65f0d2af279bbcf00243f4139607ed453",
+        "es_ES": "517894424445ad35994963635e725cf65f0d2af279bbcf00243f4139607ed453",
+        "fr_FR": "a171911c12dd47c8610fc2599c385de0a20bb7ef882562470761046d4d88521b",
+        "hi_IN": "febfab8fa14c76edb6a78b298c3420df154afbaf99f731e652114837c9ad8fa3",
+        "id_ID": "54b096e04bd54b7aa3f91649e9178aad9387af13fca8acee0fe8a7107345a322",
+        "it_IT": "8009def59992c260fa5d2318cc25deaf0cc16df22459b4769764cefcd285b9ae",
+        "ja_JP": "c1657791d98c15b76c33b5f75e258d9a68a266b625d9d2c3841d16cbd2f8158d",
+        "ko_KR": "ee0bfd9fdce915b7d02e734a5f67ea6551238e1c6c08aee088dae56ddc11fa12",
+        "pt_BR": "770c7558273bdcfcb68fe240e114013128f0affff9b40002525d081ee19cb11f",
+        "zh_CN": "bba7ef6ba26fbca53d138b0e130f1fa683b4ce164883dd25a1e9290ad90093c6",
+        "zh_TW": "75f821ca1c7b8b56df2c8bd1f136ae3035a718dc7b98500d5be90b994937d9a2"
+      }
+    },
+    {
+      "key": "imageDescription.invalid",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.invalid",
+      "originValueSha256": "f207668d7befd2cde9f4bbb8790ca43585b9e09a460fa097195b3399a03f0ed2",
+      "textSha256": "f207668d7befd2cde9f4bbb8790ca43585b9e09a460fa097195b3399a03f0ed2",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "f67637f74efb479816e8c6deef18b0e3b10da669ed4837e0261acf065e316b4c",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "84854e5459abc76229294524e7d10fe78b213e513d07e1ebe372c43d94f9cf11",
+          "count": 1
+        },
+        {
+          "file": "src/ConnectionSettingsPanel.cs",
+          "contextHash": "0223cd243d6de64081e817d3e9187b6cbfd3dca55039b7a5e98f3d29fd0be58b",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "f45b94518cc01fcba61a25ac822d436900d0e51e89d88244c05538698860cc8d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5ffafabe64fe21bd8dae9a49221a14fdd2110071965072e62e59b750b2a248f0",
+        "en_US": "e708a28febd722ff7b52c47fd42fc0c7be7f625630ebcc5b580250ad7086bca9",
+        "es_419": "c173d8e4da61ba0a94336ddec475e80d22823fce0ae1b119c11a772ae393fbab",
+        "es_ES": "c173d8e4da61ba0a94336ddec475e80d22823fce0ae1b119c11a772ae393fbab",
+        "fr_FR": "25ba79f060520d264f1ac40fd762b6a533ade9109b299edca0f107991ae93d6d",
+        "hi_IN": "30ad5cca1a6ee6a34cd212f7956f6a9942d78334eebba568f79a941b15d886bf",
+        "id_ID": "2cb40f8ee66b841242ac8b8d504d415b8b4041b577998b29b7645c04462a4b70",
+        "it_IT": "458d24a16e774bf840176f043c29396f8f98100e3cc80ffb415dd8ee99d9dbca",
+        "ja_JP": "06888925b67574ce9266e1ad4dc0ad965ec17c317c62508a832c06ec8b4e6dce",
+        "ko_KR": "cbff283a73cefcf9a3d2d7d0bca290c07908075bbf910dabf62d338c78573e74",
+        "pt_BR": "de16a675cbc6473f40ea32bdcec4f52e69988f5d44f2e4d2a64633677b9b40de",
+        "zh_CN": "f207668d7befd2cde9f4bbb8790ca43585b9e09a460fa097195b3399a03f0ed2",
+        "zh_TW": "5d2da6a3b195ac06f4964e6042c74b382cb917a808f34d5dd6483e7f8a7acda1"
+      }
+    },
+    {
+      "key": "imageDescription.direct",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.direct",
+      "originValueSha256": "6c4f6740300aeb94ccca573d22b06311a4f02428ca365f7e83c0ac8570476281",
+      "textSha256": "6c4f6740300aeb94ccca573d22b06311a4f02428ca365f7e83c0ac8570476281",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "a8c76537a96dccd42cc6a3ea2968f03eab56c2d841af45bc1513da044e0a34cb",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "bde9f71a1efaeab79060befe3459d8485d555910ecc6fdd9cd53ff9d9a500793",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "2537ddf3890a72e0557f7b03642b446d2f06054539d900a54b604658742da9bd",
+        "en_US": "9e4b42595f4cdb43cf8e4fac221c5d0c55e0dae89c9298f5e290a4e4bcfb6c1a",
+        "es_419": "b29e310cc0731cea20e498e0d1f15bb9f0d493d3a954e29933d999ab224030cf",
+        "es_ES": "b29e310cc0731cea20e498e0d1f15bb9f0d493d3a954e29933d999ab224030cf",
+        "fr_FR": "e4f224c8d3968193c6609268fe8f5ec8a6bfee181865a243136d06167cc3f838",
+        "hi_IN": "c5373f8e1205007578dcd16c181ec2cabfc917f69efbe04b118d68db33ea1a35",
+        "id_ID": "74edc4eb13713698b1f55d4ff8ef2489aa4c01397ec471f709faa3716e7ed39f",
+        "it_IT": "1a612e9d6c1de7f2fba6861c702bc1744b7c444f13a74112d2cbfd0c0aaae400",
+        "ja_JP": "a9c1fcb339475ce094509897d4a3394e5a88f7940a674c81e999df7289fd45f1",
+        "ko_KR": "20f3e2c0bc9e0bbafbd8680b85ed089c08afc8543bf6933779daa635931e8ccf",
+        "pt_BR": "2ff318250d7c033c163b6bd576eaa52fec432e6f7ace365276cd348543fcf5fb",
+        "zh_CN": "6c4f6740300aeb94ccca573d22b06311a4f02428ca365f7e83c0ac8570476281",
+        "zh_TW": "14e74e3d3e7dc9da4ef39c81d66b309da60a2adc329af20b2c87b71f88da8c5f"
+      }
+    },
+    {
+      "key": "imageDescription.described",
+      "originCommit": "64868ae83bde4c4608b23b15616b7dca96677a9c",
+      "originKey": "imageDescription.described",
+      "originValueSha256": "b1cccd0992dc81a555658a619003c67b37d51412790e352ed26da1b8dba01fe1",
+      "textSha256": "b1cccd0992dc81a555658a619003c67b37d51412790e352ed26da1b8dba01fe1",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "a8c76537a96dccd42cc6a3ea2968f03eab56c2d841af45bc1513da044e0a34cb",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "bde9f71a1efaeab79060befe3459d8485d555910ecc6fdd9cd53ff9d9a500793",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "e7221ee40908bc24362282dfdb365486702c796f189ce31f22bad3f63ae15ede",
+        "en_US": "5f41b09dccc36485bb8b296c32e2c68e1c9b7c20aff25228d28a49841b76c27b",
+        "es_419": "0065f3204651a0ab589fda71874e8034eef5df0df2705add9852bd1dd7bb1d87",
+        "es_ES": "0065f3204651a0ab589fda71874e8034eef5df0df2705add9852bd1dd7bb1d87",
+        "fr_FR": "4105e2b2b3e7f4ada7e8d5aae23ca91d112bdd3eeee98d3699f49d38067a2805",
+        "hi_IN": "48787d684f104242314a252aabe22d371a1aa6a45aec4ae1a536ce4f0f572bae",
+        "id_ID": "6700a03ee5953ee277dba506c093ec600de53dd68246089fe19d571e1a3e584a",
+        "it_IT": "177af186bd4354f2b453accdf64a90a2c3fa1131cd3869f96cd092659c5bedb2",
+        "ja_JP": "69aadf1d4c08581f625c069ac48e9aa924db073c71ac0323ca443994cdfb01ea",
+        "ko_KR": "4cb73b30e7d1e5787ecb0cd782d83825f039e4818db4e37de2f1ca01ff1d0e14",
+        "pt_BR": "d976d2b4c7b5399dfa720ebddcb0138d741feb9be38335d7f0cf127ed34fb7f7",
+        "zh_CN": "b1cccd0992dc81a555658a619003c67b37d51412790e352ed26da1b8dba01fe1",
+        "zh_TW": "ea923d61ab8c39deba415a65086cbedea626a650f7024cb6d2cbf8f3eac34c04"
+      }
     }
   ],
   "sourceExclusions": [
@@ -8324,7 +8718,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "f72908d65587e06b0d86a4b5b5a64da993682e40590ca0543bb8eb692d5fd0cf",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8332,7 +8726,7 @@
       "value": "（暂无）",
       "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8340,7 +8734,7 @@
       "value": "\n最近聊天背景：\n",
       "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8348,7 +8742,7 @@
       "value": "\n请以当前伙伴的语气写一句新的主动问候。",
       "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8356,7 +8750,7 @@
       "value": "\n最近已显示的问候（避免重复）：\n",
       "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8364,7 +8758,7 @@
       "value": "当前本地时间：",
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8372,7 +8766,7 @@
       "value": "桌面伙伴.exe",
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8380,7 +8774,7 @@
       "value": "编辑",
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8388,7 +8782,7 @@
       "value": "编辑",
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8396,7 +8790,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8404,7 +8798,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8412,7 +8806,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8420,7 +8814,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8428,7 +8822,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8436,7 +8830,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8444,7 +8838,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8452,7 +8846,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8460,7 +8854,7 @@
       "value": "视图",
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8468,7 +8862,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8476,7 +8870,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "3a76247f14b8d266e2e7c942c092e4e16807dbd1cc949ffedfa34f750e41ee70",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8484,7 +8878,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8492,7 +8886,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "53b1629aa17e9c919d98b652a814450cff32c5acc5b0c4abb55273af49d831b3",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8500,7 +8894,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8508,7 +8902,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66e086e03730e51a3dcc13111c167c6b1c7ddefd1d1efb9df3ed1aaf646bc9c0",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8516,7 +8910,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8524,7 +8918,7 @@
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a765e5e64fbfbf9e15a5c00840829eef94c692015a9e00a7cceb7c98f2244ae4",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8532,7 +8926,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8540,7 +8934,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8548,7 +8942,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8556,7 +8950,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8564,7 +8958,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8572,7 +8966,7 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8580,7 +8974,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8588,7 +8982,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8596,7 +8990,7 @@
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "e3daa0322d06d926f576500e489abef69dfed6bb8350e5e35ababe8ca9bbaf9d",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     },
     {
@@ -8604,7 +8998,7 @@
       "value": "桌面伙伴维护助手：校验更新包与卸载交接，保留用户数据",
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
-      "sourceCommit": "0b4bae4d6edca8ba92e6566116e961a8810577ad",
+      "sourceCommit": "5af15ff9cf59db56f82bc28ef964ba9604ad5494",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
     }
   ]

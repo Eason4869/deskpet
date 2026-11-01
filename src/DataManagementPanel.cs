@@ -16,7 +16,7 @@ namespace Dafeiyu
             service=new HistoryMaintenanceService(pet.Store.DirectoryPath,pet.DataMaintenance,pet.ImageTasks);
             Margin=new Thickness(0,16,0,0);
             var clear=LocalizedUi.Button(()=>(TextResources.Get("dataManagement.clearHistory")));clear.Name="ClearAllHistory";
-            clear.Click+=delegate{new DataActionConfirmationWindow(TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.historyScope"),async delegate{return DataManagementPresentation.Describe(await service.ClearAllAsync());},pet.FlushDeferredSettingsAsync){Owner=Window.GetWindow(this)}.ShowDialog();};
+            clear.Click+=delegate{new DataActionConfirmationWindow(TextResources.Get("dataManagement.clearHistory"),TextResources.Get("dataManagement.historyScope"),async delegate{var result=await service.ClearAllAsync();if(result.Status==Dafeiyu.Maintenance.HistoryMaintenanceStatus.Complete)pet.ClearAllImageDescriptionOverrides();return DataManagementPresentation.Describe(result);},pet.FlushDeferredSettingsAsync){Owner=Window.GetWindow(this)}.ShowDialog();};
             var reset=LocalizedUi.Button(()=>(TextResources.Get("dataManagement.restorePreferences")));reset.Name="RestoreDefaultPreferences";
             reset.Click+=delegate{new DataActionConfirmationWindow(TextResources.Get("dataManagement.restorePreferences"),TextResources.Get("dataManagement.preferenceScope"),async delegate{
                 try{await pet.Store.RestoreDefaultPreferencesAsync(pet.Settings,pet.DataMaintenance);}catch(InvalidOperationException){return TextResources.Get("dataMaintenance.busy");}catch(Exception){return TextResources.Get("dataManagement.resetFailed");}

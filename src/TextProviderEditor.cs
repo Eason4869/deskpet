@@ -306,6 +306,8 @@ namespace Dafeiyu
                 var copy=provider.Copy();copy.Normalize();result.Add(copy);
             }return result;
         }
+        internal bool HasDraftChanges(){Capture(false);return ProviderBytes(new ServiceProviderSettings{Providers=drafts.ConvertAll(p=>p.Copy()),ActiveProviderId=SelectedProviderId})!=ProviderBytes(baseline);}
+        string ProviderBytes(ServiceProviderSettings value){var copy=value.Copy();if(kind=="text")foreach(var provider in copy.Providers)provider.Connection.Protocol=provider.Connection.Protocol=="anthropic"?"anthropic":"openai";using(var stream=new System.IO.MemoryStream()){new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(ServiceProviderSettings)).WriteObject(stream,copy);return Convert.ToBase64String(stream.ToArray());}}
         public bool Matches(PetSettings settings)
         {
             return MatchesView(settings.ProviderView(kind));

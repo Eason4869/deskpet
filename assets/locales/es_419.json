@@ -4754,5 +4754,16 @@
   "im.scanConnect": "Conectar con código QR",
   "im.scanHelp": "Escanea para crear o vincular un bot. Las credenciales quedan en esta computadora. El bot se conecta tras la autorización.",
   "im.manualConnect": "Configuración manual",
-  "im.accessOptions": "Límites de acceso (opcional)"
+  "im.accessOptions": "Límites de acceso (opcional)",
+  "imageDescription.unavailable": "La descripción de imágenes no está disponible. Revisa la configuración de los modelos de conversación y descripción de imágenes.",
+  "imageDescription.timeout": "La descripción de imágenes agotó el tiempo de espera. Revisa el servicio e inténtalo de nuevo.",
+  "imageDescription.network": "No se pudo conectar al servicio de descripción de imágenes. Revisa la configuración y la red e inténtalo de nuevo.",
+  "imageDescription.failed": "Falló la descripción de imágenes. Revisa el servicio e inténtalo de nuevo.",
+  "imageDescription.title": "Modelo de descripción de imágenes",
+  "imageDescription.help": "Cuando el modelo de conversación no acepta imágenes, este modelo las describe. Déjalo vacío para no usarlo.",
+  "imageDescription.none": "No usar",
+  "imageDescription.inherit": "Usar configuración global",
+  "imageDescription.invalid": "El modelo seleccionado no está disponible",
+  "imageDescription.direct": "El modelo de conversación procesa imágenes directamente",
+  "imageDescription.described": "Se usa el modelo de descripción de imágenes"
 }

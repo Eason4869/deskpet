@@ -4754,5 +4754,16 @@
   "im.scanConnect": "QRコードで接続",
   "im.scanHelp": "スマートフォンで読み取り、ボットを作成または連携します。認証情報はこのPCに保存され、承認後に接続します。",
   "im.manualConnect": "手動で設定",
-  "im.accessOptions": "アクセス制限（任意）"
+  "im.accessOptions": "アクセス制限（任意）",
+  "imageDescription.unavailable": "画像説明を利用できません。会話モデルと画像説明モデルの設定を確認してください。",
+  "imageDescription.timeout": "画像説明がタイムアウトしました。サービスを確認して再試行してください。",
+  "imageDescription.network": "画像説明サービスに接続できません。設定とネットワークを確認して再試行してください。",
+  "imageDescription.failed": "画像説明に失敗しました。サービスを確認して再試行してください。",
+  "imageDescription.title": "画像説明モデル",
+  "imageDescription.help": "会話モデルが画像入力に対応しない場合、このモデルで画像を説明します。空欄の場合は使用しません。",
+  "imageDescription.none": "使用しない",
+  "imageDescription.inherit": "全体設定に従う",
+  "imageDescription.invalid": "選択したモデルを利用できません",
+  "imageDescription.direct": "会話モデルが画像を直接認識",
+  "imageDescription.described": "画像説明モデルを使用"
 }

@@ -4754,5 +4754,16 @@
   "im.scanConnect": "Connect with QR code",
   "im.scanHelp": "Scan with your phone to create or bind a bot. Credentials stay on this computer. The bot connects after authorization.",
   "im.manualConnect": "Enter credentials manually",
-  "im.accessOptions": "Access limits (optional)"
+  "im.accessOptions": "Access limits (optional)",
+  "imageDescription.unavailable": "Image description is unavailable. Check the conversation and image description model settings.",
+  "imageDescription.timeout": "Image description timed out. Check the service and try again.",
+  "imageDescription.network": "Could not connect to the image description service. Check the settings and network and try again.",
+  "imageDescription.failed": "Image description failed. Check the service and try again.",
+  "imageDescription.title": "Image description model",
+  "imageDescription.help": "When the conversation model cannot accept images, use this model to describe them. Leave blank to disable.",
+  "imageDescription.none": "Not used",
+  "imageDescription.inherit": "Use global setting",
+  "imageDescription.invalid": "Selected model unavailable",
+  "imageDescription.direct": "Current conversation model handles images",
+  "imageDescription.described": "Using image description model"
 }
