@@ -13,6 +13,8 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1&&args[0]=="--desktop-observation-policy-only")return DesktopObservationPolicyTests.Main() | DesktopObservationServiceTests.Main();
+            if(args.Length==1&&args[0]=="--greeting-regression-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return GreetingTests.Main() | AiGreetingTests.Main() | HolidayGreetingTests.Main() | RequestLanguageSnapshotTests.Main();}
             if(args.Length==1&&args[0]=="--desktop-observation-only")return DesktopObservationCaptureTests.Main(new string[0]);
             if(args.Length==1&&args[0]=="--proactive-conversation-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ProactiveConversationTests.Main();}
             if(args.Length==1&&args[0]=="--image-input-router-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageInputRouterTests.Main(new string[0]);}
