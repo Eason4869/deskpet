@@ -44,6 +44,8 @@ namespace Dafeiyu.Tests
                     draft.CloseAsync().GetAwaiter().GetResult();
                     Check(!Directory.Exists(draft.DataDirectory),"closing unanswered workspace leaves no artifacts");
                 }
+                var protectedDefinition=new ConversationDefinition{Id="preexisting",Name="reply",Mode="chat",PetId="pet"};string protectedDirectory=Path.Combine(root,"conversations","preexisting","kernel-sessions");Directory.CreateDirectory(protectedDirectory);string protectedFile=Path.Combine(protectedDirectory,"existing.session");File.WriteAllText(protectedFile,"preserve");
+                bool collision=false;try{using(var transient=ConversationWorkspace.Create(project,protectedDefinition,root,"pet",()=>new Api(),()=>new Speech(),()=>null,Settings,()=>true,transient:true)){} }catch(IOException){collision=true;}Check(collision && File.Exists(protectedFile),"transient creation rejects preexisting storage without reading or deleting it");
                 Console.WriteLine("Conversation workspace tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
         }

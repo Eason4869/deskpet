@@ -214,10 +214,21 @@ namespace Dafeiyu
         async void Submit(bool opposite=false)
         {
             if((String.IsNullOrWhiteSpace(input.Text) && Attachments.Count==0) || loadingAttachments || pet.LiveActive || pet.IsUpdating)return;
+            if(pet.IsProactiveTransient(session))
+            {
+                string submitted=input.Text;var files=ChatAttachment.Snapshot(Attachments);IsEnabled=false;
+                try{
+                    await pet.SendProactiveAsync(session,submitted,files,()=>Dispatcher.BeginInvoke(new Action(delegate{if(closed)return;Attachments.Clear();RefreshAttachments();input.Clear();IsEnabled=true;input.Focus();})));
+                }catch(Exception error){if(!closed)Error(error);}
+                finally{if(!closed)IsEnabled=true;}
+                return;
+            }
             if(TryExecutePermissionCommand(input.Text)){input.Clear();return;}
             if(session.IsBusy && !opposite && pet.Settings.FollowUpBehavior=="steer"){await InterruptDraft();return;}
             Try(delegate{using(session.EnterRequestActivity()){Action rollback=PrepareSubmission==null?null:PrepareSubmission();try{queue.Enqueue(input.Text,Attachments,conversationOnly);}catch{if(rollback!=null)rollback();throw;}if(Submitted!=null)Submitted();Attachments.Clear();RefreshAttachments();input.Clear();input.Focus();}});
         }
+        internal System.Collections.Generic.List<ChatAttachment> SnapshotPendingAttachments(){return ChatAttachment.Snapshot(Attachments);}
+        internal void ReplacePendingAttachments(System.Collections.Generic.IEnumerable<ChatAttachment> files){Attachments.Clear();Attachments.AddRange(ChatAttachment.Snapshot(files));RefreshAttachments();RefreshAction();}
         internal void AddAttachments(System.Collections.Generic.IEnumerable<ChatAttachment> files)
         {
             var combined=ChatAttachment.Snapshot(Attachments.Concat(files));Attachments.Clear();Attachments.AddRange(combined);RefreshAttachments();RefreshAction();

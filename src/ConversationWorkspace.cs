@@ -8,6 +8,7 @@ namespace Dafeiyu
     {
         Func<bool> saveHistory;Func<PetSettings> settings;ProjectDefinition project;bool disposed;volatile bool persistenceAdmitted=true;
         internal void AdmitPersistence(){persistenceAdmitted=true;}
+        internal bool PersistenceAdmitted {get{return persistenceAdmitted;}}
         public string Id {get;private set;}
         public string ProjectId {get;private set;}
         public string Name {get;private set;}public string ProjectWorkspace {get;private set;}
@@ -46,12 +47,12 @@ namespace Dafeiyu
             if(apiFactory==null || speechFactory==null || recorderFactory==null || settings==null)throw new ArgumentNullException("factories");
             var workspace=new ConversationWorkspace{Id=conversation.Id,ProjectId=project.Id,Name=conversation.Name,ProjectWorkspace=project.Workspace,project=project,Definition=conversation,settings=settingsOverride??settings,persistenceAdmitted=!transient};
             workspace.saveHistory=delegate{return workspace.persistenceAdmitted && (saveHistory==null || saveHistory());};
-            workspace.DataDirectory=ResolveDataDirectory(dataRoot,conversation.Id);
+            workspace.DataDirectory=transient?TransientDataDirectory(dataRoot,conversation.Id):ResolveDataDirectory(dataRoot,conversation.Id);
             if(!transient)Directory.CreateDirectory(workspace.DataDirectory);
             workspace.Session=new ConversationSession(apiFactory(),speechFactory(),recorderFactory,new HistoryStore(Path.Combine(workspace.DataDirectory,"history")),workspace.saveHistory,conversation.Id,maintenance);
             workspace.Session.SelectPersona(conversation.Mode=="work"?"work":String.IsNullOrEmpty(conversation.PetId)?personaId??"":conversation.PetId);
             var kernelStore=new AgentSessionStore(Path.Combine(workspace.DataDirectory,"kernel-sessions"));AgentSessionModel model=null;
-            try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else kernelStore.Clear();}
+            try{if(workspace.saveHistory())model=kernelStore.Load(project.Id,conversation.Id);else if(!transient)kernelStore.Clear();}
             catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;workspace.Session.ReportKernelWarning(TextResources.Get("conversationWorkspace.create.workspaceSessionReportKernelWarning"));}
             if(model==null)model=new AgentSessionModel(conversation.Id,project.Id,conversation.Id);
             if(model.RecoveryState=="running")model.RecoveryState="interrupted";
@@ -79,6 +80,13 @@ namespace Dafeiyu
             if(Definition.HasPermissionOverride){cfg.AgentApprovalMode=Definition.ApprovalMode;cfg.AgentSandboxEnabled=Definition.SandboxEnabled;}
             if(!localAgentSupported)cfg.AgentEnabled=false;
             ProjectWorkspace=cfg.AgentWorkspace;return cfg;
+        }
+        static string TransientDataDirectory(string dataRoot,string conversationId)
+        {
+            if(String.IsNullOrWhiteSpace(conversationId) || conversationId.IndexOfAny(Path.GetInvalidFileNameChars())>=0 || conversationId=="." || conversationId=="..")throw new ArgumentException(TextResources.Get("conversationWorkspace.resolveDataDirectory.text"));
+            string target=Path.GetFullPath(Path.Combine(dataRoot,"conversations",conversationId));
+            if(Directory.Exists(target) || File.Exists(target))throw new IOException(TextResources.Get("conversationWorkspace.resolveDataDirectory.text.alternativeA"));
+            return target;
         }
         internal static string ResolveDataDirectory(string dataRoot,string conversationId)
         {

@@ -4756,7 +4756,7 @@
   "im.manualConnect": "手動填寫",
   "im.accessOptions": "存取限制（選填）",
   "desktopObservation.title": "螢幕感知主動發言",
-  "desktopObservation.enabled": "結合目前活動視窗主動發言",
+  "desktopObservation.enabled": "結合目前視窗內容主動發言",
   "desktopObservation.help": "主動發言到期時，桌寵可能會截取目前活動應用程式視窗並傳送到已配置的服務。排除的應用不會被採集。",
   "desktopObservation.status": "狀態",
   "desktopObservation.destinations": "接收服務：{0}",

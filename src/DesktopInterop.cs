@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using Forms = System.Windows.Forms;
@@ -9,6 +9,10 @@ namespace Dafeiyu
     {
         [StructLayout(LayoutKind.Sequential)] private struct LastInput {public uint Size,Tick;}
         [DllImport("user32.dll")]private static extern bool GetLastInputInfo(ref LastInput input);
+        public static bool TryLastInputTick(out uint tick)
+        {
+            var input=new LastInput{Size=(uint)Marshal.SizeOf(typeof(LastInput))};bool ok=GetLastInputInfo(ref input);tick=input.Tick;return ok;
+        }
         public static double UserIdleSeconds()
         {
             var input=new LastInput{Size=(uint)Marshal.SizeOf(typeof(LastInput))};

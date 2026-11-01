@@ -17,7 +17,7 @@ namespace Dafeiyu
         }
         internal Task<bool> ChangeLanguageAsync(string code,bool guide=false)
         {
-            return RunSettingsEditAsync(null,async delegate{
+            InvalidateObservation(true);return RunSettingsEditAsync(null,async delegate{
                 try{
                     var prepared=await Task.Run(()=>TextResources.PrepareLanguage(code));
                     await Store.SaveLanguageSelectionAsync(Settings.Copy(),code,guide);
@@ -58,7 +58,7 @@ namespace Dafeiyu
         {var pending=explicitSettingsSave;if(pending!=null&&!await pending)throw new IOException(TextResources.Get("dataManagement.pendingSaveFailed"));}
         internal bool CommitSettingsNow(Action<PetSettings> change)
         {
-            Dispatcher.VerifyAccess();if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
+            Dispatcher.VerifyAccess();InvalidateObservation(true);if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
             settingsSaveRevision++;
             try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);change(Settings);Notice=Store.Warning;return true;}
             catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
@@ -67,7 +67,7 @@ namespace Dafeiyu
         {return error is IOException||error is UnauthorizedAccessException||error is System.Runtime.Serialization.SerializationException||error is ArgumentException||error is InvalidOperationException;}
         internal async Task<bool> PersistSettingsAsync(Action<PetSettings> change)
         {
-            Dispatcher.VerifyAccess();long revision=++settingsSaveRevision;PreferenceChangeSet submittedPreferences=null;
+            Dispatcher.VerifyAccess();InvalidateObservation(true);long revision=++settingsSaveRevision;PreferenceChangeSet submittedPreferences=null;
             try{
                 do{
                     deferredSettingsSave=false;CompleteScaleLayout();submittedPreferences=pendingPreferences;

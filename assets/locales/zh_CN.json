@@ -4756,7 +4756,7 @@
   "im.manualConnect": "手动填写",
   "im.accessOptions": "访问限制（可选）",
   "desktopObservation.title": "屏幕感知主动发言",
-  "desktopObservation.enabled": "结合当前活动窗口主动发言",
+  "desktopObservation.enabled": "结合当前窗口内容主动发言",
   "desktopObservation.help": "主动发言到期时，桌宠可能截取当前活动应用窗口并发送到已配置的服务。排除的应用不会被采集。",
   "desktopObservation.status": "状态",
   "desktopObservation.destinations": "接收服务：{0}",
