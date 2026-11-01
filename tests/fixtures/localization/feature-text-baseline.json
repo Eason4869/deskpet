@@ -1518,6 +1518,48 @@
       "expected": "图片转述失败，请检查服务后重试。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "imageDescription.title",
+      "expected": "图片转述模型",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.help",
+      "expected": "当对话模型不支持图片输入时，调用图片转述模型来获取图片描述。留空代表不使用。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.none",
+      "expected": "不使用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.inherit",
+      "expected": "跟随全局",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.invalid",
+      "expected": "指定的模型不可用",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.direct",
+      "expected": "当前对话模型直接识图",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "imageDescription.described",
+      "expected": "使用图片转述模型",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }
