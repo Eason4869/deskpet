@@ -23,6 +23,7 @@ namespace Dafeiyu
         internal uint WindowThread;
         internal string OriginalTitle;
         internal string WindowClass;
+        internal DesktopObservationIdentity ObservationIdentity;
     }
 
 #if PORTABLE
@@ -31,7 +32,8 @@ namespace Dafeiyu
     public static class ApplicationSnapshots
     {
         private const int MaximumBytes = 4 * 1024 * 1024;
-        private static int busy;
+        private static readonly DesktopCaptureWorker captureWorker = new DesktopCaptureWorker();
+        internal static bool CaptureBusy { get { return captureWorker.IsBusy; } }
         private static int iconBusy;
         private static readonly object iconSync = new object();
         private static readonly Dictionary<string, byte[]> executableIcons = new Dictionary<string, byte[]>();
@@ -89,51 +91,112 @@ namespace Dafeiyu
                 ProcessStartTicks = target.ProcessStartTicks, WindowThread = target.WindowThread,
                 OriginalTitle = target.OriginalTitle, WindowClass = target.WindowClass
             };
-            if (Interlocked.CompareExchange(ref busy, 1, 0) != 0)
-                throw new InvalidOperationException(TextResources.Get("applicationSnapshots.captureAsync.text"));
-            Task<byte[]> capture;
-            try
-            {
-                // PrintWindow can block inside another application's window procedure. A dedicated
-                // background worker owns all GDI objects, even after the caller times out or cancels.
-                capture = Task.Factory.StartNew(delegate
-                {
-                    try { return Capture(selected, token); }
-                    finally { Interlocked.Exchange(ref busy, 0); }
-                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-            }
-            catch { Interlocked.Exchange(ref busy, 0); throw; }
-            return await WaitForCaptureAsync(capture, token).ConfigureAwait(false);
+            return await captureWorker.RunAsync(delegate(CancellationToken lifetime) { return Capture(selected, lifetime, false); }, token).ConfigureAwait(false);
         }
 
         internal static async Task<byte[]> WaitForCaptureAsync(Task<byte[]> capture, CancellationToken token)
         {
-            using (var timer = CancellationTokenSource.CreateLinkedTokenSource(token))
+            try { return await DesktopCaptureWorker.WaitAsync(capture, token).ConfigureAwait(false); }
+            catch
             {
-                Task timeout = Task.Delay(2000, timer.Token);
-                Task finished = await Task.WhenAny(capture, timeout).ConfigureAwait(false);
-                if (finished == capture)
+                capture.ContinueWith(delegate(Task<byte[]> finished)
                 {
-                    timer.Cancel();
-                    if (token.IsCancellationRequested) { ObserveFailure(capture); token.ThrowIfCancellationRequested(); }
-                    return await capture.ConfigureAwait(false);
-                }
-                // Observe late errors without retaining the captured image or reporting a second result.
-                ObserveFailure(capture);
-                token.ThrowIfCancellationRequested();
-                throw new TimeoutException(TextResources.Get("applicationSnapshots.waitForCaptureAsync.text"));
+                    if (finished.Status == TaskStatus.RanToCompletion && finished.Result != null) Array.Clear(finished.Result, 0, finished.Result.Length);
+                    else if (finished.IsFaulted) { var ignored = finished.Exception; }
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                throw;
             }
         }
-        private static void ObserveFailure(Task<byte[]> capture)
+
+        internal static Task<byte[]> CaptureObservationAsync(DesktopCaptureOptions options, Action<ApplicationSnapshotTarget> selected, CancellationToken cancel)
         {
-            capture.ContinueWith(t => { var ignored = t.Exception; }, CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            // Include process identity/path lookup and encoding in the same two-second wait budget.
+            return captureWorker.RunAsync(delegate(CancellationToken lifetime)
+            {
+                if (!InteractiveDesktop()) return null;
+                ApplicationSnapshotTarget target = Foreground(options);
+                if (target == null) return null;
+                selected(target);
+                try { return Capture(target, lifetime, true); }
+                catch (InvalidOperationException) { if (!MatchesObservation(target.ObservationIdentity)) return null; throw; }
+            }, cancel);
         }
 
-        private static byte[] Capture(ApplicationSnapshotTarget target, CancellationToken token)
+        // Exact foreground only, with no Z-order walk and no icon retrieval.
+        internal static ApplicationSnapshotTarget Foreground(DesktopCaptureOptions options)
+        {
+            EnsureWindows();
+            try
+            {
+                IntPtr previousDpi = IntPtr.Zero;
+                try
+                {
+                    try { previousDpi = SetThreadDpiAwarenessContext(new IntPtr(-4)); } catch (EntryPointNotFoundException) { }
+                    IntPtr handle = GetForegroundWindow(); uint pid;
+                    uint thread = GetWindowThreadProcessId(handle, out pid);
+                    if (handle == IntPtr.Zero || pid == 0 || pid == Process.GetCurrentProcess().Id || !Eligible(handle)) return null;
+                    uint affinity;
+                    // GetWindowDisplayAffinity is documented to fail on non-layered windows.
+                    // Honor explicit protection; ordinary non-layered windows still use PrintWindow
+                    // with black/sentinel rejection and never a screen-copy fallback.
+                    if (GetWindowDisplayAffinity(handle, out affinity) && affinity != 0) return null;
+                    string title = Title(handle), windowClass = ClassName(handle);
+                    if (String.IsNullOrWhiteSpace(title)) return null;
+                    long start; string appId, name;
+                    using (Process process = Process.GetProcessById((int)pid))
+                    {
+                        start = process.StartTime.ToUniversalTime().Ticks; name = process.ProcessName;
+                        appId = process.MainModule.FileName;
+                    }
+                    if (String.IsNullOrWhiteSpace(appId) || !Path.IsPathRooted(appId) || options.IsExcluded(appId)) return null;
+                    Rect bounds;
+                    if (!GetWindowRect(handle, out bounds)) return null;
+                    var identity = new DesktopObservationIdentity(handle.ToInt64(), (int)pid, start, thread, appId, title, windowClass,
+                        bounds.Left, bounds.Top, bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
+                    if (GetForegroundWindow() != handle) return null;
+                    return new ApplicationSnapshotTarget { Handle = handle, ProcessId = (int)pid, ProcessStartTicks = start,
+                        WindowThread = thread, Title = title, OriginalTitle = title, AppName = name, WindowClass = windowClass, ObservationIdentity = identity };
+                }
+                finally { if (previousDpi != IntPtr.Zero) SetThreadDpiAwarenessContext(previousDpi); }
+            }
+            catch (ArgumentException) { return null; }
+            catch (InvalidOperationException) { return null; }
+            catch (System.ComponentModel.Win32Exception) { return null; }
+        }
+
+        internal static bool InteractiveDesktop()
+        {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT || !Environment.UserInteractive) return false;
+            IntPtr desktop = OpenInputDesktop(0, false, 1);
+            if (desktop == IntPtr.Zero) return false;
+            try
+            {
+                var name = new StringBuilder(256); int needed;
+                return GetUserObjectInformation(desktop, 2, name, name.Capacity * 2, out needed) &&
+                    String.Equals(name.ToString(), "Default", StringComparison.OrdinalIgnoreCase);
+            }
+            finally { CloseDesktop(desktop); }
+        }
+
+        internal static bool MatchesObservation(DesktopObservationIdentity expected)
+        {
+            if (expected == null || !InteractiveDesktop()) return false;
+            ApplicationSnapshotTarget current = Foreground(new DesktopCaptureOptions());
+            if (current == null) return false;
+            DesktopObservationIdentity actual = current.ObservationIdentity;
+            return actual.WindowId == expected.WindowId && actual.ProcessId == expected.ProcessId &&
+                actual.ProcessStartTicks == expected.ProcessStartTicks && actual.WindowThreadId == expected.WindowThreadId &&
+                actual.X == expected.X && actual.Y == expected.Y && actual.Width == expected.Width && actual.Height == expected.Height &&
+                String.Equals(actual.ApplicationId, expected.ApplicationId, StringComparison.OrdinalIgnoreCase) &&
+                String.Equals(actual.WindowClass, expected.WindowClass, StringComparison.Ordinal) &&
+                String.Equals(actual.WindowTitle, expected.WindowTitle, StringComparison.Ordinal);
+        }
+
+        private static byte[] Capture(ApplicationSnapshotTarget target, CancellationToken token, bool observation)
         {
             token.ThrowIfCancellationRequested();
             ValidateIdentity(target);
+            if (observation && !MatchesObservation(target.ObservationIdentity)) throw Unsupported();
             IntPtr previousDpi = IntPtr.Zero;
             try
             {
@@ -153,6 +216,7 @@ namespace Dafeiyu
                         try
                         {
                             token.ThrowIfCancellationRequested(); ValidateIdentity(target);
+                            if (observation && !MatchesObservation(target.ObservationIdentity)) throw Unsupported();
                             if (!PrintWindow(target.Handle, dc, 2)) throw Unsupported();
                         }
                         finally { graphics.ReleaseHdc(dc); }
@@ -161,18 +225,21 @@ namespace Dafeiyu
                     Rect after;
                     if (!GetWindowRect(target.Handle, out after) || after.Right - after.Left != width || after.Bottom - after.Top != height)
                         throw new InvalidOperationException(TextResources.Get("applicationSnapshots.capture.text.alternativeA"));
+                    if (observation && !MatchesObservation(target.ObservationIdentity)) throw Unsupported();
                     RejectEmpty(bitmap);
-                    return Encode(bitmap, token);
+                    byte[] encoded = Encode(bitmap, token, observation);
+                    if (observation && !MatchesObservation(target.ObservationIdentity)) { Array.Clear(encoded, 0, encoded.Length); throw Unsupported(); }
+                    return encoded;
                 }
             }
             catch (ExternalException) { throw Unsupported(); }
             finally { if (previousDpi != IntPtr.Zero) SetThreadDpiAwarenessContext(previousDpi); }
         }
 
-        private static byte[] Encode(Bitmap original, CancellationToken token)
+        internal static byte[] Encode(Bitmap original, CancellationToken token, bool observation)
         {
             int width = original.Width, height = original.Height;
-            double scale = Math.Min(1.0, Math.Min(3072.0 / Math.Max(width, height), Math.Sqrt(6000000.0 / ((long)width * height))));
+            double scale = Math.Min(1.0, Math.Min((observation ? DesktopCaptureOptions.MaximumDimension : 3072.0) / Math.Max(width, height), Math.Sqrt((observation ? DesktopCaptureOptions.MaximumPixels : 6000000.0) / ((long)width * height))));
             width = Math.Max(1, (int)(width * scale)); height = Math.Max(1, (int)(height * scale));
             // PNG remains lossless at each selected resolution; no screenshot touches disk.
             for (int attempt = 0; attempt < 6; attempt++)
@@ -189,7 +256,7 @@ namespace Dafeiyu
                     {
                         resized.Save(stream, ImageFormat.Png);
                         token.ThrowIfCancellationRequested();
-                        if (stream.Length <= MaximumBytes) return stream.ToArray();
+                        if (stream.Length <= (observation ? DesktopCaptureOptions.MaximumPngBytes : MaximumBytes)) return stream.ToArray();
                     }
                 }
                 width = Math.Max(1, width * 3 / 4); height = Math.Max(1, height * 3 / 4);
@@ -235,7 +302,15 @@ namespace Dafeiyu
             Rect bounds;
             return GetWindowRect(handle, out bounds) && (long)bounds.Right - bounds.Left >= 100 && (long)bounds.Bottom - bounds.Top >= 60;
         }
-        private static string Title(IntPtr handle) { var text = new StringBuilder(1024); GetWindowText(handle, text, text.Capacity); return text.ToString(); }
+        private static string Title(IntPtr handle)
+        {
+            int length = GetWindowTextLength(handle);
+            if (length <= 0 || length > 32768) return String.Empty;
+            var text = new StringBuilder(length + 1);
+            int copied = GetWindowText(handle, text, text.Capacity);
+            // A growing title must never become an apparently stable truncated identity.
+            return copied == length && GetWindowTextLength(handle) == length ? text.ToString() : String.Empty;
+        }
         private static string ClassName(IntPtr handle) { var text = new StringBuilder(256); GetClassName(handle, text, text.Capacity); return text.ToString(); }
         private static byte[] WindowIcon(IntPtr window, int pid, long start)
         {
@@ -297,6 +372,11 @@ namespace Dafeiyu
         [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
         private delegate bool EnumWindowsCallback(IntPtr window, IntPtr parameter);
         [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsCallback callback, IntPtr parameter);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool GetWindowDisplayAffinity(IntPtr window, out uint affinity);
+        [DllImport("user32.dll")] private static extern IntPtr OpenInputDesktop(uint flags, bool inherit, uint access);
+        [DllImport("user32.dll")] private static extern bool CloseDesktop(IntPtr desktop);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetUserObjectInformation(IntPtr value, int index, StringBuilder text, int length, out int needed);
         [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
         [DllImport("user32.dll")] private static extern IntPtr GetShellWindow();
         [DllImport("user32.dll")] private static extern IntPtr GetDesktopWindow();
@@ -310,6 +390,7 @@ namespace Dafeiyu
         [DllImport("user32.dll")] private static extern IntPtr CopyIcon(IntPtr icon);
         [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
         [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] private static extern int GetWindowLong(IntPtr window, int index);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowTextLength(IntPtr window);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int maximum);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder text, int maximum);
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
@@ -318,4 +399,42 @@ namespace Dafeiyu
         [DllImport("user32.dll")] private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
         [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int length);
     }
+#if PORTABLE
+    [System.Runtime.Versioning.SupportedOSPlatform("windows6.1")]
+#endif
+    public sealed class WindowsDesktopObservationCapture : IDesktopObservationCapture
+    {
+        private readonly Func<bool> interactive;
+        public WindowsDesktopObservationCapture() : this(ApplicationSnapshots.InteractiveDesktop) { }
+        internal WindowsDesktopObservationCapture(Func<bool> interactive) { this.interactive = interactive; }
+        public DesktopCaptureStatus GetStatus()
+        {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT) return DesktopCaptureStatus.UnsupportedPlatform;
+            if (!interactive()) return DesktopCaptureStatus.NonInteractiveDesktop;
+            if (ApplicationSnapshots.CaptureBusy) return DesktopCaptureStatus.Busy;
+            return ApplicationSnapshots.Foreground(new DesktopCaptureOptions()) == null ? DesktopCaptureStatus.NoEligibleForeground : DesktopCaptureStatus.Ready;
+        }
+        public async Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options, CancellationToken cancel)
+        {
+            cancel.ThrowIfCancellationRequested();
+            if (options == null) throw new ArgumentNullException("options");
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT || !interactive()) return null;
+            ApplicationSnapshotTarget target = null;
+            DateTimeOffset capturedAt = default(DateTimeOffset);
+            byte[] png = await ApplicationSnapshots.CaptureObservationAsync(options, delegate(ApplicationSnapshotTarget value)
+            { target = value; capturedAt = DateTimeOffset.UtcNow; }, cancel).ConfigureAwait(false);
+            if (png == null) return null;
+            var frame = new DesktopObservationFrame(png, capturedAt, target.ObservationIdentity);
+            if (cancel.IsCancellationRequested || !IsCurrent(frame))
+            {
+                frame.Dispose(); cancel.ThrowIfCancellationRequested(); return null;
+            }
+            return frame;
+        }
+        public bool IsCurrent(DesktopObservationFrame frame)
+        {
+            return frame != null && !frame.IsDisposed && interactive() && ApplicationSnapshots.MatchesObservation(frame.Target);
+        }
+    }
+
 }

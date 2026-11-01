@@ -4,9 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);DESKTOP_OBSERVATION_PORTABLE</DefineConstants>
     <StartupObject>Dafeiyu.Tests.PortableTests</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../tests/DesktopObservationCaptureTests.cs" Link="Tests/DesktopObservationCaptureTests.cs" />
     <Compile Include="../../tests/FeishuRegistrationTests.cs;../../tests/OfficialBotRegistrationTests.cs;../../tests/WecomRegistrationTests.cs" Link="Tests/%(Filename)%(Extension)" />
     <Compile Include="../../tests/ImageInputRouterTests.cs" Link="Tests/ImageInputRouterTests.cs" />
     <Compile Include="../../tests/ImageModelResolverTests.cs" Link="Tests/ImageModelResolverTests.cs" />
