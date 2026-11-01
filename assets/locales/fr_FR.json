@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Impossible d'enregistrer les modifications. Essayer à nouveau.",
   "desktopObservation.noDestination": "Aucun service de réception disponible",
   "desktopObservation.consentTitle": "Confirmer la capture d'écran",
-  "desktopObservation.consentBody": "La fenêtre active actuelle sera envoyée à : {0}. Le contenu sensible dans la fenêtre peut être inclus. Excluez les applications que vous ne souhaitez pas partager.",
+  "desktopObservation.consentBody": "Les services ci-dessous recevront les informations de la fenêtre active. Du contenu sensible peut être inclus ; exclure les applications que vous ne souhaitez pas partager.\nBUREAUPLACEHOLDERZERO\\n{0}",
   "desktopObservation.consentAccept": "Permettre",
   "desktopObservation.consentCancel": "Annuler",
   "desktopObservation.bundleIdLabel": "Identifiant de l'ensemble d'applications",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "Le modèle a renvoyé une réponse non valide. Réessayez plus tard.",
   "desktopObservation.reason.ModelTimeout": "La demande de modèle a expiré. Essayez plus tard.",
   "desktopObservation.reason.TotalTimeout": "L'observation a expiré. Réessayez plus tard.",
-  "desktopObservation.reason.Cancelled": "Annulé."
+  "desktopObservation.reason.Cancelled": "Annulé.",
+  "desktopObservation.imageDestination": "Image envoyée à : {0} {0}",
+  "desktopObservation.textDestination": "Description de l'image envoyée à : {0} {0}"
 }

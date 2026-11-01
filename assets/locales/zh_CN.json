@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "保存失败，请重试。",
   "desktopObservation.noDestination": "没有可用的接收服务",
   "desktopObservation.consentTitle": "确认屏幕采集",
-  "desktopObservation.consentBody": "当前活动窗口将发送至：{0}。窗口可能包含敏感内容，请排除不希望分享的应用。",
+  "desktopObservation.consentBody": "以下服务将接收来自活动窗口的内容，可能包含敏感信息；请排除不希望分享的应用。\n{0}",
   "desktopObservation.consentAccept": "允许",
   "desktopObservation.consentCancel": "取消",
   "desktopObservation.bundleIdLabel": "应用包标识符",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "模型返回的内容无效，请稍后重试。",
   "desktopObservation.reason.ModelTimeout": "模型请求超时，请稍后重试。",
   "desktopObservation.reason.TotalTimeout": "观察超时，请稍后重试。",
-  "desktopObservation.reason.Cancelled": "已取消。"
+  "desktopObservation.reason.Cancelled": "已取消。",
+  "desktopObservation.imageDestination": "图片发送至：{0}",
+  "desktopObservation.textDestination": "图片描述发送至：{0}"
 }

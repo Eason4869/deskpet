@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "変更を保存できませんでした。もう一度やり直してください。",
   "desktopObservation.noDestination": "受信サービスはありません",
   "desktopObservation.consentTitle": "画面キャプチャを確認する",
-  "desktopObservation.consentBody": "現在アクティブなウィンドウは {0} に送信されます。ウィンドウ内の機密性の高いコンテンツが含まれる可能性があります。共有したくないアプリを除外します。",
+  "desktopObservation.consentBody": "以下のサービスは、アクティブなウィンドウから情報を受け取ります。機密性の高いコンテンツが含まれる場合があります。共有したくないアプリを除外します。\nデスクペットプレースホルダーゼロ\\n{0}",
   "desktopObservation.consentAccept": "許可する",
   "desktopObservation.consentCancel": "キャンセル",
   "desktopObservation.bundleIdLabel": "アプリバンドル識別子",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "モデルが無効な応答を返しました。後でもう一度試してください。",
   "desktopObservation.reason.ModelTimeout": "モデルリクエストがタイムアウトしました。後で試してください。",
   "desktopObservation.reason.TotalTimeout": "監視がタイムアウトしました。後でもう一度試してください。",
-  "desktopObservation.reason.Cancelled": "キャンセル。"
+  "desktopObservation.reason.Cancelled": "キャンセル。",
+  "desktopObservation.imageDestination": "画像の送信先: {0} {0}",
+  "desktopObservation.textDestination": "画像の説明は {0} に送信されました。 {0}"
 }

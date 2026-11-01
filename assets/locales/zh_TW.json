@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "儲存失敗，請重試。",
   "desktopObservation.noDestination": "沒有可用的接收服務",
   "desktopObservation.consentTitle": "確認螢幕擷取",
-  "desktopObservation.consentBody": "目前活動視窗將發送至：{0}。視窗可能包含敏感內容，請排除不希望分享的應用程式。",
+  "desktopObservation.consentBody": "以下服務將接收來自活動視窗的內容，可能包含敏感資訊；請排除不希望分享的應用程式。\n{0}",
   "desktopObservation.consentAccept": "允許",
   "desktopObservation.consentCancel": "取消",
   "desktopObservation.bundleIdLabel": "應用程式套件識別碼",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "模型傳回的內容無效，請稍後重試。",
   "desktopObservation.reason.ModelTimeout": "模型請求超時，請稍後重試。",
   "desktopObservation.reason.TotalTimeout": "測試超時，請稍後重試。",
-  "desktopObservation.reason.Cancelled": "已取消。"
+  "desktopObservation.reason.Cancelled": "已取消。",
+  "desktopObservation.imageDestination": "圖片傳送至：{0}",
+  "desktopObservation.textDestination": "圖片描述傳送至：{0}"
 }

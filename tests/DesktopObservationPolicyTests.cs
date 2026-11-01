@@ -31,6 +31,10 @@ namespace Dafeiyu.Tests
             var described=Settings();described.Text.ImageSupport=CapabilitySupport.Unsupported;described.TextProviders=new List<TextProviderSettings>{fallback};described.ImageDescriptionModel=new ModelReference{ProviderId="vision",ModelId="image"};described.ImageDescriptionOverride=null;
             addresses=DesktopObservationUiText.Destinations(described);
             Check(addresses.Length==2 && addresses[0]=="https://vision.example/v1/chat/completions" && addresses[1]=="http://127.0.0.1:1/v1/chat/completions", "described route identifies both destinations");
+            string summary=DesktopObservationUiText.ReceivingSummary(described);
+            Check(summary.Contains(TextResources.Format("desktopObservation.imageDestination",addresses[0])) && summary.Contains(TextResources.Format("desktopObservation.textDestination",addresses[1])),"described consent labels image and text recipients separately");
+            summary=DesktopObservationUiText.ReceivingSummary(Settings());
+            Check(summary==TextResources.Format("desktopObservation.imageDestination","http://127.0.0.1:1/v1/chat/completions"),"direct consent only identifies image recipient");
         }
         static void ReasonLabels()
         {

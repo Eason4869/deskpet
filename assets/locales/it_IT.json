@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Impossibile salvare le modifiche. Riprova.",
   "desktopObservation.noDestination": "Nessun servizio di ricezione disponibile",
   "desktopObservation.consentTitle": "Conferma l'acquisizione dello schermo",
-  "desktopObservation.consentBody": "La finestra attualmente attiva verrà inviata a: {0}. Potrebbero essere inclusi contenuti sensibili nella finestra. Escludi le app che non desideri condividere.",
+  "desktopObservation.consentBody": "I servizi sottostanti riceveranno informazioni dalla finestra attiva. Potrebbero essere inclusi contenuti sensibili; escludi le app che non desideri condividere.\nDESKPETPLACEWAYZERO\\n{0}",
   "desktopObservation.consentAccept": "Permettere",
   "desktopObservation.consentCancel": "Cancellare",
   "desktopObservation.bundleIdLabel": "Identificatore dell'app bundle",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "Il modello ha restituito una risposta non valida. Riprova più tardi.",
   "desktopObservation.reason.ModelTimeout": "La richiesta del modello è scaduta. Riprova più tardi.",
   "desktopObservation.reason.TotalTimeout": "Timeout dell'osservazione. Riprova più tardi.",
-  "desktopObservation.reason.Cancelled": "Annullato."
+  "desktopObservation.reason.Cancelled": "Annullato.",
+  "desktopObservation.imageDestination": "Immagine inviata a: {0} {0}",
+  "desktopObservation.textDestination": "Descrizione dell'immagine inviata a: {0} {0}"
 }

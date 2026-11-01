@@ -4777,7 +4777,7 @@
   "desktopObservation.saveFailed": "Tidak dapat menyimpan perubahan. Coba lagi.",
   "desktopObservation.noDestination": "Tidak ada layanan penerimaan yang tersedia",
   "desktopObservation.consentTitle": "Konfirmasikan tangkapan layar",
-  "desktopObservation.consentBody": "Jendela aktif saat ini akan dikirim ke: {0}. Konten sensitif di jendela mungkin disertakan. Kecualikan aplikasi yang tidak ingin Anda bagikan.",
+  "desktopObservation.consentBody": "Layanan di bawah ini akan menerima informasi dari jendela aktif. Konten sensitif mungkin disertakan; kecualikan aplikasi yang tidak ingin Anda bagikan.\n{0}\\n{0}",
   "desktopObservation.consentAccept": "Mengizinkan",
   "desktopObservation.consentCancel": "Membatalkan",
   "desktopObservation.bundleIdLabel": "Pengidentifikasi paket aplikasi",
@@ -4817,5 +4817,7 @@
   "desktopObservation.reason.InvalidResponse": "Model mengembalikan respons yang tidak valid. Coba lagi nanti.",
   "desktopObservation.reason.ModelTimeout": "Waktu permintaan model telah habis. Coba nanti.",
   "desktopObservation.reason.TotalTimeout": "Waktu observasi telah habis. Coba lagi nanti.",
-  "desktopObservation.reason.Cancelled": "Dibatalkan."
+  "desktopObservation.reason.Cancelled": "Dibatalkan.",
+  "desktopObservation.imageDestination": "Gambar dikirim ke: {0} {0}",
+  "desktopObservation.textDestination": "Deskripsi gambar dikirim ke: {0} {0}"
 }
