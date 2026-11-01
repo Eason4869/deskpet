@@ -110,7 +110,20 @@ internal sealed partial class ChatWindow : Window
         var toolbar = new Grid { Name = "ComposerToolbar", ColumnDefinitions = new ColumnDefinitions("36,104,*,Auto"), Margin = new Thickness(2, 8, 2, 0) };
         toolbar.Children.Add(addAttachment); Grid.SetColumn(modeButton, 1); toolbar.Children.Add(modeButton); models.Name = "ChatModels"; models.MinWidth = 0; models.MaxWidth = 260; models.Margin = new Thickness(0, 0, 4, 0); models.RenderTransform = new TranslateTransform(0, 4); models.HorizontalAlignment = HorizontalAlignment.Right;
         var imageModelButton=LocalizedUi.Button(()=>TextResources.Get("imageDescription.title"),()=>{});imageModelButton.Name="ImageDescriptionMenu";imageModelButton.Content=LocalizedUi.With(new TextBlock{TextTrimming=TextTrimming.CharacterEllipsis,MaxWidth=120},"Text",()=>TextResources.Get("imageDescription.title"));LocalizedUi.Tooltip(imageModelButton,()=>TextResources.Get("imageDescription.title"));imageModelButton.MaxWidth=130;imageModelButton.Padding=new Thickness(5,2);var imageMenu=new ContextMenu();imageModelButton.ContextMenu=imageMenu;imageModelButton.Click+=(_,_)=>{PopulateImageDescriptionMenu(imageMenu);imageMenu.Open(imageModelButton);};
-        var modelRow=Ui.Row(models,imageModelButton);modelRow.HorizontalAlignment=HorizontalAlignment.Right;Grid.SetColumn(modelRow,2);toolbar.Children.Add(modelRow);
+        models.ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<ModelChoice>((item, _) => new TextBlock { Text = item?.Label, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap });
+        var modelRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8, MinWidth = 0 };
+        var imageModelCaption = imageModelButton.Content;
+        var imageModelGlyph = MenuIcon("M 2,3 L 16,3 L 16,15 L 2,15 Z M 3,13 L 7,9 L 10,12 L 12,10 L 15,13 M 7,6 A 1,1 0 1 1 5,6 A 1,1 0 1 1 7,6");
+        LocalizedUi.Caption(imageModelButton, () => TextResources.Get("imageDescription.title"));
+        modelRow.SizeChanged += (_, change) =>
+        {
+            bool compact = change.NewSize.Width < 200;
+            imageModelButton.Content = compact ? imageModelGlyph : imageModelCaption;
+            imageModelButton.Width = imageModelButton.Height = compact ? 32 : double.NaN;
+            imageModelButton.Padding = compact ? new Thickness(0) : new Thickness(5, 2);
+        };
+        modelRow.Children.Add(models); Grid.SetColumn(imageModelButton, 1); modelRow.Children.Add(imageModelButton);
+        Grid.SetColumn(modelRow, 2); toolbar.Children.Add(modelRow);
         var actions = Ui.Row(dictate, primary); Grid.SetColumn(actions, 3); toolbar.Children.Add(actions);
         var composer = new Border { Name = "ComposerSurface", Background = DesktopTheme.Surface, CornerRadius = new CornerRadius(22), BorderBrush = DesktopTheme.Brush("#E3E7ED"), BorderThickness = new Thickness(1), Padding = new Thickness(8), Child = Ui.Column(attachmentChips, draft, toolbar) };
         draft.TextChanged += (_, _) => RefreshAction();

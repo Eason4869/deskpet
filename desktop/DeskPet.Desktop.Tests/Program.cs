@@ -141,6 +141,7 @@ try
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
@@ -587,7 +588,8 @@ try
     Check(modelSelect.RenderTransform is TranslateTransform { Y: 4 }, "model dropdown has the requested final four pixel vertical adjustment");
     var primaryAction = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "PrimaryChatAction");
     var micAction = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatDictation");
-    Check(toolbar.ColumnDefinitions.Count == 4 && Grid.GetColumn(modeButton) == 1 && Grid.GetColumn(modelSelect) == 2 && toolbar.ColumnDefinitions[2].Width.IsStar && modelSelect.MinWidth == 0 && primaryAction.Width == 32 && micAction.Width == 32, "mode occupies a fixed left slot while model shrinks and right actions stay at 32 pixels");
+    var modelSlot = toolbar.Children.Single(c => ReferenceEquals(c, modelSelect) || c.GetLogicalDescendants().Contains(modelSelect));
+    Check(toolbar.ColumnDefinitions.Count == 4 && Grid.GetColumn(modeButton) == 1 && Grid.GetColumn(modelSlot) == 2 && toolbar.ColumnDefinitions[2].Width.IsStar && modelSelect.MinWidth == 0 && primaryAction.Width == 32 && micAction.Width == 32, "mode occupies a fixed left slot while model shrinks and right actions stay at 32 pixels");
     var attachmentButton = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "AddAttachment");
     var attachmentMenu = attachmentButton.ContextMenu!.Items.OfType<MenuItem>().ToList();
     Check(attachmentMenu.Select(i => i.Name).Where(n => n != null).SequenceEqual(new[] { "AttachmentFilesMenu", "AttachApplicationSnapshot", "SetAgentGoal", "AgentPlanMode" }), "add menu exposes file/folder, application snapshot, goal and plan mode actions");
