@@ -86,7 +86,8 @@ internal static class ProactiveConversationChecks
         internal int Calls;
         internal TaskCompletionSource<string>? Pending;
         internal readonly List<IList<ChatMessage>> Requests=new();
-        public Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel){Requests.Add(messages.Select(m=>m.Copy()).ToArray());Interlocked.Increment(ref Calls);return Pending?.Task??Task.FromResult("reply");}
+        internal readonly List<ConnectionSettings> Connections=new();
+        public Task<string> ChatAsync(ConnectionSettings settings,IList<ChatMessage> messages,CancellationToken cancel){Connections.Add(settings.Copy());Requests.Add(messages.Select(m=>m.Copy()).ToArray());Interlocked.Increment(ref Calls);return Pending?.Task??Task.FromResult("reply");}
         public Task<string> TranscribeAsync(ConnectionSettings settings,byte[] wav,CancellationToken cancel)=>throw new NotSupportedException();
         public Task<byte[]> SpeechAsync(ConnectionSettings settings,string voice,string text,CancellationToken cancel)=>throw new NotSupportedException();
         public void Dispose(){}
@@ -158,7 +159,86 @@ internal static class ProactiveConversationChecks
             Check(restarted.ReopenProactiveConversation(malformed.Id)==null,"malformed local catalog identity cannot escape conversation storage");
             restored.Close();restarted.Pet.Close();restarted.Dispose();Wait(restarted.ImageServicesShutdown);
         }
+        checks+=RunBoundCompanion(Path.Combine(directory,"bound-companion"));
+        checks+=RunPendingComposer(Path.Combine(directory,"pending-composer"));
         return checks;
+    }
+    private static int RunPendingComposer(string directory)
+    {
+        int checks=0;void Check(bool value,string name){if(!value)throw new Exception(name);checks++;}
+        var protector=new TestProtector();SecretProtection.Configure(protector);Directory.CreateDirectory(directory);
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{OnboardingState="completed",AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new Runtime(directory,protector));
+        owner.Settings.Text.BaseUrl="https://example.com/v1";owner.Settings.Text.Model="fixture";owner.Settings.Text.ApiKey="fixture";owner.Settings.ReadReplies=false;owner.Settings.ShowPredictedMessages=false;
+        var catalog=(AgentWorkCatalog)typeof(DesktopWorkspaces).GetProperty("Catalog",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner.WorkBindings)!;
+        var store=(ProjectCatalogStore)typeof(AgentWorkCatalog).GetField("store",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(catalog)!;
+        try
+        {
+            foreach(bool edit in new[]{false,true})
+            {
+                var item=new ProactiveEvent(Guid.NewGuid().ToString("N"),owner.Skin.Id,"Original pending admission",null,DateTime.UtcNow,"","");owner.RegisterShownProactive(item,owner.Settings.Copy());var api=new Api();
+                using var binding=new ProactiveConversationBinding(owner,new Runtime(directory,protector),item,new ImageDescriptionOverride{Mode="disabled"},api,new TestSpeech());
+                var quick=new ChatWindow(owner,true,binding);quick.Show();var peer=owner.ExpandProactive(binding);
+                var input=quick.GetLogicalDescendants().OfType<TextBox>().Single(box=>box.Name=="ChatDraft");input.Text="Unchanged submitted text";quick.AddAttachments(new[]{ChatAttachment.FromText("submitted.txt","submitted content")});
+                using var entered=new ManualResetEventSlim();using var release=new ManualResetEventSlim();var prior=store.BeforeSave;
+                store.BeforeSave=next=>{prior?.Invoke(next);entered.Set();if(!release.Wait(10000))throw new TimeoutException("pending catalog admission release");};
+                try
+                {
+                    typeof(ChatWindow).GetMethod("Send",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(quick,null);Until(()=>entered.IsSet);
+                    if(edit)peer.AddAttachments(new[]{ChatAttachment.FromText("late-unsent.txt","late user content")});
+                    release.Set();Until(()=>api.Calls==1&&!binding.Session.IsBusy);Dispatcher.UIThread.RunJobs();
+                    var sent=api.Requests.Single().SelectMany(message=>message.Attachments??new List<ChatAttachment>()).Select(file=>file.Name).ToArray();
+                    Check(sent.Contains("submitted.txt")&&!sent.Contains("late-unsent.txt"),"request snapshot excludes attachment added after submission");
+                    if(edit)Check(binding.Attachments.Any(file=>file.Name=="late-unsent.txt")&&input.Text=="Unchanged submitted text"&&peer.GetLogicalDescendants().OfType<TextBlock>().Any(text=>text.Text=="late-unsent.txt"),"peer attachment added during admission remains in the shared composer");
+                    else Check(binding.Attachments.Count==0&&input.Text==""&&peer.GetLogicalDescendants().OfType<TextBox>().Single(box=>box.Name=="ChatDraft").Text=="","unchanged submitted composer clears across both views after admission");
+                }
+                finally{release.Set();store.BeforeSave=prior;quick.Close();peer.Close();Wait(binding.DrainAsync());}
+            }
+        }
+        finally{owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);}
+        return checks;
+    }
+    private static int RunBoundCompanion(string directory)
+    {
+        int checks=0;void Check(bool value,string name){if(!value)throw new Exception(name);checks++;}
+        var protector=new TestProtector();SecretProtection.Configure(protector);Directory.CreateDirectory(directory);
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{OnboardingState="completed",AutoUpdate=false,FollowCursor=false,Wander=false,GreetingEnabled=false});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new Runtime(directory,protector));
+        var skinA=owner.Skin;
+        owner.Settings.Text.BaseUrl=owner.Settings.Speech.BaseUrl="https://example.com/v1";owner.Settings.Text.Model="fixture";owner.Settings.Speech.Model="fixture-speech";owner.Settings.Text.ApiKey=owner.Settings.Speech.ApiKey="fixture";
+        owner.Settings.ReadReplies=true;owner.Settings.Volume=50;owner.Settings.ShowPredictedMessages=false;
+        PersonaProfiles.Save(owner.Settings,skinA.Id,skinA.Prompt,"Only companion A custom prompt {pet_name}",skinA.Voices,skinA.OfficialCharacterId??skinA.BuiltinCharacterId);
+        owner.Settings.VoiceName="voice-A";owner.Settings.LiveVoice="live-A";PersonaProfiles.SaveVoices(owner.Settings);
+        var skinB=new PetSkin{Id="fixture-companion-b",PickerKey="custom-pack:fixture-companion-b",Name="Companion B",Prompt="Only companion B default prompt",Atlas=skinA.Atlas,Gaze=skinA.Gaze};
+        foreach(var clip in skinA.Clips)skinB.Clips[clip.Key]=clip.Value;
+        foreach(var clip in skinA.Alternates)skinB.Alternates[clip.Key]=clip.Value;
+        owner.Skins.Add(skinB);
+        var bProfile=owner.Settings.Copy();PersonaProfiles.Save(bProfile,skinB.Id,skinB.Prompt,"Only companion B custom prompt");bProfile.VoiceName="voice-B";bProfile.LiveVoice="live-B";PersonaProfiles.SaveVoices(bProfile);
+        owner.Settings.PersonaOverrides[skinB.Id]=bProfile.PersonaOverrides[skinB.Id];owner.Settings.VoiceProfiles[skinB.Id]=bProfile.VoiceProfiles[skinB.Id].Copy();
+        var item=new ProactiveEvent("companion-identity",skinA.Id,"A initiated this exact sentence",null,DateTime.UtcNow,"","");owner.RegisterShownProactive(item,owner.Settings.Copy());
+        var api=new Api();var speech=new InspectSpeech();using var binding=new ProactiveConversationBinding(owner,new Runtime(directory,protector),item,new ImageDescriptionOverride{Mode="disabled"},api,speech);
+        var quick=new ChatWindow(owner,true,binding);quick.Show();var full=owner.ExpandProactive(binding);
+        string relationshipA=binding.Session.CaptureRelationshipCompanion();
+        try
+        {
+            Wait(owner.SelectSkinAsync(skinB));owner.Settings.TextProviders.Single(provider=>provider.Id==owner.Settings.ActiveTextProviderId).Models.Add("latest-service-model");owner.Settings.SelectTextModel(owner.Settings.ActiveTextProviderId,"latest-service-model");
+            string globalB=SettingsStore.SnapshotIdentity(owner.Settings);
+            quick.GetLogicalDescendants().OfType<TextBox>().Single(box=>box.Name=="ChatDraft").Text="Real reply to A";
+            typeof(ChatWindow).GetMethod("Send",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(quick,null);Until(()=>api.Calls==1&&!binding.Session.IsBusy);Wait(binding.Session.FlushHistoryAsync());
+            Check(api.Requests.Single()[0].Content.Contains("Only companion A custom prompt")&&!api.Requests.Single()[0].Content.Contains("Only companion B"),"retained A reply uses A custom prompt after global companion switches to B");
+            var effective=binding.EffectiveSettings();Check(effective.SkinId==skinA.Id&&effective.VoiceName=="voice-A"&&effective.LiveVoice=="live-A"&&!effective.AgentEnabled,"bound identity and voice profile remain A in ordinary effective settings");
+            Check(speech.Requests.Single().SkinId==skinA.Id&&speech.Requests.Single().VoiceName=="voice-A","actual reply speech receives A identity and voice");
+            Check(api.Connections.Single().Model=="latest-service-model"&&SettingsStore.SnapshotIdentity(owner.Settings)==globalB&&owner.Skin==skinB&&owner.Settings.VoiceName=="voice-B","bound persona keeps current model preferences and leaves global B settings unchanged");
+            Check(quick.BoundSession.PersonaId==skinA.Id&&ReferenceEquals(quick.BoundSession,full.BoundSession)&&binding.Session.History.Messages.Last().RelationshipCompanionId==relationshipA&&relationshipA!=owner.RelationshipCompanionId,"retained quick/full history and relationship owner remain A");
+        }
+        finally{quick.Close();full.Close();Wait(binding.DrainAsync());owner.Pet.Close();owner.Dispose();Wait(owner.ImageServicesShutdown);}
+        return checks;
+    }
+    private sealed class InspectSpeech:IReplySpeech
+    {
+        internal readonly List<PetSettings> Requests=new();
+        public Task SpeakAsync(string text,PetSettings settings,CancellationToken cancel){Requests.Add(settings.Copy());return Task.CompletedTask;}
+        public void Stop(){}public void SetVolume(int volume){}public void Dispose(){}
     }
     internal static void Wait(Task task){var deadline=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(deadline.ElapsedMilliseconds>15000)throw new TimeoutException();Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
     private static void Until(Func<bool> ready){var deadline=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(deadline.ElapsedMilliseconds>10000)throw new TimeoutException();Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}}
@@ -176,6 +256,8 @@ internal static class ProactiveConversationChecks
         Check(!panel.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="ObservationPause").IsEnabled&&!panel.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="ObservationUploadTest").IsEnabled,"off/dependency state disables pause and upload actions");
         toggle.IsChecked=true;Dispatcher.UIThread.RunJobs();
         var consent=window.OwnedWindows.Single(dialog=>dialog.Title==TextResources.Get("desktopObservation.consentTitle"));
+        Check(!consent.GetLogicalDescendants().OfType<TextBlock>().Any(text=>(text.Text??"").Contains("{0}")),"actual consent dialog contains no unformatted recipient placeholder");
+        Dispatcher.UIThread.RunJobs();AvaloniaHeadlessPlatform.ForceRenderTimerTick();Directory.CreateDirectory("work/task7b-renders");using(var image=consent.CaptureRenderedFrame()){Check(image!=null,"formatted consent dialog actually renders");image!.Save(Path.GetFullPath("work/task7b-renders/consent-fix1-light-500.png"),new PngBitmapEncoderOptions());}
         Check(consent.GetLogicalDescendants().OfType<TextBlock>().Any(text=>(text.Text??"").Contains("https://example.com")),"explicit consent shows its actual receiving service");
         var cancel=consent.GetLogicalDescendants().OfType<Button>().Single(button=>(button.Content as TextBlock)?.Text==TextResources.Get("desktopObservation.consentCancel"));cancel.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
         Check(toggle.IsChecked==false&&!owner.Settings.DesktopObservationEnabled,"cancelling consent leaves observation visibly disabled");

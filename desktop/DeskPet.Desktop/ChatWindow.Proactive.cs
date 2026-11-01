@@ -11,13 +11,18 @@ internal sealed partial class ChatWindow
     private async Task SendProactiveAsync(string text)
     {
         if(proactiveAdmissionPending)return;proactiveAdmissionPending=true;
-        var binding=ProactiveBinding!;var capturedText=draft.Text;int capturedEpoch=uploadEpoch;
-        try{await binding.SendAsync(text,ChatAttachment.Snapshot(Files),()=>Dispatcher.UIThread.Post(()=>
+        var binding=ProactiveBinding!;var submitted=binding.CaptureComposer();
+        try{await binding.SendAsync(text,submitted.Attachments,()=>Dispatcher.UIThread.Post(()=>
         {
             proactiveAdmissionPending=false;
-            // Admission may finish after the person has already edited the composer.
-            if(closed||draft.Text!=capturedText||uploadEpoch!=capturedEpoch)return;
-            Files.Clear();uploadEpoch++;draft.Text="";RefreshAttachments();RefreshAction();
+            // Every quick/full view contributes to the same text/attachment revision.
+            binding.ClearSubmittedComposer(submitted);
         }));}finally{proactiveAdmissionPending=false;}
+    }
+    private void EnqueueProactive(string text)
+    {
+        var binding=ProactiveBinding!;var submitted=binding.CaptureComposer();
+        try{binding.Queue.Enqueue(text,submitted.Attachments);uploadEpoch++;binding.ClearSubmittedComposer(submitted);}
+        catch(Exception error){owner.Error(error);}
     }
 }

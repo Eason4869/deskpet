@@ -16,10 +16,26 @@ internal sealed class ProactiveConversationBinding : IDisposable
     internal string Id=>definition.Id;
     internal string EventId {get;}
     private string draft="";
+    private long composerRevision;
+    private readonly List<ChatAttachment> attachments=new();
+    internal sealed record ComposerSnapshot(long Revision,string Text,IList<ChatAttachment> Attachments);
     internal event Action? ComposerChanged;
-    internal string Draft {get{lock(gate)return draft;}set{lock(gate){if(draft==value)return;draft=value;}ComposerChanged?.Invoke();}}
-    internal void NotifyAttachmentsChanged()=>ComposerChanged?.Invoke();
-    internal List<ChatAttachment> Attachments {get;}=new();
+    internal string Draft {get{lock(gate)return draft;}set{lock(gate){if(disposed||draft==value)return;draft=value;composerRevision++;}ComposerChanged?.Invoke();}}
+    internal IList<ChatAttachment> Attachments=>attachments.AsReadOnly();
+    internal void AddAttachments(IEnumerable<ChatAttachment> added)
+    {
+        lock(gate){ObjectDisposedException.ThrowIf(disposed,this);var next=ChatAttachment.Snapshot(attachments.Concat(added));attachments.Clear();attachments.AddRange(next);composerRevision++;}
+        ComposerChanged?.Invoke();
+    }
+    internal void RemoveAttachment(ChatAttachment value)
+    {lock(gate){if(disposed||!attachments.Remove(value))return;composerRevision++;}ComposerChanged?.Invoke();}
+    internal ComposerSnapshot CaptureComposer()
+    {lock(gate)return new ComposerSnapshot(composerRevision,draft,ChatAttachment.Snapshot(attachments));}
+    internal bool ClearSubmittedComposer(ComposerSnapshot submitted)
+    {
+        lock(gate){if(disposed||composerRevision!=submitted.Revision)return false;draft="";attachments.Clear();composerRevision++;}
+        ComposerChanged?.Invoke();return true;
+    }
     internal string CompanionId=>definition.PetId;
     internal PetSkin CompanionSkin {get;}
     internal ConversationSession Session {get;}
@@ -63,7 +79,9 @@ internal sealed class ProactiveConversationBinding : IDisposable
     }
     internal PetSettings EffectiveSettings()
     {
-        var settings=owner.Settings.Copy();settings.AgentEnabled=false;
+        var settings=owner.Settings.Copy();
+        PersonaProfiles.Activate(settings,CompanionId,CompanionSkin.Prompt,CompanionSkin.Voices,CompanionSkin.OfficialCharacterId??CompanionSkin.BuiltinCharacterId);
+        settings.AgentEnabled=false;
         lock(gate){settings.ImageDescriptionOverride=definition.ImageDescriptionOverride?.Copy();if(modelProvider!=null&&modelId!=null)settings.SelectTextModel(modelProvider,modelId);}
         return settings;
     }
@@ -95,7 +113,7 @@ internal sealed class ProactiveConversationBinding : IDisposable
     internal async Task DrainAsync(){await Queue.PauseAsync();await Session.StopAsync();await Session.WaitForIdleAsync();await Session.FlushHistoryAsync();}
     public void Dispose()
     {
-        lock(gate){if(disposed)return;disposed=true;draft="";Attachments.Clear();}
+        lock(gate){if(disposed)return;disposed=true;draft="";attachments.Clear();}
         Session.MessageAdded-=Changed;Session.MessageUpdated-=Changed;Session.StateChanged-=owner.NotifyWorkChanged;Queue.Changed-=owner.NotifyWorkChanged;
         Queue.Dispose();Session.Dispose();
     }

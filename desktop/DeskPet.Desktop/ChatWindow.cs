@@ -57,7 +57,7 @@ internal sealed partial class ChatWindow : Window
     private string LoadDraft(){activeDraftKey=DraftKey;if(ProactiveBinding!=null)return ProactiveBinding.Draft;if(owner.Drafts.TryGetValue(activeDraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+activeDraftKey):"";owner.Drafts[activeDraftKey]=value;return value;}
     private void SaveDraft(){var key=activeDraftKey??DraftKey;var value=draft.Text??"";if(ProactiveBinding!=null){ProactiveBinding.Draft=value;if(ProactiveBinding.Accepted&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);return;}owner.Drafts[key]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);}
     private void SynchronizeDraftScope(){if(activeDraftKey==DraftKey)return;SaveDraft();draft.Text=LoadDraft();uploadEpoch++;RefreshAttachments();}
-    private List<ChatAttachment> Files => ProactiveBinding?.Attachments??(attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new());
+    private IList<ChatAttachment> Files => ProactiveBinding?.Attachments??(attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new());
     private string persona;
     private sealed record ModelChoice(string Provider, string Model, string Label) { public override string ToString() => Label; }
     public ChatWindow(DesktopController controller, bool isQuick,ProactiveConversationBinding? proactiveBinding=null)
@@ -298,7 +298,7 @@ internal sealed partial class ChatWindow : Window
         var text = (draft.Text ?? "").Trim(); if (text.Length == 0 && Files.Count == 0) return;
         if(ProactiveBinding!=null&&proactiveAdmissionPending)return;
         owner.Observation.Invalidate(false);
-        if(ProactiveBinding!=null&&!ProactiveBinding.Accepted){if(!proactiveAdmissionPending)owner.Run(()=>SendProactiveAsync(text));return;}
+        if(ProactiveBinding!=null){if(ProactiveBinding.Accepted)EnqueueProactive(text);else if(!proactiveAdmissionPending)owner.Run(()=>SendProactiveAsync(text));return;}
         try { BoundQueue.Enqueue(text, Files); uploadEpoch++; Files.Clear(); RefreshAttachments(); draft.Text = ""; RefreshAction(); } catch (Exception e) { owner.Error(e); }
     }
     private async Task PickAttachmentsAsync()
@@ -334,7 +334,9 @@ internal sealed partial class ChatWindow : Window
     {
         if (closed) return;
         if (owner.Live.IsActive || owner.Dictation.IsBusy) throw new InvalidOperationException(TextResources.Get("chatWindow.addAttachments.text"));
-        var combined = ChatAttachment.Snapshot(Files.Concat(loaded)); Files.Clear(); Files.AddRange(combined);ProactiveBinding?.NotifyAttachmentsChanged(); RefreshAttachments(); RefreshAction();
+        if(ProactiveBinding!=null)ProactiveBinding.AddAttachments(loaded);
+        else{var combined=ChatAttachment.Snapshot(Files.Concat(loaded));Files.Clear();foreach(var file in combined)Files.Add(file);}
+        RefreshAttachments(); RefreshAction();
     }
     private void DisposeAttachmentImages() { foreach (var bitmap in attachmentImages) bitmap.Dispose(); attachmentImages.Clear(); }
     private void RefreshAttachments()
@@ -354,7 +356,7 @@ internal sealed partial class ChatWindow : Window
             }
             var label = new TextBlock { Text = file.Name, FontSize = 11, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(8, 5, 8, 4) };
             var grid = new Grid(); var content = new StackPanel { Spacing = 0 }; content.Children.Add(preview); content.Children.Add(label); grid.Children.Add(content);
-            var remove = Ui.Button("×", () => { Files.Remove(file);ProactiveBinding?.NotifyAttachmentsChanged(); RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
+            var remove = Ui.Button("×", () => { if(ProactiveBinding!=null)ProactiveBinding.RemoveAttachment(file);else Files.Remove(file);RefreshAttachments(); RefreshAction(); }); remove.Name = "RemoveAttachment"; remove.Width = remove.Height = 22; remove.Padding = new Thickness(0); remove.Margin = new Thickness(0, 3, 3, 0); remove.HorizontalAlignment = HorizontalAlignment.Right; remove.VerticalAlignment = VerticalAlignment.Top; remove.HorizontalContentAlignment = HorizontalAlignment.Center; remove.VerticalContentAlignment = VerticalAlignment.Center; remove.CornerRadius = new CornerRadius(11); remove.Background = DesktopTheme.Brush("#F2FFFFFF"); LocalizedUi.Tooltip(remove,()=>(TextResources.Format("chatWindow.refreshAttachments.toolTipSetTip",file.Name))); grid.Children.Add(remove);
             var card = new Border { Name = "AttachmentCard", Width = file.IsImage ? 120 : 150, Height = 100, Margin = new Thickness(0, 0, 8, 8), BorderBrush = DesktopTheme.Brush("#E5E7EB"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), ClipToBounds = true, Child = grid }; ToolTip.SetTip(card, file.Name); attachmentChips.Children.Add(card);
         }
     }
