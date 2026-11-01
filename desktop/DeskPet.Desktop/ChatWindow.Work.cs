@@ -9,17 +9,19 @@ internal sealed partial class ChatWindow
     private ConversationSession? boundSession;private ConversationQueue? boundQueue;
     private int bindingEpoch;
     private Button? workBindingButton,workJobsButton;
-    private string DraftKey=>(quick?"quick:":"full:")+ComposerDraftStore.Scope(persona,
+    internal ProactiveConversationBinding? ProactiveBinding {get;}
+    private string DraftKey=>ProactiveBinding!=null?"proactive:"+ProactiveBinding.Id:(quick?"quick:":"full:")+ComposerDraftStore.Scope(persona,
         !quick&&(binding!=null||OperatingSystem.IsWindows()&&owner.Settings.AgentEnabled)?"work":"chat",
         binding?.ProjectId??"",binding?.Id??"");
-    internal ConversationSession BoundSession=>boundSession??owner.Session;
-    internal ConversationQueue BoundQueue=>boundQueue??owner.Queue;
-    internal PetSettings EffectiveSettings()=>binding?.EffectiveSettings()??owner.Settings;
-    private Func<PetSettings> CaptureSettings(){var source=binding;return source==null?()=>owner.Settings:source.EffectiveSettings;}
+    internal ConversationSession BoundSession=>ProactiveBinding?.Session??boundSession??owner.Session;
+    internal ConversationQueue BoundQueue=>ProactiveBinding?.Queue??boundQueue??owner.Queue;
+    internal PetSettings EffectiveSettings()=>ProactiveBinding?.EffectiveSettings()??binding?.EffectiveSettings()??owner.Settings;
+    private Func<PetSettings> CaptureSettings(){if(ProactiveBinding!=null)return ProactiveBinding.EffectiveSettings;var source=binding;return source==null?()=>owner.Settings:source.EffectiveSettings;}
     internal void FreezeForExit(){chatPage.IsEnabled=false;imageWorkspace.IsEnabled=false;}
     private async Task StopBoundAsync(){var queue=BoundQueue;var session=BoundSession;await owner.Dictation.CancelAsync(this);await queue.PauseAsync();await session.StopAsync();}
     internal async Task BindWorkAsync(string? projectId,string? conversationId)
     {
+        if(ProactiveBinding!=null)return;
         if(closed)return;
         if(owner.WorkBindings.IsDraining)throw new InvalidOperationException(TextResources.Get("agentJobs.exitBlocked"));
         int request=++bindingEpoch;

@@ -53,15 +53,15 @@ internal sealed partial class ChatWindow : Window
     private int uploadEpoch;
     private readonly record struct UploadContext(string Persona, int Epoch);
     private string? activeDraftKey;
-    private string LoadDraft(){activeDraftKey=DraftKey;if(owner.Drafts.TryGetValue(activeDraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+activeDraftKey):"";owner.Drafts[activeDraftKey]=value;return value;}
-    private void SaveDraft(){var key=activeDraftKey??DraftKey;var value=draft.Text??"";owner.Drafts[key]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);}
+    private string LoadDraft(){activeDraftKey=DraftKey;if(ProactiveBinding!=null)return ProactiveBinding.Draft;if(owner.Drafts.TryGetValue(activeDraftKey,out var value))return value;value=!quick&&owner.Settings.SaveChatHistory?owner.ComposerDrafts.Get("desktop:"+activeDraftKey):"";owner.Drafts[activeDraftKey]=value;return value;}
+    private void SaveDraft(){var key=activeDraftKey??DraftKey;var value=draft.Text??"";if(ProactiveBinding!=null){ProactiveBinding.Draft=value;if(ProactiveBinding.Accepted&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);return;}owner.Drafts[key]=value;if(!quick&&owner.Settings.SaveChatHistory)owner.ComposerDrafts.Set("desktop:"+key,value);}
     private void SynchronizeDraftScope(){if(activeDraftKey==DraftKey)return;SaveDraft();draft.Text=LoadDraft();uploadEpoch++;RefreshAttachments();}
-    private List<ChatAttachment> Files => attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new();
+    private List<ChatAttachment> Files => ProactiveBinding?.Attachments??(attachments.TryGetValue(DraftKey, out var files) ? files : attachments[DraftKey] = new());
     private string persona;
     private sealed record ModelChoice(string Provider, string Model, string Label) { public override string ToString() => Label; }
-    public ChatWindow(DesktopController controller, bool isQuick)
+    public ChatWindow(DesktopController controller, bool isQuick,ProactiveConversationBinding? proactiveBinding=null)
     {
-        owner = controller; quick = isQuick; persona = owner.Skin.Id;
+        owner = controller; quick = isQuick;ProactiveBinding=proactiveBinding; persona = proactiveBinding?.CompanionId??owner.Skin.Id;
         draft.Text = LoadDraft();
         draft.TextChanged += (_, _) => SaveDraft();
         LocalizedUi.Set(this,"Title",()=>(quick ? TextResources.Get("chatWindow.chatWindow.titleQuick") : TextResources.Get("chatWindow.chatWindow.titleQuick.alternativeA"))); Width = quick ? 470 : 880; Height = quick ? 520 : 730;
@@ -85,8 +85,8 @@ internal sealed partial class ChatWindow : Window
         profileButton.Click+=(_,_)=>profileMenu.Open(profileButton);
         LocalizedUi.Automation(profileButton,()=>(TextResources.Get("chatAppShell.initializeAppShell.shellIcons.alternativeK")));
         questions.Name = "AgentQuestions";
-        var header = Ui.Column(Ui.Row(profileButton, partnerName, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text")), owner.ShowSettings), LocalizedUi.Button(()=>(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB")), () => owner.ShowChat(!quick))), status, questions);
-        if(!quick)header.Children.Add(CreateWorkBindingActions());
+        var header = Ui.Column(Ui.Row(profileButton, partnerName, LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text")), owner.ShowSettings), LocalizedUi.Button(()=>(quick ? TextResources.Get("chatWindow.chatWindow.text.alternativeA") : TextResources.Get("chatWindow.chatWindow.text.alternativeB")), () => {if(ProactiveBinding!=null)owner.ExpandProactive(ProactiveBinding);else owner.ShowChat(!quick);})), status, questions);
+        if(!quick&&ProactiveBinding==null)header.Children.Add(CreateWorkBindingActions());
         DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         primary = Ui.Button("≋", () => { if (!string.IsNullOrWhiteSpace(draft.Text) || Files.Count > 0) Send(); else if (BoundSession.IsBusy) owner.Run(StopBoundAsync); else owner.ShowLive(); });
         primary.Name = "PrimaryChatAction"; primary.Width = primary.Height = 32; primary.Padding = new Thickness(0); primary.HorizontalContentAlignment = HorizontalAlignment.Center; primary.VerticalContentAlignment = VerticalAlignment.Center; primary.CornerRadius = new CornerRadius(16); primary.Background = DesktopTheme.Brush("#357FF5"); primary.Foreground = Avalonia.Media.Brushes.White;
@@ -127,7 +127,7 @@ internal sealed partial class ChatWindow : Window
         {
             if (models.SelectedItem is not ModelChoice item || EffectiveSettings().ActiveTextProviderId == item.Provider && EffectiveSettings().Text.Model == item.Model) return;
             if (BoundSession.IsBusy || owner.Live.IsActive) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.chatWindow.ownerError"))); RefreshModels(); return; }
-            if(binding==null){owner.Settings.SelectTextModel(item.Provider,item.Model);owner.Save();}else owner.WorkBindings.SelectModel(binding.Id,item.Provider,item.Model);
+            if(ProactiveBinding!=null)ProactiveBinding.SelectModel(item.Provider,item.Model);else if(binding==null){owner.Settings.SelectTextModel(item.Provider,item.Model);owner.Save();}else owner.WorkBindings.SelectModel(binding.Id,item.Provider,item.Model);
         };
         owner.RegisterChatHost(this);
         owner.Changed += Refresh; Closed += (_, _) => { closed = true; DisposeCompanionRoutes(); owner.ChatHostClosed(this); imageWorkspace.Dispose(); foreach (var view in rendered.Values) view.DisposeImages(); uploadEpoch++; snapshotCancel.Cancel(); snapshotCancel.Dispose(); snapshotIcon?.Dispose(); SaveDraft(); owner.ComposerDrafts.Flush();owner.Changed -= Refresh; DisposeAttachmentImages(); avatarAssets.Dispose(); if (owner.Dictation.Owns(this)) owner.Run(() => owner.Dictation.CancelAsync(this)); };
@@ -135,7 +135,7 @@ internal sealed partial class ChatWindow : Window
         history.SizeChanged += (_, _) => ResizeBubbles();
     }
     internal string CurrentPage => routes[routeIndex];
-    internal string QuestionSessionId => BoundSession.KernelSession?.SessionId ?? BoundSession.PersonaId;
+    internal string QuestionSessionId => ProactiveBinding?.Id??BoundSession.KernelSession?.SessionId ?? BoundSession.PersonaId;
     internal ImageWorkspacePage Images => imageWorkspace;
     internal void ShowImageTask(string id) { ShowImages(); imageWorkspace.ShowTasks(id); }
     internal void ShowImages(GeneratedImage? image = null) { Navigate("images"); if (image != null) imageWorkspace.Prepare(image); }
@@ -245,6 +245,7 @@ internal sealed partial class ChatWindow : Window
     }
     private void SelectMode(bool work)
     {
+        if(ProactiveBinding!=null)return;
         if (work && !OperatingSystem.IsWindows()) return;
         if(binding!=null){if(!work){owner.Settings.AgentEnabled=false;owner.Save();owner.Run(()=>BindWorkAsync(null,null));}return;}
         SaveDraft();owner.Settings.AgentEnabled=work;SynchronizeDraftScope();owner.Save();RefreshMode();
@@ -255,6 +256,7 @@ internal sealed partial class ChatWindow : Window
         var label = LocalizedUi.With(new TextBlock { Text = work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA"), FontSize = 12, Foreground = DesktopTheme.Brush("#9299A3"), VerticalAlignment = VerticalAlignment.Center, RenderTransform = new TranslateTransform(0, 4) },"Text",()=>(work ? TextResources.Get("chatWindow.refreshMode.work") : TextResources.Get("chatWindow.refreshMode.work.alternativeA")));
         var content = Ui.Row(ModeIcon(work), label); content.RenderTransform = new TranslateTransform(-4, 0); modeButton.Content = content;
         conversationMode.IsChecked = !work; workMode.IsChecked = work;
+        if(ProactiveBinding!=null)workMode.IsEnabled=false;
         LocalizedUi.Tooltip(modeButton,()=>(OperatingSystem.IsWindows() ? (work ? TextResources.Get("chatWindow.refreshMode.toolTipSetTip") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeA")) + TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeB") : TextResources.Get("chatWindow.refreshMode.toolTipSetTip.alternativeC")));
     }
     private static Control ModeIcon(bool work)
@@ -289,6 +291,8 @@ internal sealed partial class ChatWindow : Window
         if (owner.Live.IsActive) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError"))); return; }
         if (owner.Dictation.IsBusy) { owner.Error(new InvalidOperationException(TextResources.Get("chatWindow.send.ownerError.alternativeA"))); return; }
         var text = (draft.Text ?? "").Trim(); if (text.Length == 0 && Files.Count == 0) return;
+        owner.Observation.Invalidate(false);
+        if(ProactiveBinding!=null){owner.Run(()=>SendProactiveAsync(text));return;}
         try { BoundQueue.Enqueue(text, Files); uploadEpoch++; Files.Clear(); RefreshAttachments(); draft.Text = ""; RefreshAction(); } catch (Exception e) { owner.Error(e); }
     }
     private async Task PickAttachmentsAsync()
@@ -376,7 +380,7 @@ internal sealed partial class ChatWindow : Window
         if(workJobsButton!=null)workJobsButton.IsEnabled=binding!=null&&!owner.IsExiting;
         draft.IsEnabled=!owner.IsExiting;models.IsEnabled=!owner.IsExiting;
         partnerAvatar.Skin = owner.Skin; LocalizedUi.Set(partnerName,"Text",()=>(owner.Skin.DisplayName));
-        if (binding==null && persona != owner.Skin.Id) { uploadEpoch++; SaveDraft(); persona = owner.Skin.Id; draft.Text = LoadDraft(); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
+        if (ProactiveBinding==null&&binding==null && persona != owner.Skin.Id) { uploadEpoch++; SaveDraft(); persona = owner.Skin.Id; draft.Text = LoadDraft(); foreach (var oldView in rendered.Values) oldView.DisposeImages(); rendered.Clear(); messages.Children.Clear(); RefreshAttachments(); }
         SynchronizeDraftScope();
         LocalizedUi.Set(status,"Text",()=>(BoundSession.Stage + (owner.Dictation.IsBusy ? TextResources.Format("chatWindow.refresh.ownerSessionStage",owner.Dictation.Stage) : "") + " · " + BoundSession.LastNotice + " " + owner.Dictation.LastNotice + " " + BoundQueue.Notice + " " + BoundSession.HistoryWarning+" "+owner.ComposerDrafts.Warning));
         LocalizedUi.Set(this,"Title",()=>(TextResources.Get("chatWindow.refresh.ownerSkinName") + owner.Skin.DisplayName + (quick ? TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeA") : TextResources.Get("chatWindow.refresh.ownerSkinName.alternativeB"))));

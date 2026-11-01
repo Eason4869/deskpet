@@ -18,6 +18,8 @@ internal abstract class DesktopRuntime
     public abstract IPcmMicrophone CreateMicrophone();
     public abstract ILiveAudioOutput CreateLiveOutput();
     public virtual Task<bool> RequestMicrophoneAccessAsync() => MacServices.RequestMicrophoneAccessAsync();
+    public virtual IDesktopObservationCapture CreateDesktopObservationCapture()=>MacServices.CreateDesktopObservationCapture();
+    public virtual Task<bool> RequestScreenCaptureAccessAsync()=>MacServices.RequestScreenCaptureAccessAsync();
 }
 
 internal sealed class MacRuntime : DesktopRuntime

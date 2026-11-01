@@ -45,6 +45,9 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--proactive-host-only")){Console.WriteLine("ProactiveHost: "+ProactiveConversationChecks.RunHost()+" passed");return;}
+    if(args.Contains("--proactive-admission-only")){Console.WriteLine("ProactiveAdmission: "+ProactiveConversationChecks.RunAdmission(Path.Combine(directory,"proactive-admission"))+" passed");return;}
+    if(args.Contains("--proactive-reply-only")){Console.WriteLine("ProactiveReply: "+ProactiveConversationChecks.RunReply(Path.Combine(directory,"proactive-reply"))+" passed");return;}
     if(args.Contains("--preparation-ui")){Console.WriteLine("PreparationUiChecks: "+PreparationUiChecks.Run(Path.Combine(directory,"preparation-ui"))+" passed");return;}
     if(args.Contains("--settings-lazy")){Console.WriteLine("SettingsLazyChecks: "+SettingsLazyChecks.Run(Path.Combine(directory,"settings-lazy"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-fresh="))){Console.WriteLine("ProfileFresh: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-fresh"),args.Single(a=>a.StartsWith("--profile-fresh=")).Split('=')[1],freshOnly:true)+" passed");return;}

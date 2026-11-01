@@ -16,6 +16,7 @@ internal sealed class DesktopWorkspaces
     internal ConversationWorkspaceManager Manager { get; }
     private AgentWorkCatalog Catalog => catalog??=new AgentWorkCatalog(directory,Jobs);
     internal ProjectCatalog Snapshot => Catalog.Snapshot;
+    internal bool AdmitOrdinary(ConversationDefinition definition)=>Catalog.TrySaveOrdinaryConversation(definition);
     internal DesktopWorkspaces(DesktopController owner,DesktopRuntime runtime,Func<string,AgentJobApplicationService>? jobsFactory=null)
     {
         this.owner=owner;directory=owner.DataDirectory;
