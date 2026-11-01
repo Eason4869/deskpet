@@ -531,7 +531,16 @@ namespace Dafeiyu
             if(code=="description-invalid-result" || code=="description-failed")return TextResources.Get("imageDescription.failed");
             return TextResources.Get("imageDescription.unavailable");
         }
-        public void Clear() {using(Maintenance.EnterActivity()){ lock(gate){if(active!=null)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));History.Clear();if(imageInputRouter!=null)imageInputRouter.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.clear.kernelWarning");}}if(HistoryChanged!=null)HistoryChanged(); }}
+        public void Clear(){var ignored=ClearWithCompletion();}
+        public Task<bool> ClearWithCompletion()
+        {
+            Task<bool> result;using(Maintenance.EnterActivity()){lock(gate){if(active!=null)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));History.Clear();if(imageInputRouter!=null)imageInputRouter.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";bool kernelOk=true;
+                if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}
+                if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.clear.kernelWarning");kernelOk=false;}
+                if(store!=null){var cleared=History;bool accepted=kernelOk;result=store.ClearAsync(personaId).ContinueWith(t=>{bool historyOk=t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning);if(historyOk)cleared.ReconcileImageUsage();return historyOk&&accepted;});}else{History.ReconcileImageUsage();result=Task.FromResult(kernelOk);}
+            }if(HistoryChanged!=null)HistoryChanged();}return result;
+        }
+
         internal async Task SaveHistoryForCloseAsync()
         {using(Maintenance.EnterActivity()){
             await WaitForIdleAsync().ConfigureAwait(false);

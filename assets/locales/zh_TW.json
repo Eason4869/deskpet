@@ -4758,5 +4758,12 @@
   "imageDescription.unavailable": "圖片轉述無法使用，請檢查對話模型和圖片轉述模型的設定。",
   "imageDescription.timeout": "圖片轉述逾時，請檢查服務後重試。",
   "imageDescription.network": "圖片轉述服務連線失敗，請檢查設定和網路後重試。",
-  "imageDescription.failed": "圖片轉述失敗，請檢查服務後重試。"
+  "imageDescription.failed": "圖片轉述失敗，請檢查服務後重試。",
+  "imageDescription.title": "圖片轉述模型",
+  "imageDescription.help": "當對話模型不支援圖片輸入時，使用圖片轉述模型取得圖片描述。留空代表不使用。",
+  "imageDescription.none": "不使用",
+  "imageDescription.inherit": "跟隨全域設定",
+  "imageDescription.invalid": "指定的模型無法使用",
+  "imageDescription.direct": "目前對話模型直接辨識圖片",
+  "imageDescription.described": "使用圖片轉述模型"
 }

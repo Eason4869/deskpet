@@ -4758,5 +4758,12 @@
   "imageDescription.unavailable": "Deskripsi gambar tidak tersedia. Periksa pengaturan model percakapan dan deskripsi gambar.",
   "imageDescription.timeout": "Waktu deskripsi gambar habis. Periksa layanan dan coba lagi.",
   "imageDescription.network": "Tidak dapat terhubung ke layanan deskripsi gambar. Periksa pengaturan dan jaringan, lalu coba lagi.",
-  "imageDescription.failed": "Deskripsi gambar gagal. Periksa layanan dan coba lagi."
+  "imageDescription.failed": "Deskripsi gambar gagal. Periksa layanan dan coba lagi.",
+  "imageDescription.title": "Model deskripsi gambar",
+  "imageDescription.help": "Jika model percakapan tidak menerima gambar, model ini akan mendeskripsikannya. Kosongkan untuk tidak menggunakan.",
+  "imageDescription.none": "Jangan gunakan",
+  "imageDescription.inherit": "Ikuti pengaturan global",
+  "imageDescription.invalid": "Model yang dipilih tidak tersedia",
+  "imageDescription.direct": "Model percakapan menangani gambar langsung",
+  "imageDescription.described": "Menggunakan model deskripsi gambar"
 }

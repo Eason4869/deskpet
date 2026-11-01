@@ -19,7 +19,24 @@ namespace Dafeiyu.Tests
   public static int Main()
   {
    string root=Path.GetFullPath(Path.Combine("work","image-model-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
-   try{Routes();Storage(root);Workspace(root);Console.WriteLine("ImageModelResolverTests: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{Directory.Delete(root,true);}
+   try{Candidates();Routes();Storage(root);ScopedSave(root);Workspace(root);Console.WriteLine("ImageModelResolverTests: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{Directory.Delete(root,true);}
+  }
+  static void Candidates()
+  {
+   var method=typeof(ImageModelResolver).GetMethod("Candidates");
+   Check(method!=null,"image model picker exposes supported candidates");
+   var cfg=Settings(CapabilitySupport.Supported);cfg.TextProviders.Add(Provider("unknown",CapabilitySupport.Unknown));
+   var result=(IList<ModelReference>)method.Invoke(null,new object[]{cfg});
+   Check(result.Count==1&&result[0].ProviderId=="first"&&result[0].ModelId=="vision","candidate list excludes unsupported and unknown models even when current model is multimodal");
+  }
+  static void ScopedSave(string root)
+  {
+   var method=typeof(ProjectCatalogStore).GetMethod("SaveImageDescriptionOverride");Check(method!=null,"catalog has scoped image selection save");
+   string path=Path.Combine(root,"selection-catalog.json");var store=new ProjectCatalogStore(path);var first=new ConversationDefinition{Id="first",Name="old",Mode="chat"};var second=new ConversationDefinition{Id="second",Name="second",Mode="chat"};var catalog=new ProjectCatalog{UnassignedConversations=new List<ConversationDefinition>{first,second}};catalog.LegacyImageDescriptionOverrides["other"]=new ImageDescriptionOverride{Mode="disabled"};store.Save(catalog);
+   var newer=new ProjectCatalogStore(path).Load();newer.UnassignedConversations[0].Name="concurrent rename";newer.UnassignedConversations[1].ImageDescriptionOverride=new ImageDescriptionOverride{Mode="disabled"};new ProjectCatalogStore(path).Save(newer);
+   method.Invoke(store,new object[]{null,"first",new ImageDescriptionOverride{Mode="selected",Model=new ModelReference{ProviderId="p",ModelId="m"}}});var saved=store.Load();
+   Check(saved.UnassignedConversations[0].Name=="concurrent rename"&&saved.UnassignedConversations[0].ImageDescriptionOverride.Model.ProviderId=="p"&&saved.UnassignedConversations[1].ImageDescriptionOverride.Mode=="disabled"&&saved.LegacyImageDescriptionOverrides["other"].Mode=="disabled","scoped selection preserves concurrent ordinary metadata and other overrides");
+   var clear=typeof(ProjectCatalogStore).GetMethod("ClearImageDescriptionOverrides");Check(clear!=null,"catalog exposes scoped all-history selection cleanup");clear.Invoke(store,new object[0]);saved=store.Load();Check(saved.UnassignedConversations[0].Name=="concurrent rename"&&saved.UnassignedConversations.All(c=>c.ImageDescriptionOverride==null)&&saved.LegacyImageDescriptionOverrides.Count==0,"all-history cleanup preserves unrelated catalog metadata");
   }
   static void Routes()
   {

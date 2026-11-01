@@ -4758,5 +4758,12 @@
   "imageDescription.unavailable": "La description d’image est indisponible. Vérifiez les paramètres des modèles de conversation et de description d’image.",
   "imageDescription.timeout": "La description d’image a expiré. Vérifiez le service et réessayez.",
   "imageDescription.network": "Connexion au service de description d’image impossible. Vérifiez les paramètres et le réseau, puis réessayez.",
-  "imageDescription.failed": "La description d’image a échoué. Vérifiez le service et réessayez."
+  "imageDescription.failed": "La description d’image a échoué. Vérifiez le service et réessayez.",
+  "imageDescription.title": "Modèle de description d’image",
+  "imageDescription.help": "Si le modèle de conversation n’accepte pas les images, ce modèle les décrit. Laissez vide pour ne pas l’utiliser.",
+  "imageDescription.none": "Ne pas utiliser",
+  "imageDescription.inherit": "Suivre le réglage global",
+  "imageDescription.invalid": "Modèle sélectionné indisponible",
+  "imageDescription.direct": "Le modèle de conversation traite directement les images",
+  "imageDescription.described": "Utilisation du modèle de description d’image"
 }

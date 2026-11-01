@@ -4758,5 +4758,12 @@
   "imageDescription.unavailable": "La descrizione dell’immagine non è disponibile. Controlla le impostazioni dei modelli di conversazione e descrizione delle immagini.",
   "imageDescription.timeout": "Tempo scaduto per la descrizione dell’immagine. Controlla il servizio e riprova.",
   "imageDescription.network": "Impossibile connettersi al servizio di descrizione delle immagini. Controlla impostazioni e rete, poi riprova.",
-  "imageDescription.failed": "Descrizione dell’immagine non riuscita. Controlla il servizio e riprova."
+  "imageDescription.failed": "Descrizione dell’immagine non riuscita. Controlla il servizio e riprova.",
+  "imageDescription.title": "Modello di descrizione immagini",
+  "imageDescription.help": "Se il modello di conversazione non accetta immagini, questo modello le descrive. Lascia vuoto per non usarlo.",
+  "imageDescription.none": "Non usare",
+  "imageDescription.inherit": "Usa impostazione globale",
+  "imageDescription.invalid": "Modello selezionato non disponibile",
+  "imageDescription.direct": "Il modello di conversazione elabora direttamente le immagini",
+  "imageDescription.described": "Uso del modello di descrizione immagini"
 }
