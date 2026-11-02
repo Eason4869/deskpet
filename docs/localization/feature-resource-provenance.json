@@ -1,11 +1,40 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
+  "resourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
   "translationMethod": "mixed-assistant-and-google-translate",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
   "resources": [
+    {
+      "key": "aiConfiguration.conversationModelTab",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "aiConfiguration.conversationModelTab",
+      "originValueSha256": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+      "textSha256": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+      "sourceReferences": [
+        {
+          "file": "src/AiConfigurationPanel.cs",
+          "contextHash": "a2cef65186eba445c4a90acaf94cab9673b1ffbc1704ac242508a9670deeb453",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "798e7a441ef43740a3dd8804cbfdea431c64dbc97dbf1593c204c85f954ee5a7",
+        "en_US": "d074ca0ec1edca35e9896df65db480df1fd906bac3a4211e717c2a91b59383da",
+        "es_419": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "es_ES": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "fr_FR": "b933d13e0520a419a24f25312240eff5e5fdc302f43a3958ccc382c25f681789",
+        "hi_IN": "303e0a9e5354647a938f58be025634c4c25f13d0204800467c5b637698fa49d5",
+        "id_ID": "4b6ff948c230864f90179b2ef597909f8cf003673169a34d4f86a15b0ca5e571",
+        "it_IT": "085ab2eb4a6a50c0e1fa9b0b874268cddb5bc229f2fa1597ba0b26ef316c6f61",
+        "ja_JP": "2d4650b9540c38eb605fb67fdf5a01de5d28394b843d5733edb62e3fbec48aab",
+        "ko_KR": "9eba54c30032bb6cf2cba4943ea55769346f9dea7f684a79ae1d96f62ee9ce53",
+        "pt_BR": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "zh_CN": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+        "zh_TW": "f0c59c10c5b4754a47c089b169af74455a327023fe7f96526fcd317525f74be6"
+      }
+    },
     {
       "key": "cache.clean",
       "originCommit": "ac1a23c6ec6996f87c3b4eec3aa15ce4324cfe1e",
@@ -882,6 +911,64 @@
         "pt_BR": "c93e91bbf1828718eba7ab8ed6faf5d09e0e616560a27ca1ef2c8b7d022c211d",
         "zh_CN": "4b7ba15d39698b25b1ab473221bfe12cce6110c9bfa8c0a26eb000596efcfb9e",
         "zh_TW": "f15574f7f772fb96fd1e19b979de54c65e416a64a11204912a73ac22571e1704"
+      }
+    },
+    {
+      "key": "conversation.modelPicker.accessibleName",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "conversation.modelPicker.accessibleName",
+      "originValueSha256": "49d83bbb73c065365ec9caa849b946ed963761190b30bd472029433acc283d73",
+      "textSha256": "49d83bbb73c065365ec9caa849b946ed963761190b30bd472029433acc283d73",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "1fc45ec9d1dc6a375c8be983ff1d5e1cbbdb18af09a05c0853293cfdfc0029f7",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a182c5d41be92d8166875622dac21bb4e3d6e977d6b89184046dd84968b12d57",
+        "en_US": "33e21d4a92a475a1871d23e51d8745bad0e18b5ce3e16d33c63e73d3a4a8f8c9",
+        "es_419": "6b64e46e54a1d166611d5380cdf036f249e2153f40c00d09dbe4fa1cb96d3939",
+        "es_ES": "bdddc07f1adf8ab64acd5e7bc5983efbde9d96d8fcc9d37706bf042626f7ea68",
+        "fr_FR": "2f683909399912b6940538d9989a8cb2e19719268989a93724ebdaf84d147248",
+        "hi_IN": "80d902df4fad73e713bf7bd65ca2d99253c136b22316df0591f935fd9b881d5f",
+        "id_ID": "9096d18e754a90805a0ff9ec40ac31ada99c5302620e956def6ce7a69c1ca888",
+        "it_IT": "0e02491b17ff6fadf313f7fc2ccf519524fbbd749e999622910db4e9cbf5a858",
+        "ja_JP": "f50dffd9fa897947598464a8ab0e9e6426e656a57db5b1ac81f994bfd4a5d3f7",
+        "ko_KR": "1b1d1a3bf08401180506c8942490c8316293e2287dc3719687433e7072070021",
+        "pt_BR": "b333547c4087ce7b23b28dd75e8f81508713e00399c8b749d8baff6f107ad1c8",
+        "zh_CN": "49d83bbb73c065365ec9caa849b946ed963761190b30bd472029433acc283d73",
+        "zh_TW": "cbfe2dcf90d5d1c2ec579553f69968c3e90a0072515e596534e61d5473d02b46"
+      }
+    },
+    {
+      "key": "conversation.modelPicker.hint",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "conversation.modelPicker.hint",
+      "originValueSha256": "f05eaa5e010cad100210eab1524f2df6e2b69fa5d389aa580f2117feac2f8573",
+      "textSha256": "f05eaa5e010cad100210eab1524f2df6e2b69fa5d389aa580f2117feac2f8573",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "1696ebf440f25488fdcfc7caa13122cb744e06135a0c58313a9cfc9f48ef9be8",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "cd682b9e9c01fa57a5fa53addf2eab25ed256919016a50b2e5c57090ea3259ee",
+        "en_US": "884e624e953cae3a2648faa4e901ea4efbfd97b1fb6d689088d5ff6c933879d2",
+        "es_419": "22791de30d906a380368df844fee289554770af4c65c9623957ac505bec77678",
+        "es_ES": "a0152e84c3e85c4d3c4de21126eb2c2a11bbc0c9cea0c2aa0b6e6ce052f54bac",
+        "fr_FR": "ad2f4ff406beb8fa0437bb91c6937062b18cdfda8bcbe66b6417f84904e46b06",
+        "hi_IN": "a5bd5638576aa7d182636d462e0ef8f2ba48d65d34801c4469488b349ff54139",
+        "id_ID": "fd211d291e1f5bc48bcb3c6fd935b38fde1dafbd5241786c15417f298564ccd5",
+        "it_IT": "3b6d6f7880e0f045695626f3d4f74fc3ed5a3c71b036d761654dbd0c69f1adea",
+        "ja_JP": "3ce6296872befc7296094dd123b3a8f63f48cbc6d54d856d9616a40bc30e1bd3",
+        "ko_KR": "f34c01988370afbc7b2f79f79a257ce92a29cfe2344bcfb7b2766020fec6f55b",
+        "pt_BR": "d6a1cc40a68eb7bb86db056a73df802ee19dae13776193a590f393c817e2accb",
+        "zh_CN": "f05eaa5e010cad100210eab1524f2df6e2b69fa5d389aa580f2117feac2f8573",
+        "zh_TW": "435c324067551964a8be4c295eb6af5e9570d70ea44bdbc061b6d6e8122ecc07"
       }
     },
     {
@@ -2197,7 +2284,7 @@
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "f9ab8f71c4f3a33f78b1ee318352633d65656b7d2a1661120426d811ff6ee12d",
+          "contextHash": "5d69e9fd0330c5057c316c1db30c3eee8aa236c733f209386a6bd8023d7baab4",
           "count": 1
         }
       ],
@@ -2215,6 +2302,40 @@
         "pt_BR": "e4bd381c6890da48374d307749d82824c5bcc582d786084a32a58d363fe57753",
         "zh_CN": "41dd056c292a4af4c71271bec437747a903e335534e6bd3a58598cea599ae04a",
         "zh_TW": "3ef26e27fc6fa8508f4acbfb459369353a25bf7e17b1fd2fc045b1312e88d457"
+      }
+    },
+    {
+      "key": "desktopObservation.application",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.application",
+      "originValueSha256": "4f198f035946c2273585a6eadc9c5306429d33037ab08634258ad7d7029bccc1",
+      "textSha256": "4f198f035946c2273585a6eadc9c5306429d33037ab08634258ad7d7029bccc1",
+      "sourceReferences": [
+        {
+          "file": "src/DesktopObservationConsentWindow.cs",
+          "contextHash": "2ccaf1457f259ee0bd27a03eb01dcf5ff12bab740f3d7c33a7b307ee4174f1bf",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "8c8b2070a76eaceb686ae0ebbfdff6b909ce12c5fe5d558fb23a3e7aaae3d0f0",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "50be55e8fad7ae573964e004b58310643710df16d096568e5cee1d68cba7429e",
+        "en_US": "1cdbca26a97e51a1d6890cd70788fcc1c14904c3710307eab4435b6eddfc7060",
+        "es_419": "344d9b03a7d31b43a01ba5120deea1aaea11f1987dc3a57be541ac68d352e034",
+        "es_ES": "344d9b03a7d31b43a01ba5120deea1aaea11f1987dc3a57be541ac68d352e034",
+        "fr_FR": "af6572a07a7f519764df948bb9193b3e9275a767055d1db52e75e3da5c7203a6",
+        "hi_IN": "f9c0e506f3726d6d36d7f1888bbf2ff543b9ace2395ecc2df39f9b08dd60f42a",
+        "id_ID": "c7117cbcd7c13f10bdf8692e371076469772c1b77c023ca350e40d98fc4fd505",
+        "it_IT": "92d4abe17bd8c5dd08d7771528a5509d68566b0bf58ebcae917a3c742f73e181",
+        "ja_JP": "dfe25e4696823ee318d550f1b816570060d24b089551463e082e84e4204f7de3",
+        "ko_KR": "282f23614217c0667e6d308e18a1a00c43e5fb355c25d9e7892fc8d9684731fb",
+        "pt_BR": "48c7fdf88140411d69c8f03d225967c504f8b49bd4df49b6bf446cf8ed447ea6",
+        "zh_CN": "4f198f035946c2273585a6eadc9c5306429d33037ab08634258ad7d7029bccc1",
+        "zh_TW": "4588f974605d52f54dcea9c52796e16628b13723767aacc1aa3756c3b22544fc"
       }
     },
     {
@@ -2310,6 +2431,40 @@
       }
     },
     {
+      "key": "desktopObservation.captureMode",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.captureMode",
+      "originValueSha256": "79661f5bc4ddfb5b2bac86d6cde4155f9e18a98cd32de10be8f556a67311d4b7",
+      "textSha256": "79661f5bc4ddfb5b2bac86d6cde4155f9e18a98cd32de10be8f556a67311d4b7",
+      "sourceReferences": [
+        {
+          "file": "src/DesktopObservationConsentWindow.cs",
+          "contextHash": "2ccaf1457f259ee0bd27a03eb01dcf5ff12bab740f3d7c33a7b307ee4174f1bf",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "291b278d3a41b069c620731c674675670bc213e9000862b3aecd38c35b1d8c47",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "8d5aaecfa12910660dbddd7ee62a4f633459dc4587e078fa91832939d3eeea99",
+        "en_US": "06fa7cec8d6f120e36772b67ca138d4b0a4b668b8be593d3916379d2b62c64ab",
+        "es_419": "cacec826fcf0096d475aa0b7c3c80f4e0569bd7580e46627b0f50b2994adbca8",
+        "es_ES": "cacec826fcf0096d475aa0b7c3c80f4e0569bd7580e46627b0f50b2994adbca8",
+        "fr_FR": "c07772a935d24becf166c17022c4893873f480d323d6618f8053066d96f8c7fd",
+        "hi_IN": "7b673e00d4583ddd8d2ada7d382f4cb707971fc0365da4768443c13ef75fdda4",
+        "id_ID": "e7680a639b0a8397993276891aeb89d4ed049ef7ac1187fadb0be4dcd433b938",
+        "it_IT": "5d79ea4f298133cf089e8a11bbe4106d12ad0102c6d3b1db72d4a2274c1709c1",
+        "ja_JP": "b00a2ff82b044aefa9c50580e63db5ba8a3d914cbe34c842741ae1add2585528",
+        "ko_KR": "d1b80e16a2875cb6050c75c7ded3bf67bcd697e3cf7ee2759482cf9b2da7e437",
+        "pt_BR": "cacec826fcf0096d475aa0b7c3c80f4e0569bd7580e46627b0f50b2994adbca8",
+        "zh_CN": "79661f5bc4ddfb5b2bac86d6cde4155f9e18a98cd32de10be8f556a67311d4b7",
+        "zh_TW": "8c14a8654b358e1a389021493cb53d632eabffc024a977bad91875e605b01381"
+      }
+    },
+    {
       "key": "desktopObservation.configure",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.configure",
@@ -2323,7 +2478,7 @@
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "45cfdee11d1c8b461bc16e0971a08214af27da443200abc322f618553e71dc72",
+          "contextHash": "f088f667ec0de722ee537025eba03547dcb823cf02f572efbbf5a97ce9bf1e75",
           "count": 1
         }
       ],
@@ -2383,6 +2538,40 @@
       }
     },
     {
+      "key": "desktopObservation.consent.description",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.consent.description",
+      "originValueSha256": "7c574a006c32ab2a81f33258eaf95c88200eceae922e44e9bc0889d571f4de8f",
+      "textSha256": "7c574a006c32ab2a81f33258eaf95c88200eceae922e44e9bc0889d571f4de8f",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "9a3400c63cc082a5afd68ddc017c73d29207ff93b37aee37f168f6809fbcd998",
+          "count": 1
+        },
+        {
+          "file": "src/DesktopObservationConsentWindow.cs",
+          "contextHash": "04b7453b4832e11e4aa1a4a343e56c78f8ed2dd095505bdb21880549615689ff",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "72b5d80da239a7df8813c94a08b7048a01df9972cf1f7d4703450f2854689503",
+        "en_US": "0ba1c8adc6b8a1a4ce06ab9117922cec6a6553fa179cca6ed6c3f5f5a069be74",
+        "es_419": "bba20e65ffa733e5c8b2211f3e04967962b644a14796ebd8e208fb890e95ea42",
+        "es_ES": "bba20e65ffa733e5c8b2211f3e04967962b644a14796ebd8e208fb890e95ea42",
+        "fr_FR": "9be3cb98dbb47b79591a6d065a4d12de6d2622f80c111f68fc1cb88b1c23e726",
+        "hi_IN": "3a6fa6ac709eba677f1d3d08a926e86e7de640be993bba06ed36d9c053944d41",
+        "id_ID": "c8a00dd743928a02b613152171b8535ec75792b4e980bab94cd213f16c9e3289",
+        "it_IT": "183f49d1b3d725f50f841ed4d74003067d31c853ad21d0e2eabdb227ea4f7fd8",
+        "ja_JP": "7c03ac71a5d93a9c1f3af6d65f22c1497274455e5f4fba96c3f5219218da9167",
+        "ko_KR": "0a8d9365d06b647f36a1f4098ffd482ab28fd931fa37096455c17d384a119936",
+        "pt_BR": "5222153e77fe8c982ef422e6e4ce573f578ec7b38c99d39ac9145fb468958924",
+        "zh_CN": "7c574a006c32ab2a81f33258eaf95c88200eceae922e44e9bc0889d571f4de8f",
+        "zh_TW": "a990622d1664e8d6bb5157cf507f6cff9c82f7e35d6413c90900d3b064b8b5b8"
+      }
+    },
+    {
       "key": "desktopObservation.consentAccept",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.consentAccept",
@@ -2391,12 +2580,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "0274cd463147d0fee66ed1dafe2dc84ac4453d05730eb903d5a6f66d74d08ecf",
+          "contextHash": "9a3400c63cc082a5afd68ddc017c73d29207ff93b37aee37f168f6809fbcd998",
           "count": 1
         },
         {
           "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "941a60597f91c6e102b1710dcd3cfe049763b467d25f5854fb8a0cf04cc92a0a",
+          "contextHash": "9a573f76cbce20a2a148f6ccc275b60cb8467bf5dc4c35422ae0c1aae016a174",
           "count": 1
         }
       ],
@@ -2422,18 +2611,7 @@
       "originKey": "desktopObservation.consentBody",
       "originValueSha256": "40e063c4f6a142f9507cf6527c6ba74eb595d803f839b8994e3594b4754b586f",
       "textSha256": "40e063c4f6a142f9507cf6527c6ba74eb595d803f839b8994e3594b4754b586f",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "0274cd463147d0fee66ed1dafe2dc84ac4453d05730eb903d5a6f66d74d08ecf",
-          "count": 1
-        },
-        {
-          "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "f81953549d598b15f35e929973c8557cfb9d4cb5ec1847a87cf6ffd319ba0246",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "ab7cb7554d73cfa04c5ade43be6ffbe1fd7b062257584804e3b56decef615b45",
         "en_US": "44b6decf98803fb936d6454f5f43cdfec5168326076edf6804b7f57e0049e890",
@@ -2459,12 +2637,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "0274cd463147d0fee66ed1dafe2dc84ac4453d05730eb903d5a6f66d74d08ecf",
+          "contextHash": "9a3400c63cc082a5afd68ddc017c73d29207ff93b37aee37f168f6809fbcd998",
           "count": 1
         },
         {
           "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "941a60597f91c6e102b1710dcd3cfe049763b467d25f5854fb8a0cf04cc92a0a",
+          "contextHash": "9a573f76cbce20a2a148f6ccc275b60cb8467bf5dc4c35422ae0c1aae016a174",
           "count": 1
         }
       ],
@@ -2498,7 +2676,7 @@
         },
         {
           "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "bac5cd9323d6792f13bb229d786752c30d83cb6e61c3f912fe9968cfa73d03b9",
+          "contextHash": "0bf25058b2e8a9112887eae9b0f6b8369b1d332b8031df80b02bfa03cbbbd1f9",
           "count": 1
         }
       ],
@@ -2524,18 +2702,7 @@
       "originKey": "desktopObservation.countdown",
       "originValueSha256": "5539d88e48bf5f5cd42af4f3ec66822458cba492cdc8b595e3a227dbe2e327f6",
       "textSha256": "5539d88e48bf5f5cd42af4f3ec66822458cba492cdc8b595e3a227dbe2e327f6",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "6a5ccdbee725aff9fa6668a1776925843a123267e1516865274dc7ea95b4839f",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "8ef713f3cca1e99f631dfa4227bc40aa0e9c93435f773dbeffcc0dce2925d153",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "502f27502572b4bd75c93c521ae7c3a83297cfaaf3ecef6a114f939ae908164d",
         "en_US": "da138e3a5842ac8dba1b67d5b2e52c6e7f184a670bff01f0a5150f3af8f918b2",
@@ -2550,6 +2717,35 @@
         "pt_BR": "f8b598b0fc381a84c7a408865592136234e99e377288919a705fa30a7e40ad01",
         "zh_CN": "5539d88e48bf5f5cd42af4f3ec66822458cba492cdc8b595e3a227dbe2e327f6",
         "zh_TW": "867c1eb32ad857d4099027af8d745070a13b6f812fb6eb489ce9f627e48d5bd0"
+      }
+    },
+    {
+      "key": "desktopObservation.details",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.details",
+      "originValueSha256": "c611656faf0c67ab18dba9182636dd9b08fdff1473abe41e1e1ea463c76df956",
+      "textSha256": "c611656faf0c67ab18dba9182636dd9b08fdff1473abe41e1e1ea463c76df956",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "0d3d00320282cb5abe7878d09b75b5aaee9a2975bbe60c0f8b3c704f9336ff8d",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0461dd86c23318c4f8d6ed1f9a69785cea17d631d201a482dc836fc6dd3b777d",
+        "en_US": "bc79cdffbaa8df096f0ea0dbdf03575b6d4fa3f90f783d3795d01aa9a7a1c926",
+        "es_419": "a03923b7f08d2eb615ba797cb0c4fa90e782b040cdeeecabf18328097e0fb850",
+        "es_ES": "a03923b7f08d2eb615ba797cb0c4fa90e782b040cdeeecabf18328097e0fb850",
+        "fr_FR": "192e7e572f76bec3dacf2bee32a4ee57da5e1c053c4f2304aae0df0f3a4ae699",
+        "hi_IN": "60239f5be3dccf639872d5caf33b8e7ea3b8b1c4ef2716f47358af06c03a4f7c",
+        "id_ID": "33509df97db9388c090aa0f3f47c81c03bd6990d806d7b5b694a606c9ae27534",
+        "it_IT": "03a466c12c590d5b7f65ea6f44055d8ca73cda37e0c8093fa0b03765568c6d67",
+        "ja_JP": "3dee70e30e7f213e20851ef3b73e2465ebc19cae2de1e3bb15c5af232185e752",
+        "ko_KR": "5f048fa3d46a27d683fe4f3421450172daddf48699f11741f2c4f5f0a28dd5a0",
+        "pt_BR": "5d951376c42f3cf3823b44a8968401f8f1c9cc598e52d038d0377603001cade7",
+        "zh_CN": "c611656faf0c67ab18dba9182636dd9b08fdff1473abe41e1e1ea463c76df956",
+        "zh_TW": "22ad123f7b3d2c217a69327badc76a8adac74dfbc8682fec5521b0a0e7bcf765"
       }
     },
     {
@@ -2582,23 +2778,41 @@
       }
     },
     {
+      "key": "desktopObservation.emptyExclusions",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.emptyExclusions",
+      "originValueSha256": "fdc6dfea28b7d0e566d15eb1c8df234fcab7a491d703ecf45447970948f83b3c",
+      "textSha256": "fdc6dfea28b7d0e566d15eb1c8df234fcab7a491d703ecf45447970948f83b3c",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "1ab2f3cf201a8cd35b74807c7400e777ff435576017a1302d12f858d827a4ee0",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "780ca652c9fae9298434c1f23d23cffea379f4cad14329eb3e75862f117d95c1",
+        "en_US": "5a6cd517dc8238886c4a1494fac6d535324477f86ea6dae9dd5c6f2d7f5d35ea",
+        "es_419": "ff2f1e94e72767e2a93efa318f07ecb76b1f94e87d161579acc3191d6848af24",
+        "es_ES": "ff2f1e94e72767e2a93efa318f07ecb76b1f94e87d161579acc3191d6848af24",
+        "fr_FR": "390e2ce9694f517d60de9ec238a161b491aa958ebbc04bc7d25bd09f748d4e78",
+        "hi_IN": "d12a18146b93020eff0bc01275ecfab2a6e17e13f846a91d1d1e08c1d2592ca7",
+        "id_ID": "a0ebe942ce272b7eaf9ec0352a3d60329cdb0e93916f519a90b5b2805a715729",
+        "it_IT": "bb6163a39178a0d1c10af1f744d7bdb4aaea539ab4f0c3d3bc38e45f941c422f",
+        "ja_JP": "41f1922fee79784a5a829982789aff5b7e7abf20d38131ded369ec64319e15e6",
+        "ko_KR": "7048fcbd6609c757ffba9fca72de6e9aaf244e22ce82e259d23c167970a9b3b4",
+        "pt_BR": "93d2ba7acc114dcda99c75d78f3a97f5c73fd5d5d9453972d98c9e678245c661",
+        "zh_CN": "fdc6dfea28b7d0e566d15eb1c8df234fcab7a491d703ecf45447970948f83b3c",
+        "zh_TW": "5bf3ee494caff422be6d84631114e0d7be3f8efb3d16a0a935c25b2630a29ec3"
+      }
+    },
+    {
       "key": "desktopObservation.enabled",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.enabled",
       "originValueSha256": "7077209c471c5d85c8728b1702137fe27089aeebe051c0d5d3ca467a22926508",
       "textSha256": "7077209c471c5d85c8728b1702137fe27089aeebe051c0d5d3ca467a22926508",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "2420edabf77b7bcd0f8f74e4916e8d4e642a5fd84814216443aebbc3e0cd4509",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "0beef8d16728ac42da20a6ae8b346fbe8850711c5544e4e53ae803cc2ead4d47",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "8a1b80469a76ed51814d753a50d7944ea54ec9e875870b289194d27844a74067",
         "en_US": "41cf90bc8291112f4fa75d9ddd63524c74ddcea8d640a14a7ce458655109473d",
@@ -2621,23 +2835,7 @@
       "originKey": "desktopObservation.excludedApps",
       "originValueSha256": "e6992a348bb54a1d4ca7da662456311d405430a03bd0659091b580afc42b1864",
       "textSha256": "e6992a348bb54a1d4ca7da662456311d405430a03bd0659091b580afc42b1864",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "5e2a53f3d33f7a3ca00d83b1e4f9bdaa6410d5867f2030857fcd4423275c86e9",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "2f0d334b4d3072d27486abb45d0276f56b2b2c12152c0ab0205c6e365a36ead8",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "f9ab8f71c4f3a33f78b1ee318352633d65656b7d2a1661120426d811ff6ee12d",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "a1636e59d18ca859b4cfe98478f365160c08d36a85cdd6a30ae292c0064fb28c",
         "en_US": "e6bce1bee0f28c6bc1e2fb74bb2a51774aca7293c590a4de8c0af5db37edbcba",
@@ -2655,23 +2853,114 @@
       }
     },
     {
+      "key": "desktopObservation.exclusions.title",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.exclusions.title",
+      "originValueSha256": "0b69c1d9f607fd6ae5f74475ebd4ca7e78b1a916a8aadce7855405fbe1d42322",
+      "textSha256": "0b69c1d9f607fd6ae5f74475ebd4ca7e78b1a916a8aadce7855405fbe1d42322",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "b28638597082463b51104eaf6ae2c2a4fafb7d7c4eae9a2d210093c5a92c2fcd",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "553be979d4a74f3199c7549d2738545d12e0d9ea948922d0c60cfa7ec94b68ee",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "5d69e9fd0330c5057c316c1db30c3eee8aa236c733f209386a6bd8023d7baab4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a1636e59d18ca859b4cfe98478f365160c08d36a85cdd6a30ae292c0064fb28c",
+        "en_US": "e6bce1bee0f28c6bc1e2fb74bb2a51774aca7293c590a4de8c0af5db37edbcba",
+        "es_419": "d18ef3aeccfee09a969f39ca1d09827428100fe44e75b90e12d1e6feb212d542",
+        "es_ES": "d18ef3aeccfee09a969f39ca1d09827428100fe44e75b90e12d1e6feb212d542",
+        "fr_FR": "6d83971de214a0017f3e9c860dae689911f50dc53baf5d7232c2b02e92568eb8",
+        "hi_IN": "8453e34cb567f8b09600e6cc53d79965c7790ccd51ea77f03b7fbdd28eaefa39",
+        "id_ID": "f86c35de487a2f7e273d2daac5db1b9cf332e241c08b51fb9c6c96ab1020eb61",
+        "it_IT": "a7d921ccb8075f402d3b60007e4a9b9c2587f4304120c1f5c234bdea774bba30",
+        "ja_JP": "d514af517f659bdd7e9481a74e10d38dba4ca210a93a5c4377c78785009f2747",
+        "ko_KR": "8523dd86f64c73190a5584595ae9a43377d8643150103d148915e963a7680f66",
+        "pt_BR": "49383c9f291e057589c51ee4e58b31aa7178f6446dfcb192b96d182522fb89b2",
+        "zh_CN": "0b69c1d9f607fd6ae5f74475ebd4ca7e78b1a916a8aadce7855405fbe1d42322",
+        "zh_TW": "01dc6b2a3b0510cf66c48f29e0d1b24a5219fac397729556befe57cfde652f7a"
+      }
+    },
+    {
+      "key": "desktopObservation.exclusionsHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.exclusionsHelp",
+      "originValueSha256": "7cbef063e774b5fc9dd10259d47ac84ddefdf220860be0d7978fe09041852f0e",
+      "textSha256": "7cbef063e774b5fc9dd10259d47ac84ddefdf220860be0d7978fe09041852f0e",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "3e064e0ceaa552662d7fcf5b4395119319fd82acbdf7a55d27bb12025008d476",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "176275bf25f876b65bca826c442419aa3adf3184a0b5439ef79730d7da89bffe",
+        "en_US": "9d3311f1dd415c9c02d9a29400df9844feda21e30eb4b6e67ab970baaf775793",
+        "es_419": "a5658c0ba2618f3c2cc48ef5138c33801bafe213689063ca762dbc7216f37d61",
+        "es_ES": "a5658c0ba2618f3c2cc48ef5138c33801bafe213689063ca762dbc7216f37d61",
+        "fr_FR": "c296c90019f554e107b805445c72cde13ad5cc445083eee9db0c95eb999e3627",
+        "hi_IN": "776bc70dc93204daebe97c3e5c382f5b72bb29f98abba27a19d928ab1366c264",
+        "id_ID": "80f3b0c66ee45d5f0391ec3cc4e5f2a3eded403d6f04558e55fdd0d0999e2697",
+        "it_IT": "a15f6c84f60e4b977af7948519fb6445cbc0618b243a6771907592443a36815e",
+        "ja_JP": "4489a8ebae4051ad8b22fa6459b178b1d548a5e86205b0712292038884113ec6",
+        "ko_KR": "922ecaa9c6037b1a7bb31181b947ebcfd372839980637001ed7c512ef12bf599",
+        "pt_BR": "591a7a2124654ceff097bc4606392f2aaff4df252189f0c565b41ae3439f94ef",
+        "zh_CN": "7cbef063e774b5fc9dd10259d47ac84ddefdf220860be0d7978fe09041852f0e",
+        "zh_TW": "c1a124372e0c880475cfde8e4997d483792bb2bb2f17cc9aab0948ea0c1fcee6"
+      }
+    },
+    {
+      "key": "desktopObservation.fullScreen",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.fullScreen",
+      "originValueSha256": "a6d970b9a329d79020dd5d9e9d2d5069945df4920dfbbb5ffe663b5b18925b2a",
+      "textSha256": "a6d970b9a329d79020dd5d9e9d2d5069945df4920dfbbb5ffe663b5b18925b2a",
+      "sourceReferences": [
+        {
+          "file": "src/DesktopObservationConsentWindow.cs",
+          "contextHash": "2ccaf1457f259ee0bd27a03eb01dcf5ff12bab740f3d7c33a7b307ee4174f1bf",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "c6e478cbba9abacf9881a1e52593d9693ee33a313a85c989c0de11e8a2c5eaf8",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "d6dc706cb8b040c2b6e37fb50d81ee0a0745f216e16b7ac53f96bb098ef6165f",
+        "en_US": "674fe2acd0d5f47b46180dd66e26e349cd9c9db215046f5e86ea2f5728d18117",
+        "es_419": "93f2f9113746c72ac9af00244ad0d5aedaf19e5b8225114eaff4f3d3365377a2",
+        "es_ES": "93f2f9113746c72ac9af00244ad0d5aedaf19e5b8225114eaff4f3d3365377a2",
+        "fr_FR": "75b2b9092d0db121a82dc21d7b830c1e866e66cc16004843ded8d5219d84d4a4",
+        "hi_IN": "5c0810bae4eadbd4b8b198f7bbcc44848ceac6840190739d54a6132a368e1483",
+        "id_ID": "29a62ed265f5b1d301f9fd7a550912ecba7a2f2719823f918cc6d40bc84d8ac4",
+        "it_IT": "dfd986c06545a4be3d9c99ccae34e1e30663295b5ccbc126137353ad060d4c26",
+        "ja_JP": "023a7f5325ff3e2f93ee5b3388f593d280fbe2c23c9255651df8aff3531cae1c",
+        "ko_KR": "21bf97b035e0f17760d009950ba4f53bc69f9c7f32093aa496cac9dae311efcb",
+        "pt_BR": "db13f609c2ab25bd5248ab4f7a9b7ade942847bd444a4575f88f348424ec6f44",
+        "zh_CN": "a6d970b9a329d79020dd5d9e9d2d5069945df4920dfbbb5ffe663b5b18925b2a",
+        "zh_TW": "f9967887633a89e25b1a08425355a6270a4754884f323d79aaed17558bda4df4"
+      }
+    },
+    {
       "key": "desktopObservation.help",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.help",
       "originValueSha256": "2665b44fbd6045e53a4bc34ddbeec43e97b778ba1e53cb53ab19c2ad35a85658",
       "textSha256": "2665b44fbd6045e53a4bc34ddbeec43e97b778ba1e53cb53ab19c2ad35a85658",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "d6b6cce413a84973264fa54fc94ad966bfc287fa0d3439c17ab8bd7e5628a30a",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "49571a3f4be9d52072870dcd961452908bbc7d00b0340072f5a1e3075df582f0",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "0e4d0f7eac047ddf8470e6133e97442d55a222a4212e9acab6bf358754a5e41e",
         "en_US": "75058b92cb91ffc7087e8eb9d653d10938c7a6705939536f811bf1b54f2eea40",
@@ -2823,7 +3112,7 @@
       "sourceReferences": [
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "9ed1d48bffa74a7b8c2e8b0baaf38443e9e0f4165aa37bfdddb1ed9c9312d67b",
+          "contextHash": "15080ee056e0e2d2edf98e3834d4d1b2eb9508742a9c8adb07710f0a65d1794c",
           "count": 1
         }
       ],
@@ -2852,7 +3141,7 @@
       "sourceReferences": [
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "12ccc7049e82754cd765e30ec1fd41a7dd0c0a557f728d97bf92a284f649c736",
+          "contextHash": "f22d1bd017bcbcfa117e2616efbf8b564fb49f1284329aae07c15660ea60dda5",
           "count": 1
         }
       ],
@@ -2878,28 +3167,7 @@
       "originKey": "desktopObservation.noDestination",
       "originValueSha256": "0e302c5abb2c2f99980e690b5cc4409884eb737ed06155dace74ec84b805ec2e",
       "textSha256": "0e302c5abb2c2f99980e690b5cc4409884eb737ed06155dace74ec84b805ec2e",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "12950e259d3ab4a0525fe1248d65c32732dcb6d4757a2f5665e9380b578ca0bb",
-          "count": 1
-        },
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "265c892537339e7e0077850538a1e8e291488eab52a7fb0793b2ea941539e132",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "12ccc7049e82754cd765e30ec1fd41a7dd0c0a557f728d97bf92a284f649c736",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "81d08c065dab7e7842f65204fd90b55b20099d5ccbcd9916efc4f5acbe67ba42",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "a7c0aa994b992bbfaa82256e5ab9106794c8511a7bf09ec9d890eef0c622760f",
         "en_US": "1d68c886cb0156982b4d67bd5e3a191a13c65ee14804158b60208c3fb4803b4d",
@@ -2935,12 +3203,12 @@
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "a32c918fbfa882469ecf512d2ccbe5d99fc770ed76a98d998fdbc0a3a0c47a6c",
+          "contextHash": "7e821a1e62994d1bba09591e8cee4bf2a8f37b7f3ce384fb427645358e26b04a",
           "count": 1
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "be04abecdf427752d190c5baaa4cd2af6607fb3ea92019b035aad275984da076",
+          "contextHash": "c5e940ff7527b2a8d78a3a87f62d3d25e9d4d0725d93e769067e3282ff8f9696",
           "count": 1
         }
       ],
@@ -2974,7 +3242,7 @@
         },
         {
           "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "5c1f97c49bdcaa498c3455bc02b1d2a2f62a5ce0d9b80a08e1d3e897d324d572",
+          "contextHash": "8cb529d794e52d54a5f571da1962ba8b419c7c5bc4ea7694eae2c300732b1bdf",
           "count": 1
         },
         {
@@ -3097,18 +3365,7 @@
       "originKey": "desktopObservation.preview",
       "originValueSha256": "ac9a1dc5997d50811e56add7dc8e411d514820dfb200eeecae9ed061b50814d9",
       "textSha256": "ac9a1dc5997d50811e56add7dc8e411d514820dfb200eeecae9ed061b50814d9",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "a148e328ac26025635c2f38e19846861689e5256231fb4ed3923808871cb2251",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "c2667cb5dce9574292e2f2082cb66c154a42834d39c43fcbfde90a6bff9c7c4b",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "0ffe13cec15443ff28d5816a3358ba556e9365d415e856a4bc22df70111f93e8",
         "en_US": "db008d8b7aaa154e536cdb0d834fe29b3211ee042a7face7b95a7d8abced9373",
@@ -3126,28 +3383,119 @@
       }
     },
     {
+      "key": "desktopObservation.preview.action",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.preview.action",
+      "originValueSha256": "aea6e1eeed8ca60c764d638be54c16f2c6a547429e682b3c470017b184c4efdb",
+      "textSha256": "aea6e1eeed8ca60c764d638be54c16f2c6a547429e682b3c470017b184c4efdb",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "464b2d155025e1709eea6e458f1e0f056d427222bea2f733bc401f168761f956",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "3e57b53806f6fbfb8059d5b2b77948ea153359e482612edfbd88a8b4fe6dd466",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0ffe13cec15443ff28d5816a3358ba556e9365d415e856a4bc22df70111f93e8",
+        "en_US": "db008d8b7aaa154e536cdb0d834fe29b3211ee042a7face7b95a7d8abced9373",
+        "es_419": "5f228feaad44f79c7b4ffcb359d9f0918d65c396e26d19237d4d5b54c74585bd",
+        "es_ES": "5f228feaad44f79c7b4ffcb359d9f0918d65c396e26d19237d4d5b54c74585bd",
+        "fr_FR": "7638f0d088aebfe0d9c43425735c92150a2f07ea6f75cb518df07c5fd35de35a",
+        "hi_IN": "f520a838b5d60f19e93139c39b681aa1695e203a3c4718c8158e773195e0f51c",
+        "id_ID": "4333b9325101b56df55943cca79b9fb1afd477b10dbd28e845e0b6a6686d8de9",
+        "it_IT": "3268327bd1a3355ca8ec93aae9ffb589a4fb25072d8f5fdb07f27392416642d9",
+        "ja_JP": "1a5bc992742a3e164f4825453ead60ebe881e35ace57580371eb306dfb78e72b",
+        "ko_KR": "970dcc358f2b84dd589a97afc2d788657f3b2d36543a139eaa75c5e17d492b83",
+        "pt_BR": "3903cd18fc7d246fd7614e37c0191c39cc3b4174c6d67fe959b62fae614c6898",
+        "zh_CN": "aea6e1eeed8ca60c764d638be54c16f2c6a547429e682b3c470017b184c4efdb",
+        "zh_TW": "496fa33db0d42dca978b750236ae68b165acd4b57f9e67cb928d026aeb17779b"
+      }
+    },
+    {
+      "key": "desktopObservation.preview.countdown",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.preview.countdown",
+      "originValueSha256": "59791a451ed4c914084bd5ef25093260666945260bc2515d3a8cdceafe5f7c24",
+      "textSha256": "59791a451ed4c914084bd5ef25093260666945260bc2515d3a8cdceafe5f7c24",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "6a01d3b79a10cbae5a5758c0ed6841f9f4d0d230d173a62e672df2922c425638",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "8de7211bb94cee58ed261bd6c862af9d2ea4e5ed3d0a12f5f21c67de0df244c4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "502f27502572b4bd75c93c521ae7c3a83297cfaaf3ecef6a114f939ae908164d",
+        "en_US": "46a7a757de179442be2c1a0ba55ca9e018de732fba15c2928af756720fe35009",
+        "es_419": "1c52b917dae1fe54556800e36c7c408027951853080e15edf359abea15d4af88",
+        "es_ES": "1c52b917dae1fe54556800e36c7c408027951853080e15edf359abea15d4af88",
+        "fr_FR": "43be7b74ee85c7ae904d43fbb75393d09e86090e5085e3bc60ea9b608418d1da",
+        "hi_IN": "b0d9d2549fe9b2342a404dc5885234f22dc428a0a030633defe5bc3818585060",
+        "id_ID": "4037ddf563ca77b1c7a1e76637f8bf7800fd8814dcc3545c0bf5dc69d5fe9836",
+        "it_IT": "6b5734d50b2442ac1925da492177553376347e65acd3b30751f95072ef62dae5",
+        "ja_JP": "51b2a72f57c545208ceac41089cdaa4d7ca3b5f757da3d18f1adcd2e88279fe5",
+        "ko_KR": "ab1fc38bf6745725cf5aed1fea3aad785d6278178dc245cd763f1c7b05953429",
+        "pt_BR": "f8b598b0fc381a84c7a408865592136234e99e377288919a705fa30a7e40ad01",
+        "zh_CN": "59791a451ed4c914084bd5ef25093260666945260bc2515d3a8cdceafe5f7c24",
+        "zh_TW": "02b1b88bc4c00bf539fd133791978902886de749247869b6fccb88535be46d9f"
+      }
+    },
+    {
+      "key": "desktopObservation.preview.empty",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.preview.empty",
+      "originValueSha256": "5cd4bd24ceeab4c90ac7226ff24f15522a91f3d7d573fff925ecef0584e2e114",
+      "textSha256": "5cd4bd24ceeab4c90ac7226ff24f15522a91f3d7d573fff925ecef0584e2e114",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "1fbdd7a0708cd47391d251e95c4cf49e436ed93ea8811dc75caae934f52efa8e",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "49f9fed896e9a26084fc41b2f22c676babea4dc97348de8d7a96a95e53720127",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "fec1c7fcc3c904eba68f122d9c670c0a90ef87009f70a54846b9a3d749a4ef38",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "6db42a69e8fb1f1883f5a90800279be60d0bc6a3fab76b590826c9afa21ff9ba",
+        "en_US": "88264ee35fc14c51c85c6bb8c32a493984ca3778b9aa06d5896efedb509e41ac",
+        "es_419": "db66bd5ab501d9a5b239aa56f2c6fcbe882c06846c857d65ba27a7b4d726d422",
+        "es_ES": "db66bd5ab501d9a5b239aa56f2c6fcbe882c06846c857d65ba27a7b4d726d422",
+        "fr_FR": "c338d8934edcd2e7fdd0ba40f0b0717049415888d8e47fed2fdc1b220b3e7285",
+        "hi_IN": "81a6889c4a313eff7e0b9d2e29521c65e15fde030f21835b21bf0ce63ba6d863",
+        "id_ID": "6f98d4162a220dd3fda30bb195f8536cbd997632b339daa3d3aa7cf4d84a1af8",
+        "it_IT": "7a4ae7b0fa1cb50ae56e120bcb33e2362cad12432129d100f42fd0bc394ee6ad",
+        "ja_JP": "f3bf01b49bb7c217e4130b1f2c1f6cd5d3edebe7f3377994f4cef6323a2d0716",
+        "ko_KR": "30bf465ba9cf9cb018f02c63f9a6b3a5e6ba70952add8999f9bd541c949d2542",
+        "pt_BR": "b38ed96ab527c5c389ed49283916587669f060bdf63de83fec0fbf2b6279c489",
+        "zh_CN": "5cd4bd24ceeab4c90ac7226ff24f15522a91f3d7d573fff925ecef0584e2e114",
+        "zh_TW": "c27a656fdfeb7a54794462fa453ce4b4b1f9c1bbb0672560eaf78d0350467996"
+      }
+    },
+    {
       "key": "desktopObservation.previewEmpty",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.previewEmpty",
       "originValueSha256": "9e765eeaf26921427105d392d6e9523cb67876a9c95ebb7103743fbfbd226160",
       "textSha256": "9e765eeaf26921427105d392d6e9523cb67876a9c95ebb7103743fbfbd226160",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "95744c442ff9819085df3e3708fc9f24cc130f97387b0e8029a42b6734281ccc",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "849469aaf8280cf3f60b5ab6bb41767003cca27257b472b3e1e037b98c469969",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "a25aedb61ec58921b67ffa05d331e78b913a0499cb1adcee28eead06b8dcbb82",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "6db42a69e8fb1f1883f5a90800279be60d0bc6a3fab76b590826c9afa21ff9ba",
         "en_US": "2b2460ec1682a61e4685d96d76c72ebf217ecc9d7a73593c70eb31c82866bb9b",
@@ -3207,17 +3555,7 @@
         },
         {
           "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "227273b9494b3fa663f6981a385e4a1196db637def7a4ed76ca67ec58fde06c7",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "849469aaf8280cf3f60b5ab6bb41767003cca27257b472b3e1e037b98c469969",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "a25aedb61ec58921b67ffa05d331e78b913a0499cb1adcee28eead06b8dcbb82",
+          "contextHash": "d8ff18bed593ff303a89918caf2c8e46c179e3904a7d9497081cedbeb14c3c7c",
           "count": 1
         }
       ],
@@ -4060,12 +4398,12 @@
         },
         {
           "file": "src/PetWindow.cs",
-          "contextHash": "9233851391cefbf78b9e0e68125e9b6b28937b22bed6792033317a8e4118cf34",
+          "contextHash": "501140bcefedfc1908b4e3f7e19b4454b16f8b35fe408993fe15a5ab74130d5d",
           "count": 2
         },
         {
           "file": "src/PetWindow.cs",
-          "contextHash": "501140bcefedfc1908b4e3f7e19b4454b16f8b35fe408993fe15a5ab74130d5d",
+          "contextHash": "9233851391cefbf78b9e0e68125e9b6b28937b22bed6792033317a8e4118cf34",
           "count": 2
         }
       ],
@@ -4104,12 +4442,12 @@
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "a32c918fbfa882469ecf512d2ccbe5d99fc770ed76a98d998fdbc0a3a0c47a6c",
+          "contextHash": "7e821a1e62994d1bba09591e8cee4bf2a8f37b7f3ce384fb427645358e26b04a",
           "count": 1
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "be04abecdf427752d190c5baaa4cd2af6607fb3ea92019b035aad275984da076",
+          "contextHash": "c5e940ff7527b2a8d78a3a87f62d3d25e9d4d0725d93e769067e3282ff8f9696",
           "count": 1
         }
       ],
@@ -4130,18 +4468,114 @@
       }
     },
     {
+      "key": "desktopObservation.route.configure",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.route.configure",
+      "originValueSha256": "cc94ddb0040cc5ff8a30be0dadbce6d227eb374a19fefcdc5555ef786630510e",
+      "textSha256": "cc94ddb0040cc5ff8a30be0dadbce6d227eb374a19fefcdc5555ef786630510e",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "0e0c66ab5d43cdf8abeb6437750ca4377136a922bedc32a274b5e43b9a0552bd",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "964f7892eb31ef12af4246312869e1c889de2e98f31a760746cb60c96e9ecb3c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "dc1cd377e9fdad6362e71f865f9f8966c9598363892069c7e862b12ed6be0af1",
+        "en_US": "adbe94d47f0086c6c3a101100614da916e8e7bf9ad725f2573113d864adb0a04",
+        "es_419": "00ac710186602958a9126c4b0e46350a06495692a42fb21b968bb456901c22a1",
+        "es_ES": "00ac710186602958a9126c4b0e46350a06495692a42fb21b968bb456901c22a1",
+        "fr_FR": "5b30165c677dcc02e2daa7418eb90e8bbffce76aa89b0ba32af395a04d1ef8be",
+        "hi_IN": "fd353733f396a73e6416c2e5bc17ff77b4bf58fb9d3e3e33a8ce8aa7879d016d",
+        "id_ID": "02d21b5df30439ebb99d570419fc09158348d2cda9cab0da486ef4ee8086901a",
+        "it_IT": "52da53e8cd6538acfd8092bb6b8f230b0c024cd7e39618a6d457c3b45bd671f5",
+        "ja_JP": "ff1f0ccb9280673432a3fddfde861ddeeab60d3926424270fe5396135efaaf14",
+        "ko_KR": "3076c5d00ebc780fd4db4c13688b63e36a7904a92498bdea728c4765b3c3dc72",
+        "pt_BR": "7d1a2cf6db6360102fac33604b4fcf125306d8cd0308a92c34da512e5c89ce59",
+        "zh_CN": "cc94ddb0040cc5ff8a30be0dadbce6d227eb374a19fefcdc5555ef786630510e",
+        "zh_TW": "337fd0e5e9c7934ac9e1dacf26b9f04e9dc94bc5c4137229594c2bbf26b15211"
+      }
+    },
+    {
+      "key": "desktopObservation.route.described",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.route.described",
+      "originValueSha256": "470e2cf5de444bbb1d95bca498ce51043a7ab280018f647132ce484e7448c9db",
+      "textSha256": "470e2cf5de444bbb1d95bca498ce51043a7ab280018f647132ce484e7448c9db",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "0a57b6c4f810765f9b5b53ef47b09f66fcf1f5a40f9a702ce9c23f597c5351b4",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "964f7892eb31ef12af4246312869e1c889de2e98f31a760746cb60c96e9ecb3c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0211bc9429cc956736d93de86a7409d802c369d9de38c04ba0fd2d8e50f8f71c",
+        "en_US": "d22af98a0d45763f1757e1164c945a0bfc527614baadcbb8691f557495d36c7f",
+        "es_419": "0dfa284b17127b9a809647896a414f4cef9203f1e113b95a5921d7b880009c87",
+        "es_ES": "0dfa284b17127b9a809647896a414f4cef9203f1e113b95a5921d7b880009c87",
+        "fr_FR": "615ce2b6f4d9d92d59c3c3dcf87d4231e70867c12512af1bb8f9d0ce362929d1",
+        "hi_IN": "c02c937b08380a6e65874ae9e0b76a2a8f1e6d2a8cb5f442cebb99891a25939c",
+        "id_ID": "70e79ab53df1e9a9855573b5ea89629c125dcc4f0de8b368c8f24630512d3ede",
+        "it_IT": "bf360b3fdeb58833571590d138dcbd3c581cf223adceb8be63c72d7a71d466a7",
+        "ja_JP": "fca0aebbaf56fa527ecc014259ff19cfc69dce60a1a6beb8a5853d049345251a",
+        "ko_KR": "85b5a2c92fb81fe6211aab59e85e1b8da0550754ec3b09a2d7ff676657a3304c",
+        "pt_BR": "0da084d95e00476c0b87da12110f6ce97ddd9a6a5c07efd619a62fef7dd2f843",
+        "zh_CN": "470e2cf5de444bbb1d95bca498ce51043a7ab280018f647132ce484e7448c9db",
+        "zh_TW": "b67b148dbf9bdff65ff916b23de605e966a564aaa9d57502a031d958c6f332a4"
+      }
+    },
+    {
+      "key": "desktopObservation.route.direct",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.route.direct",
+      "originValueSha256": "69ccbb892b424ce033b68bc51a7146aa2c8549daeab04a3cfab65eef06251c7f",
+      "textSha256": "69ccbb892b424ce033b68bc51a7146aa2c8549daeab04a3cfab65eef06251c7f",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "0a57b6c4f810765f9b5b53ef47b09f66fcf1f5a40f9a702ce9c23f597c5351b4",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "964f7892eb31ef12af4246312869e1c889de2e98f31a760746cb60c96e9ecb3c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "991fac4d1efb649fa898185e1df68514b7010be8d69226b16ae3d74162f18aae",
+        "en_US": "8720db9b7740c7fad5ad08b51c546be58dea9471ac52c1f98ce17b50103c2ae1",
+        "es_419": "3732ee061be94c0f5e8e18d07b5443bc37d448ac08004fe07c735a06dfb90c1e",
+        "es_ES": "3732ee061be94c0f5e8e18d07b5443bc37d448ac08004fe07c735a06dfb90c1e",
+        "fr_FR": "7eeae0786f116bee59367bd45e92bbb16dbbe2e429ec327a4a944a27bff2bc85",
+        "hi_IN": "881d7000a9803d7a844c3273bbce188e4c90670070ff2eca5bf9e79bd6cf31eb",
+        "id_ID": "01bb4f2e548dc6ed89ad008da8186a05ad718fd3a9b8a9637e5ac39d1fb8ec04",
+        "it_IT": "3c4a9940ebdd97cc27bf7015de71692ffce288ee396e2a89e4780c7c46736d94",
+        "ja_JP": "ad6557483535def0a047498ebe6c098d1ad428844111ac1e9d9a5cbee93fe6dc",
+        "ko_KR": "ab047844f5f4788a0e2c8b48496bc950f59d46912c652222c17ce67866770d3c",
+        "pt_BR": "56299aa2d027c7aa430a39046f7e8d1b3c443e7d8f7e3aa2f842cdfa3ac92e68",
+        "zh_CN": "69ccbb892b424ce033b68bc51a7146aa2c8549daeab04a3cfab65eef06251c7f",
+        "zh_TW": "14e74e3d3e7dc9da4ef39c81d66b309da60a2adc329af20b2c87b71f88da8c5f"
+      }
+    },
+    {
       "key": "desktopObservation.routeConfigure",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.routeConfigure",
       "originValueSha256": "fc1c5cee6f02af5930478f29741ed7c14c90d41fccb7947debcd02212ce0bd40",
       "textSha256": "fc1c5cee6f02af5930478f29741ed7c14c90d41fccb7947debcd02212ce0bd40",
-      "sourceReferences": [
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "bc8eb682f250b80444c63808360a59085df547a4a96477c61705c9f74a1ef702",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "dc1cd377e9fdad6362e71f865f9f8966c9598363892069c7e862b12ed6be0af1",
         "en_US": "adbe94d47f0086c6c3a101100614da916e8e7bf9ad725f2573113d864adb0a04",
@@ -4164,18 +4598,7 @@
       "originKey": "desktopObservation.routeDescribed",
       "originValueSha256": "a7f0cd6fd7a31ce1d811aefa93d04637c64c5dc8872bf4365918e96a30c132e6",
       "textSha256": "a7f0cd6fd7a31ce1d811aefa93d04637c64c5dc8872bf4365918e96a30c132e6",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "5a74c0d7853c2f35f04e078118a1f9a521805968543a1947875e732b847091f7",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "bc8eb682f250b80444c63808360a59085df547a4a96477c61705c9f74a1ef702",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "0211bc9429cc956736d93de86a7409d802c369d9de38c04ba0fd2d8e50f8f71c",
         "en_US": "d22af98a0d45763f1757e1164c945a0bfc527614baadcbb8691f557495d36c7f",
@@ -4198,18 +4621,7 @@
       "originKey": "desktopObservation.routeDirect",
       "originValueSha256": "195aac264e1e48c8d2901c3afca317311a887b7956357a4290ab3a0b1000d124",
       "textSha256": "195aac264e1e48c8d2901c3afca317311a887b7956357a4290ab3a0b1000d124",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "5a74c0d7853c2f35f04e078118a1f9a521805968543a1947875e732b847091f7",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "bc8eb682f250b80444c63808360a59085df547a4a96477c61705c9f74a1ef702",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "991fac4d1efb649fa898185e1df68514b7010be8d69226b16ae3d74162f18aae",
         "en_US": "8720db9b7740c7fad5ad08b51c546be58dea9471ac52c1f98ce17b50103c2ae1",
@@ -4235,7 +4647,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "5a74c0d7853c2f35f04e078118a1f9a521805968543a1947875e732b847091f7",
+          "contextHash": "0a57b6c4f810765f9b5b53ef47b09f66fcf1f5a40f9a702ce9c23f597c5351b4",
           "count": 1
         }
       ],
@@ -4253,6 +4665,35 @@
         "pt_BR": "8d4caab476785bb15e8fd631afb3eac6051604c2a47596b5e9cabae5b909ef35",
         "zh_CN": "82f73f61cebf7c3c4de6ba5830665a59d3b5b7261f383475dd86ab06542fb788",
         "zh_TW": "3696722205a272aa83d6bbfa974798c39a473b6abce9bd670ea6bf4271edb3e3"
+      }
+    },
+    {
+      "key": "desktopObservation.saveExclusions",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.saveExclusions",
+      "originValueSha256": "d190bcb15ccff2b2e438f290256adec438da44079e153686691531f6073d97e0",
+      "textSha256": "d190bcb15ccff2b2e438f290256adec438da44079e153686691531f6073d97e0",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "3e064e0ceaa552662d7fcf5b4395119319fd82acbdf7a55d27bb12025008d476",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1bd0182485d3ab282b309dd3ca0c604fdca66d21a4dc12232e7e0e3bc8d69852",
+        "en_US": "6dfcb92faa7c26dd33b5bce41c9e79d1981e64b4a226cc65ead5419bdd05608d",
+        "es_419": "2baa907fd297f52804bb2dbff6e0fe2e1dee59075104b27a5bac2b83637e0a28",
+        "es_ES": "2baa907fd297f52804bb2dbff6e0fe2e1dee59075104b27a5bac2b83637e0a28",
+        "fr_FR": "231fda2dc6648192451610bf94e72a8ebb82cf6164d34ac5f450dd218633dea0",
+        "hi_IN": "01c450abdd49e59b8aeac7a931f1a04b3d40675ef98f60f1061d0c8178281051",
+        "id_ID": "a0722913ab89eb94afeff4312eb06d68d5c101f7cd4b256907716d0482a51872",
+        "it_IT": "14d32fa795003713ec91cab73cf772d67ba240f2373bc0cc92d0d6ee56debc17",
+        "ja_JP": "19fe87408790e50b3c8fe4fd2b527dd399c407880a1a15cecd7f6925090b5adf",
+        "ko_KR": "d623a1adb8e0e374570e041606b7c5f2f817e1511a7f8b4fc0efc4bbe01429b0",
+        "pt_BR": "d9365e97686f133c05f5258d7d2c85c82e86f2543acbab291135b5575a4f5633",
+        "zh_CN": "d190bcb15ccff2b2e438f290256adec438da44079e153686691531f6073d97e0",
+        "zh_TW": "1068a324fb8af571568338b642d03e601d2ac2f9fb90438cca7d7cee66069514"
       }
     },
     {
@@ -4303,6 +4744,11 @@
           "count": 1
         },
         {
+          "file": "src/ImageDescriptionSettings.cs",
+          "contextHash": "f19baf718a67e21741079c2d2562e7848dc7193c1444e5045e8d36e55b76fa12",
+          "count": 1
+        },
+        {
           "file": "src/PetWindow.ProactiveReply.cs",
           "contextHash": "04ebb0d92d80def4530f824461341567e5e62365ef3947a681451c50172b02f3",
           "count": 1
@@ -4329,6 +4775,11 @@
         },
         {
           "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "2e0f507d1f8723426293c4313c59add9344af6225e295377239b24035e2d412d",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
           "contextHash": "f94d4438079775d31f03c2442696480078b9425500ea5f96fe29e7a2fe98a93a",
           "count": 1
         }
@@ -4347,6 +4798,167 @@
         "pt_BR": "dfbce12b1ad356f7a7e80bd2b5da99264750a8c6447dfa40b12dc696b09dc3f1",
         "zh_CN": "3461df8deb4dbcc882751bfc69878b0299ef96ef1e384451b7b3655907321515",
         "zh_TW": "c386c0f92a5d4c44688b9559a6a75eaceb3bb5c13844d094b2b26460c0bacf43"
+      }
+    },
+    {
+      "key": "desktopObservation.settings.enabled",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.settings.enabled",
+      "originValueSha256": "307cad94cd0e45ac875874626b8ef1f46cd826e915333f48ac8e71ea82f4c489",
+      "textSha256": "307cad94cd0e45ac875874626b8ef1f46cd826e915333f48ac8e71ea82f4c489",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "9ab883de8ad7eebe89bc38d7c6af0d1179ce704e95041b3f6891d9f25b0f552c",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "7bb8a972510b0a701b04b3936b532ccdf22734b8238368708492f75161e26735",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "8a1b80469a76ed51814d753a50d7944ea54ec9e875870b289194d27844a74067",
+        "en_US": "41cf90bc8291112f4fa75d9ddd63524c74ddcea8d640a14a7ce458655109473d",
+        "es_419": "67486b8a40d2b2b968a348394e1218862532bfc5add118a44e25853d25f2a5c6",
+        "es_ES": "67486b8a40d2b2b968a348394e1218862532bfc5add118a44e25853d25f2a5c6",
+        "fr_FR": "3b65f2d9b3934e3976363d675a260b5cc910a625751c9499e7b9b6bb5c7ab982",
+        "hi_IN": "82f5d5e8349f5887f0f10f89fa05567e459935a4bd6dbd41afeabbee59222812",
+        "id_ID": "6c869b5e6a3e06632b87222b8d18da50e5392205432aa451c59f8f5ffcec77cc",
+        "it_IT": "4635e859811c103a9559a4cd2e1a03ea0c3435c9a65fc1a6445160f314177176",
+        "ja_JP": "e9af9edeb2209c50fc25fe22c904fb46acbb92f6a5a1352968acb16a2ee58267",
+        "ko_KR": "3b53a9cafa63b3fc651753e0407086edc616c9e6015f1a33f46297d0db0b3d51",
+        "pt_BR": "12dec532f08e46d1a46e1a6c93099e48195103d9aa2485b75d0c7767418a7d14",
+        "zh_CN": "307cad94cd0e45ac875874626b8ef1f46cd826e915333f48ac8e71ea82f4c489",
+        "zh_TW": "0f22bff64dc86e9f7d7d9ab1949b5bb51df87fa4343ea18266d018fc02aaf822"
+      }
+    },
+    {
+      "key": "desktopObservation.settings.help",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.settings.help",
+      "originValueSha256": "772c72640ecf82149cb5e2ca763c19242ac5aae594dd405e8ab63cfa0871ce56",
+      "textSha256": "772c72640ecf82149cb5e2ca763c19242ac5aae594dd405e8ab63cfa0871ce56",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "a24b82ace36b87f9d3b7ce5aeda7f84905b52c3378a48f58a730cca763083de5",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "dda1da6e2a04708eab20fc2714471ca9623baa776ad4d1e4f24ab362e28f70f8",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "34679f04ba0b2720a27dc5eecb19781047715265142a5efc0acd43ec1784d538",
+        "en_US": "11eb5ff76a548335e0083daa48cd0a25f3627afc4717f8ab8a33197070449dbd",
+        "es_419": "3b526329af0848d1569fc4aacff9fc1180c82427d8fbf384aca0d2513b6319e3",
+        "es_ES": "3b526329af0848d1569fc4aacff9fc1180c82427d8fbf384aca0d2513b6319e3",
+        "fr_FR": "ffc9bacf66a6d1fbfe5617aa2cbac36cc9c9690aa318744bd239269646eaec8f",
+        "hi_IN": "992065ceb737d3cd589b3d65c9c21a010a7540868f7fb04e1cfc8023f3ff5eb3",
+        "id_ID": "53a80809af01c78886f6911f388055e848450326af6c3595934dad27ca3b3231",
+        "it_IT": "da80bbf7c05835997dd49a9354024481597f40da2cc5f7742efed037f1544bd6",
+        "ja_JP": "73cdfb9c36217ba03e8483003d87cb26d144ffcabb054f2053bdeacb2023ae61",
+        "ko_KR": "f439aa3a84b6051ad6850b1e93f74fddb4deaa1751dcaf111eb74d983c4a285e",
+        "pt_BR": "6aab551d90a458b812a072c5855dbd50e9399ace3505bba216738ddbd7d983a7",
+        "zh_CN": "772c72640ecf82149cb5e2ca763c19242ac5aae594dd405e8ab63cfa0871ce56",
+        "zh_TW": "ec0ee3b2673d041ebdb20c05a940e2fc24c4ed0d94321892ab6b02fb7fcea664"
+      }
+    },
+    {
+      "key": "desktopObservation.settings.noDestination",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.settings.noDestination",
+      "originValueSha256": "23096b5db2c964dc8492e109331f318fac6786dedcf83bf8e1d1e021b11b9885",
+      "textSha256": "23096b5db2c964dc8492e109331f318fac6786dedcf83bf8e1d1e021b11b9885",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "b89419432ccbeac0fddc3a70efd279a75632c92854959e3f9399175828792939",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "ed3876a11fbd1fb083545540bdba75930668951b53f07846737784ab227a4159",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "16436d4b9c649ec8dbb414272f0163d1be59f21056113099d97e45784dc6361c",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "f22d1bd017bcbcfa117e2616efbf8b564fb49f1284329aae07c15660ea60dda5",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a7c0aa994b992bbfaa82256e5ab9106794c8511a7bf09ec9d890eef0c622760f",
+        "en_US": "1d68c886cb0156982b4d67bd5e3a191a13c65ee14804158b60208c3fb4803b4d",
+        "es_419": "dc7f54238b0f2cfb9d633791f27c8dde8e4198f16bdc13095e0c35ef85095709",
+        "es_ES": "dc7f54238b0f2cfb9d633791f27c8dde8e4198f16bdc13095e0c35ef85095709",
+        "fr_FR": "c8a0ce0f4d6bb0b1af008cf381bfe85e04e8ea18e442b3d4471a8c56acdebe16",
+        "hi_IN": "afdb7b1f73a29d3a52d6669db59eb9c0e385c0788eb08bb37c9127a5548910ff",
+        "id_ID": "e1fce6004d193ba6a79396c6bd4363d9b5d305a95d83b77e2068d06516939cfd",
+        "it_IT": "b8a9732d5f7fb745cd956dfc3251c7d989a8fdb4a84e08a14439ec8990f36d77",
+        "ja_JP": "34313508e55257d615656ba24f222ba8fd1c3f860af7562c61c20ace955f8531",
+        "ko_KR": "f931ac58b9500426972b1a51f0920ee8d5b150c953d597ac8c4e1dcac215fa15",
+        "pt_BR": "34e361eb2cbd7ec5c719db54a1bc74ffea7a18dc6238916d96373febd94874e6",
+        "zh_CN": "23096b5db2c964dc8492e109331f318fac6786dedcf83bf8e1d1e021b11b9885",
+        "zh_TW": "b979718cae5c37c670fa561b0bc2876005825fcd4705c3eea7ca2ae1da961100"
+      }
+    },
+    {
+      "key": "desktopObservation.settings.title",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.settings.title",
+      "originValueSha256": "9df00216c1e22c46db484da814953e8641234daf3d391843d8d4d2df235b7b13",
+      "textSha256": "9df00216c1e22c46db484da814953e8641234daf3d391843d8d4d2df235b7b13",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "8114f67e766a0b6519a103ba058732ea440c1c05dad16af0c48e9c9b4df0668a",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "49f9fed896e9a26084fc41b2f22c676babea4dc97348de8d7a96a95e53720127",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "8f830ee426a7e590e51209e5e510a51cf8f4abfbd912f9fe36d74c23d82ae574",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "fec1c7fcc3c904eba68f122d9c670c0a90ef87009f70a54846b9a3d749a4ef38",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "0f5cee354a886cfc0069899dfb41bb468041d862dd75b45c8c86e3fe0fda9594",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "037d6573f7dab9250cc119ad01d80e3d269a12f9d631b9adea6b50de203f4701",
+        "en_US": "a256fa15254ecd0a58da806109a88d7b5d03f0eb4ee752687bae5672611a6d8c",
+        "es_419": "4cc96c2426a696041064b3e6daaa219055bcfc6b53c357f520ad8e35df36231b",
+        "es_ES": "4cc96c2426a696041064b3e6daaa219055bcfc6b53c357f520ad8e35df36231b",
+        "fr_FR": "2a6f370ced02afc85bdcb8b8ebbb67134dfd722da96e55bc38274064f8d20c5c",
+        "hi_IN": "a8b5952ee593af9b44288bb6dcb9d46561abf9cdd54c74a4e9dd96666357a3f8",
+        "id_ID": "8d5881b91bd3c0b52c597a5b162670a1db8c2c8bb3e3c094aacca2c1a996804e",
+        "it_IT": "280d78ac82980ce1c82b867ac10f6b3b093da2fb51ee41a40debbc0d7dfa4893",
+        "ja_JP": "edccdf0e69d0c0509246c1a4e6587d2057003fbb13a925d159e010f7458a6ad2",
+        "ko_KR": "c9276f1ff55caffc3ee8040053360808dcebd26ca579daef6043f08fcb9328eb",
+        "pt_BR": "554a7a00e958a0189a1393fe1d1101f5cae337bc36881901d5bd4247802347d5",
+        "zh_CN": "9df00216c1e22c46db484da814953e8641234daf3d391843d8d4d2df235b7b13",
+        "zh_TW": "659594c1b339da59697527c560379f943b5f52b377dfcc46ded6c6da48ac0496"
       }
     },
     {
@@ -4394,6 +5006,60 @@
       }
     },
     {
+      "key": "desktopObservation.test.action",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "desktopObservation.test.action",
+      "originValueSha256": "c7bcbef01f474a7994f6175199548e4712aab742e48f5f1c3e8e279b0eae3329",
+      "textSha256": "c7bcbef01f474a7994f6175199548e4712aab742e48f5f1c3e8e279b0eae3329",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
+          "contextHash": "92b37c47c415b5a18c06a04504b58a09f7221d140c47afa327d417a2eb57d0e5",
+          "count": 1
+        },
+        {
+          "file": "src/DesktopObservationConsentWindow.cs",
+          "contextHash": "0bf25058b2e8a9112887eae9b0f6b8369b1d332b8031df80b02bfa03cbbbd1f9",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "1f972c1943768732b85d324cf76214b4b223f78bdbe48a9afd885a47cbc733f7",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "8cb529d794e52d54a5f571da1962ba8b419c7c5bc4ea7694eae2c300732b1bdf",
+          "count": 1
+        },
+        {
+          "file": "src/PetWindow.ProactiveSettings.cs",
+          "contextHash": "b8d177e435cc702c9c09e9b42a452887189672cf37cf40711c0633b0e2d1543b",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.DesktopObservation.cs",
+          "contextHash": "81170338b230046c0eb38823e46d0659d7bd5e57b089cabc24b476dd7efe67bf",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a0625d80688c187311bd30dfd01a5d1edcf0f2e0c1b9e31f6165077726fd1332",
+        "en_US": "117e3addcb036f5341b478144879895cc06fd2214acea1b1cf9881e2c89049c4",
+        "es_419": "97c5c24c7a92bb646e2c1035eda0bbaaa5250ff016fcb9164fa1dc0585e02a5b",
+        "es_ES": "97c5c24c7a92bb646e2c1035eda0bbaaa5250ff016fcb9164fa1dc0585e02a5b",
+        "fr_FR": "e6c490cb9180896cae24aff37000789097e9245533889c693adbfc3bc79fdd7d",
+        "hi_IN": "c24f64d8395e7faf9b8d06dd5cb7846a37fd96a3369c3cec1558e0db2c3a9ca1",
+        "id_ID": "0d099de7e8f81a2170634f44e8c3a5593e9aca23a838fb9c503fbec75c9180d0",
+        "it_IT": "9dd159370f88f5217a95ee5b0403887c1e43280cc567d7d099b1a4031f8ed13d",
+        "ja_JP": "32e0b77f4ac7d9bf13190b8146742e58b16aba7574b7e47f56d94ece49e4d019",
+        "ko_KR": "6edebee1c5046f8b1d354baba301b8e6754ed23d2861a1a4fed5c08051c09139",
+        "pt_BR": "029e78cee744c340abf0ecfac671545000114157b723d29c525a6e267a824182",
+        "zh_CN": "c7bcbef01f474a7994f6175199548e4712aab742e48f5f1c3e8e279b0eae3329",
+        "zh_TW": "9515f7b85dccad628df4ce7222a38127102f422f207b743600d3f01063fd2fa1"
+      }
+    },
+    {
       "key": "desktopObservation.textDestination",
       "originCommit": "9a7346e64820196c2865dd037e4ff8e64b906e17",
       "originKey": "desktopObservation.textDestination",
@@ -4428,18 +5094,7 @@
       "originKey": "desktopObservation.title",
       "originValueSha256": "12578e5718126e65ffc4178488e552d7d854d5e3e90ca2b3ea3b5cd689b5c53a",
       "textSha256": "12578e5718126e65ffc4178488e552d7d854d5e3e90ca2b3ea3b5cd689b5c53a",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "30872ba1d5837f1394bc0d73dd8e155d5f85bff090d5d290bbdf482a1f7dbe20",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "8d60364b448e805cbedafa939ed049bb2bc7cd226fe59c5c9da71edb4063d60e",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "037d6573f7dab9250cc119ad01d80e3d269a12f9d631b9adea6b50de203f4701",
         "en_US": "a256fa15254ecd0a58da806109a88d7b5d03f0eb4ee752687bae5672611a6d8c",
@@ -4491,38 +5146,7 @@
       "originKey": "desktopObservation.uploadTest",
       "originValueSha256": "9184d52a86bcf494775d9c656fe8d4559cf9f9215a1a5e2097e86ffbd71cec62",
       "textSha256": "9184d52a86bcf494775d9c656fe8d4559cf9f9215a1a5e2097e86ffbd71cec62",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "0db048e061b5d70eef98ad8a56b808b66c1433a4564018c1651cf5aaa786756f",
-          "count": 1
-        },
-        {
-          "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "bac5cd9323d6792f13bb229d786752c30d83cb6e61c3f912fe9968cfa73d03b9",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "073f999dd89d317972a98e0a2aa8644828d23071d84d14d1be394faaa2df6756",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "5c1f97c49bdcaa498c3455bc02b1d2a2f62a5ce0d9b80a08e1d3e897d324d572",
-          "count": 1
-        },
-        {
-          "file": "src/PetWindow.ProactiveSettings.cs",
-          "contextHash": "b334f40620ab525a334324f18a55e124a6d9efcb71ba0d309b40cf6bc734d3ee",
-          "count": 1
-        },
-        {
-          "file": "src/SettingsPage.DesktopObservation.cs",
-          "contextHash": "0e038261efa8cd9cbfc668e21dd16fb0b2f860fcb4120bcdcf833830b99b72e4",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "a0625d80688c187311bd30dfd01a5d1edcf0f2e0c1b9e31f6165077726fd1332",
         "en_US": "117e3addcb036f5341b478144879895cc06fd2214acea1b1cf9881e2c89049c4",
@@ -7359,18 +7983,7 @@
       "originKey": "imageDescription.help",
       "originValueSha256": "aa7ab8a905b0a6b955ef37fd362c179b11a5335e93d30a2f3ff7a9a6e8446204",
       "textSha256": "aa7ab8a905b0a6b955ef37fd362c179b11a5335e93d30a2f3ff7a9a6e8446204",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
-          "contextHash": "bafbebd2f9ee398e45086d5cd4f5258bdf1948ca84d060df513fe0480bbf20d8",
-          "count": 1
-        },
-        {
-          "file": "src/ConnectionSettingsPanel.cs",
-          "contextHash": "20f9d60935e0d19834e8990ee10149c001e1a863f146b8f1fd2481bb264c4b5a",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "1bdb35804158c3b0cfa32dc2129f2af2aee7435d6857c94cde66cc78819b107d",
         "en_US": "b3762204a2818280df1cabceb6435dce40005fb22dcb825ed4248942a1cc2c91",
@@ -7439,13 +8052,13 @@
           "count": 1
         },
         {
-          "file": "src/ConnectionSettingsPanel.cs",
-          "contextHash": "0223cd243d6de64081e817d3e9187b6cbfd3dca55039b7a5e98f3d29fd0be58b",
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "f45b94518cc01fcba61a25ac822d436900d0e51e89d88244c05538698860cc8d",
           "count": 1
         },
         {
-          "file": "src/ConversationComposer.cs",
-          "contextHash": "f45b94518cc01fcba61a25ac822d436900d0e51e89d88244c05538698860cc8d",
+          "file": "src/ImageDescriptionSettings.cs",
+          "contextHash": "a9b103726f1a96a2d4b165b4577079ca251f9f249a5929960f349620b145928b",
           "count": 1
         }
       ],
@@ -7512,13 +8125,13 @@
           "count": 1
         },
         {
-          "file": "src/ConnectionSettingsPanel.cs",
-          "contextHash": "6743378048a1a20131e51f23ecf73fdd2830ac783bec9e9f0119360f696ae28d",
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "61afedc197fbb7aef71e89aeab7b6bb64d77efe2bb19656333addf1c6db601cf",
           "count": 1
         },
         {
-          "file": "src/ConversationComposer.cs",
-          "contextHash": "61afedc197fbb7aef71e89aeab7b6bb64d77efe2bb19656333addf1c6db601cf",
+          "file": "src/ImageDescriptionSettings.cs",
+          "contextHash": "b056a7c7ce8755362d0ee82c0e9f477188a72363644a2ba05ca25880793efdc8",
           "count": 1
         }
       ],
@@ -7536,6 +8149,89 @@
         "pt_BR": "e7b0e214ce8a4a4f026bdb0fd9b7f71392dd36ef2c5035079d61a0cd77ed1f78",
         "zh_CN": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4",
         "zh_TW": "dd21dd9bdd9aa129a834d98a65b49395e7a97bfa65fdb49b84f379ed8d63abe4"
+      }
+    },
+    {
+      "key": "imageDescription.settings.help",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "imageDescription.settings.help",
+      "originValueSha256": "f37f478ae8e637dd6389388193a000516b936920d01cf1031c01be5412c82e6a",
+      "textSha256": "f37f478ae8e637dd6389388193a000516b936920d01cf1031c01be5412c82e6a",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "a0575419821b60abaca7f94210a340be508f43de11bb3abdfd96447fc5f014b9",
+          "count": 1
+        },
+        {
+          "file": "src/ImageDescriptionSettings.cs",
+          "contextHash": "e6b41263c573d194145ca364d8cf3e73f4c1d0055513b4a313e6fbd072a4f012",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1bdb35804158c3b0cfa32dc2129f2af2aee7435d6857c94cde66cc78819b107d",
+        "en_US": "b3762204a2818280df1cabceb6435dce40005fb22dcb825ed4248942a1cc2c91",
+        "es_419": "553ea2e4aaa9c7e6dbce72dd43ac934aad37ac513906d96747353cb8b9dde38b",
+        "es_ES": "553ea2e4aaa9c7e6dbce72dd43ac934aad37ac513906d96747353cb8b9dde38b",
+        "fr_FR": "2b826edb526103e6dd85bd0871b397cf42ee83607de8c6c0ce82b02fa41c344f",
+        "hi_IN": "65ea2639e843aa89a6181f4f33d8876d9e68449ec2c473f1168e0f95623bac6f",
+        "id_ID": "26bcb524c68df7f4ae6ff0f9017b5c9eba1d906a63048ab4a84f6e940ceb9f62",
+        "it_IT": "e5f28682124d8044c301f549d83be37d7f236c136bf5d0f9d477556342639997",
+        "ja_JP": "c4371eccbbf15fc8409bc20d93dc14830e071f30b66c64f93392c575285acb0d",
+        "ko_KR": "6535bb16d65094cd1531181867e4888557305e3a166c54b2ccdc10b2040f253f",
+        "pt_BR": "e1dfc59de6993784b055afa55b502d292e7e677d8552f1431365c0ab0474a2e2",
+        "zh_CN": "f37f478ae8e637dd6389388193a000516b936920d01cf1031c01be5412c82e6a",
+        "zh_TW": "1694d292758aefcc56c33b1c3e7229435fb25616226145eb1e8597bac9d97c33"
+      }
+    },
+    {
+      "key": "imageDescription.settings.title",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "imageDescription.settings.title",
+      "originValueSha256": "95bc1a32c480c10531e9f813e1768d96358a2125bc5bede1dd30762d94e161e3",
+      "textSha256": "95bc1a32c480c10531e9f813e1768d96358a2125bc5bede1dd30762d94e161e3",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "1a09e26816eb5d26c2da4ac07003c29d7cdc1029be6fc49d0a477939a8304233",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
+          "contextHash": "e2e4790926cadc050ba60a46707fc138a141b9bdb5e9301ae647cd5cefa0d7cc",
+          "count": 3
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
+          "contextHash": "a0575419821b60abaca7f94210a340be508f43de11bb3abdfd96447fc5f014b9",
+          "count": 1
+        },
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "766e4dc7707913b26d1ee4fe2162ed106011fb0de754c589ab405b17aff72cb8",
+          "count": 1
+        },
+        {
+          "file": "src/ImageDescriptionSettings.cs",
+          "contextHash": "e6b41263c573d194145ca364d8cf3e73f4c1d0055513b4a313e6fbd072a4f012",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "7ade372dc527f22ab0f7a2920ef39b89f9f1e2cc202e4335283a38f11251457f",
+        "en_US": "a8026d80e938c96f4c278ec7efbec3b06831618aecc49d10b82778ebc10b108b",
+        "es_419": "3ea97d12779761885ff92e0b67a50090484415dded2c02dcd23ca4c39bb48f71",
+        "es_ES": "3ea97d12779761885ff92e0b67a50090484415dded2c02dcd23ca4c39bb48f71",
+        "fr_FR": "dbfcc2f22cc33da727a15d63c3a18ec654451d95ea232f3b9f3e6f841ffc848d",
+        "hi_IN": "513228dda9afe5b878fff8cb0fe24085e5eebc8847285906df6ecd586e00b167",
+        "id_ID": "e7ca5b43c801fd007aa1dfe9ee1625eb2d49153ec65733012601e4733f90cab7",
+        "it_IT": "3411c5c1b8f8f21e2189090c00d359d8ed797de084faf13353584d2e535c20a4",
+        "ja_JP": "eff119afb30df9a4a345976ce421edb9c69a5b20104c61b17be34205b7dcca9c",
+        "ko_KR": "7f5e68faec416fe0a8e7914355ba743fa87e514cf35c7b4157a57158ab464326",
+        "pt_BR": "f876401daecaed6a7fbb070785ed95bd3ab40754356b926f9e9b84fe2cca0d56",
+        "zh_CN": "95bc1a32c480c10531e9f813e1768d96358a2125bc5bede1dd30762d94e161e3",
+        "zh_TW": "0302d1c7fde39f84f542ae26022cbd1081a97a8a3039d320bbe23c432a6c2ecf"
       }
     },
     {
@@ -7573,33 +8269,7 @@
       "originKey": "imageDescription.title",
       "originValueSha256": "fa16f2a2e51f650b36c80577fe55ea39ab37f0ef10a4dc5439ab9a306a6c947e",
       "textSha256": "fa16f2a2e51f650b36c80577fe55ea39ab37f0ef10a4dc5439ab9a306a6c947e",
-      "sourceReferences": [
-        {
-          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
-          "contextHash": "0336dca62ae0abe7f77ec8552c8d327100b626d6cf9625829126856d7691b71a",
-          "count": 3
-        },
-        {
-          "file": "desktop/DeskPet.Desktop/ProviderEditor.cs",
-          "contextHash": "bafbebd2f9ee398e45086d5cd4f5258bdf1948ca84d060df513fe0480bbf20d8",
-          "count": 1
-        },
-        {
-          "file": "src/ConnectionSettingsPanel.cs",
-          "contextHash": "11bbccd0ac65b116cd6a0da2e9256e24644aad9d22e4f1485edd3fa9db069316",
-          "count": 1
-        },
-        {
-          "file": "src/ConversationComposer.cs",
-          "contextHash": "85d6ffbe4f83eec2f7d0d471f1ee74c07c897ddd44d2cd93c83b537b7e61ea7b",
-          "count": 1
-        },
-        {
-          "file": "desktop/DeskPet.Desktop/ChatWindow.cs",
-          "contextHash": "4bff0bff89eb98c43fd4ff7d71eef8f99419683632691544abe351d57668ee9b",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "7ade372dc527f22ab0f7a2920ef39b89f9f1e2cc202e4335283a38f11251457f",
         "en_US": "a8026d80e938c96f4c278ec7efbec3b06831618aecc49d10b82778ebc10b108b",
@@ -7653,6 +8323,180 @@
         "pt_BR": "7c079f9ee677a1ce9f1cc12b3cb897cc03dbf6cc8a9dab7160298f39326d348c",
         "zh_CN": "049b1d0c71f627d6ee11d88bee8c109f185905e8f6d3886e4324fb8c70798904",
         "zh_TW": "64f7641e2133b41e6b3cfc7e3c7e4205230c72e31e41c679790c66ac99bec0f1"
+      }
+    },
+    {
+      "key": "onboarding.conversationModel.chapter",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.conversationModel.chapter",
+      "originValueSha256": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+      "textSha256": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingLessons.cs",
+          "contextHash": "2bf8ce99f62c1becb536c679f361a429a9452896c4a1235e196a82eea09a0fe4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "798e7a441ef43740a3dd8804cbfdea431c64dbc97dbf1593c204c85f954ee5a7",
+        "en_US": "3ba1d4be10bfcd3b6144f2cac4104173ad71bf383f2591bdaa870c5924b94e42",
+        "es_419": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "es_ES": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "fr_FR": "b933d13e0520a419a24f25312240eff5e5fdc302f43a3958ccc382c25f681789",
+        "hi_IN": "303e0a9e5354647a938f58be025634c4c25f13d0204800467c5b637698fa49d5",
+        "id_ID": "4b6ff948c230864f90179b2ef597909f8cf003673169a34d4f86a15b0ca5e571",
+        "it_IT": "085ab2eb4a6a50c0e1fa9b0b874268cddb5bc229f2fa1597ba0b26ef316c6f61",
+        "ja_JP": "2d4650b9540c38eb605fb67fdf5a01de5d28394b843d5733edb62e3fbec48aab",
+        "ko_KR": "9eba54c30032bb6cf2cba4943ea55769346f9dea7f684a79ae1d96f62ee9ce53",
+        "pt_BR": "45a637e2702c47206deb84e768faf6da0a0413b9cfe3c97c5467113fb5b40da2",
+        "zh_CN": "eb399b119559dc04afa2d8703000d13d8d8fd53d90442c2154f5bd2d42067a1d",
+        "zh_TW": "f0c59c10c5b4754a47c089b169af74455a327023fe7f96526fcd317525f74be6"
+      }
+    },
+    {
+      "key": "onboarding.conversationModel.testNotConfigured",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.conversationModel.testNotConfigured",
+      "originValueSha256": "d8662224f38b16189d17a92995c541537aa16bab93788ea88401e2537f18ab97",
+      "textSha256": "d8662224f38b16189d17a92995c541537aa16bab93788ea88401e2537f18ab97",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingWindow.cs",
+          "contextHash": "ed53067599dc7a4ac0d25dc2fa55c21fcef093f7382fc318881f69436eedb08c",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "9bbd56799a48aa7073f9cc40d27396780e7e0d3a93410bfac13c42c47faf997c",
+        "en_US": "a800ee290db14cfcca04cc815ab9716f914ceb18ea45f3b9d57a64cc43fc689f",
+        "es_419": "8c7b883b2f65a18cc6d4b1358e461065fdf631f286552552d9f3c917caa0c54c",
+        "es_ES": "d2443dd386d2297b5e4142119fea966bd3127d70e43d4d755db801f3e6bc81bb",
+        "fr_FR": "c237fda75dd4e3408f347a72ee030c1258ab88b653478df2c503f730ba612cbd",
+        "hi_IN": "5a4d3f18f56ab00a44aff805ba6a6595b688e30ac801957b52ea9683fc3c3af4",
+        "id_ID": "6ceb3b9697f7bcba44832c1d93120d7ecb6c048c6e3e384957355c3e7ae0a8df",
+        "it_IT": "809f879867a58c7ef7b0836fd05093a63b884b372b8be698f024f85c1ec5a12f",
+        "ja_JP": "f28694bf775c8fcafa974d3b9b40a8471e26885bac14608af74c342b34dd5a57",
+        "ko_KR": "15fbfe2eb054067556393f1fd810c74e3de3a9cfc75734e7685abf72fdcfbf0e",
+        "pt_BR": "367c20e43d0da629fabd3b9b11d97a728c884b7c7fa0b9af68c9cb80ba2e0005",
+        "zh_CN": "d8662224f38b16189d17a92995c541537aa16bab93788ea88401e2537f18ab97",
+        "zh_TW": "d66722f477c133b4d2bd72e9ea1fd98b8496ace468d819fd79ae405b8510661a"
+      }
+    },
+    {
+      "key": "onboarding.externalTools.credentialsHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.externalTools.credentialsHelp",
+      "originValueSha256": "99f0758133d38d693f034bd34b7e9bb9fde8a3275dc2e9d00a3f989ad7f721bf",
+      "textSha256": "99f0758133d38d693f034bd34b7e9bb9fde8a3275dc2e9d00a3f989ad7f721bf",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingLessons.cs",
+          "contextHash": "1c8597cf166ccadde7be0153b67f1e40a20d425ff5b4b58a4346f10829b62919",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "452114db4c784158fa704834cbf47c6f12bff90c933d101e5c83ecdcd7e209fb",
+        "en_US": "09da7588e565bae7e2852de613559ae9d4a450adb403503330773612c35fceda",
+        "es_419": "551bd25489a87a7ec1d9ac8162346f6aee645b4a05bc0cfc10c96ee1c75d93e9",
+        "es_ES": "02c9681040ba3e43279f1db7dc41aa9c59ea12a79852309ee9733e6d8dbcfa50",
+        "fr_FR": "d390af8e611db1e93c2c4a30c78fdf4936cf7149a0d9b48c2e3ad3079ba7279b",
+        "hi_IN": "6ed401f97cc815d3f08b65ea4b8c57ba0bc9b0245f1297b68bf2a672792224e2",
+        "id_ID": "99d15896e296358aba159bea0a80e6490b4b97cd2f9b4507aed12cb157c022d4",
+        "it_IT": "eba2c731d0d574a0f9bcf8f471ab08119d3cf42ee8885300fce3630b9603e62a",
+        "ja_JP": "401ea533e97b77116e8fc3de600ea8d4f90477e90447c67d16c88dec273c5c85",
+        "ko_KR": "b999198022310cfdc28c77d10854b4eade1e77f923e16023f39724f5eafeba2e",
+        "pt_BR": "9b18268703b9598958df8d35bfd899a14de60d72c50e2a58c47843e292f8d2a3",
+        "zh_CN": "99f0758133d38d693f034bd34b7e9bb9fde8a3275dc2e9d00a3f989ad7f721bf",
+        "zh_TW": "f4b97f6b29f07a8fcfc5193675e2d1e16fe343793146015c4d17a7fb96d0f727"
+      }
+    },
+    {
+      "key": "onboarding.greeting.aiHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.greeting.aiHelp",
+      "originValueSha256": "4d50071158fdfac80d32f3444faf07bb9f226599694856337b099e121a2e0f93",
+      "textSha256": "4d50071158fdfac80d32f3444faf07bb9f226599694856337b099e121a2e0f93",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingLessons.cs",
+          "contextHash": "1dce01b93352611fa8ddf2ec279e0d106e18b6acc15b29e8fc3e25e8b3a3541f",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "7d0afe2fa45b13032241172c1d22201acbe067f496492f726b5d9d5a8fdb5952",
+        "en_US": "16ccdf7b56a88d221a14b0b75b969bec4ef28a0fb7d61401b3f0e4044a24b7bc",
+        "es_419": "0462476fea415a194c9c2d96e7f3bcc24c03d9610880e6f7eef345eb29351293",
+        "es_ES": "234b176448ad00930f99912df63ad3d1fa6dfdc9ea61da77c3237b0841238552",
+        "fr_FR": "ddf6cdb02988561ca6afb31929cfe6e2d83130d9fe4eaa53e79526c5b8d48d2e",
+        "hi_IN": "f6bc9547bde8db32ee5e29c671c374510be52b0fe0cf72b354394dab983fe621",
+        "id_ID": "53ebfab9cffb12582500235591dc796531264f5616f0000e39bc1b26d9338f47",
+        "it_IT": "723a4f3f89e8913b824d6302df1fb8942511fc766d6932ba994cb8e24d3d37be",
+        "ja_JP": "80a5d6894a7985a8a141ec1c58d5a35c76270454cff0febdfb985716b9202125",
+        "ko_KR": "657915f53ec927d48ae39769f7cf3e4e57f48de699fffbf5f2088ecf716776d7",
+        "pt_BR": "00343c6af554037497603965ed2122184601d9937dda420155ac2605009e37b2",
+        "zh_CN": "4d50071158fdfac80d32f3444faf07bb9f226599694856337b099e121a2e0f93",
+        "zh_TW": "25dccbd2d20a68e4aee2e0168ccbd5fc528edf45cc958aca2012c1cafa7bc1fc"
+      }
+    },
+    {
+      "key": "onboarding.greeting.intervalHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.greeting.intervalHelp",
+      "originValueSha256": "29ec77cfb5cf10553c70be5f79059c9935b68e6b9d226d47576742704a793c8e",
+      "textSha256": "29ec77cfb5cf10553c70be5f79059c9935b68e6b9d226d47576742704a793c8e",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingLessons.cs",
+          "contextHash": "5ca839746716e757d4064bd8699105378b8110d295e176a8fd31189fe760f746",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a77fb75fc33c6004929990717021b8be76c4d418bae4678819910aedafaaad40",
+        "en_US": "30ab3e38b4e8366d7237856d63a4bd215cf06376657dd62d826bd61567bb03dd",
+        "es_419": "2bb7f443c88b9de64b3c65783c4d6eb0aba8ca1ab42f8b043001dca38830f944",
+        "es_ES": "005bab418f37b3a37891ef3458b3176e0b4e9bbeb99b30dd3294e878b8bc405b",
+        "fr_FR": "4a12afd455104cc18d869bc51e1ba5f1cff455755f5375b63bcf60eceab09144",
+        "hi_IN": "a2b21eddcaa4c8c01662a4182dd163247b1b312ae826040e049563c4c64fee4e",
+        "id_ID": "647f0c57f58fcac97deae1bcd6c3bbe2454c6619811822a5f494d7aa3590f18d",
+        "it_IT": "3322eda2539e2d206e33faae4f439b5b6490b61d7a72f6edeab3be3e6ec31f19",
+        "ja_JP": "d2e63e41c8f51687835b269b766d9c094552a83aceab12a66c618c1f395938e7",
+        "ko_KR": "9d4eb4d4f3111942550d205943e2ad0eb5bbe5812b97d53db9f08b0d9018476c",
+        "pt_BR": "b8ed7872d96e87a8decb913eb0e4834714b046c41bd59b86a043ee0e3bbb22ac",
+        "zh_CN": "29ec77cfb5cf10553c70be5f79059c9935b68e6b9d226d47576742704a793c8e",
+        "zh_TW": "76d7f774f55a71509eeebbddaa7ad7826bede0354c564cde77c88598c5e59047"
+      }
+    },
+    {
+      "key": "onboarding.greeting.invalidInterval",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.greeting.invalidInterval",
+      "originValueSha256": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+      "textSha256": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingWindow.cs",
+          "contextHash": "847ea26bcea5de95039bc8270154682ee8c3b8e0764a1ec89dab627b8f1b61c3",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b77af298998811383c08e94132e81aab5b95b5c1724398e30907192b6bab4c3c",
+        "en_US": "83ff5cd219286f42df03256b246e66b4e4f2f88a51683f2f3633dbd44c07a59d",
+        "es_419": "96354fb764387b4b9565c8c658525f212f3e7e1350769ccaf6ae617675714374",
+        "es_ES": "3d009b2eada218a7c1b39e4e9e42bf8a998c71245e2c569c9f81e9bf6bd827a2",
+        "fr_FR": "580abdbfbcd7f3e622fdcaf0c4d0315d61803441441ab181604bc84835916bf8",
+        "hi_IN": "2b6eb3a03ae4f20a114f77bf2e86501291f9feb13e780c9ba8c1520e49ec6759",
+        "id_ID": "334e0efed8d27499e0421b70690d2f5025e3361b419796192c588102c7916331",
+        "it_IT": "f8014ee1a011a2de84081b88df0cec8daa97d43a93cf5b55236d373de3fd4eb2",
+        "ja_JP": "ad640425d77fd6f2ab4a0caa867fd14fb392432ac22aad5178e39b59c56ca565",
+        "ko_KR": "93a1a3b5c99c3c8615df226ddb034684dcc17be6eb6ac4962bb097cd9c8d3e04",
+        "pt_BR": "c7200b6234737ab31c1b94f65d2310b32c62b4fcb50c2c9cac2a17d0570e9f6b",
+        "zh_CN": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+        "zh_TW": "c51f9fda4d62dd0138e20db08ecb4426a7d95646076eb0e10741f299aaf83589"
       }
     },
     {
@@ -7726,6 +8570,408 @@
         "pt_BR": "3fcb800484c92063d5f0c6fc158fa0bca7a7fc9a7b70068c6861aafb61d0c5bc",
         "zh_CN": "3050345bf18d6eb49193744d02f383ef7697301c49abb1c8e60ac9a515e79614",
         "zh_TW": "8aed0c6e85f24ac7158110fa30ae744bd23528c953e4769c5acf2a5dafcd269b"
+      }
+    },
+    {
+      "key": "onboarding.speechRecognition.help",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "onboarding.speechRecognition.help",
+      "originValueSha256": "7cc6524b61e02fde2810c13aad031d3d7ffabaa90420d30108b6175fdf2fbe57",
+      "textSha256": "7cc6524b61e02fde2810c13aad031d3d7ffabaa90420d30108b6175fdf2fbe57",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingLessons.cs",
+          "contextHash": "f4103974b5b876801988fa90528abb5120e67fe747264512f6eb7b993a939e33",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "6a7fa1d4028504ba8fe44ec00b20dee6c131f0f83eea5789735ffd8326db9333",
+        "en_US": "bb5e87a9f005cda35c2987c7b82ca283470436d83bce593455ddd981f42c8c88",
+        "es_419": "50d4fa53921270798573d72b8ff55e6905c866350aa9c309c9477a215d3243df",
+        "es_ES": "68b28300eaf38b105f02adb399cbc0d5e89001622713ebca05ac55d07aa85d09",
+        "fr_FR": "b3ab6b31e8d1151a9ebc9cdb3d710dc4803c30592fcda1ddaa9c547b0b254bdd",
+        "hi_IN": "35bb0b276a302c46271a92b1aa87cabb6886d454bbfd8ce747b1a473d4084479",
+        "id_ID": "7c4f446878a82547618f10e54c58c4a9cb481f67bb3e922cd74d85809acc6b59",
+        "it_IT": "ebe1469c4ae5daf20d37d1e8cf5de5c387fd6abce3d6c9079ff3bbf58aaff6e2",
+        "ja_JP": "bfbebcd25f045203384ebaeda29bff56bd77bd88ec4ab69525165951e1d15d64",
+        "ko_KR": "f216b294099a9c72d0b41c4b5eddf1ba040d7a92ca1d0341eb3f8ace90e48b90",
+        "pt_BR": "e08eacd939b15f2a30bc1478c7545a9094b3d24e7944993dfc8c35e953e0760b",
+        "zh_CN": "7cc6524b61e02fde2810c13aad031d3d7ffabaa90420d30108b6175fdf2fbe57",
+        "zh_TW": "1e65681a241e87143ebca40bf306b9525ebed81d19b96e23f81465f6a11cef59"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.agent",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.agent",
+      "originValueSha256": "8c5088e4efefbdf110dba2920195ead90151997b4f83365265709f3354d862f3",
+      "textSha256": "8c5088e4efefbdf110dba2920195ead90151997b4f83365265709f3354d862f3",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "a20cf70a1576cc32191ac95f41c02f1cde4cca726c944c50ac0d8130fbc0513c",
+          "count": 1
+        },
+        {
+          "file": "src/Settings.cs",
+          "contextHash": "2827ff73015b4d102cacb1c11694243ac4e73a2ab4c5130527f8e2a05f6b4b3f",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "fffd044695c3103c471f86176ee713985abb7ea0061f6f7510470fb66ce3c988",
+        "en_US": "16b348371b15a848b30e9d972f5e54cf4d0f0b9b822e8f218770e87907458b8d",
+        "es_419": "349eb5a49e959b4d49669e2300f9e4b66c2bb1e143b43bd999c2d26a643d4520",
+        "es_ES": "2efd86283b69ac2de83efe9cced567f36bfc6c4ba4b28a8d0e96175d82b154b8",
+        "fr_FR": "04575c0a7ab762be203d579012e2c80e483aad22410ba57893652cadd0ed687b",
+        "hi_IN": "5747e0f96d97637ce51983fbf4869dda118e07d557602ccc4ed2d996230923cb",
+        "id_ID": "57c12924f47ee339b6cfbfe14b5bf7a24583870cf4cff6f55987f2c1948fae16",
+        "it_IT": "59acc67341e8dfdef8fdb6e393faf409753067c57c07a65b9a021a82c99e0049",
+        "ja_JP": "a1b7391dd260cd6e41c59e82fe61900a4ad14ced5ee794b3a95dec6593584031",
+        "ko_KR": "f042c9a8447d43bbcc02b1847d4e4137f411ab77f717ed69ff5469a5b53c3d1a",
+        "pt_BR": "d8b133cddc9813a17690d6877aef768bfb0fd03c32ba14024a17fbad85a4d974",
+        "zh_CN": "8c5088e4efefbdf110dba2920195ead90151997b4f83365265709f3354d862f3",
+        "zh_TW": "b0fbc000fd093ab12ede254e488e9a68d2f0a02cdfbb7a4cef2240d676923d1b"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.dafeiyu",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.dafeiyu",
+      "originValueSha256": "ce0edf37ccb8ace576370f99247884df840208c7147f411d93d4100dd98f4cfc",
+      "textSha256": "ce0edf37ccb8ace576370f99247884df840208c7147f411d93d4100dd98f4cfc",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "238dc75176d81d11ecf7520ef59b26529c096db6ccf9849158cdded69c2b2b10",
+          "count": 1
+        },
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "b8eeb1c97030497da811d5fcec3e82ff627bde5555dabdb3064e15f9b57e1e83",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "2166630ab25d7831a258356a6534f164b5e3db986a6e87c7754fa76cd56940eb",
+        "en_US": "bc9e3bdb851182d0eac59cb8f5c629e2bd5efc061ba9ddc606f647f15d14b588",
+        "es_419": "63a7b645b07b393e180731657a6b12852a763210e41d76eaa230745937260f4a",
+        "es_ES": "f8e394b775c9eada7cbc68dab4d722157faef164bf6e0c84b84be0c79a827f0d",
+        "fr_FR": "41203dd31a764a09432421c7bf269c456c3d4c46149dea8c8cda37c24a4868aa",
+        "hi_IN": "e42ba22f4b96fa4340f522be57daa3cfb7b5fc6dda139326b15c8360b6abbbce",
+        "id_ID": "d086ba0d263e88493a1c7fe9e0c1253eed7b9745a5f5b4212edfa3238ef56a34",
+        "it_IT": "7fcdcb02a49b4af971c4a8e0e46b0c5bfce067834c3c2a105fb2191b4ea3b05c",
+        "ja_JP": "6104b6358dfd74e4dff59f8aec1ce04ad707c12c1af1b0d2a0572bc5935f1c93",
+        "ko_KR": "e84f3d7ed1ae390ba8442665ce6db8466015c191aee9f305ba7006bba6915b9d",
+        "pt_BR": "0cda0bd18deaa1f1eb4e162328362b413ea40bd7cdaf820b8b0ed082594852b4",
+        "zh_CN": "ce0edf37ccb8ace576370f99247884df840208c7147f411d93d4100dd98f4cfc",
+        "zh_TW": "5be60987bfe632d4af96edd0175220bde9fb89af758bfddf8acdf3dc99da8fc5"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.ebao",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.ebao",
+      "originValueSha256": "1f81bdb7a8a8984a572c1e5793bfd88d8a7412dc14f16287735adcf2f96bcbfd",
+      "textSha256": "1f81bdb7a8a8984a572c1e5793bfd88d8a7412dc14f16287735adcf2f96bcbfd",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "05a3ff566e958863ffee7f11ca17c23e11c5757d4ef6e8594f8622c875658ebf",
+          "count": 1
+        },
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "38ab45601e0e3de19cb119cc55be2e26db15f6b372ad17a70c29aa51aebfa9ed",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "3c4104d36e092ebacfa0ebd096d52d3949c3f32c890f57d90036c3ac7b01e021",
+        "en_US": "afea6a56dd13f10d90821aa23e93a5c77bd28c5ea0e8e50eba22b4c376110487",
+        "es_419": "059cbc9b22b247e94b3340ed156ae606d39fe2733a566f253ad95d0e41b219a7",
+        "es_ES": "e4408127e08fa02dedfdc734b4d5c788b34a491f0eb980b027a1d11e562ce13c",
+        "fr_FR": "462335577ff046dd8b9e36b927812f4b59142effe2be57d0d209a1bc4486a228",
+        "hi_IN": "f463f41fb77451b4de2c65fdb342f227593753cda0de8317a6934f68b10afb7f",
+        "id_ID": "5cf0d8076092ba776296a0d112cf7b333446bbea1bf2f6c75e32b67e22ef2e6f",
+        "it_IT": "654ef6557b72334401e85a8b2ea67ad94585e8c7adb6f2b6b70141f2a5b15290",
+        "ja_JP": "5a6a31708ae09df28a8c4a9bbc47e29a60136590670f07008668b103e0ea88b1",
+        "ko_KR": "b4f8406f9fe0c1e293b5ff041be3d86f3a304afc3e909acaf3988eaf26853ff8",
+        "pt_BR": "1089628374bdb88f36975ac6e1af5e76e63a4466fbcf151ef3712d454aec5f6a",
+        "zh_CN": "1f81bdb7a8a8984a572c1e5793bfd88d8a7412dc14f16287735adcf2f96bcbfd",
+        "zh_TW": "a50deae262e7dab0d6aa9e60ccfabace4448dcf107be73c56067141ddd99a432"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.generic",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.generic",
+      "originValueSha256": "c6b2f493984ecad66eb992d8794920b6f8ea1ec198c8e2b59cb414d78a475a57",
+      "textSha256": "c6b2f493984ecad66eb992d8794920b6f8ea1ec198c8e2b59cb414d78a475a57",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "aacfcd9f7933023f64c1af172f2e8dde15be4160fea8e073587be51e90851859",
+          "count": 1
+        },
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "d3abbfce1ffa181edbff973dd669efa6a872d9d8fd319c03eab3de340da6685f",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "36fddc62948c3ba3ea476654e44d8daf00c99e9dffd9f45ec897be5049204ed0",
+        "en_US": "0732ec79325737af93de31810f440cf5fab11afc0e67c28be0f2afb4f235e8d5",
+        "es_419": "a5a55e17f6f39a3a4286994c3f0efd1804345eada0d4541cbd3c364c6dfcd569",
+        "es_ES": "bb94f18f1645bc3de96c90adac02346d0ee8919c5da378b825c5a5b23132da5c",
+        "fr_FR": "ab25be8fc0550e259511c2162d2f297d44b8343ac087a516c393e9c979dcbda2",
+        "hi_IN": "c335bb976183584736e2e3ccec580508582fa4bb052ea3bcb1386e0816607888",
+        "id_ID": "d585e12b5dfc24d219353e3f56e14243e39d247654d26d55c8e45e0156a7c8cd",
+        "it_IT": "127828d312df607cb9caabf32b78c962f1a78eb75008f87a5b75339770ad0cbd",
+        "ja_JP": "ec8229beaa3f8730378da635b7319f482c977df56b14f2f536d757859333a49f",
+        "ko_KR": "cf7784af9afa527775235d59d8f3e7cb5fe64ee156217990889721e91231163c",
+        "pt_BR": "91f3798250aefd39ff45133ca6449c676f8e988c5bc621c35dc5cf93ff886f15",
+        "zh_CN": "c6b2f493984ecad66eb992d8794920b6f8ea1ec198c8e2b59cb414d78a475a57",
+        "zh_TW": "fcf96ab3971aad489dae087ae1f6576e9b55ad21e146aa43aba621b54a364263"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.gugugaga",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.gugugaga",
+      "originValueSha256": "0ecf31049cc720073e4d3a2107c0e7191e8c7d2181adc0384e4c55393eb4e9e3",
+      "textSha256": "0ecf31049cc720073e4d3a2107c0e7191e8c7d2181adc0384e4c55393eb4e9e3",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "b9558edd61c55249bf4120cf8e34ba9a7101fe9dc682d047b3f2e6153c687253",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "4e2bd16bd8563f0702475130066e7140d39d762376a4eaf1669f97109cbc9325",
+        "en_US": "108260f75b623c7367ce6daef7e447e892ded82bdc5f5c8f84ad3459bd0454bb",
+        "es_419": "98eaadeb1f74e472b3e99354a2bdad63466371f8f6b8a752f22c8510f2fb31ad",
+        "es_ES": "08ee567d777d29dfbdcfef1c3c77e12594c0b3ee5b0b5a123ae106528f11fbd2",
+        "fr_FR": "a554d1d4270469ed90b88bf35b4021ef0c81b448a2f73081261064dea9c3b7a6",
+        "hi_IN": "0eeaad6db3b2737d6a91f88e5bb55fc3a75a3286f17ff9a23bf2980f7c9041c5",
+        "id_ID": "dc37d90c0804142bd0537903ee1e8217d3484a625e8e13d3068f14365bbe3aa4",
+        "it_IT": "705fbd6d4a97693cf52ef42ff328dcc5dffa1fe15ee633564b4c44d4ed5f83b6",
+        "ja_JP": "46341857b7f16742b216d7b4afedf2fcf308e8c630b7c35c4bbff1dba4b90ce4",
+        "ko_KR": "8c31ffe56cf696a0048980733462f26e1da8b5fe3f1bf48aa15353eb2ec72b5e",
+        "pt_BR": "f364253b3c78f473f9fada6204dd457f449a54bf8c10ad0cea196444a838a6cd",
+        "zh_CN": "0ecf31049cc720073e4d3a2107c0e7191e8c7d2181adc0384e4c55393eb4e9e3",
+        "zh_TW": "0790bb4a214fc15f4e80cade0cab24bf1f4023fbdbd180e4bf52e234532884a4"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.marfu",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.marfu",
+      "originValueSha256": "9b0deb358d360092ae3daf1ec568c0ab179983e1a8df5dd390c3e74a7619db11",
+      "textSha256": "9b0deb358d360092ae3daf1ec568c0ab179983e1a8df5dd390c3e74a7619db11",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "7414a0d76fca8d680f8ac700d4385868ed75c93828d2e06cc64dfc55878e67f6",
+          "count": 1
+        },
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "9fef749f48abe2be245c307f4fd426231237bad8bd048e0cbaa17caf0ce6560f",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "6111096a87b8d177d13d6434afc2a8be449fa11784aaa0f8c7cb2317f338fa40",
+        "en_US": "7135807699deb51c173dc60b78f326cfa0b082fbd03673d6757a0aaeabb67db0",
+        "es_419": "3f528171f04ded224fe05d9c3bb8d71de8423d035c81fc5101ef4e2af6880828",
+        "es_ES": "8e91546d79e2aa5c0adb07c10cd7f08703f248f2ff58e6c20497ccd4a819db83",
+        "fr_FR": "f1febabd06714b0e1d130a17f4861b114ebace5a304f1b430ce9aa6bdf0f03e3",
+        "hi_IN": "3485266f8addad4c8a882ba3f8219eae20cac34ecdf22de97d2c5e62a1df347d",
+        "id_ID": "fd3dbd1099033fd8fa8d53cd5caefd879d9c3980516a162dca7ac8d8fb0952e5",
+        "it_IT": "ef738b48fb0dc83e15d5e1a69045eb4afc9120139d9cd6f3f9c28824791842f6",
+        "ja_JP": "41d0a86df023ea62e8bdfef955c9fe2d26dea62e7a7e83d98c12d8bef797afd2",
+        "ko_KR": "180d708306ab63583f1564aa54e0931e235969d6886d0c2ef9a6c80b34485a37",
+        "pt_BR": "f5db4dc94cc142a2e4c5108e86ce32abfad64522a2746772260e176fe465818a",
+        "zh_CN": "9b0deb358d360092ae3daf1ec568c0ab179983e1a8df5dd390c3e74a7619db11",
+        "zh_TW": "43fe45269cd8da5eda31389587d084a6bd93dec8e105f379638dab75797e9b81"
+      }
+    },
+    {
+      "key": "personaProfiles.defaultsUpdated.xiaobei",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.defaultsUpdated.xiaobei",
+      "originValueSha256": "3eef03b9d8d85982dc188cf2e55989a164182e2311b887d79a9727a8f0dcc4b6",
+      "textSha256": "3eef03b9d8d85982dc188cf2e55989a164182e2311b887d79a9727a8f0dcc4b6",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "f884911b909923c32eb852abe60fd346c6e74699e67a7902b7ea30c139ce701b",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a1b63dd2f094f264f2fd5c6630b5ff154417f8ca54e2896d214463a755836d9e",
+        "en_US": "134492659693381b8f7988f7145454195e56b55fc5c24d6892fba9a44e7383db",
+        "es_419": "944dccdca7c8e8b37dc0cc066d9629daa7659b7b441c446795ded3ea5faa3e1b",
+        "es_ES": "fdc88d35b4671689dac8687d24bd13d6eb12fcfc2216b432befe90e6a667bf4e",
+        "fr_FR": "74ae652f4bdcc6c81d48248e0587d1dffac26a82650d32d44974a2e88869b369",
+        "hi_IN": "15a7568b57d9650ed0a310e9e8cb81498d27d1446d8a9633858383a7f115ebc5",
+        "id_ID": "87d4da0820590b0dbd311db3978280b24c0a014d91c70c4212f9cc22096719ad",
+        "it_IT": "a983a8eebe2c2cad7ee84a49b4fd9257b8fdd84478b70f44178a7b36e6d49443",
+        "ja_JP": "eab25607aed65120dcf476c2b0c9d0ed1be24fde07870cea2d46e41a0d215369",
+        "ko_KR": "8f16c9a74d5ba6833fb6ffc446d85e30b1eeadb4fc09acd7f2d4bebcdbba4ba2",
+        "pt_BR": "57fae0f72ed5f7299ddba72b80122589a2d8ea5216bcd0691aa83cf01e066cd8",
+        "zh_CN": "3eef03b9d8d85982dc188cf2e55989a164182e2311b887d79a9727a8f0dcc4b6",
+        "zh_TW": "e654c1599a25e1732b95f8495943a416ce8b02fb2065d73d42fda72ed8ee7d2c"
+      }
+    },
+    {
+      "key": "personaProfiles.legacyScreenAccess.dafeiyu",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.legacyScreenAccess.dafeiyu",
+      "originValueSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "textSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "a4e143b0acdad22d2b51f25da387d34a9c80aa4a664cba346b27df3c87aae136",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "acbea9bffabed765d6becf5ce3a5d02ed36274c4c8cb070d7c1ff101b7b1342f",
+        "en_US": "221b07d9fef801ada2d67eb973e7b90d94d6ca7b925355192550490fccf555ec",
+        "es_419": "4ca731a2fc4a2e035d591d83ebe17299e192762abea72423946d3ab2fba7c5db",
+        "es_ES": "b6085239d14b2005304c677a7c193d28b45b4272af4a4ba0163252b36defda0b",
+        "fr_FR": "ecc5170dfa2db70c301651c2ecf4273eb6907a39f662e432201644442ba22bba",
+        "hi_IN": "9be40e76f504d495a53e3f60f9ab7ac45342a7e6585e633c73a3cbd6364fe95a",
+        "id_ID": "7e8de72b06ed161dbe6b04d5a3b6dadcf475b0d94bb995708c023d451bbf37b5",
+        "it_IT": "8ac9f67a9261a58d2d759f7af9decb398d520528776bafe1f639e711711db766",
+        "ja_JP": "bd4a3182bc6b663d517a5a6e360f79987eea951516f57e213f074261b8baffca",
+        "ko_KR": "f3cb91d37d7c10919d8a9c2d9515e4cd15a9129fb2bdb5697142124b041bb641",
+        "pt_BR": "d003688be0717ecb492adfae80e9832a36fa0855f41d5c782f5fcc3fc40725da",
+        "zh_CN": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+        "zh_TW": "19c097df3cfc16fe52fd4bd7bfb9da22b9c7c1ba35bf76cc37c2f266d51d003f"
+      }
+    },
+    {
+      "key": "personaProfiles.legacyScreenAccess.ebao",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.legacyScreenAccess.ebao",
+      "originValueSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "textSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "839cff0e95845081262fddd6c813e84a3f815bd5fee370ffc6b4eeee530b0865",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "acbea9bffabed765d6becf5ce3a5d02ed36274c4c8cb070d7c1ff101b7b1342f",
+        "en_US": "221b07d9fef801ada2d67eb973e7b90d94d6ca7b925355192550490fccf555ec",
+        "es_419": "4ca731a2fc4a2e035d591d83ebe17299e192762abea72423946d3ab2fba7c5db",
+        "es_ES": "b6085239d14b2005304c677a7c193d28b45b4272af4a4ba0163252b36defda0b",
+        "fr_FR": "ecc5170dfa2db70c301651c2ecf4273eb6907a39f662e432201644442ba22bba",
+        "hi_IN": "9be40e76f504d495a53e3f60f9ab7ac45342a7e6585e633c73a3cbd6364fe95a",
+        "id_ID": "7e8de72b06ed161dbe6b04d5a3b6dadcf475b0d94bb995708c023d451bbf37b5",
+        "it_IT": "8ac9f67a9261a58d2d759f7af9decb398d520528776bafe1f639e711711db766",
+        "ja_JP": "bd4a3182bc6b663d517a5a6e360f79987eea951516f57e213f074261b8baffca",
+        "ko_KR": "f3cb91d37d7c10919d8a9c2d9515e4cd15a9129fb2bdb5697142124b041bb641",
+        "pt_BR": "d003688be0717ecb492adfae80e9832a36fa0855f41d5c782f5fcc3fc40725da",
+        "zh_CN": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+        "zh_TW": "19c097df3cfc16fe52fd4bd7bfb9da22b9c7c1ba35bf76cc37c2f266d51d003f"
+      }
+    },
+    {
+      "key": "personaProfiles.legacyScreenAccess.generic",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.legacyScreenAccess.generic",
+      "originValueSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "textSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "d12290efe1a89b8172a00ddb488b35dae6b1d8b9c47265c07575134f56a80a68",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "acbea9bffabed765d6becf5ce3a5d02ed36274c4c8cb070d7c1ff101b7b1342f",
+        "en_US": "221b07d9fef801ada2d67eb973e7b90d94d6ca7b925355192550490fccf555ec",
+        "es_419": "4ca731a2fc4a2e035d591d83ebe17299e192762abea72423946d3ab2fba7c5db",
+        "es_ES": "aa856575cf3ca2dc2c6703b2c6c3bd24713167b4435c23e3524b245779383ce6",
+        "fr_FR": "ecc5170dfa2db70c301651c2ecf4273eb6907a39f662e432201644442ba22bba",
+        "hi_IN": "9be40e76f504d495a53e3f60f9ab7ac45342a7e6585e633c73a3cbd6364fe95a",
+        "id_ID": "7e8de72b06ed161dbe6b04d5a3b6dadcf475b0d94bb995708c023d451bbf37b5",
+        "it_IT": "05501b87d180555b4b30595d6b189bd0f77abe76660fda5360c2dc1ed2442ff3",
+        "ja_JP": "bd4a3182bc6b663d517a5a6e360f79987eea951516f57e213f074261b8baffca",
+        "ko_KR": "f3cb91d37d7c10919d8a9c2d9515e4cd15a9129fb2bdb5697142124b041bb641",
+        "pt_BR": "d003688be0717ecb492adfae80e9832a36fa0855f41d5c782f5fcc3fc40725da",
+        "zh_CN": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+        "zh_TW": "19c097df3cfc16fe52fd4bd7bfb9da22b9c7c1ba35bf76cc37c2f266d51d003f"
+      }
+    },
+    {
+      "key": "personaProfiles.legacyScreenAccess.marfu",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.legacyScreenAccess.marfu",
+      "originValueSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "textSha256": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "51ddc26d368039f3fccd4ceeaff340838d94dcbfdcc801bf6284737d065693c4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "acbea9bffabed765d6becf5ce3a5d02ed36274c4c8cb070d7c1ff101b7b1342f",
+        "en_US": "221b07d9fef801ada2d67eb973e7b90d94d6ca7b925355192550490fccf555ec",
+        "es_419": "0936fbea2419304b37e295d929b66aad6b37731ec8c403f76cec25ab2279b9bd",
+        "es_ES": "aa856575cf3ca2dc2c6703b2c6c3bd24713167b4435c23e3524b245779383ce6",
+        "fr_FR": "ecc5170dfa2db70c301651c2ecf4273eb6907a39f662e432201644442ba22bba",
+        "hi_IN": "d395fc003ee9727bc319834987aca355f32d897171be332bb512895cde95dff8",
+        "id_ID": "4934ea78661ad2cb485f83a18223a6ba56e8be6bfebcea52c185baea7be839d8",
+        "it_IT": "05501b87d180555b4b30595d6b189bd0f77abe76660fda5360c2dc1ed2442ff3",
+        "ja_JP": "bd4a3182bc6b663d517a5a6e360f79987eea951516f57e213f074261b8baffca",
+        "ko_KR": "f3cb91d37d7c10919d8a9c2d9515e4cd15a9129fb2bdb5697142124b041bb641",
+        "pt_BR": "719e0566ae2095827bb09225d1f3b36f59f8f50d786a516315415b00236df1b8",
+        "zh_CN": "29daaf814b9644255095e6d95c07ca47bb5e3dde07f55fdad47162bea5d279cc",
+        "zh_TW": "19c097df3cfc16fe52fd4bd7bfb9da22b9c7c1ba35bf76cc37c2f266d51d003f"
+      }
+    },
+    {
+      "key": "personaProfiles.screenAccess",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "personaProfiles.screenAccess",
+      "originValueSha256": "d3a2dbb1c9f9defc0c1e361ff0ea4ecf917ccb3a8e683dcd8edcdc828d0b48f0",
+      "textSha256": "d3a2dbb1c9f9defc0c1e361ff0ea4ecf917ccb3a8e683dcd8edcdc828d0b48f0",
+      "sourceReferences": [
+        {
+          "file": "src/PersonaProfiles.cs",
+          "contextHash": "7223ea83e3ef78ab476ab8af49f401b35af3e9611ee58297a12dd3776be13fd4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b31e861731ef72ab7c91c902606ced36d31a7766b82efafbcef57f57eded865b",
+        "en_US": "ac27ea89905fbffc25330fe10eb50cfbfae34f00669825eb54c07a881bc64ce6",
+        "es_419": "9682ca64991cca6162a8721ed8964f7d633ceeb7b6000ddcb2708075dc377b18",
+        "es_ES": "edf3eb6ca20e18ed5fd69ded5f27780e324fe76de7fd249f8f88b10aa7aadd73",
+        "fr_FR": "755e88bd0e1d440b2560e62a849e4e036f404f106febf62f71e27de244207d0a",
+        "hi_IN": "9188ed2825ed5c2d2c8d82c06a8ddd5f6cd59997fb78ddbc00f5d730e729e400",
+        "id_ID": "3577e44c1f41c9464433369ef3189d3f84cb6e1151793c07c39fc289bbad9ccf",
+        "it_IT": "487d9100d601a9c25a90a3d25e7dcda09ac2bf9cac0846ef042dd48d780d7d18",
+        "ja_JP": "ee690538739caf5f6f1b59e340cbe9db6fa22d8596f77af204465a81f87386b2",
+        "ko_KR": "888da54a14d4276e93b9d0d1fd2ddb656444e05b9882c527f3a12bbc27a4e72e",
+        "pt_BR": "04fa827b20830686da4b87aa0a5ee86f31576b7e57efd79f8aa8ece17ce25fe9",
+        "zh_CN": "d3a2dbb1c9f9defc0c1e361ff0ea4ecf917ccb3a8e683dcd8edcdc828d0b48f0",
+        "zh_TW": "9400252834071b0ccba21077499c0df4f87d6e769f1907ff67ac4d4f9de4cf63"
       }
     },
     {
@@ -10642,6 +11888,272 @@
       }
     },
     {
+      "key": "settingsPage.greeting.aiEnabled",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.aiEnabled",
+      "originValueSha256": "a02411edd96b264e6449077c553652074e16aad338169c1b8beff139313cc568",
+      "textSha256": "a02411edd96b264e6449077c553652074e16aad338169c1b8beff139313cc568",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "28586314f0c91312c008386f2c5c7d23cad0586c3c4ebeed5ac58c9325a07dc3",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "afafa9586afee6577acd5cba64d5658b86aa3154cff333d0d17117ebdfb3de70",
+        "en_US": "9d78f83452e9d9068bb7e8bbbbaee1fe5464f69c4e83e268e82cf72de0b56844",
+        "es_419": "6da9b96f260df6aeebdf86d016a987ff5ac1a574813083956f0022c39b6bfdf0",
+        "es_ES": "eb72ca7d9de91f13ead98817c3bc60abfdd11aceede8394830b494b57cb16fab",
+        "fr_FR": "5a75a104529842d8b5c58dd08d80871489ddb71c0628b2ea2b315426e0400e93",
+        "hi_IN": "bf49f9400de9a3a61d450a52d69e4ca7c5a132dccbfcf0400efe04fdfab0665b",
+        "id_ID": "e070b943f6279c23a4076b1feaccc0e0860608d58b6a8696071d40ec3a6fea36",
+        "it_IT": "4927438448a6b04183be6996095edf44dad690f26513784a7faf79c31dce06e9",
+        "ja_JP": "0178d0db7a3c482c0de857b7a4d6d3a8eef1c6aa38a554c0cfaa3a4c3180a27b",
+        "ko_KR": "fd305e365e1a47513951b6e1ba3e55c43cfced162efd68405ad60fba0cb092ef",
+        "pt_BR": "0d8198f53e95b86ed2bd164529c068bdad7d60270585145810475927c695370b",
+        "zh_CN": "a02411edd96b264e6449077c553652074e16aad338169c1b8beff139313cc568",
+        "zh_TW": "1dddb01624662ef07405fc7e60753f2ab642673b192e9b631df2dd3c67a1a6a1"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.aiHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.aiHelp",
+      "originValueSha256": "b7ef223a7e6541c7b28c313553f19e785d737d29bb03903ff15fa006b2c9208f",
+      "textSha256": "b7ef223a7e6541c7b28c313553f19e785d737d29bb03903ff15fa006b2c9208f",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "8a03d94b48fe5bfa3b818ce76f9bea371e9204e73f193e1d61638ba79b63e9af",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1d053ef0657d6e940beaa10b6cee7cc455d77d5c0543fac838886c1ea7f757ac",
+        "en_US": "229c0c8a09afa95f9e81d15f5526810067d28b497a44c13798e65e792d13b63c",
+        "es_419": "0ed883963ad04ab6e9940a23eeae28fbcbd6f362921873a5df4b105eff4e5f45",
+        "es_ES": "8febf08b17ba0a4c06020c68072f8447d4256323255f132ed294ca44a704f795",
+        "fr_FR": "5eb093ec960b822f80cb96db2d89cf0136fcc399e9e330c63b0f08886b62d477",
+        "hi_IN": "737405e1660b499e362af44759a3ee026f98398ee6d93b4d84cbfc4d81cce1fc",
+        "id_ID": "b61ba6b201515d438d7bfe53aebbaf3fa6d46e9ab6f736af1598cfe5a7f668a9",
+        "it_IT": "5b02ffe496e3111af0f7cf45d82f16d34584cf036c0cfca0444447814692992f",
+        "ja_JP": "0c2fe7901f653cbf79157f4e0ae572c48b38aebab600a709c3bbeea8a771b628",
+        "ko_KR": "c895f95520385226ad15c59916b62862c808183a29fcb1937f5f224ce5c66e87",
+        "pt_BR": "fb3976dd96a9be02a36cd527a843e7f8d25cf09fba7709fc9489495d5ec9f46d",
+        "zh_CN": "b7ef223a7e6541c7b28c313553f19e785d737d29bb03903ff15fa006b2c9208f",
+        "zh_TW": "3eabd583cfa1edae6ea0e4080cf0112ab1099cb84f912a8563ddcb81469aca4e"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.enabled",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.enabled",
+      "originValueSha256": "4f145794d7078d1d6e27a05c6846705f4d308c623099de572ef6d1d44524937f",
+      "textSha256": "4f145794d7078d1d6e27a05c6846705f4d308c623099de572ef6d1d44524937f",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "f8abc87115b8e83bcbb340ddd943db48ba13e03f48c36e0fba879b7889810398",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "13dcb1813c54a06ebc4dc376e94105c5a793cf4f06d555b8babd4231ba24b3f9",
+        "en_US": "32aa306a1c6d992742363c2a1388572eb2b5509922664dbc4a3aabf2edcd768e",
+        "es_419": "ae5305801322f112471df88a5d8057928ee7b1d007dd847962f5cb3c4d4238e3",
+        "es_ES": "349fcca0891c9a96c02729af6baf6a0e57acd5495048b1108570c594e9a89041",
+        "fr_FR": "cafcba2b068de26726e0fd773602d1afc905ea5545d05e1b53f0cdcaad76f91a",
+        "hi_IN": "c5f252ea9a8c33527eae5e23126b0b401e13fec3ee0e3f2ba0fa6cf3b6b4aa7a",
+        "id_ID": "f8a0c01653083e0072f50f8ecff5f47a803e4da4dafad0b028c1accd6c4545b8",
+        "it_IT": "698e967cd252553fe3b0f99d2b38d5c19e5ca4c3cfabbe0ea900d5d36f0129e6",
+        "ja_JP": "2ff00606965bae12286157a5d54abc92af454c2539b2bd6a50adb2d82959c3a8",
+        "ko_KR": "64853fd73031c08ff146b2053df4f9581291b1f1ec1f72babfdf253262986219",
+        "pt_BR": "9aec9272f656dd5f84435dfd5032eee6f8569df65a19de5fc754cafae663909c",
+        "zh_CN": "4f145794d7078d1d6e27a05c6846705f4d308c623099de572ef6d1d44524937f",
+        "zh_TW": "be3cb181d0195fd7def962fc9d865d8de1a83d948bed211087df7e13b453053e"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.interval",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.interval",
+      "originValueSha256": "4f5df723d99de36b909f329c8170947744d28e6da3b4d39549b5aa88ff884a2a",
+      "textSha256": "4f5df723d99de36b909f329c8170947744d28e6da3b4d39549b5aa88ff884a2a",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "8af69a73a8a9783797a929b0f8817a8076ebf15169ab2d830417197f8d155411",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "21fbaba024f7aef2ed350dc22cb3a6057fa9dcfb12e06819ddf6a8b79e2c8c01",
+        "en_US": "6f45b0005e3b7c18ecd474b906b61876b7bb18e969e89d8728187e4417c364f8",
+        "es_419": "0dd4192180fd772ee99c76e166460df92a5ba7d0486d54d67a38d9881124a5e4",
+        "es_ES": "0dd4192180fd772ee99c76e166460df92a5ba7d0486d54d67a38d9881124a5e4",
+        "fr_FR": "45b31f5996f8267a808fb7e70f690bf84f6352d144ee8e064911c8f252f661fe",
+        "hi_IN": "05670431d0f5fe94aeee6aa668da6434ff9cee4cfd4ffbc36cfc7f18d2d3148e",
+        "id_ID": "6f45b0005e3b7c18ecd474b906b61876b7bb18e969e89d8728187e4417c364f8",
+        "it_IT": "b74ec82eec75a1864fb6e983d6d7fa59fafbf04909f0cfcfad95b7945c8e3d95",
+        "ja_JP": "4e3f4ca6422580887637037f3c936f251a2a02ebf1e4994ec5505c720468ae5f",
+        "ko_KR": "c5aa95186fcb7251128c07b6d7c3b89ccc523cc87308a3c2c5eca7297dba7bd2",
+        "pt_BR": "0dd4192180fd772ee99c76e166460df92a5ba7d0486d54d67a38d9881124a5e4",
+        "zh_CN": "4f5df723d99de36b909f329c8170947744d28e6da3b4d39549b5aa88ff884a2a",
+        "zh_TW": "4e3f4ca6422580887637037f3c936f251a2a02ebf1e4994ec5505c720468ae5f"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.intervalHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.intervalHelp",
+      "originValueSha256": "73e5399520aee628eb1cdf187b2e4f0fe15393e5931761bbcb0fdce681fb9445",
+      "textSha256": "73e5399520aee628eb1cdf187b2e4f0fe15393e5931761bbcb0fdce681fb9445",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "4246854338eb4a961e65fe60e2035e1126e4b1fd245b9f6240ec1677fd014a46",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "519436efba9c5d79ee9c257b74565360607b90ad26027b88a21b80e57506617c",
+        "en_US": "28e47a87a421d5ee7dacf91ef26c75b6c6afa279bf8b8451194a1e4edbb69235",
+        "es_419": "5859381039637414a367aacda1360a0fd3b7a62fd18480bf3b017d57a4c9a59e",
+        "es_ES": "5859381039637414a367aacda1360a0fd3b7a62fd18480bf3b017d57a4c9a59e",
+        "fr_FR": "22b340ce36728641c380c423eedc84fafaa0d9bdba4006fdd36a53c491450295",
+        "hi_IN": "dd6aaf4515ad043b5f07bbcd72361cd62e74ffa4a903cb22455b7c863d8762a1",
+        "id_ID": "6644b7246684e828fe51bd96e55d10a203692fc783b4b8032f47f7dda84aff1a",
+        "it_IT": "c6c8dc70971b04586621f7909394f7ac7a92e152236a210d85d8dc9dde6cb728",
+        "ja_JP": "837daef9906c204b2ea8e502f1d1af9befc3b1c0945248cca373816c89782e05",
+        "ko_KR": "3ef3326f34e7235d76d471d4cd61641832e4e904adbe92f8543b985943ba7f56",
+        "pt_BR": "f8c3a9cd1cc22d43de5d7934d50e8558e5e21300e2181f896ebc925980bcc091",
+        "zh_CN": "73e5399520aee628eb1cdf187b2e4f0fe15393e5931761bbcb0fdce681fb9445",
+        "zh_TW": "b120486c057e5f81639a77c69a2d684a998067ce499dd25be1232fd0a2b6ee8e"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.invalidInterval",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.invalidInterval",
+      "originValueSha256": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+      "textSha256": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+      "sourceReferences": [
+        {
+          "file": "src/OnboardingWindow.cs",
+          "contextHash": "5ea945ba9d10a61d5b25872bdfc876adffc164abe87cdd12b3b0b10775fb47a1",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "f6aac680d59176623937af75446d2783af9e9bb0981ca3c52b5ef1f1f9851867",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b77af298998811383c08e94132e81aab5b95b5c1724398e30907192b6bab4c3c",
+        "en_US": "83ff5cd219286f42df03256b246e66b4e4f2f88a51683f2f3633dbd44c07a59d",
+        "es_419": "96354fb764387b4b9565c8c658525f212f3e7e1350769ccaf6ae617675714374",
+        "es_ES": "3d009b2eada218a7c1b39e4e9e42bf8a998c71245e2c569c9f81e9bf6bd827a2",
+        "fr_FR": "580abdbfbcd7f3e622fdcaf0c4d0315d61803441441ab181604bc84835916bf8",
+        "hi_IN": "2b6eb3a03ae4f20a114f77bf2e86501291f9feb13e780c9ba8c1520e49ec6759",
+        "id_ID": "334e0efed8d27499e0421b70690d2f5025e3361b419796192c588102c7916331",
+        "it_IT": "f8014ee1a011a2de84081b88df0cec8daa97d43a93cf5b55236d373de3fd4eb2",
+        "ja_JP": "ad640425d77fd6f2ab4a0caa867fd14fb392432ac22aad5178e39b59c56ca565",
+        "ko_KR": "93a1a3b5c99c3c8615df226ddb034684dcc17be6eb6ac4962bb097cd9c8d3e04",
+        "pt_BR": "c7200b6234737ab31c1b94f65d2310b32c62b4fcb50c2c9cac2a17d0570e9f6b",
+        "zh_CN": "379180b6825108395d16cc5f9e2c42364b5525970b09c485b9dd9755850fc68c",
+        "zh_TW": "c51f9fda4d62dd0138e20db08ecb4426a7d95646076eb0e10741f299aaf83589"
+      }
+    },
+    {
+      "key": "settingsPage.greeting.quietHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greeting.quietHelp",
+      "originValueSha256": "f85c1ca86ddaffe213ffe2467e5c89aef081c3f2a7b040dcd794760e42104f2e",
+      "textSha256": "f85c1ca86ddaffe213ffe2467e5c89aef081c3f2a7b040dcd794760e42104f2e",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "291681fbc0313f3645bac2e1cbd27daafe841e974bc2491b3df8d296ad7d1c26",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5cba8bd91494db2e1c370ce57e0ec769b7d9f7bb468fc901bd795f074ca1f3c8",
+        "en_US": "2cfb946e924fcda7f120c6cef354ef58e6f9b5d237e2a5039503e6866d002d55",
+        "es_419": "d85b3a1890f89e1f65ea76ddab07b8ae2133745eebea06268c7f9a06055e9e11",
+        "es_ES": "91d70a32105d5b33306e070ad4e0bb3122eb49d23113556d037ca8dd96ea08e0",
+        "fr_FR": "34b2cc471a05cb2857a046d14fcaf96b658e4f8e1d1b33acf6f7d64b1a242a73",
+        "hi_IN": "f583859baf828a39c58d700191ff9b2c9ee320c55523ec0a13d2e93122db0266",
+        "id_ID": "4e6210918bc2e8c38d12b52a837a68d3b724f916d0193003521bde4116a30558",
+        "it_IT": "de3606c8293a719cc6cd1eab29768cb6675c642b1ca94ba1feef560ab374ce1c",
+        "ja_JP": "45b2faef8447d52b69c752cf7f51f69acd762c938e5084a1c32a48b8509a578c",
+        "ko_KR": "62b5e606e8e666b7a84d1636720fa10802f37b30fda86a82088f6e1765cdcbb7",
+        "pt_BR": "3bccd91972fde44c4b911e0b36472275bda99fe4a56151b59ac9cf068f7a0dec",
+        "zh_CN": "f85c1ca86ddaffe213ffe2467e5c89aef081c3f2a7b040dcd794760e42104f2e",
+        "zh_TW": "3c392cfb980d87fcd447578f8900d61f764363708139023833b5a3af2bb598b4"
+      }
+    },
+    {
+      "key": "settingsPage.greetingJitter",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greetingJitter",
+      "originValueSha256": "7c7af45b7e00c1d46494a966f764843e61790b4dffdb2ed2e380856b3ab862ff",
+      "textSha256": "7c7af45b7e00c1d46494a966f764843e61790b4dffdb2ed2e380856b3ab862ff",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "1b5458fa408756b01882c3d305c1e4e8fa99e98027d132b0a9a4335a27e7d4d2",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "f172ef3a1ad1a6d273eccac4de40fd2d2cdb738689cc2acd94f962d2351d6ff7",
+        "en_US": "91fbe4c855fbe0759f01c98185f0e5b1317146f3371bb32e0470f226ac26f42b",
+        "es_419": "fdca92bb8ed454532bbc7550c353cd48cf57cd10f406f076477cc88a2799e2d1",
+        "es_ES": "fdca92bb8ed454532bbc7550c353cd48cf57cd10f406f076477cc88a2799e2d1",
+        "fr_FR": "8dc605f468e5eca3e2f7ac6ad049c18c2eccd08e22acddfcb86933fa8456276c",
+        "hi_IN": "4406c60ac1bcd4bc4dcc46bbf6130d2df4cb8528e30fd13502cb70fb922e3e1f",
+        "id_ID": "6628d4713b89bf90040ead2edef64a053357a4cd9bf4c17b2d847ebf901b2d29",
+        "it_IT": "52a641226a656043f167c2f9ba01d50f008becce979a926967947a6bba29b03e",
+        "ja_JP": "b646655e9bf780194260be2ad5880dedc922f97945e61c15c964c2e0386c2d6f",
+        "ko_KR": "0cdf58f45246eb7909a2890a631aeef82005b395434627373d164d3060a2f4ba",
+        "pt_BR": "7a901746000390ff7587d4e5b685aad09066f5b6b69fc0caaaac29e9335bd434",
+        "zh_CN": "7c7af45b7e00c1d46494a966f764843e61790b4dffdb2ed2e380856b3ab862ff",
+        "zh_TW": "6311fa5bb1ea0e3e54218f8b373e2ce99903fb5dfe4b52aa302e1ab63571026c"
+      }
+    },
+    {
+      "key": "settingsPage.greetingPreviewHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "settingsPage.greetingPreviewHelp",
+      "originValueSha256": "b226bfb18633b14194073ad3104371c3e543aba169e0ce074540478aa6ff059e",
+      "textSha256": "b226bfb18633b14194073ad3104371c3e543aba169e0ce074540478aa6ff059e",
+      "sourceReferences": [
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "be6e57f5b9a27ddb3edbcf280ddcd53f0b9b5c8905e61f7b005f607cbc0e0b7f",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1331892f8af1aaa6482e06f4cb745305451d5450a167f0c79a2f495045e52f3f",
+        "en_US": "ae4e8d26a3a4720a2f07b4112b91183b73db937bcad2f8c9aae214a61050619e",
+        "es_419": "e838a79eee03a625bcecf8e207b2b1519eeec8d28a4aa78be227d0aee0b78d36",
+        "es_ES": "e838a79eee03a625bcecf8e207b2b1519eeec8d28a4aa78be227d0aee0b78d36",
+        "fr_FR": "452fea8ff65bcfd0244277525ee79334fd5affb16d2bfff56d44b2cf44349f20",
+        "hi_IN": "bfd8f90190627aa581caffde75dc8e6437fe48a84b6da5b4f60a4f6bc34ec134",
+        "id_ID": "7ee2eb7bf6bc6e5e98432fcc093f08ca6de5a2c2ef2590de22541df58f5bab8f",
+        "it_IT": "a38b8a17f257472009154a7376d659e9452c77863f2723ba5f8ff5b1acfbc757",
+        "ja_JP": "59fee4e5653d38037e32539f69a7cb45944fa2d519cfe664bf1e3628fc57562b",
+        "ko_KR": "f5c3c59c7b30c7420903cd2f3f0bc538c1e2114c2436a508d8dee4c48f9373fb",
+        "pt_BR": "5829173339db95d093dfaa889a675f002015d48948f38b0f326d3c7119589f66",
+        "zh_CN": "b226bfb18633b14194073ad3104371c3e543aba169e0ce074540478aa6ff059e",
+        "zh_TW": "84ec04382985a9acc0fe59f087f025f33a44994cfaabdc4c14643335872dd7be"
+      }
+    },
+    {
       "key": "settingsSearch.clearHistoryAlias",
       "originCommit": "ac1a23c6ec6996f87c3b4eec3aa15ce4324cfe1e",
       "originKey": "settingsSearch.clearHistoryAlias",
@@ -11076,6 +12588,35 @@
         "zh_CN": "06bc14b60f3598a3fde833340ee93e8c934fa6eff21bbd6a6df354528b53af01",
         "zh_TW": "66046513e3ca694e8f11251dcdf24ef0aadf9e711d29ec3a6785fcc9bfcb185b"
       }
+    },
+    {
+      "key": "usageStatistics.conversationModelsHelp",
+      "originCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+      "originKey": "usageStatistics.conversationModelsHelp",
+      "originValueSha256": "d7a944e20730a7747fd169a0a7d66d18feec0cb0eee0d10bd2f7d91f5160dba9",
+      "textSha256": "d7a944e20730a7747fd169a0a7d66d18feec0cb0eee0d10bd2f7d91f5160dba9",
+      "sourceReferences": [
+        {
+          "file": "src/UsageStatisticsPage.cs",
+          "contextHash": "2b50a8812fabd84b56f8ca0a010b31bda2225c341ecfaa8b921c6b03147d5cb0",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "9c3d675742cde8b20f2f428c123033e33c4fb71a66f2c7ca9418d48642c6e6e7",
+        "en_US": "c987f5df464dfd950d6f60d3a94e562fcb9d280e31803f3bd90d246dcfc0f699",
+        "es_419": "50f4b7c67bc4c5919b404588c34579ca0f1cfccede83eb8c46b6517382e62ea8",
+        "es_ES": "3803a408efa659a93f6c71ca32c3b55c7215309697df434ceca1fd7db5aff77b",
+        "fr_FR": "5419d20be599178e7df375fbdaad133dd7fe390e7901224a9525bba3ca7f0e05",
+        "hi_IN": "e8fa3a3a22520fef1e5d7c7cab06b91f9aaa2cc084e54d7bae2ceb3e5f184f1f",
+        "id_ID": "55e44801a90247d037f9c8182446fb1874524a42f35db8e05c07f8e954a89df5",
+        "it_IT": "1ef1dfc031f3264ee05bd37684ca3244549c3aa1e4bf101235b1abf20417c8d6",
+        "ja_JP": "d248a2221661cf322c87246f1d9b88edbc7af4c7f91415f04171ff42722fd6fe",
+        "ko_KR": "dc7e8cb37fea45365c2465783207415644c4bd9149119df05f262675951ffd34",
+        "pt_BR": "6c9d492fadf1d4186ba71898978adf414f2491b6d5dc98177b48f43d3e4302dd",
+        "zh_CN": "d7a944e20730a7747fd169a0a7d66d18feec0cb0eee0d10bd2f7d91f5160dba9",
+        "zh_TW": "42bb1b3bb8df750e30b05592dc3b4d9a89501d8777cc1ab86431d7bf178fe535"
+      }
     }
   ],
   "sourceExclusions": [
@@ -11084,288 +12625,288 @@
       "value": "帮助",
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "f72908d65587e06b0d86a4b5b5a64da993682e40590ca0543bb8eb692d5fd0cf",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/GreetingService.cs",
-      "value": "（暂无）",
-      "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
-      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/GreetingService.cs",
-      "value": "\n最近聊天背景：\n",
-      "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
-      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/GreetingService.cs",
-      "value": "\n请以当前伙伴的语气写一句新的主动问候。",
-      "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
-      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/GreetingService.cs",
-      "value": "\n最近已显示的问候（避免重复）：\n",
-      "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
-      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/GreetingService.cs",
       "value": "当前本地时间：",
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/GreetingService.cs",
+      "value": "\n最近聊天背景：\n",
+      "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
+      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/GreetingService.cs",
+      "value": "（暂无）",
+      "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
+      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/GreetingService.cs",
+      "value": "\n最近已显示的问候（避免重复）：\n",
+      "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
+      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/GreetingService.cs",
+      "value": "\n请以当前伙伴的语气写一句新的主动问候。",
+      "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
+      "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/Maintenance/CacheUpdateRetirement.cs",
       "value": "桌面伙伴.exe",
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "编辑",
-      "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
-      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "编辑",
-      "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
-      "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "视图",
-      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
-      "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "文件",
-      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
-      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "3a76247f14b8d266e2e7c942c092e4e16807dbd1cc949ffedfa34f750e41ee70",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "文件",
-      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
-      "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "53b1629aa17e9c919d98b652a814450cff32c5acc5b0c4abb55273af49d831b3",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "文件",
-      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
-      "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66e086e03730e51a3dcc13111c167c6b1c7ddefd1d1efb9df3ed1aaf646bc9c0",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
-    },
-    {
-      "file": "src/ShellMenus.cs",
-      "value": "文件",
-      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
-      "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
       "value": "文件",
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a765e5e64fbfbf9e15a5c00840829eef94c692015a9e00a7cceb7c98f2244ae4",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "文件",
+      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
+      "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "文件",
+      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
+      "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "文件",
+      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
+      "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "编辑",
+      "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
+      "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "帮助",
-      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
-      "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "导航",
-      "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
-      "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
-      "value": "导航",
-      "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
-      "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/ShellMenus.cs",
       "value": "导航",
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "e3daa0322d06d926f576500e489abef69dfed6bb8350e5e35ababe8ca9bbaf9d",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "导航",
+      "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
+      "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "导航",
+      "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
+      "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "帮助",
+      "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
+      "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "文件",
+      "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
+      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "编辑",
+      "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
+      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+    },
+    {
+      "file": "src/ShellMenus.cs",
+      "value": "视图",
+      "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
+      "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     },
     {
       "file": "src/UpdateWorker.cs",
       "value": "桌面伙伴维护助手：校验更新包与卸载交接，保留用户数据",
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
-      "sourceCommit": "d3b6880e1cc1964c7739289c9aab10466446f682",
-      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history."
+      "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
+      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
     }
   ]
 }
