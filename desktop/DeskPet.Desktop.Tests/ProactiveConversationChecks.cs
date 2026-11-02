@@ -327,7 +327,7 @@ internal static class ProactiveConversationChecks
         internal int Calls;
         internal DesktopCaptureStatus Status=DesktopCaptureStatus.UnsupportedPlatform;
         internal DesktopObservationFrame? Last;
-        public DesktopCaptureStatus GetStatus()=>Status;
+        public DesktopCaptureStatus GetStatus(DesktopCaptureOptions? options=null)=>Status;
         public bool IsCurrent(DesktopObservationFrame frame)=>true;
         public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel)
         {

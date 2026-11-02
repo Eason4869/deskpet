@@ -80,7 +80,7 @@ internal sealed class DesktopObservationHost : IDisposable
     private sealed class TrackedCapture(IDesktopObservationCapture inner,Func<long> epoch):IDesktopObservationCapture
     {
         internal DesktopObservationIdentity? Target;
-        public DesktopCaptureStatus GetStatus()=>inner.GetStatus();
+        public DesktopCaptureStatus GetStatus(DesktopCaptureOptions? options=null)=>inner.GetStatus(options);
         public bool IsCurrent(DesktopObservationFrame frame)=>inner.IsCurrent(frame);
         public async Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel)
         {long stamp=epoch();var frame=await inner.CaptureForegroundAsync(options,cancel).ConfigureAwait(false);if(stamp==epoch())Volatile.Write(ref Target,frame?.Target);return frame!;}

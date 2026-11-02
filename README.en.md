@@ -7,7 +7,7 @@ This release adds [messaging channels](docs/im-channels.md) for user-owned QQ, W
 
 > **Current stable release: [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
 
-**Development source preview 0.11.4-dev.2 (no Release):** Windows WPF adds application/full-screen capture selection, shared image-description settings, observation-toggle persistence fixes, interval-plus-jitter greetings, and consistent multilingual persona permission wording. Confirm capture scope and receiving services before use; see [desktop observation and image descriptions](docs/proactive-desktop.en.md). This preview is outside the 0.11.3 stable downloads below.
+**Development preview [0.11.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2):** Windows WPF adds application/full-screen capture selection, shared image-description settings, observation-toggle persistence fixes, interval-plus-jitter greetings, and consistent multilingual persona permission wording. Confirm capture scope and receiving services before use; see [desktop observation and image descriptions](docs/proactive-desktop.en.md). This preview is outside the 0.11.3 stable downloads below.
 
 <div align="center">
   <picture>

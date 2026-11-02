@@ -21,13 +21,15 @@ public sealed class MacDesktopObservation : IDesktopObservationCapture
     private static int busy;
     public MacDesktopObservation() : this(new MacDesktopCaptureNative()) { }
     internal MacDesktopObservation(IMacDesktopCaptureNative native) { this.native = native; }
-    public DesktopCaptureStatus GetStatus() => Volatile.Read(ref busy) != 0 ? DesktopCaptureStatus.Busy : native.GetStatus();
+    public DesktopCaptureStatus GetStatus(DesktopCaptureOptions? options = null) => options?.Scope == DesktopObservationCaptureScope.FullScreen
+        ? DesktopCaptureStatus.UnsupportedPlatform : Volatile.Read(ref busy) != 0 ? DesktopCaptureStatus.Busy : native.GetStatus();
     public bool IsCurrent(DesktopObservationFrame frame) => frame?.Target is { } target && native.IsCurrent(target);
 
     public async Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options, CancellationToken cancel)
     {
         ArgumentNullException.ThrowIfNull(options);
         cancel.ThrowIfCancellationRequested();
+        if (options.Scope != DesktopObservationCaptureScope.Application) return null!;
         if (Interlocked.CompareExchange(ref busy, 1, 0) != 0) return null!;
         var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancel);
         var token = lifetime.Token;

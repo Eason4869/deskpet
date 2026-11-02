@@ -7,7 +7,7 @@
 
 > **当前正式版：[0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3)**，从 main 发布。macOS 包仍为 ad-hoc 平台预览，未做 Developer ID 签名或公证。
 
-**开发源码预览 0.11.4-dev.2（无 Release）**：Windows WPF 新增应用／全屏识别切换，优化识屏设置与同步的图片转述选择，修复识屏开关持久化；主动问候支持“间隔 + 抖动”，并统一人格权限说明及多语言文案。使用前需确认截图范围与接收服务；详情见[桌面感知与图片转述](docs/proactive-desktop.md)。该预览不属于下方 0.11.3 正式包。
+**开发预览 [0.11.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2)**：Windows WPF 新增应用／全屏识别切换，优化识屏设置与同步的图片转述选择，修复识屏开关持久化；主动问候支持“间隔 + 抖动”，并统一人格权限说明及多语言文案。使用前需确认截图范围与接收服务；详情见[桌面感知与图片转述](docs/proactive-desktop.md)。该预览不属于下方 0.11.3 正式包。
 
 <div align="center">
   <picture>

@@ -57,7 +57,8 @@ namespace Dafeiyu.Tests {
    try{window.Show();Pump();
     Check(page is IDisposable,"usage page supports deterministic event cleanup");
     Check(All<TextBlock>(page).Any(t=>t.Text=="用量统计"),"independent page shows Chinese heading");
-    Check(All<TextBlock>(page).Any(t=>t.Text.Contains("文字模型")&&t.Text.Contains("ASR")&&t.Text.Contains("TTS")&&t.Text.Contains("Live")),"page scope explicitly excludes untracked audio services");
+    string scope=TextResources.Get("usageStatistics.conversationModelsHelp");
+    Check(All<TextBlock>(page).Any(t=>t.Text==scope)&&scope.Contains("不含")&&scope.Contains("ASR")&&scope.Contains("TTS")&&scope.Contains("Live"),"page scope explicitly excludes untracked audio services");
     Check(All<ComboBox>(page).Count()==5,"provider model project feature and heatmap mode controls are present");
     var cells=All<Button>(page).Where(b=>b.Name=="UsageHeatCell").ToList();Check(cells.Count>=365&&cells.Any(b=>b.ToolTip!=null),"year heatmap exposes actual tooltips on keyboard-focusable cells");
     var heatGrid=(Grid)VisualTreeHelper.GetParent(cells[0]);var padding=heatGrid.Children.OfType<Border>().Where(b=>b.Name=="UsageHeatPadding").ToList();Check(cells.Count==365&&cells.Count+padding.Count==heatGrid.ColumnDefinitions.Count*7,"daily heatmap fills complete week columns without adding fabricated date buttons");Check(padding.All(b=>b.Tag is DateTime&&((DateTime)b.Tag<DateTime.Today.AddDays(-364)||(DateTime)b.Tag>DateTime.Today)&&!b.Focusable),"calendar padding only covers dates outside the measured interval and cannot be selected");

@@ -233,7 +233,12 @@ namespace Dafeiyu
         static Rectangle DesktopBounds()
         {
             IntPtr previous=IntPtr.Zero;
-            try{try{previous=SetThreadDpiAwarenessContext(new IntPtr(-4));}catch(EntryPointNotFoundException){}return System.Windows.Forms.SystemInformation.VirtualScreen;}
+            try{
+                try{previous=SetThreadDpiAwarenessContext(new IntPtr(-4));}catch(EntryPointNotFoundException){}
+                // Query physical virtual-desktop bounds without a Windows Forms dependency in the shared core.
+                const int virtualX=76,virtualY=77,virtualWidth=78,virtualHeight=79;
+                return new Rectangle(GetSystemMetrics(virtualX),GetSystemMetrics(virtualY),GetSystemMetrics(virtualWidth),GetSystemMetrics(virtualHeight));
+            }
             finally{if(previous!=IntPtr.Zero)SetThreadDpiAwarenessContext(previous);}
         }
         static byte[] CaptureDesktop(DesktopObservationIdentity target,CancellationToken cancel)
@@ -457,6 +462,7 @@ namespace Dafeiyu
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder text, int maximum);
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
         [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rectangle);
+        [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
         [DllImport("user32.dll")] private static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
         [DllImport("user32.dll")] private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
         [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int length);

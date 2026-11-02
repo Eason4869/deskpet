@@ -2,7 +2,7 @@
 
 [简体中文](proactive-desktop.md) | [English](proactive-desktop.en.md)
 
-Applies to the **0.11.4-dev.2 development source preview (no Release)**. These features are outside the 0.11.3 stable downloads. This preview has no separate installable assets and a source version alone does not become an automatic update. Windows and macOS 14+ are in scope; device validation limits appear below.
+Applies to the **0.11.4-dev.2 development preview**, with installation assets on the [Release](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2). These features are outside the 0.11.3 stable downloads; preview updates require the preview channel. Windows and macOS 14+ are in scope; device validation limits appear below.
 
 ## Windows WPF dev.2 updates
 

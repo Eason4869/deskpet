@@ -2,7 +2,7 @@
 
 [简体中文](proactive-desktop.md) | [English](proactive-desktop.en.md)
 
-适用于 **0.11.4-dev.2 开发源码预览（无 Release）**。下述功能不在 0.11.3 正式下载包内；源码预览没有独立安装附件，也不会仅凭源码版本进入自动更新。Windows 与 macOS 14+ 为本次实现范围，真实设备验证边界见文末。
+适用于 **0.11.4-dev.2 开发预览版**，安装附件见 [Release](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2)。下述功能不在 0.11.3 正式下载包内；预览更新需选择预览通道。Windows 与 macOS 14+ 为本次实现范围，真实设备验证边界见文末。
 
 ## Windows WPF dev.2 更新
 

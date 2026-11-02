@@ -51,7 +51,7 @@ namespace Dafeiyu.Tests
                 var gugaSettings=new PetSettings();PersonaProfiles.Activate(gugaSettings,guga);
                 PersonaProfiles.Save(gugaSettings,guga,"咕嘎自定义人格");PersonaProfiles.Activate(gugaSettings,skin);PersonaProfiles.Activate(gugaSettings,guga);
                 Check(gugaSettings.SystemPrompt=="咕嘎自定义人格","Guga persona override survives companion switching");
-                PersonaProfiles.Reset(gugaSettings,guga);Check(gugaSettings.SystemPrompt==guga.SystemPrompt,"Guga persona reset restores its own prompt");
+                PersonaProfiles.Reset(gugaSettings,guga);Check(gugaSettings.SystemPrompt==TextResources.Get("personaProfiles.defaultsUpdated.gugugaga") && !gugaSettings.PersonaOverrides.ContainsKey(guga.Id),"Guga persona reset restores its current localized default and removes the override");
                 string gugaPreview=Path.Combine(guga.Source,guga.Manifest.Preview);byte[] gugaHash=Hash(gugaPreview);
                 File.WriteAllText(gugaPreview,"damaged Guga cache");var gugaRepair=new SkinCatalog(data).Find("gugugaga");
                 Check(gugaRepair.Source!=guga.Source && Hash(Path.Combine(gugaRepair.Source,gugaRepair.Manifest.Preview)).SequenceEqual(gugaHash),"Guga cache repairs from its own embedded bytes");
@@ -60,10 +60,10 @@ namespace Dafeiyu.Tests
                 Check(catalog.Skins.Count(s=>s.Id=="xiaobei")==1 && catalog.Skins.Count(s=>s.Embedded)==3,"preset is unique and preserves original three partners");
                 Check(skin.SystemPrompt.Contains("男性") && skin.SystemPrompt.Length>120 && skin.SpecialAction!="专属动作","bundled preset retains complete male persona and named action");
                 var settings=new PetSettings();PersonaProfiles.Activate(settings,skin);
-                Check(settings.SkinId=="xiaobei" && settings.SystemPrompt==skin.SystemPrompt,"selecting preset activates Xiaobei persona");
+                Check(settings.SkinId=="xiaobei" && settings.SystemPrompt==TextResources.Get("personaProfiles.defaultsUpdated.xiaobei"),"selecting preset activates the current localized Xiaobei persona");
                 PersonaProfiles.Save(settings,skin,"用户保留的小贝人格");PersonaProfiles.Activate(settings,catalog.Find("e-bao"));PersonaProfiles.Activate(settings,skin);
                 Check(settings.SystemPrompt=="用户保留的小贝人格","bundled persona respects the user's per-companion override");
-                PersonaProfiles.Reset(settings,skin);Check(settings.SystemPrompt==skin.SystemPrompt,"reset restores the complete bundled persona");
+                PersonaProfiles.Reset(settings,skin);Check(settings.SystemPrompt==TextResources.Get("personaProfiles.defaultsUpdated.xiaobei") && !settings.PersonaOverrides.ContainsKey(skin.Id),"reset restores the current localized bundled persona and removes the override");
                 Check(skin.Source.StartsWith(Path.GetFullPath(Path.Combine(data,"bundled-skins"))+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase),"preset assets use separate bundled cache");
                 Check(!Directory.Exists(Path.Combine(data,"skins")),"fresh bundled loading does not create user imported skins directory");
                 Check(skin.Manifest.Animations.Count==17 && skin.Manifest.Animations.Values.All(a=>a.Frames==8 && a.Fps>=1 && a.Fps<=8),"bundled Xiaobei has eight real poses per action at low frame rate");

@@ -2,15 +2,17 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 0.11.4-dev.2 — 2026-11-02 · Source preview (no Release)
+## [0.11.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2) — 2026-11-02 · Development preview
 
-This update focuses on Windows WPF observation and proactive-greeting settings. No separate Release is created; official companion artwork versions are unchanged.
+This update focuses on Windows WPF observation and proactive-greeting settings and provides preview installation assets. The stable channel remains at 0.11.3; official companion artwork versions are unchanged.
 
 - Arrange observation settings as enablement, capture scope, then excluded applications. Support application capture and actual Windows virtual-desktop capture. Full-screen mode disables exclusions while retaining the list, and widening scope requires receiver confirmation.
 - Move the shared image-description selector to observation and work-permission settings. Persist observation enablement independently while blocking capture/upload without a configured route and consent. Improve generic image-capability recognition in Auto using model settings and service metadata; explicit Unsupported still takes precedence.
 - Replace greeting range inputs with interval plus symmetric jitter, including zero jitter for fixed timing and compatibility with old ranges. Simplify copy and exclusions, unify rounded centered popups and confirmation windows, and color status indicators. Local-only preview may fall back to the companion window when no external foreground application is available.
 - Align screen/file-access wording across seven default persona types and thirteen languages. Recognize saved older default templates while preserving user-edited personas.
 - Add persistence/restart, shared-settings, full-screen capture, timing, persona-compatibility, and localization checks. Native foreground capture fixtures remain constrained by test-environment focus; the full onboarding smoke still fails an early welcome assertion, while the greeting step has separate focused checks. Existing real-Mac and physical multi-monitor validation limits remain.
+
+- Fix shared-core Windows Forms dependency and cross-platform capture-status interface compilation errors. Update regression checks for conversation-model wording, the relocated image-description selector and upgraded default personas. macOS explicitly refuses the unsupported full-screen scope instead of silently capturing an application.
 
 ## [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3) — 2026-10-28 · Stable
 

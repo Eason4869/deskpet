@@ -82,15 +82,23 @@ namespace Dafeiyu.Tests
                 Until(()=>Find<TextBlock>(settings,"TextProviderNotice").Text.Contains("401"));
                 Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var dialog=Application.Current.Windows.OfType<Window>().Single(w=>w.Title=="添加模型");Find<TextBox>(dialog,"TextProviderNewModel").Text="manual-guide-model";Pump();Check(!Find<Button>(guide,"GuideNext").IsEnabled,"typing an unadded model does not silently complete the guide");Find<ComboBox>(dialog,"TextModelImageSupport").SelectedIndex=1;Click(dialog,"AddTextModel");}));
                 Check(Find<Button>(settings,"CustomTextModel").IsEnabled,"failed discovery leaves manual model addition usable in the guide");Click(settings,"CustomTextModel");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);
-                var description=Find<ComboBox>(settings,"ImageDescriptionModel");Check(description.Items.OfType<ComboBoxItem>().Any(i=>i.Tag is ModelReference && ((ModelReference)i.Tag).ModelId=="manual-guide-model") && pet.Settings.ImageDescriptionModel==null,"confirming a supported model refreshes image choices without selecting or saving a fallback");
+                Check(PreviewImageCandidates(pet,settings).Any(i=>i.ModelId=="manual-guide-model") && pet.Settings.ImageDescriptionModel==null,"confirming a supported model refreshes image choices without selecting or saving a fallback");
                 Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle,new Action(delegate{var dialog=Application.Current.Windows.OfType<Window>().Single(w=>w.Title=="添加模型");Find<TextBox>(dialog,"TextProviderNewModel").Text="cancelled-guide-model";Until(()=>!Find<Button>(guide,"GuideNext").IsEnabled);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"candidate refresh does not confirm a second typed model");Click(dialog,"CancelModelConfiguration");}));Click(settings,"CustomTextModel");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);
-                Check(description.Items.OfType<ComboBoxItem>().Count(i=>i.Tag is ModelReference && ((ModelReference)i.Tag).ModelId=="manual-guide-model")==1 && !description.Items.OfType<ComboBoxItem>().Any(i=>i.Tag is ModelReference && ((ModelReference)i.Tag).ModelId=="cancelled-guide-model"),"cancelling model edits retains only the confirmed image candidate");
+                var candidates=PreviewImageCandidates(pet,settings);Check(candidates.Count(i=>i.ModelId=="manual-guide-model")==1 && !candidates.Any(i=>i.ModelId=="cancelled-guide-model"),"cancelling model edits retains only the confirmed image candidate");
                 Find<Expander>(settings,"TextConnectionDetails").IsExpanded=true;Pump();
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text="socks5://127.0.0.1:7890";Until(()=>!Find<Button>(guide,"GuideNext").IsEnabled);Check(!Find<Button>(guide,"GuideNext").IsEnabled,"invalid proxy settings cannot mark the text guide ready before save");
                 Find<TextBox>(settings,"TextServiceProxyAddress").Text=ProxyConfiguration.DefaultAddress;Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
                 Check(pet.Settings.Text.Model=="manual-guide-model" && pet.Settings.TextProviders.Single(p=>p.Id==pet.Settings.ActiveTextProviderId).Models.Count==1,"manually added model survives guide save after a discovery error");
             }
             Click(guide,"GuideBack");settings.HostWindow.Width=700;settings.HostWindow.Height=430;Pump();Capture(settings,Path.Combine(folder,"guide-models-minimum.png"));Capture(guide,Path.Combine(folder,"guide-models-minimum-card.png"));Click(guide,"GuideSkip");
+            var work=new WorkSettingsPanel(pet);var description=Find<ComboBox>(work,"WorkImageDescriptionModel");
+            Check(description.Items.OfType<ComboBoxItem>().Count(i=>i.Tag is ModelReference && ((ModelReference)i.Tag).ModelId=="manual-guide-model")==1 && !description.Items.OfType<ComboBoxItem>().Any(i=>i.Tag is ModelReference && ((ModelReference)i.Tag).ModelId=="cancelled-guide-model") && pet.Settings.ImageDescriptionModel==null,"saving the guide exposes only confirmed image candidates in work permissions without selecting a fallback");
+        }
+        static ModelReference[] PreviewImageCandidates(PetWindow pet,SettingsPage settings)
+        {
+            var editor=Find<TextProviderEditor>(settings,"GuideTextProviderSection");
+            var draft=pet.Settings.Copy();draft.TextProviders=editor.PreviewProviders();
+            return ImageModelResolver.Candidates(draft).ToArray();
         }
         static object Field(object value,string name){return value.GetType().GetField(name,BindingFlags.NonPublic|BindingFlags.Instance).GetValue(value);}
         static T Find<T>(DependencyObject root,string name) where T:FrameworkElement {var settings=root as SettingsPage;var found=settings==null?FindTree<T>(root,name):settings.FindControl(name) as T;if(found==null)throw new Exception("Missing "+name);return found;}

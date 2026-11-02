@@ -61,7 +61,9 @@ namespace Dafeiyu.Tests
             using(var frame=capture.CaptureForegroundAsync(options,CancellationToken.None).GetAwaiter().GetResult())
             {
                 Check(frame!=null && frame.Target.Scope==DesktopObservationCaptureScope.FullScreen && frame.Target.WindowId==0,"full screen produces a desktop frame instead of foreground window");
-                var bounds=ApplicationSnapshots.ObservationTarget(options).ObservationIdentity;
+                Rectangle bounds;IntPtr previous=SetThreadDpiAwarenessContext(new IntPtr(-4));
+                try{bounds=SystemInformation.VirtualScreen;}
+                finally{if(previous!=IntPtr.Zero)SetThreadDpiAwarenessContext(previous);}
                 Check(frame.Target.X==bounds.X && frame.Target.Y==bounds.Y && frame.Target.Width==bounds.Width && frame.Target.Height==bounds.Height,"full screen frame covers all monitors including desktop origin");
                 Check(capture.IsCurrent(frame),"full screen currentness validates desktop geometry");
                 Console.WriteLine("Full-screen desktop: "+frame.Target.Width+"x"+frame.Target.Height+" at "+frame.Target.X+","+frame.Target.Y+"; PNG bytes="+frame.EncodedPng.Length);
@@ -308,6 +310,7 @@ namespace Dafeiyu.Tests
             }
         }
         [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr context);
+        [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
         [DllImport("user32.dll")] static extern bool SetWindowDisplayAffinity(IntPtr window, uint affinity);
         [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
         [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr window);

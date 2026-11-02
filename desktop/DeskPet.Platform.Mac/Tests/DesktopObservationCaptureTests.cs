@@ -17,6 +17,11 @@ internal static class DesktopObservationCaptureTests
         }
         var native = new Fake { Status = DesktopCaptureStatus.PermissionRequired };
         var capture = new MacDesktopObservation(native);
+        var fullScreen = new DesktopCaptureOptions(null, DesktopObservationCaptureScope.FullScreen);
+        var fullScreenNative = new Fake { Status = DesktopCaptureStatus.Ready };
+        var fullScreenCapture = new MacDesktopObservation(fullScreenNative);
+        Check(fullScreenCapture.GetStatus(fullScreen) == DesktopCaptureStatus.UnsupportedPlatform, "full-screen scope is unavailable on the application-only adapter");
+        Check(await fullScreenCapture.CaptureForegroundAsync(fullScreen, default) == null && fullScreenNative.Starts == 0, "full-screen request never falls back to application capture");
         Check(capture.GetStatus() == DesktopCaptureStatus.PermissionRequired, "read-only permission status");
         Check(await capture.CaptureForegroundAsync(new(), default) == null && native.Starts == 0, "denied never starts native capture");
         native.Status = DesktopCaptureStatus.Ready;
