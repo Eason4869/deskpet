@@ -31,6 +31,8 @@ namespace Dafeiyu.Tests
         static void OwnerChecks(PetWindow pet,string root)
         {
             var session=pet.Conversation;
+            // Empty sessions intentionally create no history; exercise the writer with a completed owned turn.
+            session.AddLiveTurn(session.PersonaId,"Owned uninstall fixture question","Owned uninstall fixture reply");
             using(pet.DataMaintenance.EnterActivity()){bool refused=false;try{Prepare(pet);}catch(InvalidOperationException){refused=true;}Check(refused,"busy preflight refuses admitted work");}Usable(pet,"busy refusal");
             var owner=Prepare(pet);Check(pet.DataMaintenance.IsMaintenanceActive&&File.Exists(Path.Combine(root,"settings.json")),"preflight owns actual gate and durably saves settings");
             Check(!pet.CanApplyUpdate(true),"update remains excluded during owned preparation");
