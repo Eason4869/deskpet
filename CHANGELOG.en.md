@@ -2,6 +2,16 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 0.11.4-dev.2 — 2026-11-02 · Source preview (no Release)
+
+This update focuses on Windows WPF observation and proactive-greeting settings. No separate Release is created; official companion artwork versions are unchanged.
+
+- Arrange observation settings as enablement, capture scope, then excluded applications. Support application capture and actual Windows virtual-desktop capture. Full-screen mode disables exclusions while retaining the list, and widening scope requires receiver confirmation.
+- Move the shared image-description selector to observation and work-permission settings. Persist observation enablement independently while blocking capture/upload without a configured route and consent. Improve generic image-capability recognition in Auto using model settings and service metadata; explicit Unsupported still takes precedence.
+- Replace greeting range inputs with interval plus symmetric jitter, including zero jitter for fixed timing and compatibility with old ranges. Simplify copy and exclusions, unify rounded centered popups and confirmation windows, and color status indicators. Local-only preview may fall back to the companion window when no external foreground application is available.
+- Align screen/file-access wording across seven default persona types and thirteen languages. Recognize saved older default templates while preserving user-edited personas.
+- Add persistence/restart, shared-settings, full-screen capture, timing, persona-compatibility, and localization checks. Native foreground capture fixtures remain constrained by test-environment focus; the full onboarding smoke still fails an early welcome assertion, while the greeting step has separate focused checks. Existing real-Mac and physical multi-monitor validation limits remain.
+
 ## [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3) — 2026-10-28 · Stable
 
 Published from main, combining the 0.11.2 and 0.11.3 development work since 0.11.1. Assets include Windows installer/portable/standalone application, source and both macOS preview architectures. Five official companion packs retain independent material version `0.11.0-dev.3`; their release location, pack index and application assets use `0.11.3`. Historical development entries and source tags retain their original status; `0.11.3-dev.2` has no separate Release.

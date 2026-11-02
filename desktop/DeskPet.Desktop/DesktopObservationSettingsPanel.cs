@@ -25,8 +25,8 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
     internal DesktopObservationSettingsPanel(DesktopController owner,Window host)
     {
         this.owner=owner;this.host=host;Name="DesktopObservationSettings";Spacing=10;Margin=new Thickness(0,18,0,0);
-        Children.Add(SettingsVisual.Header("model",()=>TextResources.Get("desktopObservation.title")));
-        enabled=new CheckBox{Name="DesktopObservationEnabled",Content=SettingsVisual.Text(()=>TextResources.Get("desktopObservation.enabled")),IsChecked=owner.Settings.DesktopObservationEnabled};
+        Children.Add(SettingsVisual.Header("model",()=>TextResources.Get("desktopObservation.settings.title")));
+        enabled=new CheckBox{Name="DesktopObservationEnabled",Content=SettingsVisual.Text(()=>TextResources.Get("desktopObservation.settings.enabled")),IsChecked=owner.Settings.DesktopObservationEnabled};
         enabled.IsCheckedChanged+=async(_,_)=>
         {
             if(refreshing||busy)return;bool desired=enabled.IsChecked==true;
@@ -49,7 +49,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
             {transientStatus=DesktopObservationUiText.ReasonText(ObservationReason.InvalidConfiguration);}
             finally{busy=false;Refresh();}
         };
-        Children.Add(enabled);Children.Add(SettingsVisual.Text(()=>TextResources.Get("desktopObservation.help"),13,true));
+        Children.Add(enabled);Children.Add(SettingsVisual.Text(()=>TextResources.Get("desktopObservation.settings.help"),13,true));
         route=SettingsVisual.Text("",13);route.Name="ObservationRoute";
         model=SettingsVisual.Text("",13,true);model.Name="ObservationModel";model.TextWrapping=TextWrapping.NoWrap;model.TextTrimming=TextTrimming.CharacterEllipsis;
         destinations=SettingsVisual.Text("",13,true);destinations.Name="ObservationDestinations";destinations.TextWrapping=TextWrapping.NoWrap;destinations.TextTrimming=TextTrimming.CharacterEllipsis;
@@ -70,12 +70,12 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
         var configure=SettingsVisual.Button(()=>TextResources.Get("desktopObservation.configure"),()=>owner.ShowSettingsSection("text"));configure.Name="ObservationConfigure";
         configure.BorderThickness=new Thickness(0);configure.Background=Brushes.Transparent;configure.Foreground=SettingsVisual.Muted;if(configure.Content is TextBlock configureText)configureText.Foreground=SettingsVisual.Muted;
         Children.Add(SettingsVisual.Wrap(confirm,permission,configure));
-        var local=Action(()=>TextResources.Get("desktopObservation.preview"),"ObservationPreview",()=>TestAsync(false));
-        upload=Action(()=>TextResources.Get("desktopObservation.uploadTest"),"ObservationUploadTest",()=>TestAsync(true));
+        var local=Action(()=>TextResources.Get("desktopObservation.preview.action"),"ObservationPreview",()=>TestAsync(false));
+        upload=Action(()=>TextResources.Get("desktopObservation.test.action"),"ObservationUploadTest",()=>TestAsync(true));
         pause=SettingsVisual.Button(()=>owner.ObservationPaused?TextResources.Get("desktopObservation.resume"):TextResources.Get("desktopObservation.pause"),()=>{owner.PauseObservation(!owner.ObservationPaused);Refresh();});pause.Name="ObservationPause";
         Children.Add(SettingsVisual.Wrap(local,upload,pause));
         var exclusionBody=Ui.Column(SettingsVisual.Text(()=>TextResources.Get("desktopObservation.bundleIdHint"),13,true),exclusions,SettingsVisual.Wrap(Action(()=>TextResources.Get("desktopObservation.addApp"),"ObservationAddExclusion",AddExclusionAsync),Action(()=>TextResources.Get("desktopObservation.removeApp"),"ObservationRemoveExclusion",RemoveExclusionAsync)));
-        var disclosure=new Expander{Header=SettingsVisual.Text(()=>TextResources.Get("desktopObservation.excludedApps"),13),Content=exclusionBody,Name="ObservationExcludedApps"};SettingsVisual.Disclosure(disclosure);Children.Add(disclosure);
+        var disclosure=new Expander{Header=SettingsVisual.Text(()=>TextResources.Get("desktopObservation.exclusions.title"),13),Content=exclusionBody,Name="ObservationExcludedApps"};SettingsVisual.Disclosure(disclosure);Children.Add(disclosure);
         owner.Changed+=Refresh;owner.ObservationChanged+=Refresh;TextResources.LanguageChanged+=LanguageChanged;
         owner.Observation.ImagesCleared+=ClearPreview;
         Refresh();
@@ -91,10 +91,10 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
         if(disposed)return;
         refreshing=true;enabled.IsChecked=pendingEnabled??owner.Settings.DesktopObservationEnabled;refreshing=false;
         var settings=owner.GlobalObservationSettings();var path=ImageModelResolver.Resolve(settings,null);
-        LocalizedUi.Set(route,"Text",()=>(path.Route==ImageRouteKind.Direct?TextResources.Get("desktopObservation.routeDirect"):path.Route==ImageRouteKind.Described?TextResources.Get("desktopObservation.routeDescribed"):TextResources.Get("desktopObservation.routeUnavailable")));
+        LocalizedUi.Set(route,"Text",()=>(path.Route==ImageRouteKind.Direct?TextResources.Get("desktopObservation.route.direct"):path.Route==ImageRouteKind.Described?TextResources.Get("desktopObservation.route.described"):TextResources.Get("desktopObservation.routeUnavailable")));
         model.Text=settings.Text.Model;ToolTip.SetTip(model,settings.Text.Model);
         var addresses=DesktopObservationUiText.Destinations(settings);
-        LocalizedUi.Set(destinations,"Text",()=>addresses.Length==0?TextResources.Get("desktopObservation.noDestination"):DesktopObservationUiText.ReceivingSummary(settings));
+        LocalizedUi.Set(destinations,"Text",()=>addresses.Length==0?TextResources.Get("desktopObservation.settings.noDestination"):DesktopObservationUiText.ReceivingSummary(settings));
         ToolTip.SetTip(destinations,DesktopObservationUiText.ReceivingSummary(settings));
         var reason=owner.Observation.Policy.TryBegin(new DesktopObservationContext(settings,owner.Skin.Id,owner.Skin.Name,null,null,DateTime.Now,true,true,()=>true),DateTime.UtcNow).Reason;
         string value=transientStatus??(permissionGranted.HasValue?(permissionGranted.Value?TextResources.Get("desktopObservation.permissionReopen"):TextResources.Get("desktopObservation.permissionRequired")):(owner.ObservationPaused?TextResources.Get("desktopObservation.paused"):DesktopObservationUiText.ReasonText(reason)));
@@ -115,9 +115,9 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
     private async Task<string?> ConfirmAsync()
     {
         var settings=owner.GlobalObservationSettings();var addresses=DesktopObservationUiText.Destinations(settings);string digest=DesktopObservationConsent.Destination(settings);
-        if(addresses.Length==0||digest.Length==0){transientStatus=TextResources.Get("desktopObservation.noDestination");return null;}
+        if(addresses.Length==0||digest.Length==0){transientStatus=TextResources.Get("desktopObservation.settings.noDestination");return null;}
         var dialog=LocalizedUi.Window(()=>TextResources.Get("desktopObservation.consentTitle"),new Border(),500,350);dialog.Background=DesktopTheme.Surface;
-        dialog.Content=new Border{Padding=new Thickness(22),Child=new ScrollViewer{HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,Content=Ui.Column(SettingsVisual.Text(()=>TextResources.Format("desktopObservation.consentBody",DesktopObservationUiText.ReceivingSummary(settings)),14),SettingsVisual.Wrap(SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentCancel"),()=>dialog.Close(false)),SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentAccept"),()=>dialog.Close(true))))}};
+        dialog.Content=new Border{Padding=new Thickness(22),Child=new ScrollViewer{HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,Content=Ui.Column(SettingsVisual.Text(()=>TextResources.Format("desktopObservation.consent.description",DesktopObservationUiText.ReceivingSummary(settings)),14),SettingsVisual.Wrap(SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentCancel"),()=>dialog.Close(false)),SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentAccept"),()=>dialog.Close(true))))}};
         return await dialog.ShowDialog<bool>(host)?digest:null;
     }
     private async Task TestAsync(bool upload)
@@ -141,7 +141,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
             if(DesktopObservationConsent.Destination(settings)!=digest||DesktopObservationConsent.Destination(owner.GlobalObservationSettings())!=digest){transientStatus=TextResources.Get("desktopObservation.reason.consentRequired");return;}
             if(!owner.Observation.TryBeginManualTest(DateTime.UtcNow)){transientStatus=TextResources.Get("desktopObservation.reason.busy");return;}
         }
-        for(int seconds=3;seconds>0;seconds--){transientStatus=TextResources.Format("desktopObservation.countdown",seconds);Refresh();await Task.Delay(1000,lifetime.Token);}
+        for(int seconds=3;seconds>0;seconds--){transientStatus=TextResources.Format("desktopObservation.preview.countdown",seconds);Refresh();await Task.Delay(1000,lifetime.Token);}
         transientStatus=null;
         if(disposed||!owner.Pet.ObservationEligible(true))return;
         if(SettingsStore.SnapshotIdentity(settings)!=SettingsStore.SnapshotIdentity(owner.GlobalObservationSettings())){transientStatus=DesktopObservationUiText.ReasonText(ObservationReason.Stale);return;}
@@ -156,7 +156,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
         }
         using var frame=await owner.Observation.PreviewAsync(settings,epoch,lifetime.Token);
         owner.ObserveObservationInput();
-        if(frame==null){transientStatus=TextResources.Get("desktopObservation.previewEmpty");return;}
+        if(frame==null){transientStatus=TextResources.Get("desktopObservation.preview.empty");return;}
         if(!owner.Observation.IsCurrent(epoch)||!owner.Pet.ObservationEligible(true)){return;}
         var bitmap=new Bitmap(new MemoryStream(frame.EncodedPng));
         if(!owner.Observation.IsForegroundCurrent()){bitmap.Dispose();return;}

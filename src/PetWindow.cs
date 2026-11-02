@@ -1074,7 +1074,7 @@ namespace Dafeiyu
             else if(updateNotice!=null)updateNotice.Hide();
         }
         public void ConfigureGreetings(){Settings.Normalize();DismissGreeting(true);SaveSettings();}
-        private void ResetGreetingSchedule(){greetingSchedule=new GreetingSchedule(DateTime.UtcNow,Settings.GreetingMinMinutes,Settings.GreetingMaxMinutes,random.NextDouble);}
+        private void ResetGreetingSchedule(){greetingSchedule=new GreetingSchedule(DateTime.UtcNow,Settings.GreetingInterval-Settings.GreetingJitter,Settings.GreetingInterval+Settings.GreetingJitter,random.NextDouble);}
         private void CancelPendingGreeting(bool retry=true)
         {InvalidateObservation();greetingGeneration++;relationshipContentEpoch++;var pending=greetingRequest;greetingRequest=null;if(pending!=null){pending.Cancel();if(retry && !greetingPreview && !greetingObservation && !closing && greetingSchedule!=null)greetingSchedule.Defer(DateTime.UtcNow);}}
         private void DismissGreeting(bool restartTimer=false){if(restartTimer)InvalidateObservation(true);CancelPendingGreeting(!restartTimer);if(greeting!=null)greeting.Hide();if(restartTimer)ResetGreetingSchedule();}

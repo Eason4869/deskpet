@@ -9,7 +9,7 @@ namespace Dafeiyu
     public sealed class ConnectionSettingsPanel : Grid
     {
         readonly PetWindow pet;TextProviderEditor text,recognition,synthesis,live;ComboBox voice,liveVoice;
-        ImageGenerationSettings images;ComboBox descriptionModel;ModelReference descriptionDraft,descriptionBaseline;bool updatingDescription;
+        ImageGenerationSettings images;
         CheckBox cloud;readonly TextBlock notice;readonly ContentControl page=new ContentControl{HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};readonly UIElement[] sections;
         TextBlock speechAdvice,liveAdvice;
         Slider volume;TextBlock volumeLabel;bool refreshingVolume;
@@ -21,7 +21,7 @@ namespace Dafeiyu
         readonly System.Collections.Generic.Dictionary<string,string> voiceSavedValues=new System.Collections.Generic.Dictionary<string,string>();
         public bool HasUnsavedChanges
         {
-            get{return (descriptionModel!=null && !SameReference(descriptionDraft,descriptionBaseline)) || (images!=null && images.HasUnsavedChanges) || (text!=null && !text.Matches(pet.Settings)) || (recognition!=null && !recognition.Matches(pet.Settings)) || (synthesis!=null && !synthesis.Matches(pet.Settings)) || (live!=null && !live.Matches(pet.Settings)) ||
+            get{return (images!=null && images.HasUnsavedChanges) || (text!=null && !text.Matches(pet.Settings)) || (recognition!=null && !recognition.Matches(pet.Settings)) || (synthesis!=null && !synthesis.Matches(pet.Settings)) || (live!=null && !live.Matches(pet.Settings)) ||
                 (cloud!=null && (cloud.IsChecked==true)!=pet.Settings.UseCloudVoice) ||
                 (voice!=null && voice.Text.Trim()!=pet.Settings.VoiceName) || (liveVoice!=null && liveVoice.Text.Trim()!=pet.Settings.LiveVoice) || HasVoiceDraftChanges;}
         }
@@ -39,30 +39,11 @@ namespace Dafeiyu
         {
             if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
             if(sections[index]!=null)return;
-            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;text.ModelsRefreshed=pet.RefreshObservationModels;var textSection=new StackPanel();textSection.Children.Add(CreateDescriptionPicker());textSection.Children.Add(text);sections[index]=textSection;}
+            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;text.ModelsRefreshed=pet.RefreshObservationModels;var textSection=new StackPanel();textSection.Children.Add(text);sections[index]=textSection;}
             else if(index==1){recognition=new TextProviderEditor(pet.Settings,"asr");sections[index]=recognition;}
             else if(index==2){CreateSpeechEditor();sections[index]=synthesis;}
             else if(index==3){CreateLiveEditor();sections[index]=live;}
             else{images=new ImageGenerationSettings(pet);sections[index]=images;}
-        }
-        static bool SameReference(ModelReference a,ModelReference b){return a==null?b==null:b!=null&&a.ProviderId==b.ProviderId&&a.ModelId==b.ModelId;}
-        FrameworkElement CreateDescriptionPicker()
-        {
-            descriptionDraft=pet.Settings.ImageDescriptionModel==null?null:pet.Settings.ImageDescriptionModel.Copy();descriptionBaseline=descriptionDraft==null?null:descriptionDraft.Copy();
-            var group=new StackPanel{Margin=new Thickness(0,0,0,18)};var title=LocalizedUi.Text(()=>TextResources.Get("imageDescription.title"),16);title.FontWeight=FontWeights.SemiBold;group.Children.Add(title);
-            var help=LocalizedUi.Text(()=>TextResources.Get("imageDescription.help"),11,Ui.Muted);help.TextWrapping=TextWrapping.Wrap;help.Margin=new Thickness(0,4,0,8);group.Children.Add(help);
-            descriptionModel=new ComboBox{Name="ImageDescriptionModel",MinHeight=38,HorizontalContentAlignment=HorizontalAlignment.Stretch};group.Children.Add(descriptionModel);
-            descriptionModel.SelectionChanged+=delegate{if(updatingDescription)return;var item=descriptionModel.SelectedItem as ComboBoxItem;var reference=item==null?null:item.Tag as ModelReference;descriptionDraft=reference==null?null:reference.Copy();};
-            text.Changed+=delegate{RefreshDescriptionPicker();};RefreshDescriptionPicker();return group;
-        }
-        void RefreshDescriptionPicker()
-        {
-            if(descriptionModel==null)return;System.Collections.Generic.List<TextProviderSettings> providers;try{providers=text.PreviewProviders();}catch(Exception){providers=pet.Settings.TextProviders;}
-            var cfg=pet.Settings.Copy();cfg.TextProviders=providers;var choices=ImageModelResolver.Candidates(cfg);updatingDescription=true;
-            try{descriptionModel.Items.Clear();var empty=LocalizedUi.With(new ComboBoxItem{Tag=null},"Content",()=>TextResources.Get("imageDescription.none"));descriptionModel.Items.Add(empty);ComboBoxItem selected=descriptionDraft==null?empty:null;
-                foreach(var choice in choices){var provider=providers.Find(p=>p.Id==choice.ProviderId);if(provider==null)continue;string label=provider.Name+" · "+provider.DisplayName(choice.ModelId);var labelBlock=new TextBlock{Text=label,TextTrimming=TextTrimming.CharacterEllipsis};var item=new ComboBoxItem{Tag=choice,Content=labelBlock,ToolTip=label+"\n"+choice.ModelId};descriptionModel.Items.Add(item);if(SameReference(choice,descriptionDraft))selected=item;}
-                if(selected==null){var invalid=LocalizedUi.With(new ComboBoxItem{Tag=descriptionDraft,ToolTip=descriptionDraft.ProviderId+" / "+descriptionDraft.ModelId},"Content",()=>TextResources.Get("imageDescription.invalid"));descriptionModel.Items.Add(invalid);selected=invalid;}descriptionModel.SelectedItem=selected;
-            }finally{updatingDescription=false;}
         }
         void CreateSpeechEditor()
         {
@@ -177,7 +158,6 @@ namespace Dafeiyu
             try
             {
                 Action imageAcknowledge=null;Action<PetSettings> imageChange=images!=null&&images.HasUnsavedChanges?images.PrepareSave(out imageAcknowledge):null;
-                var submittedDescription=descriptionDraft==null?null:descriptionDraft.Copy();bool descriptionChanged=descriptionModel!=null&&!SameReference(descriptionDraft,descriptionBaseline);
                 var nextProviders=text==null?pet.Settings.TextProviders:text.ReadProviders();
                 var nextAsrProviders=recognition==null?null:recognition.ReadProviders();var nextSpeechProviders=synthesis==null?null:synthesis.ReadProviders();var nextLiveProviders=live==null?null:live.ReadProviders();
                 var nextText=text==null?pet.Settings.Text:text.Read();var nextAsr=recognition==null?pet.Settings.Transcription:recognition.Read();var nextSpeech=synthesis==null?pet.Settings.Speech:synthesis.Read();var nextLive=live==null?pet.Settings.Live:live.Read();
@@ -192,9 +172,9 @@ namespace Dafeiyu
                 if(synthesis!=null){draft.UseCloudVoice=cloud.IsChecked==true;draft.ApplyProviders("speech",nextSpeechProviders,synthesis.SelectedProviderId,nextSpeech);draft.VoiceName=nextVoice;}
                 if(live!=null){draft.ApplyProviders("live",nextLiveProviders,live.SelectedProviderId,nextLive);draft.LiveVoice=nextLiveVoice;}
                 SaveVoiceDrafts(draft);PersonaProfiles.SaveVoices(draft);
-                bool saved=await commit(target=>{if(imageChange!=null)imageChange(target);if(descriptionChanged)target.ImageDescriptionModel=submittedDescription==null?null:submittedDescription.Copy();ApplyConnectionDraft(draft,target,mask);for(int index=0;index<4;index++)InvalidateGuideTest(target,index);});
+                bool saved=await commit(target=>{if(imageChange!=null)imageChange(target);ApplyConnectionDraft(draft,target,mask);for(int index=0;index<4;index++)InvalidateGuideTest(target,index);});
                 if(!saved){notice.Text=pet.Notice;return false;}
-                if(imageAcknowledge!=null)imageAcknowledge();if(descriptionChanged)descriptionBaseline=submittedDescription==null?null:submittedDescription.Copy();ClearVoiceDrafts();RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty");return true;
+                if(imageAcknowledge!=null)imageAcknowledge();ClearVoiceDrafts();RefreshCreatedEditors();pet.RefreshChatAppearance();notice.Text=TextResources.Get("connectionSettingsPanel.save.noticeStringIsNullOrEmpty");return true;
             }
             catch(Exception e){ShowError(e);return false;}
         }

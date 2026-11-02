@@ -109,7 +109,7 @@ namespace Dafeiyu
             readonly PetWindow owner;readonly IDesktopObservationCapture inner;
             internal ObservationCurrentCapture(PetWindow owner,IDesktopObservationCapture inner){this.owner=owner;this.inner=inner;}
             bool Current(){return owner.ObservationInputCurrent();}
-            public DesktopCaptureStatus GetStatus(){return inner.GetStatus();}
+            public DesktopCaptureStatus GetStatus(DesktopCaptureOptions options=null){return inner.GetStatus(options);}
             public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel){return Current()?inner.CaptureForegroundAsync(options,cancel):Task.FromResult<DesktopObservationFrame>(null);}
             public bool IsCurrent(DesktopObservationFrame frame){if(!Current() || !inner.IsCurrent(frame))return false;lock(owner.observationStartGate){if(!owner.observationAdmission || owner.observationCaptureEpoch!=Interlocked.Read(ref owner.observationEpoch))return false;owner.observationTarget=frame.Target;return true;}}
         }

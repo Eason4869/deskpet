@@ -79,13 +79,14 @@ namespace Dafeiyu
         public static string Destination(PetSettings settings)
         {
             if (settings == null) throw new ArgumentNullException("settings");
-            return Destination(ImageModelResolver.Resolve(settings, null));
+            return Destination(ImageModelResolver.Resolve(settings, null), settings.DesktopObservationCaptureScope);
         }
-        internal static string Destination(ImageRouteSnapshot route)
+        internal static string Destination(ImageRouteSnapshot route, DesktopObservationCaptureScope scope = DesktopObservationCaptureScope.Application)
         {
             if (route.Route == ImageRouteKind.Unavailable) return "";
             string value = Endpoint(route.ConversationConnection);
             if (route.Route == ImageRouteKind.Described) value += "\n" + Endpoint(route.DescriptionConnection);
+            if(scope==DesktopObservationCaptureScope.FullScreen)value += "\nfull-screen";
             using (var hash = SHA256.Create()) return "v1:" + Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(value)));
         }
         static string Endpoint(ConnectionSettings connection)
@@ -194,7 +195,7 @@ namespace Dafeiyu
                         if (context.Route.Route == ImageRouteKind.Described)
                             ApiClient.ValidateConnection(context.Route.DescriptionConnection, ApiClient.ChatPath(context.Route.DescriptionConnection));
                         if (settings.DesktopObservationConsentVersion != DesktopObservationConsent.Version ||
-                            settings.DesktopObservationConsentDestination != DesktopObservationConsent.Destination(context.Route)) reason = ObservationReason.ConsentRequired;
+                            settings.DesktopObservationConsentDestination != DesktopObservationConsent.Destination(context.Route,settings.DesktopObservationCaptureScope)) reason = ObservationReason.ConsentRequired;
                     }
                     catch (ApiException) { reason = ObservationReason.InvalidConfiguration; }
                 }

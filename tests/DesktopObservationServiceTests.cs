@@ -158,7 +158,7 @@ namespace Dafeiyu.Tests
         sealed class Capture:IDesktopObservationCapture
         {
             public Clock Clock;public int Calls,StatusCalls,CurrentCalls;public int BlockCurrentFromCall=1;public long WindowId=1;public bool Empty,Current=true;public DesktopCaptureStatus Status=DesktopCaptureStatus.Ready;public DesktopCaptureOptions Options;public DesktopObservationFrame Last;public TaskCompletionSource<DesktopObservationFrame> Pending;public TaskCompletionSource<bool> BlockPreflight,BlockCurrent;public Action AfterCapture;
-            public DesktopCaptureStatus GetStatus(){Interlocked.Increment(ref StatusCalls);if(BlockPreflight!=null)BlockPreflight.Task.GetAwaiter().GetResult();return Status;}
+            public DesktopCaptureStatus GetStatus(DesktopCaptureOptions options=null){Interlocked.Increment(ref StatusCalls);if(BlockPreflight!=null)BlockPreflight.Task.GetAwaiter().GetResult();return Status;}
             public DesktopObservationFrame Frame(){return new DesktopObservationFrame(new byte[]{137,80,78,71,13,10,26,10},new DateTimeOffset(Clock.UtcNow),new DesktopObservationIdentity(WindowId,2,3,4,"private-app","secret-window-title","class",0,0,10,10));}
             public Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options,CancellationToken cancel){Options=options;Interlocked.Increment(ref Calls);Last=Empty?null:Frame();if(AfterCapture!=null)AfterCapture();return Pending==null?Task.FromResult(Last):Pending.Task;}
             public bool IsCurrent(DesktopObservationFrame frame){int call=Interlocked.Increment(ref CurrentCalls);if(BlockCurrent!=null && call>=BlockCurrentFromCall)BlockCurrent.Task.GetAwaiter().GetResult();return Current;}

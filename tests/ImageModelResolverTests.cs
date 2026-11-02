@@ -19,7 +19,18 @@ namespace Dafeiyu.Tests
   public static int Main()
   {
    string root=Path.GetFullPath(Path.Combine("work","image-model-"+Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
-   try{Candidates();Routes();Storage(root);ScopedSave(root);Workspace(root);Console.WriteLine("ImageModelResolverTests: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{Directory.Delete(root,true);}
+   try{Candidates();AutomaticImageModels();Routes();Storage(root);ScopedSave(root);Workspace(root);Console.WriteLine("ImageModelResolverTests: "+checks+" passed");return 0;}catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}finally{Directory.Delete(root,true);}
+  }
+  static void AutomaticImageModels()
+  {
+   foreach(string id in new[]{"mimo-v2.6-flash","mimo-v2.6-pro"}){
+    var provider=new TextProviderSettings{Id="mimo-auto",Name="MiMo",Connection=new ConnectionSettings{BaseUrl="https://token-plan-cn.xiaomimimo.com/v1",Model=id},Models=new List<string>{id}};provider.Normalize();
+    var settings=new PetSettings{Text=new ConnectionSettings{BaseUrl="https://chat.example/v1",Model="chat",ImageSupport=CapabilitySupport.Unsupported},TextProviders=new List<TextProviderSettings>{provider},ImageDescriptionModel=new ModelReference{ProviderId=provider.Id,ModelId=id}};
+    Check(ImageModelResolver.Candidates(settings).Any(c=>c.ProviderId==provider.Id && c.ModelId==id),"automatic image capability includes "+id+" in the picker");
+    Check(ImageModelResolver.Resolve(settings,null).Route==ImageRouteKind.Described,"automatic image capability routes through "+id+" without a manual Supported override");
+    provider.ModelCapabilities[id]=new ModelCapabilitySetting{Images=CapabilitySupport.Unsupported};Check(ImageModelResolver.Candidates(settings).Count==0 && ImageModelResolver.Resolve(settings,null).Route==ImageRouteKind.Unavailable,"manual Unsupported overrides known model capability");
+    provider.ModelCapabilities[id].Images=CapabilitySupport.Unknown;provider.ServerCapabilities[id]=new ModelCapabilitySetting{Images=CapabilitySupport.Unsupported};Check(ImageModelResolver.Candidates(settings).Count==0,"server Unsupported overrides the built-in known model fallback");
+   }
   }
   static void Candidates()
   {

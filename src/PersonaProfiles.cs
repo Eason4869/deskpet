@@ -13,31 +13,63 @@ namespace Dafeiyu
     }
     public static class PersonaProfiles
     {
-        public static string Dafeiyu { get { return TextResources.Get("personaProfiles.defaults.dafeiyu"); } }
-        public static string Ebao { get { return TextResources.Get("personaProfiles.defaults.ebao"); } }
-        public static string Marfu { get { return TextResources.Get("personaProfiles.defaults.marfu"); } }
-        public static string Generic(string name) { return TextResources.Get("personaProfiles.defaults.generic").Replace("{pet_name}",name??""); }
+        public static string Dafeiyu { get { return TextResources.Get("personaProfiles.defaultsUpdated.dafeiyu"); } }
+        public static string Ebao { get { return TextResources.Get("personaProfiles.defaultsUpdated.ebao"); } }
+        public static string Marfu { get { return TextResources.Get("personaProfiles.defaultsUpdated.marfu"); } }
+        public static string Generic(string name) { return TextResources.Get("personaProfiles.defaultsUpdated.generic").Replace("{pet_name}",name??""); }
 #if !PORTABLE
         public static void Activate(PetSettings settings,SkinDefinition skin) { Activate(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
         public static void Save(PetSettings settings,SkinDefinition skin,string prompt) { Save(settings,skin.Id,skin.SystemPrompt,prompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
         public static void Reset(PetSettings settings,SkinDefinition skin) { Reset(settings,skin.Id,skin.SystemPrompt,skin.Manifest==null?null:skin.Manifest.VoicePresets,skin.BuiltinCharacterId); }
 #endif
-        static readonly string[] DefaultKeys={"personaProfiles.defaults.ebao","personaProfiles.defaults.dafeiyu","personaProfiles.defaults.marfu","personaProfiles.defaults.xiaobei","personaProfiles.defaults.gugugaga","personaProfiles.defaults.agent","personaProfiles.defaults.generic"};
+        static readonly string[] DefaultKeys={"personaProfiles.defaultsUpdated.ebao","personaProfiles.defaultsUpdated.dafeiyu","personaProfiles.defaultsUpdated.marfu","personaProfiles.defaultsUpdated.xiaobei","personaProfiles.defaultsUpdated.gugugaga","personaProfiles.defaultsUpdated.agent","personaProfiles.defaultsUpdated.generic"};
         // Only exact known defaults/templates can be localized. A user edit is never inferred from keywords.
         static bool RecognizeDefault(string prompt,out string key,out string name)
         {
             key=null;name=null;if(prompt==null)return false;
-            foreach(var choice in UiLanguages.Choices)foreach(string candidate in DefaultKeys)
-            {
-                string template=TextResources.CatalogFor(choice.Code).Get(candidate);
-                if(prompt==template){key=candidate;return true;}
-                if(candidate!="personaProfiles.defaults.generic")continue;
-                const string marker="{pet_name}";int split=template.IndexOf(marker,StringComparison.Ordinal);if(split<0)continue;
-                string prefix=template.Substring(0,split),suffix=template.Substring(split+marker.Length);
-                if(prompt.Length>=prefix.Length+suffix.Length&&prompt.StartsWith(prefix,StringComparison.Ordinal)&&prompt.EndsWith(suffix,StringComparison.Ordinal))
-                {key=candidate;name=prompt.Substring(prefix.Length,prompt.Length-prefix.Length-suffix.Length);return true;}
+            foreach(var choice in UiLanguages.Choices){
+                var catalog=TextResources.CatalogFor(choice.Code);string access=TextResources.Get("personaProfiles.screenAccess",catalog);
+                foreach(string candidate in DefaultKeys){
+                    string current=catalog.Get(candidate);
+                    // Exact old templates remain recognizable in saved settings and older skin packs.
+                    // Never infer a user-edited prompt from a matching sentence alone.
+                    string legacy=current.EndsWith("\n\n"+access,StringComparison.Ordinal)
+                        ?current.Substring(0,current.Length-access.Length-2)
+                        :current.Replace(access,LegacyScreenAccess(candidate,catalog));
+                    foreach(string template in new[]{current,legacy,OriginalDefault(candidate,catalog)}){
+                        if(prompt==template){key=candidate;return true;}
+                        if(candidate!="personaProfiles.defaultsUpdated.generic")continue;
+                        const string marker="{pet_name}";int split=template.IndexOf(marker,StringComparison.Ordinal);if(split<0)continue;
+                        string prefix=template.Substring(0,split),suffix=template.Substring(split+marker.Length);
+                        if(prompt.Length>=prefix.Length+suffix.Length&&prompt.StartsWith(prefix,StringComparison.Ordinal)&&prompt.EndsWith(suffix,StringComparison.Ordinal))
+                        {key=candidate;name=prompt.Substring(prefix.Length,prompt.Length-prefix.Length-suffix.Length);return true;}
+                    }
+                }
             }
             return false;
+        }
+        static string LegacyScreenAccess(string key,TextCatalog catalog)
+        {
+            switch(key){
+                case "personaProfiles.defaultsUpdated.ebao":return TextResources.Get("personaProfiles.legacyScreenAccess.ebao",catalog);
+                case "personaProfiles.defaultsUpdated.dafeiyu":return TextResources.Get("personaProfiles.legacyScreenAccess.dafeiyu",catalog);
+                case "personaProfiles.defaultsUpdated.marfu":return TextResources.Get("personaProfiles.legacyScreenAccess.marfu",catalog);
+                case "personaProfiles.defaultsUpdated.generic":return TextResources.Get("personaProfiles.legacyScreenAccess.generic",catalog);
+                default:throw new ArgumentException("Unknown legacy screen access key.","key");
+            }
+        }
+        static string OriginalDefault(string key,TextCatalog catalog)
+        {
+            switch(key){
+                case "personaProfiles.defaultsUpdated.ebao":return TextResources.Get("personaProfiles.defaults.ebao",catalog);
+                case "personaProfiles.defaultsUpdated.dafeiyu":return TextResources.Get("personaProfiles.defaults.dafeiyu",catalog);
+                case "personaProfiles.defaultsUpdated.marfu":return TextResources.Get("personaProfiles.defaults.marfu",catalog);
+                case "personaProfiles.defaultsUpdated.xiaobei":return TextResources.Get("personaProfiles.defaults.xiaobei",catalog);
+                case "personaProfiles.defaultsUpdated.gugugaga":return TextResources.Get("personaProfiles.defaults.gugugaga",catalog);
+                case "personaProfiles.defaultsUpdated.agent":return TextResources.Get("personaProfiles.defaults.agent",catalog);
+                case "personaProfiles.defaultsUpdated.generic":return TextResources.Get("personaProfiles.defaults.generic",catalog);
+                default:throw new ArgumentException("Unknown original default persona key.","key");
+            }
         }
         public static string LocalizeDefaultPrompt(string prompt)
         {
@@ -54,20 +86,20 @@ namespace Dafeiyu
         {
             switch(key)
             {
-                case "personaProfiles.defaults.ebao":return TextResources.Get("personaProfiles.defaults.ebao");
-                case "personaProfiles.defaults.dafeiyu":return TextResources.Get("personaProfiles.defaults.dafeiyu");
-                case "personaProfiles.defaults.marfu":return TextResources.Get("personaProfiles.defaults.marfu");
-                case "personaProfiles.defaults.xiaobei":return TextResources.Get("personaProfiles.defaults.xiaobei");
-                case "personaProfiles.defaults.gugugaga":return TextResources.Get("personaProfiles.defaults.gugugaga");
-                case "personaProfiles.defaults.agent":return TextResources.Get("personaProfiles.defaults.agent");
-                case "personaProfiles.defaults.generic":return TextResources.Get("personaProfiles.defaults.generic");
+                case "personaProfiles.defaultsUpdated.ebao":return TextResources.Get("personaProfiles.defaultsUpdated.ebao");
+                case "personaProfiles.defaultsUpdated.dafeiyu":return TextResources.Get("personaProfiles.defaultsUpdated.dafeiyu");
+                case "personaProfiles.defaultsUpdated.marfu":return TextResources.Get("personaProfiles.defaultsUpdated.marfu");
+                case "personaProfiles.defaultsUpdated.xiaobei":return TextResources.Get("personaProfiles.defaultsUpdated.xiaobei");
+                case "personaProfiles.defaultsUpdated.gugugaga":return TextResources.Get("personaProfiles.defaultsUpdated.gugugaga");
+                case "personaProfiles.defaultsUpdated.agent":return TextResources.Get("personaProfiles.defaultsUpdated.agent");
+                case "personaProfiles.defaultsUpdated.generic":return TextResources.Get("personaProfiles.defaultsUpdated.generic");
                 default:throw new ArgumentException("Unknown default persona key.","key");
             }
         }
         static string DefaultPrompt(string prompt,string officialId)
         {
             string key;
-            switch(officialId){case "e-bao":key="personaProfiles.defaults.ebao";break;case "dafeiyu":key="personaProfiles.defaults.dafeiyu";break;case "marfu":key="personaProfiles.defaults.marfu";break;case "xiaobei":key="personaProfiles.defaults.xiaobei";break;case "gugugaga":key="personaProfiles.defaults.gugugaga";break;default:return LocalizeDefaultPrompt(prompt);}
+            switch(officialId){case "e-bao":key="personaProfiles.defaultsUpdated.ebao";break;case "dafeiyu":key="personaProfiles.defaultsUpdated.dafeiyu";break;case "marfu":key="personaProfiles.defaultsUpdated.marfu";break;case "xiaobei":key="personaProfiles.defaultsUpdated.xiaobei";break;case "gugugaga":key="personaProfiles.defaultsUpdated.gugugaga";break;default:return LocalizeDefaultPrompt(prompt);}
             return CurrentDefault(key);
         }
         public static void Activate(PetSettings settings,string skinId,string defaultPrompt,VoiceRecommendations voices=null,string officialId=null)

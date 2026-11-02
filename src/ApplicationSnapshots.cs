@@ -110,6 +110,7 @@ namespace Dafeiyu
 
         internal static byte[] CaptureObservation(ApplicationSnapshotTarget target, CancellationToken cancel)
         {
+            if(target.ObservationIdentity.Scope==DesktopObservationCaptureScope.FullScreen)return CaptureDesktop(target.ObservationIdentity,cancel);
             try { return Capture(target, cancel, true); }
             catch (InvalidOperationException) { if (!MatchesObservation(target.ObservationIdentity)) return null; throw; }
         }
@@ -183,7 +184,9 @@ namespace Dafeiyu
         // start time. Revalidate that lifetime and cheap window state, without module enumeration.
         internal static bool MatchesObservation(DesktopObservationIdentity expected)
         {
-            if (expected == null || String.IsNullOrWhiteSpace(expected.ApplicationId) || !Path.IsPathRooted(expected.ApplicationId) || !InteractiveDesktop()) return false;
+            if (expected == null || !InteractiveDesktop()) return false;
+            if(expected.Scope==DesktopObservationCaptureScope.FullScreen){var bounds=DesktopBounds();return expected.X==bounds.X && expected.Y==bounds.Y && expected.Width==bounds.Width && expected.Height==bounds.Height;}
+            if(String.IsNullOrWhiteSpace(expected.ApplicationId) || !Path.IsPathRooted(expected.ApplicationId))return false;
             IntPtr previousDpi = IntPtr.Zero;
             try
             {
@@ -207,6 +210,7 @@ namespace Dafeiyu
         internal static bool MatchesObservationWithApplicationPath(DesktopObservationIdentity expected)
         {
             if (expected == null || !InteractiveDesktop()) return false;
+            if(expected.Scope==DesktopObservationCaptureScope.FullScreen)return MatchesObservation(expected);
             ApplicationSnapshotTarget current = Foreground(new DesktopCaptureOptions());
             if (current == null) return false;
             DesktopObservationIdentity actual = current.ObservationIdentity;
@@ -216,6 +220,38 @@ namespace Dafeiyu
                 String.Equals(actual.ApplicationId, expected.ApplicationId, StringComparison.OrdinalIgnoreCase) &&
                 String.Equals(actual.WindowClass, expected.WindowClass, StringComparison.Ordinal) &&
                 String.Equals(actual.WindowTitle, expected.WindowTitle, StringComparison.Ordinal);
+        }
+
+        internal static ApplicationSnapshotTarget ObservationTarget(DesktopCaptureOptions options)
+        {
+            if(options.Scope!=DesktopObservationCaptureScope.FullScreen)return Foreground(options);
+            if(!InteractiveDesktop())return null;
+            var bounds=DesktopBounds();
+            if(bounds.Width<1 || bounds.Height<1)return null;
+            return new ApplicationSnapshotTarget{ObservationIdentity=new DesktopObservationIdentity(0,0,0,0,"","","",bounds.X,bounds.Y,bounds.Width,bounds.Height,DesktopObservationCaptureScope.FullScreen)};
+        }
+        static Rectangle DesktopBounds()
+        {
+            IntPtr previous=IntPtr.Zero;
+            try{try{previous=SetThreadDpiAwarenessContext(new IntPtr(-4));}catch(EntryPointNotFoundException){}return System.Windows.Forms.SystemInformation.VirtualScreen;}
+            finally{if(previous!=IntPtr.Zero)SetThreadDpiAwarenessContext(previous);}
+        }
+        static byte[] CaptureDesktop(DesktopObservationIdentity target,CancellationToken cancel)
+        {
+            cancel.ThrowIfCancellationRequested();
+            if(!MatchesObservation(target))return null;
+            if((long)target.Width*target.Height>64000000)throw Unsupported();
+            IntPtr previous=IntPtr.Zero;
+            try{
+                try{previous=SetThreadDpiAwarenessContext(new IntPtr(-4));}catch(EntryPointNotFoundException){}
+                using(var bitmap=new Bitmap(target.Width,target.Height,PixelFormat.Format24bppRgb)){
+                    using(var graphics=Graphics.FromImage(bitmap))graphics.CopyFromScreen(target.X,target.Y,0,0,bitmap.Size,CopyPixelOperation.SourceCopy);
+                    cancel.ThrowIfCancellationRequested();if(!MatchesObservation(target))return null;
+                    RejectEmpty(bitmap);var encoded=Encode(bitmap,cancel,true);
+                    if(!MatchesObservation(target)){Array.Clear(encoded,0,encoded.Length);return null;}return encoded;
+                }
+            }catch(ExternalException){throw Unsupported();}
+            finally{if(previous!=IntPtr.Zero)SetThreadDpiAwarenessContext(previous);}
         }
 
         private static byte[] Capture(ApplicationSnapshotTarget target, CancellationToken token, bool observation)
@@ -437,7 +473,7 @@ namespace Dafeiyu
         private readonly Func<DesktopObservationIdentity, bool> finalValidation;
         public WindowsDesktopObservationCapture() : this(ApplicationSnapshots.InteractiveDesktop) { }
         internal WindowsDesktopObservationCapture(Func<bool> interactive) : this(interactive, ApplicationSnapshots.CaptureWorker,
-            ApplicationSnapshots.Foreground, ApplicationSnapshots.CaptureObservation, ApplicationSnapshots.MatchesObservationWithApplicationPath) { }
+            ApplicationSnapshots.ObservationTarget, ApplicationSnapshots.CaptureObservation, ApplicationSnapshots.MatchesObservationWithApplicationPath) { }
         // Native boundaries are injectable, but scheduling, deadline and ownership stay in this adapter.
         internal WindowsDesktopObservationCapture(Func<bool> interactive, DesktopCaptureWorker worker,
             Func<DesktopCaptureOptions, ApplicationSnapshotTarget> foreground,
@@ -446,11 +482,12 @@ namespace Dafeiyu
             this.interactive = interactive; this.worker = worker; this.foreground = foreground;
             this.encode = encode; this.finalValidation = finalValidation;
         }
-        public DesktopCaptureStatus GetStatus()
+        public DesktopCaptureStatus GetStatus(DesktopCaptureOptions options=null)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT) return DesktopCaptureStatus.UnsupportedPlatform;
             if (!interactive()) return DesktopCaptureStatus.NonInteractiveDesktop;
             if (worker.IsBusy) return DesktopCaptureStatus.Busy;
+            if(options!=null && options.Scope==DesktopObservationCaptureScope.FullScreen)return DesktopCaptureStatus.Ready;
             // Status is only a cheap preflight. Executable lookup and exclusion admission stay
             // inside the bounded capture worker, never on a synchronous UI status call.
             return ApplicationSnapshots.HasEligibleForeground() ? DesktopCaptureStatus.Ready : DesktopCaptureStatus.NoEligibleForeground;

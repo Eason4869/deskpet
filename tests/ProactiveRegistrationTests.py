@@ -160,7 +160,7 @@ class RegistrationTests(unittest.TestCase):
         project = ET.fromstring(source(PORTABLE_PROJECT))
         self.assertIn('DESKTOP_OBSERVATION_PORTABLE', project.findtext('./PropertyGroup/DefineConstants'))
         fixture = source('tests/DesktopObservationCaptureTests.cs')
-        self.assertRegex(fixture, r'#if !DESKTOP_OBSERVATION_PORTABLE\s+Native\(\);\s+#endif')
+        self.assertRegex(fixture, r'#if !DESKTOP_OBSERVATION_PORTABLE\s+Native\(\);\s+FullScreen\(\);\s+#endif')
         self.assertNotIn('DesktopObservationCompatibilityTests', source(PORTABLE_PROJECT))
         self.assertNotIn('DesktopObservationCompatibilityTests', source('desktop/DeskPet.Tests/PortableTests.cs'))
 

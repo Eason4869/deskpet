@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -22,13 +22,13 @@ namespace Dafeiyu.Tests
         {
             var method=typeof(SettingsStore).GetMethod("RestoreDefaultPreferencesAsync");Check(method!=null,"preference transaction API exists");
             string root=Path.GetFullPath(Path.Combine("work","data-management",Guid.NewGuid().ToString("N")));Directory.CreateDirectory(root);
-            var store=new SettingsStore(Path.Combine(root,"settings.json"));var settings=new PetSettings{ThemeMode="dark",Scale=2,QuietMode=true,OnboardingState="completed",AgentWorkspace="owned-workspace",UiLanguage="ja_JP",AutoUpdate=false};
+            var store=new SettingsStore(Path.Combine(root,"settings.json"));var settings=new PetSettings{ThemeMode="dark",Scale=2,QuietMode=true,GreetingIntervalMinutes=60,GreetingJitterMinutes=10,OnboardingState="completed",AgentWorkspace="owned-workspace",UiLanguage="ja_JP",AutoUpdate=false};
             settings.Text.ApiKey="owned-text-key";settings.Speech.ApiKey="owned-speech-key";settings.PersonaOverrides["fixture"]="saved persona";settings.VoiceProfiles["fixture"]=new PersonaVoiceProfile{Speech=new Dictionary<string,string>{{"fixture","voice-original"}}};
             var provider=new TextProviderSettings{Id="provider",Name="Saved name",Connection=new ConnectionSettings{BaseUrl="https://fixture.invalid",Model="saved-model"}};provider.Connection.ApiKey="owned-provider-key";settings.TextProviders.Add(provider);settings.ActiveTextProviderId="provider";
             settings.AudioProviders["speech"]=new ServiceProviderSettings{Providers=new System.Collections.Generic.List<TextProviderSettings>{provider.Copy()},ActiveProviderId="provider"};
             settings.AgentSandboxReadDirectories="owned-read-directory";settings.AgentGlobalInstructions="retained instructions";settings.AgentGoal="retained project goal";settings.X=22;settings.Y=33;settings.LiveVoice="retained voice";settings.UpdateMirrorAddress="https://updates.fixture.invalid";settings.UpdateChannel=UpdateChannel.Preview;
             string textCipher=settings.Text.EncryptedKey,speechCipher=settings.Speech.EncryptedKey,providerCipher=provider.Connection.EncryptedKey;
-            var whitelist=new HashSet<string>(("ThemeMode Scale Volume Topmost FollowCursor Wander StumbleEnabled AutoSleepEnabled GreetingEnabled AiGreetingEnabled GreetingMinMinutes GreetingMaxMinutes QuietMode HideOnFullscreen ClickThrough LockPosition SaveChatHistory ShowPredictedMessages PlainTextEditor ShowContextUsage SendOnEnter FollowUpBehavior ImageGenerationConcurrency ImageGenerationMotionEnabled ImageGalleryLayout Hotkeys LocalShortcuts").Split(' '));
+            var whitelist=new HashSet<string>(("ThemeMode Scale Volume Topmost FollowCursor Wander StumbleEnabled AutoSleepEnabled GreetingEnabled AiGreetingEnabled GreetingMinMinutes GreetingMaxMinutes GreetingIntervalMinutes GreetingJitterMinutes QuietMode HideOnFullscreen ClickThrough LockPosition SaveChatHistory ShowPredictedMessages PlainTextEditor ShowContextUsage SendOnEnter FollowUpBehavior ImageGenerationConcurrency ImageGenerationMotionEnabled ImageGalleryLayout Hotkeys LocalShortcuts").Split(' '));
             var retained=typeof(PetSettings).GetProperties().Where(p=>Attribute.IsDefined(p,typeof(DataMemberAttribute))&&!whitelist.Contains(p.Name)).ToDictionary(p=>p,p=>Serialized(p.PropertyType,p.GetValue(settings,null)));
             var normalizedCopySource=SettingsStore.Snapshot(settings);normalizedCopySource.Normalize();var copied=normalizedCopySource.Copy();var copyDifferences=typeof(PetSettings).GetProperties().Where(p=>Attribute.IsDefined(p,typeof(DataMemberAttribute))).Where(p=>Serialized(p.PropertyType,p.GetValue(copied,null))!=Serialized(p.PropertyType,p.GetValue(normalizedCopySource,null))).Select(p=>p.Name).ToArray();
             Check(copyDifferences.Length==0,"detached settings copy retains every serialized field: "+String.Join(",",copyDifferences));

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -95,7 +95,7 @@ namespace Dafeiyu.Tests
                 volume.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(volume),0,Key.Right){RoutedEvent=Keyboard.KeyDownEvent});
                 var volumeSave=pet.FlushPreferenceSavesAsync();Wait(volumeSave);Check(volumeSave.Result,"keyboard volume change flush succeeds");
                 Check(volume.Value==55&&cfg.Volume==55&&SpeechVolume(pet)==55&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Volume==55,"keyboard volume increment starts from reset value and persists runtime value");page.SelectGeneralSection(2);Pump();
-                page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingMinMinutes")).Text=="30"&&((TextBox)page.FindControl("GreetingMaxMinutes")).Text=="60","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
+                page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingIntervalMinutes")).Text=="45"&&((TextBox)page.FindControl("GreetingJitterMinutes")).Text=="15","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
                 page.SelectWorkSettings();Pump();Check(workGoal.Text=="unsaved project goal"&&((CheckBox)page.FindControl("PlainTextEditor")).IsChecked==false,"reset refreshes chat preferences while preserving unrelated work draft");page.SelectGeneralSection(2);Pump();
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{
                     Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=444;pet.SaveSettings();Check(!Operation(d).IsCompleted,"arriving WPF position autosave does not block UI during held commit");locked.Dispose();Wait(Operation(d));

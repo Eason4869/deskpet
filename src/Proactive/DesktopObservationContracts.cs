@@ -9,11 +9,12 @@ using System.Threading.Tasks;
 namespace Dafeiyu
 {
     public enum DesktopCaptureStatus { Ready, UnsupportedPlatform, PermissionRequired, NonInteractiveDesktop, NoEligibleForeground, Busy }
+    public enum DesktopObservationCaptureScope { Application, FullScreen }
 
     public interface IDesktopObservationCapture
     {
         // A read-only preflight: never prompts for platform permissions.
-        DesktopCaptureStatus GetStatus();
+        DesktopCaptureStatus GetStatus(DesktopCaptureOptions options = null);
         // Null means skip. Cancellation and timeout end the caller's wait, not a native call.
         Task<DesktopObservationFrame> CaptureForegroundAsync(DesktopCaptureOptions options, CancellationToken cancel);
         bool IsCurrent(DesktopObservationFrame frame);
@@ -22,14 +23,17 @@ namespace Dafeiyu
     public sealed class DesktopCaptureOptions
     {
         private readonly HashSet<string> exclusions;
+        public DesktopObservationCaptureScope Scope { get; private set; }
         public DesktopCaptureOptions() : this(null) { }
-        public DesktopCaptureOptions(IEnumerable<string> excludedApplications)
+        public DesktopCaptureOptions(IEnumerable<string> excludedApplications) : this(excludedApplications, DesktopObservationCaptureScope.Application) { }
+        public DesktopCaptureOptions(IEnumerable<string> excludedApplications, DesktopObservationCaptureScope scope)
         {
+            Scope = scope == DesktopObservationCaptureScope.FullScreen ? scope : DesktopObservationCaptureScope.Application;
             exclusions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (excludedApplications != null) foreach (string value in excludedApplications)
                 if (!String.IsNullOrWhiteSpace(value)) exclusions.Add(value.Trim());
         }
-        public bool IsExcluded(string applicationId) { return applicationId != null && exclusions.Contains(applicationId); }
+        public bool IsExcluded(string applicationId) { return Scope == DesktopObservationCaptureScope.Application && applicationId != null && exclusions.Contains(applicationId); }
         public const int MaximumDimension = 1280;
         public const int MaximumPixels = 1000000;
         public const int MaximumPngBytes = 2 * 1024 * 1024;
@@ -51,9 +55,12 @@ namespace Dafeiyu
         public int Height { get; private set; }
         public string TargetId { get; private set; }
         public string StateVersion { get; private set; }
+        public DesktopObservationCaptureScope Scope { get; private set; }
         public DesktopObservationIdentity(long windowId, int processId, long processStartTicks, uint windowThreadId,
-            string applicationId, string windowTitle, string windowClass, int x, int y, int width, int height)
+            string applicationId, string windowTitle, string windowClass, int x, int y, int width, int height,
+            DesktopObservationCaptureScope scope = DesktopObservationCaptureScope.Application)
         {
+            Scope = scope;
             WindowId = windowId; ProcessId = processId; ProcessStartTicks = processStartTicks; WindowThreadId = windowThreadId;
             ApplicationId = applicationId; WindowTitle = windowTitle; WindowClass = windowClass;
             X = x; Y = y; Width = width; Height = height;

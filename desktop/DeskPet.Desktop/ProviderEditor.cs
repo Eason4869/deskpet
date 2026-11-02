@@ -62,7 +62,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     private void CreateDescriptionPicker()
     {
         descriptionDraft=owner.Settings.ImageDescriptionModel?.Copy();descriptionBaseline=descriptionDraft?.Copy();
-        var heading=LocalizedUi.Text(()=>TextResources.Get("imageDescription.title"),16);var help=SettingsVisual.Text(()=>TextResources.Get("imageDescription.help"),12,true);help.TextWrapping=Avalonia.Media.TextWrapping.Wrap;
+        var heading=LocalizedUi.Text(()=>TextResources.Get("imageDescription.settings.title"),16);var help=SettingsVisual.Text(()=>TextResources.Get("imageDescription.settings.help"),12,true);help.TextWrapping=Avalonia.Media.TextWrapping.Wrap;
         descriptionModel=new ComboBox{Name="ImageDescriptionModel",HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch};
         descriptionModel.SelectionChanged+=(_,_)=>{if(descriptionLoading)return;descriptionDraft=(descriptionModel.SelectedItem as ComboBoxItem)?.Tag is ModelReference value?value.Copy():null;};
         Children.Add(heading);Children.Add(help);Children.Add(descriptionModel);

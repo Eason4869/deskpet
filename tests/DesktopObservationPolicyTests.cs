@@ -18,7 +18,23 @@ namespace Dafeiyu.Tests
         {return new DesktopObservationContext(settings??Settings(),"dafeiyu","大肥鱼",null,null,new DateTime(2026,11,2,12,0,0),due,eligible,current??(()=>true),manual?DesktopObservationMode.ManualTest:DesktopObservationMode.Automatic);}
         public static int Main()
         {
-            try{DestinationLabels();ReasonLabels();Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+            try{CaptureScopes();DestinationLabels();ReasonLabels();Gates();Quotas();Scenes();Console.WriteLine("DesktopObservationPolicyTests: "+checks+" assertions passed.");return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}
+        }
+        static void CaptureScopes()
+        {
+            var property=typeof(PetSettings).GetProperty("DesktopObservationCaptureScope");
+            Check(property!=null,"capture scope must be a persisted setting");
+            var settings=Settings();Check(property.GetValue(settings,null).ToString()=="Application","old settings default to application capture");
+            string priorConsent=settings.DesktopObservationConsentDestination;
+            property.SetValue(settings,Enum.Parse(property.PropertyType,"FullScreen"),null);
+            Check(property.GetValue(settings.Copy(),null).ToString()=="FullScreen","request snapshots preserve full screen scope");
+            Check(!DesktopObservationConsent.IsConfirmed(settings)&&DesktopObservationConsent.Destination(settings)!=priorConsent,"application consent cannot authorize full screen capture");
+            string path=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"scope-"+Guid.NewGuid().ToString("N"),"settings.json");
+            var store=new SettingsStore(path);store.Save(settings);Check(property.GetValue(store.Load(),null).ToString()=="FullScreen","capture scope survives save and reload");
+            property.SetValue(settings,Enum.ToObject(property.PropertyType,99),null);settings.Normalize();Check(property.GetValue(settings,null).ToString()=="Application","unknown capture scope falls back to application");
+            var constructor=typeof(DesktopCaptureOptions).GetConstructor(new[]{typeof(IEnumerable<string>),property.PropertyType});
+            var options=(DesktopCaptureOptions)constructor.Invoke(new object[]{new[]{"C:\\private.exe"},Enum.Parse(property.PropertyType,"FullScreen")});
+            Check(!options.IsExcluded("C:\\private.exe"),"full screen capture ignores retained application exclusions");
         }
         static void DestinationLabels()
         {

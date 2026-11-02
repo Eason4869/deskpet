@@ -73,7 +73,7 @@ internal static class ComposerLayoutUiChecks
             foreach (string language in new[] { "en_US", "zh_CN" })
             {
                 TextResources.ApplyLanguage(TextResources.PrepareLanguage(language)); Dispatcher.UIThread.RunJobs();
-                Check(AutomationProperties.GetName(fallback) == TextResources.Get("imageDescription.title") && ToolTip.GetTip(fallback)?.ToString() == TextResources.Get("imageDescription.title"),
+                Check(AutomationProperties.GetName(fallback) == TextResources.Get("imageDescription.settings.title") && ToolTip.GetTip(fallback)?.ToString() == TextResources.Get("imageDescription.settings.title"),
                     "compact fallback keeps its live localized accessible name and tooltip " + language);
             }
             fallback.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
@@ -81,7 +81,7 @@ internal static class ComposerLayoutUiChecks
                 "compact fallback opens the existing per-conversation menu");
             menu!.Close();
             window.Width = 470; window.Measure(new Size(470, 620)); window.Arrange(new Rect(0, 0, 470, 620)); Dispatcher.UIThread.RunJobs();
-            Check(fallback.Content is TextBlock caption && caption.Text == TextResources.Get("imageDescription.title") && ReferenceEquals(fallback.ContextMenu, menu),
+            Check(fallback.Content is TextBlock caption && caption.Text == TextResources.Get("imageDescription.settings.title") && ReferenceEquals(fallback.ContextMenu, menu),
                 "widening restores the translated full caption without replacing the fallback menu");
             return assertions;
         }

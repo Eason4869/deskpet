@@ -20,12 +20,14 @@ namespace Dafeiyu.Tests
             {
 #if !DESKTOP_OBSERVATION_PORTABLE
                 if (args.Length > 0 && args[0] == "--fixture") return Fixture(args);
+                if (args.Length > 0 && args[0] == "--full-screen-only") { FullScreen();Console.WriteLine("Full-screen capture checks: "+assertions+" passed");return 0; }
 #endif
                 if (args.Length > 0 && args[0] == "--adapter-timeout-only") { FinalValidation(false); return 0; }
                 if (args.Length > 0 && args[0] == "--adapter-cancel-only") { FinalValidation(true); return 0; }
                 Contracts(); Worker(); FinalValidation(false); FinalValidation(true);
 #if !DESKTOP_OBSERVATION_PORTABLE
                 Native();
+                FullScreen();
 #endif
                 Console.WriteLine("DesktopObservationCaptureTests: " + assertions + " assertions passed."); return 0;
             }
@@ -37,6 +39,8 @@ namespace Dafeiyu.Tests
             var options = new DesktopCaptureOptions(exclusions); exclusions[0] = "changed";
             Check(options.IsExcluded("c:\\FIXTURE\\app.exe"), "exclusion uses stable identity, copied at construction");
             Check(!options.IsExcluded("app"), "process name does not substitute executable identity");
+            var full=new DesktopCaptureOptions(new[]{"C:\\fixture\\app.exe"},DesktopObservationCaptureScope.FullScreen);
+            Check(!full.IsExcluded("C:\\fixture\\app.exe"),"full screen exclusions do not suppress capture");
             var identity = new DesktopObservationIdentity(42, 7, 900, 8, "app", "title", "class", -100, 20, 800, 600);
             byte[] bytes = { 137, 80, 78, 71 };
             var frame = new DesktopObservationFrame(bytes, DateTimeOffset.UtcNow, identity);
@@ -48,6 +52,24 @@ namespace Dafeiyu.Tests
             frame.Dispose(); frame.Dispose();
             Check(frame.EncodedPng == null && frame.Target == null && frame.TargetStateVersion == null && frame.IsDisposed && bytes[0] == 0, "dispose clears owned bytes and reference, idempotently");
         }
+#if !DESKTOP_OBSERVATION_PORTABLE
+        static void FullScreen()
+        {
+            var capture=new WindowsDesktopObservationCapture();
+            var options=new DesktopCaptureOptions(new[]{Process.GetCurrentProcess().MainModule.FileName},DesktopObservationCaptureScope.FullScreen);
+            Check(capture.GetStatus(options)==DesktopCaptureStatus.Ready,"full screen preflight does not require an eligible foreground application");
+            using(var frame=capture.CaptureForegroundAsync(options,CancellationToken.None).GetAwaiter().GetResult())
+            {
+                Check(frame!=null && frame.Target.Scope==DesktopObservationCaptureScope.FullScreen && frame.Target.WindowId==0,"full screen produces a desktop frame instead of foreground window");
+                var bounds=ApplicationSnapshots.ObservationTarget(options).ObservationIdentity;
+                Check(frame.Target.X==bounds.X && frame.Target.Y==bounds.Y && frame.Target.Width==bounds.Width && frame.Target.Height==bounds.Height,"full screen frame covers all monitors including desktop origin");
+                Check(capture.IsCurrent(frame),"full screen currentness validates desktop geometry");
+                Console.WriteLine("Full-screen desktop: "+frame.Target.Width+"x"+frame.Target.Height+" at "+frame.Target.X+","+frame.Target.Y+"; PNG bytes="+frame.EncodedPng.Length);
+                using(var stream=new MemoryStream(frame.EncodedPng))using(var image=new Bitmap(stream))Check(image.Width<=1280 && image.Height<=1280 && (long)image.Width*image.Height<=1000000 && frame.EncodedPng.Length<=2*1024*1024,"full screen uses automatic image bounds");
+            }
+            var locked=new WindowsDesktopObservationCapture(()=>false);Check(locked.CaptureForegroundAsync(options,CancellationToken.None).GetAwaiter().GetResult()==null,"full screen still refuses a locked desktop");
+        }
+#endif
         static void Worker()
         {
             var worker = new DesktopCaptureWorker(); var release = new ManualResetEventSlim();

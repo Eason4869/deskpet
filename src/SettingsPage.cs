@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -20,7 +20,7 @@ namespace Dafeiyu
         private readonly TextBlock wardrobeHeading;
         private readonly Button restoreCompanions;
         private readonly CheckBox follow,wander,top,pause,autoStart,greetings,aiGreetings,stumble,autoSleep;
-        private readonly TextBox greetingMin,greetingMax;
+        private readonly TextBox greetingInterval,greetingJitter;
         private readonly StartupRegistration startup=new StartupRegistration(Process.GetCurrentProcess().MainModule.FileName);
         private readonly Slider size;
         private readonly ListBox navigation;
@@ -44,7 +44,7 @@ namespace Dafeiyu
         public bool HasUnsavedWorkEdits {get{return work!=null && work.HasUnsavedChanges;}}
         public event Action<int> NavigationChanged;
         public event Action GuideRequested;
-        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingMin.Text!=pet.Settings.GreetingMinMinutes.ToString() || greetingMax.Text!=pet.Settings.GreetingMaxMinutes.ToString() || observationDraftEnabled!=pet.Settings.DesktopObservationEnabled || (observationExcludedDraft!=null && !observationExcludedDraft.SequenceEqual(pet.Settings.DesktopObservationExcludedApps,StringComparer.OrdinalIgnoreCase));}}
+        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingInterval.Text!=pet.Settings.GreetingInterval.ToString() || greetingJitter.Text!=pet.Settings.GreetingJitter.ToString() || observationDraftEnabled!=pet.Settings.DesktopObservationEnabled || (observationExcludedDraft!=null && !observationExcludedDraft.SequenceEqual(pet.Settings.DesktopObservationExcludedApps,StringComparer.OrdinalIgnoreCase));}}
         public SettingsPage(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
@@ -115,19 +115,23 @@ namespace Dafeiyu
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeM")),11,Ui.Muted)); behaviorPage.Children.Add(GlassSurface.Card(behavior));
 
             var hello=new StackPanel{Name="GuideGreetingSection"};hello.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeC"))));
-            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeG")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
-            aiGreetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle.alternativeH")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
-            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeN")),12,Ui.Muted));
-            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeO")),12,Ui.Muted));
-            var interval=new WrapPanel{Margin=new Thickness(0,12,0,10),VerticalAlignment=VerticalAlignment.Center};
-            var every=LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeP")),12,Ui.Muted);every.VerticalAlignment=VerticalAlignment.Center;every.Margin=new Thickness(0,0,10,0);interval.Children.Add(every);
-            greetingMin=Ui.Field(pet.Settings.GreetingMinMinutes.ToString());greetingMin.Name="GreetingMinMinutes";greetingMin.Width=68;greetingMin.MaxLength=4;interval.Children.Add(greetingMin);
-            var between=Ui.Text("—",12,Ui.Muted);between.Margin=new Thickness(8,0,8,0);between.VerticalAlignment=VerticalAlignment.Center;interval.Children.Add(between);
-            greetingMax=Ui.Field(pet.Settings.GreetingMaxMinutes.ToString());greetingMax.Name="GreetingMaxMinutes";greetingMax.Width=68;greetingMax.MaxLength=4;interval.Children.Add(greetingMax);
-            var minutes=LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeQ")),12,Ui.Muted);minutes.Margin=new Thickness(8,0,0,0);minutes.VerticalAlignment=VerticalAlignment.Center;interval.Children.Add(minutes);hello.Children.Add(interval);
-            greetingMin.LostFocus+=delegate {SaveGreetingInterval();};greetingMax.LostFocus+=delegate {SaveGreetingInterval();};
+            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.enabled")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            aiGreetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.aiEnabled")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
+            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.aiHelp")),12,Ui.Muted));
+            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.quietHelp")),12,Ui.Muted));
+            var interval=new WrapPanel{Margin=new Thickness(0,12,0,4),VerticalAlignment=VerticalAlignment.Center};
+            var intervalGroup=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,0,24,0)};
+            var every=LocalizedUi.InlineText(()=>TextResources.Get("settingsPage.greeting.interval"),12,Ui.Muted);every.VerticalAlignment=VerticalAlignment.Center;every.Margin=new Thickness(0,0,10,0);intervalGroup.Children.Add(every);
+            greetingInterval=Ui.Field(pet.Settings.GreetingInterval.ToString());greetingInterval.Name="GreetingIntervalMinutes";greetingInterval.Width=48;greetingInterval.MinHeight=32;greetingInterval.Height=32;greetingInterval.Padding=new Thickness(6,4,6,4);greetingInterval.MaxLength=8;intervalGroup.Children.Add(greetingInterval);
+            var minutes=LocalizedUi.InlineText(()=>TextResources.Get("settingsPage.settingsPage.text.alternativeQ"),12,Ui.Muted);minutes.Margin=new Thickness(8,0,0,0);minutes.VerticalAlignment=VerticalAlignment.Center;intervalGroup.Children.Add(minutes);interval.Children.Add(intervalGroup);
+            var jitterGroup=new StackPanel{Orientation=Orientation.Horizontal};
+            var jitterLabel=LocalizedUi.InlineText(()=>TextResources.Get("settingsPage.greetingJitter"),12,Ui.Muted);jitterLabel.Margin=new Thickness(0,0,10,0);jitterLabel.VerticalAlignment=VerticalAlignment.Center;jitterGroup.Children.Add(jitterLabel);
+            greetingJitter=Ui.Field(pet.Settings.GreetingJitter.ToString());greetingJitter.Name="GreetingJitterMinutes";greetingJitter.Width=48;greetingJitter.MinHeight=32;greetingJitter.Height=32;greetingJitter.Padding=new Thickness(6,4,6,4);greetingJitter.MaxLength=8;jitterGroup.Children.Add(greetingJitter);
+            var jitterMinutes=LocalizedUi.InlineText(()=>TextResources.Get("settingsPage.settingsPage.text.alternativeQ"),12,Ui.Muted);jitterMinutes.Margin=new Thickness(8,0,0,0);jitterMinutes.VerticalAlignment=VerticalAlignment.Center;jitterGroup.Children.Add(jitterMinutes);interval.Children.Add(jitterGroup);hello.Children.Add(interval);
+            greetingInterval.LostFocus+=delegate {SaveGreetingInterval();};greetingJitter.LostFocus+=delegate {SaveGreetingInterval();};
+            var intervalHelp=LocalizedUi.Text(()=>TextResources.Get("settingsPage.greeting.intervalHelp"),11,Ui.Muted);intervalHelp.Margin=new Thickness(0,0,0,12);hello.Children.Add(intervalHelp);
             var preview=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeR")));preview.Name="PreviewGreeting";preview.HorizontalAlignment=HorizontalAlignment.Left;preview.Click+=delegate {pet.RestorePet();pet.PreviewGreeting();};hello.Children.Add(preview);
-            hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeS")),11,Ui.Muted));hello.Children.Add(CreateObservationSettingsGroup());greetingPage.Children.Add(GlassSurface.Card(hello));
+            hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsPage.greetingPreviewHelp"),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));greetingPage.Children.Add(GlassSurface.Card(CreateObservationSettingsGroup()));
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
             persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
@@ -189,12 +193,21 @@ namespace Dafeiyu
             return new DataTemplate{VisualTree=row};
         }
         private static TextBlock Heading(string text) { var label=Ui.Text(text,14); label.FontWeight=FontWeights.SemiBold; return label; }
-        private void SaveGreetingInterval()
+        internal bool TryReadGreetingInterval(out double interval,out double jitter)
         {
-            if(refreshing)return;int min,max;
-            if(!Int32.TryParse(greetingMin.Text,out min) || !Int32.TryParse(greetingMax.Text,out max) || min<1 || max>1440 || max<min){ShowNotice(()=>(TextResources.Get("settingsPage.saveGreetingInterval.showNotice")));return;}
-            if(min==pet.Settings.GreetingMinMinutes && max==pet.Settings.GreetingMaxMinutes)return;
-            pet.Settings.GreetingMinMinutes=min;pet.Settings.GreetingMaxMinutes=max;pet.ConfigureGreetings();ShowNotice(()=>(TextResources.Get("settingsPage.saveGreetingInterval.showNotice.alternativeA")));
+            interval=0;jitter=0;
+            return Double.TryParse(greetingInterval.Text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.CurrentCulture,out interval)
+                && Double.TryParse(greetingJitter.Text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.CurrentCulture,out jitter)
+                && !Double.IsNaN(interval) && !Double.IsInfinity(interval) && !Double.IsNaN(jitter) && !Double.IsInfinity(jitter)
+                && interval>=1 && interval<=1440 && jitter>=0 && interval-jitter>=1 && interval+jitter<=1440;
+        }
+        internal bool SaveGreetingInterval()
+        {
+            if(refreshing)return false;double interval,jitter;
+            if(!TryReadGreetingInterval(out interval,out jitter)){ShowNotice(()=>TextResources.Get("settingsPage.greeting.invalidInterval"));return false;}
+            greetingInterval.Text=interval.ToString();greetingJitter.Text=jitter.ToString();
+            if(interval==pet.Settings.GreetingInterval && jitter==pet.Settings.GreetingJitter)return true;
+            pet.Settings.GreetingIntervalMinutes=interval;pet.Settings.GreetingJitterMinutes=jitter;pet.ConfigureGreetings();ShowNotice(()=>TextResources.Get("settingsPage.saveGreetingInterval.showNotice.alternativeA"));return true;
         }
         private async void ImportSkin(object sender,RoutedEventArgs args)
         {
@@ -242,7 +255,7 @@ namespace Dafeiyu
         public void RefreshTextProviders(){if(connections!=null)connections.RefreshTextProviders();}
         void RefreshRestoredPreferences()
         {
-            greetingMin.Text=pet.Settings.GreetingMinMinutes.ToString();greetingMax.Text=pet.Settings.GreetingMaxMinutes.ToString();if(connections!=null)connections.RefreshPreferenceVolume();if(work!=null)work.RefreshRestoredPreferences();RefreshState();
+            greetingInterval.Text=pet.Settings.GreetingInterval.ToString();greetingJitter.Text=pet.Settings.GreetingJitter.ToString();if(connections!=null)connections.RefreshPreferenceVolume();if(work!=null)work.RefreshRestoredPreferences();RefreshState();
         }
         public void RefreshState()
         {

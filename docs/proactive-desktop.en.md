@@ -1,12 +1,22 @@
-# Desktop observation and image descriptions
+﻿# Desktop observation and image descriptions
 
 [简体中文](proactive-desktop.md) | [English](proactive-desktop.en.md)
 
-Applies to the **0.11.4-dev.1 development source preview (no Release)**. These features are outside the 0.11.3 stable downloads. This preview has no separate installable assets and a source version alone does not become an automatic update. Windows and macOS 14+ are in scope; device validation limits appear below.
+Applies to the **0.11.4-dev.2 development source preview (no Release)**. These features are outside the 0.11.3 stable downloads. This preview has no separate installable assets and a source version alone does not become an automatic update. Windows and macOS 14+ are in scope; device validation limits appear below.
+
+## Windows WPF dev.2 updates
+
+Observation settings are ordered as enablement, capture scope, then excluded applications. Application mode captures the foreground application. Full-screen mode actually captures the Windows virtual desktop, including all displays; exclusions are disabled but retained when switching back. Widening scope requires receiving-service confirmation. macOS retains its existing application-capture behavior in this update.
+
+The shared image-description selector appears in observation settings and work settings under general permissions. Auto image-capability recognition uses model settings and service metadata; explicit Unsupported takes precedence, and Unknown models are not universally assumed to support images. Enablement may be saved before setup, but missing model routing or consent still blocks automatic capture/upload.
+
+Enter an interval and symmetric jitter: 60 minutes with 10 minutes of jitter waits 50–70 minutes. Zero jitter gives fixed timing. Old ranges map exactly to center and half-width; the original 30–60-minute default becomes 45±15 minutes. Inputs, exclusions, and colored status indicators share the app style; countdowns, previews, and consent dialogs are rounded. Local-only preview can fall back to the companion window when no external foreground application is available; upload tests and automatic observation do not use that fallback.
+
+Images and descriptions grant no additional file or tool permissions. All thirteen languages share these default-persona capability boundaries; old default templates upgrade compatibly and custom personas remain unchanged.
 
 ## Before enabling
 
-Screen-aware proactive speech is **off by default, including after upgrades**. When the existing greeting schedule becomes due, it may capture one image of the **current foreground application window** and let the model speak or skip. It does not capture a whole monitor, inspect other applications or continuously record the screen. A failed window capture does not widen the capture scope.
+Screen observation is **off by default**; upgrades preserve the saved enablement choice. When a greeting becomes due, the confirmed capture scope provides one image for the model to speak or skip. Windows supports the foreground application or the full virtual desktop; macOS retains application capture. It does not continuously record the screen or widen application capture to full-screen after failure.
 
 The image is sent to your configured model service and can incur charges. Window contents may include private chats, documents, passwords or payment details. **Automatic detection or redaction of sensitive content is not guaranteed.** Configure excluded applications and pause observation before handling sensitive content. Exclusions use application identity, rather than just a changing window title.
 
@@ -14,9 +24,9 @@ Observation and replies use ordinary chat permissions and grant no Agent, file, 
 
 ## Configure models and observation
 
-1. Configure the dialogue model in the existing language-model settings and confirm its image capability. Automatic observation requires an explicitly image-supported (`Supported`) vision route. An unconfirmed (`Unknown`) capability is not support; use the existing model capability settings to confirm it.
-2. Optionally select an **image-description model** from the existing services and models. No separate vision service or copied credentials are needed. Blank means **do not use**.
-3. Enable ordinary proactive greetings and AI greetings, then enable **proactive speech based on the current foreground window** in proactive-speech settings. Confirm the scope and actual receiving service addresses.
+1. Configure a dialogue model in model settings. Auto uses service capability and input-modality metadata, with explicit Unsupported taking precedence. Automatic observation requires a valid image route; Unknown is not universally treated as image support.
+2. Optionally select an **image-description model** in observation settings or work permissions, using existing services and models. No separate vision service or copied credentials are needed. Blank means **do not use**.
+3. Enable proactive greetings and AI greetings, then turn on screen observation and choose its capture scope. Confirm the scope and actual receiving service addresses.
 4. Check the status for direct images, description fallback or unavailable, the receiving services, last observation and safe error category. Pause observation or exclude applications as needed.
 
 An image-capable dialogue model receives the screenshot directly, decides whether to speak and generates the message in one call. The fallback is used only when the dialogue model lacks image support or its capability is unconfirmed, and the selected description model explicitly supports images: the description service receives the image, and the dialogue service receives text. **Review both receiving services and their addresses when confirming consent.** Selecting a fallback does not change the dialogue model or force an image-capable model through description first.
@@ -34,7 +44,7 @@ The conversation model menu also offers **follow global / do not use / specific 
 
 ## Timing and pause conditions
 
-The existing default greeting schedule remains **30–60 minutes**. Automatic image analysis is at least **10 minutes** apart and limited to **four attempts in a rolling hour**, with one image per attempt. Issued requests count even when they fail or time out. Capture happens only when due; switching windows does not trigger extra captures.
+Greeting settings use interval plus symmetric jitter, defaulting to **45±15 minutes**, equivalent to the previous 30–60-minute range. Automatic image analysis is at least **10 minutes** apart and limited to **four attempts in a rolling hour**, with one image per attempt. Issued requests count even when they fail or time out. Capture happens only when due; switching windows does not trigger extra captures.
 
 Quiet mode, lock, sleep, fullscreen, hidden or paused state, chat/voice activity, an active draft panel, onboarding, update countdowns and maintenance block observation. Resuming starts a fresh wait without a backlog. The target is rechecked before capture, before upload and after generation; changes to the window, companion or relevant settings discard stale results.
 

@@ -4,11 +4,11 @@ namespace Dafeiyu
 {
     public sealed class GreetingSchedule
     {
-        readonly int minimum,maximum;
+        readonly double minimum,maximum;
         readonly Func<double> sample;
         DateTime previous;
         public DateTime NextAt {get;private set;}
-        public GreetingSchedule(DateTime now,int minMinutes,int maxMinutes,Func<double> randomSample)
+        public GreetingSchedule(DateTime now,double minMinutes,double maxMinutes,Func<double> randomSample)
         {
             minimum=Math.Max(1,Math.Min(1440,minMinutes));
             maximum=Math.Max(minimum,Math.Min(1440,maxMinutes));
