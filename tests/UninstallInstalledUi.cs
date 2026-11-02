@@ -29,13 +29,15 @@ namespace Dafeiyu.Tests
                     cfg.AutoUpdate=false;cfg.GreetingEnabled=false;cfg.Wander=false;cfg.FollowCursor=false;cfg.OnboardingState="completed";foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                     if(!cfg.TextProviders.Any(p=>p.Id=="uninstall-fixture")){var provider=new TextProviderSettings{Id="uninstall-fixture",Name="Owned fixture",Connection=new ConnectionSettings{BaseUrl="https://fixture.invalid",Model="owned"}};provider.Connection.ApiKey="owned-test-key";cfg.TextProviders.Add(provider);}cfg.ActiveTextProviderId="uninstall-fixture";store.Save(cfg);
                     string ciphertext=cfg.TextProviders.First(p=>p.Id=="uninstall-fixture").Connection.EncryptedKey;
-                    pet=new PetWindow(null,cfg,store,null);pet.Closed+=async delegate{await Program.ShutdownAfterCloseAsync(app,pet);};
+                    // Automatic shown encounters and the explicit capture must share one fixture clock.
+                    var keepsakeTime=new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero);
+                    pet=new PetWindow(null,cfg,store,null);pet.KeepsakeTime=()=>keepsakeTime;pet.Closed+=async delegate{await Program.ShutdownAfterCloseAsync(app,pet);};
                     pet.Loaded+=async delegate{
                         try{
                             await pet.AgentJobs.InitializeAsync();
                             // Earn a real holiday artifact from the current embedded original asset.
                             var catalog=new HolidayCatalog(new[]{new OutfitDefinition("e-bao","halloween-2026","halloween","fixture","1.0.0",true,false,new OutfitClipDefinition[0],null,null,null,null)});
-                            var result=await pet.HolidayKeepsakes.ObserveAsync(new HolidayKeepsakeEncounter("official:e-bao","e-bao","Kept companion",new RelationshipTime(new DateTime(2026,10,31,12,0,0,DateTimeKind.Utc),TimeSpan.Zero)),catalog);
+                            var result=await pet.HolidayKeepsakes.ObserveAsync(new HolidayKeepsakeEncounter("official:e-bao","e-bao","Kept companion",keepsakeTime),catalog);
                             Assert(result.Status==HolidayKeepsakeObservationStatus.Completed&&result.Results.Any(r=>r.Status==HolidayKeepsakeStatus.Saved||r.Status==HolidayKeepsakeStatus.AlreadyOwned),"real holiday keepsake capture failed");
                             var about=new AboutPanel(pet);var host=new Window{Content=about,Width=700,Height=680};host.Show();
                             bool found=false;var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(30)};
