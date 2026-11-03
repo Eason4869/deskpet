@@ -77,5 +77,6 @@
   "desktopObservation.routeConfigure": "界面已迁移至 desktopObservation.route.configure；保留历史译文与兼容证据。",
   "desktopObservation.countdown": "界面已迁移至 desktopObservation.preview.countdown；保留历史译文与兼容证据。",
   "desktopObservation.previewEmpty": "界面已迁移至 desktopObservation.preview.empty；保留历史译文与兼容证据。",
-  "desktopObservation.consentBody": "界面已迁移至 desktopObservation.consent.description；保留历史译文与兼容证据。"
+  "desktopObservation.consentBody": "界面已迁移至 desktopObservation.consent.description；保留历史译文与兼容证据。",
+  "sideChatPane.sideChatPane.text.alternativeA": "1.0.0 uses sideChatPane.contextHint for inherited main context and read-only project access; preserve the historical translation."
 }

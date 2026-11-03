@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1",
+  "resourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8",
   "translationMethod": "mixed-assistant-and-google-translate",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
@@ -5164,6 +5164,40 @@
       }
     },
     {
+      "key": "fileActionsMenu.chooseApplication",
+      "originCommit": "8e432933a29832599fd34ef389b75f9522af89c8",
+      "originKey": "fileActionsMenu.chooseApplication",
+      "originValueSha256": "288a2068d08979c7be6941c6a3cc1c954efbcb1dbf28f3fdfdf657b1ffe335f9",
+      "textSha256": "288a2068d08979c7be6941c6a3cc1c954efbcb1dbf28f3fdfdf657b1ffe335f9",
+      "sourceReferences": [
+        {
+          "file": "src/FileActionsMenu.cs",
+          "contextHash": "e5e8619ac59697741f4c5598846948ec697b4cd98f51d6629a9828f7bd10e733",
+          "count": 1
+        },
+        {
+          "file": "src/FileActionsMenu.cs",
+          "contextHash": "fd016b0f5abadf6fd9e9789c8ab5274c96c215b942d2166192729b7ba36b7fff",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "26d4e822ddc9c14c1f5017049cab0bbc87f1bbb810aa845625fa0fbfab99f699",
+        "en_US": "13e0b5a9c672545057af5aa7cdc3064f760167991999eae6f99a8d9b60838d99",
+        "es_419": "c84aa4703c58658acf553c5ba7fe6f282d0df7cf056aaf3e5c5f18fe0e32721c",
+        "es_ES": "c84aa4703c58658acf553c5ba7fe6f282d0df7cf056aaf3e5c5f18fe0e32721c",
+        "fr_FR": "88e6cf7b4b82cacc801c1636c3991e783e6ab4c365733cd26770ddb632eaaa55",
+        "hi_IN": "4775647b5dc39179842264f341ea9853cac5118b4ab646c216eb867fc5f0a5c6",
+        "id_ID": "583a53dedafed6eb1a1d534a833978468380987f4b730c0f9d698ebcf76baaca",
+        "it_IT": "c023c82a207aa527c60ac90ebe95dcf948b1fd36e94042f27a198b8b1e5618e2",
+        "ja_JP": "b5ddf60bb3ef28bd4871e985717c10dcc0f90d760302b0a682317bd2c193a244",
+        "ko_KR": "70ef2d3330a1c98377a48ac3fd535076919d611756a1ad1410f577107834f08c",
+        "pt_BR": "cbff2efe488bc570b6b26108e1ed7fcb1581f8eb6d431cba515d5883b8ebe06a",
+        "zh_CN": "288a2068d08979c7be6941c6a3cc1c954efbcb1dbf28f3fdfdf657b1ffe335f9",
+        "zh_TW": "5a661d6194a2ac4ba31b6675bee02d9a40f232659ae566c4c40eb86532a0e28d"
+      }
+    },
+    {
       "key": "holidayKeepsake.albumTitle",
       "originCommit": "ac1a23c6ec6996f87c3b4eec3aa15ce4324cfe1e",
       "originKey": "holidayKeepsake.albumTitle",
@@ -7763,7 +7797,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
-          "contextHash": "2aa94a7eafbd1572a553856baa7b5876d3378267209edf5a0555d22b84bbd348",
+          "contextHash": "1fc715eb3aa2b415c90a899bac57da84d15f7b1e9b7f490d397b8db1f2fa4a57",
           "count": 1
         },
         {
@@ -12391,6 +12425,40 @@
       }
     },
     {
+      "key": "sideChatPane.contextHint",
+      "originCommit": "8e432933a29832599fd34ef389b75f9522af89c8",
+      "originKey": "sideChatPane.contextHint",
+      "originValueSha256": "da410cd0a5bc3af9fae8e04d6dea7dd59ef723db43dc4922869a67343793aa11",
+      "textSha256": "da410cd0a5bc3af9fae8e04d6dea7dd59ef723db43dc4922869a67343793aa11",
+      "sourceReferences": [
+        {
+          "file": "src/ConversationComposer.cs",
+          "contextHash": "73dd7bae3601b01d624b777add2be0ece5f1f6555f8745c0fa4085fe43a8bda2",
+          "count": 1
+        },
+        {
+          "file": "src/SideChatPane.cs",
+          "contextHash": "72182d7df5364bd9b610d5d9fe1119c9d6879e71e7894393aea2b2cfa2b8a903",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "0cd0f0453fc01c67d3898be1612601053ea3b1d2d3422050400801b1830108de",
+        "en_US": "02a18eca00ca2145d161667f14ffe4be057ee538af47cc2ae0934198c5477af6",
+        "es_419": "d93ed5728a184b449d49e86fc05b012ce9aac1d325c7f9c57dfbd75a286d6111",
+        "es_ES": "d93ed5728a184b449d49e86fc05b012ce9aac1d325c7f9c57dfbd75a286d6111",
+        "fr_FR": "39a940a5b6b5ccabd6e36bcc62de7633b7d2fc2094632d50a36a48e617c3c097",
+        "hi_IN": "65d0275558c76a78deeec7e1fe28def08a94ef78cd5dd557b89ee98c99bb2b70",
+        "id_ID": "d2f9a5487844ba929d5452d74881e51c5e937b2c3e871b946e0e5da55e25f506",
+        "it_IT": "71f32e6aa02eb7faff81aa305bd3b12b1eaa4a405e8d33c90eb6add2e22b9364",
+        "ja_JP": "25080b15b8e9dbed20da853d53c28205341ace61c70d5012e8219396be734933",
+        "ko_KR": "a9219b992eecf345a62e7d8093e66eed88f1323bfc78e1edd8fe472d7ff9131c",
+        "pt_BR": "f5d4d0ce1d45a3e5b458d375422ff4dbfe25a931986b89622ff284c7234e4404",
+        "zh_CN": "da410cd0a5bc3af9fae8e04d6dea7dd59ef723db43dc4922869a67343793aa11",
+        "zh_TW": "44ebd068be1c8f1268e95a012f2673be81dd232d0a1b6aa34f837b5d40a57505"
+      }
+    },
+    {
       "key": "uninstall.closeCanceled",
       "originCommit": "ac1a23c6ec6996f87c3b4eec3aa15ce4324cfe1e",
       "originKey": "uninstall.closeCanceled",
@@ -12626,7 +12694,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "f72908d65587e06b0d86a4b5b5a64da993682e40590ca0543bb8eb692d5fd0cf",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/GreetingService.cs",
@@ -12634,7 +12702,7 @@
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/GreetingService.cs",
@@ -12642,7 +12710,7 @@
       "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/GreetingService.cs",
@@ -12650,7 +12718,7 @@
       "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/GreetingService.cs",
@@ -12658,7 +12726,7 @@
       "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/GreetingService.cs",
@@ -12666,7 +12734,7 @@
       "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/Maintenance/CacheUpdateRetirement.cs",
@@ -12674,7 +12742,7 @@
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12682,7 +12750,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "3a76247f14b8d266e2e7c942c092e4e16807dbd1cc949ffedfa34f750e41ee70",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12690,7 +12758,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "53b1629aa17e9c919d98b652a814450cff32c5acc5b0c4abb55273af49d831b3",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12698,7 +12766,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66e086e03730e51a3dcc13111c167c6b1c7ddefd1d1efb9df3ed1aaf646bc9c0",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12706,7 +12774,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a765e5e64fbfbf9e15a5c00840829eef94c692015a9e00a7cceb7c98f2244ae4",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12714,7 +12782,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12722,7 +12790,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12730,7 +12798,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12738,7 +12806,7 @@
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12746,7 +12814,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12754,7 +12822,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12762,7 +12830,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12770,7 +12838,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12778,7 +12846,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12786,7 +12854,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12794,7 +12862,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12802,7 +12870,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12810,7 +12878,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "e3daa0322d06d926f576500e489abef69dfed6bb8350e5e35ababe8ca9bbaf9d",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12818,7 +12886,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12826,7 +12894,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12834,7 +12902,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12842,7 +12910,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12850,7 +12918,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12858,7 +12926,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12866,7 +12934,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12874,7 +12942,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12882,7 +12950,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12890,7 +12958,7 @@
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -12898,7 +12966,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     },
     {
       "file": "src/UpdateWorker.cs",
@@ -12906,7 +12974,7 @@
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
       "reason": "Reviewed unchanged non-display identity/protocol literal; containing line migrated to explicit live display binding. Original inventory/provenance remains in Git history.",
-      "sourceCommit": "d8d757f59362e470dc01332dbb80aff9d74371f1"
+      "sourceCommit": "8e432933a29832599fd34ef389b75f9522af89c8"
     }
   ]
 }

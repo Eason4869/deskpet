@@ -896,6 +896,12 @@
       "argument_count": 0
     },
     {
+      "key": "fileActionsMenu.chooseApplication",
+      "expected": "选择其他应用…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "holidayKeepsake.albumTitle",
       "expected": "节日纪念",
       "format": false,
@@ -2254,6 +2260,12 @@
     {
       "key": "shortcutCapture.title",
       "expected": "录制快捷键",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "sideChatPane.contextHint",
+      "expected": "继承主会话上下文 · 项目只读 · 关闭后不保存",
       "format": false,
       "argument_count": 0
     },
