@@ -29,7 +29,7 @@ DeskPet enters its 1.x production release line. This version brings companion in
 - **Dedicated messaging icon:** the settings entry is distinct from other features, making platform connections easier to find.
 - **Tools retained per conversation:** right-side tabs, page content, selection, hidden state and layout belong to their main conversation and restore when switching within the current window. Closing a tab releases its tool; closing the window releases its instances. Persistence across application restarts is not promised.
 - **Side chat inherits main context:** each request reads the owning main conversation's public history alongside its independent temporary messages. Switching to another main conversation does not change ownership. When a valid project is bound and the model supports tools, side chat may inspect that project through read-only tools, without file edits or command execution.
-- **Side-chat entry and cancellation:** open from the main composer, menu or tool tabs. Model/project settings are captured on opening. Its separate history is not saved, and closing its tab cancels its own request.
+- **Side-chat entry and cancellation:** open from the main composer's `/` menu, window menu or tool tabs. Model/project settings are captured on opening. Its separate history is not saved, and closing its tab cancels its own request.
 
 ### Images, voice, messaging and extensions
 

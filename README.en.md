@@ -84,7 +84,7 @@ File cards preview HTML, Markdown and source, and support opening, revealing, co
 
 ![Temporary side chat using the owning main conversation's public context](previews/release-1.0.0/side-chat.png)
 
-Open a temporary side chat from the main composer, menu or tool tabs. Each request reads the **owning main conversation's public history**, alongside the side chat's own temporary messages. Switching main conversations does not rebind it to another context.
+Open a temporary side chat from the main composer's **`/` menu**, window menu or tool tabs. Each request reads the **owning main conversation's public history**, alongside the side chat's own temporary messages. Switching main conversations does not rebind it to another context.
 
 When a valid project is bound and the model supports tools, side chat can inspect that project through read-only tools. It cannot edit files or execute commands. Its model and project settings are captured when opened. Its independent history is not saved to conversation storage; closing its tab cancels its own request. Use it to clarify a term, check an implementation or discuss another approach.
 
