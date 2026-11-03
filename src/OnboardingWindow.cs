@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -89,7 +89,7 @@ namespace Dafeiyu
                     if(!await settings.SaveGuidePersonaAsync())throw new InvalidOperationException(pet.Notice);if(!AdvanceStillCurrent(requested))return;
                     if(((TextBox)settings.FindControl("PersonaPrompt")).Text!=pet.Settings.SystemPrompt)throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeA"));
                 }
-                if(a=="greeting"){pet.Settings.GreetingMinMinutes=Int32.Parse(((TextBox)settings.FindControl("GreetingMinMinutes")).Text);pet.Settings.GreetingMaxMinutes=Int32.Parse(((TextBox)settings.FindControl("GreetingMaxMinutes")).Text);pet.ConfigureGreetings();}
+                if(a=="greeting" && !settings.SaveGreetingInterval())throw new InvalidOperationException(TextResources.Get("settingsPage.greeting.invalidInterval"));
                 if(a=="hotkey"){string error;if(!pet.UpdateHotkey("quick",((TextBox)settings.FindControl("Hotkeyquick")).Text,out error))throw new InvalidOperationException(error);}
                 if(a=="work-save"||a=="prompt-save"){if(!await ((WorkSettingsPanel)settings.FindControl("WorkSettingsPanel")).SaveAsync())throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeB"));if(!AdvanceStillCurrent(requested))return;}
                 if(a=="network"){if(!await settings.SaveGuideNetworkAsync())throw new InvalidOperationException(TextResources.Get("onboardingWindow.advance.text.alternativeC"));if(!AdvanceStillCurrent(requested))return;}
@@ -116,7 +116,7 @@ namespace Dafeiyu
             if (a == "nonempty") { var t = control as TextBox; var c = control as ComboBox; ready = t != null ? !String.IsNullOrWhiteSpace(t.Text) : c != null && !String.IsNullOrWhiteSpace(c.Text); reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeB"); }
             if (a == "url") { Uri uri; ready = control is TextBox && Uri.TryCreate(((TextBox)control).Text, UriKind.Absolute, out uri) && (uri.Scheme == "http" || uri.Scheme == "https"); reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeC"); }
             if (a.StartsWith("ai")) ready = settings.ValidateGuideAiSection(Int32.Parse(a.Substring(2)), out reason);
-            if (a == "greeting") { int min, max; ready = Int32.TryParse(((TextBox)settings.FindControl("GreetingMinMinutes")).Text, out min) && Int32.TryParse(((TextBox)settings.FindControl("GreetingMaxMinutes")).Text, out max) && min >= 1 && max <= 1440 && min <= max; reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeD"); }
+            if (a == "greeting") { double interval,jitter;ready=settings.TryReadGreetingInterval(out interval,out jitter); reason = TextResources.Get("onboarding.greeting.invalidInterval"); }
             if (a == "hotkey") { HotkeyCombination key; string value = ((TextBox)settings.FindControl("Hotkeyquick")).Text; ready = String.IsNullOrWhiteSpace(value) || HotkeyCombination.TryParse(value, out key); reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeE"); }
             if (a == "speech-test") { ready = settings.GuideSpeechTestRevision > speechRevision && settings.GuideSpeechTestSucceeded && heard.IsChecked == true; reason = settings.GuideSpeechTestRevision > speechRevision && settings.GuideSpeechTestSucceeded ? TextResources.Get("onboardingWindow.refreshReadiness.speechRevisionSettingsGuideSpeechTestSucceeded") : TextResources.Get("onboardingWindow.refreshReadiness.speechRevisionSettingsGuideSpeechTestSucceeded.alternativeA"); }
             if (a == "text-test") { ready = textTestSucceeded; reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeF"); }
@@ -259,7 +259,7 @@ namespace Dafeiyu
             try{
                 if(!await settings.SaveGuideAiSectionAsync(0)){if(!finished&&CurrentLessonId==requested&&!cancel.IsCancellationRequested)LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status")));return;}
                 if(finished||CurrentLessonId!=requested||cancel.IsCancellationRequested||!ReferenceEquals(textTest,cancel))return;
-                LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.testText.status.alternativeA")));
+                LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboarding.conversationModel.testNotConfigured")));
                 using(var api=new ApiClient()){
                     var reply=await api.ChatAsync(pet.Settings.Text.Copy(),new[]{new ChatMessage("user",TextResources.Get("onboardingWindow.testText.apiChatAsync"))},cancel.Token);
                     if(finished||CurrentLessonId!=requested||cancel.IsCancellationRequested||!ReferenceEquals(textTest,cancel))return;

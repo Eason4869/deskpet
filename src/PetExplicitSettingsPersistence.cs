@@ -7,6 +7,8 @@ namespace Dafeiyu
 {
     public sealed partial class PetWindow
     {
+        internal event EventHandler ModelSettingsChanged;
+        void NotifyModelSettingsChanged(){var changed=ModelSettingsChanged;if(changed!=null)changed(this,EventArgs.Empty);if(preferences!=null)preferences.RefreshObservation();}
         Task<bool> explicitSettingsSave;FrameworkElement explicitSettingsOwner;string explicitSettingsAction;
         IDisposable explicitSettingsMaintenance;
         public Task<bool> SaveSettingsAsync()
@@ -17,11 +19,11 @@ namespace Dafeiyu
         }
         internal Task<bool> ChangeLanguageAsync(string code,bool guide=false)
         {
-            return RunSettingsEditAsync(null,async delegate{
+            InvalidateObservation(true);return RunSettingsEditAsync(null,async delegate{
                 try{
                     var prepared=await Task.Run(()=>TextResources.PrepareLanguage(code));
                     await Store.SaveLanguageSelectionAsync(Settings.Copy(),code,guide);
-                    Settings.UiLanguage=UiLanguages.Normalize(code);if(guide){Settings.OnboardingLessonId="welcome";Settings.OnboardingStep=0;Settings.OnboardingState="deferred";}
+                    InvalidateObservation(true);Settings.UiLanguage=UiLanguages.Normalize(code);if(guide){Settings.OnboardingLessonId="welcome";Settings.OnboardingStep=0;Settings.OnboardingState="deferred";}
                     TextResources.ApplyLanguage(prepared);if(deferredSettingsSave)return await PersistSettingsAsync(delegate{});return true;
                 }catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
             });
@@ -58,16 +60,16 @@ namespace Dafeiyu
         {var pending=explicitSettingsSave;if(pending!=null&&!await pending)throw new IOException(TextResources.Get("dataManagement.pendingSaveFailed"));}
         internal bool CommitSettingsNow(Action<PetSettings> change)
         {
-            Dispatcher.VerifyAccess();if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
+            Dispatcher.VerifyAccess();InvalidateObservation(true);if(closing||DataMaintenance.IsMaintenanceActive||explicitSettingsSave!=null){Notice=TextResources.Get("dataMaintenance.busy");return false;}
             settingsSaveRevision++;
-            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);change(Settings);Notice=Store.Warning;return true;}
+            try{var candidate=Settings.Copy();change(candidate);Store.Save(candidate);InvalidateObservation(true);var previousObservationSettings=Settings.Copy();change(Settings);observationPolicy.RefreshConfiguration(previousObservationSettings,Settings);Notice=Store.Warning;NotifyModelSettingsChanged();return true;}
             catch(Exception error){if(!SettingsSaveError(error))throw;Notice=TextResources.Get("petWindow.saveSettings.notice");return false;}
         }
         static bool SettingsSaveError(Exception error)
         {return error is IOException||error is UnauthorizedAccessException||error is System.Runtime.Serialization.SerializationException||error is ArgumentException||error is InvalidOperationException;}
         internal async Task<bool> PersistSettingsAsync(Action<PetSettings> change)
         {
-            Dispatcher.VerifyAccess();long revision=++settingsSaveRevision;PreferenceChangeSet submittedPreferences=null;
+            Dispatcher.VerifyAccess();InvalidateObservation(true);long revision=++settingsSaveRevision;PreferenceChangeSet submittedPreferences=null;
             try{
                 do{
                     deferredSettingsSave=false;CompleteScaleLayout();submittedPreferences=pendingPreferences;
@@ -76,10 +78,10 @@ namespace Dafeiyu
                 }while(deferredSettingsSave);
                 // Publish only the submitted fields. Other runtime settings may
                 // have changed while the worker was committing this candidate.
-                change(Settings);
+                InvalidateObservation(true);var previousObservationSettings=Settings.Copy();change(Settings);observationPolicy.RefreshConfiguration(previousObservationSettings,Settings);
                 if(ReferenceEquals(pendingPreferences,submittedPreferences)){pendingPreferences=null;if(preferenceSaves!=null)preferenceSaves.MarkSaved();}
                 if(imageTasks!=null)imageTasks.Concurrency=Settings.ImageGenerationConcurrency;
-                if(revision==settingsSaveRevision){Notice=Store.Warning;if(preferences!=null)preferences.ShowNotice(Notice);}return true;
+                if(revision==settingsSaveRevision){Notice=Store.Warning;if(preferences!=null)preferences.ShowNotice(Notice);}NotifyModelSettingsChanged();return true;
             }catch(Exception error){
                 if(!SettingsSaveError(error))throw;
                 if(revision==settingsSaveRevision){Notice=TextResources.Get("petWindow.saveSettings.notice");if(preferences!=null)preferences.ShowNotice(Notice);}return false;

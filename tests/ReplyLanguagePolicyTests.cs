@@ -45,32 +45,32 @@ namespace Dafeiyu.Tests
             {
                 Console.OutputEncoding=new UTF8Encoding(false);if(!Codes.Contains(code))return 2;var earlyProfile=OfficialCompanionProfiles.Find("e-bao");string earlyPrompt=earlyProfile.SystemPrompt;TextResources.ConfigureStartupLanguage(code);checks=0;
                 var selected=Catalog(code);string instruction=selected.Get("languages.replyInstruction");
-                Check(earlyProfile.SystemPrompt==selected.Get("personaProfiles.defaults.ebao")&&earlyProfile.Description==selected.Get("officialCompanionProfiles.profiles.listOfficialCompanionProfileOfficialCompanionProfile"),"official metadata initialized before language selection does not freeze Chinese prompts or descriptions");
+                Check(earlyProfile.SystemPrompt==selected.Get("personaProfiles.defaultsUpdated.ebao")&&earlyProfile.Description==selected.Get("officialCompanionProfiles.profiles.listOfficialCompanionProfileOfficialCompanionProfile"),"official metadata initialized before language selection does not freeze Chinese prompts or descriptions");
                 Check(ReplyLanguagePolicy.Apply("custom persona").EndsWith(instruction+"\n[/DeskPet reply language]",StringComparison.Ordinal),"request requires the active UI language");
                 string once=ReplyLanguagePolicy.Apply("custom persona");Check(ReplyLanguagePolicy.Apply(once)==once,"language policy is idempotent");
                 string custom="My edited persona. 鲸鱼 and 大肥鱼 are examples, not ownership metadata.";
                 Check(PersonaProfiles.LocalizeDefaultPrompt(custom)==custom,"custom persona is not rewritten based on Chinese substrings");
                 foreach(string source in Codes)foreach(string id in new[]{"ebao","dafeiyu","marfu","xiaobei","gugugaga","agent"})
                 {
-                    string key="personaProfiles.defaults."+id;
+                    string key="personaProfiles.defaultsUpdated."+id;
                     Check(PersonaProfiles.LocalizeDefaultPrompt(Catalog(source).Get(key))==selected.Get(key),"exact legacy/localized default maps to active language: "+source+" "+id);
                 }
                 string originalName="Custom Name";foreach(string source in Codes)
                 {
-                    string generic=Catalog(source).Get("personaProfiles.defaults.generic").Replace("{pet_name}",originalName);
-                    Check(PersonaProfiles.LocalizeDefaultPrompt(generic)==selected.Get("personaProfiles.defaults.generic").Replace("{pet_name}",originalName),"generic template changes language without changing custom companion name");
+                    string generic=Catalog(source).Get("personaProfiles.defaultsUpdated.generic").Replace("{pet_name}",originalName);
+                    Check(PersonaProfiles.LocalizeDefaultPrompt(generic)==selected.Get("personaProfiles.defaultsUpdated.generic").Replace("{pet_name}",originalName),"generic template changes language without changing custom companion name");
                 }
                 var settings=new PetSettings{PersonaProfileVersion=1,SkinId="e-bao",SystemPrompt=custom,ReadReplies=false,AgentEnabled=false};
                 settings.UiLanguage=code=="ko_KR"?"en_US":"ko_KR";
-                settings.PersonaOverrides["e-bao"]=custom;PersonaProfiles.Activate(settings,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaults.ebao"));
+                settings.PersonaOverrides["e-bao"]=custom;PersonaProfiles.Activate(settings,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaultsUpdated.ebao"));
                 Check(settings.SystemPrompt==custom&&settings.PersonaOverrides["e-bao"]==custom,"activation preserves a custom override exactly");
                 Check(ReplyLanguagePolicy.Apply(settings.SystemPrompt).Contains(instruction),"pending saved selection cannot affect current outgoing policy");
-                PersonaProfiles.Reset(settings,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaults.ebao"));
-                Check(settings.SystemPrompt==selected.Get("personaProfiles.defaults.ebao")&&!settings.PersonaOverrides.ContainsKey("e-bao"),"reset uses localized default and clears only the selected override");
-                var old=new PetSettings{PersonaProfileVersion=0,SkinId="e-bao",SystemPrompt=Catalog("zh_CN").Get("personaProfiles.defaults.ebao")};
-                PersonaProfiles.Activate(old,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaults.ebao"));
-                Check(old.SystemPrompt==selected.Get("personaProfiles.defaults.ebao")&&!old.PersonaOverrides.ContainsKey("e-bao"),"legacy unchanged default is not preserved as a custom override");
-                var edited=new PetSettings{PersonaProfileVersion=0,SkinId="e-bao",SystemPrompt=custom};PersonaProfiles.Activate(edited,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaults.ebao"));
+                PersonaProfiles.Reset(settings,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaultsUpdated.ebao"));
+                Check(settings.SystemPrompt==selected.Get("personaProfiles.defaultsUpdated.ebao")&&!settings.PersonaOverrides.ContainsKey("e-bao"),"reset uses localized default and clears only the selected override");
+                var old=new PetSettings{PersonaProfileVersion=0,SkinId="e-bao",SystemPrompt=Catalog("zh_CN").Get("personaProfiles.defaultsUpdated.ebao")};
+                PersonaProfiles.Activate(old,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaultsUpdated.ebao"));
+                Check(old.SystemPrompt==selected.Get("personaProfiles.defaultsUpdated.ebao")&&!old.PersonaOverrides.ContainsKey("e-bao"),"legacy unchanged default is not preserved as a custom override");
+                var edited=new PetSettings{PersonaProfileVersion=0,SkinId="e-bao",SystemPrompt=custom};PersonaProfiles.Activate(edited,"e-bao",Catalog("zh_CN").Get("personaProfiles.defaultsUpdated.ebao"));
                 Check(edited.SystemPrompt==custom&&edited.PersonaOverrides["e-bao"]==custom&&!edited.PersonaOverrides.ContainsKey("dafeiyu"),"legacy custom persona stays with its saved owner");
                 VerifyOutgoingRequests(code,instruction,custom).GetAwaiter().GetResult();
                 Console.WriteLine("PASS ReplyLanguagePolicy "+code+": "+checks+" checks");return 0;

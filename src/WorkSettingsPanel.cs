@@ -62,6 +62,7 @@ namespace Dafeiyu
                 }RefreshPermissionDescription();
             };
             terminal=LocalizedUi.Options(new ComboBox{Name="AgentTerminalPolicy",ItemsSource=new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")},MinHeight=36},()=>(new[]{TextResources.Get("common.close"),TextResources.Get("workSettingsPanel.workSettingsPanel.itemsSource.alternativeE")}));permissions.Children.Add(SettingRow(()=> (TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeM")),()=> (TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeN")),terminal));
+            permissions.Children.Add(new ImageDescriptionSettings(pet,"WorkImageDescriptionModel"));
             syncLimit=Ui.Field();syncLimit.Name="AgentCommandTimeoutSeconds";backgroundLimit=Ui.Field();backgroundLimit.Name="AgentBackgroundJobTimeoutSeconds";
             permissions.Children.Add(SettingRow(()=> (TextResources.Get("agent.jobs.ui.syncLimit")),()=> ("1–600"),syncLimit));permissions.Children.Add(SettingRow(()=> (TextResources.Get("agent.jobs.ui.backgroundLimit")),()=> ("1–28800"),backgroundLimit));
             plan=Ui.Toggle("",false,delegate{});plan.Name="AgentPlanMode";permissions.Children.Add(SettingRow(()=> (TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeO")),()=> (TextResources.Get("workSettingsPanel.workSettingsPanel.settingRow.alternativeP")),plan));AddGroup(content,()=> (TextResources.Get("workSettingsPanel.workSettingsPanel.addGroup.alternativeA")),permissions);
@@ -80,7 +81,7 @@ namespace Dafeiyu
         }
         static FrameworkElement SettingRow(System.Func<string> title,System.Func<string> description,FrameworkElement control)
         {
-            var row=new Grid{Margin=new Thickness(0,0,0,14)};row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});row.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});var labels=new StackPanel{Margin=new Thickness(0,4,20,0)};var caption=LocalizedUi.Text(title,13,AgentUi.Ink);caption.FontWeight=FontWeights.SemiBold;labels.Children.Add(caption);var help=LocalizedUi.Text(description,11,AgentUi.Muted);help.Margin=new Thickness(0,5,0,0);help.TextWrapping=TextWrapping.Wrap;labels.Children.Add(help);row.Children.Add(labels);LocalizedUi.Automation(control,title);control.HorizontalAlignment=control is CheckBox || control is Button?HorizontalAlignment.Right:HorizontalAlignment.Stretch;control.VerticalAlignment=VerticalAlignment.Center;control.Margin=new Thickness(0);Grid.SetColumn(control,1);row.Children.Add(control);return row;
+            return Ui.SettingRow(title,description,control);
         }
         static void AddGroup(StackPanel parent,System.Func<string> title,StackPanel body)
         {

@@ -4,6 +4,14 @@ namespace DeskPet.Platform.Mac;
 
 internal static class Native
 {
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void ObservationCallback(IntPtr context, int status, IntPtr bytes, int length);
+    [DllImport(Library, EntryPoint="dp_observation_status")] internal static extern int ObservationStatus();
+    [DllImport(Library, EntryPoint="dp_observation_target")] internal static extern IntPtr ObservationTarget();
+    [DllImport(Library, EntryPoint="dp_observation_target_free")] internal static extern void ObservationTargetFree(IntPtr target);
+    [DllImport(Library, EntryPoint="dp_observation_current")] internal static extern int ObservationCurrent([MarshalAs(UnmanagedType.LPUTF8Str)] string target);
+    [DllImport(Library, EntryPoint="dp_observation_begin")] internal static extern int ObservationBegin([MarshalAs(UnmanagedType.LPUTF8Str)] string target, ObservationCallback callback, IntPtr context);
+    [DllImport(Library, EntryPoint="dp_observation_request_access")] internal static extern int ObservationRequestAccess();
+    [DllImport(Library, EntryPoint="dp_observation_self_test")] internal static extern int ObservationSelfTest();
     private const string Library = "DeskPetMac";
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void PermissionCallback(int granted);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void HotKeyCallback();

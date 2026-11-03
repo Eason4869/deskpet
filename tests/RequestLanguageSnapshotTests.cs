@@ -24,16 +24,16 @@ namespace Dafeiyu.Tests
             }
             Check(ReplyLanguagePolicy.Apply("new task").Contains(english.Get("languages.replyInstruction")),"new task uses current language after old scope ends");
             Check(PersonaProfiles.LocalizeDefaultPrompt("user edited persona",chinese)=="user edited persona","snapshot localization preserves custom persona");
-            TextResources.ApplyLanguage(chinese);var api=new CaptureApi();var cfg=new PetSettings{AgentEnabled=false,ReadReplies=false,ShowPredictedMessages=false,SystemPrompt=chinese.Get("personaProfiles.defaults.ebao")};
+            TextResources.ApplyLanguage(chinese);var api=new CaptureApi();var cfg=new PetSettings{AgentEnabled=false,ReadReplies=false,ShowPredictedMessages=false,SystemPrompt=chinese.Get("personaProfiles.defaultsUpdated.ebao")};
             cfg.Text.BaseUrl=cfg.Transcription.BaseUrl="https://example.com/v1";cfg.Text.Model="fixture-model";cfg.Transcription.Model="fixture-asr";cfg.Text.ApiKey=cfg.Transcription.ApiKey="fixture";
             using(var session=new ConversationSession(api,new SilentSpeech(),()=>null)){
                 session.SelectPersona("e-bao");var inFlight=session.SendVoiceAsync(WaveData.EncodePcm(new byte[400]),cfg,"Ebao");
                 Check(!inFlight.IsCompleted,"recognition is genuinely in flight before switch");
                 TextResources.ApplyLanguage(english);api.Transcript.SetResult("recognized fixture");await inFlight;
-                Check(api.Requests.Any(m=>m[0].Content.Contains(chinese.Get("languages.replyInstruction"))&&m[0].Content.Contains(chinese.Get("personaProfiles.defaults.ebao"))),"actual reply after delayed recognition uses original task language and default persona");
+                Check(api.Requests.Any(m=>m[0].Content.Contains(chinese.Get("languages.replyInstruction"))&&m[0].Content.Contains(chinese.Get("personaProfiles.defaultsUpdated.ebao"))),"actual reply after delayed recognition uses original task language and default persona");
                 int prior=api.Requests.Count;await session.SendTextAsync("next task",cfg,"Ebao");
-                Check(api.Requests.Skip(prior).Any(m=>m[0].Content.Contains(english.Get("languages.replyInstruction"))&&m[0].Content.Contains(english.Get("personaProfiles.defaults.ebao"))),"actual subsequent reply uses new language without mutating persona settings");
-                Check(cfg.SystemPrompt==chinese.Get("personaProfiles.defaults.ebao"),"persisted default source is unchanged");
+                Check(api.Requests.Skip(prior).Any(m=>m[0].Content.Contains(english.Get("languages.replyInstruction"))&&m[0].Content.Contains(english.Get("personaProfiles.defaultsUpdated.ebao"))),"actual subsequent reply uses new language without mutating persona settings");
+                Check(cfg.SystemPrompt==chinese.Get("personaProfiles.defaultsUpdated.ebao"),"persisted default source is unchanged");
             }
             TextResources.ApplyLanguage(chinese);
             var sockets=new List<CaptureSocket>();

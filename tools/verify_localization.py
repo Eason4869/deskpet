@@ -197,7 +197,7 @@ def feature_resources(catalog, baseline):
         if any(data.get('schemaVersion')!=1 for data in (protected,contract,provenance)):raise ValueError('unknown evidence schema')
         if set(protected)!={'schemaVersion','baseCommit','catalogs'} or set(contract)!={'schemaVersion','resources'}:raise ValueError('unknown independent contract field')
         if set(provenance)!={'schemaVersion','protectedBaseCommit','resourceCommit','translationMethod','nativeHumanReview','technicalReview','resources','sourceExclusions'}:raise ValueError('unknown or missing provenance field')
-        if provenance['translationMethod']!='assistant-authored' or provenance['nativeHumanReview']!='not_performed' or provenance['technicalReview']!='pending_parent_review':raise ValueError('unsupported review declaration; do not invent review approval')
+        if provenance['translationMethod'] not in ('assistant-authored','mixed-assistant-and-google-translate') or provenance['nativeHumanReview']!='not_performed' or provenance['technicalReview']!='pending_parent_review':raise ValueError('unsupported review declaration; do not invent review approval')
         cache={}
         def git(*args):
             return subprocess.check_output(['git',*args],cwd=ROOT,stderr=subprocess.PIPE)

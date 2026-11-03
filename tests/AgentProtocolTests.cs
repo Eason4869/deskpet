@@ -78,18 +78,18 @@ namespace Dafeiyu.Tests
                     Assert(server.Headers[0].StartsWith(anthropic?"POST /v1/messages ":"POST /v1/chat/completions "),"wrong native endpoint");
                 }
             });
-            Run("streaming arguments assemble across chunks and provisional text moves before running",async delegate
+            Run("streaming arguments assemble across chunks and public text survives tool rounds",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})using(var folder=new WorkspaceFolder())
                 {
                     using(var server=new Fixture(new[]{new Reply(ToolStream(anthropic,"# streaming🌙"),ToolTerminal(anthropic),true),new Reply(FinalStreamStart(anthropic),FinalTerminal(anthropic),true)}))using(var api=new ApiClient())
                     {
-                        string answer="",moved="",thinking="";var events=new List<AgentToolEvent>();
+                        string answer="",beforeTool="",thinking="";var events=new List<AgentToolEvent>();
                         var firstText=new TaskCompletionSource<bool>();var finalText=new TaskCompletionSource<bool>();
-                        Task<string> pending=api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),d=>{answer+=d;if(d.Contains("检查"))firstText.TrySetResult(true);if(d.Contains("最终"))finalText.TrySetResult(true);},d=>thinking+=d,e=>{if(e.Status=="running"){moved+=answer;answer="";}events.Add(e);},true,CancellationToken.None);
+                        Task<string> pending=api.ChatAgentAsync(Config(server,anthropic),Messages(),new AgentWorkspace(folder.Path),d=>{answer+=d;if(d.Contains("检查"))firstText.TrySetResult(true);if(d.Contains("最终"))finalText.TrySetResult(true);},d=>thinking+=d,e=>{if(e.Status=="running")beforeTool=answer;events.Add(e);},true,CancellationToken.None);
                         await Within(firstText.Task);Assert(!pending.IsCompleted,"not streaming before tool terminal");Assert(!File.Exists(System.IO.Path.Combine(folder.Path,"stream.md")),"executed incomplete tool call");server.Release(0);
-                        await Within(finalText.Task);Assert(!pending.IsCompleted,"final answer buffered until stream completed");Equal("先检查。",moved);Assert(answer.StartsWith("最终"),"final answer did not stream");Equal(2,events.Count);Equal("# streaming🌙",File.ReadAllText(System.IO.Path.Combine(folder.Path,"stream.md")));server.Release(1);
-                        Equal("最终答复🌙",await pending);Equal("最终答复🌙",answer);Equal("先推理。",thinking);await Within(server.Done);
+                        await Within(finalText.Task);Assert(!pending.IsCompleted,"final answer buffered until stream completed");Equal("先检查。",beforeTool);Assert(answer.StartsWith("先检查。\n\n最终"),"public round text was overwritten or joined without a paragraph break");Equal(2,events.Count);Equal("# streaming🌙",File.ReadAllText(System.IO.Path.Combine(folder.Path,"stream.md")));server.Release(1);
+                        Equal("最终答复🌙",await pending);Equal("先检查。\n\n最终答复🌙",answer);Equal("先推理。",thinking);await Within(server.Done);
                         string history=server.Bodies[1];Assert(history.Contains("stream.md") && history.Contains(anthropic?"tool_result":"tool_call_id"),"stream native history lost");
                         Assert(history.Contains(anthropic?"signature":"reasoning_content"),"reasoning history lost");
                     }
@@ -266,7 +266,7 @@ namespace Dafeiyu.Tests
             Run("oversized guidance is retained before native request or checkpoint overflow",async delegate
             {
                 foreach(bool anthropic in new[]{false,true})foreach(bool checkpoint in new[]{false,true})using(var folder=new WorkspaceFolder())using(var server=new Fixture(new[]{new Reply(FinalReply(anthropic,"current round complete"),"",true,"application/json")}))using(var api=new ApiClient()){
-                    var data=new byte[4*1024*1024];data[0]=137;data[1]=80;data[2]=78;data[3]=71;var image=ChatAttachment.CreateImage("large.png",data);var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;
+                    var data=new byte[4*1024*1024];data[0]=137;data[1]=80;data[2]=78;data[3]=71;var image=ChatAttachment.CreateImage("large.png",data);var cfg=new PetSettings{AgentEnabled=true,AgentWorkspace=folder.Path,ReadReplies=false,Text=Config(server,anthropic)};cfg.Text.StreamReplies=false;cfg.Text.ImageSupport=CapabilitySupport.Supported;
                     using(var session=new ConversationSession(api,new SilentSpeech(),()=>null,new HistoryStore(Path.Combine(folder.Path,"history"))))using(var queue=new ConversationQueue(session,()=>cfg,()=>"fixture",Path.Combine(folder.Path,"queue.json"))){
                         var work=session.SendTextAsync("original task",cfg,"fixture",attachments:checkpoint?null:new[]{image});await WaitCondition(()=>server.Bodies.Count==1);queue.Hold();await queue.SteerAsync("first large guide",attachments:new[]{image});if(checkpoint)await queue.SteerAsync("second large guide",attachments:new[]{image});server.Release(0);bool blocked=false;
                         try{await work;}catch(ApiException e){blocked=e.Message.Contains(checkpoint?"检查点容量":"单次请求预算");}await session.FlushHistoryAsync();await Within(server.Done);

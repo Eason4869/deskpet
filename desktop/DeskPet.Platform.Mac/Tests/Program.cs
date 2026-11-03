@@ -7,6 +7,12 @@ if (args.Length == 2 && args[0] == "--speech-process-child")
     File.WriteAllText(args[1], Environment.ProcessId.ToString());
     Console.In.ReadToEnd(); Thread.Sleep(30000); return;
 }
+if (args.Contains("--observation-only"))
+{
+    try { DesktopObservationCaptureTests.Run().GetAwaiter().GetResult(); }
+    catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }
+    return;
+}
 var checks = 0;
 void Check(bool ok, string name) { if (!ok) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
 void Reject<T>(Action action, string name) where T : Exception { try { action(); } catch (T) { Check(true, name); return; } throw new Exception(name); }
@@ -53,6 +59,7 @@ finally { Environment.SetEnvironmentVariable("DESKPET_DATA_DIR", old); }
 if (args.Contains("--native-smoke"))
 {
     Check(OperatingSystem.IsMacOS(), "native smoke requires Mac");
+    Check(Native.ObservationSelfTest() == 1, "native observation guards and ownership ABI without capture or prompts");
     Check(Enum.IsDefined(MacServices.MicrophoneAccess), "microphone status native ABI");
     Check(MacServices.GetIdleTime() >= TimeSpan.Zero, "native idle query");
     Check(Native.SessionInteractive() is 0 or 1, "native session lifecycle ABI");
@@ -76,3 +83,4 @@ if (args.Contains("--native-smoke"))
 Console.WriteLine($"{checks} platform checks passed");
 CaptureLifecycleTests.Run();
 SpeechProcessTests.Run().GetAwaiter().GetResult();
+try { DesktopObservationCaptureTests.Run().GetAwaiter().GetResult(); } catch (Exception error) { Console.Error.WriteLine(error); Environment.ExitCode = 1; }

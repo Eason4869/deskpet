@@ -62,6 +62,7 @@ namespace Dafeiyu.Tests
             try{
                 Check(typeof(PetWindow).GetMethod("SaveSettingsAsync",Members)!=null,"explicit configuration exposes an awaited durable save");
                 var cfg=new PetSettings{UiLanguage="zh_CN",ThemeMode="dark",AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,SaveChatHistory=false,OnboardingState="completed",Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:1/v1",Model="offline-model"}};
+                if(args.Contains("--image-picker")){cfg.EnsureTextProviders();var candidate=cfg.TextProviders[0];candidate.Models.Add("vision");candidate.ModelCapabilities["vision"]=new ModelCapabilitySetting{Images=CapabilitySupport.Supported};}
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 Check(cfg.Copy().ThemeMode==cfg.ThemeMode,"detached settings copy preserves theme");
                 var store=new SettingsStore(path);store.Save(cfg);pet=new PetWindow(null,cfg,store,null);pet.Show();window=new SettingsWindow(pet);window.Show();window.SelectAiSection(0);Pump();
@@ -76,7 +77,39 @@ namespace Dafeiyu.Tests
                     workHost.Close();Console.WriteLine("Project UI saves: "+checks+" passed");return 0;
                 }
                 if(args.Length>0&&args[0].StartsWith("--review-")){ReviewRegression(args[0],pet,window,cfg,store,root,entered,release);Console.WriteLine("Review regression: "+checks+" passed");return 0;}
+                if(args.Contains("--image-description-screenshots")){
+                    string capture=Path.GetFullPath(Path.Combine("work","image-description-wpf"));Directory.CreateDirectory(capture);
+                    foreach(string mode in new[]{"light","dark"}){ThemeManager.Apply(mode);foreach(int width in new[]{1000,650}){window.Width=width;Pump();var bitmap=new System.Windows.Media.Imaging.RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,System.Windows.Media.PixelFormats.Pbgra32);bitmap.Render(window);var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));using(var file=File.Create(Path.Combine(capture,mode+"-"+width+".png")))encoder.Save(file);}}
+                    Console.WriteLine("Image description screenshots: "+capture);return 0;
+                }
                 var panel=(ConnectionSettingsPanel)Field(window.Page,"connections");
+                if(args.Contains("--owner-draft")){
+                    var session=pet.Conversation;string personaA=session.PersonaId;string personaB="second-persona";var originalGuard=pet.ProjectStore.BeforeSave;
+                    pet.ProjectStore.BeforeSave=_=>{throw new IOException("fixture");};try{pet.SetConversationImageDescription(session,new ImageDescriptionOverride{Mode="selected",Model=new ModelReference{ProviderId="a-provider",ModelId="a-model"}});}catch(IOException){}finally{pet.ProjectStore.BeforeSave=originalGuard;}
+                    session.SelectPersona(personaB);pet.SetConversationImageDescription(session,new ImageDescriptionOverride{Mode="disabled"});Check(pet.ConversationImageDescriptionDraft(session).Mode=="disabled","persona B sees its own override after persona A save fails");var clearB=session.ClearWithCompletion();Wait(clearB);Check(clearB.Result,"persona B history clear succeeds");pet.ClearImageDescriptionAfterHistory(session,null,personaB);Check(pet.ConversationSettings(session).ImageDescriptionOverride==null,"persona B cleanup clears only B override");pet.SetConversationImageDescription(session,new ImageDescriptionOverride{Mode="disabled"});
+                    session.SelectPersona(personaA);var a=pet.ConversationImageDescriptionDraft(session);Check(a!=null&&a.Mode=="selected"&&a.Model.ProviderId=="a-provider","persona A retains failed selection after B edit");pet.SetConversationImageDescription(session,a);Check(pet.ConversationSettings(session).ImageDescriptionOverride.Model.ProviderId=="a-provider","persona A retry persists its selection");
+                    session.SelectPersona(personaB);Check(pet.ConversationSettings(session).ImageDescriptionOverride.Mode=="disabled","persona B durable selection survives A retry");pet.SetConversationImageDescription(session,null,personaA,new ImageDescriptionOverride{Mode="selected",Model=new ModelReference{ProviderId="captured",ModelId="vision"}});Check(pet.ConversationSettings(session).ImageDescriptionOverride.Mode=="disabled"&&pet.ProjectStore.Load().LegacyImageDescriptionOverrides[personaA].Model.ProviderId=="captured","captured menu owner stays with persona A after root session switches to B");Console.WriteLine("Image selection owner: "+checks+" passed");return 0;
+                }
+
+                if(args.Contains("--image-picker")){
+                    window.Page.SelectCompanionSection(2);Pump();var selector=(ComboBox)window.FindControl("ObservationImageDescriptionModel");
+                    store.BeforeExactSave=()=>{throw new IOException("fixture");};selector.SelectedItem=selector.Items.OfType<ComboBoxItem>().First(i=>i.Tag is ModelReference);Until(()=>selector.IsEnabled);
+                    Check(cfg.ImageDescriptionModel==null && ((ComboBoxItem)selector.SelectedItem).Tag==null,"failed shared fallback save rolls back selection without publishing");store.BeforeExactSave=null;
+                    cfg.TextProviders[0].Name="newer-provider";store.Save(cfg);selector.SelectedItem=selector.Items.OfType<ComboBoxItem>().First(i=>i.Tag is ModelReference);Until(()=>selector.IsEnabled && cfg.ImageDescriptionModel!=null);
+                    Check(cfg.ImageDescriptionModel.ModelId=="vision" && store.Load().ImageDescriptionModel.ModelId=="vision" && cfg.Text.Model=="offline-model" && store.Load().TextProviders[0].Name=="newer-provider","shared fallback persists without switching current model or overwriting newer provider");
+                    TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));Pump();Check(((ModelReference)((ComboBoxItem)selector.SelectedItem).Tag).ModelId=="vision","live language change retains shared fallback selection");TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));Pump();
+                    pet.SetConversationImageDescription(pet.Conversation,new ImageDescriptionOverride{Mode="disabled"});var cleared=pet.Conversation.ClearWithCompletion();Wait(cleared);Check(cleared.Result,"conversation history clear completes");pet.ClearImageDescriptionAfterHistory(pet.Conversation,null,pet.Conversation.PersonaId);
+                    Check(pet.ConversationSettings(pet.Conversation).ImageDescriptionOverride==null && pet.ProjectStore.Load().LegacyImageDescriptionOverrides.Count==0 && cfg.ImageDescriptionModel.ModelId=="vision","conversation clear removes only its override and retains global selection");Console.WriteLine("Image picker: "+checks+" passed");return 0;
+                }
+
+                Check(window.FindControl("ImageDescriptionModel")==null,"language model settings no longer own the shared image description selector");
+                pet.SetConversationImageDescription(pet.Conversation,new ImageDescriptionOverride{Mode="disabled"});
+                Check(pet.ConversationSettings(pet.Conversation).ImageDescriptionOverride.Mode=="disabled"&&pet.ProjectStore.Load().LegacyImageDescriptionOverrides[pet.Conversation.PersonaId].Mode=="disabled","root conversation selection is durable and used for the next request");
+                var external=pet.ProjectStore.Load();external.LegacyImageDescriptionOverrides["another-persona"]=new ImageDescriptionOverride{Mode="disabled"};new ProjectCatalogStore(Path.Combine(root,"projects.json")).Save(external);pet.ProjectStore.Save(pet.Projects);Check(pet.ProjectStore.Load().LegacyImageDescriptionOverrides.ContainsKey("another-persona"),"ordinary catalog save preserves another host image selection");
+                var beforeCatalogSave=pet.ProjectStore.BeforeSave;pet.ProjectStore.BeforeSave=_=>{throw new IOException("fixture");};bool rejected=false;try{pet.SetConversationImageDescription(pet.Conversation,new ImageDescriptionOverride{Mode="selected",Model=new ModelReference{ProviderId="missing",ModelId="vision"}});}catch(IOException){rejected=true;}finally{pet.ProjectStore.BeforeSave=beforeCatalogSave;}
+                Check(rejected&&pet.ConversationSettings(pet.Conversation).ImageDescriptionOverride.Mode=="disabled"&&pet.ProjectStore.Load().LegacyImageDescriptionOverrides[pet.Conversation.PersonaId].Mode=="disabled"&&pet.ConversationImageDescriptionDraft(pet.Conversation).Mode=="selected","failed selection preserves picker draft without publishing effective or durable change");
+                pet.SetConversationImageDescription(pet.Conversation,null);
+
                 var name=(TextBox)window.FindControl("TextProviderName");name.Text="async-first";
                 int writes=0;store.BeforeExactSave=()=>{Interlocked.Increment(ref writes);entered.Set();if(!release.Wait(10000))throw new IOException("fixture release timeout");};
                 var save=(Button)window.FindControl("SaveConnections");save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Until(()=>entered.IsSet);

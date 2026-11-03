@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Avalonia;
@@ -45,6 +45,13 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Any(arg=>arg.StartsWith("--proactive-"))){
+        try{
+            int count=args.Contains("--proactive-host-only")?ProactiveConversationChecks.RunHost():args.Contains("--proactive-admission-only")?ProactiveConversationChecks.RunAdmission(Path.Combine(directory,"proactive-admission")):args.Contains("--proactive-reply-only")?ProactiveConversationChecks.RunReply(Path.Combine(directory,"proactive-reply")):args.Contains("--proactive-settings-only")?ProactiveConversationChecks.RunSettings(Path.Combine(directory,"proactive-settings")):throw new ArgumentException("Unknown proactive fixture");
+            Console.WriteLine("Proactive "+args.Single(arg=>arg.StartsWith("--proactive-"))+": "+count+" passed");
+        }catch(Exception error){Console.Error.WriteLine(error);Environment.ExitCode=1;}
+        return;
+    }
     if(args.Contains("--preparation-ui")){Console.WriteLine("PreparationUiChecks: "+PreparationUiChecks.Run(Path.Combine(directory,"preparation-ui"))+" passed");return;}
     if(args.Contains("--settings-lazy")){Console.WriteLine("SettingsLazyChecks: "+SettingsLazyChecks.Run(Path.Combine(directory,"settings-lazy"))+" passed");return;}
     if(args.Any(a=>a.StartsWith("--profile-fresh="))){Console.WriteLine("ProfileFresh: "+ProfileArtworkChecks.Run(Path.Combine(directory,"profile-fresh"),args.Single(a=>a.StartsWith("--profile-fresh=")).Split('=')[1],freshOnly:true)+" passed");return;}
@@ -134,6 +141,7 @@ try
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
@@ -580,7 +588,8 @@ try
     Check(modelSelect.RenderTransform is TranslateTransform { Y: 4 }, "model dropdown has the requested final four pixel vertical adjustment");
     var primaryAction = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "PrimaryChatAction");
     var micAction = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatDictation");
-    Check(toolbar.ColumnDefinitions.Count == 4 && Grid.GetColumn(modeButton) == 1 && Grid.GetColumn(modelSelect) == 2 && toolbar.ColumnDefinitions[2].Width.IsStar && modelSelect.MinWidth == 0 && primaryAction.Width == 32 && micAction.Width == 32, "mode occupies a fixed left slot while model shrinks and right actions stay at 32 pixels");
+    var modelSlot = toolbar.Children.Single(c => ReferenceEquals(c, modelSelect) || c.GetLogicalDescendants().Contains(modelSelect));
+    Check(toolbar.ColumnDefinitions.Count == 4 && Grid.GetColumn(modeButton) == 1 && Grid.GetColumn(modelSlot) == 2 && toolbar.ColumnDefinitions[2].Width.IsStar && modelSelect.MinWidth == 0 && primaryAction.Width == 32 && micAction.Width == 32, "mode occupies a fixed left slot while model shrinks and right actions stay at 32 pixels");
     var attachmentButton = composerChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "AddAttachment");
     var attachmentMenu = attachmentButton.ContextMenu!.Items.OfType<MenuItem>().ToList();
     Check(attachmentMenu.Select(i => i.Name).Where(n => n != null).SequenceEqual(new[] { "AttachmentFilesMenu", "AttachApplicationSnapshot", "SetAgentGoal", "AgentPlanMode" }), "add menu exposes file/folder, application snapshot, goal and plan mode actions");
@@ -795,7 +804,8 @@ try
 finally
 {
     // Only remove this run's newly created GUID directory.
-    if (Directory.Exists(directory)) Directory.Delete(directory, true);
+    try{if (Directory.Exists(directory)) Directory.Delete(directory, true);}
+    catch(IOException error) when(Environment.ExitCode!=0&&args.Any(arg=>arg.StartsWith("--proactive-"))){Console.Error.WriteLine("Failed fixture retained for diagnostics: "+directory+" ("+error.GetType().Name+")");}
 }
 
 int CompanionLifecycleSmoke(string root)

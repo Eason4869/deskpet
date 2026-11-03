@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +13,12 @@ namespace Dafeiyu.Tests
         static int contractChecks;
         public static int Main(string[] args)
         {
+            if(args.Length==1&&args[0]=="--desktop-observation-policy-only")return DesktopObservationPolicyTests.Main() | DesktopObservationServiceTests.Main();
+            if(args.Length==1&&args[0]=="--greeting-regression-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return GreetingTests.Main() | AiGreetingTests.Main() | HolidayGreetingTests.Main() | RequestLanguageSnapshotTests.Main();}
+            if(args.Length==1&&args[0]=="--desktop-observation-only")return DesktopObservationCaptureTests.Main(new string[0]);
+            if(args.Length==1&&args[0]=="--proactive-conversation-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ProactiveConversationTests.Main();}
+            if(args.Length==1&&args[0]=="--image-input-router-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageInputRouterTests.Main(new string[0]);}
+            if(args.Length==1&&args[0]=="--image-model-resolver-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ImageModelResolverTests.Main();}
             if(args.Length==1&&args[0]=="--official-maintenance-only")return OfficialCompanionTests.MaintenanceOnly();
             if(args.Length==1&&args[0]=="--official-optimization-only")return OfficialCompanionTests.OptimizationOnly();
             if(args.Length==1&&args[0]=="--dev3-features-only")using(var protector=new TestProtector()){SecretProtection.Configure(protector);return ComposerDraftStoreTests.Main() | SeasonalKeepsakeTests.Main();}
@@ -71,7 +77,7 @@ namespace Dafeiyu.Tests
             if(args.Length==1 && args[0]=="--agent-job-log-only")return AgentJobLogTests.RunAll();
             string report=null;
             if(args.Length!=0) {
-                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--report-json <path> | --relationship-integration-only | --relationships-only | --agent-jobs-only | --agent-job-integration-only | --agent-jobs-native-only | --agent-job-tools-only | --agent-job-session-only | --agent-job-contract-only | --agent-job-store-only | --agent-job-manager-only | --agent-job-lifecycle-only | --agent-job-view-state-only | --agent-job-log-only | --agent-jobs-resources-only | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
+                if(args.Length!=2 || args[0]!="--report-json"){Console.Error.WriteLine("Usage: DeskPet.Tests [--image-model-resolver-only | --report-json <path> | --relationship-integration-only | --relationships-only | --agent-jobs-only | --agent-job-integration-only | --agent-jobs-native-only | --agent-job-tools-only | --agent-job-session-only | --agent-job-contract-only | --agent-job-store-only | --agent-job-manager-only | --agent-job-lifecycle-only | --agent-job-view-state-only | --agent-job-log-only | --agent-jobs-resources-only | --official-companion-only | --official-identity-only | --official-legacy-only | --holiday-source-only | --image-task-center-only | --image-management-only | --image-gallery-export-only | --image-group-only | --image-motion-only | --image-integration-only | --image-tasks-only | --image-task-store-only | --history-only | --image-backend-only | --image-layout-only | --image-protocols-only]");return 2;}
                 report=Path.GetFullPath(args[1]);
             }
             var original=Console.Out;using(var captured=new StringWriter())
@@ -140,7 +146,7 @@ namespace Dafeiyu.Tests
                     SecretProtection.Configure(protector);
                     Secrets(); JsonShapes(); Rules(); Personas(); CorruptQueue(); PortableBoundary();
                     int result=0;
-                    foreach(var test in new Func<int>[] { ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
+                    foreach(var test in new Func<int>[] { ()=>ImageInputRouterTests.Main(new string[0]), ImageModelResolverTests.Main, ()=>CacheMaintenanceTests.Main(new string[0]), DataManagementTests.Main, HistoryMaintenanceTests.Main, DataMaintenanceAdmissionTests.Main, RelationshipFeedbackTests.Main, RelationshipPresentationTests.Main, RelationshipIntegrationTests.Main, RelationshipIdentityTests.Main, RelationshipRulesTests.Main, RelationshipStoreTests.Main, SpeechLanguagePolicyTests.RunAll, SystemLanguageTests.RunAll, LanguagePackTests.RunAll, ReplyLanguagePolicyTests.RunAll, AgentJobToolTests.Main, AgentJobManagerTests.Main, AgentJobLifecycleTests.Main, AgentJobViewStateTests.Main, AgentJobLogTests.RunAll, AgentJobStoreTests.Main, AgentJobContractTests.Main, LocalizationTests.Main, OfficialCompanionLegacyTests.Main, OfficialCompanionIdentityTests.Main, HolidaySourceBindingTests.Main, OfficialCompanionTests.Main, HolidayStateTests.Main, HolidayCalendarTests.Main, HolidayRuntimeTests.Main, HolidayHoverTests.Main, HolidayAssetTests.Main, HolidayGreetingTests.Main, McpConnectionTests.PortableRegression,ApiTests.Main, StreamingTests.Main, ProxyTests.Main,
                         ConversationTests.Main, HistoryTests.Main, ConversationWorkspaceManagerTests.Main, ImageTaskCenterLifecycleTests.Main, ImageGenerationTaskStoreTests.Main, ImageGenerationIntegrationTests.Main, ImageGenerationTaskManagerTests.Main,
                         ImageGenerationMotionTests.Main, GeneratedImageGroupTests.Main, ImageGalleryManagementTests.Main, ImageGalleryExportTests.Main,
                         QueueTests.Main, DictationTests.Main, ImageGenerationBackendTests.Main, ImageGalleryLayoutTests.Main, ImageProviderProtocolTests.Main,

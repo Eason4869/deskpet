@@ -9,6 +9,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     private readonly DesktopController owner;
     private readonly string kind;
     private readonly ServiceProviderSettings view;
+    private string providerBaseline;
     private readonly ComboBox providers = new() { MinWidth = 180, MaxWidth = 280, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
     private readonly TextBox name = Ui.Input(), address = Ui.Input(), key = Ui.Input(), model = Ui.Input(), alias = Ui.Input(), proxy = Ui.Input();
     private readonly ComboBox protocol = new() { ItemsSource = new[] { "auto", "openai", "anthropic", "mimo", "gemini-live" } };
@@ -18,12 +19,13 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     private readonly TextBlock notice = Ui.Text("");
     private CancellationTokenSource? fetch;
     private TextProviderSettings? selected;
+    private ComboBox? descriptionModel;private ModelReference? descriptionDraft,descriptionBaseline;private bool descriptionLoading;
     private bool loading;
     private int revision;
     public ProviderEditor(DesktopController controller, string service)
     {
         owner = controller; kind = service; Spacing = 12;
-        view = owner.Settings.ProviderSnapshot(kind);
+        view = owner.Settings.ProviderSnapshot(kind);providerBaseline=SerializeProvider(view);
         key.PasswordChar = '●';
         var presets = LocalizedUi.With(new ComboBox { ItemsSource = ServicePresets.For(kind), PlaceholderText = TextResources.Get("providerEditor.providerEditor.placeholderText") },"PlaceholderText",()=>(TextResources.Get("providerEditor.providerEditor.placeholderText")));
         presets.SelectionChanged += (_, _) =>
@@ -42,6 +44,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
             if (loading || selected == null || models.SelectedItem is not string id) return;
             model.Text = id; alias.Text = selected.ModelDisplayNames.GetValueOrDefault(id, "");
         };
+        if(kind=="text")CreateDescriptionPicker();
         Children.Add(SettingsVisual.Wrap(providers, LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text")), AddProvider), LocalizedUi.Button(()=>(TextResources.Get("common.delete")), RemoveProvider)));
         Children.Add(LocalizedUi.Text(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeA"))));
         Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeB")), key));
@@ -50,8 +53,27 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         Children.Add(SettingsVisual.Wrap(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeB")), AddModel), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeC")), RemoveModel)));
         Children.Add(SettingsVisual.Wrap(LocalizedUi.AsyncButton(()=>(TextResources.Get("providerEditor.providerEditor.asyncButton")), FetchAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeD")), CancelFetch)));
         Children.Add(new ScrollViewer { Content = found, MaxHeight = 220 }); Children.Add(notice);
-        Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeE")), Save));
-        ReloadProviders(view.ActiveProviderId);
+        var save=LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeE")), Save);save.Name=kind=="text"?"SaveTextProvider":"Save"+kind+"Provider";Children.Add(save);
+        ReloadProviders(view.ActiveProviderId);RefreshDescriptionPicker();
+    }
+    private static string SerializeProvider(ServiceProviderSettings value)
+    {using var stream=new System.IO.MemoryStream();new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(ServiceProviderSettings)).WriteObject(stream,value);return Convert.ToBase64String(stream.ToArray());}
+    private static bool SameReference(ModelReference? a,ModelReference? b)=>a==null?b==null:b!=null&&a.ProviderId==b.ProviderId&&a.ModelId==b.ModelId;
+    private void CreateDescriptionPicker()
+    {
+        descriptionDraft=owner.Settings.ImageDescriptionModel?.Copy();descriptionBaseline=descriptionDraft?.Copy();
+        var heading=LocalizedUi.Text(()=>TextResources.Get("imageDescription.settings.title"),16);var help=SettingsVisual.Text(()=>TextResources.Get("imageDescription.settings.help"),12,true);help.TextWrapping=Avalonia.Media.TextWrapping.Wrap;
+        descriptionModel=new ComboBox{Name="ImageDescriptionModel",HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch};
+        descriptionModel.SelectionChanged+=(_,_)=>{if(descriptionLoading)return;descriptionDraft=(descriptionModel.SelectedItem as ComboBoxItem)?.Tag is ModelReference value?value.Copy():null;};
+        Children.Add(heading);Children.Add(help);Children.Add(descriptionModel);
+    }
+    private void RefreshDescriptionPicker()
+    {
+        if(descriptionModel==null)return;var cfg=owner.Settings.Copy();cfg.TextProviders=view.Providers.Select(p=>p.Copy()).ToList();var candidates=ImageModelResolver.Candidates(cfg);descriptionLoading=true;
+        try{descriptionModel.Items.Clear();var none=LocalizedUi.With(new ComboBoxItem(),"Content",()=>TextResources.Get("imageDescription.none"));descriptionModel.Items.Add(none);ComboBoxItem? choice=descriptionDraft==null?none:null;
+            foreach(var reference in candidates){var provider=view.Providers.FirstOrDefault(p=>p.Id==reference.ProviderId);if(provider==null)continue;var label=provider.Name+" · "+provider.DisplayName(reference.ModelId);var item=new ComboBoxItem{Tag=reference,Content=new TextBlock{Text=label,TextTrimming=Avalonia.Media.TextTrimming.CharacterEllipsis}};ToolTip.SetTip(item,label+"\n"+reference.ModelId);descriptionModel.Items.Add(item);if(SameReference(reference,descriptionDraft))choice=item;}
+            if(choice==null){choice=LocalizedUi.With(new ComboBoxItem{Tag=descriptionDraft},"Content",()=>TextResources.Get("imageDescription.invalid"));ToolTip.SetTip(choice,descriptionDraft!.ProviderId+" / "+descriptionDraft.ModelId);descriptionModel.Items.Add(choice);}descriptionModel.SelectedItem=choice;
+        }finally{descriptionLoading=false;}
     }
     private void ReloadProviders(string id)
     {
@@ -88,12 +110,12 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     }
     private void AddModel()
     {
-        try { Capture(); LoadFields(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.addModel.notice"))); } catch (Exception e) { owner.Error(e); }
+        try { Capture(); LoadFields(); RefreshDescriptionPicker(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.addModel.notice"))); } catch (Exception e) { owner.Error(e); }
     }
     private void RemoveModel()
     {
         if (selected == null || models.SelectedItem is not string id) return;
-        selected.Models.Remove(id); selected.ModelDisplayNames.Remove(id); selected.Connection.Model = selected.Models.FirstOrDefault() ?? ""; LoadFields();
+        selected.Models.Remove(id); selected.ModelDisplayNames.Remove(id); selected.Connection.Model = selected.Models.FirstOrDefault() ?? ""; LoadFields(); RefreshDescriptionPicker();
     }
     private void CancelFetch() { revision++; fetch?.Cancel(); found.Children.Clear(); notice.Text = ""; }
     private async Task FetchAsync()
@@ -106,6 +128,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         {
             var result = await owner.Api.ListModelsAsync(snapshot, cancellation.Token);
             if (cancellation.IsCancellationRequested || tokenRevision != revision || selected.Id != providerId) return;
+            if(kind=="text")owner.RefreshObservationModels(snapshot);
             var checks = new List<CheckBox>();
             foreach (var id in result.Take(500)) { var check = new CheckBox { Content = id, Tag = id, IsChecked = selected.Models.Contains(id) }; checks.Add(check); found.Children.Add(check); }
             found.Children.Add(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.fetchAsync.text")), () =>
@@ -126,8 +149,8 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
             if (owner.Session.IsBusy || owner.Live.IsActive) throw new InvalidOperationException(TextResources.Get("providerEditor.save.text"));
             Capture(); if (selected == null) return;
             view.ActiveProviderId = selected.Id;
-            owner.Settings.ApplyProviders(kind, view.Providers.Select(p => p.Copy()).ToList(), selected.Id, selected.Connection.Copy());
-            owner.Save(); LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.save.notice")));
+            var submitted=descriptionDraft?.Copy();bool imageChanged=descriptionModel!=null&&!SameReference(descriptionDraft,descriptionBaseline);
+            bool providerChanged=SerializeProvider(view)!=providerBaseline;owner.SaveProviderDraft(kind,view,submitted,imageChanged,providerChanged);providerBaseline=SerializeProvider(view);if(imageChanged)descriptionBaseline=submitted; LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.save.notice")));
         }
         catch (Exception e) { owner.Error(e); }
     }

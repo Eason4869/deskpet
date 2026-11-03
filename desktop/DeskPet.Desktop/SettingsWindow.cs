@@ -28,6 +28,7 @@ internal sealed class SettingsWindow : Window
     private Action? refreshVolume;
     private bool refreshingPreferences;
     private HolidayOutfitPanel? holidayOutfits;
+    private DesktopObservationSettingsPanel? observation;
     public SettingsWindow(DesktopController controller, SpriteAssets? avatarSource = null)
     {
         avatarAssets = avatarSource ?? new SpriteAssets();
@@ -51,7 +52,7 @@ internal sealed class SettingsWindow : Window
         });
         foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { Add(item.Item1,item.Item2,()=>{var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor);return editor;}); }
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",()=>new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage);
-        Add(()=>TextResources.Get("im.title"),"model",()=>imChannels=new ImChannelSettingsView(owner));
+        Add(()=>TextResources.Get("im.title"),"chat",()=>imChannels=new ImChannelSettingsView(owner));
         navigation.ItemsSource=entries;
         navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=GetPage(index);if(index==7)refreshVoice?.Invoke(); };
         var sideTitle=SettingsVisual.Text(()=>Title??"",21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);
@@ -60,7 +61,7 @@ internal sealed class SettingsWindow : Window
         var layout=new Grid{ColumnDefinitions=new ColumnDefinitions("180,*")};layout.Children.Add(sidebar);Grid.SetColumn(pageHost,1);layout.Children.Add(pageHost);Content=layout;
         SizeChanged+=(_,_)=>{layout.ColumnDefinitions[0].Width=new GridLength(Bounds.Width<680?160:180);foreach(var page in pages.OfType<ScrollViewer>())if(page.Content is Border border)border.Padding=new Thickness(Bounds.Width<680?14:26,24);};
         navigation.SelectedIndex=0;
-        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider?.Dispose(); imChannels?.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose(); };
+        Closed += (_, _) => { foreach (var provider in providers) provider.Dispose(); imageProvider?.Dispose(); imChannels?.Dispose(); avatarAssets.Dispose(); holidayOutfits?.Dispose();observation?.Dispose(); };
     }
     private Control GetPage(int index) => pages[index] ??= WrapPage(pageFactories[index]());
     private Control WrapPage(Control content) => new ScrollViewer { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = new Border { Padding = new Thickness(Bounds.Width>0&&Bounds.Width<680?14:26,24), Child = content } };
@@ -195,6 +196,7 @@ internal sealed class SettingsWindow : Window
         panel.Children.Add(LocalizedUi.Check(()=>(TextResources.Get("settingsWindow.behavior.check.alternativeK")), s.AiGreetingEnabled, v => { s.AiGreetingEnabled = v; owner.Save(); owner.Pet.ConfigureGreetings(); }));
         panel.Children.Add(LocalizedUi.Field(()=>(TextResources.Get("settingsWindow.behavior.field.alternativeB")), min)); panel.Children.Add(LocalizedUi.Field(()=>(TextResources.Get("settingsWindow.behavior.field.alternativeC")), max));
         panel.Children.Add(LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.behavior.text.alternativeJ")), () => { s.GreetingMinMinutes = (int)(min.Value ?? 30); s.GreetingMaxMinutes = Math.Max(s.GreetingMinMinutes, (int)(max.Value ?? 60)); owner.Save(); owner.Pet.ConfigureGreetings(); }));
+        observation?.Dispose();observation=new DesktopObservationSettingsPanel(owner,this);panel.Children.Add(observation);
         var data=LocalizedUi.Button(()=>(TextResources.Get("dataManagement.title")),()=>SelectSection("storage"));data.Name="GeneralDataManagement";panel.Children.Add(data);
         return panel;
     }

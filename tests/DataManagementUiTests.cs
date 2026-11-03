@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -75,11 +75,13 @@ namespace Dafeiyu.Tests
                     Click(Find<Button>(d,"ConfirmDataAction"));Check(!Operation(d).IsCompleted&&!Find<Button>(d,"ConfirmDataAction").IsEnabled&&!Find<Button>(d,"CancelDataAction").IsEnabled,"maintenance disables repeated action and cancel while draining");
                     d.Close();pet.Close();Check(d.IsVisible&&pet.IsVisible,"busy maintenance keeps confirmation and pet alive during close attempts");held.SetResult(0);Wait(Operation(d));
                 });
+                cfg.ImageDescriptionModel=new ModelReference{ProviderId="keep",ModelId="vision"};pet.SetConversationImageDescription(pet.Conversation,new ImageDescriptionOverride{Mode="disabled"});
                 string history=Path.Combine(root,"history");Directory.CreateDirectory(history);File.WriteAllText(Path.Combine(history,"broken.history"),"corrupt");
-                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text.Contains(TextResources.Format("dataManagement.historyPartial",0,1)),"partial clearing reports actual retained failure");CaptureStates(d,root,"clear-partial",true);});File.Delete(Path.Combine(history,"broken.history"));
+                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text.Contains(TextResources.Format("dataManagement.historyPartial",0,1)),"partial clearing reports actual retained failure");CaptureStates(d,root,"clear-partial",true);});File.Delete(Path.Combine(history,"broken.history"));Check(pet.ConversationSettings(pet.Conversation).ImageDescriptionOverride.Mode=="disabled","partial history clear preserves effective image override");
                 pet.Conversation.InputDraft="unsent draft";pet.Conversation.History.Commit("owned private text","owned reply");Wait(pet.Conversation.SaveHistoryForCloseAsync());
                 var chat=new ChatWindow(pet);chat.Show();Pump();var editor=Find<MarkdownEditor>(chat,"MessageInput");editor.Text="unsent draft";var composer=Find<ConversationComposer>(chat,"");composer.AddAttachments(new[]{ChatAttachment.CreateImage("draft.png",Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII="))});
-                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text==TextResources.Format("dataManagement.historyComplete",2),"complete clearing reports actual removed files: "+Find<TextBlock>(d,"DataActionStatus").Text);Capture(d,Path.Combine(root,"clear-success.png"));});
+                Dialog(clear,d=>{Click(Find<Button>(d,"ConfirmDataAction"));Wait(Operation(d));Check(Find<TextBlock>(d,"DataActionStatus").Text==TextResources.Format("dataManagement.historyComplete",1),"complete clearing reports actual removed files: "+Find<TextBlock>(d,"DataActionStatus").Text);Capture(d,Path.Combine(root,"clear-success.png"));});
+                Check(pet.ConversationSettings(pet.Conversation).ImageDescriptionOverride==null&&pet.ProjectStore.Load().LegacyImageDescriptionOverrides.Count==0&&cfg.ImageDescriptionModel.ModelId=="vision","successful history clear removes durable and active override while preserving global model");
                 Check(pet.Conversation.InputDraft=="unsent draft","clear preserves composer draft");
                 Check(editor.Text=="unsent draft"&&composer.HasEdit,"actual WPF main composer draft and draft attachment survive clearing");chat.Close();
                 Wait(pet.Conversation.SaveHistoryForCloseAsync());Check(new HistoryStore(history).Load(pet.Conversation.PersonaId).Count==0,"actual UI clear and close-save never resurrect sent history");
@@ -93,7 +95,7 @@ namespace Dafeiyu.Tests
                 volume.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(volume),0,Key.Right){RoutedEvent=Keyboard.KeyDownEvent});
                 var volumeSave=pet.FlushPreferenceSavesAsync();Wait(volumeSave);Check(volumeSave.Result,"keyboard volume change flush succeeds");
                 Check(volume.Value==55&&cfg.Volume==55&&SpeechVolume(pet)==55&&new SettingsStore(Path.Combine(root,"settings.json")).Load().Volume==55,"keyboard volume increment starts from reset value and persists runtime value");page.SelectGeneralSection(2);Pump();
-                page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingMinMinutes")).Text=="30"&&((TextBox)page.FindControl("GreetingMaxMinutes")).Text=="60","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
+                page.SelectCompanionSection(2);Pump();Check(((TextBox)page.FindControl("GreetingIntervalMinutes")).Text=="45"&&((TextBox)page.FindControl("GreetingJitterMinutes")).Text=="15","reset refreshes greeting editors so old intervals cannot be saved again");page.SelectGeneralSection(2);Pump();
                 page.SelectWorkSettings();Pump();Check(workGoal.Text=="unsaved project goal"&&((CheckBox)page.FindControl("PlainTextEditor")).IsChecked==false,"reset refreshes chat preferences while preserving unrelated work draft");page.SelectGeneralSection(2);Pump();
                 using(var locked=new FileStream(Path.Combine(root,"settings.json"),FileMode.Open,FileAccess.Read,FileShare.Read))Dialog(reset,d=>{
                     Click(Find<Button>(d,"ConfirmDataAction"));cfg.X=444;pet.SaveSettings();Check(!Operation(d).IsCompleted,"arriving WPF position autosave does not block UI during held commit");locked.Dispose();Wait(Operation(d));

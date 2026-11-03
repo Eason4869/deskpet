@@ -24,7 +24,24 @@ namespace Dafeiyu.Tests
             Check(provider.Capabilities("same").Tools==CapabilitySupport.Supported,"per-model capability retained");provider.Connection.BaseUrl="https://b.invalid/v1";provider.Normalize();Check(provider.Capabilities("same").Tools==CapabilitySupport.Unknown && provider.ContextCapacity("same")==0,"changing endpoint clears stale capability and capacity metadata");
             settings.Text.ToolSupport=CapabilitySupport.Unknown;settings.Text.MetadataToolSupport=CapabilitySupport.Unsupported;Check(!AgentCapabilityResolver.Resolve(settings,null).SupportsTools&&AgentCapabilityResolver.Resolve(settings,null).ToolSource=="server-metadata","explicit server metadata overrides legacy guess");settings.Text.ToolSupport=CapabilitySupport.Supported;Check(AgentCapabilityResolver.Resolve(settings,null).SupportsTools,"user override takes precedence over server metadata");
             var metadata=ModelCapabilitySetting.Read(new Dictionary<string,object>{{"supports_tools",false},{"capabilities",new Dictionary<string,object>{{"vision",true}}}});Check(metadata.Tools==CapabilitySupport.Unsupported&&metadata.Images==CapabilitySupport.Supported,"only explicit typed server capability fields are parsed");Check(ModelCapabilitySetting.Read(new Dictionary<string,object>{{"supports_tools","true"},{"id","vision-model"}}).Tools==CapabilitySupport.Unknown,"strings and model names do not manufacture metadata");
+            InputModalities();
             Console.WriteLine("Agent capability tests: "+count+" passed");return 0;
         }catch(Exception e){Console.Error.WriteLine(e);return 1;}}
+        static CapabilitySupport Images(string json)
+        {return ModelCapabilitySetting.Read(new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(json)).Images;}
+        static void InputModalities()
+        {
+            foreach(string shape in new[]{"{\"input_modalities\":MODES}","{\"architecture\":{\"input_modalities\":MODES}}","{\"modalities\":{\"input\":MODES}}"}){
+                Check(Images(shape.Replace("MODES","[\"text\",\"image\"]"))==CapabilitySupport.Supported,"explicit input image modalities support images: "+shape);
+                Check(Images(shape.Replace("MODES","[\"text\"]"))==CapabilitySupport.Unsupported,"explicit text-only input does not support images: "+shape);
+            }
+            foreach(string json in new[]{"{}","{\"output_modalities\":[\"image\"]}","{\"modalities\":[\"text\",\"image\"]}","{\"input_modalities\":\"image\"}","{\"input_modalities\":[]}","{\"input_modalities\":[\"image\",7]}","{\"input_modalities\":[null]}"})
+                Check(Images(json)==CapabilitySupport.Unknown,"missing, output-only or malformed input declarations stay unknown: "+json);
+            Check(Images("{\"supports_images\":false,\"input_modalities\":[\"text\",\"image\"]}")==CapabilitySupport.Unsupported,"explicit false overrides image modalities");
+            Check(Images("{\"capabilities\":{\"vision\":false},\"architecture\":{\"input_modalities\":[\"image\"]}}")==CapabilitySupport.Unsupported,"nested explicit false overrides image modalities");
+            Check(Images("{\"supports_images\":true,\"input_modalities\":[\"text\"]}")==CapabilitySupport.Supported,"existing explicit true retains precedence over modalities");
+            var settings=new PetSettings{Text=new ConnectionSettings{Model="unknown-model",ImageSupport=CapabilitySupport.Unsupported,MetadataImageSupport=Images("{\"input_modalities\":[\"image\"]}")}};
+            Check(AgentCapabilityResolver.Resolve(settings,null).Images==CapabilitySupport.Unsupported,"manual unsupported overrides parsed server image modalities");
+        }
     }
 }

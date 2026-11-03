@@ -174,6 +174,7 @@ Name="CompanionHomePage";
     }
     async Task SaveAsync(bool growth,bool feedback,bool ai)
     {
+        owner.Observation.Invalidate();
         try{saveFailed=!(await model.UpdateSettingsAsync(growth,feedback,ai)).Success;}
         catch(Exception){saveFailed=true;}
         finally{saving=false;}

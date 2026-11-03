@@ -13,7 +13,9 @@ namespace Dafeiyu
 {
     public sealed class ApiException : Exception
     {
-        public ApiException(string safeMessage) : base(safeMessage) { }
+        public string Code {get;private set;}
+        public ApiException(string safeMessage) : this(safeMessage,"") { }
+        public ApiException(string safeMessage,string code) : base(safeMessage) { Code=code??""; }
     }
     public interface IConversationApi : IDisposable
     {
@@ -209,7 +211,7 @@ namespace Dafeiyu
                     using(var response = await (settings.UseProxy ? proxyHttp : http).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false))
                     using(token.Register(response.Dispose))
                     {
-                        CheckResponse(response, true);
+                        await CheckResponseAsync(response, true, token).ConfigureAwait(false);
                         if(response.Content.Headers.ContentLength > MaxJsonBytes) throw new ApiException(TextResources.Get("apiClient.readChatStreamAsync.text.alternativeA"));
                         using(Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                         {string result=await ChatStream.ReadAsync(stream, anthropic, onDelta, token, MaxJsonBytes,onReasoning).ConfigureAwait(false);usage.Complete();return result;}
@@ -226,7 +228,7 @@ namespace Dafeiyu
                 }
             }
         }
-        private static void CheckResponse(HttpResponseMessage response, bool streaming)
+        private static async Task CheckResponseAsync(HttpResponseMessage response, bool streaming, CancellationToken cancel)
         {
             if(response.IsSuccessStatusCode) return;
             int code = (int)response.StatusCode;
@@ -235,7 +237,28 @@ namespace Dafeiyu
                 code >= 300 && code < 400 ? TextResources.Get("apiClient.checkResponse.codeCodeStreaming.alternativeB") :
                 code == 404 ? TextResources.Get("apiClient.checkResponse.codeCodeStreaming.alternativeC") :
                 streaming ? TextResources.Get("apiClient.checkResponse.codeCodeStreaming.alternativeD") : TextResources.Get("apiClient.checkResponse.codeCodeStreaming.alternativeE");
-            throw new ApiException(TextResources.Format("apiClient.checkResponse.template",code,detail));
+            // Read only a bounded structured failure. Raw provider bodies never become exception text.
+            string semantic="";
+            if((code==400 || code==422) && (!response.Content.Headers.ContentLength.HasValue || response.Content.Headers.ContentLength<=16384) && response.Content.Headers.ContentType!=null && response.Content.Headers.ContentType.MediaType=="application/json")
+            {
+                using(var stream=await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                using(var data=new MemoryStream())
+                {
+                    var block=new byte[1024];int read;
+                    while(data.Length<=16384 && (read=await stream.ReadAsync(block,0,block.Length,cancel).ConfigureAwait(false))>0)data.Write(block,0,read);
+                    if(data.Length<=16384)try
+                    {
+                        var json=ObjectJson(data.ToArray());object raw,errorCode,errorType,message;
+                        var error=json.TryGetValue("error",out raw)?raw as Dictionary<string,object>:null;
+                        if(error!=null){error.TryGetValue("code",out errorCode);error.TryGetValue("type",out errorType);error.TryGetValue("message",out message);
+                            string text=message as string??"";
+                            if((errorCode as string)=="image_unsupported" || (errorCode as string)=="vision_not_supported" ||
+                                ((errorType as string)=="invalid_request_error" && (text.IndexOf("does not support image inputs",StringComparison.OrdinalIgnoreCase)>=0 || text.IndexOf("image input is not supported",StringComparison.OrdinalIgnoreCase)>=0 || text.IndexOf("image_url is only supported by certain models",StringComparison.OrdinalIgnoreCase)>=0)))semantic="image-unsupported";
+                        }
+                    }catch(Exception error){if(!Malformed(error))throw;}
+                }
+            }
+            throw new ApiException(TextResources.Format("apiClient.checkResponse.template",code,detail),semantic);
         }
         public async Task<string> TranscribeAsync(ConnectionSettings settings, byte[] wav, CancellationToken cancel)
         {
@@ -316,7 +339,7 @@ namespace Dafeiyu
                 using (HttpResponseMessage response = await (settings.UseProxy ? proxyHttp : http).SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false))
                 using(token.Register(response.Dispose))
                 {
-                    CheckResponse(response, false);
+                    await CheckResponseAsync(response, false, token).ConfigureAwait(false);
                     if (response.Content.Headers.ContentLength > maximum) throw new ApiException(TextResources.Get("apiClient.sendAsync.text"));
                     using (Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                     using (var buffer = new MemoryStream())
@@ -334,13 +357,13 @@ namespace Dafeiyu
             catch (OperationCanceledException)
             {
                 if (cancel.IsCancellationRequested) throw;
-                throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"));
+                throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"),"timeout");
             }
             catch (Exception e)
             {
                 if(!(e is HttpRequestException || e is IOException || e is ObjectDisposedException)) throw;
                 if(cancel.IsCancellationRequested) throw new OperationCanceledException(cancel);
-                if(token.IsCancellationRequested) throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"));
+                if(token.IsCancellationRequested) throw new ApiException(TextResources.Get("apiClient.sendAsync.text.alternativeA"),"timeout");
                 throw new ApiException(e is HttpRequestException ? (settings.UseProxy ? TextResources.Get("apiClient.sendAsync.text.alternativeB") : TextResources.Get("apiClient.sendAsync.text.alternativeC")) : TextResources.Get("apiClient.sendAsync.text.alternativeD"));
             }
             }

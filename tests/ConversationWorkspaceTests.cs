@@ -32,6 +32,20 @@ namespace Dafeiyu.Tests
                     Check(a.Queue.Items.Count==0 && b.Queue.Items.Count==0,"workspace queues are separate");
                     Check(a.DataDirectory!=b.DataDirectory && File.Exists(Path.Combine(a.DataDirectory,"history"))==false,"workspace storage is namespaced by conversation");
                 }
+                var temporary=new ConversationDefinition{Id="transient",Name="reply",Mode="chat",PetId="pet"};
+                using(var draft=ConversationWorkspace.Create(project,temporary,root,"pet",()=>new Api(),()=>new Speech(),()=>null,Settings,()=>true,transient:true))
+                {
+                    draft.Session.AttachProactive(new ProactiveEvent("event","pet","Hello",null,DateTime.UtcNow,null,null));
+                    Check(draft.Session.History.Messages.Count==1,"proactive event appears in transient history");
+                    Check(!Directory.Exists(draft.DataDirectory),"unanswered proactive workspace creates no directory");
+                    bool rejected=false;try{draft.Queue.Enqueue("unsent");}catch(InvalidOperationException){rejected=true;}
+                    Check(rejected,"unadmitted queue rejects persistence and model work");
+                    Check(!Directory.Exists(draft.DataDirectory),"unadmitted queue creates no files");
+                    draft.CloseAsync().GetAwaiter().GetResult();
+                    Check(!Directory.Exists(draft.DataDirectory),"closing unanswered workspace leaves no artifacts");
+                }
+                var protectedDefinition=new ConversationDefinition{Id="preexisting",Name="reply",Mode="chat",PetId="pet"};string protectedDirectory=Path.Combine(root,"conversations","preexisting","kernel-sessions");Directory.CreateDirectory(protectedDirectory);string protectedFile=Path.Combine(protectedDirectory,"existing.session");File.WriteAllText(protectedFile,"preserve");
+                bool collision=false;try{using(var transient=ConversationWorkspace.Create(project,protectedDefinition,root,"pet",()=>new Api(),()=>new Speech(),()=>null,Settings,()=>true,transient:true)){} }catch(IOException){collision=true;}Check(collision && File.Exists(protectedFile),"transient creation rejects preexisting storage without reading or deleting it");
                 Console.WriteLine("Conversation workspace tests: "+checks+" passed");return 0;
             }catch(Exception e){Console.WriteLine("FAIL "+e);return 1;}
         }

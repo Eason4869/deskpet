@@ -66,6 +66,13 @@ namespace Dafeiyu
         // Inline labels use natural font metrics; paragraph spacing belongs in Text().
         public static TextBlock InlineText(string text, double size = 13, Brush color = null)
         { return new TextBlock { Text=text, FontSize=size, Foreground=color??Ink, TextWrapping=TextWrapping.NoWrap, TextTrimming=TextTrimming.CharacterEllipsis, VerticalAlignment=VerticalAlignment.Center }; }
+        internal static FrameworkElement SettingRow(Func<string> title,Func<string> description,FrameworkElement control,bool emphasizeTitle=true)
+        {
+            var row=new Grid{Margin=new Thickness(0,0,0,14)};row.ColumnDefinitions.Add(new ColumnDefinition());row.ColumnDefinitions.Add(new ColumnDefinition());
+            var labels=new StackPanel{Margin=new Thickness(0,4,20,0)};var caption=LocalizedUi.Text(title,13,Ink);caption.FontWeight=emphasizeTitle?FontWeights.SemiBold:FontWeights.Normal;labels.Children.Add(caption);
+            if(description!=null){var help=LocalizedUi.Text(description,11,Muted);help.Margin=new Thickness(0,5,0,0);labels.Children.Add(help);}row.Children.Add(labels);
+            LocalizedUi.Automation(control,title);control.HorizontalAlignment=control is CheckBox || control is Button?HorizontalAlignment.Right:HorizontalAlignment.Stretch;control.VerticalAlignment=VerticalAlignment.Center;control.Margin=new Thickness(0);Grid.SetColumn(control,1);row.Children.Add(control);return row;
+        }
         public static TextBox Field(string value = "", bool multiline = false)
         {
             if(fieldStyle==null)fieldStyle=(Style)ThemeManager.Parse("<Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' TargetType='TextBox'><Setter Property='FocusVisualStyle' Value='{x:Null}'/><Setter Property='Template'><Setter.Value><ControlTemplate TargetType='TextBox'><Border x:Name='surface' Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='{TemplateBinding BorderThickness}' CornerRadius='9'><ScrollViewer x:Name='PART_ContentHost' Margin='{TemplateBinding Padding}'/></Border><ControlTemplate.Triggers><Trigger Property='IsKeyboardFocusWithin' Value='True'><Setter TargetName='surface' Property='Background' Value='#F3F3F3'/><Setter TargetName='surface' Property='BorderBrush' Value='#DADDE1'/></Trigger><Trigger Property='IsEnabled' Value='False'><Setter Property='Opacity' Value='0.5'/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>");

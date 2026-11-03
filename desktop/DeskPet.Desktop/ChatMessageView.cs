@@ -77,7 +77,7 @@ internal sealed class ChatMessageView : Border
         var export = LocalizedUi.With(new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeB") },"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeB"))); export.Click += (_, _) => owner.Run(ExportAsync);
         showReasoning = LocalizedUi.With(new MenuItem { Header = TextResources.Get("chatMessageView.chatMessageView.header.alternativeC") },"Header",()=>(TextResources.Get("chatMessageView.chatMessageView.header.alternativeC")));
         showReasoning.Click += (_, _) => { showHistory = !showHistory; thinking.IsExpanded = showHistory; Update(current); };
-        var menu = new ContextMenu { ItemsSource = new object[] { regenerate, copyPlain, export, showReasoning } };
+        var menu = new ContextMenu { ItemsSource = message.Source == "proactive" ? new object[] { copyPlain, export, showReasoning } : new object[] { regenerate, copyPlain, export, showReasoning } };
         menu.Opening += (_, _) => regenerate.IsEnabled = CanStart();
         more.ContextMenu = menu; more.Click += (_, _) => menu.Open(more);
         replyActions = new StackPanel { Name = "ReplyActions", Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(0, 0, 0, 2) };

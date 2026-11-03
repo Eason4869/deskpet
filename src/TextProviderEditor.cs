@@ -30,6 +30,7 @@ namespace Dafeiyu
         readonly HashSet<string> unsavedProviders=new HashSet<string>();
         readonly Dictionary<string,IList<string>> catalogs=new Dictionary<string,IList<string>>();
         readonly Dictionary<string,ConnectionSettings> catalogConnections=new Dictionary<string,ConnectionSettings>();
+        public Action<ConnectionSettings> ModelsRefreshed {get;set;}
         public Func<Task<bool>> SaveConnectionAsync {get;set;}
         public readonly StackPanel Options=new StackPanel();
         public readonly StackPanel Extras=new StackPanel();
@@ -251,6 +252,7 @@ namespace Dafeiyu
                 foreach(var pair in capacities)provider.ModelContextWindows[pair.Key]=pair.Value;provider.ServerCapabilities=capabilityMetadata;provider.ApplyModelCapabilities(provider.Connection);RefreshContextDescription();RaiseChanged();
                 catalogs[provider.Id]=found;catalogConnections[provider.Id]=draft.Copy();RefreshModels();feedback.Foreground=Ui.Muted;LocalizedUi.Set(feedback,"Text",()=>(found.Count==0?TextResources.Get("textProviderEditor.fetchModelsAsync.countFoundCount.alternativeA"):TextResources.Format("textProviderEditor.fetchModelsAsync.countFoundCount",found.Count)));
                 var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=false;
+                if(reveal && ModelsRefreshed!=null)ModelsRefreshed(draft);
                 if(reveal && discovered.Items.Count>0)Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(IsVisible && selected==provider)discoveryPanel.BringIntoView();}));
                 });
             }
@@ -289,6 +291,18 @@ namespace Dafeiyu
             updating=true;RefreshModelForm(selected.Connection.Model);updating=false;RefreshModels();RaiseChanged();
         }
         public ConnectionSettings Preview(){return connection==null?selected.Connection.Copy():connection.Preview();}
+        internal List<TextProviderSettings> PreviewProviders()
+        {
+            var result=new List<TextProviderSettings>();
+            foreach(var provider in drafts){
+                var copy=provider.Copy();
+                if(provider==selected && connection!=null){copy.Name=providerName.Text.Trim();copy.Connection=connection.Draft();}
+                if(IsEmptyInitial(copy))continue;
+                // Normalization adds the current model, so preview only confirmed IDs.
+                if(!copy.Models.Contains(copy.Connection.Model))copy.Connection.Model=copy.Models.Count==0?"":copy.Models[0];
+                result.Add(copy);
+            }return result;
+        }
         public void ExpandConnection(){EnsureDetails();var details=connectionHost.Content as Expander;if(details!=null)details.IsExpanded=true;}
         public ConnectionSettings Read(){ValidateContextCapacity();Capture();var result=connection==null?selected.Connection.Copy():connection.Read();result.ContextWindowTokens=selected.ContextCapacity(result.Model);selected.ApplyModelCapabilities(result);return result;}
         public TextProviderSettings ReadConnectionProvider(){Capture(false);if(String.IsNullOrWhiteSpace(selected.Name))throw new InvalidOperationException(TextResources.Get("textProviderEditor.readConnectionProvider.text"));return selected.Copy();}
@@ -306,6 +320,8 @@ namespace Dafeiyu
                 var copy=provider.Copy();copy.Normalize();result.Add(copy);
             }return result;
         }
+        internal bool HasDraftChanges(){Capture(false);return ProviderBytes(new ServiceProviderSettings{Providers=drafts.ConvertAll(p=>p.Copy()),ActiveProviderId=SelectedProviderId})!=ProviderBytes(baseline);}
+        string ProviderBytes(ServiceProviderSettings value){var copy=value.Copy();if(kind=="text")foreach(var provider in copy.Providers)provider.Connection.Protocol=provider.Connection.Protocol=="anthropic"?"anthropic":"openai";using(var stream=new System.IO.MemoryStream()){new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(ServiceProviderSettings)).WriteObject(stream,copy);return Convert.ToBase64String(stream.ToArray());}}
         public bool Matches(PetSettings settings)
         {
             return MatchesView(settings.ProviderView(kind));

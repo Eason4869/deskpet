@@ -87,6 +87,7 @@ namespace Dafeiyu
             try
             {
                 var pending=new System.Collections.Generic.List<Task>{imageRepairExitDrain};
+                if(observationService!=null)pending.Add(observationService.WaitForIdleAsync());
                 if(imageTasks!=null)pending.Add(imageTasks.StopAsync(CancellationToken.None));
                 foreach(var session in owners)pending.Add(Task.Run(()=>session.StopAsync()));
                 pending.Add(CloseCallForExitAsync());

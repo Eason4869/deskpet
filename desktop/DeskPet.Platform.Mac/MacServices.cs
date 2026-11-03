@@ -37,6 +37,14 @@ public static class MacServices
         try { Native.MicrophoneRequest(callback); } catch { if (pin.IsAllocated) pin.Free(); throw; }
         return completion.Task;
     }
+    public static IDesktopObservationCapture CreateDesktopObservationCapture() => new MacDesktopObservation();
+    // Explicit user action only. A false result may require approval in System Settings
+    // and reopening the app; automatic observation never calls this entry point.
+    public static Task<bool> RequestScreenCaptureAccessAsync()
+    {
+        EnsureMac();
+        return Task.Run(() => Native.ObservationRequestAccess() != 0);
+    }
     public static TimeSpan GetIdleTime() { EnsureMac(); return TimeSpan.FromSeconds(Math.Clamp(Native.IdleSeconds(), 0, TimeSpan.MaxValue.TotalSeconds - 1)); }
     // Public workspace session, display-sleep and system-sleep signals. This is
     // deliberately not a claim that macOS exposes a public screen-lock query.

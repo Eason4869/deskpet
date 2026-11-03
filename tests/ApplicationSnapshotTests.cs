@@ -34,6 +34,7 @@ namespace Dafeiyu.Tests
             try
             {
                 SetProcessDpiAwarenessContext(new IntPtr(-4));
+                EncodingLimits();
                 string title = "DeskPet snapshot fixture " + Guid.NewGuid().ToString("N");
                 child = StartFixture(title, false);
                 ApplicationSnapshotTarget target = WaitForTarget(child, title);
@@ -113,6 +114,27 @@ namespace Dafeiyu.Tests
                 if (overlay != null) overlay.Dispose();
                 foreach (Process process in new[] { child, hung, front })
                     if (process != null) { try { if (!process.HasExited) { process.Kill(); process.WaitForExit(3000); } } finally { process.Dispose(); } }
+            }
+        }
+        private static void EncodingLimits()
+        {
+            using (var wide = new Bitmap(4000, 2000))
+            {
+                using(var graphics = Graphics.FromImage(wide)) graphics.Clear(Color.CadetBlue);
+                byte[] manual = ApplicationSnapshots.Encode(wide, CancellationToken.None, false);
+                using(var stream = new MemoryStream(manual)) using(var image = new Bitmap(stream))
+                    Check(image.Width == 3072 && image.Height == 1536 && manual.Length <= 4 * 1024 * 1024, "manual image keeps 3072 long edge and 4 MiB allowance");
+            }
+            using(var noisy = new Bitmap(1250, 800, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
+            {
+                var data = noisy.LockBits(new Rectangle(0,0,1250,800), System.Drawing.Imaging.ImageLockMode.WriteOnly, noisy.PixelFormat);
+                try { var pixels = new byte[data.Stride * 800]; new Random(7348).NextBytes(pixels); Marshal.Copy(pixels,0,data.Scan0,pixels.Length); }
+                finally { noisy.UnlockBits(data); }
+                byte[] manual = ApplicationSnapshots.Encode(noisy, CancellationToken.None, false);
+                Check(manual.Length > 2 * 1024 * 1024 && manual.Length <= 4 * 1024 * 1024, "manual high entropy PNG still allowed beyond automatic byte cap");
+                byte[] automatic = ApplicationSnapshots.Encode(noisy, CancellationToken.None, true);
+                using(var stream = new MemoryStream(automatic)) using(var image = new Bitmap(stream))
+                    Check(automatic.Length <= 2 * 1024 * 1024 && image.Width < 1250 && (long)image.Width * image.Height <= 1000000, "automatic high entropy PNG shrinks to byte cap");
             }
         }
         private static Process StartFixture(string title, bool hang)

@@ -52,8 +52,8 @@ namespace Dafeiyu
             LocalizedUi.Automation(input,()=>(TextResources.Get("chatUi.composer.automationAutomationPropertiesSetName")));
             var field=new Grid();int inputRow=0;
             if(attachments!=null){field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});field.Children.Add(attachments);inputRow=1;}
-            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});Grid.SetRow(input,inputRow);field.Children.Add(input);
-            var placeholder=LocalizedUi.With(new TextBlock{Name="ComposerPlaceholder",Text=TextResources.Get("chatUi.composer.text"),FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false},"Text",()=>(TextResources.Get("chatUi.composer.text")));Grid.SetRow(placeholder,inputRow);field.Children.Add(placeholder);
+            field.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});var editorLayer=new Grid();Grid.SetRow(editorLayer,inputRow);field.Children.Add(editorLayer);editorLayer.Children.Add(input);
+            var placeholder=LocalizedUi.With(new TextBlock{Name="ComposerPlaceholder",Text=TextResources.Get("chatUi.composer.text"),FontSize=14,Foreground=Ui.Brush("#B8BCC2"),VerticalAlignment=VerticalAlignment.Top,IsHitTestVisible=false},"Text",()=>(TextResources.Get("chatUi.composer.text")));editorLayer.Children.Add(placeholder);
             SetComposerPlaceholder(input,placeholder);
             Action syncPlaceholder=delegate {
                 bool show=input.Text.Length==0;
@@ -61,7 +61,7 @@ namespace Dafeiyu
                 if(!show || !input.IsLoaded)return;
                 Rect firstLine=input.GetRectFromCharacterIndex(0);
                 if(firstLine.IsEmpty)return;
-                Point origin=input.TranslatePoint(firstLine.TopLeft,field);
+                Point origin=input.TranslatePoint(firstLine.TopLeft,editorLayer);
                 var margin=new Thickness(origin.X,origin.Y,0,0);
                 if(placeholder.Margin!=margin)placeholder.Margin=margin;
             };

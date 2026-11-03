@@ -171,6 +171,7 @@ static void TestAudio(BOOL outputHardware) {
 int main(int argc, const char **argv) {
     @autoreleasepool { @try {
         BOOL hardware = argc == 2 && strcmp(argv[1], "--audio-smoke") == 0;
+        Check(dp_observation_self_test() == 1, @"observation guards and ownership without permission or capture");
         TestKeychain(); TestWindows(); TestAudio(hardware);
         printf("native_library_self_test: %d checks passed\n", checks); return 0;
     } @catch (NSException *exception) {

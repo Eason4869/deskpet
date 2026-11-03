@@ -12,7 +12,9 @@ namespace Dafeiyu
     {
         readonly PetWindow pet;
         readonly TextBlock name,message;
+        readonly Button talk;
         readonly Polygon tail;
+        string eventId;
         readonly DispatcherTimer lifetime;
         public GreetingBubbleWindow(PetWindow companion)
         {
@@ -25,16 +27,16 @@ namespace Dafeiyu
             var header=new DockPanel();var close=Ui.Button("×");close.Name="DismissGreeting";close.MinHeight=24;close.Padding=new Thickness(7,0,7,0);close.Margin=new Thickness(0);LocalizedUi.Set(close,"ToolTip",()=>(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.closeToolTip")));close.Click+=delegate {Hide();};DockPanel.SetDock(close,Dock.Right);header.Children.Add(close);
             name=Ui.Text("",12,Ui.Blue);name.FontWeight=FontWeights.SemiBold;header.Children.Add(name);body.Children.Add(header);
             message=Ui.Text("",13);message.Name="GreetingMessage";message.VerticalAlignment=VerticalAlignment.Center;message.Margin=new Thickness(0,3,0,3);Grid.SetRow(message,1);body.Children.Add(message);
-            var talk=LocalizedUi.Button(()=>(TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text")));talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();pet.ShowQuickChat();};Grid.SetRow(talk,2);body.Children.Add(talk);
+            talk=LocalizedUi.Button(()=>eventId==null?TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text"):TextResources.Get("desktopObservation.reply"));talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();if(eventId==null)pet.ShowQuickChat();else pet.OpenProactiveReply(eventId);};Grid.SetRow(talk,2);body.Children.Add(talk);
             root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});
             tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             lifetime=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};lifetime.Tick+=delegate {Hide();};
             SourceInitialized+=delegate {DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
             IsVisibleChanged+=delegate {if(!IsVisible)lifetime.Stop();};Closed+=delegate {lifetime.Stop();};
         }
-        public void ShowGreeting(string text)
+        public void ShowGreeting(string text,string shownEventId=null)
         {
-            LocalizedUi.Set(name,"Text",()=>(TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName)));message.Text=text;Topmost=pet.Settings.Topmost;
+            eventId=shownEventId;talk.Content=eventId==null?TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text"):TextResources.Get("desktopObservation.reply");LocalizedUi.Set(name,"Text",()=>(TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName)));message.Text=text;Topmost=pet.Settings.Topmost;
             if(!IsVisible)Show();FollowPet();lifetime.Stop();lifetime.Start();
         }
         public void FollowPet(){BubblePlacement.Follow(this,pet,tail);}

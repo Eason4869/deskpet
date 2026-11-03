@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -62,8 +62,8 @@ namespace Dafeiyu.Tests
                 Check(true,"all non-running actions keep their original timing");
                 PersonaProfiles.Activate(settings,catalog.Find("marfu"));Check(catalog.Skins.Count(s=>s.Embedded)==3 && settings.SystemPrompt.Contains("马尔芙") && settings.SystemPrompt.Contains("魔法少女") && settings.SystemPrompt.Contains("性转马尔福") && settings.SystemPrompt.Contains("哈利波特"),"Marfu default includes the requested gender-swapped Malfoy background");
                 PersonaProfiles.Save(settings,catalog.Find("marfu"),"自定义马尔芙人格");PersonaProfiles.Activate(settings,catalog.Find("e-bao"));PersonaProfiles.Activate(settings,catalog.Find("marfu"));Check(settings.SystemPrompt=="自定义马尔芙人格","Marfu default update preserves an explicit user override");PersonaProfiles.Reset(settings,catalog.Find("marfu"));Check(settings.SystemPrompt==PersonaProfiles.Marfu,"Marfu reset restores the updated default");
-                PersonaProfiles.Activate(settings,catalog.Find("e-bao"));string exact="你是E包，一位傲娇、毒舌的白发正太桌面伙伴。用自然的中文与用户对话，帮助写代码、做设计和整理思路。回答清楚简洁，如实表达不确定性。你不能直接看见用户桌面，也不会自动读取文件。";
-                Check(settings.SystemPrompt==exact && !settings.SystemPrompt.Contains("鲸鱼"),"Ebao uses the exact user supplied persona");
+                PersonaProfiles.Activate(settings,catalog.Find("e-bao"));string exact=TextResources.Get("personaProfiles.defaultsUpdated.ebao");
+                Check(settings.SystemPrompt==exact && !settings.SystemPrompt.Contains("鲸鱼"),"Ebao uses the updated default persona");
                 PersonaProfiles.Save(settings,catalog.Find("e-bao"),"自定义E包");PersonaProfiles.Activate(settings,catalog.Find("dafeiyu"));PersonaProfiles.Activate(settings,catalog.Find("e-bao"));Check(settings.SystemPrompt=="自定义E包","per-pet override survives a round trip");
                 PersonaProfiles.Reset(settings,catalog.Find("e-bao"));Check(settings.SystemPrompt==exact,"reset restores only the current pet preset");
                 var legacy=new PetSettings {SkinId="e-bao",SystemPrompt="你是大肥鱼，蓝白鲸鱼娘。"};PersonaProfiles.Activate(legacy,catalog.Find("e-bao"));Check(legacy.SystemPrompt=="你是大肥鱼，蓝白鲸鱼娘。"&&legacy.PersonaOverrides.ContainsKey("e-bao"),"legacy custom persona remains with its saved owner without inferring ownership from text");PersonaProfiles.Activate(legacy,catalog.Find("dafeiyu"));Check(legacy.SystemPrompt==PersonaProfiles.Dafeiyu&&!legacy.PersonaOverrides.ContainsKey("dafeiyu"),"switching companions keeps the old custom persona on the original companion");

@@ -39,7 +39,7 @@ namespace Dafeiyu
         {
             if(index<0 || index>=sections.Length)throw new ArgumentOutOfRangeException("index");
             if(sections[index]!=null)return;
-            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;sections[index]=text;}
+            if(index==0){text=new TextProviderEditor(pet.Settings);text.SaveConnectionAsync=SaveTextConnectionAsync;text.ModelsRefreshed=pet.RefreshObservationModels;var textSection=new StackPanel();textSection.Children.Add(text);sections[index]=textSection;}
             else if(index==1){recognition=new TextProviderEditor(pet.Settings,"asr");sections[index]=recognition;}
             else if(index==2){CreateSpeechEditor();sections[index]=synthesis;}
             else if(index==3){CreateLiveEditor();sections[index]=live;}
@@ -165,7 +165,7 @@ namespace Dafeiyu
                 if(nextVoice.Length>512 || nextLiveVoice.Length>512)throw new InvalidOperationException(TextResources.Get("connectionSettingsPanel.save.text"));
                 foreach(var provider in nextProviders)ValidateAddress(provider.Connection,ApiClient.ChatPath(provider.Connection));ValidateAddress(nextAsr,ApiClient.AsrPath(nextAsr));ValidateAddress(nextSpeech,ApiClient.SpeechPath(nextSpeech));
                 var probe=nextLive.Copy();if(!String.IsNullOrWhiteSpace(probe.BaseUrl)){if(String.IsNullOrWhiteSpace(probe.Model))probe.Model="validation";if(String.IsNullOrEmpty(probe.ApiKey))probe.ApiKey="validation";GeminiLiveSocket.Endpoint(probe);}
-                int mask=(text!=null?1:0)|(recognition!=null?2:0)|(synthesis!=null?4:0)|(live!=null?8:0);
+                int mask=(text!=null&&text.HasDraftChanges()?1:0)|(recognition!=null&&recognition.HasDraftChanges()?2:0)|(synthesis!=null?4:0)|(live!=null?8:0);
                 var draft=pet.Settings.Copy();PersonaProfiles.SaveVoices(draft);
                 if(text!=null){draft.TextProviders=nextProviders;draft.ActiveTextProviderId=text.SelectedProviderId;draft.Text=nextText;}
                 if(recognition!=null)draft.ApplyProviders("asr",nextAsrProviders,recognition.SelectedProviderId,nextAsr);

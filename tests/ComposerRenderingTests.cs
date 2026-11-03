@@ -45,6 +45,16 @@ namespace Dafeiyu.Tests
                     var reply = All<ChatMessageView>(host).First(m => m.Name == "AssistantMessage"); Check(All<FrameworkElement>(reply).Any(v => v.Name == "MarkdownGitHubIcon") && !All<Border>(reply).Any(b => b.Name == "MarkdownDomainChip"), "assistant GitHub URL uses a lightweight brand icon");
                     var link = reply.Body.Document.Blocks.OfType<Paragraph>().SelectMany(p => p.Inlines.OfType<Hyperlink>()).Single(); Check(link.NavigateUri.Host == "github.com" && new TextRange(link.ContentStart, link.ContentEnd).Text.Contains("https://github.com/"), "assistant hyperlink preserves the address and destination");
                     var input = All<MarkdownEditor>(host).Single(t => t.Name == "MessageInput" || t.Name == "QuickMessageInput");
+                    var composer=All<ConversationComposer>(host).Single();
+                    var imagePath=Path.Combine(root,"attachment.png");
+                    using(var bitmap=new System.Drawing.Bitmap(4,4))bitmap.Save(imagePath,System.Drawing.Imaging.ImageFormat.Png);
+                    input.Clear();composer.ReplacePendingAttachments(new[]{ChatAttachment.CreateImage("attachment.png",File.ReadAllBytes(imagePath))});Pump();Pump();
+                    double emptyHeight=All<Border>(host).Single(b=>b.Name=="ComposerSurface").ActualHeight;
+                    input.Text="测试";Pump();double textHeight=All<Border>(host).Single(b=>b.Name=="ComposerSurface").ActualHeight;
+                    Check(emptyHeight<=textHeight+6,"image-only composer stays as compact as the same attachment with one line of text: "+emptyHeight+" / "+textHeight);
+                    input.Clear();Pump();Pump();
+                    Check(All<Border>(host).Single(b=>b.Name=="ComposerSurface").ActualHeight<=textHeight+6,"clearing text with an image does not inflate the composer");
+                    composer.ReplacePendingAttachments(new ChatAttachment[0]);Pump();
                     foreach (string draft in new[] { "**测试**", "*斜体*", "# 标题", "- 第一项\n- 第二项", "```csharp\nint a = 1;\n```", "[github.com](https://github.com/Eason4869/deskpet/tree/dev)" })
                     {
                         input.Text = draft; input.CaretIndex = draft.Length; Pump();

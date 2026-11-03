@@ -10,8 +10,8 @@ using System.Windows.Media;
 
 namespace Dafeiyu
 {
-    // This session has no store, queue, kernel session, or workspace registration.
-    // Its only context is the settings snapshot and messages typed into this pane.
+    // The temporary session owns its history and cancellation. Its parent supplies
+    // public context per request; project tools use the existing read-only profile.
     internal sealed class SideChatPane:Grid,IDisposable
     {
         sealed class SilentSpeech:IReplySpeech
@@ -25,6 +25,7 @@ namespace Dafeiyu
             internal TextBlock State;
         }
         readonly PetSettings snapshot;
+        readonly ConversationSession parent;
         readonly Window host;
         readonly string companionName,companionDisplayName;
         readonly ImageSource avatar;
@@ -38,21 +39,24 @@ namespace Dafeiyu
         bool disposed;
         internal ConversationSession Session{get;private set;}
 
-        internal SideChatPane(PetWindow pet,Window host,PetSettings settings,string projectName,IConversationApi api=null)
+        internal SideChatPane(PetWindow pet,Window host,PetSettings settings,string projectName,IConversationApi api=null,ConversationSession parent=null,bool allowProjectRead=true)
         {
             if(pet==null)throw new ArgumentNullException("pet");if(host==null)throw new ArgumentNullException("host");if(settings==null)throw new ArgumentNullException("settings");
             this.host=host;companionName=pet.Skin==null?TextResources.Get("sideChatPane.sideChatPane.petSkinName"):pet.Skin.Name;
             companionDisplayName=pet.Skin==null?companionName:pet.Skin.DisplayName;
-            snapshot=settings.Copy();snapshot.AgentEnabled=false;snapshot.SaveChatHistory=false;snapshot.ReadReplies=false;snapshot.ShowPredictedMessages=false;
+            this.parent=parent??pet.Conversation;
+            snapshot=settings.Copy();snapshot.AgentEnabled=allowProjectRead&&Directory.Exists(snapshot.AgentWorkspace)&&AgentCapabilityResolver.Resolve(snapshot,null).SupportsTools;snapshot.SaveChatHistory=false;snapshot.ReadReplies=false;snapshot.ShowPredictedMessages=false;
+            snapshot.AgentPlanMode=true;snapshot.AgentFullAccess=false;snapshot.AgentApprovalMode=AgentApprovalMode.Ask;snapshot.AgentSandboxEnabled=true;snapshot.AgentSandboxReadDirectories="";snapshot.AgentBackupFiles=false;
             string project=String.IsNullOrWhiteSpace(projectName)?TextResources.Get("sideChatPane.sideChatPane.projectStringIsNullOrWhiteSpace"):projectName;
-            snapshot.SystemPrompt=(settings.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt)+"\n\n当前是项目内独立的临时聊天。项目名称："+project+"\n工作目录："+(snapshot.AgentWorkspace??"")+"\n以上仅为项目背景，并不代表已读取项目。没有文件、目录、终端或其他 Agent 工具，不会自动读取文件，也无法看到主会话及其他临时聊天的历史。只根据本聊天中用户提供的内容交流，不要声称已经查看或修改电脑文件。";
+            snapshot.SystemPrompt=(settings.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt)+"\n\nThis is a temporary side chat for its owning conversation. Project: "+project+"\nWorkspace: "+(snapshot.AgentWorkspace??"")+"\nRequest context includes public messages from the owning main conversation. This side chat has separate history; do not claim to have changed the main conversation."+(snapshot.AgentEnabled?" You may use read-only tools to inspect this project. Do not modify files or execute commands. Claim to have inspected a file only after actually reading it.":" Project-reading tools are unavailable. Do not claim to have read project files.");
+            snapshot.AgentSystemPrompt=snapshot.SystemPrompt;
             Session=new ConversationSession(api??new ApiClient(),new SilentSpeech(),()=>null,null,()=>false,maintenance:pet.DataMaintenance);
             try{avatar=SkinCatalog.GetAvatar(pet.Skin);}catch(Exception error){if(!(error is IOException||error is UnauthorizedAccessException||error is ArgumentException||error is InvalidOperationException||error is NotSupportedException))throw;}
             Name="SideChatPane";Background=Ui.Brush("#F8F9FB");
             RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});RowDefinitions.Add(new RowDefinition());RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
             var heading=new StackPanel{Margin=new Thickness(18,14,18,10)};var title=LocalizedUi.Text(()=>(TextResources.Get("sideChatPane.sideChatPane.text")),16,AgentUi.Ink);title.FontWeight=FontWeights.SemiBold;heading.Children.Add(title);
             var projectLabel=Ui.Text(project,12,AgentUi.Muted);projectLabel.Name="SideChatProjectName";projectLabel.TextTrimming=TextTrimming.CharacterEllipsis;projectLabel.ToolTip=snapshot.AgentWorkspace;projectLabel.Margin=new Thickness(0,4,0,4);heading.Children.Add(projectLabel);
-            var detail=LocalizedUi.Text(()=>(TextResources.Get("sideChatPane.sideChatPane.text.alternativeA")),11,AgentUi.Muted);detail.TextWrapping=TextWrapping.Wrap;heading.Children.Add(detail);Children.Add(heading);
+            var detail=LocalizedUi.Text(()=>(TextResources.Get("sideChatPane.contextHint")),11,AgentUi.Muted);detail.TextWrapping=TextWrapping.Wrap;heading.Children.Add(detail);Children.Add(heading);
             scroll=Ui.Scroll(messages);scroll.Name="SideChatHistory";Grid.SetRow(scroll,1);Children.Add(scroll);
             var footer=new StackPanel{Margin=new Thickness(14,8,14,12)};
             footer.Children.Add(new Border{Child=input,Background=Ui.Brush("#F7F8FA"),BorderBrush=Ui.Line,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(12),Padding=new Thickness(10,4,10,4)});
@@ -65,7 +69,7 @@ namespace Dafeiyu
         internal async Task SendAsync(string text)
         {
             if(disposed)throw new ObjectDisposedException("SideChatPane");
-            await Session.SendTextAsync(text,snapshot,companionName);
+            await Session.SendTextAsync(text,snapshot,companionName,steeringContext:parent.SnapshotPublicContext());
         }
         async Task SendDraftAsync()
         {

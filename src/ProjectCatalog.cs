@@ -10,10 +10,12 @@ namespace Dafeiyu
     {
         [DataMember] public string Id="",Name=TextResources.Get("projectCatalog.id.name"),Status="idle";[DataMember] public bool NameEdited,Archived,HasUnreadCompletion,Pinned;
         [DataMember] public string Mode="work",PetId="";
+        [DataMember(EmitDefaultValue=false)] public string Origin;
+        [DataMember] public ImageDescriptionOverride ImageDescriptionOverride;
         [DataMember] public string SectionId="";
         [DataMember] public bool HasPermissionOverride,SandboxEnabled;[DataMember] public AgentApprovalMode ApprovalMode;
         [DataMember] public long CreatedUtcTicks,LastOpenedUtcTicks;
-        public ConversationDefinition Copy(){return (ConversationDefinition)MemberwiseClone();}
+        public ConversationDefinition Copy(){var copy=(ConversationDefinition)MemberwiseClone();copy.ImageDescriptionOverride=ImageDescriptionOverride==null?null:ImageDescriptionOverride.Copy();return copy;}
     }
     [DataContract] public sealed class ProjectDefinition
     {
@@ -40,6 +42,13 @@ namespace Dafeiyu
     }
     [DataContract] public sealed class ProjectCatalog
     {
+        [DataMember] public Dictionary<string,ImageDescriptionOverride> LegacyImageDescriptionOverrides=new Dictionary<string,ImageDescriptionOverride>();
+        public void RemoveLegacyImageDescriptionOverride(string personaId){if(LegacyImageDescriptionOverrides!=null)LegacyImageDescriptionOverrides.Remove(personaId??"");}
+        public void ClearImageDescriptionOverrides()
+        {
+            if(LegacyImageDescriptionOverrides!=null)LegacyImageDescriptionOverrides.Clear();
+            foreach(var conversation in (Projects??new List<ProjectDefinition>()).Where(p=>p!=null).SelectMany(p=>p.Conversations??new List<ConversationDefinition>()).Concat(UnassignedConversations??new List<ConversationDefinition>()).Concat(QuickConversations??new List<ConversationDefinition>()))if(conversation!=null)conversation.ImageDescriptionOverride=null;
+        }
         Dictionary<string,bool> sidebarExpansion,sidebarSectionExpansion;
         internal Dictionary<string,bool> SidebarSectionExpansion {get{return sidebarSectionExpansion??(sidebarSectionExpansion=new Dictionary<string,bool>());}}
         internal Dictionary<string,bool> SidebarExpansion {get{return sidebarExpansion??(sidebarExpansion=new Dictionary<string,bool>());}}
@@ -54,7 +63,7 @@ namespace Dafeiyu
         [DataMember] public bool RecentIncludeProjects=true;
         [DataMember] public bool RecentShowProjectConversations;
         [DataMember] public List<SidebarSection> Sections=new List<SidebarSection>{new SidebarSection{Id="projects",Name=TextResources.Get("projectCatalog.sections.name")}};
-        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects,RecentShowProjectConversations=RecentShowProjectConversations};copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.SidebarConversationOrder=(SidebarConversationOrder??new Dictionary<string,List<string>>()).ToDictionary(x=>x.Key,x=>new List<string>(x.Value??new List<string>()));copy.SidebarSectionLabels=new Dictionary<string,string>(SidebarSectionLabels??new Dictionary<string,string>());return copy;}
+        public ProjectCatalog Copy(){var copy=new ProjectCatalog{Version=Version,OwnershipVersion=OwnershipVersion,LegacyRootImported=LegacyRootImported,ActiveProjectId=ActiveProjectId,RecentIncludeProjects=RecentIncludeProjects,RecentShowProjectConversations=RecentShowProjectConversations};copy.LegacyImageDescriptionOverrides=(LegacyImageDescriptionOverrides??new Dictionary<string,ImageDescriptionOverride>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>p.Value.Copy());copy.Projects=(Projects??new List<ProjectDefinition>()).Select(p=>p.Copy()).ToList();copy.Sections=(Sections??new List<SidebarSection>()).Select(s=>s.Copy()).ToList();copy.UnassignedConversations=(UnassignedConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.QuickConversations=(QuickConversations??new List<ConversationDefinition>()).Select(c=>c.Copy()).ToList();copy.SidebarConversationOrder=(SidebarConversationOrder??new Dictionary<string,List<string>>()).ToDictionary(x=>x.Key,x=>new List<string>(x.Value??new List<string>()));copy.SidebarSectionLabels=new Dictionary<string,string>(SidebarSectionLabels??new Dictionary<string,string>());return copy;}
     }
     public sealed partial class ProjectCatalogStore
     {
@@ -167,6 +176,8 @@ namespace Dafeiyu
             if(catalog.QuickConversations==null)catalog.QuickConversations=new List<ConversationDefinition>();
             if(catalog.SidebarConversationOrder==null)catalog.SidebarConversationOrder=new Dictionary<string,List<string>>();
             if(catalog.SidebarSectionLabels==null)catalog.SidebarSectionLabels=new Dictionary<string,string>();
+            catalog.LegacyImageDescriptionOverrides=(catalog.LegacyImageDescriptionOverrides??new Dictionary<string,ImageDescriptionOverride>()).Where(p=>p.Value!=null).ToDictionary(p=>p.Key,p=>{var copy=p.Value.Copy();copy.Normalize();return copy;});
+            foreach(var conversation in catalog.Projects.Where(p=>p!=null).SelectMany(p=>p.Conversations??new List<ConversationDefinition>()).Concat(catalog.UnassignedConversations).Concat(catalog.QuickConversations))if(conversation!=null&&conversation.ImageDescriptionOverride!=null)conversation.ImageDescriptionOverride.Normalize();
             foreach(var section in catalog.Sections)if(section!=null&&String.IsNullOrEmpty(section.Mode))section.Mode="work";
             if(!catalog.Sections.Any(s=>s!=null&&s.Id==DefaultChatSectionId))catalog.Sections.Add(new SidebarSection{Id=DefaultChatSectionId,Name=TextResources.Get("projectCatalog.normalizeDefaults.name"),Mode="chat"});
             // Full-window chats were previously stored beside quick-window chats.

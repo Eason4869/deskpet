@@ -53,6 +53,10 @@ namespace Dafeiyu
         private readonly Dictionary<string,ConversationLog> histories=new Dictionary<string,ConversationLog>();
         private string personaId="";
         public ConversationLog History { get; private set; }
+        internal IList<ChatMessage> SnapshotPublicContext()
+        {
+            lock(gate)return History.Messages.Where(m=>(m.Role=="user"||m.Role=="assistant")&&(!String.IsNullOrWhiteSpace(m.Content)||(m.Attachments!=null&&m.Attachments.Count>0))).Select(m=>{var copy=new ChatMessage(m.Role,m.Content);copy.SetAttachments(ChatAttachment.Snapshot(m.Attachments));return copy;}).ToList();
+        }
         public ConversationStage Stage { get; private set; }
         string runtimeAction="idle";
         public string RuntimeAction {get{return runtimeAction;}private set{runtimeAction=value;}}
@@ -68,6 +72,9 @@ namespace Dafeiyu
         public string HistoryWarning { get { return String.Join(" ",new[]{store==null?"":store.Warning,kernelWarning,imageHistoryWarning,draftStore==null?"":draftStore.Warning}.Where(s=>!String.IsNullOrEmpty(s))); } }
         public event Action StateChanged;
         public event Action<ChatMessage> MessageAdded;
+        // An optional owner transaction, after image validation and before the first
+        // real user turn enters history. Failure admits neither history nor model work.
+        public Func<Task> BeforeUserTurnAcceptedAsync {get;set;}
         public event Action<ChatMessage> MessageUpdated;
         public event Action HistoryChanged;
         private sealed class Operation
@@ -75,7 +82,7 @@ namespace Dafeiyu
             public readonly CancellationTokenSource Cancel=new CancellationTokenSource();
             public readonly TaskCompletionSource<bool> Complete=new TaskCompletionSource<bool>();
             public LanguageSelection Language;public IDisposable Maintenance;public PetSettings Snapshot,Live; public IAudioRecorder Recorder; public bool Finishing,SuppressSpeech; public int Ended;public string Outcome="";
-            public Action<string> RecordingFailure;public Action AgentStarted;
+            public Action<string> RecordingFailure;public Action AgentStarted;public Action<bool> ImagePreprocessing;public bool DeferredKernel,KernelStarted;public string KernelInputId;
             public ConversationLog History;public string PersonaId,ReplyId,GuidanceId,Source="text";public IList<ChatMessage> SteeringContext;
             public readonly StringBuilder Partial=new StringBuilder();public readonly Stopwatch Checkpoint=Stopwatch.StartNew();
             public readonly StringBuilder Reasoning=new StringBuilder();public readonly Stopwatch ThinkingTime=Stopwatch.StartNew();public readonly Stopwatch ProcessingTime=new Stopwatch();public List<ChatAttachment> Attachments;
@@ -99,7 +106,7 @@ namespace Dafeiyu
         private void Save(string id,ConversationLog history,Dafeiyu.Maintenance.UninstallOwner owner=null)
         {
             if(store==null||!saveEnabled())return;
-            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);imageHistoryWarning="";store.SaveAsync(id,history.Messages).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
+            try{if(owner!=null)owner.Require(Maintenance);PromoteImageTasksAsync(history,CancellationToken.None,owner).GetAwaiter().GetResult();history.PersistGeneratedImages(ImageStore);var all=history.Messages;var accepted=all.Where((m,i)=>m.Source!="proactive" || all.Skip(i+1).Any(next=>next.Role=="user" && next.Source!="guide" && !next.SyntheticInput && next.Status=="complete")).ToList();if(accepted.Count==0)return;imageHistoryWarning="";store.SaveAsync(id,accepted).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))history.ReconcileImageUsage();});}
             catch(Exception error){if(!(error is System.IO.IOException||error is UnauthorizedAccessException||error is InvalidOperationException))throw;imageHistoryWarning=TextResources.Get("conversationSession.save.imageHistoryWarning");OnWarningChanged();}
         }
         public AgentSessionModel KernelSession{get{return kernelSession;}}
@@ -123,7 +130,7 @@ namespace Dafeiyu
             lock(gate)
             {
                 if(active!=null) throw new InvalidOperationException(TextResources.Get("conversationSession.selectPersona.text"));
-                if(disposed)throw new ObjectDisposedException("ConversationSession");History=selected;personaId=id;CancelPredictions();
+                if(disposed)throw new ObjectDisposedException("ConversationSession");History=selected;personaId=id;if(imageInputRouter!=null)imageInputRouter.Clear();CancelPredictions();
             }
             if(HistoryChanged!=null)HistoryChanged();
         }}
@@ -134,7 +141,7 @@ namespace Dafeiyu
                 if(disposed || (String.IsNullOrWhiteSpace(reply) && (status=="complete" || String.IsNullOrWhiteSpace(user))))return;
                 if(status!="complete" && status!="interrupted" && status!="cancelled" && status!="error")status="interrupted";
                 bool previousRelationshipSuccess=realUserCompletion && history.RelationshipHasSucceeded(logicalTurnId);
-                ChatMessage input;var output=history.BeginTurn(String.IsNullOrWhiteSpace(user)?TextResources.Get("conversationSession.addLiveTurn.historyBeginTurn"):user,"live",out input);output=history.Update(output.Id,reply,status);if(realUserCompletion){history.BindRelationship(output.Id,companionId,logicalTurnId,false,previousRelationshipSuccess);if(status=="complete")history.MarkRelationshipSucceeded(logicalTurnId);}Save(id,history);
+                ChatMessage input;var output=history.BeginTurn(String.IsNullOrWhiteSpace(user)?TextResources.Get("conversationSession.addLiveTurn.historyBeginTurn"):user,"live",out input);if(String.IsNullOrWhiteSpace(user))input=history.MarkSyntheticInput(input.Id);output=history.Update(output.Id,reply,status);if(realUserCompletion){history.BindRelationship(output.Id,companionId,logicalTurnId,false,previousRelationshipSuccess);if(status=="complete")history.MarkRelationshipSucceeded(logicalTurnId);}Save(id,history);
                 if(id==personaId){Emit(input);if(output!=null)Emit(output);}
                 if(realUserCompletion && !previousRelationshipSuccess && status=="complete" && !String.IsNullOrWhiteSpace(user) && !String.IsNullOrWhiteSpace(reply) && Relationships!=null)Relationships.Enqueue(companionId,RelationshipEventType.CompletedConversation,logicalTurnId,completedTime??RelationshipTime.Current());
             }
@@ -187,22 +194,22 @@ namespace Dafeiyu
             if(op.Workspace!=null)op.History.LinkAgentTask(reply.Id,op.Workspace.TaskState.Id);
             op.History.Update(reply.Id,"","pending",tools:op.ToolEvents,processingMilliseconds:op.ProcessingTime.ElapsedMilliseconds);
         }
-        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null,string relationshipCompanionId=null)
+        public async Task SendTextAsync(string text,PetSettings settings,string petName,IList<ChatMessage> steeringContext=null,IList<ChatAttachment> attachments=null,AgentTaskState resumeTask=null,string kernelInputId=null,string guidanceId=null,Action onAgentStarted=null,string relationshipCompanionId=null,Action<bool> onImagePreprocessing=null)
         {
             // Operation completion must remain runnable after a host stops its UI dispatcher.
             var files=ChatAttachment.Snapshot(attachments);if(String.IsNullOrWhiteSpace(text) && files.Count>0)text=TextResources.Get("conversationSession.sendTextAsync.text");
-            if(settings!=null&&settings.Text!=null&&AgentCapabilityResolver.Resolve(settings,null).Images==CapabilitySupport.Unsupported&&files.Any(f=>f.IsImage))throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeA"));
+
             text=(text??"").Trim(); if(text.Length==0 || text.Length>8000) throw new ApiException(TextResources.Get("conversationSession.sendTextAsync.text.alternativeB"));
             ApiClient.ValidateConnection(settings.Text,ApiClient.ChatPath(settings.Text));
             Operation op=Begin(settings,ConversationStage.Thinking);
-            op.AgentStarted=onAgentStarted;op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
+            op.AgentStarted=onAgentStarted;op.ImagePreprocessing=onImagePreprocessing;op.KernelInputId=kernelInputId;op.DeferredKernel=BeforeUserTurnAcceptedAsync!=null||files.Any(f=>f.IsImage)||op.History.Messages.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage))||(steeringContext!=null&&steeringContext.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage)))||(resumeTask!=null&&resumeTask.Guidance!=null&&resumeTask.Guidance.Any(g=>g.Attachments!=null&&g.Attachments.Any(a=>a.IsImage)));op.SteeringContext=steeringContext;op.GuidanceId=guidanceId;if(guidanceId!=null)op.Source="guide";
             op.Attachments=files;op.ResumeTask=resumeTask==null?null:resumeTask.Copy();
             if(relationshipCompanionId!=null)op.RelationshipCompanionId=relationshipCompanionId;
             if(!String.IsNullOrWhiteSpace(kernelInputId))op.RelationshipEventId="input-"+kernelInputId;
             if(op.ResumeTask!=null){op.RelationshipCompanionId=op.ResumeTask.RelationshipCompanionId;op.RelationshipEventId=op.ResumeTask.RelationshipEventId;op.RelationshipWork=true;op.RelationshipSucceeded=op.ResumeTask.RelationshipSucceeded;}
             op.RelationshipSucceeded|=op.History.RelationshipHasSucceeded(op.RelationshipEventId);
-            try { if(kernelSession!=null){kernelSession.Enqueue(new AgentSessionInput{IdempotencyId=String.IsNullOrWhiteSpace(kernelInputId)?Guid.NewGuid().ToString("N"):kernelInputId,Kind=resumeTask==null?"prompt":"resume",Text=text,Resume=resumeTask!=null});kernelSession.DeliverNext();kernelSession.StartStep();}await RequestReply(op,text,petName).ConfigureAwait(false);if(kernelSession!=null)kernelSession.CompleteStep(op.ReplyId); }
-            catch(OperationCanceledException) { if(kernelSession!=null)kernelSession.FailStep("cancelled"); SetLocalizedNotice(TextResources.Message("conversationSession.sendTextAsync.lastNotice")); throw; }
+            try { if(!op.DeferredKernel)StartInputStep(op,text);await RequestReply(op,text,petName).ConfigureAwait(false);if(kernelSession!=null&&op.KernelStarted)kernelSession.CompleteStep(op.ReplyId); }
+            catch(OperationCanceledException) { if(kernelSession!=null&&op.KernelStarted)kernelSession.FailStep("cancelled"); SetLocalizedNotice(TextResources.Message("conversationSession.sendTextAsync.lastNotice")); throw; }
             finally { FinishOperation(op); }
         }
         public void StartRecording(PetSettings settings)
@@ -260,6 +267,7 @@ namespace Dafeiyu
             string text;try{text=await api.TranscribeAsync(op.Snapshot.TranscriptionConnection(),wav,op.Cancel.Token).ConfigureAwait(false);}catch(ApiException e){throw new ApiException(TextResources.Format("conversationSession.recognizeAndReply.template",e.Message));}
             op.Cancel.Token.ThrowIfCancellationRequested();op.Source="asr";await RequestReply(op,text,petName).ConfigureAwait(false);
         }
+        private void StartInputStep(Operation op,string text){if(kernelSession==null)return;kernelSession.Enqueue(new AgentSessionInput{IdempotencyId=String.IsNullOrWhiteSpace(op.KernelInputId)?Guid.NewGuid().ToString("N"):op.KernelInputId,Kind=op.ResumeTask==null?"prompt":"resume",Text=text,Resume=op.ResumeTask!=null});kernelSession.DeliverNext();kernelSession.StartStep();op.KernelStarted=true;}
         private async Task RequestReply(Operation op,string text,string petName)
         {using(LanguageRequestScope.Enter(op.Language))await RequestReplyCore(op,text,petName).ConfigureAwait(false);}
         private async Task RequestReplyCore(Operation op,string text,string petName)
@@ -277,6 +285,7 @@ namespace Dafeiyu
             persona=ReplyLanguagePolicy.Apply(persona);
             var request=op.Regenerating?op.History.ForRegeneration(op.ReplyId,persona):op.History.ForRequest(persona,text);
             if(!op.Regenerating)request.Last().SetAttachments(op.Attachments);
+            var automaticRevisions=op.Snapshot.AgentEnabled?new Dictionary<string,string>():ProjectProactiveContext(request,op.PersonaId,op.Snapshot);
             if(op.SteeringContext!=null)request.InsertRange(request.Count-1,op.SteeringContext.Select(m=>m.Copy()));
             ConversationLog.BudgetRequest(request);
             // An interrupted guide turn is excluded from ordinary conversation
@@ -285,16 +294,29 @@ namespace Dafeiyu
                 bool present=request.Any(m=>m.Role=="user" && m.Content==guide.Text && SameAttachments(m.Attachments,guide.Attachments));
                 if(!present){var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);request.Insert(request.Count-1,message);}
             }
+            bool preprocessing=request.Any(m=>m.Attachments!=null&&m.Attachments.Any(a=>a.IsImage));if(preprocessing&&op.ImagePreprocessing!=null)op.ImagePreprocessing(true);
+            var automaticStore=ProactiveEvents;var projection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),request,token,(message,image,description)=>{if(automaticStore==null || !message.TurnId.StartsWith("proactive-",StringComparison.Ordinal))return false;string eventId=message.TurnId.Substring("proactive-".Length),revision;return automaticRevisions.TryGetValue(eventId,out revision) && automaticStore.TrySetDescription(eventId,op.PersonaId,revision,Convert.FromBase64String(image.Data),description);}).ConfigureAwait(false);
+            if(!projection.Available)throw new ApiException(ImageInputFailure(projection.Notice),projection.Notice);
+
+            request=projection.Messages.ToList();ConversationLog.BudgetRequest(request);
+            token.ThrowIfCancellationRequested();
+            var admission=BeforeUserTurnAcceptedAsync;
+            bool admitted=!op.Regenerating&&op.GuidanceId==null&&(op.Source=="text"||op.Source=="asr")&&admission!=null;
+            if(admitted)await admission().ConfigureAwait(false);
             lock(gate) {
-                token.ThrowIfCancellationRequested();if(disposed)throw new OperationCanceledException(token);
+                // Successful durable owner admission is the linearization point.
+                // Cancellation during that transaction still records this real turn.
+                if(!admitted){token.ThrowIfCancellationRequested();if(disposed)throw new OperationCanceledException(token);}
+                if(op.DeferredKernel)StartInputStep(op,text);
                 op.ProcessingTime.Restart();
                 if(op.Regenerating){op.History.StartProcessing(op.ReplyId,op.Snapshot.AgentEnabled,skinId:op.Snapshot.SkinId);UpdateReply(op,"","pending",false);}
                 else {ChatMessage user;var reply=op.GuidanceId==null?op.History.BeginTurn(text,op.Source,out user):op.History.BeginGuidance(op.GuidanceId,text,out user);op.History.Attach(user.Id,op.Attachments);user.SetAttachments(op.Attachments);op.ReplyId=reply.Id;reply=op.History.StartProcessing(reply.Id,op.Snapshot.AgentEnabled,skinId:op.Snapshot.SkinId);if(op.GuidanceId==null){Emit(user);Emit(reply);}else if(HistoryChanged!=null)HistoryChanged();}
                 if(!op.Regenerating)op.History.BindRelationship(op.ReplyId,op.RelationshipCompanionId,op.RelationshipEventId,op.RelationshipWork,op.RelationshipSucceeded);
-                Save(op.PersonaId,op.History);op.Checkpoint.Restart();op.ThinkingTime.Restart();
+                Save(op.PersonaId,op.History);op.Checkpoint.Restart();op.ThinkingTime.Restart();if(preprocessing&&op.ImagePreprocessing!=null)op.ImagePreprocessing(false);
             }
             SetStage(ConversationStage.Thinking);string answer;
             try {
+                token.ThrowIfCancellationRequested();
                 var streaming=api as IStreamingConversationApi;
                 var reasoning=api as IReasoningConversationApi;
                 var agent=api as IAgentConversationApi;
@@ -310,7 +332,15 @@ namespace Dafeiyu
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
                 answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token).ConfigureAwait(false):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token).ConfigureAwait(false):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token).ConfigureAwait(false) : await api.ChatAsync(op.Snapshot.Text,request,token).ConfigureAwait(false);
                 bool firstRelationshipSuccess=!op.RelationshipSucceeded;
-                token.ThrowIfCancellationRequested();UpdateReply(op,answer,"complete",true,true);if(op.Workspace!=null){if(op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();op.Workspace.FinishTask("complete","");}
+                token.ThrowIfCancellationRequested();
+                // Agent callbacks contain public narration from every round. Keep it
+                // in the message body; the returned answer is only the final round.
+                lock(gate){
+                    string content=answer;
+                    if(op.Workspace!=null && op.Partial.Length>0){content=op.Partial.ToString().Trim();if(!content.EndsWith(answer.Trim(),StringComparison.Ordinal))content+="\n\n"+answer.Trim();}
+                    UpdateReply(op,content,"complete",true,true);
+                }
+                if(op.Workspace!=null){if(op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();op.Workspace.FinishTask("complete","");}
                 if(firstRelationshipSuccess && Relationships!=null && op.Outcome=="complete" && !String.IsNullOrWhiteSpace(answer))await Relationships.Enqueue(op.RelationshipCompanionId,op.RelationshipWork?RelationshipEventType.SuccessfulWorkTask:RelationshipEventType.CompletedConversation,op.RelationshipEventId,RelationshipTime.Current()).ConfigureAwait(false);
             }
             catch(Exception e) {
@@ -335,7 +365,7 @@ namespace Dafeiyu
             var state=op.Workspace.TaskState;if(state.Guidance==null)state.Guidance=new List<AgentGuidance>();var fresh=new List<AgentGuidance>();var accepted=new List<AgentGuidance>();
             foreach(var guide in pending){
                 if(state.Guidance.Any(g=>g.Id==guide.Id && g.Revision==guide.Revision)){accepted.Add(guide);continue;}
-                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var proposed=result.Concat(new[]{message}).ToList();
+                var message=new ChatMessage("user",guide.Text);message.SetAttachments(guide.Attachments);var guidanceProjection=await ImageInput.PrepareAsync(ImageModelResolver.Resolve(op.Snapshot,null),new[]{message},cancel).ConfigureAwait(false);if(!guidanceProjection.Available)throw new ApiException(ImageInputFailure(guidanceProjection.Notice),guidanceProjection.Notice);message=guidanceProjection.Messages[0];var proposed=result.Concat(new[]{message}).ToList();
                 var candidate=state.Copy();candidate.Guidance.Add(guide.Copy());
                 string blocked=!AgentTaskStore.FitsCheckpoint(candidate)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint"):op.Workspace.GuidanceFits!=null && !op.Workspace.GuidanceFits(proposed)?TextResources.Get("conversationSession.applyGuidance.blockedAgentTaskStoreFitsCheckpoint.alternativeA"):null;
                 if(blocked!=null){if(fresh.Count==0)throw new ApiException(blocked);LastNotice=blocked;break;}
@@ -357,7 +387,9 @@ namespace Dafeiyu
             if(String.IsNullOrEmpty(delta))return;
             lock(gate) {
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
-                if(op.Partial.Length+delta.Length>50000)throw new ApiException(TextResources.Get("conversationSession.appendDelta.text"));
+                // Native Agent parsing bounds each model round separately. Public
+                // narration spans rounds, so its total must not use that round cap.
+                if(op.Workspace==null&&op.Partial.Length+delta.Length>50000)throw new ApiException(TextResources.Get("conversationSession.appendDelta.text"));
                 op.ThinkingTime.Stop();
                 SetRuntimeAction(op,"review");
                 op.Partial.Append(delta);UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
@@ -396,7 +428,7 @@ namespace Dafeiyu
             {
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
                 SetRuntimeAction(op,item.Status=="waiting_approval"?"waiting":item.Status=="error"?"failed":item.Status=="complete"?"review":"running");
-                if(item.Status=="running" && op.Partial.Length>0){if(op.Reasoning.Length+op.Partial.Length<50000)op.Reasoning.AppendLine(op.Partial.ToString());op.Partial.Clear();op.ThinkingTime.Start();}
+                if(item.Status=="running")op.ThinkingTime.Start();
                 int index=op.ToolEvents.FindIndex(e=>e.Id==item.Id);if(index>=0)op.ToolEvents[index]=item.Copy();else{op.ToolEvents.Add(item.Copy());if(op.ToolEvents.Count>100)op.ToolEvents.RemoveAt(0);}
                 UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
             }
@@ -516,7 +548,23 @@ namespace Dafeiyu
             lock(gate) if(Object.ReferenceEquals(active,op)){active=null;RuntimeAction=op.Outcome=="complete"?"review":op.Outcome=="error"?"failed":"idle";TerminalRevision++;}
             if(op.Workspace!=null){op.Workspace.Dispose();op.Workspace=null;}op.Cancel.Dispose();try{SetStage(ConversationStage.Idle);}finally{op.Complete.TrySetResult(true);if(op.Maintenance!=null)op.Maintenance.Dispose();}
         }
-        public void Clear() {using(Maintenance.EnterActivity()){ lock(gate){if(active!=null)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));History.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";if(store!=null){var cleared=History;store.ClearAsync(personaId).ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning))cleared.ReconcileImageUsage();});}else History.ReconcileImageUsage();if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.clear.kernelWarning");}}if(HistoryChanged!=null)HistoryChanged(); }}
+        static string ImageInputFailure(string code)
+        {
+            if(code=="description-timeout")return TextResources.Get("imageDescription.timeout");
+            if(code=="description-network-error")return TextResources.Get("imageDescription.network");
+            if(code=="description-invalid-result" || code=="description-failed")return TextResources.Get("imageDescription.failed");
+            return TextResources.Get("imageDescription.unavailable");
+        }
+        public void Clear(){var ignored=ClearWithCompletion();}
+        public Task<bool> ClearWithCompletion()
+        {
+            Task<bool> result;using(Maintenance.EnterActivity()){lock(gate){if(active!=null)throw new InvalidOperationException(TextResources.Get("conversationSession.clear.text"));History.Clear();if(imageInputRouter!=null)imageInputRouter.Clear();contextUsage.Remove(personaId);CancelPredictions();LastNotice="";bool kernelOk=true;
+                if(kernelSession!=null){kernelSession.Pending.Clear();kernelSession.Delivered.Clear();kernelSession.Events.Clear();kernelSession.Step=0;kernelSession.Sequence=0;kernelSession.RecoveryState="idle";}
+                if(kernelStore!=null)try{kernelStore.Clear();kernelWarning="";kernelReadFailed=false;}catch(Exception e){if(!AgentSessionStore.StorageError(e))throw;kernelWarning=TextResources.Get("conversationSession.clear.kernelWarning");kernelOk=false;}
+                if(store!=null){var cleared=History;bool accepted=kernelOk;result=store.ClearAsync(personaId).ContinueWith(t=>{bool historyOk=t.Status==TaskStatus.RanToCompletion&&String.IsNullOrEmpty(store.Warning);if(historyOk)cleared.ReconcileImageUsage();return historyOk&&accepted;});}else{History.ReconcileImageUsage();result=Task.FromResult(kernelOk);}
+            }if(HistoryChanged!=null)HistoryChanged();}return result;
+        }
+
         internal async Task SaveHistoryForCloseAsync()
         {using(Maintenance.EnterActivity()){
             await WaitForIdleAsync().ConfigureAwait(false);
@@ -542,7 +590,7 @@ namespace Dafeiyu
             if(store!=null)store.WarningChanged-=OnWarningChanged;
             if(op!=null)
             { try {op.Cancel.Cancel();}catch(ObjectDisposedException){} if(op.Recorder!=null) op.Recorder.Dispose(); if(!op.Finishing && Stage==ConversationStage.Recording) End(op); }
-            if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();RetireMaintenanceRegistration();
+            DisposeOwnedProactiveEvents();if(imageInputRouter!=null)imageInputRouter.Clear();if(taskStore!=null)taskStore.WarningChanged-=OnWarningChanged;speech.Dispose(); api.Dispose();RetireMaintenanceRegistration();
             Task.WhenAll(store==null?Task.FromResult(0):store.FlushAsync(),op==null?Task.FromResult(true):op.Complete.Task).ContinueWith(t=>{lock(gate)foreach(var log in histories.Values)log.ReleaseImageUsage();});
         }
     }
