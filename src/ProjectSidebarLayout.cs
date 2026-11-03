@@ -23,6 +23,38 @@ namespace Dafeiyu
         {
             var section=catalog.Sections.Single(s=>s.Id==id);string previous=section.Name;try{ProjectCatalogStore.RenameSection(catalog,id,name);store.Save(catalog);}catch{section.Name=previous;throw;}Refresh();
         }
+        bool CanDeleteSection(string id){return id!="projects"&&id!=ProjectCatalogStore.DefaultChatSectionId;}
+        MenuItem DeleteSectionMenuItem(SidebarSection section)
+        {
+            var item=LocalizedUi.With(new MenuItem{Name="DeleteSection_"+section.Id,Icon=UiIcons.Image("trash",AgentUi.Muted),IsEnabled=CanDeleteSection(section.Id)},"Header",()=>TextResources.Get("sidebar.deleteSection.title"));
+            item.Click+=delegate
+            {
+                CloseHover();
+                if(new DeleteConversationDialog(section.Name,titleText:()=>TextResources.Get("sidebar.deleteSection.title"),descriptionText:()=>TextResources.Format("sidebar.deleteSection.description",section.Name)).ShowDialog()!=true)return;
+                try{DeleteSection(section.Id);}catch(Exception error){new DeleteConversationDialog(section.Name,AgentJobUiText.Error(error),titleText:()=>TextResources.Get("sidebar.deleteSection.title")).ShowDialog();}
+            };
+            return item;
+        }
+        internal void DeleteSection(string id)
+        {
+            if(!CanDeleteSection(id))throw new InvalidOperationException(TextResources.Get("sidebar.deleteSection.default"));
+            var section=catalog.Sections.Single(s=>s.Id==id);int index=catalog.Sections.IndexOf(section);
+            var projects=catalog.Projects.Where(p=>p.SectionId==id).ToArray();
+            var conversations=catalog.UnassignedConversations.Where(c=>c.Mode=="chat"&&c.SectionId==id).ToArray();
+            string orderKey="chat/"+id;List<string> order;bool hadOrder=catalog.SidebarConversationOrder.TryGetValue(orderKey,out order);
+            bool expanded;bool hadExpansion=catalog.SidebarSectionExpansion.TryGetValue(id,out expanded);
+            string label;bool hadLabel=catalog.SidebarSectionLabels.TryGetValue(id,out label);
+            foreach(var project in projects)project.SectionId="projects";
+            foreach(var conversation in conversations)conversation.SectionId=ProjectCatalogStore.DefaultChatSectionId;
+            catalog.Sections.RemoveAt(index);catalog.SidebarConversationOrder.Remove(orderKey);catalog.SidebarSectionExpansion.Remove(id);catalog.SidebarSectionLabels.Remove(id);
+            try{store.Save(catalog);}catch
+            {
+                catalog.Sections.Insert(index,section);foreach(var project in projects)project.SectionId=id;foreach(var conversation in conversations)conversation.SectionId=id;
+                if(hadOrder)catalog.SidebarConversationOrder[orderKey]=order;if(hadExpansion)catalog.SidebarSectionExpansion[id]=expanded;if(hadLabel)catalog.SidebarSectionLabels[id]=label;
+                throw;
+            }
+            Refresh();
+        }
         internal void MoveProjectToSection(ProjectDefinition project,string id)
         {
             if(!catalog.Sections.Any(s=>s.Id==id&&s.Mode=="work"))throw new ArgumentException(TextResources.Get("projectSidebarLayout.moveProjectToSection.text"));string previous=project.SectionId;try{project.SectionId=id;store.Save(catalog);}catch{project.SectionId=previous;throw;}Refresh();
@@ -35,7 +67,7 @@ namespace Dafeiyu
             {
                 var header=new Grid{Margin=new Thickness(12,18,12,6),Background=Brushes.Transparent};header.ColumnDefinitions.Add(new ColumnDefinition());header.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(24)});header.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(24)});
                 var title=SectionToggle(section.Id,section.Name);header.Children.Add(title);
-                var menu=ChatUi.Menu();var rename=LocalizedUi.With(new MenuItem{Header=TextResources.Get("projectSidebarLayout.refresh.header")},"Header",()=>(TextResources.Get("projectSidebarLayout.refresh.header")));var currentSection=section;rename.Click+=delegate{var dialog=new ConversationRenameDialog(currentSection.Name,TextResources.Get("projectSidebarLayout.refresh.dialogConversationRenameDialog"),TextResources.Get("projectSidebarLayout.refresh.dialogConversationRenameDialog.alternativeA"),true);if(dialog.ShowDialog()==true)try{RenameSection(currentSection.Id,dialog.ConversationName);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebarLayout.refresh.messageBoxShow"));}};menu.Items.Add(rename);menu.Items.Add(new Separator());menu.Items.Add(NewSectionMenuItem());header.ContextMenu=menu;var more=UiIcons.Button("more",()=>(TextResources.Get("projectSidebarLayout.refresh.uiIcons")));more.Name="SectionMore_"+section.Id;more.ContextMenu=menu;more.Click+=delegate{menu.PlacementTarget=more;menu.IsOpen=true;};Grid.SetColumn(more,1);header.Children.Add(more);
+                var menu=ChatUi.Menu();var rename=LocalizedUi.With(new MenuItem{Header=TextResources.Get("projectSidebarLayout.refresh.header")},"Header",()=>(TextResources.Get("projectSidebarLayout.refresh.header")));var currentSection=section;rename.Click+=delegate{var dialog=new ConversationRenameDialog(currentSection.Name,TextResources.Get("projectSidebarLayout.refresh.dialogConversationRenameDialog"),TextResources.Get("projectSidebarLayout.refresh.dialogConversationRenameDialog.alternativeA"),true);if(dialog.ShowDialog()==true)try{RenameSection(currentSection.Id,dialog.ConversationName);}catch(Exception e){MessageBox.Show(e.Message,TextResources.Get("projectSidebarLayout.refresh.messageBoxShow"));}};menu.Items.Add(rename);menu.Items.Add(DeleteSectionMenuItem(currentSection));menu.Items.Add(new Separator());menu.Items.Add(NewSectionMenuItem());header.ContextMenu=menu;title.ContextMenu=menu;var more=UiIcons.Button("more",()=>(TextResources.Get("projectSidebarLayout.refresh.uiIcons")));more.Name="SectionMore_"+section.Id;more.ContextMenu=menu;more.Click+=delegate{menu.PlacementTarget=more;menu.IsOpen=true;};Grid.SetColumn(more,1);header.Children.Add(more);
                 var add=UiIcons.Button("add",()=>(TextResources.Get("projectSidebarLayout.refresh.uiIcons.alternativeA")));add.Name=section.Id=="projects"?"NewProject":"NewProjectInSection_"+section.Id;add.Width=add.Height=24;add.Padding=new Thickness(3);add.Margin=new Thickness(0);add.Click+=delegate{NewProjectRequested(currentSection.Id);};Grid.SetColumn(add,2);header.Children.Add(add);HoverActions(header,menu,more,add);Children.Add(header);
                 header.AllowDrop=true;header.DragOver+=delegate(object sender,DragEventArgs e){if(e.Data.GetDataPresent(ProjectDragFormat)){e.Effects=DragDropEffects.Move;e.Handled=true;}};
                 header.Drop+=delegate(object sender,DragEventArgs e){var id=e.Data.GetData(ProjectDragFormat) as string;var project=catalog.Projects.FirstOrDefault(p=>p.Id==id);if(project!=null){e.Handled=true;try{MoveProjectToSection(project,currentSection.Id);}catch(Exception error){MessageBox.Show(error.Message,TextResources.Get("projectSidebarLayout.refresh.messageBoxShow"));}}};

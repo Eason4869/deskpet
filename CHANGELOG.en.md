@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.1 · Unreleased
+
+- Allow custom work and chat sections to be deleted, moving their contents to the default section while preserving records and workspace files. Default sections are retained.
+- Use consistent in-app confirmation and error dialogs for section and project deletion, with Cancel focused by default and support for themes and live language changes.
+- Roll back section or project membership when deletion cannot be saved, preserving existing data.
+
 ## [1.0.0](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · First production release
 
 **Release date: 2026-11-03 (Asia/Shanghai)**

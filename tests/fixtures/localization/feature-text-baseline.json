@@ -2,6 +2,24 @@
   "schemaVersion": 1,
   "resources": [
     {
+      "key": "sidebar.deleteSection.title",
+      "expected": "删除分区",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "sidebar.deleteSection.description",
+      "expected": "确定删除分区“{0}”吗？其中的项目和聊天会移回默认分区，不会删除项目、聊天记录或工作目录中的文件。",
+      "format": true,
+      "argument_count": 1
+    },
+    {
+      "key": "sidebar.deleteSection.default",
+      "expected": "默认分区不能删除。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
       "key": "aiConfiguration.conversationModelTab",
       "expected": "对话模型",
       "format": false,

@@ -47,6 +47,7 @@ renamed_keys = {
 new_keys = {'desktopObservation.'+key for key in ['captureMode','application','fullScreen','exclusionsHelp','saveExclusions','details','emptyExclusions']}
 new_keys |= {'settingsPage.greetingPreviewHelp','settingsPage.greetingJitter'}
 new_keys |= {'personaProfiles.screenAccess'} | {'personaProfiles.legacyScreenAccess.'+key for key in ['ebao','dafeiyu','marfu','generic']}
+new_keys |= {'sidebar.deleteSection.title','sidebar.deleteSection.description','sidebar.deleteSection.default'}
 new_keys |= set(renamed_keys.values())
 new_keys |= {'fileActionsMenu.chooseApplication', 'sideChatPane.contextHint'}
 formatted = {'desktopObservation.'+key for key in ['countdown', 'consentBody', 'imageDestination', 'textDestination', 'lastObserved']}

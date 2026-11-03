@@ -818,8 +818,9 @@ namespace Dafeiyu
         }
         public async void DeleteProject(ProjectDefinition project)
         {
-            if(project==null || MessageBox.Show(TextResources.Format("petWindow.deleteProject.messageBoxShow",project.Name),TextResources.Get("petWindow.deleteProject.messageBoxShow.alternativeA"),MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
-            try{await DeleteProjectAsync(project);}catch(Exception error){ShowProjectSaveError(error);}
+            if(project==null)return;
+            if(new DeleteConversationDialog(project.Name,titleText:()=>TextResources.Get("petWindow.deleteProject.messageBoxShow.alternativeA"),descriptionText:()=>TextResources.Format("petWindow.deleteProject.messageBoxShow",project.Name)).ShowDialog()!=true)return;
+            try{await DeleteProjectAsync(project);}catch(Exception error){new DeleteConversationDialog(project.Name,AgentJobUiText.Error(error),titleText:()=>TextResources.Get("petWindow.deleteProject.messageBoxShow.alternativeA")).ShowDialog();}
         }
         internal Task DeleteProjectAsync(ProjectDefinition project)
         {
