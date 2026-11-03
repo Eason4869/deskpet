@@ -55,7 +55,7 @@ DeskPet enters its 1.x production release line. This version brings companion in
 - Windows packages are currently not code-signed. Generated translations have resource checks but not native-speaker review.
 - The embedded browser has no download support. MCP HTTP currently supports a JSON subset, not SSE. Temporary side-chat history is not saved; conversation tool states restore only within the current window.
 
-Downloads and usage: [1.0.0 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [README](README.en.md) · [installation and backup](docs/installation.md).
+Downloads and usage: [1.0.0 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [README](README.en.md) · [installation and backup](docs/installation.md) · [image generation guide](docs/image-generation.md).
 
 ---
 

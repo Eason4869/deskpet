@@ -55,7 +55,7 @@ DeskPet 进入 1.x 正式发布线。这个版本将桌宠互动、个人聊天�
 - Windows 安装包当前未做应用代码签名；自动译文经过资源检查，尚未经母语人工审校。
 - 内置浏览器不提供下载；MCP HTTP 当前支持 JSON 子集，暂不支持 SSE。侧边临时聊天不保存历史，会话工具状态仅在当前窗口内恢复。
 
-下载与使用：[1.0.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [README](README.md) · [安装与备份](docs/installation.md)。
+下载与使用：[1.0.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [README](README.md) · [安装与备份](docs/installation.md) · [图像生成说明](docs/image-generation.md)。
 
 ---
 
