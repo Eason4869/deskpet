@@ -23,6 +23,7 @@ def main():
     p.add_argument('--repository', required=True)
     p.add_argument('--run-id', type=int, required=True)
     p.add_argument('--release-id', type=int, required=True)
+    p.add_argument('--append-published', action='store_true', help='Append to an explicitly selected published stable release')
     a = p.parse_args()
     if not re.fullmatch(r'[0-9a-f]{40}', a.commit):
         raise ValueError('Expected a full commit SHA')
@@ -33,6 +34,8 @@ def main():
         return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + a.repository + path], text=True))
     run = api('/actions/runs/' + str(a.run_id))
     metadata = release_metadata(a.version, tag, run['head_branch'])
+    if a.append_published and (run['head_branch'] != 'main' or run.get('event') != 'push'):
+        raise ValueError('Published releases require native main-push artifacts')
     if run['status'] != 'completed' or run['conclusion'] != 'success' or run['head_sha'] != a.commit or run['path'] != '.github/workflows/macos.yml':
         raise ValueError('Expected a successful native macOS run for the tagged commit')
     ref = api('/git/ref/tags/' + tag)['object']
@@ -42,8 +45,8 @@ def main():
         raise ValueError('Tag target differs from expected release commit')
     # Drafts are addressed by numeric ID; tag lookup can omit unpublished releases.
     release = api('/releases/' + str(a.release_id))
-    if not release['draft'] or release['tag_name'] != tag or release['prerelease'] is not metadata['prerelease']:
-        raise ValueError('Promotion requires an existing draft release in the expected channel')
+    if release['draft'] is not (not a.append_published) or release['tag_name'] != tag or release['prerelease'] is not metadata['prerelease']:
+        raise ValueError('Release state or channel does not match the explicit promotion mode')
     a.output.mkdir(parents=True, exist_ok=False)
     records = []
     for arch in ['arm64', 'x86_64']:
@@ -75,6 +78,9 @@ def main():
             records.append(dict(name=name, sha256=digest, size=source.stat().st_size))
     manifest = dict(commit=a.commit, version=a.version, assets=records)
     (a.output / 'mac-upload-manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+    existing = {asset['name'] for asset in release.get('assets', [])}
+    if any(record['name'] in existing for record in records):
+        raise ValueError('Existing release assets are never overwritten')
     for record in records:
         subprocess.run(['gh', 'release', 'upload', tag, str(a.output / record['name']), '--repo', a.repository], check=True)
         print('Uploaded verified ' + record['name'], flush=True)

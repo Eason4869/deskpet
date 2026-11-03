@@ -35,7 +35,7 @@ jobs:
           run-id: ${{ inputs.run_id }}
           pattern: DeskPet-macOS-*-preview-${{ inputs.commit }}
           path: work/macos
-      - name: Verify tagged app identity and upload to existing draft
+      - name: Verify tagged app identity and append to published stable release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ inputs.version }}
@@ -43,7 +43,39 @@ jobs:
           RELEASE_RUN_ID: ${{ inputs.run_id }}
           RELEASE_ID: ${{ inputs.release_id }}
         run: |
-          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --release-id "$RELEASE_ID"
+          python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --release-id "$RELEASE_ID" --append-published
+      - name: Verify uploaded digests and publish macOS checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          root=Path('work/promoted')
+          manifest=json.loads((root/'mac-upload-manifest.json').read_text())
+          assert manifest['commit']==os.environ['RELEASE_COMMIT'] and manifest['version']==os.environ['RELEASE_VERSION']
+          tag='v'+manifest['version']
+          def release():
+              value=json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['GITHUB_REPOSITORY']+'/releases/'+os.environ['RELEASE_ID']],text=True))
+              assert not value['draft'] and not value['prerelease'] and value['tag_name']==tag
+              return {asset['name']:asset for asset in value['assets']}
+          assets=release()
+          for record in manifest['assets']:
+              asset=assets[record['name']]
+              assert asset['state']=='uploaded' and asset['size']==record['size'] and asset['digest']=='sha256:'+record['sha256']
+          checksums=root/'SHA256-macOS.txt'
+          checksums.write_text(''.join(record['sha256']+'  '+record['name']+'\n' for record in manifest['assets']),encoding='utf-8')
+          extras=[checksums,root/'mac-upload-manifest.json']
+          assert not any(path.name in assets for path in extras)
+          subprocess.run(['gh','release','upload',tag,'--repo',os.environ['GITHUB_REPOSITORY'],*[str(path) for path in extras]],check=True)
+          assets=release()
+          for path in extras:
+              assert assets[path.name]['digest']=='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest()
+          print('PASS published macOS asset digests and checksum manifests')
+          PY
       - name: Preserve verified upload manifest
         if: always()
         uses: actions/upload-artifact@v4

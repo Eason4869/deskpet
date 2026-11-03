@@ -82,6 +82,30 @@ class PromotionTests(unittest.TestCase):
                         promotion.main()
                     uploads.assert_not_called()
 
+    def test_explicit_published_append_preserves_native_guards(self):
+        for bad in [None, 'ci', 'tag', 'smoke', 'app-commit', 'digest', 'channel', 'prerelease', 'collision', 'event', 'draft']:
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / 'artifacts'
+                root.mkdir()
+                original = self.fixture(root, bad, '1.0.0')
+                def api(args, **kwargs):
+                    value = json.loads(original(args, **kwargs))
+                    if '/actions/runs/' in args[-1]:
+                        value['event'] = 'pull_request' if bad == 'event' else 'push'
+                    if '/releases/' in args[-1]:
+                        value['draft'] = bad == 'draft'
+                        value['assets'] = [{'name': 'DeskPet-macOS-1.0.0-arm64-preview.zip'}] if bad == 'collision' else []
+                    return json.dumps(value)
+                argv = ['promotion', '--artifact-root', str(root), '--output', str(Path(tmp) / 'out'), '--version', '1.0.0', '--commit', 'a' * 40, '--repository', 'owner/repo', '--run-id', '1', '--release-id', '1', '--append-published']
+                with patch.object(sys, 'argv', argv), patch.object(promotion.subprocess, 'check_output', side_effect=api), patch.object(promotion.subprocess, 'run') as uploads:
+                    if bad:
+                        with self.assertRaises(ValueError):
+                            promotion.main()
+                        uploads.assert_not_called()
+                    else:
+                        promotion.main()
+                        self.assertEqual(uploads.call_count, 4)
+
 
 if __name__ == '__main__':
     unittest.main()
