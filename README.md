@@ -6,6 +6,8 @@
 
 **1.0.0 · 首个正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
+当前源码版本：**1.0.1（待发布）**。本次修复分区删除和删除确认窗口一致性，详见[更新日志](CHANGELOG.md)。
+
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
 > 本页界面图由本版 Windows 程序的隔离预览生成。会话、项目和模型名称均为演示内容，不含个人聊天或真实账号配置。macOS 仍为独立界面的平台预览。

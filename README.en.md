@@ -6,6 +6,8 @@ A desktop companion for interactions, conversation and project work.
 
 **1.0.0 · First production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
+Current source version: **1.0.1 (unreleased)**. This patch fixes section deletion and makes deletion dialogs consistent; see the [changelog](CHANGELOG.en.md).
+
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
 > Screenshots are generated from this version's Windows UI using an isolated preview. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
