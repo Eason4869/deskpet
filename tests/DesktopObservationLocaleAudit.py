@@ -48,6 +48,7 @@ new_keys = {'desktopObservation.'+key for key in ['captureMode','application','f
 new_keys |= {'settingsPage.greetingPreviewHelp','settingsPage.greetingJitter'}
 new_keys |= {'personaProfiles.screenAccess'} | {'personaProfiles.legacyScreenAccess.'+key for key in ['ebao','dafeiyu','marfu','generic']}
 new_keys |= set(renamed_keys.values())
+new_keys |= {'fileActionsMenu.chooseApplication', 'sideChatPane.contextHint'}
 formatted = {'desktopObservation.'+key for key in ['countdown', 'consentBody', 'imageDestination', 'textDestination', 'lastObserved']}
 formatted |= {renamed_keys[key] for key in formatted if key in renamed_keys}
 sentinels = re.compile(r'PLACE(?:HOLDER|WAY)ZERO|PLATZHALTERZERO|प्लेसहोल्डरशून्य|プレースホルダーゼロ', re.I)

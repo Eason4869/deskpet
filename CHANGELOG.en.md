@@ -24,7 +24,7 @@ DeskPet enters its 1.x production release line. This version brings companion in
 ### Conversation and tool improvements in this release
 
 - **Preserved public progress:** explanations addressed to the user stay in the reply body. Later tool calls no longer move displayed text into the thinking section, so final results can be read alongside preceding progress.
-- **Correct empty-composer height:** companion artwork no longer increases an empty editor's height. The background character sits above the composer, preserving input and reading space.
+- **Correct empty-composer height:** adding an image no longer expands an empty editor. Typing or clearing text keeps its height stable. The background character sits above the composer, preserving input and reading space.
 - **Improved Open with:** file menus list applicable Windows applications and offer the system application picker.
 - **Dedicated messaging icon:** the settings entry is distinct from other features, making platform connections easier to find.
 - **Tools retained per conversation:** right-side tabs, page content, selection, hidden state and layout belong to their main conversation and restore when switching within the current window. Closing a tab releases its tool; closing the window releases its instances. Persistence across application restarts is not promised.
