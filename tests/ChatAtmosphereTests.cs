@@ -55,24 +55,25 @@ namespace Dafeiyu.Tests
                 for(int i=0;i<8;i++)workspace.Session.History.Commit("本地问题 "+i,"本地测试回复。对话背景固定在窗口右下方，审批只改变前景布局。\n\n继续检查实际窗口中的位置。");
                 chat=new ChatWindow(pet,workspace){Width=1800,MinWidth=1800,Height=920,ShowActivated=false};chat.Show();Pump();chat.UpdateLayout();Pump();
                 var surface=(FrameworkElement)typeof(ChatWindow).GetField("conversationSurface",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat);
-                var artwork=All<Image>(chat).Single(i=>i.Name=="ChatAtmosphereArtwork");double bottom=ArtworkCorner(artwork,surface).Y;
+                var artwork=All<Image>(chat).Single(i=>i.Name=="ChatAtmosphereArtwork");double bottom=ArtworkCorner(artwork,surface).Y;var composer=All<ConversationComposer>(chat).Single();
+                Check(composer.TranslatePoint(new Point(),surface).Y-bottom>=14,"character background ends above the input composer instead of behind it");
                 var approval=((AgentApprovalController)workspace.Session.ApprovalProvider).ApproveAsync(new AgentApprovalRequest{SessionId=workspace.Session.KernelSession.SessionId,ProjectId=workspace.ProjectId,TaskId="artwork-approval",CallId="artwork-call",ToolName="exec_command",Action="shell",Resource=folder,Arguments="{\"command\":\"git --version\"}"});Pump();chat.UpdateLayout();Pump();
                 Check(All<Border>(chat).Any(b=>b.Name=="AgentApprovalCard"&&b.IsVisible),"real conversation fixture displays a genuine inline approval");
                 double pendingBottom=ArtworkCorner(artwork,surface).Y;
-                Check(Math.Abs(pendingBottom-bottom)<=1,"real inline approval does not push visible artwork upward (before "+bottom.ToString("F1")+", pending "+pendingBottom.ToString("F1")+")");
-                Check(surface.ActualHeight-pendingBottom>=14&&surface.ActualHeight-pendingBottom<=30,"real artwork anchors near the conversation surface bottom above the disclaimer");
+                Check(pendingBottom<bottom,"character moves above an expanded inline approval");
+                Check(composer.TranslatePoint(new Point(),surface).Y-pendingBottom>=14&&composer.TranslatePoint(new Point(),surface).Y-pendingBottom<=30,"real artwork anchors just above the composer");
                 foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);Pump();Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-"+theme+".png"));}
                 cfg.Text.BaseUrl="http://127.0.0.1:1/v1";cfg.Text.Model="fixture";
                 // Enqueue and pause in one dispatcher turn, before the queue's yielded
                 // continuation can run. This exercises real rows without sending.
                 Dispatcher.CurrentDispatcher.Invoke(new Action(delegate{workspace.Queue.Enqueue("等待中的本地测试消息一");workspace.Queue.Hold();workspace.Queue.Enqueue("等待中的本地测试消息二");}));Pump();chat.UpdateLayout();Pump();
                 Check(All<Grid>(chat).Count(g=>g.Name=="QueuedMessageRow"&&g.IsVisible)==2&&!workspace.Session.IsBusy,"real paused queue expands two rows without submitting a request");
-                Check(Math.Abs(ArtworkCorner(artwork,surface).Y-bottom)<=1,"queue expansion alongside approval preserves the artwork bottom anchor");Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-queue-dark.png"));
+                Check(ArtworkCorner(artwork,surface).Y<pendingBottom&&composer.TranslatePoint(new Point(),surface).Y-ArtworkCorner(artwork,surface).Y>=14,"queue expansion keeps artwork clear of the composer");Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-queue-dark.png"));
                 string preview=Path.Combine(folder,"preview.md");File.WriteAllText(preview,"# 本地工具预览");chat.OpenFilePreview(preview);Pump();chat.UpdateLayout();Pump();
-                Point split=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-split.X-20)<=2&&Math.Abs(surface.ActualHeight-split.Y-22)<=2,"split tool layout anchors actual character pixels to the conversation surface bottom-right");
+                Point split=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-split.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-split.Y-22)<=2,"split tool layout anchors character pixels above the composer at the right edge");
                 chat.ToggleFullTabView();Pump();((PreviewWorkspace)typeof(ChatWindow).GetField("filePreview",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat)).SelectConversation();Pump();chat.UpdateLayout();Pump();
-                Point full=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-full.X-20)<=2&&Math.Abs(surface.ActualHeight-full.Y-22)<=2,"full conversation tab retains actual character pixels at its bottom-right");
-                All<Button>(chat).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();chat.UpdateLayout();Pump();Check(approval.IsCompleted&&Math.Abs(ArtworkCorner(artwork,surface).Y-full.Y)<=1,"dismissing approval retains the artwork's visible bottom anchor");
+                Point full=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-full.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-full.Y-22)<=2,"full conversation tab keeps character pixels above its composer");
+                All<Button>(chat).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();chat.UpdateLayout();Pump();Check(approval.IsCompleted&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-ArtworkCorner(artwork,surface).Y-22)<=2,"dismissing approval preserves the artwork gap above the composer");
             }
             finally{if(chat!=null)chat.Close();if(pet!=null)pet.Close();ThemeManager.Apply("light");Pump();}
         }

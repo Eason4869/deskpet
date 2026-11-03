@@ -49,7 +49,7 @@ class PromotionTests(unittest.TestCase):
         return api
 
     def test_verified_upload_and_fail_closed(self):
-        for version, bad in [(version, bad) for version in ['0.7.0', '0.10.1-dev.2']
+        for version, bad in [(version, bad) for version in ['0.7.0', '0.10.1-dev.2', '1.0.0']
                              for bad in [None, 'ci', 'tag', 'published', 'smoke', 'app-commit', 'digest', 'channel', 'prerelease']]:
             with self.subTest(version=version, bad=bad), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp) / 'artifacts'

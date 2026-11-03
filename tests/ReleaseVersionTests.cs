@@ -11,7 +11,7 @@ namespace Dafeiyu.Tests
                 if(type==null)throw new Exception("missing shared release version parser");
                 var parse=type.GetMethod("Parse",BindingFlags.Static|BindingFlags.Public);
                 int count=0;
-                foreach(var pair in new[]{new[]{"0.9.1","0.9.2-dev"},new[]{"0.9.2-dev","0.9.3"},new[]{"0.9.4-dev.2","0.9.4-dev.10"},new[]{"0.9.4-dev.10","0.9.4"},new[]{"0.9.9","0.10.0-dev.1"},new[]{"0.9.4","0.9.4.1"}}) {
+                foreach(var pair in new[]{new[]{"0.9.1","0.9.2-dev"},new[]{"0.9.2-dev","0.9.3"},new[]{"0.9.4-dev.2","0.9.4-dev.10"},new[]{"0.9.4-dev.10","0.9.4"},new[]{"0.9.9","0.10.0-dev.1"},new[]{"0.9.4","0.9.4.1"},new[]{"0.11.4-dev.2","1.0.0"},new[]{"1.0.0-dev.2","1.0.0"}}) {
                     var left=parse.Invoke(null,new object[]{pair[0]});var right=parse.Invoke(null,new object[]{pair[1]});
                     if(((IComparable)left).CompareTo(right)>=0 || ((IComparable)right).CompareTo(left)<=0)throw new Exception("incorrect ordering: "+pair[0]+" < "+pair[1]);count++;
                 }

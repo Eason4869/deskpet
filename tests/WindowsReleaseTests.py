@@ -41,5 +41,13 @@ class WindowsReleaseTests(unittest.TestCase):
             git('update-ref','refs/remotes/origin/dev',stable);verify('v0.9.5-dev.2',False)
             broken=commit('0.9.6','0.9.5.0');git('tag','v0.9.6');git('update-ref','refs/remotes/origin/main',broken)
             verify('v0.9.6',False)
+            major=commit('1.0.0','1.0.0.0');git('tag','v1.0.0')
+            git('update-ref','refs/remotes/origin/dev',major)
+            verify('v1.0.0',False,'v0.11.4')
+            git('update-ref','refs/remotes/origin/main',major)
+            metadata=verify('v1.0.0',True,'v0.11.4')
+            self.assertEqual(metadata['branch'],'main')
+            self.assertFalse(metadata['prerelease']);self.assertEqual(metadata['make_latest'],'true')
+            verify('v1.0.0',False,'v1.0.0')
 
 if __name__=='__main__':unittest.main()

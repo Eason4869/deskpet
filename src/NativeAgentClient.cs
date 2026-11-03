@@ -23,9 +23,8 @@ namespace Dafeiyu
     {
         private const int AgentMaximumArguments=131072;
 
-        // onDelta is provisional within each round. Before the first running tool event,
-        // all that round's text has been emitted. The UI then moves it into reasoning and
-        // resets its answer buffer. Only the final tool-free round is returned as the answer.
+        // onDelta contains public text from all rounds, separated as paragraphs.
+        // Reasoning has its own callback. The return value is the final tool-free round.
         public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> onDelta,Action<string> onReasoning,Action<AgentToolEvent> onToolEvent,bool stream,CancellationToken cancel)
         {
             if(settings==null || messages==null)throw new ArgumentNullException(settings==null?"settings":"messages");
@@ -68,7 +67,8 @@ namespace Dafeiyu
             };
             if(workspace!=null)workspace.GuidanceFits=guides=>AgentContextBudget.FitsWireBytes(requestBody(history.Concat(guides.Select(g=>(object)new{role="user",content=ChatAttachment.Content(g,anthropic)})).ToList()));
             long tokens=0;
-            Action<string> text=delegate(string delta){if(delta==null)return;if(onDelta!=null)onDelta(delta);};
+            bool emittedText=false,roundText=false;
+            Action<string> text=delegate(string delta){if(String.IsNullOrEmpty(delta))return;if(onDelta!=null){if(emittedText&&!roundText)onDelta("\n\n");onDelta(delta);}emittedText=true;roundText=true;};
             Action<string> reasoning=delegate(string delta){if(delta==null)return;if(onReasoning!=null)onReasoning(delta);};
             using(var overall=CancellationTokenSource.CreateLinkedTokenSource(cancel))
             {
@@ -76,6 +76,7 @@ namespace Dafeiyu
                 {
                     while(true)
                     {
+                        roundText=false;
                         overall.Token.ThrowIfCancellationRequested();
                         if(workspace!=null&&workspace.CumulativeTokenLimit>0&&workspace.TaskState!=null&&workspace.TaskState.EstimatedTotalTokens>=workspace.CumulativeTokenLimit)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text"));
                         if(workspace!=null&&workspace.NeedsReconciliation)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeA"));

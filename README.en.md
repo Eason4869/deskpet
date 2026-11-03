@@ -1,201 +1,156 @@
-﻿[简体中文](README.md) | [English](README.en.md)
+[简体中文](README.md) | [English](README.en.md)
 
-**Stable release [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3):** adds five messaging platforms, shorter interaction feedback and an owned-keepsake album. Improves settings loading, background saves, maintenance and exit protection, plus Windows sidebar, QR dialogs and text input.
+# DeskPet · 桌面伙伴
 
+A desktop companion for interactions, conversation and project work.
 
-This release adds [messaging channels](docs/im-channels.md) for user-owned QQ, WeChat, Feishu, DingTalk and WeCom bots through local outbound connections. No public IP or developer-hosted relay is required. Live QR generation for all five platforms and Windows dialog interaction have been checked. Text only; real-account QR authorization and message round trips remain unverified.
+**1.0.0 · First production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-> **Current stable release: [0.11.3](https://github.com/Eason4869/deskpet/releases/tag/v0.11.3).** Published from main; macOS packages remain ad-hoc platform previews without Developer ID signing or notarization.
+![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
-**Development preview [0.11.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v0.11.4-dev.2):** Windows WPF adds application/full-screen capture selection, shared image-description settings, observation-toggle persistence fixes, interval-plus-jitter greetings, and consistent multilingual persona permission wording. Confirm capture scope and receiving services before use; see [desktop observation and image descriptions](docs/proactive-desktop.en.md). This preview is outside the 0.11.3 stable downloads below.
-
-<div align="center">
-  <picture>
-    <source media="(max-width: 640px)" srcset="previews/readme-hero-mobile.svg">
-    <img src="previews/readme-hero.svg" width="1200" alt="DeskPet: Ebao, Dafeiyu, Marfu and Xiaobei share your desktop, conversations and projects">
-  </picture>
-  <h1>DeskPet · 桌面伙伴</h1>
-  <p>Animated companions · Individual personalities · Project work · Dictation and speech</p>
-  <p><a href="#download">Download</a> · <a href="#get-started">Get started</a> · <a href="docs/configuration-guide.md">Setup guide</a> · <a href="CHANGELOG.en.md">Changelog</a></p>
-</div>
-
-DeskPet is a companion that lives on your desktop. Let it wander, follow the pointer, enjoy a head pat or have a snack. Connect your own model service to chat, explore ideas and work with project files.
-
-Version **0.11.3** brings messaging, interaction changes and settings/UI improvements since 0.11.1 into the stable channel:
-
-- **Messaging:** QQ, WeChat, Feishu, DingTalk and WeCom text conversations use isolated context and expose no Agent tools. Windows offers five platform logo rows, owned QR/manual connection dialogs and optional ID restrictions; group messages still require an actual bot mention.
-- **Interactions and keepsakes:** affection and greeting feedback lasts about 0.9 seconds, with a 10% interaction-greeting chance and unchanged scoring. Holiday albums show only the current companion's unlocked, saved cards.
-- **Settings and saves:** settings pages and AI editors are built on demand. Windows explicit application/project saves use background transactions, retain drafts on failure and protect concurrent edits, maintenance and exit.
-- **Windows UI:** sidebar section arrows appear on hover. Recent hides project conversations by default, with a persistent context-menu toggle. Search/image input alignment and download, confirmation and cache windows receive further refinements.
-
-Retains thirteen interface languages with live switching, companion home and separate relationship records, **55 appearances** across five companions, encrypted draft recovery, shortcut recording, image generation, gallery, skill discovery and voice. Official material versions stay independent of application releases, with verified unchanged content reused across releases. Managed history protects current, recovery, active and unknown resources; eligible retired copies become reclaimable after seven days. Legacy formats and custom packs remain protected.
-
-Languages use their native names: 简体中文, 繁體中文, English, 日本語, 한국어, Français (France), Deutsch (Deutschland), हिन्दी (भारत), Bahasa Indonesia, Italiano (Italia), Português (Brasil), Español (Latinoamérica) and Español (España). Generated translations have automated resource checks, not native-speaker review.
-
-Persistent work conversations on Windows WPF and Avalonia support application-owned background tasks, original-reply task cards, project lists, paged logs, stop and retry. Preview addresses open only after an explicit click. Closing or archiving a conversation does not end its tasks; project changes and exit respect ownership and cleanup. macOS provides conversation and task-record UI without local background-process execution.
-
-Ebao's default HD artwork supports offline startup. Other official companions download on first selection, and **Download/update all** obtains complete official packs for all five companions, including Ebao's full holiday wardrobe. Valid old artwork stays available during preparation. See the [character-pack guide](docs/character-packs.md), [relationship guide](docs/companion-relationship/user-guide.en.md), [holiday outfits](docs/holiday-outfits.md) and [changelog](CHANGELOG.en.md).
-
-Stable updates use published releases from main. The preview channel selects the highest stable or preview version and never downgrades. Historical development records and source tags remain available, including [0.11.3-dev.2](https://github.com/Eason4869/deskpet/tree/v0.11.3-dev.2), which has no separate Release. This stable release has the installable assets.
-
-Choose an update channel in About. This saves a preference and never downgrades the app. **Update and restart now** skips the remaining five-second wait while retaining protections for running tasks and unsaved content. The authoring template is a separate download. Since 0.10.3-dev.1, non-default companions use independent complete HD packs and the same GitHub acceleration settings as application updates. See [release and update naming](docs/release-naming.md).
-
-## Meet your companions
-
-<picture>
-  <source media="(max-width: 640px)" srcset="previews/readme-interaction-mobile.svg">
-  <img src="previews/readme-interaction.svg" width="1200" alt="Companion artwork, action palette and quick chat; interactions need no AI configuration, while chat uses a configured model">
-</picture>
-
-Choose light, dark or system appearance in **Settings → General → Appearance**. Appearance and interface-language changes save and take effect immediately.
-
-Choose any of five official companions or import a custom appearance. A fresh installation starts with **Ebao**. Selecting another official companion downloads and installs its complete HD pack before switching. During formal setup you can select a character directly; missing packages prepare in the background, with an explicit full official-pack download/update action. You can continue or close the guide while preparation runs. Each companion has separate ordinary-chat history, personality and voice preferences.
-
-| Companion | Meet them |
-| --- | --- |
-| **Ebao (E包)** | A sharp-tongued companion with white hair, blue eyes and blue-and-white sportswear. |
-| **Dafeiyu (大肥鱼)** | A gentle, playful whale girl in blue and white. |
-| **Marfu (马尔芙)** | A clever, playful magical girl with blonde hair and green eyes. |
-| **Xiaobei (小贝)** | A quick-witted, gentle technology-themed boy in black, white and teal. |
-| **Guga (咕嘎)** | A curious, food-loving girl in a penguin outfit, with black hair, gray-blue eyes and a little temper. |
-
-Import a [complete character-pack ZIP](docs/character-packs.md) to update an avatar, personality, both animation sets and voice recommendations. Packs with the same ID retain a single listing and personal records. **Download/update all** installs or updates all official complete packs. Unlocked outfits are available in the current companion's Wardrobe, with personal records preserved.
-
-1. **Drag, click and pet:** move your companion and trigger interactions. Locking its position keeps it in place.
-2. **Middle-click:** open the action palette for a nap, snack or signature action. Running actions move a short distance and stop at screen edges; a locked companion performs them in place.
-3. **Double-click the companion:** open quick chat. **Right-click it**, or **double-click the tray icon**, to open the full conversation window.
-
-Your companion remains interactive while thinking or working. Dragging, pausing or changing an action stops manual running. **Desktop interactions need no AI configuration. Text chat, dictation, speech and Live require the corresponding model services.**
-
-## Chat and work in one window
-
-<picture>
-  <source media="(max-width: 640px)" srcset="previews/readme-workspace-mobile.svg">
-  <img src="previews/readme-workspace.svg" width="1200" alt="The complete Windows 0.10.0 workspace, with navigation, six sample conversations, chat and the composer">
-</picture>
-
-<sub>This Windows 0.10.0 example preserves the complete window. Conversations are isolated local fixtures, contain no personal records and made no model requests. View the [original workspace image](previews/workspace-0.10.0.png), [action palette](previews/action-palette.png) or [quick chat](previews/quick-chat.png).</sub>
-
-### From a message to a project
-
-| Mode | How it works |
-| --- | --- |
-| **Quick chat** | Double-click your companion for a short conversation. Reopening starts a new topic; previous records remain in that companion's Quick Chat group. |
-| **Chat** | Use your companion's personality in a full conversation, with separate context and drafts in the default or a chosen chat section. |
-| **Work** | Bind a project directory, read/search/edit files and inspect actual tool records. The text model must support native tool calling. |
-
-Chat sections contain conversations; work sections contain projects and their conversations. Create or rename sections, reorder conversations by dragging, move work conversations to another project or chat conversations to another chat section, and pin, archive or group projects and conversations. Switching pages or conversations preserves drafts and reading position. Collapse the sidebar with the title-bar button or **Ctrl + Shift + S**.
-
-### Write comfortably and read complete replies
-
-The composer supports Markdown headings, lists, quotes, code and tables. Switch to plain text in **Work settings → Editor**. The default shortcuts are **Enter to send** and **Shift + Enter for a new line**.
-
-Use **+**, paste or drag and drop to add image, file and folder references. Windows also supports snapshots of application windows. Enlarge, zoom and pan uploaded or returned images inside the window; press **Esc** or click outside to close. Copy, read aloud, regenerate or export replies.
-
-Dictation turns speech into a draft. Toggle automatic read-aloud above the conversation; use Live for real-time voice. **Message predictions** make additional text-model requests and can be disabled in editor settings. Accepting a suggestion does not send it automatically. Add instructions during a run using **Queue** or **Steer**; steering joins the next adjustable request boundary and does not undo requests already sent or changes already made.
-
-### Tools beside the conversation
-
-The image workspace provides **Generate / Gallery / Tasks**. Configure an independent image model, upload references, browse a waterfall or grid gallery, inspect details, preview or save originals. Agent tools can return images in the conversation, ask the user a question, inspect local images and perform read-only Git operations. See the [image guide](docs/image-generation.md).
-
-Image generation and gallery features:
-
-- **Generation animation:** pages and conversations share a rounded dot-field animation with actual stages, elapsed time and cancellation state.
-- **Gallery management:** favorites, multiple selection, batch export of originals, service/model/source/time filters, and a recycle bin with reference-aware cleanup.
-- **Task center:** one queue with concurrency limits, completion notifications, failure reasons, explicit retry and restart recovery.
-- **Multiple reply images:** a large preview and selectable thumbnails adapt to narrow windows while preserving selection and generation state.
-
-See [image generation](docs/image-generation.md) for usage, saving, recovery and platform limits.
-
-Use the tool-tab **+** button or **Ctrl + Shift + B** to open a browser, file preview, PowerShell terminal, temporary side chat or file-change view. Chat and tools support split layouts; **Ctrl + Shift + F** switches the full tab view. Layouts adapt to narrower windows.
-
-File cards preview HTML, Markdown and line-numbered source; open them in the system app, reveal their location, copy a path or save a copy. External HTML resources are disabled by default. The embedded browser does not yet support downloads. Temporary side chat does not read the main conversation context or project files and is not saved on close.
-
-The main conversation stays in the first tab. Hiding tools or changing the layout preserves tool state; closing a tab releases its instance. Manual terminals are managed independently of Agent terminal settings and approval. They retain their opening project/sandbox context and terminate their process tree when closed.
+> Screenshots are generated from this version's Windows UI using an isolated preview. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
 
 ## Download
 
-### Stable 0.11.3 (main)
+| Platform | Requirements | Download and scope |
+| --- | --- | --- |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.0 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) and choose the `DeskPet-Windows-Setup-1.0.0.exe` installer or `DeskPet-Windows-1.0.0.zip` portable package. This page primarily describes Windows. |
+| **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
-Windows requires **Windows 10/11 x64 and .NET Framework 4.8+**. macOS previews require **macOS 14+**. Choose the matching architecture. Mac previews are ad-hoc signed and not notarized.
+The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).
 
-| Platform | Download |
+The Windows installer installs for the current user, normally without administrator privileges, under `%LOCALAPPDATA%\Programs\EbaoDeskPet`. For a portable installation, fully extract the ZIP to a writable folder and launch **桌面伙伴.exe**. Do not run it inside the archive.
+
+## Quick start
+
+1. **Try an interaction.** Drag the companion, click its head for a pat, or middle-click to open the action palette. These interactions require no model configuration.
+2. **Choose a companion.** A fresh installation starts with Ebao. Other official companions download their complete packs when first selected. Settings also offers **Download/update all**.
+3. **Configure a text model.** Open **Settings → Setup guide**, or **Model configuration → Text models**. Add a provider, enter its URL, protocol and API key, save and fetch models, then add the models you need individually. You can also enter a complete model ID manually.
+4. **Test, then chat.** Explicitly run a connection test. Double-click the companion for quick chat; right-click it or double-click the tray icon to open the full window. Defaults: **Enter to send, Shift + Enter for a new line**.
+5. **Switch to Work for files.** Add a project and bind its folder, select a model with native tool calling, review permissions and send a task. Use plan mode to inspect a project first, or stay in ordinary chat.
+
+The setup guide supports skipping steps and continuing later. Configure dictation, speech, images and Live separately as needed. Saving settings alone does not test a service. See the [setup guide](docs/configuration-guide.md) and [model and voice configuration](docs/dialogue-setup.md).
+
+### Models, accounts and costs
+
+DeskPet uses your own model services. It includes no model account, API key or calling credits. Text models use OpenAI Chat Completions or Anthropic compatible protocols. A listed model is not necessarily capable of image understanding or tool calling; configure its actual capabilities.
+
+Chats, file-reading results, images and audio may be sent to the services you choose. Multi-turn Agent runs, automatic review, predictions, titles, history compaction and AI greetings may make additional requests. Your provider determines charges. Dictation, cloud speech, image generation and Gemini Live have independent configurations; Windows system speech needs no cloud TTS service. Predictions can be disabled in editor settings.
+
+For a compatible local or LAN service, enter its actual URL, port and API prefix. Public services use HTTPS. Each service has an independent HTTP proxy setting; enable the default `http://127.0.0.1:7890` only when that proxy is running on your computer.
+
+![Model settings, with separate provider connections and model lists](previews/release-1.0.0/models.png)
+
+## Five companions
+
+| Ebao · E包 | Dafeiyu · 大肥鱼 | Marfu · 马尔芙 | Xiaobei · 小贝 | Guga · 咕嘎 |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="previews/release-1.0.0/companion-e-bao.png" width="180" alt="Ebao"> | <img src="previews/release-1.0.0/companion-dafeiyu.png" width="180" alt="Dafeiyu"> | <img src="previews/release-1.0.0/companion-marfu.png" width="180" alt="Marfu"> | <img src="previews/release-1.0.0/companion-xiaobei.png" width="180" alt="Xiaobei"> | <img src="previews/release-1.0.0/companion-gugugaga.png" width="180" alt="Guga"> |
+| White hair, blue eyes and a sharp tongue | A gentle, playful whale girl | A magical girl with blonde hair and green eyes | A quick-witted, gentle technology-themed boy | A curious, food-loving girl in a penguin outfit |
+
+Each companion has separate ordinary-chat history, personality, voice preferences and relationship records. Work projects and the work prompt are shared. Ebao's bundled default artwork supports offline startup. Installed, valid companion packs work offline; first downloads need a network connection.
+
+Drag, pet, feed, nap, use signature actions, wander and follow the pointer. Available actions depend on the current pack. Interactions remain available while working or waiting for a reply. The five official companions each have a default appearance and ten holiday outfits. Choose unlocked outfits in the Wardrobe; the relationship home and album record earned growth and holiday keepsakes. Complete custom ZIP packs can also be imported.
+
+See [daily interactions](docs/daily-use.md), [character packs](docs/character-packs.md), [holiday outfits](docs/holiday-outfits.md) and [relationships and keepsakes](docs/companion-relationship/user-guide.en.md).
+
+## Chat and project work
+
+![Project work, with public progress, reply text and tools on the right](previews/release-1.0.0/workspace.png)
+
+### Conversations, drafts and public progress
+
+Quick chat is for a short exchange. Reopening starts a new topic; previous records remain in the current companion's Quick Chat group. Ordinary chats have their own context. Work mode binds a project, reads/searches/creates/edits files, and shows actual tool records and net file changes.
+
+Organize conversations into sections, rename, pin, archive, drag to reorder or move work conversations between projects. Switching preserves each conversation's draft and reading position; new-conversation drafts support encrypted recovery. Use Markdown or plain text, and add image, file and folder references through **+**, paste or drag and drop. A folder attachment does not expand file permissions.
+
+The Agent's public progress explanations remain in the reply body. Later tool calls do not move already displayed text into the thinking section. Tool records, changes and delivered files have their own entries. Queue follow-up instructions, or **Steer** at the next adjustable boundary. Completed changes are not automatically undone.
+
+### Tools belonging to the current conversation
+
+Open file previews, a browser, PowerShell terminals, changes and temporary side chats on the right. Tabs, content, selection, hidden state and layout are retained separately for each main conversation and restored when switching back **within the current window**. Closing a tab releases its instance; closing the window releases its tools. This does not promise persistence across app restarts.
+
+File cards preview HTML, Markdown and source, and support opening, revealing, copying paths and saving copies. **Open with** lists Windows applications applicable to the file and offers the system application picker. External HTML resources are off by default. The embedded browser currently has no download support. Manual terminals retain their opening project and sandbox settings; closing a terminal tab ends its process tree.
+
+| Shortcut | Action |
 | --- | --- |
-| Windows installer — recommended | [DeskPet-Windows-Setup-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-Setup-0.11.3.exe) |
-| Windows portable | [DeskPet-Windows-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-0.11.3.zip) |
-| Mac Apple Silicon preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-arm64-preview.zip) |
-| Mac Intel preview | [DMG](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.dmg) · [ZIP](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-macOS-0.11.3-x86_64-preview.zip) |
+| **Ctrl + Shift + S** | Show/hide the conversation sidebar |
+| **Ctrl + Shift + B** | New tool tab |
+| **Ctrl + Shift + F** | Switch split/full-tab layouts |
+| **Ctrl + backtick** | Open a manual terminal |
+| **Ctrl + Alt + S** | Open temporary side chat |
 
-<details>
-<summary>All assets, source and SHA256</summary>
+### Ask a side question with the main conversation's context
 
-| Asset | Download |
+![Temporary side chat using the owning main conversation's public context](previews/release-1.0.0/side-chat.png)
+
+Open a temporary side chat from the main composer, menu or tool tabs. Each request reads the **owning main conversation's public history**, alongside the side chat's own temporary messages. Switching main conversations does not rebind it to another context.
+
+When a valid project is bound and the model supports tools, side chat can inspect that project through read-only tools. It cannot edit files or execute commands. Its model and project settings are captured when opened. Its independent history is not saved to conversation storage; closing its tab cancels its own request. Use it to clarify a term, check an implementation or discuss another approach.
+
+## Work permissions and local data
+
+Windows includes a file Agent; no separate Agent CLI is required. Plan mode rejects writes at the tool layer. File edits keep backups by default, and restoration checks later changes.
+
+| Permission | Behavior |
 | --- | --- |
-| Standalone app (existing complete runtime required) | [DeskPet-Windows-App-0.11.3.exe](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Windows-App-0.11.3.exe) |
-| Full source | [DeskPet-Source-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Source-0.11.3.zip) |
-| Complete companion packs | [Ebao](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-e-bao-0.11.0-dev.3.zip) · [Dafeiyu](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-dafeiyu-0.11.0-dev.3.zip) · [Marfu](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-marfu-0.11.0-dev.3.zip) · [Xiaobei](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-xiaobei-0.11.0-dev.3.zip) · [Guga](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companion-gugugaga-0.11.0-dev.3.zip) |
-| Official pack index | [DeskPet-Companions-0.11.3.json](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Companions-0.11.3.json) |
-| Authoring template | [DeskPet-Skin-Template-v2-0.11.3.zip](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/DeskPet-Skin-Template-v2-0.11.3.zip) |
-| Checksums | [SHA256.txt](https://github.com/Eason4869/deskpet/releases/download/v0.11.3/SHA256.txt) |
+| **Ask for approval** | Routine project-file operations can proceed; exceptions such as access outside the workspace or networking require confirmation. Agent terminal commands require individual human approval. |
+| **Approve for me** | Default for new configurations. A separate reviewer model handles eligible operations; uncertainty or review failure falls back to human confirmation. Agent terminal commands still require individual human approval. |
+| **Full access** | After confirmation, expands access to the current account's accessible files and disables the workspace sandbox. It does not grant administrator privileges. |
 
-</details>
+The Agent terminal is disabled by default. With the workspace sandbox enabled, Windows AppContainer restricts terminal/child-process directories and blocks networking by default. Isolation failure stops execution. Sandboxing does not waive terminal approval. Manual and Agent terminals are managed separately. MCP is outside the terminal sandbox; MCP and GitHub writes retain separate confirmation.
 
-Material ZIP filenames retain their actual `0.11.0-dev.3` material version; their release location and index use application version `0.11.3`. This does not make the application a prerelease. Verify downloads against `SHA256.txt`. Historical releases remain on [GitHub Releases](https://github.com/Eason4869/deskpet/releases).
+Windows settings and personal data live in the application's **data** folder, normally `%LOCALAPPDATA%\Programs\EbaoDeskPet\data`. Keys are protected for the current Windows user; another machine or user may require re-entry. macOS uses `~/Library/Application Support/DeskPet` and cannot directly decrypt Windows data. Exit the app and back up the complete data directory before upgrading or migrating.
 
-## Get started
+## Images, voice and extensions
 
-1. **Install or extract.** Run the Windows installer, or fully extract the portable ZIP to a writable folder and launch `桌面伙伴.exe`. Do not launch directly inside the archive.
-2. **Choose a companion.** Try dragging, petting and the action palette. Skip AI setup if you only want desktop interactions.
-3. **Configure models.** Open **Settings → Setup guide** and enter the service URL, protocol, key and model for text, dictation, speech or Live as needed. Test a connection explicitly.
-4. **Chat or work.** Double-click for quick chat, or open the full window to manage context, projects and files.
-
-The setup guide supports skipping steps/chapters, continuing later and retaining progress. Test requests, sound and microphone access start only when you explicitly select a test action. The guide appears once on a fresh install or when entering a higher major/minor version series; same-series patches do not repeat it. Reopen it manually in Settings.
-
-Bundled guides can be read offline: [installation, updates and backup](docs/installation.md), [setup and usage](docs/configuration-guide.md), and [model and voice configuration](docs/dialogue-setup.md). Offline documentation does not make remote models available offline. Some detailed guides remain in Chinese.
-
-## You control work permissions
-
-Windows includes a file Agent and does not require a separate Agent CLI. Inspect net file changes, execution output, approvals and subtask records. The text model must support native OpenAI or Anthropic tool calling.
-
-| Conversation permission | Behavior |
+| Feature | Use and limits |
 | --- | --- |
-| **Ask for approval** | Routine project-file operations can proceed. Exceptions such as access outside the workspace or networking require confirmation; Agent terminal commands require individual approval. |
-| **Approve for me** | The default for new configurations. An independent reviewer model checks eligible operations; uncertainty or review failure falls back to human confirmation. Agent terminal commands still require individual approval. |
-| **Full access** | After confirmation, expands access to files available to the current account and disables the workspace sandbox. It does not grant administrator privileges. |
+| **Image generation, gallery and tasks** | Configure an image model separately, generate with references, track progress, cancel or retry explicitly. The gallery supports favorites, filtering, batch export and a recycle bin. Agent replies can display generated images. |
+| **Dictation, speech and Live** | Dictation fills a draft; replies can be read aloud. Gemini Live uses a separate real-time voice connection. Microphone access starts after an explicit action. |
+| **Greetings and desktop observation** | Use local preset or AI greetings. Observation is off by default and requires confirmation of capture scope and receiving services. Windows can capture the active application or full desktop; images may contain sensitive content and automatic redaction is not guaranteed. |
+| **Skills and MCP** | Discover skills in public GitHub repositories, or import ZIP/local folders. Explicitly connect stdio / HTTP MCP servers; HTTP supports a JSON subset, not SSE. Saving a connection is not a successful startup or test. |
+| **Usage** | Text request counts, tokens, heat maps and conversation rankings distinguish actual, estimated, unknown and zero. ASR, TTS and Live are excluded. This is not a provider bill or subscription balance. |
+| **Appearance and languages** | Light, dark or system themes; thirteen interface languages with live switching. Generated translations have resource checks, but not native-speaker review. |
 
-The Agent terminal is disabled by default. With the workspace sandbox enabled, Windows uses **AppContainer** to isolate the terminal and its children, restrict directory access and block networking by default. An isolation failure stops execution. **Sandboxing does not waive terminal approval in Ask for approval or Approve for me modes.** The host enforces file/web-tool permissions. MCP runs outside the terminal sandbox, and MCP/GitHub writes require their own confirmations.
+Guides: [image generation](docs/image-generation.md) · [desktop observation and image descriptions](docs/proactive-desktop.en.md) · [voice configuration](docs/dialogue-setup.md) · [work and tools](docs/agent-workflows.md).
 
-Plan mode rejects writes at the tool layer. File modifications are backed up by default, and restoration checks later changes. Read-only subtasks inherit their parent's restrictions. Project facts are maintained manually; model conclusions do not automatically become execution evidence. See [Agent workflows](docs/agent-workflows.md) and the [file Agent guide](docs/conversation-agent.md).
+## Messaging channels
 
-## Extensions, usage and personal settings
+![Dedicated messaging settings and five platforms](previews/release-1.0.0/channels.png)
 
-| Entry | Features |
+Configure QQ, WeChat, Feishu, DingTalk and WeCom from the dedicated messaging settings entry. Use your own platform account or bot credentials. The app connects outbound from your computer, with no public IP, port forwarding or additional bot runtime required. Your computer must remain on, online and running DeskPet.
+
+Current channels support text only. Remote contexts are separate from desktop chats and expose no file Agent, terminal or desktop control. Sender/group ID restrictions are optional; groups require an actual bot mention, and group availability depends on the platform/account. QR generation and UI checks do not establish real-account authorization or successful message round trips. Test with your own account first. Keep credentials and login QR codes private.
+
+See [messaging channels](docs/im-channels.md) for setup, platform preparation and validation limits.
+
+## Updates, documentation and development
+
+Windows offers stable/preview channels under **About and updates**. Updates verify assets, then wait for tasks, drafts and data to be safely saved before installation. They never downgrade. Older installed versions that cannot recognize current asset names can use the [latest release](https://github.com/Eason4869/deskpet/releases/latest) for a manual installation. Retain and first back up the existing `data` folder.
+
+| Guide | Contents |
 | --- | --- |
-| **Plugins → Skills** | Add a public GitHub repository to search, preview and install skills; ZIP and local-folder imports also work. Load on demand, enable/disable or remove, and retain provenance. Installation does not automatically execute scripts. |
-| **Plugins → MCP** | Add stdio or HTTP servers, then connect explicitly. They do not start automatically with the app. HTTP currently supports a JSON subset, not SSE. |
-| **Usage** | Request/token counts, a yearly heat map, 7/30-day history and conversation rankings, filtered by provider, model, project and feature. |
-| **Settings** | Search companion, model, work and general preferences: size, topmost, position lock, click-through, full-screen hiding, quiet mode and shortcuts. |
+| [Installation, updates and backup](docs/installation.md) | Directories, startup, updating and removal |
+| [Setup guide](docs/configuration-guide.md) | Companions, models, voice and work settings |
+| [Work and tools](docs/agent-workflows.md) | Permissions, tabs, file delivery and task recovery |
+| [Character packs](docs/character-packs.md) · [format](docs/skin-format.md) | Importing, updating and creating companions |
+| [1.0.0 changelog](CHANGELOG.en.md) · [development log](docs/development-log.en.md) | Production release overview and complete history |
 
-Usage covers newly collected text requests for chat, work, subtasks, review, predictions, titles, compaction and greetings. It does not yet include ASR, TTS or Live. Actual, estimated, unknown and true zero values are distinct. The ledger stores no prompts, reply bodies or keys, and is not a provider bill or subscription balance.
+Some detailed guides retain titles and screenshots from their original versions. For current side-chat, tool-state and UI behavior, use this page and the 1.0.0 changelog. Some detailed guides are in Chinese.
 
-Settings, credentials, history and imported content are stored locally. Back up the complete `data` folder before migration or an overwrite upgrade. Files, images and tool results can be sent to the model service you choose; multi-turn work is billed under that provider's rules. For custom companions, see the [appearance format](docs/skin-format.md) and [interaction extensions](docs/interaction-extension.md).
+Source layout: `src/` contains Windows WPF and shared business logic; `desktop/` contains .NET 10 / Avalonia and Mac platform services; `tests/` contains Windows checks; `.github/workflows/` defines build and publication checks. Ongoing development is on [dev](https://github.com/Eason4869/deskpet/tree/dev).
 
-## Platforms and updates
+From PowerShell at the repository root, build Windows with an explicit output directory inside the repository:
 
-| Platform | Current scope |
-| --- | --- |
-| **Windows** | Installer and portable packages with the unified workspace, companion interactions, file Agent, tool pages and AppContainer terminal isolation shown here. |
-| **macOS preview** | Apple Silicon/Intel builds with a separate UI and partially shared core. Windows workspace, onboarding and file-Agent features do not imply equivalent Mac support; consult the preview release notes. |
+```powershell
+.\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
+```
 
-Windows offers stable/preview channels in **About and updates**, verifies and installs at a safe idle point, and never downgrades. Older clients must first update to 0.10.0 to discover later public dev releases. A source tag alone is not an update candidate. **Installed versions 0.5.4 and earlier** must first install 0.5.6 manually or install a current version manually; portable ZIPs are unaffected by installer renaming. See ongoing work on the [dev branch](https://github.com/Eason4869/deskpet/tree/dev).
+Windows uses the system .NET Framework compiler and System.Speech. Docker is not required. Shared-core/Avalonia development uses the .NET 10 SDK pinned in `desktop/global.json`; the Mac native bridge must be built on a Mac. See [platform development](desktop/DeskPet.Platform.Mac/README.md). Packaging additionally uses Python / Pillow, and installer compilation uses Inno Setup; consult repository scripts and CI for the full toolchain.
 
-The Windows installer is not currently code-signed. Mac previews are ad-hoc signed and have not been notarized with Apple Developer ID. See [installation and backup](docs/installation.md), [artwork/platform sources](docs/sources.md) and [third-party notices](docs/third-party-notices.md).
+## Source, artwork and licenses
 
-## Planned work
+Author: **彧晟Eason**. Artwork, platform identifiers, fonts and dependencies have their own sources and licenses. See [artwork and platform sources](docs/sources.md) and [third-party notices](docs/third-party-notices.md). Provider identifiers do not imply a partnership or endorsement.
 
-- [ ] Application connections: manage authorization, connection state and available capabilities for external apps.
-- [ ] Plugin-package runtime: import packages, validate manifests/dependencies and manage activation and lifecycle.
-
----
-
-Author: **彧晟Eason** · [Issues](https://github.com/Eason4869/deskpet/issues) · [Changelog](CHANGELOG.en.md) · [Setup guide](docs/configuration-guide.md) · [Sources and licenses](docs/sources.md)
+The repository currently has no standalone LICENSE covering the entire project. Publicly viewable source does not make third-party component licenses apply to the whole project. Confirm authorization with the author before redistribution or commercial use.

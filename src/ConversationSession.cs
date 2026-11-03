@@ -53,6 +53,10 @@ namespace Dafeiyu
         private readonly Dictionary<string,ConversationLog> histories=new Dictionary<string,ConversationLog>();
         private string personaId="";
         public ConversationLog History { get; private set; }
+        internal IList<ChatMessage> SnapshotPublicContext()
+        {
+            lock(gate)return History.Messages.Where(m=>(m.Role=="user"||m.Role=="assistant")&&(!String.IsNullOrWhiteSpace(m.Content)||(m.Attachments!=null&&m.Attachments.Count>0))).Select(m=>{var copy=new ChatMessage(m.Role,m.Content);copy.SetAttachments(ChatAttachment.Snapshot(m.Attachments));return copy;}).ToList();
+        }
         public ConversationStage Stage { get; private set; }
         string runtimeAction="idle";
         public string RuntimeAction {get{return runtimeAction;}private set{runtimeAction=value;}}
@@ -328,7 +332,15 @@ namespace Dafeiyu
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
                 answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token).ConfigureAwait(false):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token).ConfigureAwait(false):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token).ConfigureAwait(false) : await api.ChatAsync(op.Snapshot.Text,request,token).ConfigureAwait(false);
                 bool firstRelationshipSuccess=!op.RelationshipSucceeded;
-                token.ThrowIfCancellationRequested();UpdateReply(op,answer,"complete",true,true);if(op.Workspace!=null){if(op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();op.Workspace.FinishTask("complete","");}
+                token.ThrowIfCancellationRequested();
+                // Agent callbacks contain public narration from every round. Keep it
+                // in the message body; the returned answer is only the final round.
+                lock(gate){
+                    string content=answer;
+                    if(op.Workspace!=null && op.Partial.Length>0){content=op.Partial.ToString().Trim();if(!content.EndsWith(answer.Trim(),StringComparison.Ordinal))content+="\n\n"+answer.Trim();}
+                    UpdateReply(op,content,"complete",true,true);
+                }
+                if(op.Workspace!=null){if(op.Outcome=="complete")op.Workspace.MarkRelationshipSucceeded();op.Workspace.FinishTask("complete","");}
                 if(firstRelationshipSuccess && Relationships!=null && op.Outcome=="complete" && !String.IsNullOrWhiteSpace(answer))await Relationships.Enqueue(op.RelationshipCompanionId,op.RelationshipWork?RelationshipEventType.SuccessfulWorkTask:RelationshipEventType.CompletedConversation,op.RelationshipEventId,RelationshipTime.Current()).ConfigureAwait(false);
             }
             catch(Exception e) {
@@ -375,7 +387,9 @@ namespace Dafeiyu
             if(String.IsNullOrEmpty(delta))return;
             lock(gate) {
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
-                if(op.Partial.Length+delta.Length>50000)throw new ApiException(TextResources.Get("conversationSession.appendDelta.text"));
+                // Native Agent parsing bounds each model round separately. Public
+                // narration spans rounds, so its total must not use that round cap.
+                if(op.Workspace==null&&op.Partial.Length+delta.Length>50000)throw new ApiException(TextResources.Get("conversationSession.appendDelta.text"));
                 op.ThinkingTime.Stop();
                 SetRuntimeAction(op,"review");
                 op.Partial.Append(delta);UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
@@ -414,7 +428,7 @@ namespace Dafeiyu
             {
                 if(disposed || active!=op || op.Cancel.IsCancellationRequested)return;
                 SetRuntimeAction(op,item.Status=="waiting_approval"?"waiting":item.Status=="error"?"failed":item.Status=="complete"?"review":"running");
-                if(item.Status=="running" && op.Partial.Length>0){if(op.Reasoning.Length+op.Partial.Length<50000)op.Reasoning.AppendLine(op.Partial.ToString());op.Partial.Clear();op.ThinkingTime.Start();}
+                if(item.Status=="running")op.ThinkingTime.Start();
                 int index=op.ToolEvents.FindIndex(e=>e.Id==item.Id);if(index>=0)op.ToolEvents[index]=item.Copy();else{op.ToolEvents.Add(item.Copy());if(op.ToolEvents.Count>100)op.ToolEvents.RemoveAt(0);}
                 UpdateReply(op,op.Partial.ToString(),"pending",op.Checkpoint.ElapsedMilliseconds>=1000);
             }

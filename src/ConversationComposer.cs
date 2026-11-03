@@ -460,6 +460,8 @@ namespace Dafeiyu
         }
         void BuildSlashItems()
         {
+            var chat=host as ChatWindow;
+            if(chat!=null)triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("chatFilePreview.openSideChat.filePreviewAddPage"),Hint=TextResources.Get("sideChatPane.contextHint"),Icon="chat",Action=chat.OpenSideChat},"Title",()=>TextResources.Get("chatFilePreview.openSideChat.filePreviewAddPage")));
             triggerItems.Add(LocalizedUi.With(new TriggerItem{Title=TextResources.Get("conversationComposer.buildSlashItems.title"),Hint=TextResources.Get("conversationComposer.buildSlashItems.hint"),Icon="chat",Action=delegate{pet.NewActiveConversation();}},"Title",()=>(TextResources.Get("conversationComposer.buildSlashItems.title"))));
             if(!conversationOnly)
             {

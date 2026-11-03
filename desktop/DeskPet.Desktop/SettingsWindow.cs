@@ -52,7 +52,7 @@ internal sealed class SettingsWindow : Window
         });
         foreach (var item in new[] { ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC")), "asr"), ((Func<string>)(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD")), "speech"), ((Func<string>)(()=>"Live"), "live") }) { Add(item.Item1,item.Item2,()=>{var editor = new ProviderEditor(owner, item.Item2); providers.Add(editor);return editor;}); }
         Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeE"),"work",()=>new WorkSettingsView(owner, this)); Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeF"),"voice",Voice); Add(()=>TextResources.Get("dataManagement.title"),"storage",Storage);
-        Add(()=>TextResources.Get("im.title"),"model",()=>imChannels=new ImChannelSettingsView(owner));
+        Add(()=>TextResources.Get("im.title"),"chat",()=>imChannels=new ImChannelSettingsView(owner));
         navigation.ItemsSource=entries;
         navigation.SelectionChanged += (_, e) => { if (!ReferenceEquals(e.Source,navigation)) return; int index=navigation.SelectedIndex;if(index<0)return;pageHost.Content=GetPage(index);if(index==7)refreshVoice?.Invoke(); };
         var sideTitle=SettingsVisual.Text(()=>Title??"",21);sideTitle.FontWeight=Avalonia.Media.FontWeight.SemiBold;sideTitle.Margin=new Thickness(16,24,8,18);

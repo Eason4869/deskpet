@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -197,8 +197,10 @@ namespace Dafeiyu.Tests
             Check(retained.Releases==1&&session.History.Messages.Count==historyCount&&!session.IsBusy,"layout tests preserve the fixture history and release each closed tool once");
             ToggleFull();await Settle();area.OpenFile(md);Check(ReferenceEquals(area.Selected,markdown),"workspace-navigation fixture starts with a tool selected in full tabs");full.SwitchWorkspace(workspace);await Settle();Check(ReferenceEquals(area.Selected,surface)&&ReferenceEquals(Field("session"),session),"selecting the current workspace from a tool tab returns to its pinned conversation");
             var secondDefinition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="第二个工作会话",Mode="work"};var secondWorkspace=pet.Workspaces.CreateWorkspace(project,secondDefinition);area.OpenFile(md);full.SwitchWorkspace(secondWorkspace);await Settle();
-            Check(ReferenceEquals(area.Selected,surface)&&ReferenceEquals(Field("session"),secondWorkspace.Session)&&!ReferenceEquals(Field("session"),session),"switching workspaces from a full tool tab selects the new main session");Check(All<TextBlock>(area).Single(t=>t.Name=="ConversationPreviewTitle").Text==secondDefinition.Name,"pinned title follows the newly selected workspace");Check(area.ToolCount==1&&All<FilePreviewPane>(area).Any(p=>ReferenceEquals(p,markdown)),"workspace navigation preserves existing tool tabs and their view instances");
-            editor.Text="第二个会话的独立草稿";full.SwitchWorkspace(workspace);await Settle();CheckMain(surface,editor,session,draft);Check(ReferenceEquals(area.Selected,surface)&&All<TextBlock>(area).Single(t=>t.Name=="ConversationPreviewTitle").Text==definition.Name,"returning to the original workspace restores its pinned title and selects chat");Click("ToggleFullTabView");await Settle();Check(ReferenceEquals(area.Selected,markdown),"workspace round trip preserves the selected split tool");
+            Check(Field("filePreview")==null&&!dock.IsVisible&&ReferenceEquals(Field("session"),secondWorkspace.Session),"a different conversation starts without the first conversation's tabs");
+            full.OpenBlankTab();await Settle();var secondArea=(PreviewWorkspace)Field("filePreview");Check(!ReferenceEquals(area,secondArea)&&secondArea.ToolCount==1,"each conversation owns a distinct tab workspace");var cachedTool=new RetainedTool();secondArea.AddPage("缓存工具","file",cachedTool);Click("ToggleSideTabs");await Settle();
+            editor.Text="第二个会话的独立草稿";full.SwitchWorkspace(workspace);await Settle();CheckMain(surface,editor,session,draft);Check(ReferenceEquals(Field("filePreview"),area)&&ReferenceEquals(area.Selected,markdown)&&All<TextBlock>(area).Single(t=>t.Name=="ConversationPreviewTitle").Text==definition.Name,"returning restores the original tabs, selected content and full layout");
+            full.SwitchWorkspace(secondWorkspace);await Settle();Check(ReferenceEquals(Field("filePreview"),secondArea)&&!dock.IsVisible&&editor.Text=="第二个会话的独立草稿","hidden tool state and draft stay bound to their conversation");full.SwitchWorkspace(workspace);await Settle();Click("ToggleFullTabView");await Settle();Check(ReferenceEquals(area.Selected,markdown),"workspace round trip preserves the selected split tool");
             ToggleFull();await Settle();area.SelectConversation();area.Close(markdown);await Settle();Check(area.HasConversation&&area.ToolCount==0&&ReferenceEquals(area.Selected,surface),"closing the last tool in full mode retains the pinned main conversation");
             Click("ToggleFullTabView");await Settle();Check(Field("filePreview")==null&&!dock.IsVisible&&dock.Content==null&&ReferenceEquals(surface.Parent,shell)&&Grid.GetColumn(surface)==2,"returning to split after the last tool closes removes the empty tool workspace");CheckMain(surface,editor,session,draft);
             var approvals=(AgentApprovalController)session.ApprovalProvider;
@@ -209,8 +211,9 @@ namespace Dafeiyu.Tests
             full.SwitchWorkspace(secondWorkspace);await Settle();Check(!All<Border>(full).Any(b=>b.Name=="AgentApprovalCard")&&!approval.IsCompleted,"changing chats hides the original approval without resolving or moving it");
             full.SwitchWorkspace(workspace);await Settle();Check(All<Border>(full).Single(b=>b.Name=="AgentApprovalCard").IsVisible&&editor.Text==draft,"returning to the original chat restores its approval and draft");
             All<Button>(full).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(!await approval,"inline denial completes only the original request");await Settle();
+            var removedDefinition=new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="待关闭会话",Mode="work"};var removedWorkspace=pet.Workspaces.CreateWorkspace(project,removedDefinition);full.SwitchWorkspace(removedWorkspace);full.OpenBlankTab();var removedTool=new RetainedTool();((PreviewWorkspace)Field("filePreview")).AddPage("待释放工具","file",removedTool);full.SwitchWorkspace(workspace);await pet.Workspaces.CloseWorkspaceAsync(removedWorkspace.Id);await Settle();Check(removedTool.Releases==1,"closing an inactive conversation releases its cached tools");
             await LinkTabs(session,editor,draft);
-            full.MinWidth=normalMinWidth;full.Close();full=null;Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions");
+            full.MinWidth=normalMinWidth;full.Close();full=null;Check(cachedTool.Releases==1,"window close releases tools cached by other conversations");Console.WriteLine("Unified workspace tests: "+checks+" passed; screenshots: work/permissions");
         }
         static async Task LinkTabs(ConversationSession session,MarkdownEditor editor,string draft)
         {

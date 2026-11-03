@@ -55,7 +55,7 @@ namespace Dafeiyu
             earlier=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeI")));earlier.Name="HistoryEarlier";earlier.FontSize=11;earlier.Click+=delegate{double offset=scroll.VerticalOffset,extent=scroll.ExtentHeight;visibleTurns+=50;ReloadHistory(false);Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(delegate{scroll.UpdateLayout();scroll.ScrollToVerticalOffset(offset+Math.Max(0,scroll.ExtentHeight-extent));}));};historyTools.Children.Add(earlier);
             export=LocalizedUi.Button(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeJ")));export.Name="ExportChat";export.FontSize=11;export.Click+=delegate{Export();};DockPanel.SetDock(export,Dock.Right);scroll.Content=null;var historyBody=new StackPanel();historyBody.Children.Add(historyTools);historyBody.Children.Add(messages);scroll.Content=historyBody;
             var contextIcon=UiIcons.Image("file",AgentUi.Muted);contextIcon.Width=contextIcon.Height=15;contextIcon.Margin=new Thickness(0,0,7,0);contextNotice.Children.Add(contextIcon);contextLabel.Name="ContextCompactionLabel";contextNotice.Children.Add(contextLabel);
-            Grid.SetRow(scroll,2);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,2);atmosphere.ArtworkOpacity=.20;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
+            Grid.SetRow(scroll,2);messageArea.Children.Add(scroll);scroll.Background=Brushes.Transparent;atmosphere=ChatAtmosphere.AttachSurface(root,1,1);atmosphere.Margin=new Thickness(0,0,0,8);atmosphere.ArtworkOpacity=.20;atmosphere.SetSkin(pet.Skin);Grid.SetRow(messageArea,1);root.Children.Add(messageArea);InitializeHistoryNavigation();
             status=Ui.Text("",11,Ui.Muted);status.Name="ChatStatus";
             input=new MarkdownEditor();input.Name="MessageInput";input.MaxLength=8000;
             record=UiIcons.Button("mic",()=>(TextResources.Get("chatWindow.chatWindow.uiIcons.alternativeA")));record.Name="VoiceRecord";
@@ -68,7 +68,8 @@ namespace Dafeiyu
             summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=ThemeManager.Surface,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
             StateChanged+=delegate{RefreshWorkspaceLayout();};SizeChanged+=delegate{RefreshWorkspaceLayout();};workspaceShell.SizeChanged+=delegate{RefreshWorkspaceLayout();};
             MountWorkspace();InitializeAppShell();questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));Grid.SetRow(questionSurface,0);messageArea.Children.Add(questionSurface);Closed+=delegate{questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);};
-            Closed+=delegate {closed=true;CloseTransientSummary();CloseFilePreview();UnmountWorkspace(true);DetachEntryControls();};
+            pet.Workspaces.StateChanged+=PruneConversationPreviews;
+            Closed+=delegate {closed=true;pet.Workspaces.StateChanged-=PruneConversationPreviews;CloseTransientSummary();CloseConversationPreviews();UnmountWorkspace(true);DetachEntryControls();};
             Loaded+=delegate {input.Focus();};
         }
         void RefreshWorkspaceLayout()
@@ -92,8 +93,8 @@ namespace Dafeiyu
         internal void ReplacePendingAttachments(System.Collections.Generic.IEnumerable<ChatAttachment> files){if(composer!=null)composer.ReplacePendingAttachments(files);}
         public void SwitchWorkspace(ConversationWorkspace replacement)
         {
-            if(closed)return;if(ReferenceEquals(workspace,replacement)){if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();return;}CloseTransientSummary();RememberEntry();UnmountWorkspace(false);
-            workspace=replacement;session=replacement==null?pet.Conversation:replacement.Session;queue=replacement==null?pet.InputQueue:replacement.Queue;MountWorkspace();if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();if(shellReady){ShowHomePage(false);RecordPage("home");}
+            if(closed)return;if(ReferenceEquals(workspace,replacement)){if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();return;}CloseTransientSummary();RememberEntry();SuspendConversationPreview();UnmountWorkspace(false);
+            workspace=replacement;session=replacement==null?pet.Conversation:replacement.Session;queue=replacement==null?pet.InputQueue:replacement.Queue;RestoreConversationPreview();MountWorkspace();if(shellReady){ShowHomePage(false);RecordPage("home");}
         }
         void MountWorkspace()
         {
