@@ -13,7 +13,7 @@ namespace Dafeiyu.Tests
 {
     public static class ChatAtmosphereTests
     {
-        static int checks;
+        static int checks;static bool compactScreen;
         static void Check(bool value,string message) { if(!value)throw new Exception(message);checks++;Console.WriteLine("PASS "+message); }
         static void Pump() { Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ApplicationIdle,new Action(delegate{})); }
         static RenderTargetBitmap Render(FrameworkElement element)
@@ -39,9 +39,16 @@ namespace Dafeiyu.Tests
         }
         static Point ArtworkCorner(Image artwork,FrameworkElement surface)
         {
+            if(artwork.ActualWidth<=0||artwork.ActualHeight<=0){var viewport=(FrameworkElement)artwork.Parent;throw new InvalidOperationException("Artwork is "+artwork.Visibility+" in viewport "+viewport.ActualWidth+"x"+viewport.ActualHeight);}
             var drawing=new DrawingVisual();using(var context=drawing.RenderOpen())context.DrawRectangle(new VisualBrush(artwork),null,new Rect(0,0,artwork.ActualWidth,artwork.ActualHeight));
             var rendered=new RenderTargetBitmap((int)Math.Ceiling(artwork.ActualWidth),(int)Math.Ceiling(artwork.ActualHeight),96,96,PixelFormats.Pbgra32);rendered.Render(drawing);
             var bounds=VisibleBounds(rendered);Check(!bounds.IsEmpty,"real artwork contains rendered nontransparent character pixels");return artwork.TranslatePoint(new Point(bounds.X+bounds.Width,bounds.Y+bounds.Height),surface);
+        }
+        static bool TryArtworkCorner(Image artwork,FrameworkElement surface,out Point corner)
+        {
+            corner=new Point();
+            if(artwork.Visibility!=Visibility.Visible){var viewport=(FrameworkElement)artwork.Parent;Check(viewport.ActualWidth<440||viewport.ActualHeight<160,"compact history hides decorative artwork when the composer needs the available space");return false;}
+            corner=ArtworkCorner(artwork,surface);return true;
         }
         static void RealConversationAnchoring(string output)
         {
@@ -53,27 +60,26 @@ namespace Dafeiyu.Tests
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);
                 var workspace=pet.Workspaces.CreateWorkspace(new ProjectDefinition{Id="artwork-fixture",Name="立绘位置",Workspace=folder},new ConversationDefinition{Id=Guid.NewGuid().ToString("N"),Name="审批出现后立绘应留在窗口底部",Mode="work"});
                 for(int i=0;i<8;i++)workspace.Session.History.Commit("本地问题 "+i,"本地测试回复。对话背景固定在窗口右下方，审批只改变前景布局。\n\n继续检查实际窗口中的位置。");
-                chat=new ChatWindow(pet,workspace){Width=1800,MinWidth=1800,Height=920,ShowActivated=false};chat.Show();Pump();chat.UpdateLayout();Pump();
+                chat=new ChatWindow(pet,workspace){Width=1800,MinWidth=1800,Height=compactScreen?700:920,ShowActivated=false};chat.Show();Pump();chat.UpdateLayout();Pump();
                 var surface=(FrameworkElement)typeof(ChatWindow).GetField("conversationSurface",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat);
                 var artwork=All<Image>(chat).Single(i=>i.Name=="ChatAtmosphereArtwork");double bottom=ArtworkCorner(artwork,surface).Y;var composer=All<ConversationComposer>(chat).Single();
                 Check(composer.TranslatePoint(new Point(),surface).Y-bottom>=14,"character background ends above the input composer instead of behind it");
                 var approval=((AgentApprovalController)workspace.Session.ApprovalProvider).ApproveAsync(new AgentApprovalRequest{SessionId=workspace.Session.KernelSession.SessionId,ProjectId=workspace.ProjectId,TaskId="artwork-approval",CallId="artwork-call",ToolName="exec_command",Action="shell",Resource=folder,Arguments="{\"command\":\"git --version\"}"});Pump();chat.UpdateLayout();Pump();
                 Check(All<Border>(chat).Any(b=>b.Name=="AgentApprovalCard"&&b.IsVisible),"real conversation fixture displays a genuine inline approval");
-                double pendingBottom=ArtworkCorner(artwork,surface).Y;
-                Check(pendingBottom<bottom,"character moves above an expanded inline approval");
-                Check(composer.TranslatePoint(new Point(),surface).Y-pendingBottom>=14&&composer.TranslatePoint(new Point(),surface).Y-pendingBottom<=30,"real artwork anchors just above the composer");
+                Point pendingCorner;double pendingBottom=bottom;
+                if(TryArtworkCorner(artwork,surface,out pendingCorner)){pendingBottom=pendingCorner.Y;Check(pendingBottom<bottom,"character moves above an expanded inline approval");Check(composer.TranslatePoint(new Point(),surface).Y-pendingBottom>=14&&composer.TranslatePoint(new Point(),surface).Y-pendingBottom<=30,"real artwork anchors just above the composer");}
                 foreach(string theme in new[]{"light","dark"}){ThemeManager.Apply(theme);Pump();Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-"+theme+".png"));}
                 cfg.Text.BaseUrl="http://127.0.0.1:1/v1";cfg.Text.Model="fixture";
                 // Enqueue and pause in one dispatcher turn, before the queue's yielded
                 // continuation can run. This exercises real rows without sending.
                 Dispatcher.CurrentDispatcher.Invoke(new Action(delegate{workspace.Queue.Enqueue("等待中的本地测试消息一");workspace.Queue.Hold();workspace.Queue.Enqueue("等待中的本地测试消息二");}));Pump();chat.UpdateLayout();Pump();
                 Check(All<Grid>(chat).Count(g=>g.Name=="QueuedMessageRow"&&g.IsVisible)==2&&!workspace.Session.IsBusy,"real paused queue expands two rows without submitting a request");
-                Check(ArtworkCorner(artwork,surface).Y<pendingBottom&&composer.TranslatePoint(new Point(),surface).Y-ArtworkCorner(artwork,surface).Y>=14,"queue expansion keeps artwork clear of the composer");Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-queue-dark.png"));
+                Point queuedCorner;if(TryArtworkCorner(artwork,surface,out queuedCorner))Check(queuedCorner.Y<pendingBottom&&composer.TranslatePoint(new Point(),surface).Y-queuedCorner.Y>=14,"queue expansion keeps artwork clear of the composer");Save(Render((FrameworkElement)chat.Content),Path.Combine(output,"atmosphere-real-approval-queue-dark.png"));
                 string preview=Path.Combine(folder,"preview.md");File.WriteAllText(preview,"# 本地工具预览");chat.OpenFilePreview(preview);Pump();chat.UpdateLayout();Pump();
-                Point split=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-split.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-split.Y-22)<=2,"split tool layout anchors character pixels above the composer at the right edge");
+                Point split;if(TryArtworkCorner(artwork,surface,out split))Check(Math.Abs(surface.ActualWidth-split.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-split.Y-22)<=2,"split tool layout anchors character pixels above the composer at the right edge");
                 chat.ToggleFullTabView();Pump();((PreviewWorkspace)typeof(ChatWindow).GetField("filePreview",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(chat)).SelectConversation();Pump();chat.UpdateLayout();Pump();
-                Point full=ArtworkCorner(artwork,surface);Check(Math.Abs(surface.ActualWidth-full.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-full.Y-22)<=2,"full conversation tab keeps character pixels above its composer");
-                All<Button>(chat).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();chat.UpdateLayout();Pump();Check(approval.IsCompleted&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-ArtworkCorner(artwork,surface).Y-22)<=2,"dismissing approval preserves the artwork gap above the composer");
+                Point full;if(TryArtworkCorner(artwork,surface,out full))Check(Math.Abs(surface.ActualWidth-full.X-20)<=2&&Math.Abs(composer.TranslatePoint(new Point(),surface).Y-full.Y-22)<=2,"full conversation tab keeps character pixels above its composer");
+                All<Button>(chat).Single(b=>b.Name=="RejectAgentOperation").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();chat.UpdateLayout();Pump();Check(approval.IsCompleted,"dismissing approval completes the original request");Point restored;if(TryArtworkCorner(artwork,surface,out restored))Check(Math.Abs(composer.TranslatePoint(new Point(),surface).Y-restored.Y-22)<=2,"dismissing approval preserves the artwork gap above the composer");
             }
             finally{if(chat!=null)chat.Close();if(pet!=null)pet.Close();ThemeManager.Apply("light");Pump();}
         }
@@ -125,8 +131,9 @@ namespace Dafeiyu.Tests
             board.Measure(new Size(board.Width,board.Height));board.Arrange(new Rect(0,0,board.Width,board.Height));board.UpdateLayout();Pump();Save(Render(board),Path.Combine(output,"atmosphere-comparison.png"));
         }
         [STAThread]
-        public static int Main()
+        public static int Main(string[] args)
         {
+            compactScreen=args.Contains("--compact-screen");
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};Window window=null;
             try
             {
