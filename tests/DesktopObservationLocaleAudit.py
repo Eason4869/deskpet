@@ -60,7 +60,9 @@ for path in Path('assets/locales').glob('*.json'):
     added = {k: v for k, v in current.items() if k.startswith('desktopObservation.')}
     assert all(current[k] == v for k, v in old.items()), path
     assert len(added) == 76 + sum(key.startswith('desktopObservation.') for key in renamed_keys.values()), path
-    assert set(current) - set(old) == new_keys, path
+    # Other features may add resources; the complete localization audit owns their contracts.
+    # Required observation keys, their exact count and all historical values stay protected.
+    assert new_keys <= set(current) - set(old), path
     for key, value in added.items():
         assert re.fullmatch(r'[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)*', key), (path, key)
         assert value.strip() and not sentinels.search(value), (path, key, value)

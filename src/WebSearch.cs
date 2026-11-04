@@ -79,19 +79,19 @@ namespace Dafeiyu
         internal string Instruction {get{return TextResources.Get("webSearch.toolPrompt")+(settings.ShowSources?"":"\n"+TextResources.Get("webSearch.noSourcePrompt"));}}
         internal async Task<string> ExecuteAsync(string name,string arguments,CancellationToken cancel)
         {
-            cancel.ThrowIfCancellationRequested();if(name!="web_search")return Error("webSearch.onlySearch");
-            if(Interlocked.Increment(ref calls)>4)return Error("webSearch.limit");
+            cancel.ThrowIfCancellationRequested();if(name!="web_search")return Error(TextResources.Get("webSearch.onlySearch"));
+            if(Interlocked.Increment(ref calls)>4)return Error(TextResources.Get("webSearch.limit"));
             try{
                 var args=new JavaScriptSerializer{MaxJsonLength=4096,RecursionLimit=8}.DeserializeObject(arguments??"{}") as Dictionary<string,object>;object raw;
-                if(args==null||!args.TryGetValue("query",out raw)||!(raw is string))return Error("webSearch.invalidQuery");
+                if(args==null||!args.TryGetValue("query",out raw)||!(raw is string))return Error(TextResources.Get("webSearch.invalidQuery"));
                 var result=await api.SearchWebAsync(settings,model,(string)raw,cancel).ConfigureAwait(false);
                 foreach(var source in result.Sources)if(sources.Count<10&&!sources.Any(s=>s.Url==source.Url))sources.Add(source);
                 return result.ForModel();
             }
-            catch(ArgumentException){return Error("webSearch.invalidQuery");}
+            catch(ArgumentException){return Error(TextResources.Get("webSearch.invalidQuery"));}
             catch(ApiException error){return TextResources.Get("webSearch.errorPrefix")+error.Message;}
         }
-        static string Error(string key){return TextResources.Get("webSearch.errorPrefix")+TextResources.Get(key);}
+        static string Error(string message){return TextResources.Get("webSearch.errorPrefix")+message;}
         internal string SourceFooter(string answer){if(!settings.ShowSources)return "";var missing=sources.Where(s=>answer.IndexOf(s.Url,StringComparison.Ordinal)<0).ToArray();return missing.Length==0?"":"\n\n"+TextResources.Get("webSearch.sources")+"\n"+String.Join("\n",missing.Select(s=>"- "+s.Markdown));}
         internal static void Schemas(bool anthropic,out object[] tools){object[] openai,claude;AgentToolCatalog.Schemas(false,null,null,out openai,out claude,n=>n=="web_search");tools=anthropic?claude:openai;}
     }

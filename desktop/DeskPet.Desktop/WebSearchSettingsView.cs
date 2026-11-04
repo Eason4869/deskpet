@@ -56,7 +56,7 @@ internal sealed class WebSearchSettingsView : Grid
     }
     private void RefreshNotice()
     {
-        if(refreshing)return;LocalizedUi.Set(notice,"Text",()=>TextResources.Get(HasUnsavedChanges?"settingsLayout.unsaved":"settingsLayout.saved"));
+        if(refreshing)return;LocalizedUi.Set(notice,"Text",()=>(HasUnsavedChanges?TextResources.Get("settingsLayout.unsaved"):TextResources.Get("settingsLayout.saved")));
     }
     private void Restore()
     {

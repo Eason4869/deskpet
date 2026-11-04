@@ -39,31 +39,31 @@ internal sealed class SettingsWindow : Window
         owner = controller; LocalizedUi.Set(this,"Title",()=>TextResources.Get("settingsWindow.settingsWindow.title")); Width = 960; Height = 760; MinWidth = 570; MinHeight = 420;
         Background = DesktopTheme.Surface;
         var entries = new List<ListBoxItem>();
-        void Add(string key, string icon, Func<Control> create) {
+        void Add(Func<string> title, string icon, Func<Control> create) {
             pageFactories.Add(create); pages.Add(null);
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("24,*"), Margin = new Thickness(0,2) };
-            row.Children.Add(SettingsVisual.Icon(icon,18)); var label=SettingsVisual.Text(()=>TextResources.Get(key),13);label.Margin=new Thickness(9,0,0,0);label.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(label,1);row.Children.Add(label);
+            row.Children.Add(SettingsVisual.Icon(icon,18)); var label=SettingsVisual.Text(title,13);label.Margin=new Thickness(9,0,0,0);label.VerticalAlignment=VerticalAlignment.Center;Grid.SetColumn(label,1);row.Children.Add(label);
             var item=new ListBoxItem{Content=row,Padding=new Thickness(10,11),MinHeight=44,HorizontalContentAlignment=HorizontalAlignment.Stretch};
             SettingsVisual.NavigationItem(item);entries.Add(item);
         }
-        Add("settingsWindow.settingsWindow.text","partner",()=>Tabs(partnerTabs,requestedPartnerIndex,
-            ("settingsWindow.settingsWindow.text","partner",Partner),
-            ("settingsWindow.behavior.text","companion-behavior",CompanionBehavior),
-            ("settingsLayout.greetings","greetings",Greetings)));
-        Add("settingsLayout.modelTitle","model",()=>Tabs(modelTabs,requestedModelIndex,
-            ("settingsWindow.settingsWindow.header","text",()=>ModelEditor("text")),
-            ("settingsWindow.settingsWindow.header.alternativeA","image",()=>SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageProvider=new ImageProviderEditor(owner,this))),
-            ("settingsWindow.settingsWindow.text.alternativeC","asr",()=>ModelEditor("asr")),
-            ("settingsWindow.settingsWindow.text.alternativeD","speech",()=>SettingsVisual.Page(ModelEditor("speech"),Voice())),
-            ("settingsLayout.liveVoice","live",()=>ModelEditor("live"))));
-        Add("settingsLayout.conversationTitle","chat",()=>conversation=new ConversationSettingsView(owner));
-        Add("settingsLayout.workTitle","work",()=>new WorkSettingsView(owner,this));
-        Add("settingsLayout.toolsTitle","settings",()=>Tabs(toolsTabs,requestedToolsIndex,
-            ("webSearch.title","tools",()=>new WebSearchSettingsView(owner)),
-            ("im.title","channels",()=>WrapPage(SettingsVisual.Card(imChannels=new ImChannelSettingsView(owner))))));
-        Add("settingsWindow.settingsWindow.text.alternativeA","settings",()=>Tabs(generalTabs,requestedGeneralIndex,
-            ("settingsWindow.settingsWindow.text.alternativeA","behavior",General),
-            ("dataManagement.title","storage",Storage)));
+        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text"),"partner",()=>Tabs(partnerTabs,requestedPartnerIndex,
+            (()=>TextResources.Get("settingsWindow.settingsWindow.text"),"partner",Partner),
+            (()=>TextResources.Get("settingsWindow.behavior.text"),"companion-behavior",CompanionBehavior),
+            (()=>TextResources.Get("settingsLayout.greetings"),"greetings",Greetings)));
+        Add(()=>TextResources.Get("settingsLayout.modelTitle"),"model",()=>Tabs(modelTabs,requestedModelIndex,
+            (()=>TextResources.Get("settingsWindow.settingsWindow.header"),"text",()=>ModelEditor("text")),
+            (()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),"image",()=>SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageProvider=new ImageProviderEditor(owner,this))),
+            (()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC"),"asr",()=>ModelEditor("asr")),
+            (()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD"),"speech",()=>SettingsVisual.Page(ModelEditor("speech"),Voice())),
+            (()=>TextResources.Get("settingsLayout.liveVoice"),"live",()=>ModelEditor("live"))));
+        Add(()=>TextResources.Get("settingsLayout.conversationTitle"),"chat",()=>conversation=new ConversationSettingsView(owner));
+        Add(()=>TextResources.Get("settingsLayout.workTitle"),"work",()=>new WorkSettingsView(owner,this));
+        Add(()=>TextResources.Get("settingsLayout.toolsTitle"),"settings",()=>Tabs(toolsTabs,requestedToolsIndex,
+            (()=>TextResources.Get("webSearch.title"),"tools",()=>new WebSearchSettingsView(owner)),
+            (()=>TextResources.Get("im.title"),"channels",()=>WrapPage(SettingsVisual.Card(imChannels=new ImChannelSettingsView(owner))))));
+        Add(()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeA"),"settings",()=>Tabs(generalTabs,requestedGeneralIndex,
+            (()=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeA"),"behavior",General),
+            (()=>TextResources.Get("dataManagement.title"),"storage",Storage)));
         navigation.ItemsSource=entries;
         navigation.SelectionChanged += (_, e) => {
             if (!ReferenceEquals(e.Source,navigation)) return;
@@ -86,11 +86,11 @@ internal sealed class SettingsWindow : Window
     private Control ModelEditor(string kind)
     {
         var editor=new ProviderEditor(owner,kind);providers.Add(editor);
-        return SettingsVisual.Group(()=>TextResources.Get(kind switch{"asr"=>"settingsWindow.settingsWindow.text.alternativeC","speech"=>"settingsWindow.settingsWindow.text.alternativeD","live"=>"settingsLayout.liveVoice",_=>"settingsWindow.settingsWindow.header"}),editor);
+        return SettingsVisual.Group(()=>kind switch{"asr"=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeC"),"speech"=>TextResources.Get("settingsWindow.settingsWindow.text.alternativeD"),"live"=>TextResources.Get("settingsLayout.liveVoice"),_=>TextResources.Get("settingsWindow.settingsWindow.header")},editor);
     }
-    private Control Tabs(TabControl tabs,int selected,params (string Title,string Route,Func<Control> Create)[] sections)
+    private Control Tabs(TabControl tabs,int selected,params (Func<string> Title,string Route,Func<Control> Create)[] sections)
     {
-        var items=sections.Select(section=>LocalizedUi.With(new TabItem{Padding=new Thickness(8,10),FontSize=12},"Header",()=>TextResources.Get(section.Title))).ToArray();
+        var items=sections.Select(section=>LocalizedUi.With(new TabItem{Padding=new Thickness(8,10),FontSize=12},"Header",section.Title)).ToArray();
         void EnsurePage(){int index=tabs.SelectedIndex;if(index<0||index>=items.Length)return;items[index].Content??=sections[index].Create();selectedSection=sections[index].Route;}
         tabs.HorizontalContentAlignment=HorizontalAlignment.Stretch;tabs.VerticalContentAlignment=VerticalAlignment.Stretch;
         tabs.ItemsPanel=new FuncTemplate<Panel?>(()=>new WrapPanel{Orientation=Orientation.Horizontal});
@@ -216,8 +216,8 @@ internal sealed class SettingsWindow : Window
         var imageMotion=LocalizedUi.Check(()=>TextResources.Get("settingsWindow.behavior.check.alternativeI"),s.ImageGenerationMotionEnabled,v=>{s.ImageGenerationMotionEnabled=v;owner.Save();});imageMotion.Name="ImageGenerationMotionEnabled";
         var concurrency=new NumericUpDown{Name="ImageGenerationConcurrency",Minimum=1,Maximum=4,Increment=1,Value=s.ImageGenerationConcurrency};concurrency.ValueChanged+=(_,_)=>{if(concurrency.Value.HasValue){s.ImageGenerationConcurrency=(int)concurrency.Value.Value;owner.Save();}};
         var shortcuts=Ui.Column();
-        foreach(var entry in new[]{("chat","settingsWindow.behavior.text.alternativeE"),("show","settingsWindow.behavior.text.alternativeF"),("hide","settingsWindow.behavior.text.alternativeG")})
-            shortcuts.Children.Add(LocalizedUi.Check(()=>TextResources.Get(entry.Item2),s.Hotkeys.GetValueOrDefault(entry.Item1)=="enabled",v=>{s.Hotkeys[entry.Item1]=v?"enabled":"disabled";owner.Save();owner.RegisterHotkeys();}));
+        foreach(var entry in new (string Id,Func<string> Title)[]{("chat",()=>TextResources.Get("settingsWindow.behavior.text.alternativeE")),("show",()=>TextResources.Get("settingsWindow.behavior.text.alternativeF")),("hide",()=>TextResources.Get("settingsWindow.behavior.text.alternativeG"))})
+            shortcuts.Children.Add(LocalizedUi.Check(entry.Title,s.Hotkeys.GetValueOrDefault(entry.Id)=="enabled",v=>{s.Hotkeys[entry.Id]=v?"enabled":"disabled";owner.Save();owner.RegisterHotkeys();}));
         var data=LocalizedUi.Button(()=>TextResources.Get("dataManagement.title"),()=>SelectSection("storage"));data.Name="GeneralDataManagement";
         return SettingsVisual.Page(general,
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.settingsWindow.header.alternativeA"),imageMotion,LocalizedUi.Field(()=>TextResources.Get("settingsWindow.behavior.field.alternativeA"),concurrency)),

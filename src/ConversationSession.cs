@@ -277,7 +277,12 @@ namespace Dafeiyu
             CancellationToken token=op.Cancel.Token; token.ThrowIfCancellationRequested();
             string persona=PersonaProfiles.LocalizeDefaultPrompt(op.Snapshot.AgentEnabled?op.Snapshot.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt:op.Snapshot.SystemPrompt??"",op.Language).Replace("{pet_name}",op.Snapshot.AgentEnabled?TextResources.Get("conversationSession.requestReply.text",op.Language):petName??TextResources.Get("app.displayName",op.Language));
             if(op.Snapshot.AgentEnabled)persona+="\n若最终交付本地文件，请在最终回复使用 [文件名](<文件完整绝对路径>) 链接，路径尽量使用正斜杠，便于用户打开交付卡片。只列明确交付的文件，不把所有改动或读取的文件当作附件，不虚构文件。";
-            if(!op.Snapshot.AgentEnabled)persona+=op.Snapshot.WebSearch!=null&&op.Snapshot.WebSearch.Enabled?"\n"+TextResources.Get("webSearch.conversationPrompt"):"\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
+            if(!op.Snapshot.AgentEnabled && op.Snapshot.WebSearch!=null && op.Snapshot.WebSearch.Enabled)
+                persona+="\n"+TextResources.Get("webSearch.conversationPrompt");
+            else
+            {
+                if(!op.Snapshot.AgentEnabled)persona+="\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
+            }
             if(op.Snapshot.AgentEnabled && !String.IsNullOrWhiteSpace(op.Snapshot.AgentGoal))persona+="\n用户设置的持续目标（在当前请求范围内推进，不能声称未完成的操作成功）：\n"+op.Snapshot.AgentGoal;
             if(op.Snapshot.AgentEnabled && op.Snapshot.AgentPlanMode)persona+="\n当前为计划模式：仅分析、阅读并提出计划，不执行写入或修改文件。";
             if(op.ResumeTask!=null)persona+="\n"+op.ResumeTask.CheckpointText();

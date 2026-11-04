@@ -56,11 +56,48 @@ namespace Dafeiyu
             foreach(var group in CompactGroups)
             {
                 var kept=items.Single(item=>item.Id==group[0]);
-                kept.Title=TextResources.Get("onboarding.compact."+group[0]+".title");
-                kept.Text=TextResources.Get("onboarding.compact."+group[0]);
+                ApplyCompactText(kept);
                 items.RemoveAll(item=>item.Id!=group[0]&&Array.IndexOf(group,item.Id)>=0);
             }
             return items.ToArray();
+        }
+        static void ApplyCompactText(OnboardingLesson lesson)
+        {
+            switch(lesson.Id)
+            {
+                case "network.intro": lesson.Title=TextResources.Get("onboarding.compact.network.intro.title");lesson.Text=TextResources.Get("onboarding.compact.network.intro");break;
+                case "persona.edit": lesson.Title=TextResources.Get("onboarding.compact.persona.edit.title");lesson.Text=TextResources.Get("onboarding.compact.persona.edit");break;
+                case "behavior.follow": lesson.Title=TextResources.Get("onboarding.compact.behavior.follow.title");lesson.Text=TextResources.Get("onboarding.compact.behavior.follow");break;
+                case "behavior.top": lesson.Title=TextResources.Get("onboarding.compact.behavior.top.title");lesson.Text=TextResources.Get("onboarding.compact.behavior.top");break;
+                case "text.url": lesson.Title=TextResources.Get("onboarding.compact.text.url.title");lesson.Text=TextResources.Get("onboarding.compact.text.url");break;
+                case "text.fetch": lesson.Title=TextResources.Get("onboarding.compact.text.fetch.title");lesson.Text=TextResources.Get("onboarding.compact.text.fetch");break;
+                case "text.capacity": lesson.Title=TextResources.Get("onboarding.compact.text.capacity.title");lesson.Text=TextResources.Get("onboarding.compact.text.capacity");break;
+                case "text.test": lesson.Title=TextResources.Get("onboarding.compact.text.test.title");lesson.Text=TextResources.Get("onboarding.compact.text.test");break;
+                case "asr.intro": lesson.Title=TextResources.Get("onboarding.compact.asr.intro.title");lesson.Text=TextResources.Get("onboarding.compact.asr.intro");break;
+                case "asr.url": lesson.Title=TextResources.Get("onboarding.compact.asr.url.title");lesson.Text=TextResources.Get("onboarding.compact.asr.url");break;
+                case "asr.save": lesson.Title=TextResources.Get("onboarding.compact.asr.save.title");lesson.Text=TextResources.Get("onboarding.compact.asr.save");break;
+                case "speech.intro": lesson.Title=TextResources.Get("onboarding.compact.speech.intro.title");lesson.Text=TextResources.Get("onboarding.compact.speech.intro");break;
+                case "speech.url": lesson.Title=TextResources.Get("onboarding.compact.speech.url.title");lesson.Text=TextResources.Get("onboarding.compact.speech.url");break;
+                case "speech.test": lesson.Title=TextResources.Get("onboarding.compact.speech.test.title");lesson.Text=TextResources.Get("onboarding.compact.speech.test");break;
+                case "live.intro": lesson.Title=TextResources.Get("onboarding.compact.live.intro.title");lesson.Text=TextResources.Get("onboarding.compact.live.intro");break;
+                case "live.url": lesson.Title=TextResources.Get("onboarding.compact.live.url.title");lesson.Text=TextResources.Get("onboarding.compact.live.url");break;
+                case "live.test": lesson.Title=TextResources.Get("onboarding.compact.live.test.title");lesson.Text=TextResources.Get("onboarding.compact.live.test");break;
+                case "greeting.enable": lesson.Title=TextResources.Get("onboarding.compact.greeting.enable.title");lesson.Text=TextResources.Get("onboarding.compact.greeting.enable");break;
+                case "quiet.mode": lesson.Title=TextResources.Get("onboarding.compact.quiet.mode.title");lesson.Text=TextResources.Get("onboarding.compact.quiet.mode");break;
+                case "shortcut.quick": lesson.Title=TextResources.Get("onboarding.compact.shortcut.quick.title");lesson.Text=TextResources.Get("onboarding.compact.shortcut.quick");break;
+                case "section.create": lesson.Title=TextResources.Get("onboarding.compact.section.create.title");lesson.Text=TextResources.Get("onboarding.compact.section.create");break;
+                case "project.create": lesson.Title=TextResources.Get("onboarding.compact.project.create.title");lesson.Text=TextResources.Get("onboarding.compact.project.create");break;
+                case "chat.work": lesson.Title=TextResources.Get("onboarding.compact.chat.work.title");lesson.Text=TextResources.Get("onboarding.compact.chat.work");break;
+                case "chat.dictation": lesson.Title=TextResources.Get("onboarding.compact.chat.dictation.title");lesson.Text=TextResources.Get("onboarding.compact.chat.dictation");break;
+                case "chat.pin": lesson.Title=TextResources.Get("onboarding.compact.chat.pin.title");lesson.Text=TextResources.Get("onboarding.compact.chat.pin");break;
+                case "work.instructions": lesson.Title=TextResources.Get("onboarding.compact.work.instructions.title");lesson.Text=TextResources.Get("onboarding.compact.work.instructions");break;
+                case "work.goal": lesson.Title=TextResources.Get("onboarding.compact.work.goal.title");lesson.Text=TextResources.Get("onboarding.compact.work.goal");break;
+                case "work.process": lesson.Title=TextResources.Get("onboarding.compact.work.process.title");lesson.Text=TextResources.Get("onboarding.compact.work.process");break;
+                case "editor.send": lesson.Title=TextResources.Get("onboarding.compact.editor.send.title");lesson.Text=TextResources.Get("onboarding.compact.editor.send");break;
+                case "work.recovery": lesson.Title=TextResources.Get("onboarding.compact.work.recovery.title");lesson.Text=TextResources.Get("onboarding.compact.work.recovery");break;
+                case "mcp.transport": lesson.Title=TextResources.Get("onboarding.compact.mcp.transport.title");lesson.Text=TextResources.Get("onboarding.compact.mcp.transport");break;
+                default: throw new InvalidOperationException("Unknown compact onboarding lesson: "+lesson.Id);
+            }
         }
         static string cachedLanguage;static OnboardingLesson[] cachedLessons;
         internal static OnboardingLesson[] All {get{if(cachedLessons==null||cachedLanguage!=TextResources.CurrentLanguage){cachedLessons=Build();cachedLanguage=TextResources.CurrentLanguage;}return cachedLessons;}}
