@@ -31,11 +31,13 @@ namespace Dafeiyu.Tests
                 var cfg=new PetSettings{UiLanguage=args.Length==0?"zh_CN":args[0],AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,FollowCursor=false,Wander=false};foreach(var key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Show();
                 var about=new AboutPanel(pet);var window=new Window{Content=about,Width=460,Height=340,Background=ThemeManager.Surface};window.Show();Pump();
-                var clean=Find<Button>(about,"ClearCache");var uninstall=Find<Button>(about,"UninstallApplication");
-                Check(clean!=null&&clean.IsVisible&&clean.TransformToAncestor(about).Transform(new Point()).X<uninstall.TransformToAncestor(about).Transform(new Point()).X,"secondary cache action immediately left of uninstall");
-                foreach(var button in new[]{clean,uninstall}){var bounds=button.TransformToAncestor(about).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=about.ActualWidth&&bounds.Top>=0&&bounds.Bottom<=about.ActualHeight,"footer visible at narrow size "+button.Name);}
-                // Exercise the actual About click, owned modal, and close path.
-                var close=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool owned=false;close.Tick+=delegate{var dialog=app.Windows.OfType<CacheMaintenanceWindow>().FirstOrDefault();if(dialog!=null){owned=dialog.Owner==window;close.Stop();dialog.Close();}};close.Start();Click(clean);Check(owned&&pet.IsVisible,"about opens owned dialog; close leaves pet alive");
+                var uninstall=Find<Button>(about,"UninstallApplication");
+                Check(Find<Button>(about,"ClearCache").Visibility==Visibility.Collapsed,"about does not duplicate the general data cache action");
+                var uninstallBounds=uninstall.TransformToAncestor(about).TransformBounds(new Rect(uninstall.RenderSize));Check(uninstall.IsVisible&&uninstallBounds.Left>=0&&uninstallBounds.Right<=about.ActualWidth&&uninstallBounds.Top>=0&&uninstallBounds.Bottom<=about.ActualHeight,"footer visible at narrow size "+uninstall.Name);
+                var general=new QuietPanel(pet);window.Content=general;general.SelectSection(2);Pump();var clean=Find<Button>(general,"GeneralClearCache");Check(clean!=null&&clean.IsVisible,"general data management exposes cache maintenance");clean.BringIntoView();Pump();
+                var cleanBounds=clean.TransformToAncestor(general).TransformBounds(new Rect(clean.RenderSize));Check(cleanBounds.Left>=0&&cleanBounds.Right<=general.ActualWidth&&cleanBounds.Top>=0&&cleanBounds.Bottom<=general.ActualHeight,"general cache action visible at narrow size after scrolling");
+                // Exercise the actual General Data click, owned modal, and close path.
+                var close=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool owned=false;close.Tick+=delegate{var dialog=app.Windows.OfType<CacheMaintenanceWindow>().FirstOrDefault();if(dialog!=null){owned=dialog.Owner==window;close.Stop();dialog.Close();}};close.Start();Click(clean);Check(owned&&pet.IsVisible,"general data opens owned dialog; close leaves pet alive");
                 string path=Path.Combine(root,"updates",new string('a',32));using(CacheResourceLease.Acquire(root,path))File.WriteAllBytes(Path.Combine(path,"package.zip"),new byte[123]);File.SetLastWriteTimeUtc(Path.Combine(path,"package.zip"),DateTime.UtcNow.AddDays(-8));Directory.SetLastWriteTimeUtc(path,DateTime.UtcNow.AddDays(-8));
                 var cache=new CacheMaintenanceWindow(root){Owner=window};cache.Show();Wait(cache.PendingOperation);
                 Check(cache.ResizeMode==ResizeMode.CanMinimize||cache.ResizeMode==ResizeMode.NoResize,"cache dialog disallows maximize");
@@ -48,9 +50,10 @@ namespace Dafeiyu.Tests
                 CaptureStates(cache,root,"result");Click(Find<Button>(cache,"CancelCache"));Check(!cache.IsVisible&&pet.IsVisible,"cancel keeps pet alive");
                 var escape=new CacheMaintenanceWindow(root){Owner=window};escape.Show();Wait(escape.PendingOperation);escape.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(escape),0,Key.Escape){RoutedEvent=Keyboard.KeyDownEvent});Check(!escape.IsVisible&&pet.IsVisible,"Esc keeps pet alive");
                 foreach(string theme in new[]{"light","dark"})foreach(int width in new[]{460,760}){
-                    ThemeManager.Apply(theme);window.Width=width;window.Height=width==460?340:560;Pump();
-                    foreach(var button in new[]{clean,uninstall}){var bounds=button.TransformToAncestor(about).TransformBounds(new Rect(button.RenderSize));Check(bounds.Left>=0&&bounds.Right<=about.ActualWidth&&bounds.Top>=0&&bounds.Bottom<=about.ActualHeight,"footer bounds "+theme+" "+width+" "+button.Name);}
+                    ThemeManager.Apply(theme);window.Width=width;window.Height=width==460?340:560;window.Content=about;Pump();
+                    var bounds=uninstall.TransformToAncestor(about).TransformBounds(new Rect(uninstall.RenderSize));Check(bounds.Left>=0&&bounds.Right<=about.ActualWidth&&bounds.Top>=0&&bounds.Bottom<=about.ActualHeight,"footer bounds "+theme+" "+width+" "+uninstall.Name);
                     Capture(window,Path.Combine(root,"about-"+theme+"-"+width+".png"));
+                    window.Content=general;Pump();clean.BringIntoView();Pump();bounds=clean.TransformToAncestor(general).TransformBounds(new Rect(clean.RenderSize));Check(clean.IsVisible&&bounds.Left>=0&&bounds.Right<=general.ActualWidth&&bounds.Top>=0&&bounds.Bottom<=general.ActualHeight,"general cache action bounds "+theme+" "+width);Capture(window,Path.Combine(root,"general-data-"+theme+"-"+width+".png"));
                     var themed=new CacheMaintenanceWindow(root){Owner=window};themed.Show();Wait(themed.PendingOperation);Capture(themed,Path.Combine(root,"cache-"+theme+"-"+width+".png"));themed.Close();
                 }
                 var zero=new CacheMaintenanceWindow(root){Owner=window};zero.Show();Wait(zero.PendingOperation);CaptureStates(zero,root,"zero");zero.Close();

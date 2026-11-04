@@ -46,7 +46,7 @@ namespace Dafeiyu.Tests
                 Check(picker!=null,"general settings expose theme selection");
                 var ink=Ui.Ink;Check(ink.Color.R>160,"startup applies saved dark palette");
                 var main=Window.GetWindow(picker);
-                var behavior=All<Border>(main).First(b=>b.Background is LinearGradientBrush&&All<CheckBox>(b).Any(c=>c.Name=="QuietMode"));
+                var behavior=All<Border>(main).Single(b=>b.Child is Panel&&((Panel)b.Child).Children.OfType<CheckBox>().Any(c=>c.Name=="QuietMode"));
                 Check(Contrast(Painted(behavior.Background),Painted(ThemeManager.Surface))>=1.18,"dark behavior card visibly separates from the settings page");
                 Check(Contrast(Painted(behavior.BorderBrush),Painted(behavior.Background))>=1.5,"dark behavior card has a visible perimeter");
                 var off=All<CheckBox>(behavior).First(c=>c.IsChecked==false);var offTrack=(Border)off.Template.FindName("track",off);

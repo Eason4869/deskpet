@@ -46,7 +46,7 @@ namespace Dafeiyu
             expander.Foreground=Ui.Ink;expander.Background=ThemeManager.CardSurface;expander.BorderBrush=ThemeManager.Brush("#D5D9DF","#52637C");
             expander.HorizontalContentAlignment=HorizontalAlignment.Stretch;expander.Padding=new Thickness(0);
         }
-        internal static Border Card(UIElement content){return new Border{Child=content,Padding=new Thickness(20,18,20,6),CornerRadius=new CornerRadius(14),BorderThickness=new Thickness(1),BorderBrush=ThemeManager.Brush("#E7E7E9","#3D4148"),Background=ThemeManager.CardSurface};}
+        internal static Border Card(UIElement content){return new Border{Child=content,Padding=new Thickness(20,18,20,6),CornerRadius=new CornerRadius(14),BorderThickness=new Thickness(1),BorderBrush=ThemeManager.CardBorder,Background=ThemeManager.CardSurface};}
         internal static void Section(Panel parent,Func<string> title,UIElement content)
         {
             var label=LocalizedUi.Text(title,14,Ui.Ink);label.FontWeight=FontWeights.SemiBold;label.Margin=new Thickness(0,parent.Children.Count==0?0:GroupSpacing,0,12);parent.Children.Add(label);parent.Children.Add(Card(content));

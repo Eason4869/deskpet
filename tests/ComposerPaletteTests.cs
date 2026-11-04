@@ -31,7 +31,24 @@ namespace Dafeiyu.Tests
                 Run("slash menu is grouped, scrollable and bounded by the composer",delegate{input.Text="/";input.CaretIndex=input.Text.Length;Pump();Check(popup.IsOpen&&All<ScrollViewer>(popup.Child).Any(s=>s.MaxHeight<=400),"command menu is not bounded/scrollable");Check(All<TextBlock>(popup.Child).Any(t=>t.Name=="ComposerCommandGroup"),"command groups missing");Check(((FrameworkElement)popup.Child).Width<=chat.ActualWidth-20,"menu exceeds chat width");});
                 Run("mouse command removes only its trigger fragment and preserves the draft",delegate{input.Text="草稿 /导出记录 后缀";input.CaretIndex="草稿 /导出记录".Length;Pump();var rows=(System.Collections.IList)type.GetField("triggerRows",hidden).GetValue(composer);Check(rows.Count==1,"filter did not narrow to export");((Border)rows[0]).Child.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left){RoutedEvent=UIElement.MouseLeftButtonUpEvent});Check(!input.Text.Contains("/导出记录")&&input.Text.StartsWith("草稿")&&input.Text.EndsWith("后缀"),"mouse command left trigger text or lost draft");});
                 Run("slash side-chat command opens a temporary pane and preserves surrounding draft",delegate{input.Text="草稿 /侧边 后缀";input.CaretIndex="草稿 /侧边".Length;Pump();var rows=(System.Collections.IList)type.GetField("triggerRows",hidden).GetValue(composer);Check(rows.Count==1,"slash menu lacks the side-chat command");((Border)rows[0]).Child.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left){RoutedEvent=UIElement.MouseLeftButtonUpEvent});Pump();Check(All<SideChatPane>(chat).Count()==1&&input.Text.StartsWith("草稿")&&input.Text.EndsWith("后缀")&&!input.Text.Contains("/侧边"),"side-chat command did not open its pane or preserve the draft");});
-                Run("unavailable snapshot is disabled rather than executing a blank action",delegate{type.GetField("SnapshotTargetProvider",BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance).SetValue(composer,(Func<ApplicationSnapshotTarget>)(()=>null));input.Text="@快照";input.CaretIndex=input.Text.Length;Pump();Check(All<FrameworkElement>(popup.Child).Any(e=>e.Name=="ComposerCommand"&&!e.IsEnabled),"unavailable snapshot appears enabled");});
+                Run("unavailable snapshot is disabled rather than executing a blank action",delegate{
+                    var snapshotComposer=(ConversationComposer)composer;var previousProvider=snapshotComposer.SnapshotTargetProvider;int probes=0;
+                    try{
+                        // The preceding side-chat command can move keyboard focus.
+                        // Start unfocused, close any cached palette and acquire the
+                        // main editor before exercising this independent command.
+                        Keyboard.ClearFocus();Pump();input.Text="";Pump();
+                        snapshotComposer.SnapshotTargetProvider=delegate{probes++;return null;};
+                        chat.Activate();input.Focus();Pump();Check(input.IsKeyboardFocusWithin,"snapshot fixture could not focus the main editor");
+                        input.Text="@快照";input.CaretIndex=input.Text.Length;Pump();
+                        Check(popup.IsOpen&&probes>0,"snapshot palette did not open with the unavailable target provider");
+                        var row=All<Grid>(popup.Child).Single(e=>e.Name=="ComposerCommand");
+                        Check(All<TextBlock>(row).Any(t=>t.Text=="附加应用快照")&&!row.IsEnabled,"unavailable snapshot appears enabled or does not match the filtered command");
+                        string draft=input.Text;int attachments=snapshotComposer.SnapshotPendingAttachments().Count;
+                        row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left){RoutedEvent=UIElement.MouseLeftButtonUpEvent});Pump();
+                        Check(input.Text==draft&&snapshotComposer.SnapshotPendingAttachments().Count==attachments&&popup.IsOpen,"disabled snapshot consumed the draft or attempted to add an attachment");
+                    }finally{snapshotComposer.SnapshotTargetProvider=previousProvider;input.Text="";Pump();}
+                });
                 Run("chat header omits removed clear and export buttons; export remains in the file command",delegate{Check(!All<Button>(chat).Any(b=>b.Name=="ClearChat")&&!All<Button>(chat).Any(b=>b.Name=="ExportChat"&&b.IsVisible)&&All<Button>(chat).Any(b=>b.Name=="AppMenuFile"),"header actions do not match requested scope");});
             }finally{chat.Close();pet.Close();app.Shutdown();}Console.WriteLine("Composer palette tests: "+passed+" passed, "+failed+" failed");return failed==0?0:1;
         }
