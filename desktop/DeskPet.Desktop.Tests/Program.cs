@@ -141,6 +141,12 @@ try
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    if(args.Contains("--guide-ui-only")){
+        using var guideController=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"guide-ui")));
+        try{GuideUiChecks(guideController);}
+        finally{guideController.Pet.Close();guideController.Dispose();Complete(guideController.ImageServicesShutdown);}
+        Console.WriteLine("PASS: "+assertions+" guide UI assertions");return;
+    }
     assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
@@ -779,6 +785,21 @@ try
     var record = permissionChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatDictation");
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
+    GuideUiChecks(controller);
+    editor.Dispose(); editorHost.Close();
+    foreach (var window in windows) window.Close();
+    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
+    Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
+}
+finally
+{
+    // Only remove this run's newly created GUID directory.
+    try{if (Directory.Exists(directory)) Directory.Delete(directory, true);}
+    catch(IOException error) when(Environment.ExitCode!=0&&args.Any(arg=>arg.StartsWith("--proactive-"))){Console.Error.WriteLine("Failed fixture retained for diagnostics: "+directory+" ("+error.GetType().Name+")");}
+}
+
+void GuideUiChecks(DesktopController controller)
+{
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
     for(int intro=0;intro<2&&(guide.CurrentLessonId=="language"||guide.CurrentLessonId=="welcome");intro++){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
     var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
@@ -799,19 +820,23 @@ try
     Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作与权限") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "original final lesson remains reachable after preparation steps are inserted");
-    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","final lesson leads to congratulations before explicit completion");
+    var searchBefore=JsonSerializer.Serialize(controller.Settings.WebSearch,new JsonSerializerOptions{IncludeFields=true});
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
+    Check(workGuide.CurrentLessonId=="search.overview"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text?.EndsWith(" · 网页搜索（可选）",StringComparison.Ordinal)==true),"original final lesson leads to the optional search overview");
+    Check(workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="在“设置 → 工具与连接 → 网页搜索”选择提供商并保存。原生搜索需要当前模型和接口支持；独立服务和自定义接口分别配置，可能另行计费。本步骤不会自动开启或发起搜索。"),"search overview explains its real settings path, requirements, separate charges and read-only behavior");
+    Check(controller.Settings.OnboardingState=="deferred"&&controller.Settings.OnboardingLessonId=="search.overview"&&!controller.Settings.WebSearch.Enabled,"reaching search overview persists progress without enabling search or completing guidance");
+    workGuide.GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="GuideOpenStep").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
+    var searchSettings=(SettingsWindow)typeof(DesktopController).GetField("settingsWindow",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
+    var searchNavigation=searchSettings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
+    Check(searchSettings.IsVisible&&searchNavigation.SelectedItem is ListBoxItem selectedTools&&selectedTools.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工具与连接")&&searchSettings.GetLogicalDescendants().OfType<WebSearchSettingsView>().Any(),"search lesson opens the actual web search page under tools and connections");
+    Check(searchSettings.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(c=>c.Name=="WebSearchEnabled").IsChecked==false&&JsonSerializer.Serialize(controller.Settings.WebSearch,new JsonSerializerOptions{IncludeFields=true})==searchBefore&&!controller.Session.IsBusy&&!controller.Queue.IsRunning&&!controller.Queue.HasPending,"opening search guidance preserves search configuration and starts no conversation or queued search");
+    searchSettings.Close();
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","search overview leads to congratulations before explicit completion");
+    var guideStore=new SettingsStore(Path.Combine(controller.DataDirectory,"settings.json"));
+    Check(guideStore.Load().OnboardingState=="deferred"&&guideStore.Load().OnboardingLessonId=="finish.congratulations"&&workGuide.IsVisible,"congratulations persists its lesson while guidance remains incomplete");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(controller.Settings.OnboardingState == "completed" && !workGuide.IsVisible, "completing new guide persists completion and closes guide");
-    editor.Dispose(); editorHost.Close();
-    foreach (var window in windows) window.Close();
-    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
-    Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
-}
-finally
-{
-    // Only remove this run's newly created GUID directory.
-    try{if (Directory.Exists(directory)) Directory.Delete(directory, true);}
-    catch(IOException error) when(Environment.ExitCode!=0&&args.Any(arg=>arg.StartsWith("--proactive-"))){Console.Error.WriteLine("Failed fixture retained for diagnostics: "+directory+" ("+error.GetType().Name+")");}
+    Check(guideStore.Load().OnboardingState=="completed"&&guideStore.Load().OnboardingLessonId=="finish.congratulations","explicit completion is persisted at the congratulations lesson");
 }
 
 int CompanionLifecycleSmoke(string root)
