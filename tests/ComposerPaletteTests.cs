@@ -34,12 +34,19 @@ namespace Dafeiyu.Tests
                 Run("unavailable snapshot is disabled rather than executing a blank action",delegate{
                     var snapshotComposer=(ConversationComposer)composer;var previousProvider=snapshotComposer.SnapshotTargetProvider;int probes=0;
                     try{
-                        // The preceding side-chat command can move keyboard focus.
-                        // Start unfocused, close any cached palette and acquire the
-                        // main editor before exercising this independent command.
-                        Keyboard.ClearFocus();Pump();input.Text="";Pump();
+                        // Narrow runners put the side chat in a tab that hides the
+                        // main editor. Reproduce that layout, then close the real tab
+                        // before asking the main editor to own a command palette.
+                        chat.Width=900;Pump();chat.Activate();
+                        var sideInput=All<MarkdownEditor>(chat).Single(t=>t.Name=="SideChatInput");sideInput.Focus();Pump();
+                        Check(!input.IsVisible&&sideInput.IsKeyboardFocusWithin,"compact side-chat fixture did not hide the main editor and own focus");
                         snapshotComposer.SnapshotTargetProvider=delegate{probes++;return null;};
-                        chat.Activate();input.Focus();Pump();Check(input.IsKeyboardFocusWithin,"snapshot fixture could not focus the main editor");
+                        input.Text="@快照";input.CaretIndex=input.Text.Length;Pump();
+                        Check(!popup.IsOpen&&probes==0,"hidden main editor opened a snapshot palette or queried its target");input.Text="";Pump();
+                        var closeSideChat=All<Button>(chat).Single(b=>b.Name=="ClosePreviewTab");Check(closeSideChat.IsVisible&&closeSideChat.IsEnabled,"side-chat close button is unavailable");
+                        closeSideChat.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                        Check(input.IsVisible&&!All<SideChatPane>(chat).Any(),"closing the side-chat tab did not restore the visible main editor");
+                        chat.Activate();input.Focus();Pump();Check(input.IsKeyboardFocusWithin,"snapshot fixture could not focus the main editor (visible="+input.IsVisible+", width="+chat.ActualWidth+")");
                         input.Text="@快照";input.CaretIndex=input.Text.Length;Pump();
                         Check(popup.IsOpen&&probes>0,"snapshot palette did not open with the unavailable target provider");
                         var row=All<Grid>(popup.Child).Single(e=>e.Name=="ComposerCommand");
