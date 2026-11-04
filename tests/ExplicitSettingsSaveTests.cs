@@ -24,7 +24,7 @@ namespace Dafeiyu.Tests
         static void Invoke(object target,string method){target.GetType().GetMethod(method,Members).Invoke(target,null);}
         static Task<bool> Pending(PetWindow pet){return (Task<bool>)Field(pet,"explicitSettingsSave");}
         static void Go(OnboardingWindow guide,string lesson)
-        {typeof(OnboardingWindow).GetField("index",Members).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==lesson));Invoke(guide,"Navigate");Pump();}
+        {int destination=Array.FindIndex(OnboardingLessons.All,l=>l.Id==lesson);if(destination<0)throw new InvalidOperationException("Missing onboarding fixture lesson: "+lesson);typeof(OnboardingWindow).GetField("index",Members).SetValue(guide,destination);Invoke(guide,"Navigate");Pump();}
         static void ReviewRegression(string mode,PetWindow pet,SettingsWindow window,PetSettings cfg,SettingsStore store,string root,ManualResetEventSlim entered,ManualResetEventSlim release)
         {
             OnboardingWindow guide=null;ConversationSession replacement=null;var original=pet.Conversation;
@@ -48,7 +48,7 @@ namespace Dafeiyu.Tests
                     Invoke(guide,"Advance");Until(()=>entered.IsSet);guide.Close();Check(guide.IsVisible,"guide waits for in-flight configuration advance before closing");release.Set();var saved=Pending(pet);if(saved!=null)Wait(saved);return;
                 }
                 Invoke(guide,"TestText");Until(()=>entered.IsSet);var cancel=(CancellationTokenSource)Field(guide,"textTest");Check(cancel!=null,"guide text test reserves cancellation and reentry before its first await");
-                Invoke(guide,"TestText");Check(ReferenceEquals(cancel,Field(guide,"textTest")),"repeated text test reuses one pending test");Go(guide,"asr.provider");Check(cancel.IsCancellationRequested,"navigation cancels a text test still waiting for save");release.Set();var task=Pending(pet);if(task!=null)Wait(task);Check(Field(guide,"textTest")==null,"cancelled old lesson never starts a late text test");
+                Invoke(guide,"TestText");Check(ReferenceEquals(cancel,Field(guide,"textTest")),"repeated text test reuses one pending test");Go(guide,"asr.intro");Check(cancel.IsCancellationRequested,"navigation cancels a text test still waiting for save");release.Set();var task=Pending(pet);if(task!=null)Wait(task);Check(Field(guide,"textTest")==null,"cancelled old lesson never starts a late text test");
             }finally{
                 release.Set();store.BeforePreferenceCommit=null;store.BeforeExactSave=null;var task=Pending(pet);if(task!=null)Wait(task);if(guide!=null)guide.Close();typeof(PetWindow).GetField("conversation",Members).SetValue(pet,original);if(replacement!=null)replacement.Dispose();string temp=Path.Combine(root,"settings.json.tmp");if(Directory.Exists(temp))Directory.Delete(temp);
             }
