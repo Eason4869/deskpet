@@ -27,6 +27,11 @@ namespace Dafeiyu
         // Reasoning has its own callback. The return value is the final tool-free round.
         public async Task<string> ChatAgentAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,Action<string> onDelta,Action<string> onReasoning,Action<AgentToolEvent> onToolEvent,bool stream,CancellationToken cancel)
         {
+            return await ChatAgentCoreAsync(settings,messages,workspace,workspace==null?null:workspace.SearchSession,onDelta,onReasoning,onToolEvent,stream,cancel).ConfigureAwait(false);
+        }
+
+        async Task<string> ChatAgentCoreAsync(ConnectionSettings settings,IList<ChatMessage> messages,AgentWorkspace workspace,WebSearchSession search,Action<string> onDelta,Action<string> onReasoning,Action<AgentToolEvent> onToolEvent,bool stream,CancellationToken cancel)
+        {
             if(settings==null || messages==null)throw new ArgumentNullException(settings==null?"settings":"messages");
             bool anthropic=settings.Protocol=="anthropic";
             var history=new List<object>();var wireMessages=new List<object>();var system=new StringBuilder();int lastSystemIndex=-1;
@@ -56,6 +61,7 @@ namespace Dafeiyu
                 if(anthropic)system.AppendLine(instruction);
                 else {history.Insert(0,new {role="system",content=instruction});lastSystemIndex++;}
             }
+            if(search!=null){string instruction=search.Instruction;if(anthropic)system.AppendLine(instruction);else {history.Insert(0,new{role="system",content=instruction});lastSystemIndex++;}}
             if(anthropic)system=new StringBuilder(ReplyLanguagePolicy.Apply(system.ToString().Trim()));
             else history.Insert(lastSystemIndex+1,new {role="system",content=ReplyLanguagePolicy.Apply("")});
             string lastFailure=null;int consecutiveFailures=0;
@@ -63,11 +69,12 @@ namespace Dafeiyu
                 var body=new Dictionary<string,object>{{"model",settings.Model},{"messages",items},{"stream",stream}};
                 if(anthropic){body["system"]=system.ToString().Trim();body["max_tokens"]=AgentContextPolicy.Resolve(workspace==null?ModelContextCapacity.Budget(settings,settings.RequestContextCapacity>0?settings.RequestContextCapacity:8192):workspace.ContextTokenLimit).OutputReserve;}
                 if(stream && !anthropic)body["stream_options"]=new {include_usage=true};
-                if(workspace!=null)body["tools"]=anthropic?workspace.AnthropicTools:workspace.OpenAITools;return body;
+                if(workspace!=null)body["tools"]=anthropic?workspace.AnthropicTools:workspace.OpenAITools;
+                else if(search!=null){object[] tools;WebSearchSession.Schemas(anthropic,out tools);body["tools"]=tools;}return body;
             };
             if(workspace!=null)workspace.GuidanceFits=guides=>AgentContextBudget.FitsWireBytes(requestBody(history.Concat(guides.Select(g=>(object)new{role="user",content=ChatAttachment.Content(g,anthropic)})).ToList()));
             long tokens=0;
-            bool emittedText=false,roundText=false;
+            int searchRounds=0;bool emittedText=false,roundText=false;
             Action<string> text=delegate(string delta){if(String.IsNullOrEmpty(delta))return;if(onDelta!=null){if(emittedText&&!roundText)onDelta("\n\n");onDelta(delta);}emittedText=true;roundText=true;};
             Action<string> reasoning=delegate(string delta){if(delta==null)return;if(onReasoning!=null)onReasoning(delta);};
             using(var overall=CancellationTokenSource.CreateLinkedTokenSource(cancel))
@@ -77,6 +84,7 @@ namespace Dafeiyu
                     while(true)
                     {
                         roundText=false;
+                        if(workspace==null&&search!=null&&++searchRounds>8)throw new ApiException(TextResources.Get("webSearch.limit"));
                         overall.Token.ThrowIfCancellationRequested();
                         if(workspace!=null&&workspace.CumulativeTokenLimit>0&&workspace.TaskState!=null&&workspace.TaskState.EstimatedTotalTokens>=workspace.CumulativeTokenLimit)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text"));
                         if(workspace!=null&&workspace.NeedsReconciliation)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeA"));
@@ -90,6 +98,8 @@ namespace Dafeiyu
                             if(workspace.TakeGuidanceAsync!=null){var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});if(guides.Count>0){await prepare().ConfigureAwait(false);workspace.RecordContextUsage(AgentContextBudget.EstimateTokens(new object[]{requestBody(history)}),settings.Model,settings.ContextWindowTokens);}}
                         }
                         var body=requestBody(history);
+                        if(workspace==null&&search!=null&&AgentContextBudget.EstimateTokens(new object[]{body})>AgentContextPolicy.Resolve(ModelContextCapacity.Budget(settings,settings.RequestContextCapacity>0?settings.RequestContextCapacity:8192)).InputBudget)
+                            throw new ApiException(TextResources.Get("agentContextBudget.prepareAsync.text"));
                         using(var content=Json(body))
                         {
                             long size=Encoding.UTF8.GetByteCount(await content.ReadAsStringAsync().ConfigureAwait(false));
@@ -115,9 +125,9 @@ namespace Dafeiyu
                             {
                                 if(String.IsNullOrWhiteSpace(reply.Text))throw AgentInvalid();
                                 if(workspace!=null && workspace.TakeGuidanceAsync!=null){history.Add(reply.Message);var guides=await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false);if(guides.Count>0){foreach(var guide in guides)history.Add(new{role="user",content=ChatAttachment.Content(guide,anthropic)});continue;}}
-                                return reply.Text.Trim();
+                                string answer=reply.Text.Trim();string footer=search==null?"":search.SourceFooter(answer);if(footer.Length>0&&onDelta!=null)onDelta(footer);return answer+footer;
                             }
-                            if(workspace==null)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeD"));
+                            if(workspace==null&&search==null)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeD"));
                             history.Add(reply.Message);
                             var toolResults=new List<object>();
                             var inspectedImages=new List<object>();
@@ -125,7 +135,7 @@ namespace Dafeiyu
                             foreach(AgentCall call in reply.Calls)
                             {
                                 overall.Token.ThrowIfCancellationRequested();
-                                if(boundaryGuidance.Count==0 && workspace.TakeGuidanceAsync!=null)
+                                if(boundaryGuidance.Count==0 && workspace!=null && workspace.TakeGuidanceAsync!=null)
                                     boundaryGuidance.AddRange(await workspace.TakeGuidanceAsync(overall.Token).ConfigureAwait(false));
                                 if(boundaryGuidance.Count>0)
                                 {
@@ -139,18 +149,18 @@ namespace Dafeiyu
                                     continue;
                                 }
                                 var item=new AgentToolEvent{Id=call.Id,Name=call.Name,Summary=AgentToolSummary(call,"running"),Status="running"};
-                                workspace.RecordTool(item);if(onToolEvent!=null)onToolEvent(item.Copy());
+                                if(workspace!=null)workspace.RecordTool(item);if(onToolEvent!=null)onToolEvent(item.Copy());
                                 overall.Token.ThrowIfCancellationRequested();
                                 var watch=Stopwatch.StartNew();string result;
                                 try
                                 {
-                                    result=await workspace.ExecuteAsync(call.Name,call.Arguments.ToString(),call.Id,overall.Token).ConfigureAwait(false);
+                                    result=workspace!=null?await workspace.ExecuteAsync(call.Name,call.Arguments.ToString(),call.Id,overall.Token).ConfigureAwait(false):await search.ExecuteAsync(call.Name,call.Arguments.ToString(),overall.Token).ConfigureAwait(false);
                                     overall.Token.ThrowIfCancellationRequested();
                                 }
                                 catch(OperationCanceledException)
                                 {
                                     item.Status="error";item.Summary=TextResources.Get("nativeAgentClient.chatAgentAsync.itemSummary");item.ElapsedMilliseconds=watch.ElapsedMilliseconds;
-                                    workspace.RecordTool(item);if(onToolEvent!=null)onToolEvent(item.Copy());throw;
+                                    if(workspace!=null)workspace.RecordTool(item);if(onToolEvent!=null)onToolEvent(item.Copy());throw;
                                 }
                                 catch(Exception e)
                                 {
@@ -160,9 +170,9 @@ namespace Dafeiyu
                                 result=result??"";
                                 bool error=AgentJobTools.IsJobTool(call.Name)?AgentJobTools.IsFailure(result):TextResources.IsToolError(result);
                                 item.Status=error?"error":"complete";item.Summary=AgentToolSummary(call,item.Status);item.ElapsedMilliseconds=watch.ElapsedMilliseconds;
-                                workspace.RecordTool(item,result);if(onToolEvent!=null)onToolEvent(item.Copy());
+                                if(workspace!=null)workspace.RecordTool(item,result);if(onToolEvent!=null)onToolEvent(item.Copy());
                                 if(error){string failureKey=call.Name+"\n"+call.Arguments.ToString()+"\n"+result;consecutiveFailures=failureKey==lastFailure?consecutiveFailures+1:1;lastFailure=failureKey;if(consecutiveFailures>=3)throw new ApiException(TextResources.Get("nativeAgentClient.chatAgentAsync.text.alternativeE"));}else{lastFailure=null;consecutiveFailures=0;}
-                                var inspection=workspace.TakeInspectionResult(call.Id);
+                                var inspection=workspace==null?null:workspace.TakeInspectionResult(call.Id);
                                 if(anthropic)toolResults.Add(new {type="tool_result",tool_use_id=call.Id,content=inspection==null?(object)result:inspection.Content(result,true),is_error=error});
                                 else {history.Add(new {role="tool",tool_call_id=call.Id,content=result});if(inspection!=null)inspectedImages.AddRange(inspection.Content("inspect_image 调用 "+call.Id+" 的视觉内容：\n"+result,false));}
                             }
@@ -219,7 +229,7 @@ namespace Dafeiyu
         }
         private static string AgentToolSummary(AgentCall call,string status)
         {
-            string operation=call.Name=="ask_user"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName"):call.Name=="inspect_image"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeA"):call.Name=="generate_image"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeB"):call.Name=="git_status"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeC"):call.Name=="git_diff"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeD"):call.Name=="git_log"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeE"):call.Name=="read_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeF"):call.Name=="write_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeG"):call.Name=="edit_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeH"):call.Name=="search_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeI"):call.Name=="list_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeJ"):call.Name=="find_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeK"):call.Name=="read_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeL"):call.Name=="apply_patch"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeM"):call.Name=="exec_command"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeN"):call.Name=="update_plan"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeO"):call.Name=="restore_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeP"):call.Name=="create_directory"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeQ"):call.Name=="open_directory"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeR"):TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeS");
+            string operation=call.Name=="web_search"?TextResources.Get("webSearch.searching"):call.Name=="ask_user"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName"):call.Name=="inspect_image"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeA"):call.Name=="generate_image"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeB"):call.Name=="git_status"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeC"):call.Name=="git_diff"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeD"):call.Name=="git_log"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeE"):call.Name=="read_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeF"):call.Name=="write_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeG"):call.Name=="edit_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeH"):call.Name=="search_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeI"):call.Name=="list_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeJ"):call.Name=="find_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeK"):call.Name=="read_files"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeL"):call.Name=="apply_patch"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeM"):call.Name=="exec_command"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeN"):call.Name=="update_plan"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeO"):call.Name=="restore_file"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeP"):call.Name=="create_directory"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeQ"):call.Name=="open_directory"?TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeR"):TextResources.Get("nativeAgentClient.agentToolSummary.nameCallName.alternativeS");
             string path="";
             try
             {

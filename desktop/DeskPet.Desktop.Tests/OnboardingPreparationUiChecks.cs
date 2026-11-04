@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -69,7 +69,7 @@ internal static class OnboardingPreparationUiChecks
             guide.Close();owner.Settings.OnboardingState="completed";owner.Save();Check(!OnboardingUpgrade.Prepare(owner.Settings,ReleaseInfo.DisplayVersion).ShowGuide,"O08 the content change never forces an already completed current-series guide");
             owner.Settings.OnboardingState="deferred";owner.Settings.OnboardingLessonId="";owner.Settings.OnboardingStep=8;Open();Check(Guide()!.CurrentLessonId=="ava.legacy.8","legacy numeric progress maps to its prior content instead of an inserted preparation step");var legacy=Guide()!;for(int i=0;i<20&&legacy.CurrentLessonId!="ava.legacy.16";i++)Click(legacy,"GuideNext");
             Check(legacy.CurrentLessonId=="ava.legacy.16","the original final lesson remains reachable after inserted preparation steps");
-            Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="finish.congratulations"&&owner.Settings.OnboardingState!="completed","formal guidance reaches congratulations before completion");
+            Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="search.overview"&&!owner.Settings.WebSearch.Enabled,"optional search overview is read-only and does not enable search");Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="finish.congratulations"&&owner.Settings.OnboardingState!="completed","formal guidance reaches congratulations before completion");
             Click(legacy,"GuideNext");Check(owner.Settings.OnboardingState=="completed"&&!legacy.IsVisible,"only explicit final confirmation completes the expanded guide");
             owner.Settings.UiLanguage=TextResources.CurrentLanguage;owner.Save();Open();guide=Guide()!;Click(guide,"GuideNext");
             Check(guide.CurrentLessonId=="welcome"&&guide.GetLogicalDescendants().OfType<Button>().Any(value=>value.Name=="GuideExplore"&&value.IsVisible),"before-you-start exposes the independent-exploration choice");

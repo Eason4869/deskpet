@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,7 +28,7 @@ namespace Dafeiyu.Tests
                 var nav=(ListBox)settings.FindControl("SettingsNavigation");
                 foreach(int pageIndex in new[]{0,1,2,3})
                 {
-                    settings.SelectNavigation(pageIndex);Pump();var page=(ContentControl)settings.FindControl("SettingsContentHost");string pageTitle=new[]{"伙伴","模型配置","工作设置","通用"}[pageIndex];var title=All<TextBlock>(page).Single(t=>t.Text==pageTitle);
+                    settings.SelectNavigation(pageIndex);Pump();var page=(ContentControl)settings.FindControl("SettingsContentHost");string pageTitle=new[]{"伙伴","模型配置","工作与权限","通用"}[pageIndex];var title=All<TextBlock>(page).Single(t=>t.Text==pageTitle);
                     Check(title.FontSize==26&&title.FontWeight==FontWeights.Bold,"settings page uses the shared title typography: "+pageTitle);
                     Check(All<FrameworkElement>(page).Any(e=>e.Name=="SettingsPageTabs"),"settings page uses the shared full-width tab rail: "+pageTitle);
                 }
@@ -52,7 +52,7 @@ namespace Dafeiyu.Tests
                 settings.SelectGeneralSection(2);Pump();Check(settings.FindControl("SaveChatHistory")!=null&&settings.FindControl("Hotkeyquick")==null,"chat history is separate from shortcut editing");
                 settings.SelectGeneralSection(0);ThemeManager.Apply(cfg.ThemeMode);settings.SelectNavigation(0);Pump();
                 Check(nav.Items.Count==6,"six primary settings destinations including local messaging channels");
-                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","工作设置","通用","关于","消息渠道"}),"navigation combines companion and persona");
+                Check(nav.Items.Cast<ListBoxItem>().Select(i=>(string)i.Content).SequenceEqual(new[]{"伙伴","模型配置","对话与输入","工作与权限","工具与连接","通用"}),"navigation combines companion and persona");
                 var categorySearch=settings.FindControl("SettingsCategorySearch") as TextBox;Check(categorySearch!=null,"settings sidebar provides category search");categorySearch.Text="模型";Pump();Check(nav.Items.Cast<ListBoxItem>().Where(i=>i.Visibility==Visibility.Visible).Select(i=>(string)i.Content).SequenceEqual(new[]{"模型配置"}),"sidebar search filters categories without changing their route indices");categorySearch.Text="";Pump();Check(nav.Items.Cast<ListBoxItem>().All(i=>i.Visibility==Visibility.Visible),"clearing category search restores all settings destinations");
                 bool guide=false;settings.GuideRequested+=delegate {guide=true;};Click(settings,"OpenOnboarding");Check(guide,"sidebar guide entry invokes guide event");
                 settings.SelectPage(2);Pump();var model=(TextBox)settings.FindControl("TextProviderName");string original=model.Text;model.Text="navigation-draft";
@@ -78,10 +78,10 @@ namespace Dafeiyu.Tests
                     var target=settings.FocusGuideTarget(fields[index]);Pump();Check(target!=null && target.IsVisible,"guide locates and scrolls to real field "+index);
                     Capture(settings,Path.Combine(folder,"ai-"+index+"-minimum.png"));
                 }
-                settings.SelectPage(6);Pump();Check(settings.IsOnAboutPage && nav.SelectedIndex==4,"legacy About route uses fifth navigation item");
-                nav.ScrollIntoView(nav.Items[4]);Pump();Check(Inside((FrameworkElement)nav.Items[4],settings),"About item reachable at minimum window height");
-                settings.SelectPage(7);Pump();Check(settings.FindControl("QuietMode")!=null && nav.SelectedIndex==3 && !settings.IsOnAboutPage,"legacy quiet route uses fourth navigation item");
-                string[] companionTabs={"CompanionPersonaTab","CompanionBehaviorTab","CompanionGreetingsTab"};string[] companionFields={"SkinPicker","SizeSlider","GreetingMinMinutes"};
+                settings.SelectPage(6);Pump();Check(settings.IsOnAboutPage && nav.SelectedIndex==-1,"legacy About route uses the footer destination");
+                Check(Inside(settings.FindControl("SettingsAboutNavigation"),settings),"About footer remains reachable at minimum window height");
+                settings.SelectPage(7);Pump();Check(settings.FindControl("QuietMode")!=null && settings.Page.SelectedNavigationIndex==3 && !settings.IsOnAboutPage,"legacy quiet route uses fourth navigation item");
+                string[] companionTabs={"CompanionPersonaTab","CompanionBehaviorTab","CompanionGreetingsTab"};string[] companionFields={"SkinPicker","SizeSlider","GreetingIntervalMinutes"};
                 for(int index=0;index<3;index++)
                 {
                     settings.SelectCompanionSection(index);Pump();Check(companionTabs.All(tab=>Inside(settings.FindControl(tab),settings)),"all companion tabs fit minimum size "+index);

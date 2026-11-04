@@ -189,6 +189,10 @@ internal sealed partial class DesktopController : IDisposable
             if(imageChanged)Settings.ImageDescriptionModel=imageModel?.Copy();Observation.Policy.RefreshConfiguration(previousObservationSettings,Settings);if(kind=="text"&&(providerChanged||imageChanged))ObservationReason=ObservationReason.Allowed;deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;Notify();
         }
     }
+    internal void SaveWebSearchDraft(WebSearchSettings search)
+    {
+        using(DataMaintenance.EnterActivity()){var draft=Settings.Copy();draft.WebSearch=search.Copy();store.Save(draft);Settings.WebSearch=search.Copy();Notify();}
+    }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     internal async Task<string> FlushDeferredSettingsAsync()
     {

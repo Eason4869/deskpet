@@ -60,7 +60,7 @@ namespace Dafeiyu
                 uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0)
                 throw new ApiException(TextResources.Get("apiClient.endpoint.text.alternativeA"));
             string address = uri.AbsoluteUri.TrimEnd('/');
-            foreach(string known in new[]{"chat/completions","audio/transcriptions","audio/speech","messages"})
+            foreach(string known in new[]{"chat/completions","audio/transcriptions","audio/speech","messages","responses"})
                 if(address.EndsWith("/"+known,StringComparison.OrdinalIgnoreCase)) { address=address.Substring(0,address.Length-known.Length-1); break; }
             if (!address.EndsWith("/" + suffix, StringComparison.OrdinalIgnoreCase)) address += "/" + suffix;
             return new Uri(address);

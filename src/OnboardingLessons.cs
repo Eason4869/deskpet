@@ -11,6 +11,57 @@ namespace Dafeiyu
     internal static class OnboardingLessons
     {
         internal static string[] Chapters {get{return new[]{ TextResources.Get("onboardingLessons.chapters.chapters"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeA"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeB"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeC"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeD"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeE"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeF"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeG"), TextResources.Get("onboarding.conversationModel.chapter"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeI"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeJ"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeK"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeL"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeM"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeN"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeO"), TextResources.Get("onboardingLessons.chapters.chapters.alternativeP") };}}
+        // The first ID in each group remains stable. Removed field-by-field pages
+        // resume at that retained page; saved test evidence is never synthesized.
+        static readonly string[][] CompactGroups = {
+            new[]{"network.intro", "network.route"},
+            new[]{"persona.edit", "persona.read"},
+            new[]{"behavior.follow", "behavior.wander"},
+            new[]{"behavior.top", "behavior.startup"},
+            new[]{"text.url", "text.protocol", "text.key", "text.proxy"},
+            new[]{"text.fetch", "text.add", "text.manual"},
+            new[]{"text.capacity", "text.capabilities", "text.select"},
+            new[]{"text.test", "text.help"},
+            new[]{"asr.intro", "asr.provider"},
+            new[]{"asr.url", "asr.key", "asr.proxy"},
+            new[]{"asr.save", "asr.operate"},
+            new[]{"speech.intro", "speech.output", "speech.volume"},
+            new[]{"speech.url", "speech.protocol", "speech.key", "speech.proxy"},
+            new[]{"speech.test", "speech.stop", "speech.help"},
+            new[]{"live.intro", "live.provider"},
+            new[]{"live.url", "live.key", "live.proxy"},
+            new[]{"live.test", "live.mode"},
+            new[]{"greeting.enable", "greeting.ai"},
+            new[]{"quiet.mode", "quiet.fullscreen"},
+            new[]{"shortcut.quick", "shortcut.others"},
+            new[]{"section.create", "section.organize"},
+            new[]{"project.create", "project.toggle", "project.actions"},
+            new[]{"chat.work", "chat.modes"},
+            new[]{"chat.dictation", "chat.microphone"},
+            new[]{"chat.pin", "chat.export"},
+            new[]{"work.instructions", "work.skills"},
+            new[]{"work.goal", "work.context"},
+            new[]{"work.process", "editor.prediction", "editor.markdown", "editor.context"},
+            new[]{"editor.send", "editor.followup"},
+            new[]{"work.recovery", "work.workers"},
+            new[]{"mcp.transport", "mcp.credentials"}
+        };
+        internal static string ResolveLessonId(string id)
+        {
+            foreach(var group in CompactGroups)if(Array.IndexOf(group,id)>=0)return group[0];
+            return id;
+        }
+        static OnboardingLesson[] Compact(List<OnboardingLesson> items)
+        {
+            foreach(var group in CompactGroups)
+            {
+                var kept=items.Single(item=>item.Id==group[0]);
+                kept.Title=TextResources.Get("onboarding.compact."+group[0]+".title");
+                kept.Text=TextResources.Get("onboarding.compact."+group[0]);
+                items.RemoveAll(item=>item.Id!=group[0]&&Array.IndexOf(group,item.Id)>=0);
+            }
+            return items.ToArray();
+        }
         static string cachedLanguage;static OnboardingLesson[] cachedLessons;
         internal static OnboardingLesson[] All {get{if(cachedLessons==null||cachedLanguage!=TextResources.CurrentLanguage){cachedLessons=Build();cachedLanguage=TextResources.CurrentLanguage;}return cachedLessons;}}
         static OnboardingLesson[] Build()
@@ -117,7 +168,7 @@ namespace Dafeiyu
             add(14, "chat.attach", TextResources.Get("onboardingLessons.build.add.alternativeFX"), TextResources.Get("onboardingLessons.build.add.alternativeFY"), "AddAttachment", "read", "");
             add(14, "chat.microphone", TextResources.Get("onboardingLessons.build.add.alternativeFZ"), TextResources.Get("onboardingLessons.build.add.alternativeGA"), "VoiceRecord", "read", "");
             add(14, "chat.dictation", TextResources.Get("onboardingLessons.build.add.alternativeGB"), TextResources.Get("onboardingLessons.build.add.alternativeGC"), "VoiceRecord", "dictation-test", "");
-            add(14, "chat.send", TextResources.Get("onboardingLessons.build.add.alternativeGD"), TextResources.Get("onboardingLessons.build.add.alternativeGE"), "MessageInput", "read", "");
+            add(14, "chat.send", TextResources.Get("onboardingLessons.build.add.alternativeGD"), TextResources.Get("onboarding.chat.send.detail"), "MessageInput", "read", "");
             add(14, "chat.pin", TextResources.Get("onboardingLessons.build.add.alternativeGF"), TextResources.Get("onboardingLessons.build.add.alternativeGG"), "ProjectLabelsScroll", "read", "");
             add(14, "chat.export", TextResources.Get("onboardingLessons.build.add.alternativeGH"), TextResources.Get("onboardingLessons.build.add.alternativeGI"), "AppMenuFile", "read", "");
             add(15, "work.scope", TextResources.Get("onboardingLessons.build.add.alternativeGJ"), TextResources.Get("onboardingLessons.build.add.alternativeGK"), "WorkSettingsScope", "read", "");
@@ -145,13 +196,14 @@ namespace Dafeiyu
             add(15, "work.save", TextResources.Get("onboardingLessons.build.add.alternativeIB"), TextResources.Get("onboardingLessons.build.add.alternativeIC"), "SaveWorkSettings", "work-save", "");
             add(15, "work.prompt", TextResources.Get("onboardingLessons.build.add.alternativeID"), TextResources.Get("onboardingLessons.build.add.alternativeIE"), "AgentSystemPrompt", "read", "");
             add(15, "work.prompt-save", TextResources.Get("onboardingLessons.build.add.alternativeIF"), TextResources.Get("onboardingLessons.build.add.alternativeIG"), "AgentSystemPrompt", "prompt-save", "");
-            add(15, "mcp.intro", TextResources.Get("onboardingLessons.build.add.alternativeIH"), TextResources.Get("onboardingLessons.build.add.alternativeII"), "AddMcpServer", "read", "");
+            add(15, "search.overview", TextResources.Get("onboarding.search.title"), TextResources.Get("onboarding.search.detail"), "WebSearchEnabled", "read", "");
+            add(15, "mcp.intro", TextResources.Get("onboardingLessons.build.add.alternativeIH"), TextResources.Get("onboarding.mcp.overview"), "AddMcpServer", "read", "");
             add(15, "mcp.transport", TextResources.Get("onboardingLessons.build.add.alternativeIJ"), TextResources.Get("onboardingLessons.build.add.alternativeIK"), "McpServerTransport", "read", "");
             add(15, "mcp.credentials", TextResources.Get("onboardingLessons.build.add.alternativeIL"), TextResources.Get("onboarding.externalTools.credentialsHelp"), "McpServerKey", "read", "");
             add(15, "mcp.connect", TextResources.Get("onboardingLessons.build.add.alternativeIN"), TextResources.Get("onboardingLessons.build.add.alternativeIO"), "ConnectMcpServer", "read", "");
             add(16, "finish.summary", TextResources.Get("onboardingLessons.build.add.alternativeIX"), TextResources.Get("onboardingLessons.build.add.alternativeIY"), "UpdateNetwork", "summary", "");
             add(16, "finish.congratulations", TextResources.Get("onboardingLessons.build.add.alternativeIZ"), TextResources.Get("onboardingLessons.build.add.alternativeJA"), "", "complete", "");
-            return items.ToArray();
+            return Compact(items);
         }
     }
 }

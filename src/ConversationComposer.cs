@@ -56,7 +56,7 @@ namespace Dafeiyu
             rows=new StackPanel();var list=Ui.Scroll(rows);list.MaxHeight=compact?112:160;queueBody.Children.Add(list);
             reorder=new QueueReorderController(rows,list,(id,before)=>queue.MoveBefore(id,before),Error);
             Unloaded+=delegate{reorder.Cancel();};
-            IsVisibleChanged+=delegate{if(!IsVisible)reorder.Cancel();};
+            IsVisibleChanged+=delegate{if(!IsVisible){reorder.Cancel();CloseTrigger();}};
             queueBox=new Border{Child=queueBody,BorderBrush=Ui.Line,BorderThickness=new Thickness(1,1,1,0),CornerRadius=new CornerRadius(14,14,0,0),Margin=new Thickness(10,0,10,-10),Padding=new Thickness(0,0,0,14),Background=Ui.Brush("#FAFBFD")};Children.Add(queueBox);
             var controls=new StackPanel{Orientation=Orientation.Horizontal};record.Margin=new Thickness(0);record.Width=32;record.Height=32;record.MinHeight=32;
             options=UiIcons.Button("down",()=>(TextResources.Get("conversationComposer.conversationComposer.uiIcons")));options.Name="SendOptions";options.Width=22;options.MinWidth=0;options.Margin=new Thickness(0,0,3,0);options.Padding=new Thickness(2);controls.Children.Add(options);
@@ -357,6 +357,9 @@ namespace Dafeiyu
         void RefreshTrigger()
         {
             if(closed || triggerPopup==null)return;
+            // Shared drafts also update hidden composers. Only the focused,
+            // visible editor may own a command popup.
+            if(!host.IsVisible || !input.IsVisible || !input.IsKeyboardFocusWithin){CloseTrigger();return;}
             int caret=input.CaretIndex;if(caret<0)caret=input.Text.Length;
             string before=input.Text.Substring(0,Math.Min(caret,input.Text.Length));
             int start=before.Length;string query="";char kind='\0';

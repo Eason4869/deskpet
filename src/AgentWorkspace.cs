@@ -43,6 +43,7 @@ namespace Dafeiyu
         public object[] OpenAITools { get{BuildSchemas();return openAITools;} private set{openAITools=value;} }
         public object[] AnthropicTools { get{BuildSchemas();return anthropicTools;} private set{anthropicTools=value;} }
         private bool readOnly,disposed,desktopSession,githubConnected;private GitHubClient github;private AgentPermissionRuntime kernelPermissions=AgentPermissionRuntime.DefaultWorkspacePolicy();private AgentAuditLog kernelAudit;private IAgentApprovalProvider kernelApproval;private ExecutionClaimStore kernelClaims;private string kernelTaskId;private AgentSessionModel kernelSessionModel;private AgentProfile kernelProfile;private AgentModelCapabilities providerCapabilities;private AgentSubagentManager subagents;private AgentSubagentScheduler subagentScheduler;private AgentToolRuntime kernelTools;private readonly List<AgentToolDefinition> dynamicTools=new List<AgentToolDefinition>();private readonly List<IMcpTransport> mcpTransports=new List<IMcpTransport>();
+        internal WebSearchSession SearchSession {get;set;}
         public bool PlanMode {get{return readOnly;}set{readOnly=value;BuildSchemas();}}
         public bool ReadOnly {get{return PlanMode;}set{PlanMode=value;}}
 
@@ -146,6 +147,7 @@ namespace Dafeiyu
         }
         private Task<string> ExecuteCoreAsync(string name, string argumentsJson, string callId, CancellationToken token,string authorizedResource=null)
         {
+            if(name=="web_search")return SearchSession==null?Task.FromResult(TextResources.Get("webSearch.errorPrefix")+TextResources.Get("webSearch.disabled")):SearchSession.ExecuteAsync(name,argumentsJson,token);
             return Task.Run(delegate
             {
                 token.ThrowIfCancellationRequested();
@@ -616,7 +618,7 @@ namespace Dafeiyu
         {
             object[] a,b;AgentToolCatalog.Schemas(readOnly,providerCapabilities,dynamicTools,out a,out b,RuntimeToolAvailable);OpenAITools=a;AnthropicTools=b;
         }
-        bool RuntimeToolAvailable(string name){if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
+        bool RuntimeToolAvailable(string name){if(name=="web_search")return SearchSession!=null;if(AgentJobTools.IsJobTool(name))return JobsAvailable(name);if(name=="ask_user"&&QuestionProvider==null)return false;if(name=="generate_image"&&ImageGenerator==null)return false;if(name=="inspect_image"&&(providerCapabilities==null||!providerCapabilities.SupportsImages))return false;if((name=="spawn_subagent"||name=="get_subagent"||name=="wait_subagents"||name=="interrupt_subagent")&&childWorkers==null)return false;IMcpConnectionState connection;if(mcpAvailability.TryGetValue(name,out connection)&&!connection.Connected)return false;return !desktopSession||DesktopToolAvailable(name);}
         public string AvailableToolNames {get{return String.Join(", ",AgentToolCatalog.Definitions.Cast<AgentToolDefinition>().Concat(dynamicTools).Where(d=>d.Name!="complete_subagent"&&(!readOnly||d.ReadOnly)&&(providerCapabilities==null||providerCapabilities.CanUseTool(d.Name))&&RuntimeToolAvailable(d.Name)).Select(d=>d.Name));}}
         internal int ContextSchemaOverheadTokens;
     }

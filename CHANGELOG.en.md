@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.2-dev.1 · Development preview
+
+- Fix duplicate `@` and `/` menus when quick chat expands into a full conversation.
+- Add native web search and ten external search providers across conversation, quick chat and work mode, plus one custom endpoint with a compatible API format and separate encrypted credentials.
+- Reorganize settings while retaining primary navigation, remove the duplicate skills entry, align disclosure controls, and show instruction and capability details directly.
+- Shorten setup guidance, correct moved targets and plugin navigation, and preserve progress and verification evidence.
+
 ## 1.0.1 · Unreleased
 
 - Allow custom work and chat sections to be deleted, moving their contents to the default section while preserving records and workspace files. Default sections are retained.
