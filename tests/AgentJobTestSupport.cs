@@ -13,6 +13,23 @@ namespace Dafeiyu.Tests
 {
     internal static class AgentJobTestSupport
     {
+        internal static string ReadCompletedMarker(string path,int timeoutMilliseconds)
+        {
+            var elapsed=System.Diagnostics.Stopwatch.StartNew();
+            do
+            {
+                try { return File.ReadAllText(path); }
+                catch(FileNotFoundException) { }
+                catch(IOException error)
+                {
+                    // A visible marker can still be open for writing by the child.
+                    if((error.HResult & 0xffff)!=32)throw;
+                }
+                Thread.Sleep(10);
+            } while(elapsed.ElapsedMilliseconds<timeoutMilliseconds);
+            throw new TimeoutException("Timed out reading the completed marker: "+path);
+        }
+
         internal static void DirectoryLink(string path,string target)
         {
             if(Environment.OSVersion.Platform!=PlatformID.Win32NT)
