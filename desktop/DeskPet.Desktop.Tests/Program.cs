@@ -748,8 +748,14 @@ try
         WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir; WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
     else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !contextSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
-    WorkControl<CheckBox>("AgentDetailedProcess").IsChecked = true; Dispatcher.UIThread.RunJobs();
-    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && workView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("下一次任务") == true), "detailed process preference persists with a next-task notice and never submits a model request");
+    settings.SelectSection("conversation"); Dispatcher.UIThread.RunJobs();
+    var conversationView=settings.GetLogicalDescendants().OfType<ConversationSettingsView>().Distinct().Single();
+    conversationView.GetLogicalDescendants().OfType<TabControl>().Single(t=>t.Name=="ConversationSettingsTabs").SelectedIndex=1; Dispatcher.UIThread.RunJobs();
+    conversationView.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(c=>c.Name=="AgentDetailedProcess").IsChecked=true;
+    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess==workBefore.AgentDetailedProcess,"detailed process remains a conversation draft until explicit save");
+    conversationView.GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="SaveConversationSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
+    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && conversationView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text=="展示工作执行过程的详细信息，适用于所有项目。"), "detailed process preference persists from conversation settings with its global scope explanation and never submits a model request");
+    settings.SelectSection("work"); Dispatcher.UIThread.RunJobs();
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var workFrame = settings.CaptureRenderedFrame()) workFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "work-settings.png"), new PngBitmapEncoderOptions());
     controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentContextTokenLimit = workBefore.AgentContextTokenLimit; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
     settings.SelectSection("text"); Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -790,7 +796,7 @@ try
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
     var guideNavigation=guideSettings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
-    Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作设置") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
+    Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作与权限") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "original final lesson remains reachable after preparation steps are inserted");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","final lesson leads to congratulations before explicit completion");

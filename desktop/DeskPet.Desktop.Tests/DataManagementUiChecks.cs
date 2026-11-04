@@ -42,21 +42,26 @@ internal static class DataManagementUiChecks
         try{
             var navigation=Named<ListBox>(host,"SettingsNavigation");
             var pageHost=Named<ContentControl>(host,"SettingsPageHost");
+            Control CurrentSettingsTab()
+            {
+                var tabs=(TabControl)((Border)((ScrollViewer)pageHost.Content!).Content!).Child!;
+                return (Control)((TabItem)tabs.SelectedItem!).Content!;
+            }
             var retainedPages=new Dictionary<string,object>();
             foreach(string route in new[]{"partner","behavior","text","image","asr","speech","live","work","voice","storage"}){
                 host.SelectSection(route);Dispatcher.UIThread.RunJobs();retainedPages[route]=pageHost.Content!;
                 Check(navigation.SelectedItem!=null&&pageHost.Content is Control&&host.OwnedWindows.Count==0,"native sidebar route reaches retained page without maintenance "+route);
             }
-            host.SelectSection("partner");Dispatcher.UIThread.RunJobs();var persona=host.GetLogicalDescendants().OfType<TextBox>().Single(x=>x.AcceptsReturn);persona.Text="unsaved persona F2";
+            host.SelectSection("partner");Dispatcher.UIThread.RunJobs();var persona=CurrentSettingsTab().GetLogicalDescendants().OfType<TextBox>().Single(x=>x.AcceptsReturn);persona.Text="unsaved persona F2";
             host.SelectSection("image");Dispatcher.UIThread.RunJobs();var imageDraft=Named<TextBox>(host,"ImageProviderName");imageDraft.Text="unsaved image provider F2";
             host.SelectSection("storage");Dispatcher.UIThread.RunJobs();host.SelectSection("behavior");Dispatcher.UIThread.RunJobs();
             DesktopTheme.Apply("light");
             var cachedCard=((Control)retainedPages["storage"]).GetLogicalDescendants().OfType<DataManagementView>().Single().Children.OfType<Border>().First();var lightCardColor=((SolidColorBrush)cachedCard.Background!).Color;
-            var themePicker=host.GetLogicalDescendants().OfType<ThemeModePicker>().Single();
+            var themePicker=CurrentSettingsTab().GetLogicalDescendants().OfType<ThemeModePicker>().Single();
             Click(themePicker.GetLogicalDescendants().OfType<Button>().Last());
             host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
             Check(ReferenceEquals(pageHost.Content,retainedPages["storage"])&&DesktopTheme.IsDark&&((SolidColorBrush)cachedCard.Background!).Color!=lightCardColor,"cached data page follows actual General theme change");
-            host.SelectSection("text");Dispatcher.UIThread.RunJobs();var textPage=pageHost.Content!;host.SelectSection("image");Dispatcher.UIThread.RunJobs();host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
+            host.SelectSection("text");Dispatcher.UIThread.RunJobs();var textPage=pageHost.Content!;var modelNavigationItem=navigation.SelectedItem;host.SelectSection("image");Dispatcher.UIThread.RunJobs();host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
             host.SelectSection("behavior");Dispatcher.UIThread.RunJobs();Click(Named<Button>(host,"GeneralDataManagement"));Check(Named<Button>(host,"ClearAllHistory").IsVisible,"native actual General entry opens Data management");
             Check(Named<CheckBox>(host,"SaveChatHistory")!=null,"native General Data management retains chat saving toggle");
             foreach(string action in new[]{"ClearAllHistory","RestoreDefaultPreferences"})foreach(string cancel in new[]{"cancel","escape","close"}){
@@ -91,11 +96,11 @@ internal static class DataManagementUiChecks
             complete.Close();
             Check(Named<TextBox>(chat,"ChatDraft").Text=="unsent native composer"&&chat.GetLogicalDescendants().OfType<Button>().Any(b=>b.Name=="RemoveAttachment")&&chat.CurrentPage=="chat","native actual main composer text draft attachments and navigation survive clearing");chat.Close();
             var archived=Directory.GetFiles(Path.Combine(directory,"preserved-attachments"),"*.png").Single();Check(File.ReadAllBytes(archived).SequenceEqual(png),"native clear retains sole-copy screenshot as retrievable image");
-            host.SelectSection("voice");Dispatcher.UIThread.RunJobs();host.GetLogicalDescendants().OfType<Slider>().Distinct().Single(s=>s.Maximum==100).Value=17;host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
+            host.SelectSection("voice");Dispatcher.UIThread.RunJobs();CurrentSettingsTab().GetLogicalDescendants().OfType<Slider>().Distinct().Single(s=>s.Maximum==100).Value=17;host.SelectSection("image");Dispatcher.UIThread.RunJobs();host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
             owner.Settings.Scale=1.6;owner.Settings.QuietMode=true;var reset=Open("RestoreDefaultPreferences");Confirm(reset);Check(Status(reset)==TextResources.Get("dataManagement.resetComplete")&&owner.Settings.Scale==1.25&&owner.Pet.Width==240&&!owner.Settings.QuietMode,"native saved reset applies runtime preferences");Capture(reset,"reset-success");reset.Close();
             host.SelectSection("partner");Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(pageHost.Content,retainedPages["partner"])&&persona.Text=="unsaved persona F2","reset preserves persona page identity and unsaved draft");
-            navigation.SelectedIndex=2;Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(pageHost.Content,textPage)&&host.GetLogicalDescendants().OfType<TabControl>().Single().SelectedIndex==1&&ReferenceEquals(imageDraft,Named<TextBox>(host,"ImageProviderName"))&&imageDraft.Text=="unsaved image provider F2","ordinary sidebar return and reset preserve image subtab and editor draft");
-            host.SelectSection("voice");Dispatcher.UIThread.RunJobs();Check(host.GetLogicalDescendants().OfType<Slider>().Distinct().Single(s=>s.Maximum==100).Value==50&&runtime.Voices.All(v=>v.Volume==50),"native reset refreshes volume editor and applies runtime speech volume");host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
+            navigation.SelectedItem=modelNavigationItem;Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(pageHost.Content,textPage)&&Named<TabControl>(host,"ModelSettingsTabs").SelectedIndex==1&&ReferenceEquals(imageDraft,Named<TextBox>(host,"ImageProviderName"))&&imageDraft.Text=="unsaved image provider F2","ordinary sidebar return and reset preserve image subtab and editor draft");
+            host.SelectSection("voice");Dispatcher.UIThread.RunJobs();Check(CurrentSettingsTab().GetLogicalDescendants().OfType<Slider>().Distinct().Single(s=>s.Maximum==100).Value==50&&runtime.Voices.All(v=>v.Volume==50),"native reset refreshes volume editor and applies runtime speech volume");host.SelectSection("storage");Dispatcher.UIThread.RunJobs();
             var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
             using(owner.DataMaintenance.Register(()=>{entered.TrySetResult(true);return release.Task;})){
                 try{
