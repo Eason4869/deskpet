@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Verify promotion safety guards
         run: python tests/PromoteReleaseTests.py
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.run_id }}
@@ -46,7 +46,7 @@ jobs:
           python tools/promote_macos_release.py --artifact-root work/macos --output work/promoted --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" --run-id "$RELEASE_RUN_ID" --release-id "$RELEASE_ID"
       - name: Preserve verified upload manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mac-upload-manifest-${{ inputs.version }}
           path: work/promoted/mac-upload-manifest.json

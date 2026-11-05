@@ -248,8 +248,8 @@ internal static class ProactiveConversationChecks
         using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new Runtime(directory));
         owner.Settings.Text.BaseUrl="https://example.com/a/very/long/service/address/v1";owner.Settings.Text.Model=new string('M',130);owner.Settings.Text.ImageSupport=CapabilitySupport.Supported;
         var window=new SettingsWindow(owner);window.Show();window.SelectSection("text");Dispatcher.UIThread.RunJobs();
-        var providerDraft=window.GetLogicalDescendants().OfType<TextBox>().First();providerDraft.Text="unsaved provider draft";
-        window.SelectSection("behavior");Dispatcher.UIThread.RunJobs();var panel=window.GetLogicalDescendants().OfType<DesktopObservationSettingsPanel>().Single();
+        var providerEditor=window.GetLogicalDescendants().OfType<ProviderEditor>().Distinct().Single();var providerDraft=providerEditor.GetLogicalDescendants().OfType<TextBox>().First();providerDraft.Text="unsaved provider draft";
+        window.SelectSection("greetings");Dispatcher.UIThread.RunJobs();var panel=window.GetLogicalDescendants().OfType<DesktopObservationSettingsPanel>().Distinct().Single();
         Check(!panel.GetLogicalDescendants().OfType<TextBlock>().Any(text=>(text.Text??"").Contains("private")),"service labels never expose URL credentials");
         Check(DesktopObservationUiText.SafeAddress("https://name:private@example.com/v1?key=private#private")=="https://example.com/v1","safe destination formatting removes credentials");
         var toggle=panel.GetLogicalDescendants().OfType<CheckBox>().Single(box=>box.Name=="DesktopObservationEnabled");
@@ -263,7 +263,7 @@ internal static class ProactiveConversationChecks
         Check(toggle.IsChecked==false&&!owner.Settings.DesktopObservationEnabled,"cancelling consent leaves observation visibly disabled");
         TextResources.ApplyLanguage(TextResources.PrepareLanguage("en_US"));DesktopTheme.Apply("dark");
         Check(ReferenceEquals(toggle,panel.GetLogicalDescendants().OfType<CheckBox>().Single()),"language/theme retains the controls and selection");
-        window.SelectSection("text");Check(providerDraft.Text=="unsaved provider draft","language/theme switch preserves provider draft");window.SelectSection("behavior");
+        window.SelectSection("text");Check(providerDraft.Text=="unsaved provider draft","language/theme switch preserves provider draft");window.SelectSection("greetings");
         string output=Path.GetFullPath("work/task7b-renders");Directory.CreateDirectory(output);
         foreach(string theme in new[]{"light","dark"})foreach(int width in new[]{570,790})
         {

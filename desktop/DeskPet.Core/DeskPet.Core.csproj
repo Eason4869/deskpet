@@ -7,6 +7,8 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/NotificationSounds.cs" Link="Shared/NotificationSounds.cs" />
+    <EmbeddedResource Include="../../assets/sounds/*.wav" LogicalName="Dafeiyu.Sounds.%(Filename)%(Extension)" />
     <Compile Include="../../src/ProjectCatalog.Ordinary.cs" Link="Shared/ProjectCatalog.Ordinary.cs" />
     <Compile Include="../../src/Proactive/*.cs" Link="Shared/Proactive/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../vendor/qrcoder/netstandard2.0/QRCoder.dll" LogicalName="Dafeiyu.QRCoder.dll" />
@@ -48,6 +50,7 @@
     <Compile Include="../../src/OfficialCompanion*.cs;../../src/GitHubAssetTransport.cs" Exclude="../../src/OfficialCompanionProgressWindow.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/CompanionPackStorage.cs" Link="Shared/CompanionPackStorage.cs" />
     <Compile Include="../../src/UsageRecord.cs;../../src/UsageStore.cs;../../src/UsageTracking.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../../src/WebSearch.cs;../../src/WebSearchProviders.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../src/ChatAttachment.cs" Link="Shared/ChatAttachment.cs" />
     <Compile Include="../../src/MarkdownContent.cs" Link="Shared/MarkdownContent.cs" />
     <Compile Include="../../src/AgentToolCatalog.cs;../../src/AgentFileTools.cs;../../src/AgentChanges.cs;../../src/AgentDiff.cs;../../src/AgentLineChanges.cs;../../src/DocumentFormats.cs;../../src/AgentCommand.cs;../../src/WindowsCommandRunner.cs;../../src/WindowsAgentJobProcess.cs;../../src/AgentTaskState.cs;../../src/AgentTaskStore.cs;../../src/AgentContextBudget.cs;../../src/AgentWorkspace.cs;../../src/NativeAgentClient.cs" Link="Shared/%(Filename)%(Extension)" />

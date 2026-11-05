@@ -10,7 +10,7 @@ namespace Dafeiyu
     {
         readonly object agentJobServicesGate=new object();
         AgentJobApplicationService agentJobServices;
-        internal Action<string> AgentJobExitNotice;
+        internal Action<string> AgentJobExitNotice=null;
         internal AgentJobApplicationService AgentJobs
         {
             get
@@ -35,7 +35,7 @@ namespace Dafeiyu
         {
             if(closing||String.IsNullOrWhiteSpace(projectId))return;
             var window=new Window{MinWidth=360,MinHeight=420};LocalizedUi.Window(window,()=>(TextResources.Get("agent.jobs.ui.title")),720,680);window.MinWidth=360;
-            var root=new System.Windows.Controls.DockPanel{Margin=new Thickness(16)};window.Content=root;
+            var root=new System.Windows.Controls.DockPanel{Margin=new Thickness(16)};DialogUi.ApplyTitled(window,root,true);root.Margin=new Thickness(0);
             var actions=new System.Windows.Controls.WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,12,0,0)};System.Windows.Controls.DockPanel.SetDock(actions,System.Windows.Controls.Dock.Bottom);root.Children.Add(actions);
             var panel=new AgentJobsPanel(AgentJobs,projectId,conversationId,null,false,OpenChatBrowserLink);var retry=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.retry")));retry.Click+=delegate{panel.Retry();};actions.Children.Add(retry);
             var close=LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.close")));close.Click+=delegate{window.Close();};actions.Children.Add(close);root.Children.Add(panel);
@@ -47,7 +47,7 @@ namespace Dafeiyu
             {
                 if(closing)return;Notice=TextResources.Format("agent.jobs.ui.finishedNotice",job.Spec.Title,AgentJobUiText.State(job.State));
                 if(workspaces!=null){var owner=workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==job.Owner.ConversationId&&w.ProjectId==job.Owner.ProjectId);if(owner!=null)owner.Session.ReportNotice(Notice);}
-                if(tray!=null)tray.ShowBalloonTip(4000,TextResources.Get("agent.jobs.ui.title"),Notice.Length>240?Notice.Substring(0,240):Notice,System.Windows.Forms.ToolTipIcon.Info);
+                if(tray!=null)ShowTrayNotification(()=>TextResources.Get("agent.jobs.ui.title"),()=>TextResources.Format("agent.jobs.ui.finishedNotice",job.Spec.Title,AgentJobUiText.State(job.State)),()=>TextResources.Get("agent.jobs.ui.openLog"),()=>ShowAgentJobs(job.Owner.ProjectId,job.Owner.ConversationId));if(job.State==AgentJobState.Succeeded)PlayNotificationCue(NotificationCue.Complete,"job:"+job.Id);else if(job.State!=AgentJobState.Stopped)PlayNotificationCue(NotificationCue.Failure,"job:"+job.Id);
             }));
         }
         internal bool TryChangeWorkBindings(string[] projects,string conversationId,Action change)
@@ -67,7 +67,7 @@ namespace Dafeiyu
             if(report.CleanupConfirmed)return true;
             Notice=TextResources.Get("agentJobs.exitBlocked");
             if(AgentJobExitNotice!=null)AgentJobExitNotice(Notice);
-            else MessageBox.Show(Notice,TextResources.Get("app.displayName"),MessageBoxButton.OK,MessageBoxImage.Warning);
+            else DialogUi.Alert(Notice,()=>TextResources.Get("app.displayName"));
             return false;
         }
         void DisposeAgentJobs()

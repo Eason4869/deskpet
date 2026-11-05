@@ -19,7 +19,7 @@ namespace Dafeiyu
         internal Func<IDesktopObservationCapture> ObservationCaptureFactory=()=>new WindowsDesktopObservationCapture();
         internal Func<IConversationApi> ObservationApiFactory=()=>new ApiClient(TimeSpan.FromSeconds(8));
         internal Func<uint?> ObservationInputTick=delegate{uint tick;return DesktopInterop.TryLastInputTick(out tick)?(uint?)tick:null;};
-        internal Func<string,RelationshipPackContent,string,Task<RelationshipExperienceContent>> GreetingRelationshipReader;
+        internal Func<string,RelationshipPackContent,string,Task<RelationshipExperienceContent>> GreetingRelationshipReader=null;
         long observationEpoch;long observedInput;long observationResultEpoch;int lastObservationReason=-1;DateTime lastAutomaticObservationUtc;
         readonly object observationStartGate=new object();
         readonly System.Collections.Generic.Dictionary<ProactiveDecision,DesktopObservationIdentity> observationTargets=new System.Collections.Generic.Dictionary<ProactiveDecision,DesktopObservationIdentity>();
@@ -114,6 +114,6 @@ namespace Dafeiyu
             public bool IsCurrent(DesktopObservationFrame frame){if(!Current() || !inner.IsCurrent(frame))return false;lock(owner.observationStartGate){if(!owner.observationAdmission || owner.observationCaptureEpoch!=Interlocked.Read(ref owner.observationEpoch))return false;owner.observationTarget=frame.Target;return true;}}
         }
         async Task ReleaseObservationActivityAsync(DesktopObservationService service, IDisposable activity)
-        { try { await service.WaitForIdleAsync().ConfigureAwait(false); } finally { activity.Dispose();if(!Dispatcher.HasShutdownStarted)Dispatcher.BeginInvoke(new Action(delegate{if(!closing && preferences!=null)preferences.RefreshObservation();})); } }
+        { try { await service.WaitForIdleAsync().ConfigureAwait(false); } finally { activity.Dispose();if(!Dispatcher.HasShutdownStarted){var refreshDispatch=Dispatcher.BeginInvoke(new Action(delegate{if(!closing && preferences!=null)preferences.RefreshObservation();}));} } }
     }
 }

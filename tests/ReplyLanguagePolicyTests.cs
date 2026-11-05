@@ -166,7 +166,7 @@ namespace Dafeiyu.Tests
             public void Abort(){}public void Dispose(){}
         }
         sealed class SilentMicrophone:IPcmMicrophone
-        {public event Action<byte[]> PcmAvailable;public event Action<string> Failed;public void Start(){}public void Dispose(){}}
+        {public event Action<byte[]> PcmAvailable{add{}remove{}}public event Action<string> Failed{add{}remove{}}public void Start(){}public void Dispose(){}}
         sealed class SilentOutput:ILiveAudioOutput
         {public void Enqueue(byte[] bytes,int rate){}public void Interrupt(){}public void SetVolume(int volume){}public void Dispose(){}}
     }

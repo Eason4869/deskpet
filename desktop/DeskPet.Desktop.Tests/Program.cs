@@ -33,6 +33,7 @@ AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatfo
 if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
 if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
 if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
+if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTests.Run()!=0)throw new Exception("Notification sound contracts failed");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
@@ -96,9 +97,9 @@ try
     if(args.Contains("--relationship-feedback-motion")){Console.WriteLine("RelationshipFeedbackMotion: "+RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion"))+" passed");return;}
     if(args.Contains("--relationship-feedback-placement")){Console.WriteLine("RelationshipFeedbackPlacement: "+RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement"))+" passed");return;}
     if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
-    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
+    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
     if(args.Contains("--relationship-experience-visibility-only")){Console.WriteLine("RelationshipExperienceVisibility: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-visibility"),visibilityOnly:true)+" passed");return;}
-    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
+    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
     if(args.Contains("--companion-home-ui-only")){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
     if(args.Contains("--agent-job-native-ui-only")){Console.WriteLine("AgentJobNativeUiChecks: "+AgentJobExitUiChecks.RunPreview(Path.Combine(directory,"agent-job-native-ui"))+" passed");return;}
@@ -139,16 +140,29 @@ try
     if(args.Any(a=>a.StartsWith("--settings-visual-ui="))){var language=args.Single(a=>a.StartsWith("--settings-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"settings-visual"),language)+" settings visual assertions");return;}
     if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
+    if(args.Contains("--notification-integration")){Console.WriteLine("PASS: "+NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"))+" notification integration assertions");return;}
+    if(args.Contains("--import-ui-only")){Console.WriteLine("PASS: "+ImportDialogUiChecks.Run()+" import UI assertions");return;}
+    if(args.Contains("--tray-ui-only")){Console.WriteLine("PASS: "+TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"))+" tray UI assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
+    if(args.Contains("--guide-ui-only")){
+        using var guideController=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"guide-ui")));
+        try{GuideUiChecks(guideController);}
+        finally{guideController.Pet.Close();guideController.Dispose();Complete(guideController.ImageServicesShutdown);}
+        Console.WriteLine("PASS: "+assertions+" guide UI assertions");return;
+    }
     assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
+    Check(Dafeiyu.Tests.NotificationSoundTests.Run()==0,"shared notification sound contracts");
+    assertions+=ImportDialogUiChecks.Run();
+    assertions+=NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"));
+    assertions+=TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"),TextResources.CurrentLanguage);
     assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"),TextResources.CurrentLanguage);
     assertions+=RelationshipPackChecks.Run();
-    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
+    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
     assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);
     assertions+=RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion-default"));
     assertions+=RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement-default"));
@@ -748,8 +762,14 @@ try
         WorkControl<TextBox>("AgentWorkspaceInput").Text = selectedWorkDir; WorkControl<Button>("SaveAgentWorkspace").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
     else Check(!accessSetting.IsEnabled && !WorkControl<TextBox>("AgentWorkspaceInput").IsEnabled && !contextSetting.IsEnabled, "Mac disables Windows file Agent controls while retaining visible settings");
-    WorkControl<CheckBox>("AgentDetailedProcess").IsChecked = true; Dispatcher.UIThread.RunJobs();
-    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && workView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("下一次任务") == true), "detailed process preference persists with a next-task notice and never submits a model request");
+    settings.SelectSection("conversation"); Dispatcher.UIThread.RunJobs();
+    var conversationView=settings.GetLogicalDescendants().OfType<ConversationSettingsView>().Distinct().Single();
+    conversationView.GetLogicalDescendants().OfType<TabControl>().Single(t=>t.Name=="ConversationSettingsTabs").SelectedIndex=1; Dispatcher.UIThread.RunJobs();
+    conversationView.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(c=>c.Name=="AgentDetailedProcess").IsChecked=true;
+    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess==workBefore.AgentDetailedProcess,"detailed process remains a conversation draft until explicit save");
+    conversationView.GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="SaveConversationSettings").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
+    Check(new SettingsStore(settingsFile).Load().AgentDetailedProcess && controller.Session.History.Messages.Count == historyBeforeWork && !controller.Session.IsBusy && conversationView.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text=="展示工作执行过程的详细信息，适用于所有项目。"), "detailed process preference persists from conversation settings with its global scope explanation and never submits a model request");
+    settings.SelectSection("work"); Dispatcher.UIThread.RunJobs();
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var workFrame = settings.CaptureRenderedFrame()) workFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "work-settings.png"), new PngBitmapEncoderOptions());
     controller.Settings.AgentFullAccess = workBefore.AgentFullAccess; controller.Settings.AgentWorkspace = workBefore.AgentWorkspace; controller.Settings.AgentPlanMode = workBefore.AgentPlanMode; controller.Settings.AgentGoal = workBefore.AgentGoal; controller.Settings.AgentBackupFiles = workBefore.AgentBackupFiles; controller.Settings.AgentContextTokenLimit = workBefore.AgentContextTokenLimit; controller.Settings.AgentDetailedProcess = workBefore.AgentDetailedProcess; controller.Save();
     settings.SelectSection("text"); Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -773,6 +793,21 @@ try
     var record = permissionChat.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "ChatDictation");
     record.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); permissionChat.Close(); runtime.PendingPermission.SetResult(true); Dispatcher.UIThread.RunJobs();
     Check(runtime.RecorderCreations == 0 && !controller.Dictation.IsBusy, "late microphone permission after chat close cannot open device");
+    GuideUiChecks(controller);
+    editor.Dispose(); editorHost.Close();
+    foreach (var window in windows) window.Close();
+    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
+    Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
+}
+finally
+{
+    // Only remove this run's newly created GUID directory.
+    try{if (Directory.Exists(directory)) Directory.Delete(directory, true);}
+    catch(IOException error) when(Environment.ExitCode!=0&&args.Any(arg=>arg.StartsWith("--proactive-"))){Console.Error.WriteLine("Failed fixture retained for diagnostics: "+directory+" ("+error.GetType().Name+")");}
+}
+
+void GuideUiChecks(DesktopController controller)
+{
     var guide = new GuideWindow(controller); guide.Show(); Dispatcher.UIThread.RunJobs();
     for(int intro=0;intro<2&&(guide.CurrentLessonId=="language"||guide.CurrentLessonId=="welcome");intro++){guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="GuideNext").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
     var guideExit = guide.GetLogicalDescendants().OfType<Button>().Distinct().Single(b => b.Name == "GuideSkip");
@@ -790,22 +825,26 @@ try
     workGuide.GetLogicalDescendants().OfType<Button>().Single(b => b.Content as string == "打开此步实际界面").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     var guideSettings = (SettingsWindow)typeof(DesktopController).GetField("settingsWindow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
     var guideNavigation=guideSettings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
-    Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作设置") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
+    Check(guideNavigation.SelectedItem is ListBoxItem selectedWork && selectedWork.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作与权限") && guideSettings.GetLogicalDescendants().OfType<WorkSettingsView>().Any(), "work lesson selects actual work settings navigation and content");
     guideSettings.Close(); guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(workGuide.CurrentLessonId=="ava.legacy.16"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.EndsWith(" · 更新与开始使用",StringComparison.Ordinal)==true), "original final lesson remains reachable after preparation steps are inserted");
-    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","final lesson leads to congratulations before explicit completion");
+    var searchBefore=JsonSerializer.Serialize(controller.Settings.WebSearch,new JsonSerializerOptions{IncludeFields=true});
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
+    Check(workGuide.CurrentLessonId=="search.overview"&&workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text?.EndsWith(" · 网页搜索（可选）",StringComparison.Ordinal)==true),"original final lesson leads to the optional search overview");
+    Check(workGuide.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="在“设置 → 工具与连接 → 网页搜索”选择提供商并保存。原生搜索需要当前模型和接口支持；独立服务和自定义接口分别配置，可能另行计费。本步骤不会自动开启或发起搜索。"),"search overview explains its real settings path, requirements, separate charges and read-only behavior");
+    Check(controller.Settings.OnboardingState=="deferred"&&controller.Settings.OnboardingLessonId=="search.overview"&&!controller.Settings.WebSearch.Enabled,"reaching search overview persists progress without enabling search or completing guidance");
+    workGuide.GetLogicalDescendants().OfType<Button>().Single(b=>b.Name=="GuideOpenStep").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();
+    var searchSettings=(SettingsWindow)typeof(DesktopController).GetField("settingsWindow",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(controller)!;
+    var searchNavigation=searchSettings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
+    Check(searchSettings.IsVisible&&searchNavigation.SelectedItem is ListBoxItem selectedTools&&selectedTools.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工具与连接")&&searchSettings.GetLogicalDescendants().OfType<WebSearchSettingsView>().Any(),"search lesson opens the actual web search page under tools and connections");
+    Check(searchSettings.GetLogicalDescendants().OfType<CheckBox>().Distinct().Single(c=>c.Name=="WebSearchEnabled").IsChecked==false&&JsonSerializer.Serialize(controller.Settings.WebSearch,new JsonSerializerOptions{IncludeFields=true})==searchBefore&&!controller.Session.IsBusy&&!controller.Queue.IsRunning&&!controller.Queue.HasPending,"opening search guidance preserves search configuration and starts no conversation or queued search");
+    searchSettings.Close();
+    guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();Check(workGuide.CurrentLessonId=="finish.congratulations"&&guideNext.Content as string=="完成引导"&&controller.Settings.OnboardingState!="completed","search overview leads to congratulations before explicit completion");
+    var guideStore=new SettingsStore(Path.Combine(controller.DataDirectory,"settings.json"));
+    Check(guideStore.Load().OnboardingState=="deferred"&&guideStore.Load().OnboardingLessonId=="finish.congratulations"&&workGuide.IsVisible,"congratulations persists its lesson while guidance remains incomplete");
     guideNext.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Dispatcher.UIThread.RunJobs();
     Check(controller.Settings.OnboardingState == "completed" && !workGuide.IsVisible, "completing new guide persists completion and closes guide");
-    editor.Dispose(); editorHost.Close();
-    foreach (var window in windows) window.Close();
-    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
-    Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
-}
-finally
-{
-    // Only remove this run's newly created GUID directory.
-    try{if (Directory.Exists(directory)) Directory.Delete(directory, true);}
-    catch(IOException error) when(Environment.ExitCode!=0&&args.Any(arg=>arg.StartsWith("--proactive-"))){Console.Error.WriteLine("Failed fixture retained for diagnostics: "+directory+" ("+error.GetType().Name+")");}
+    Check(guideStore.Load().OnboardingState=="completed"&&guideStore.Load().OnboardingLessonId=="finish.congratulations","explicit completion is persisted at the congratulations lesson");
 }
 
 int CompanionLifecycleSmoke(string root)

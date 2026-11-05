@@ -67,7 +67,7 @@ namespace Dafeiyu
             var inspectorBody=new Grid();inspectorBody.MaxHeight=720;inspectorBody.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});inspectorBody.RowDefinitions.Add(new RowDefinition());var inspectorTitle=LocalizedUi.Text(()=>(TextResources.Get("chatWindow.chatWindow.text.alternativeK")),14,AgentUi.Ink);inspectorTitle.FontWeight=FontWeights.SemiBold;inspectorTitle.Margin=new Thickness(16,18,16,14);inspectorBody.Children.Add(inspectorTitle);Grid.SetRow(inspectorHost,1);inspectorBody.Children.Add(inspectorHost);
             summaryEmpty.Margin=new Thickness(16,0,16,18);Grid.SetRow(summaryEmpty,1);inspectorBody.Children.Add(summaryEmpty);inspector=new Border{Name="AgentWorkspaceInspector",Child=inspectorBody,Effect=new System.Windows.Media.Effects.DropShadowEffect{BlurRadius=20,ShadowDepth=3,Opacity=.08,Color=Colors.Black},BorderBrush=Ui.Brush("#E6E7EA"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(16),Margin=new Thickness(0,48,12,6),VerticalAlignment=VerticalAlignment.Top,Background=ThemeManager.Surface,Visibility=Visibility.Collapsed};Grid.SetColumn(inspector,4);Panel.SetZIndex(inspector,2);workspaceShell.Children.Add(inspector);Grid.SetColumn(filePreviewDock,6);workspaceShell.Children.Add(filePreviewDock);Content=workspaceShell;InitializeWorkspaceTools();
             StateChanged+=delegate{RefreshWorkspaceLayout();};SizeChanged+=delegate{RefreshWorkspaceLayout();};workspaceShell.SizeChanged+=delegate{RefreshWorkspaceLayout();};
-            MountWorkspace();InitializeAppShell();questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));Grid.SetRow(questionSurface,0);messageArea.Children.Add(questionSurface);Closed+=delegate{questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);};
+            MountWorkspace();pet.ObserveNotificationSession(session);InitializeAppShell();questionSurface=new AgentQuestionSurface(pet.QuestionController,r=>AgentQuestionSurface.Matches(session,r));Grid.SetRow(questionSurface,0);messageArea.Children.Add(questionSurface);Closed+=delegate{questionSurface.Dispose();pet.CancelQuestionsWithoutHost(this);};
             pet.Workspaces.StateChanged+=PruneConversationPreviews;
             Closed+=delegate {closed=true;pet.Workspaces.StateChanged-=PruneConversationPreviews;CloseTransientSummary();CloseConversationPreviews();UnmountWorkspace(true);DetachEntryControls();};
             Loaded+=delegate {input.Focus();};
@@ -94,7 +94,7 @@ namespace Dafeiyu
         public void SwitchWorkspace(ConversationWorkspace replacement)
         {
             if(closed)return;if(ReferenceEquals(workspace,replacement)){if(filePreview!=null&&filePreview.HasConversation)filePreview.SelectConversation();return;}CloseTransientSummary();RememberEntry();SuspendConversationPreview();UnmountWorkspace(false);
-            workspace=replacement;session=replacement==null?pet.Conversation:replacement.Session;queue=replacement==null?pet.InputQueue:replacement.Queue;RestoreConversationPreview();MountWorkspace();if(shellReady){ShowHomePage(false);RecordPage("home");}
+            workspace=replacement;session=replacement==null?pet.Conversation:replacement.Session;queue=replacement==null?pet.InputQueue:replacement.Queue;RestoreConversationPreview();MountWorkspace();pet.ObserveNotificationSession(session);if(shellReady){ShowHomePage(false);RecordPage("home");}
         }
         void MountWorkspace()
         {

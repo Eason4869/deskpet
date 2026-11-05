@@ -22,7 +22,7 @@ namespace Dafeiyu
             LocalizedUi.Window(this,()=>TextResources.Get("onboarding.prepare.progress"),580,540);
             Name="OfficialPreparationProgress";ResizeMode=ResizeMode.CanMinimize;Background=ThemeManager.Surface;
             var root=new Grid{Margin=new Thickness(24)};root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
-            var body=new StackPanel();var heading=new DockPanel{Margin=new Thickness(0,0,0,14)};
+            var body=new StackPanel();var heading=new DockPanel{Margin=new Thickness(0,0,32,14)};
             var icon=new Border{Width=40,Height=40,CornerRadius=new CornerRadius(12),Background=Ui.Pale,Child=ShellIcons.Image("people",Ui.Blue,23),Margin=new Thickness(0,0,12,0)};DockPanel.SetDock(icon,Dock.Left);heading.Children.Add(icon);
             var title=LocalizedUi.Text(()=>TextResources.Get("onboarding.prepare.progress"),20,Ui.PageInk);title.FontWeight=FontWeights.SemiBold;title.VerticalAlignment=VerticalAlignment.Center;heading.Children.Add(title);body.Children.Add(heading);
             var explanation=LocalizedUi.Text(()=>TextResources.Get("onboarding.prepare.packsDetail"),12,Ui.Muted);explanation.LineHeight=20;explanation.Margin=new Thickness(0,0,0,18);body.Children.Add(explanation);
@@ -35,8 +35,8 @@ namespace Dafeiyu
             var actions=new StackPanel{Margin=new Thickness(0,14,0,0)};
             start=LocalizedUi.Button(StartCaption,true);start.Name="StartOfficialPreparation";start.HorizontalAlignment=HorizontalAlignment.Stretch;start.MinHeight=40;start.Click+=delegate{var ignored=preparation.StartAsync();};actions.Children.Add(start);
             var secondary=new DockPanel{Margin=new Thickness(0,9,0,0),LastChildFill=false};
-            stop=LocalizedUi.Button(()=>TextResources.Get("onboarding.prepare.cancel"));stop.Name="CancelOfficialPreparation";stop.Click+=delegate{preparation.Cancel();};DockPanel.SetDock(stop,Dock.Left);secondary.Children.Add(stop);
-            var close=LocalizedUi.Button(()=>TextResources.Get("common.close"));close.Name="CloseOfficialPreparation";close.Click+=delegate{Close();};DockPanel.SetDock(close,Dock.Right);secondary.Children.Add(close);actions.Children.Add(secondary);Grid.SetRow(actions,1);root.Children.Add(actions);Content=root;
+            stop=LocalizedUi.Button(()=>TextResources.Get("dialog.cancelDownload"));stop.Name="CancelOfficialPreparation";stop.Click+=delegate{preparation.Cancel();};DockPanel.SetDock(stop,Dock.Left);secondary.Children.Add(stop);
+            var close=LocalizedUi.Button(()=>TextResources.Get("common.close"));close.Name="CloseOfficialPreparation";close.Click+=delegate{Close();};DockPanel.SetDock(close,Dock.Right);secondary.Children.Add(close);var background=LocalizedUi.Text(()=>TextResources.Get("dialog.backgroundContinue"),12,Ui.Muted);background.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(background,Dock.Right);secondary.Children.Add(background);actions.Children.Add(secondary);Grid.SetRow(actions,1);root.Children.Add(actions);DialogUi.Apply(this,root);
             preparation.Changed+=RequestRefresh;Closed+=delegate{closed=true;preparation.Changed-=RequestRefresh;};Refresh();
         }
         string StartCaption(){return preparation.State==OfficialCompanionPreparationState.Failed||preparation.State==OfficialCompanionPreparationState.Cancelled?TextResources.Get("common.retry"):TextResources.Get("onboarding.prepare.start");}

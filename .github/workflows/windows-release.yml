@@ -26,11 +26,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Verify tag and source identity
@@ -67,7 +67,7 @@ jobs:
           & ./BuildInstaller.ps1 -OutputDirectory $artifacts
           if ($LASTEXITCODE) { throw 'Installer build failed' }
           Copy-Item work/release-metadata.json $artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: verified-windows-release
           path: |
@@ -89,11 +89,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: verified-windows-release
           path: work/artifacts

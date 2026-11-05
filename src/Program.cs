@@ -48,7 +48,7 @@ namespace Dafeiyu
                         TextResources.ConfigureStartupLanguage(settings.UiLanguage);
                         var onboarding = OnboardingUpgrade.Prepare(settings, ReleaseInfo.DisplayVersion);
                         if(onboarding.Changed)store.Save(settings);
-                        var pet = new PetWindow(null, settings, store, wake);
+                        var pet = new PetWindow(null, settings, store, wake);pet.EnableNotificationAudio();
                         bool resume=Array.IndexOf(startupArgs,ApplicationRestart.ResumeArgument)>=0;
                         pet.Loaded+=delegate {pet.Updates.StartAutomaticChecks();if(onboarding.ShowGuide||resume)pet.Dispatcher.BeginInvoke(new Action(pet.ShowOnboarding));};
                         pet.Closed += async delegate {await ShutdownAfterCloseAsync(app,pet);}; normalExit=app.Run(pet)==0;

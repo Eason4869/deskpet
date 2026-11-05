@@ -18,11 +18,17 @@ namespace Dafeiyu
         internal static CommandResult RunSandboxedWithTools(AgentCommand command,int timeout,CancellationToken cancel,string root,string[] readDirectories)
         {
             cancel.ThrowIfCancellationRequested();
+#if PORTABLE
+            if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();
+#endif
             using(var sandbox=new WindowsSandboxLease(root,readDirectories,cancel)){
                 var result=Run(command,timeout,cancel,true,sandbox);result.IsolationDescription="Windows AppContainer; project write access; no network capabilities; isolated temporary profile";return result;
             }
         }
         // One identity per command prevents concurrent projects from sharing grants.
+#if PORTABLE
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         internal sealed class WindowsSandboxLease:IDisposable
         {
             readonly string name="DeskPet.Command."+Guid.NewGuid().ToString("N");

@@ -28,6 +28,7 @@ internal sealed class LiveWindow : Window
             new ScrollViewer { Content = Ui.Column(LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeC")), 12), user, LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeD")), 12), reply), MaxHeight = 200 },
             Ui.Row(LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton")), StartAsync, owner.Error), LocalizedUi.AsyncButton(()=>(TextResources.Get("liveWindow.liveWindow.asyncButton.alternativeA")), owner.Live.StopAsync, owner.Error), LocalizedUi.Button(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeE")), () => owner.ShowSettingsSection("live"))),
             LocalizedUi.Text(()=>(TextResources.Get("liveWindow.liveWindow.text.alternativeF")))) };
+        var dialogBody=(Border)Content!;Content=null;if(dialogBody.Child is StackPanel panel&&panel.Children.Count>0)panel.Children[0].Margin=new Thickness(0,0,32,0);DialogUi.Apply(this,dialogBody);
         owner.Live.StateChanged += Refresh; owner.Live.PartialTranscript += Transcript; owner.Changed += RefreshPartner;
         Closing += async (_, e) =>
         {

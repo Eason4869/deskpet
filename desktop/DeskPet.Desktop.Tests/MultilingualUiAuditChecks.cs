@@ -108,7 +108,7 @@ internal static class MultilingualUiAuditChecks
                     foreach(int width in new[]{1000,570})
                     {
                         settings.Width=width;settings.Height=760;
-                        foreach(string section in new[]{"partner","behavior","text","image","asr","speech","live","work","voice","storage"})
+                        foreach(string section in new[]{"partner","behavior","text","image","asr","speech","live","work","voice","storage","conversation","tools","channels"})
                         {
                             settings.SelectSection(section);Settle();Check(settings.SelectedSection==section,"selected section "+section);
                             ScrollCaptures(settings,"settings-"+section+"-"+mode+"-"+width);
@@ -127,10 +127,12 @@ internal static class MultilingualUiAuditChecks
                 Show(new AboutWindow(owner),"about-"+mode);
                 Show(new LiveWindow(owner),"live-idle-"+mode);
                 // Saved step selection changes only guide text; OpenStep/Start/test buttons are never invoked.
-                for(int step=0;step<17;step++)
+                var lessons=new[]{"language","welcome","prepare.network","prepare.channel","prepare.character","prepare.packs"}.Concat(Enumerable.Range(0,17).Select(step=>"ava.legacy."+step)).Concat(new[]{"search.overview","finish.congratulations"}).ToArray();
+                for(int step=0;step<lessons.Length;step++)
                 {
-                    owner.Settings.OnboardingState="deferred";owner.Settings.OnboardingStep=step;
-                    Show(new GuideWindow(owner),"guide-"+step.ToString("D2",CultureInfo.InvariantCulture)+"-"+mode);
+                    owner.Settings.OnboardingState="deferred";owner.Settings.OnboardingStep=step;owner.Settings.OnboardingLessonId=lessons[step];
+                    var guide=new GuideWindow(owner);Check(guide.CurrentLessonId==lessons[step]&&owner.Settings.OnboardingLessonId==lessons[step]&&guide.GetLogicalDescendants().OfType<TextBlock>().Any(text=>text.Text?.StartsWith((step+1)+" / "+lessons.Length+" · ",StringComparison.Ordinal)==true),"selected guide lesson "+lessons[step]+" at step "+step);
+                    Show(guide,"guide-"+step.ToString("D2",CultureInfo.InvariantCulture)+"-"+mode);
                 }
                 owner.Settings.OnboardingState="completed";
             }
@@ -139,7 +141,7 @@ internal static class MultilingualUiAuditChecks
             File.WriteAllLines(Path.Combine(output,"exclusions.txt"),new[]{
                 "Control-only headless top-level rendering. One startup locale per process; no screen/desktop capture.",
                 "No microphone, playback, network, downloads or destructive actions are activated by this fixture.",
-                "Captured settings: all ten SelectSection destinations in light/dark at normal/minimum width, scroll top and bottom; all 17 guide text steps.",
+                "Captured settings: all thirteen audited SelectSection destinations in light/dark at normal/minimum width, scroll top and bottom; all 25 guide text steps.",
                 "Excluded: native tray/file/folder/OS permission dialogs, WebView/browser, update/download/install/uninstall, API and recording/live-connected states.",
                 "Image pages cover empty generation/gallery/task states; populated images, reference editor, queue/error states and image dialogs require separate injected fixtures.",
                 "Platform-specific project/usage/plugin/approval surfaces not exposed by this Avalonia shell are covered separately by WPF where applicable.",

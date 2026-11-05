@@ -18,7 +18,7 @@ namespace Dafeiyu
         {
             if(labels==null||names==null||labels.Length==0||labels.Length!=names.Length)throw new ArgumentException(TextResources.Get("settingsPageHeader.settingsPageHeader.text"));
             Name="SettingsPageHeader";Title=Ui.PageHeading(title);Title.Name="SettingsPageTitle";Children.Add(Title);
-            Description=Ui.Text(description??"",12,Ui.Muted);Description.Name="SettingsPageDescription";Description.MinHeight=20;Description.Margin=new Thickness(0,4,0,18);Children.Add(Description);
+            Description=Ui.Text(description??"",12,Ui.Muted);Description.Name="SettingsPageDescription";Description.MinHeight=20;Description.Margin=new Thickness(0,8,0,24);Children.Add(Description);
             Tabs=new Button[labels.Length];var strip=new UniformGrid{Rows=1,Columns=labels.Length};
             for(int i=0;i<labels.Length;i++)
             {

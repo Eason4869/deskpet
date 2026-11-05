@@ -277,7 +277,12 @@ namespace Dafeiyu
             CancellationToken token=op.Cancel.Token; token.ThrowIfCancellationRequested();
             string persona=PersonaProfiles.LocalizeDefaultPrompt(op.Snapshot.AgentEnabled?op.Snapshot.AgentSystemPrompt??PetSettings.DefaultAgentSystemPrompt:op.Snapshot.SystemPrompt??"",op.Language).Replace("{pet_name}",op.Snapshot.AgentEnabled?TextResources.Get("conversationSession.requestReply.text",op.Language):petName??TextResources.Get("app.displayName",op.Language));
             if(op.Snapshot.AgentEnabled)persona+="\n若最终交付本地文件，请在最终回复使用 [文件名](<文件完整绝对路径>) 链接，路径尽量使用正斜杠，便于用户打开交付卡片。只列明确交付的文件，不把所有改动或读取的文件当作附件，不虚构文件。";
-            if(!op.Snapshot.AgentEnabled)persona+="\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
+            if(!op.Snapshot.AgentEnabled && op.Snapshot.WebSearch!=null && op.Snapshot.WebSearch.Enabled)
+                persona+="\n"+TextResources.Get("webSearch.conversationPrompt");
+            else
+            {
+                if(!op.Snapshot.AgentEnabled)persona+="\n当前为纯对话模式，只能聊天和分析已提供的内容，没有文件、目录或其他 Agent 工具；不要声称已经操作电脑。";
+            }
             if(op.Snapshot.AgentEnabled && !String.IsNullOrWhiteSpace(op.Snapshot.AgentGoal))persona+="\n用户设置的持续目标（在当前请求范围内推进，不能声称未完成的操作成功）：\n"+op.Snapshot.AgentGoal;
             if(op.Snapshot.AgentEnabled && op.Snapshot.AgentPlanMode)persona+="\n当前为计划模式：仅分析、阅读并提出计划，不执行写入或修改文件。";
             if(op.ResumeTask!=null)persona+="\n"+op.ResumeTask.CheckpointText();
@@ -329,8 +334,10 @@ namespace Dafeiyu
                     if(state.PersonaId!=op.PersonaId)throw new InvalidOperationException(TextResources.Get("conversationSession.requestReply.text.alternativeA"));
                     op.History.LinkAgentTask(op.ReplyId,state.Id);op.Workspace.TaskChanged=task=>RecordAgentTask(op,task);op.Workspace.BeginTask(state);await ConfigureJobToolsAsync(op,token).ConfigureAwait(false);ConfigureInteractiveTools(op);if(op.AgentStarted!=null)op.AgentStarted();op.Workspace.TakeGuidanceAsync=ct=>ApplyGuidance(op,ct);
                 }
+                var searchable=api as IWebSearchConversationApi;var search=op.Snapshot.WebSearch;
+                if(search!=null&&search.Enabled&&searchable!=null){search.Validate(op.Snapshot.Text);if(!AgentCapabilityResolver.Resolve(op.Snapshot,null).SupportsTools)throw new ApiException(TextResources.Get("webSearch.toolsUnsupported"));if(op.Workspace!=null&&api is ApiClient)op.Workspace.SearchSession=new WebSearchSession((ApiClient)api,search,op.Snapshot.Text);}
                 if(op.Workspace==null)await PreparePlainContextAsync(op,request).ConfigureAwait(false);
-                answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token).ConfigureAwait(false):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token).ConfigureAwait(false):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token).ConfigureAwait(false) : await api.ChatAsync(op.Snapshot.Text,request,token).ConfigureAwait(false);
+                answer=op.Workspace!=null?await AgentTaskRunner.RunConversationAsync(agent,new AgentRunRequest{Model=op.Snapshot.Text,Messages=request,Workspace=op.Workspace,Text=delta=>AppendDelta(op,delta),Reasoning=delta=>AppendReasoning(op,delta),Tool=item=>AppendToolEvent(op,item),Stream=op.Snapshot.Text.StreamReplies},token).ConfigureAwait(false):searchable!=null&&search!=null&&search.Enabled?await searchable.ChatSearchAsync(op.Snapshot.Text,request,search,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),item=>AppendToolEvent(op,item),op.Snapshot.Text.StreamReplies,token).ConfigureAwait(false):reasoning!=null?await reasoning.ChatWithReasoningAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),delta=>AppendReasoning(op,delta),op.Snapshot.Text.StreamReplies,token).ConfigureAwait(false):streaming!=null && op.Snapshot.Text.StreamReplies ? await streaming.ChatStreamAsync(op.Snapshot.Text,request,delta=>AppendDelta(op,delta),token).ConfigureAwait(false) : await api.ChatAsync(op.Snapshot.Text,request,token).ConfigureAwait(false);
                 bool firstRelationshipSuccess=!op.RelationshipSucceeded;
                 token.ThrowIfCancellationRequested();
                 // Agent callbacks contain public narration from every round. Keep it

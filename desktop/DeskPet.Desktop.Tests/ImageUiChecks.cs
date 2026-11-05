@@ -18,7 +18,7 @@ internal static class ImageUiChecks
     internal static int Run(string directory)
     {
         int checks = 0;
-        void Check(bool condition, string reason) { if (!condition) throw new Exception("FAIL: image UI " + reason); checks++; }
+        void Check([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool condition, string reason) { if (!condition) throw new Exception("FAIL: image UI " + reason); checks++; }
         void Until(Func<bool> done, Func<string>? diagnostic = null) { var watch = System.Diagnostics.Stopwatch.StartNew(); while (!done()) { if (watch.Elapsed.TotalSeconds > 15) throw new TimeoutException("Image UI task timed out" + (diagnostic == null ? "" : ": " + diagnostic())); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
         void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
         var handler = new ImageHandler();
@@ -42,7 +42,7 @@ internal static class ImageUiChecks
             var row = new byte[pixels.RowBytes];
             for (int y = 0; y < 400; y++) { for (int x = 0; x < 640; x++) { bool sun = Math.Pow(x - 430, 2) + Math.Pow(y - 130, 2) < 65 * 65; row[x * 4] = (byte)(sun ? 196 : 178 + y / 8); row[x * 4 + 1] = (byte)(sun ? 231 : 116 + y / 8); row[x * 4 + 2] = (byte)(sun ? 251 : 73 + x / 8); row[x * 4 + 3] = 255; } System.Runtime.InteropServices.Marshal.Copy(row, 0, pixels.Address + y * pixels.RowBytes, row.Length); }
         }
-        byte[] png; using (var output = new MemoryStream()) { bitmap.Save(output); png = output.ToArray(); } handler.Png = png;
+        byte[] png; using (var output = new MemoryStream()) { bitmap.Save(output, new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); png = output.ToArray(); } handler.Png = png;
         workspace.SetReference(png, "fixture.png");
         workspace.ProviderChoices.SelectedIndex = 0;
         Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -85,10 +85,10 @@ internal static class ImageUiChecks
         Check(owner.ImageStore.List().Count == 1 && !workspace.IsGenerating, "cancel creates no fake gallery asset");
         var imageLog = new ConversationLog(); var reply = imageLog.BeginTurn("draw", "text", out _); imageLog.Update(reply.Id, "", "complete"); reply = imageLog.AttachGeneratedImage(reply.Id, image); var replyView = new ChatMessageView(reply, owner, window);
         var card = replyView.GetLogicalDescendants().OfType<GeneratedImageCard>().Single(); Check(card != null, "assistant message renders generated image card even without text");
-        Complete(card.CopyAsync()); using (var transfer = window.Clipboard!.TryGetDataAsync().GetAwaiter().GetResult())
+        Complete(card.CopyAsync()); using (var transfer = window.Clipboard!.TryGetDataAsync().GetAwaiter().GetResult() ?? throw new Exception("Missing copied image transfer"))
         {
             Check(transfer!.Contains(Avalonia.Input.DataFormat.Bitmap), "copy writes bitmap clipboard format");
-            var read = transfer.TryGetBitmapAsync(); Complete(read); using var copied = new MemoryStream(); read.Result!.Save(copied); Check(copied.Length > 0, "copied image remains usable after copy operation completes");
+            var read = transfer.TryGetBitmapAsync(); Complete(read); using var copied = new MemoryStream(); read.Result!.Save(copied, new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); Check(copied.Length > 0, "copied image remains usable after copy operation completes");
         }
         card.ShowPreview(); Dispatcher.UIThread.RunJobs();
         var preview = owner.Pet.OwnedWindows.FirstOrDefault(w => w.Name == "GeneratedImagePreviewWindow") ?? window.OwnedWindows.FirstOrDefault(w => w.Name == "GeneratedImagePreviewWindow");

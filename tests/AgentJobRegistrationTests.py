@@ -152,12 +152,12 @@ class RegistrationTests(unittest.TestCase):
     def test_both_ci_platforms_execute_registration_and_preserve_job_evidence(self):
         for ci in (self.windows_ci, self.mac_ci):
             self.assertRegex(ci, r'python3? tests/AgentJobRegistrationTests.py')
-        self.assertRegex(self.windows_ci, r'(?s)if: always\(\).*?uses: actions/upload-artifact@v4.*?work/agent-jobs-validation/ci/')
+        self.assertRegex(self.windows_ci, r'(?s)if: always\(\).*?uses: actions/upload-artifact@v6.*?work/agent-jobs-validation/ci/')
         self.assertIn('Start-Transcript -Path work/agent-jobs-validation/ci/framework.log', self.windows_ci)
         self.assertIn('Start-Transcript -Path work/agent-jobs-validation/ci/shared.log', self.windows_ci)
         self.assertIn('finally { Stop-Transcript }', self.windows_ci)
         self.assertRegex(self.mac_ci, r'DeskPet.Tests.dll --agent-jobs-only.*?tee "\$REPORT_ROOT/agent-jobs-logic.log"')
-        self.assertRegex(self.mac_ci, r'(?s)if: always\(\).*?uses: actions/upload-artifact@v4.*?work/macos-reports-\$\{\{ matrix.arch \}\}/')
+        self.assertRegex(self.mac_ci, r'(?s)if: always\(\).*?uses: actions/upload-artifact@v6.*?work/macos-reports-\$\{\{ matrix.arch \}\}/')
 
     def test_macos_ci_does_not_claim_windows_process_acceptance(self):
         for flag in ('--agent-jobs-native-only', '--agent-job-integration-only',

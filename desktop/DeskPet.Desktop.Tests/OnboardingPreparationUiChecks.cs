@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -27,13 +27,28 @@ internal static class OnboardingPreparationUiChecks
         int checks=0;void Check(bool ok,string text){if(!ok)throw new Exception("Onboarding preparation: "+text);checks++;}
         void Until(Func<bool> ready){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.ElapsedMilliseconds>10000)throw new TimeoutException("Onboarding preparation");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}Dispatcher.UIThread.RunJobs();}
         void Complete(Task task){Until(()=>task.IsCompleted);task.GetAwaiter().GetResult();}
-        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=language??"zh_CN",OnboardingState="new",AutoUpdate=false});
+        Directory.CreateDirectory(directory);SecretProtection.Configure(new TestProtector());new SettingsStore(Path.Combine(directory,"settings.json")).Save(new PetSettings{UiLanguage=language??"zh_CN",OnboardingState="new",AutoUpdate=false,NotificationSoundsEnabled=false});
         using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(directory),officialSourceFactory:_=>new Source());
         int starts=0;var pending=new TaskCompletionSource<bool>();CancellationToken download=default;IProgress<OfficialCompanionProgress>? reporter=null;
         owner.PreparationDownloadOverride=(progress,token)=>{starts++;reporter=progress;download=token;return pending.Task;};
         GuideWindow? Guide()=>(GuideWindow?)typeof(DesktopController).GetField("guide",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(owner);
         void Click(Control root,string name){root.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name==name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Dispatcher.UIThread.RunJobs();}
         void Open(){owner.ShowGuide();Until(()=>Guide()?.IsVisible==true);}
+        void CheckLayout(GuideWindow window){
+            string originalLanguage=TextResources.CurrentLanguage;double maximum=window.MaxHeight;
+            var heading=window.GetLogicalDescendants().OfType<TextBlock>().Single(t=>t.Name=="GuideLessonTitle");var detail=window.GetLogicalDescendants().OfType<TextBlock>().Single(t=>t.Name=="GuideInstruction");string? originalHeading=heading.Text,originalDetail=detail.Text;
+            foreach(string code in new[]{"zh_CN","de_DE"}){
+                TextResources.ApplyLanguage(TextResources.PrepareLanguage(code));Dispatcher.UIThread.RunJobs();heading.Text=string.Join(" ",Enumerable.Repeat("A longer translated guide heading",8));detail.Text=string.Join("\n\n",Enumerable.Repeat("A longer explanation remains scrollable inside the guide body.",30));
+                foreach(int height in new[]{540,400,320}){
+                    window.MaxHeight=height;window.Height=height;Dispatcher.UIThread.RunJobs();window.UpdateLayout();AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    var body=window.GetLogicalDescendants().OfType<ScrollViewer>().Single(c=>c.Name=="GuideBody");var footer=window.GetLogicalDescendants().OfType<StackPanel>().Single(c=>c.Name=="GuideFooter");var bottom=footer.TranslatePoint(new Point(footer.Bounds.Width,footer.Bounds.Height),window)!.Value;
+                    Check(body.Bounds.Height>0&&body.Extent.Height>body.Viewport.Height&&bottom.Y<=window.Bounds.Height-12,"body scrolls and footer remains visible at 390x"+height+" in "+code);
+                    Check(footer.GetLogicalDescendants().OfType<Button>().Where(b=>b.IsVisible).All(b=>{var p=b.TranslatePoint(new Point(b.Bounds.Width,b.Bounds.Height),window)!.Value;return p.X<=window.Bounds.Width&&p.Y<=window.Bounds.Height;}),"navigation and exit buttons fit narrow constrained footer in "+code);
+                    using var image=window.CaptureRenderedFrame();image!.Save(Path.Combine(directory,"guide-layout-"+code+"-"+height+".png"),new PngBitmapEncoderOptions());
+                }
+            }
+            window.MaxHeight=maximum;TextResources.ApplyLanguage(TextResources.PrepareLanguage(originalLanguage));heading.Text=originalHeading;detail.Text=originalDetail;Dispatcher.UIThread.RunJobs();
+        }
         try
         {
             Open();var guide=Guide()!;Check(guide.CurrentLessonId=="language"&&starts==0,"fresh guidance begins with language selection without preparation requests");
@@ -63,13 +78,13 @@ internal static class OnboardingPreparationUiChecks
                 Check(status.IsEffectivelyVisible&&status.Text!.Contains("10")&&position.HasValue&&position.Value.Y>=0&&position.Value.Y+status.Bounds.Height<=viewport.Bounds.Height,"current preparation progress is actually visible inside the narrow scroll viewport");
                 var action=guide.GetLogicalDescendants().OfType<Button>().Single(button=>button.Name=="GuidePreparePacks");Check(action.Bounds.Width<=guide.Bounds.Width-40&&action.Content is TextBlock caption&&caption.TextWrapping==Avalonia.Media.TextWrapping.Wrap,"primary download action wraps within the narrow guide");capture!.Save(Path.Combine(output,"recommendation-"+theme+"-390.png"),new PngBitmapEncoderOptions());
             }
-            DesktopTheme.Apply("light");Click(guide,"GuideNext");string later=guide.CurrentLessonId;Check(later.StartsWith("ava.legacy.")&&!pending.Task.IsCompleted,"later guidance proceeds while preparation remains pending");
+            DesktopTheme.Apply("light");Click(guide,"GuideNext");string later=guide.CurrentLessonId;Check(later.StartsWith("ava.legacy.")&&!pending.Task.IsCompleted,"later guidance proceeds while preparation remains pending");CheckLayout(guide);
             guide.Close();Check(!download.IsCancellationRequested&&owner.OfficialPreparation.State==OfficialCompanionPreparationState.Running,"O06 closing guidance never cancels the application transfer");Open();guide=Guide()!;
             Check(guide.CurrentLessonId==later&&starts==1,"O07 stable progress resumes without another download batch");pending.SetResult(true);Until(()=>owner.OfficialPreparation.State==OfficialCompanionPreparationState.Completed);
             guide.Close();owner.Settings.OnboardingState="completed";owner.Save();Check(!OnboardingUpgrade.Prepare(owner.Settings,ReleaseInfo.DisplayVersion).ShowGuide,"O08 the content change never forces an already completed current-series guide");
             owner.Settings.OnboardingState="deferred";owner.Settings.OnboardingLessonId="";owner.Settings.OnboardingStep=8;Open();Check(Guide()!.CurrentLessonId=="ava.legacy.8","legacy numeric progress maps to its prior content instead of an inserted preparation step");var legacy=Guide()!;for(int i=0;i<20&&legacy.CurrentLessonId!="ava.legacy.16";i++)Click(legacy,"GuideNext");
             Check(legacy.CurrentLessonId=="ava.legacy.16","the original final lesson remains reachable after inserted preparation steps");
-            Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="finish.congratulations"&&owner.Settings.OnboardingState!="completed","formal guidance reaches congratulations before completion");
+            Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="search.overview"&&!owner.Settings.WebSearch.Enabled,"optional search overview is read-only and does not enable search");Click(legacy,"GuideNext");Check(legacy.CurrentLessonId=="finish.congratulations"&&owner.Settings.OnboardingState!="completed","formal guidance reaches congratulations before completion");
             Click(legacy,"GuideNext");Check(owner.Settings.OnboardingState=="completed"&&!legacy.IsVisible,"only explicit final confirmation completes the expanded guide");
             owner.Settings.UiLanguage=TextResources.CurrentLanguage;owner.Save();Open();guide=Guide()!;Click(guide,"GuideNext");
             Check(guide.CurrentLessonId=="welcome"&&guide.GetLogicalDescendants().OfType<Button>().Any(value=>value.Name=="GuideExplore"&&value.IsVisible),"before-you-start exposes the independent-exploration choice");

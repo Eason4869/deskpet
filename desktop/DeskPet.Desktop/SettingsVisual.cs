@@ -62,13 +62,26 @@ internal static class SettingsVisual
         var row=new WrapPanel{Orientation=Orientation.Horizontal};foreach(var control in controls){control.Margin=new Thickness(0,0,8,8);row.Children.Add(control);}return row;
     }
     internal static Border Card(Control child) => new(){Child=child,Padding=new Thickness(18),CornerRadius=new CornerRadius(14),Background=DesktopTheme.CardSurface,BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(1)};
+    internal static StackPanel Page(params Control[] groups)
+    {
+        var page=new StackPanel{Spacing=36,MaxWidth=900,HorizontalAlignment=HorizontalAlignment.Stretch};
+        foreach(var group in groups)page.Children.Add(group);return page;
+    }
+    internal static Control Group(Func<string> title,params Control[] controls)
+    {
+        var heading=Text(title,16);heading.FontWeight=FontWeight.SemiBold;
+        var content=new StackPanel{Spacing=14};foreach(var control in controls)content.Children.Add(control);
+        return new StackPanel{Spacing=12,Children={heading,Card(content)}};
+    }
     internal static Control ActionRow(string icon,System.Func<string> title,System.Func<string> description,Control action)
     {
         var grid=new Grid{ColumnDefinitions=new ColumnDefinitions("38,*,Auto"),RowDefinitions=new RowDefinitions("Auto,Auto")};
         if(icon.Length>0)grid.Children.Add(new Border{Width=32,Height=32,CornerRadius=new CornerRadius(10),Background=DesktopTheme.Brush("#EDF3FF"),Child=Icon(icon,20),VerticalAlignment=VerticalAlignment.Top});
         else grid.ColumnDefinitions[0].Width=new GridLength(0);
         var words=new StackPanel{Spacing=5,Margin=new Thickness(icon.Length>0?10:0,0,12,0)};var heading=Text(()=> (title()),15);heading.FontWeight=FontWeight.SemiBold;words.Children.Add(heading);words.Children.Add(Text(()=> (description()),12,true));Grid.SetColumn(words,1);grid.Children.Add(words);grid.Children.Add(action);
-        void Reflow(){bool narrow=grid.Bounds.Width<490;Grid.SetRow(action,narrow?1:0);Grid.SetColumn(action,narrow?1:2);action.Margin=new Thickness(narrow&&icon.Length>0?10:0,narrow?14:0,0,0);Grid.SetColumnSpan(words,narrow?2:1);action.VerticalAlignment=narrow?VerticalAlignment.Top:VerticalAlignment.Center;}
+        void Reflow(){bool narrow=grid.Bounds.Width<490;Grid.SetRow(action,narrow?1:0);Grid.SetColumn(action,narrow?1:2);action.Margin=new Thickness(narrow&&icon.Length>0?10:0,narrow?14:0,0,0);Grid.SetColumnSpan(words,narrow?2:1);action.VerticalAlignment=narrow?VerticalAlignment.Top:VerticalAlignment.Center;
+            if(action is TextBox){action.MinWidth=0;action.Width=narrow?double.NaN:280;action.HorizontalAlignment=HorizontalAlignment.Stretch;}
+        }
         grid.SizeChanged+=(_,_)=>Reflow();Reflow();return grid;
     }
     internal static void Disclosure(Expander expander,Control? action=null)

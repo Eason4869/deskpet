@@ -67,12 +67,15 @@ namespace Dafeiyu.Tests
                 {
                     process.Resume();var budget=System.Diagnostics.Stopwatch.StartNew();while(!process.Status.RootExited&&budget.ElapsedMilliseconds<10000)Task.Delay(20).GetAwaiter().GetResult();
                     Check(process.Status.RootExited&&process.Status.RootExitCode==0&&!process.Status.TreeExited,"sandbox root exits while its confined child remains owned");
-                    File.WriteAllText(gate,"continue");budget.Restart();while(!File.Exists(marker)&&budget.ElapsedMilliseconds<5000)Task.Delay(20).GetAwaiter().GetResult();
-                    Check(File.Exists(marker)&&File.ReadAllText(marker)=="lease alive","sandbox grants remain available to the child after the root exits");
+                    File.WriteAllText(gate,"continue");
+                    Check(AgentJobTestSupport.ReadCompletedMarker(marker,5000)=="lease alive","sandbox grants remain available to the child after the root exits");
                     using(var deadline=new CancellationTokenSource(5000))Check(process.StopAsync(deadline.Token).GetAwaiter().GetResult().CleanupConfirmed,"sandbox child and grant lease are cleaned together on stop");
                 }
             }
         }
+#if NET8_0_OR_GREATER
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         static void FailedGrantWithdrawalCanBeRetried()
         {
             using(var project=new AgentJobTestSupport.TemporaryDirectory())
@@ -100,7 +103,12 @@ namespace Dafeiyu.Tests
         }
         public static int Main()
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows AppContainer background jobs are unsupported on this platform");return 2;}
+#if NET8_0_OR_GREATER
+            if(!OperatingSystem.IsWindows())
+#else
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)
+#endif
+            {Console.Error.WriteLine("Windows AppContainer background jobs are unsupported on this platform");return 2;}
             checks=0;int failures=0;foreach(var test in new Action[]{AppContainerAllowsProjectAndDeniesOutsideWrites,SandboxPreparationFailureDoesNotRunOnHost,ExplicitReadDirectoryRemainsReadOnly,SandboxLeaseOutlivesRootProcess,FailedGrantWithdrawalCanBeRetried})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobSandboxTests: "+checks+" passed");return failures==0?0:1;
         }

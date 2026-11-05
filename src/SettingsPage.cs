@@ -19,7 +19,7 @@ namespace Dafeiyu
         private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
         private readonly TextBlock wardrobeHeading;
         private readonly Button restoreCompanions;
-        private readonly CheckBox follow,wander,top,pause,autoStart,greetings,aiGreetings,stumble,autoSleep;
+        private readonly CheckBox follow,wander,top,pause,autoStart,greetings,greetingAutoRead,aiGreetings,stumble,autoSleep;
         private readonly TextBox greetingInterval,greetingJitter;
         private readonly StartupRegistration startup=new StartupRegistration(Process.GetCurrentProcess().MainModule.FileName);
         private readonly Slider size;
@@ -28,23 +28,23 @@ namespace Dafeiyu
         private readonly PersonaPanel persona;
         private ConnectionSettingsPanel connections;
         private AiConfigurationPanel aiConfiguration;
-        private ImChannelSettingsPanel imChannels;
-        private ScrollViewer imChannelsPage;
         private readonly CompanionConfigurationPanel companionPage;
         private AboutPanel about;
         private QuietPanel quiet;
-        private WorkSettingsPanel work;
+        private WorkSettingsPanel work;private ConversationSettingsPanel conversationSettings;private ToolsSettingsPanel toolsSettings;private Button aboutNavigation;private int activeCategory=-1;
         private bool refreshing;
         private SkinDefinition displayedSkin;
         private bool disposed;
         private ProjectDefinition workEditingProject;
         public Window HostWindow {get{return Window.GetWindow(this);}}
-        public int SelectedNavigationIndex {get{return navigation.SelectedIndex;}}
+        public int SelectedNavigationIndex {get{return activeCategory;}}
+        int CategoryAt(int index){return index<0?-1:Int32.Parse(((ListBoxItem)navigation.Items[index]).Uid,System.Globalization.CultureInfo.InvariantCulture);}
+        ListBoxItem NavigationItem(int category){return navigation.Items.OfType<ListBoxItem>().FirstOrDefault(i=>i.Uid==category.ToString(System.Globalization.CultureInfo.InvariantCulture));}
         public ProjectDefinition WorkEditingProject {get{return workEditingProject;}}
         public bool HasUnsavedWorkEdits {get{return work!=null && work.HasUnsavedChanges;}}
         public event Action<int> NavigationChanged;
         public event Action GuideRequested;
-        public bool HasUnsavedEdits {get{return (work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (imChannels!=null && imChannels.HasUnsavedChanges) || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingInterval.Text!=pet.Settings.GreetingInterval.ToString() || greetingJitter.Text!=pet.Settings.GreetingJitter.ToString() || observationDraftEnabled!=pet.Settings.DesktopObservationEnabled || (observationExcludedDraft!=null && !observationExcludedDraft.SequenceEqual(pet.Settings.DesktopObservationExcludedApps,StringComparer.OrdinalIgnoreCase));}}
+        public bool HasUnsavedEdits {get{return (conversationSettings!=null&&conversationSettings.HasUnsavedChanges)||(toolsSettings!=null&&toolsSettings.HasUnsavedChanges)||(work!=null && work.HasUnsavedChanges) || persona.HasUnsavedChanges || (connections!=null && connections.HasUnsavedChanges) || (about!=null && about.HasUnsavedChanges) || (quiet!=null && quiet.HasUnsavedChanges) || greetingInterval.Text!=pet.Settings.GreetingInterval.ToString() || greetingJitter.Text!=pet.Settings.GreetingJitter.ToString() || observationDraftEnabled!=pet.Settings.DesktopObservationEnabled || (observationExcludedDraft!=null && !observationExcludedDraft.SequenceEqual(pet.Settings.DesktopObservationExcludedApps,StringComparer.OrdinalIgnoreCase));}}
         public SettingsPage(PetWindow companion)
         {
             if(companion==null)throw new ArgumentNullException("companion");
@@ -91,7 +91,7 @@ namespace Dafeiyu
             restoreCompanions=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeE")));restoreCompanions.Name="RestoreCompanions";restoreCompanions.HorizontalAlignment=HorizontalAlignment.Left;restoreCompanions.FontSize=11;restoreCompanions.MinHeight=26;restoreCompanions.Padding=new Thickness(0);restoreCompanions.Background=Brushes.Transparent;restoreCompanions.BorderThickness=new Thickness(0);restoreCompanions.Click+=delegate {if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}if(HasUnsavedEdits || pet.DialogueBusy || pet.DictationActive){ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeA")));return;}pet.Catalog.RestoreRemoved();pet.Catalog.PreserveActive(pet.Skin);RefreshSkinChoices();ShowNotice(()=>(TextResources.Get("settingsPage.settingsPage.showNotice.alternativeB")));};appearance.Children.Add(restoreCompanions);
             var guide=LocalizedUi.With(new Expander{Name="ImportGuide",Header=TextResources.Get("settingsPage.settingsPage.header"),Margin=new Thickness(0,12,0,0)},"Header",()=>(TextResources.Get("settingsPage.settingsPage.header")));var tutorial=new StackPanel{Margin=new Thickness(0,8,0,0)};
             tutorial.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeF")),12,Ui.Muted));
-            var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeG")));templates.Name="OpenTemplates";templates.Click+=delegate {Process.Start(new ProcessStartInfo(ReleaseInfo.RepositoryUrl+"/releases/tag/v"+ReleaseInfo.DisplayVersion){UseShellExecute=true});};guideButtons.Children.Add(templates);var fullGuide=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeH")));fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
+            var guideButtons=new WrapPanel{Margin=new Thickness(0,10,0,0)};var templates=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeG")));templates.Name="OpenTemplates";templates.Click+=delegate {Process.Start(new ProcessStartInfo(ReleaseInfo.RepositoryUrl+"/releases/tag/v"+ReleaseInfo.DisplayVersion){UseShellExecute=true});};guideButtons.Children.Add(templates);var fullGuide=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeH")));fullGuide.Name="OpenImportGuide";fullGuide.Click+=delegate {OpenGuide(Path.Combine("docs","skin-format.md"));};guideButtons.Children.Add(fullGuide);tutorial.Children.Add(guideButtons);guide.Content=tutorial;SettingsSurface.StyleExpander(guide);appearance.Children.Add(guide);var appearanceCard=GlassSurface.Card(appearance);appearanceCard.Padding=new Thickness(12);appearanceCard.Margin=new Thickness(0,0,0,12);root.Children.Add(appearanceCard);
 
             var behavior=new StackPanel{Name="GuideBehaviorSection"}; behavior.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeB"))));
             follow=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.settingsPage.toggle")),pet.Settings.FollowCursor,delegate(bool value) { if(!refreshing) { pet.Settings.FollowCursor=value; pet.ApplySettings(); } }); follow.Name="FollowCursor"; behavior.Children.Add(follow);
@@ -115,7 +115,9 @@ namespace Dafeiyu
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeM")),11,Ui.Muted)); behaviorPage.Children.Add(GlassSurface.Card(behavior));
 
             var hello=new StackPanel{Name="GuideGreetingSection"};hello.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeC"))));
-            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.enabled")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("greeting.proactive")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            greetingAutoRead=LocalizedUi.Toggle(()=>TextResources.Get("greeting.autoRead"),pet.Settings.GreetingAutoReadEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingAutoReadEnabled=value;pet.RefreshProactiveGreetingSpeech();pet.SaveSettings();}});greetingAutoRead.Name="GreetingAutoReadEnabled";hello.Children.Add(greetingAutoRead);
+            hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("greeting.autoReadHelp"),12,Ui.Muted));
             aiGreetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.aiEnabled")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.aiHelp")),12,Ui.Muted));
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.quietHelp")),12,Ui.Muted));
@@ -131,17 +133,18 @@ namespace Dafeiyu
             greetingInterval.LostFocus+=delegate {SaveGreetingInterval();};greetingJitter.LostFocus+=delegate {SaveGreetingInterval();};
             var intervalHelp=LocalizedUi.Text(()=>TextResources.Get("settingsPage.greeting.intervalHelp"),11,Ui.Muted);intervalHelp.Margin=new Thickness(0,0,0,12);hello.Children.Add(intervalHelp);
             var preview=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeR")));preview.Name="PreviewGreeting";preview.HorizontalAlignment=HorizontalAlignment.Left;preview.Click+=delegate {pet.RestorePet();pet.PreviewGreeting();};hello.Children.Add(preview);
-            hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsPage.greetingPreviewHelp"),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));greetingPage.Children.Add(GlassSurface.Card(CreateObservationSettingsGroup()));
+            hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("settingsPage.greetingPreviewHelp"),11,Ui.Muted));greetingPage.Children.Add(GlassSurface.Card(hello));var observationCard=GlassSurface.Card(CreateObservationSettingsGroup());observationCard.Margin=new Thickness(0,36,0,0);greetingPage.Children.Add(observationCard);
 
             notice=Ui.Text("",11,Ui.Muted); notice.Margin=new Thickness(0,12,0,0);
             persona=new PersonaPanel(pet,true){Margin=new Thickness(0,4,0,4),Height=310};root.Children.Add(persona);companionPage=new CompanionConfigurationPanel(Ui.Scroll(root),Ui.Scroll(behaviorPage),Ui.Scroll(greetingPage),notice);workEditingProject=pet.CurrentEditingProject;content=new ContentControl{Name="SettingsContentHost",MaxWidth=Ui.PageContentWidth,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Stretch,ClipToBounds=true};
             navigation=new ListBox{Name="SettingsNavigation",BorderThickness=new Thickness(0),Background=Brushes.Transparent,Margin=new Thickness(10,0,10,0),Padding=new Thickness(0)};
             ScrollViewer.SetHorizontalScrollBarVisibility(navigation,ScrollBarVisibility.Disabled);
-            Func<string[]> navigationLabels=()=>new[]{TextResources.Get("settingsPage.settingsPage.navigationLabels"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeA"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeB"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeC"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeD"),TextResources.Get("im.title")};
-            string[] navigationNames={"CompanionNavigation","AiNavigation","WorkNavigation","QuietNavigation","AboutNavigation","ImChannelsNavigation"};
-            string[] navigationIcons={"people","keys","terminal","settings","about","feedback"};
-            for(int index=0;index<navigationLabels().Length;index++){
-                int labelIndex=index;var item=new ListBoxItem{Name=navigationNames[index],Content=navigationLabels()[index],Tag=ShellIcons.Image(navigationIcons[index],Ui.PageInk,16),Style=Ui.NavigationItemStyle,Padding=new Thickness(10,8,10,8),Margin=new Thickness(0,0,0,3),FontSize=13,Foreground=Ui.PageInk,ContentTemplate=NavigationTemplate(false)};
+            int[] routeIds={0,1,6,2,7,3};
+            Func<string[]> navigationLabels=()=>new[]{TextResources.Get("settingsPage.settingsPage.navigationLabels"),TextResources.Get("settingsLayout.modelTitle"),TextResources.Get("settingsLayout.conversationTitle"),TextResources.Get("settingsLayout.workTitle"),TextResources.Get("settingsLayout.toolsTitle"),TextResources.Get("settingsPage.settingsPage.navigationLabels.alternativeC")};
+            string[] navigationNames={"CompanionNavigation","AiNavigation","ConversationNavigation","WorkNavigation","ToolsNavigation","QuietNavigation"};
+            string[] navigationIcons={"people","keys","feedback","terminal","mcp","settings"};
+            for(int index=0;index<routeIds.Length;index++){
+                int labelIndex=index;var item=new ListBoxItem{Name=navigationNames[index],Uid=routeIds[index].ToString(System.Globalization.CultureInfo.InvariantCulture),Content=navigationLabels()[index],Tag=ShellIcons.Image(navigationIcons[index],Ui.PageInk,16),Style=Ui.NavigationItemStyle,Padding=new Thickness(10,9,10,9),Margin=new Thickness(0,0,0,5),FontSize=13,Foreground=Ui.PageInk,ContentTemplate=NavigationTemplate(false)};
                 LocalizedUi.Set(item,"Content",()=>navigationLabels()[labelIndex]);LocalizedUi.Set(item,"ToolTip",()=>navigationLabels()[labelIndex]);LiveTextBindings.Bind(item,"AutomationName",()=>navigationLabels()[labelIndex],value=>System.Windows.Automation.AutomationProperties.GetName((DependencyObject)value),(value,text)=>System.Windows.Automation.AutomationProperties.SetName((DependencyObject)value,(string)text));navigation.Items.Add(item);
             }
             var shell=new Grid();var sidebarColumn=new ColumnDefinition{Width=new GridLength(224)};shell.ColumnDefinitions.Add(sidebarColumn);shell.ColumnDefinitions.Add(new ColumnDefinition());
@@ -153,12 +156,14 @@ namespace Dafeiyu
             categorySearch.LayoutUpdated+=delegate{if(categorySearch.Text.Length!=0||!categorySearch.IsVisible)return;var caret=categorySearch.GetRectFromCharacterIndex(0);if(caret.IsEmpty||caret.Height<=0)return;var origin=categorySearch.TranslatePoint(caret.TopLeft,searchSurface);var inset=new Thickness(origin.X,origin.Y,10,0);if(searchHint.Margin!=inset)searchHint.Margin=inset;if(Double.IsNaN(searchHint.LineHeight)||Math.Abs(searchHint.LineHeight-caret.Height)>0.01)searchHint.LineHeight=caret.Height;};
             var navScroll=Ui.Scroll(navigation);Grid.SetRow(navScroll,1);sidebar.Children.Add(navScroll);
             InitializeFeatureNavigation(categorySearch,searchHint,sidebarHeader);
-            var sidebarFooter=new StackPanel{Margin=new Thickness(14,14,14,20)};
-            var guideButton=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeT")));guideButton.Name="OpenOnboarding";guideButton.HorizontalAlignment=HorizontalAlignment.Left;guideButton.Margin=new Thickness(0,0,0,10);guideButton.Click+=delegate {if(GuideRequested!=null)GuideRequested();};LocalizedUi.Automation(guideButton,()=>(TextResources.Get("settingsPage.settingsPage.automationAutomationPropertiesSetName.alternativeA")));LocalizedUi.Set(guideButton,"ToolTip",()=>(TextResources.Get("settingsPage.settingsPage.guideButtonToolTip")));sidebarFooter.Children.Add(guideButton);
+            var sidebarFooter=new StackPanel{Margin=new Thickness(14,14,14,20)};var footerActions=new Grid();footerActions.ColumnDefinitions.Add(new ColumnDefinition());footerActions.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(8)});footerActions.ColumnDefinitions.Add(new ColumnDefinition());footerActions.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});footerActions.RowDefinitions.Add(new RowDefinition{Height=new GridLength(0)});sidebarFooter.Children.Add(footerActions);
+            aboutNavigation=LocalizedUi.Button(()=>TextResources.Get("settingsLayout.aboutTitle"));aboutNavigation.Name="SettingsAboutNavigation";aboutNavigation.HorizontalAlignment=HorizontalAlignment.Stretch;aboutNavigation.MinWidth=0;aboutNavigation.FontSize=12;aboutNavigation.Padding=new Thickness(6,7,6,7);aboutNavigation.Margin=new Thickness(0,0,0,10);aboutNavigation.Click+=delegate{SelectNavigation(4);};footerActions.Children.Add(aboutNavigation);
+            var guideButton=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeT")));guideButton.Name="OpenOnboarding";guideButton.HorizontalAlignment=HorizontalAlignment.Stretch;guideButton.MinWidth=0;guideButton.FontSize=12;guideButton.Margin=new Thickness(0,0,0,10);Grid.SetColumn(guideButton,2);guideButton.Click+=delegate {if(GuideRequested!=null)GuideRequested();};LocalizedUi.Automation(guideButton,()=>(TextResources.Get("settingsPage.settingsPage.automationAutomationPropertiesSetName.alternativeA")));LocalizedUi.Set(guideButton,"ToolTip",()=>(TextResources.Get("settingsPage.settingsPage.guideButtonToolTip")));footerActions.Children.Add(guideButton);
             var versionLabel=LocalizedUi.InlineText(()=>(TextResources.Format("settingsPage.settingsPage.inlineText",ReleaseInfo.DisplayVersion)),11,Ui.Muted);sidebarFooter.Children.Add(versionLabel);Grid.SetRow(sidebarFooter,2);sidebar.Children.Add(sidebarFooter);
             shell.Children.Add(new Border{Child=sidebar,Background=Ui.Brush("#F8F9FB"),BorderBrush=Ui.Brush("#E9ECF0"),BorderThickness=new Thickness(0,0,1,0)});Grid.SetColumn(content,1);shell.Children.Add(content);Content=shell;
-            bool? compactNavigation=null;Action updateNavigation=delegate{bool compact=ActualWidth>0&&ActualWidth<700;if(compactNavigation==compact)return;compactNavigation=compact;sidebarColumn.Width=new GridLength(compact?64:224);sidebarHeader.Visibility=compact?Visibility.Collapsed:Visibility.Visible;versionLabel.Visibility=compact?Visibility.Collapsed:Visibility.Visible;sidebarFooter.Margin=compact?new Thickness(10,14,10,20):new Thickness(14,14,14,20);navigation.Margin=compact?new Thickness(6,18,6,0):new Thickness(10,0,10,0);foreach(ListBoxItem item in navigation.Items){item.ContentTemplate=NavigationTemplate(compact);item.Padding=compact?new Thickness(10):new Thickness(10,8,10,8);if(compact)item.Visibility=Visibility.Visible;}if(compact)categorySearch.Text="";guideButton.Content=compact?(object)ShellIcons.Image("book",Ui.PageInk,16):TextResources.Get("settingsPage.settingsPage.guideButtonContentCompact");guideButton.Padding=compact?new Thickness(8):new Thickness(12,7,12,7);content.Margin=compact?new Thickness(0):new Thickness(16,18,16,8);};SizeChanged+=delegate{updateNavigation();};Loaded+=delegate{updateNavigation();};
-            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=navigation.SelectedIndex;ActivateCategory(index);if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
+            var footerText=new FrameworkElementFactory(typeof(TextBlock));footerText.SetValue(TextBlock.TextWrappingProperty,TextWrapping.Wrap);footerText.SetValue(TextBlock.TextAlignmentProperty,TextAlignment.Center);footerText.SetBinding(TextBlock.TextProperty,new System.Windows.Data.Binding());var footerLabelTemplate=new DataTemplate{VisualTree=footerText};
+            bool? compactNavigation=null;Action updateNavigation=delegate{bool compact=ActualWidth>0&&ActualWidth<700;if(compactNavigation==compact)return;compactNavigation=compact;sidebarColumn.Width=new GridLength(compact?64:224);sidebarHeader.Visibility=compact?Visibility.Collapsed:Visibility.Visible;versionLabel.Visibility=compact?Visibility.Collapsed:Visibility.Visible;sidebarFooter.Margin=compact?new Thickness(10,14,10,20):new Thickness(14,14,14,20);navigation.Margin=compact?new Thickness(6,18,6,0):new Thickness(10,0,10,0);foreach(ListBoxItem item in navigation.Items){item.ContentTemplate=NavigationTemplate(compact);item.Padding=compact?new Thickness(10):new Thickness(10,8,10,8);if(compact)item.Visibility=Visibility.Visible;}if(compact)categorySearch.Text="";guideButton.Content=compact?(object)ShellIcons.Image("book",Ui.PageInk,16):TextResources.Get("settingsPage.settingsPage.guideButtonContentCompact");guideButton.Padding=compact?new Thickness(8):new Thickness(6,7,6,7);footerActions.ColumnDefinitions[1].Width=new GridLength(compact?0:8);footerActions.ColumnDefinitions[2].Width=compact?new GridLength(0):new GridLength(1,GridUnitType.Star);footerActions.RowDefinitions[1].Height=compact?GridLength.Auto:new GridLength(0);Grid.SetColumn(guideButton,compact?0:2);Grid.SetRow(guideButton,compact?1:0);content.Margin=compact?new Thickness(0):new Thickness(16,18,16,8);aboutNavigation.ContentTemplate=guideButton.ContentTemplate=compact?null:footerLabelTemplate;aboutNavigation.Content=compact?(object)ShellIcons.Image("about",Ui.PageInk,16):TextResources.Get("settingsLayout.aboutTitle");LocalizedUi.Automation(aboutNavigation,()=>TextResources.Get("settingsLayout.aboutTitle"));};SizeChanged+=delegate{updateNavigation();};Loaded+=delegate{updateNavigation();};
+            navigation.SelectionChanged+=delegate(object sender,SelectionChangedEventArgs args) {if(args.Source!=navigation)return;int index=CategoryAt(navigation.SelectedIndex);if(index<0)return;ActivateCategory(index);if(changingRoute)return;if(ActivateSearchCategory(index))return;featureAnchor=null;NotifyNavigation();};navigation.SelectedIndex=0;
             IsVisibleChanged+=delegate{if(IsVisible)RefreshActiveCategory();};
             RefreshState(); ShowNotice(pet.Notice ?? pet.Store.Warning);
         }
@@ -171,19 +176,21 @@ namespace Dafeiyu
             else if(category==2 && work==null){work=new WorkSettingsPanel(pet);workEditingProject=pet.CurrentEditingProject;}
             else if(category==3 && quiet==null){quiet=new QuietPanel(pet,RefreshRestoredPreferences);quiet.SelectionChanged+=delegate{SecondaryChanged(3);};}
             else if(category==4 && about==null)about=new AboutPanel(pet);
-            else if(category==5 && imChannels==null){imChannels=new ImChannelSettingsPanel(pet);imChannelsPage=Ui.Scroll(imChannels);}
+            else if(category==6 && conversationSettings==null){conversationSettings=new ConversationSettingsPanel(pet);conversationSettings.SelectionChanged+=delegate{SecondaryChanged(6);};}
+            else if((category==7||category==5)&&toolsSettings==null){toolsSettings=new ToolsSettingsPanel(pet);toolsSettings.SelectionChanged+=delegate{SecondaryChanged(7);};}
         }
         private void ActivateCategory(int category)
         {
-            if(category<0)return;EnsureCategory(category);
-            switch(category){case 0:content.Content=companionPage;break;case 1:content.Content=aiConfiguration;break;case 2:content.Content=work;break;case 3:content.Content=quiet;break;case 4:content.Content=about;break;case 5:content.Content=imChannelsPage;break;}
+            if(category<0)return;if(category==5){RestoreNavigation(7,2,null);return;}EnsureCategory(category);activeCategory=category;if(aboutNavigation!=null)aboutNavigation.Background=category==4?Ui.Pale:Brushes.Transparent;
+            switch(category){case 0:content.Content=companionPage;break;case 1:content.Content=aiConfiguration;break;case 2:content.Content=work;break;case 3:content.Content=quiet;break;case 4:content.Content=about;break;case 6:content.Content=conversationSettings;break;case 7:content.Content=toolsSettings;break;}
             RefreshActiveCategory();
         }
         private void RefreshActiveCategory()
         {
             if(disposed)return;
-            if(navigation.SelectedIndex==2 && work!=null)RefreshWorkState();
-            else if(navigation.SelectedIndex==3 && quiet!=null)quiet.RefreshState();
+            if(SelectedNavigationIndex==2 && work!=null)RefreshWorkState();
+            else if(SelectedNavigationIndex==3 && quiet!=null)quiet.RefreshState();
+            else if(SelectedNavigationIndex==6&&conversationSettings!=null)conversationSettings.RefreshState();
         }
         private static DataTemplate NavigationTemplate(bool compact)
         {
@@ -255,7 +262,7 @@ namespace Dafeiyu
         public void RefreshTextProviders(){if(connections!=null)connections.RefreshTextProviders();}
         void RefreshRestoredPreferences()
         {
-            greetingInterval.Text=pet.Settings.GreetingInterval.ToString();greetingJitter.Text=pet.Settings.GreetingJitter.ToString();if(connections!=null)connections.RefreshPreferenceVolume();if(work!=null)work.RefreshRestoredPreferences();RefreshState();
+            greetingInterval.Text=pet.Settings.GreetingInterval.ToString();greetingJitter.Text=pet.Settings.GreetingJitter.ToString();if(connections!=null)connections.RefreshPreferenceVolume();if(work!=null)work.RefreshRestoredPreferences();if(conversationSettings!=null)conversationSettings.RefreshRestoredPreferences();RefreshState();
         }
         public void RefreshState()
         {
@@ -264,7 +271,7 @@ namespace Dafeiyu
             if(!ReferenceEquals(displayedSkin,pet.Skin))RefreshAvatar();
             if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
-            top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
+            top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;greetingAutoRead.IsChecked=pet.Settings.GreetingAutoReadEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
             RefreshAutoStart();if(observationGroup!=null)RefreshObservation();if(IsVisible)RefreshActiveCategory();
         }
@@ -324,14 +331,14 @@ namespace Dafeiyu
         public void SelectWorkSettings(){TrySelectWorkSettings();}
         public void SelectNavigation(int index)
         {
-            if(index<0 || index>=navigation.Items.Count)throw new ArgumentOutOfRangeException("index");
+            if(index<0 || index>7)throw new ArgumentOutOfRangeException("index");
             if(index==2){SelectWorkSettings();return;}RestoreNavigation(index,-1,null);
         }
         public void Dispose()
         {
-            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();if(connections!=null)connections.DisposeImageGeneration();if(about!=null)about.Dispose();if(imChannels!=null)imChannels.Dispose();
+            if(disposed)return;disposed=true;pet.Holidays.Changed-=HolidayWardrobeChanged;holidayOutfits.Dispose();if(toolsSettings!=null)toolsSettings.Dispose();if(connections!=null)connections.DisposeImageGeneration();if(about!=null)about.Dispose();
         }
-        public bool IsOnAboutPage {get{return navigation.SelectedIndex==4;}}
+        public bool IsOnAboutPage {get{return SelectedNavigationIndex==4;}}
         public bool ValidateGuideNetwork(out string error){EnsureCategory(4);return about.ValidateNetwork(out error);}
         public bool SaveGuideNetwork(){EnsureCategory(4);return about.SaveNetwork();}
         public System.Threading.Tasks.Task<bool> SaveGuidePersonaAsync(){return persona.ChangeAsync(false);}
@@ -347,18 +354,19 @@ namespace Dafeiyu
             UpdateLayout();var match=FindVisual(this,controlName);return match??(HostWindow==null?null:FindVisual(HostWindow,controlName));
         }
         static FrameworkElement FindVisual(DependencyObject parent,string controlName)
+        {return FindVisual(parent,controlName,new System.Collections.Generic.HashSet<DependencyObject>());}
+        static FrameworkElement FindVisual(DependencyObject parent,string controlName,System.Collections.Generic.HashSet<DependencyObject> visited)
         {
-            var element=parent as FrameworkElement;if(element!=null && element.Name==controlName)return element;
-            for(int index=0;index<VisualTreeHelper.GetChildrenCount(parent);index++)
-            {var match=FindVisual(VisualTreeHelper.GetChild(parent,index),controlName);if(match!=null)return match;}
-            return null;
+            if(parent==null||!visited.Add(parent))return null;var element=parent as FrameworkElement;if(element!=null&&element.Name==controlName)return element;
+            if(parent is Visual)for(int index=0;index<VisualTreeHelper.GetChildrenCount(parent);index++){var match=FindVisual(VisualTreeHelper.GetChild(parent,index),controlName,visited);if(match!=null)return match;}
+            foreach(var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>()){var match=FindVisual(child,controlName,visited);if(match!=null)return match;}return null;
         }
         public FrameworkElement FocusGuideTarget(string controlName)
         {
-            if(navigation.SelectedIndex==3)quiet.ShowTarget(controlName);
-            if(navigation.SelectedIndex==1){EnsureCategory(1);connections.ExpandConnectionFor(controlName);}
+            if(SelectedNavigationIndex==3)quiet.ShowTarget(controlName);if(SelectedNavigationIndex==6&&conversationSettings!=null)conversationSettings.ShowTarget(controlName);
+            if(SelectedNavigationIndex==1){EnsureCategory(1);connections.ExpandConnectionFor(controlName);}
             var target=FindControl(controlName);if(target==null)return null;
-            target.BringIntoView();UpdateLayout();if(target.Focusable && target.IsEnabled)target.Focus();return target;
+            SettingsSurface.Reveal(target);UpdateLayout();return target;
         }
         public FrameworkElement ShowGuideTarget(string controlName){return FocusGuideTarget(controlName);}
         private void OpenGuide(string relative)

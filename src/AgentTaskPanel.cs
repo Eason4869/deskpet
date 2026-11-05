@@ -91,10 +91,10 @@ namespace Dafeiyu
                 {
                     if(disposed)return;var content=AgentChangePreviewContent.Create(preview);
                     if(navigate!=null){navigate(TextResources.Format("agentTaskPanel.showDiff.navigate",Path.GetFileName(path)),content);return;}
-                    var host=new Window{Name="AgentChangePreview"};Ui.Window(host,TextResources.Format("agentTaskPanel.showDiff.window",Path.GetFileName(path)),900,650);host.MinWidth=540;host.MinHeight=360;host.Content=content;host.Show();
+                    var host=new Window{Name="AgentChangePreview"};Ui.Window(host,TextResources.Format("agentTaskPanel.showDiff.window",Path.GetFileName(path)),900,650);host.MinWidth=540;host.MinHeight=360;DialogUi.ApplyTitled(host,content,true);host.Show();
                 }));
             }
-            catch(Exception error){Dispatcher.BeginInvoke(new Action(delegate{if(!disposed)Error(error);}));}
+            catch(Exception error){var errorDispatch=Dispatcher.BeginInvoke(new Action(delegate{if(!disposed)Error(error);}));}
         }
         static TextBlock Section(string text){var t=Ui.Text(text,11,Ui.Muted);t.Margin=new Thickness(0,9,0,3);return t;}
         static Button Small(string label,string name){var b=Ui.Button(label);b.Name=name;b.FontSize=11;b.MinHeight=25;b.Padding=new Thickness(7,3,7,3);b.Margin=new Thickness(3,0,0,0);return b;}

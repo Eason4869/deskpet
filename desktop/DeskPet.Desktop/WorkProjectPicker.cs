@@ -13,7 +13,7 @@ internal sealed class WorkProjectPicker:Window
     {
         this.owner=owner;this.select=select;LocalizedUi.Set(this,"Title",()=>(TextResources.Get("agent.work.choose")));Width=600;Height=630;MinWidth=390;MinHeight=400;Background=DesktopTheme.Surface;
         var actions=Ui.Row(LocalizedUi.AsyncButton(()=>(TextResources.Get("agent.work.normal")),()=>Choose(null,null),owner.Error),LocalizedUi.AsyncButton(()=>(TextResources.Get("agent.work.newProject")),NewProjectAsync,owner.Error),LocalizedUi.Button(()=>(TextResources.Get("common.close")),Close));
-        var root=new DockPanel{Margin=new Thickness(16)};DockPanel.SetDock(actions,Dock.Top);root.Children.Add(actions);root.Children.Add(new ScrollViewer{Content=rows});Content=root;Refresh();
+        var root=new DockPanel{Margin=new Thickness(16)};DockPanel.SetDock(actions,Dock.Top);root.Children.Add(actions);root.Children.Add(new ScrollViewer{Content=rows});root.Margin=new Thickness(0);DialogUi.ApplyTitled(this,root);Refresh();
     }
     private async Task Choose(string? project,string? conversation){await select(project,conversation);Close();}
     private void Refresh()

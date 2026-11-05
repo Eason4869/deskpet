@@ -13,7 +13,7 @@ namespace Dafeiyu
 {
     public sealed partial class OnboardingWindow : Window
     {
-        CancellationTokenSource approvalDemo;bool approvalDemoReviewed;
+        CancellationTokenSource approvalDemo;bool approvalDemoReviewed;string approvalDemoCallId;
         readonly PetWindow pet; readonly SettingsPage settings; readonly Window settingsHost; readonly TextBlock title, instruction, status, progress; readonly StackPanel actions; readonly Button next, back, locate; readonly WrapPanel exitActions; readonly StackPanel directory; readonly TextBlock guideHeading; readonly ScrollViewer bodyScroll; readonly ComboBox contents;
         readonly DispatcherTimer readiness = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) }; readonly List<GuideFocusScope> otherScopes = new List<GuideFocusScope>();
         GuideFocusScope focusScope, petScope; FrameworkElement target; AdornerLayer layer; GuideAdorner highlight; Expander networkPreview; bool networkWasExpanded;
@@ -43,13 +43,13 @@ namespace Dafeiyu
             if(editor.HostWindow!=null && !ReferenceEquals(editor.HostWindow,actualHost))throw new ArgumentException("The settings page must belong to the supplied host.","actualHost");
             pet = companion; settings = editor; settingsHost=actualHost; bookendHostVisible=settingsHost.IsVisible&&settingsHost.WindowState!=WindowState.Minimized; bool restart = pet.Settings.OnboardingState == "completed" || pet.Settings.OnboardingState == "skipped";
             if (restart) { pet.Settings.OnboardingLessonId = ""; pet.Settings.OnboardingCompletedLessons.Clear(); pet.Settings.OnboardingSkippedLessons.Clear(); pet.Settings.OnboardingVerifiedLessons.Clear(); }
-            index = Array.FindIndex(OnboardingLessons.All, l => l.Id == pet.Settings.OnboardingLessonId); if (index < 0) index = Array.FindIndex(OnboardingLessons.All, l => l.Chapter == (restart ? 0 : pet.Settings.OnboardingStep)); if (index < 0) index = 0; pet.Settings.OnboardingState = "deferred";
+            index = Array.FindIndex(OnboardingLessons.All, l => l.Id == OnboardingLessons.ResolveLessonId(pet.Settings.OnboardingLessonId)); if (index < 0) index = Array.FindIndex(OnboardingLessons.All, l => l.Chapter == (restart ? 0 : pet.Settings.OnboardingStep)); if (index < 0) index = 0; pet.Settings.OnboardingState = "deferred";
             LocalizedUi.Window(this, ()=>(TextResources.Get("onboardingWindow.onboardingWindow.window")), 390, 540); Owner = bookendHostVisible?settingsHost:pet.IsLoaded?pet:null; ShowInTaskbar = false; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize; MinWidth = 280; MinHeight = 300; WindowStartupLocation = WindowStartupLocation.Manual;
             var root = new Grid { Margin = new Thickness(20, 18, 20, 18) }; root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); root.RowDefinitions.Add(new RowDefinition()); root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             guideHeading = LocalizedUi.InlineText(()=>(TextResources.Format("onboardingWindow.onboardingWindow.inlineText",pet.Skin.DisplayName)), 18); guideHeading.FontWeight = FontWeights.SemiBold; guideHeading.Margin = new Thickness(0, 0, 32, 12); var dragArea=new Border{Name="GuideDragArea",Child=guideHeading,Background=Brushes.Transparent};dragArea.MouseLeftButtonDown+=delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){if(e.ButtonState!=System.Windows.Input.MouseButtonState.Pressed)return;try{DragMove();e.Handled=true;}catch(InvalidOperationException){}};root.Children.Add(dragArea);
             directory = new StackPanel { Margin = new Thickness(0, 0, 0, 16) }; contents = new ComboBox { Name = "GuideContents", MinHeight = 33, ItemsSource = OnboardingLessons.Chapters.Select((s, i) => (i + 1) + " · " + s).ToArray() }; TextResources.LanguageChanged+=RefreshLanguageNavigation; contents.SelectionChanged += delegate { if (!updatingContents && contents.SelectedIndex >= 0) { if (!CanLeave()) { updatingContents = true; contents.SelectedIndex = Step; updatingContents = false; return; } index = Array.FindIndex(OnboardingLessons.All, l => l.Chapter == contents.SelectedIndex); Navigate(); } }; directory.Children.Add(contents); progress = Ui.Text("", 11, Ui.Muted); progress.Name = "GuideProgress"; progress.Margin = new Thickness(0, 6, 0, 0); directory.Children.Add(progress); Grid.SetRow(directory, 1); root.Children.Add(directory);
             var body = new StackPanel(); body.Children.Add(CreateCelebration()); title = Ui.Text("", 21); title.Name = "GuideLessonTitle"; title.FontWeight = FontWeights.SemiBold; title.Margin = new Thickness(0, 0, 0, 10); body.Children.Add(title); instruction = Ui.Text("", 13, Ui.Muted); instruction.Name = "GuideInstruction"; instruction.LineHeight = 23; instruction.Margin = new Thickness(0, 0, 0, 14); body.Children.Add(instruction); actions = new StackPanel(); body.Children.Add(actions); status = Ui.Text("", 12, Ui.Blue); status.Name = "GuideNotice"; status.Margin = new Thickness(0, 8, 0, 0); body.Children.Add(status); locate = Small(()=>(TextResources.Get("onboardingWindow.onboardingWindow.small")), "GuideReturnTarget"); locate.Click += delegate { Locate(); }; body.Children.Add(locate); bodyScroll = Ui.Scroll(body); bodyScroll.Name = "GuideBodyScroll"; Grid.SetRow(bodyScroll, 2); root.Children.Add(bodyScroll);
-            var footer = new StackPanel { Margin = new Thickness(0, 14, 0, 0) }; var nav = new Grid(); nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); nav.ColumnDefinitions.Add(new ColumnDefinition()); back = LocalizedUi.Button(()=>(TextResources.Get("onboardingWindow.onboardingWindow.text"))); back.Name = "GuideBack"; back.Click += delegate { Move(-1); }; nav.Children.Add(back); next = LocalizedUi.Button(()=>(TextResources.Get("onboardingWindow.onboardingWindow.text.alternativeA")), true); next.Name = "GuideNext"; next.IsDefault = true; next.Margin = new Thickness(0); next.Click += delegate { Advance(); }; Grid.SetColumn(next, 1); nav.Children.Add(next); footer.Children.Add(nav);
+            var footer = new StackPanel { Name="GuideFooter",Margin = new Thickness(0, 14, 0, 0) }; var nav = new Grid(); nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); nav.ColumnDefinitions.Add(new ColumnDefinition()); back = LocalizedUi.Button(()=>(TextResources.Get("onboardingWindow.onboardingWindow.text"))); back.Name = "GuideBack"; back.Click += delegate { Move(-1); }; nav.Children.Add(back); next = LocalizedUi.Button(()=>(TextResources.Get("onboardingWindow.onboardingWindow.text.alternativeA")), true); next.Name = "GuideNext"; next.IsDefault = true; next.Margin = new Thickness(0); next.Click += delegate { Advance(); }; Grid.SetColumn(next, 1); nav.Children.Add(next); footer.Children.Add(nav);
             explore=LocalizedUi.Button(()=>(TextResources.Get("onboarding.explore")));explore.Name="GuideExplore";explore.Background=Ui.Brush("#E9ECF0");explore.BorderBrush=explore.Background;explore.Margin=new Thickness(0,8,0,0);explore.HorizontalAlignment=HorizontalAlignment.Stretch;explore.Click+=delegate{ExploreIndependently();};footer.Children.Add(explore);
             exitActions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; var skip = Small(()=>(TextResources.Get("onboardingWindow.onboardingWindow.small.alternativeA")), "GuideLater"); skip.Click += delegate { Skip(false); }; exitActions.Children.Add(skip); var chapter = Small(()=>(TextResources.Get("onboardingWindow.onboardingWindow.small.alternativeB")), "GuideSkipChapter"); chapter.Click += delegate { Skip(true); }; exitActions.Children.Add(chapter); var defer = Small(()=>(TextResources.Get("onboardingWindow.onboardingWindow.small.alternativeC")), "GuideDefer"); defer.Click += delegate { Finish("deferred"); }; exitActions.Children.Add(defer); var end = Small(()=>(TextResources.Get("onboardingWindow.onboardingWindow.small.alternativeD")), "GuideSkip"); end.FontSize=13; end.FontWeight=FontWeights.SemiBold; end.Foreground=Ui.Ink; end.Padding=new Thickness(8,4,8,4); end.Click += delegate { Finish("skipped"); }; exitActions.Children.Add(end); footer.Children.Add(exitActions); Grid.SetRow(footer, 3); root.Children.Add(footer); DialogUi.Apply(this,root);WindowStartupLocation=WindowStartupLocation.Manual;
             Loaded += delegate { pet.SetGuideLock(true); Navigate(); readiness.Start(); }; readiness.Tick += delegate { RefreshReadiness(); }; pet.GuideInteractionCompleted += InteractionCompleted; settingsHost.Closing += OwnerClosing; settingsHost.LocationChanged += OwnerMoved; settingsHost.SizeChanged += OwnerSized; settingsHost.StateChanged += OwnerMoved; settingsHost.IsVisibleChanged += OwnerVisibilityChanged; Closing += ClosingGuide; Closed += ClosedGuide;
@@ -64,9 +64,24 @@ namespace Dafeiyu
         static Button Small(string text, string name) { var b = Ui.Button(text); b.Name = name; b.FontSize = 11; b.MinHeight = 27; b.Padding = new Thickness(2, 3, 7, 3); b.Margin = new Thickness(0); b.Background = Brushes.Transparent; b.BorderBrush = Brushes.Transparent; b.Foreground = Ui.Muted; return b; }
         async void ShowApprovalDemo()
         {
-            if(approvalDemo!=null)return;var cancel=new CancellationTokenSource();approvalDemo=cancel;var controller=new AgentApprovalController(this);var surface=new AgentApprovalSurface(controller,r=>true);actions.Children.Insert(0,surface);
-            try{var request=new AgentApprovalRequest{ToolName=TextResources.Get("onboardingWindow.showApprovalDemo.toolName"),Action="shell",IsolationDescription=TextResources.Get("onboardingWindow.showApprovalDemo.isolationDescription"),ReviewReason=TextResources.Get("onboardingWindow.showApprovalDemo.reviewReason"),Resource=TextResources.Get("onboardingWindow.showApprovalDemo.resource"),ProjectId="guide-demo",TaskId="guide-demo",CallId=Guid.NewGuid().ToString("N"),Arguments="{\"command\":\"Write-Output 'DeskPet approval demo'\",\"working_directory\":\"guide-demo\",\"timeout_seconds\":5}"};await controller.ApproveAsync(request,cancel.Token);if(cancel.IsCancellationRequested||finished)return;approvalDemoReviewed=true;LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.showApprovalDemo.status")));RefreshReadiness();}
-            catch(OperationCanceledException){}finally{actions.Children.Remove(surface);surface.Dispose();if(ReferenceEquals(approvalDemo,cancel))approvalDemo=null;cancel.Dispose();}
+            if(approvalDemo!=null)return;var cancel=new CancellationTokenSource();approvalDemo=cancel;AgentApprovalSurface surface=null;
+            try{
+                ReleaseScopes();RemoveHighlight();pet.GuideWorkspacePractice=true;pet.ShowChat();
+                var host=Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible);if(host==null)return;
+                var workspace=pet.Workspaces.OpenWorkspaces.FirstOrDefault(w=>w.Id==host.ConversationId);var session=workspace==null?pet.Conversation:workspace.Session;
+                var controller=session.ApprovalProvider as AgentApprovalController;if(controller==null)return;
+                approvalDemoCallId=Guid.NewGuid().ToString("N");string callId=approvalDemoCallId;
+                surface=new AgentApprovalSurface(controller,r=>r.CallId==callId,host);
+                var request=new AgentApprovalRequest{SessionId=session.KernelSession==null?"guide-demo":session.KernelSession.SessionId,ToolName=TextResources.Get("onboardingWindow.showApprovalDemo.toolName"),Action="shell",IsolationDescription=TextResources.Get("onboardingWindow.showApprovalDemo.isolationDescription"),ReviewReason=TextResources.Get("onboardingWindow.showApprovalDemo.reviewReason"),Resource=TextResources.Get("onboardingWindow.showApprovalDemo.resource"),ProjectId="guide-demo",TaskId="guide-demo",CallId=callId,Arguments="{\"command\":\"Write-Output 'DeskPet approval demo'\",\"working_directory\":\"guide-demo\",\"timeout_seconds\":5}"};
+                var pending=controller.ApproveAsync(request,cancel.Token);
+                var locateDispatch=Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(!finished&&ReferenceEquals(approvalDemo,cancel)&&!cancel.IsCancellationRequested)Locate();}));
+                // This exercises only the real decision provider. No tool runtime
+                // receives this request, so either choice has no command effects.
+                await pending;if(cancel.IsCancellationRequested||finished)return;approvalDemoReviewed=true;LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.showApprovalDemo.status")));RefreshReadiness();
+            }catch(OperationCanceledException){}finally{
+                if(surface!=null)surface.Dispose();if(ReferenceEquals(approvalDemo,cancel)){approvalDemo=null;approvalDemoCallId=null;pet.GuideWorkspacePractice=Step==14;if(!finished&&Current.Action=="approval-demo"){ReleaseScopes();RemoveHighlight();TargetName=Current.Target;ShowSettingsHost();SelectSettingsPage();Locate();}}
+                cancel.Dispose();
+            }
         }
         void CancelApprovalDemo(){var cancel=approvalDemo;if(cancel!=null)cancel.Cancel();}
         void ActionButton(Func<string> caption, string name, Action action) { var b = LocalizedUi.Button(caption,name=="GuidePreparePacks"); b.Name = name;if(name=="GuidePreparePacks"||name=="GuidePackProgress"){b.Content=LocalizedUi.With(new TextBlock{TextWrapping=TextWrapping.Wrap,MaxWidth=250},"Text",caption);} b.Margin = new Thickness(0, 0, 0, 7); b.HorizontalAlignment = HorizontalAlignment.Left; b.Click += delegate { try { action(); } catch (Exception e) { LocalizedUi.Set(status,"Text",()=>(TextResources.Format("onboardingWindow.actionButton.statusEMessage",e.Message))); } }; actions.Children.Add(b); }
@@ -130,6 +145,7 @@ namespace Dafeiyu
             if (a == "work-mode" || a == "chat-mode") { ready = chat != null && chat.WorkEntry == (a == "work-mode"); reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeM"); }
             if (a == "choose-project") { var w = chat == null ? null : pet.Workspaces.OpenWorkspaces.FirstOrDefault(x => x.Id == chat.ConversationId); ready = w != null && w.EffectiveSettings().AgentEnabled && w.ProjectId != ProjectCatalogStore.UnassignedProjectId && w.ProjectId != ProjectCatalogStore.QuickProjectId; reason = TextResources.Get("onboardingWindow.refreshReadiness.reason.alternativeN"); }
             if (a == "network") ready = settings.ValidateGuideNetwork(out reason); if (Completed && !new[] { "nonempty", "url", "greeting", "hotkey", "network" }.Contains(a) && !a.StartsWith("ai")) ready = true;
+            if(a=="approval-demo"&&approvalDemo!=null&&!approvalDemo.IsCancellationRequested&&highlight==null)Locate();
             next.IsEnabled = ready; if (!ready) status.Text = reason; else if (String.IsNullOrEmpty(status.Text) || status.Text.StartsWith(TextResources.Get("onboardingWindow.refreshReadiness.statusStartsWith")) || status.Text.StartsWith(TextResources.Get("onboardingWindow.refreshReadiness.statusStartsWith.alternativeA"))) LocalizedUi.Set(status,"Text",()=>(Completed ? TextResources.Get("onboardingWindow.refreshReadiness.statusCompleted") : TextResources.Get("onboardingWindow.refreshReadiness.statusCompleted.alternativeA")));
             if (Step == 14 && target == null) { var found = FindTarget(TargetName); if (found != null && found.IsVisible) { target = found; AddHighlight(); PositionNearTarget(); } }
         }
@@ -139,7 +155,7 @@ namespace Dafeiyu
             if (finished || navigating) return; navigating = true; try
             {
                 CancelApprovalDemo();approvalDemoReviewed=false;ReleaseScopes(); RestoreNetworkPreview(); RemoveHighlight(); pet.SetGuideInteraction(""); gestureDone = false; status.Text = ""; actions.Children.Clear(); heard = null; textTestSucceeded = false; liveRevision = pet.Live.SuccessfulConnections; dictationRevision = pet.Dictation.SuccessfulRecognitions; if (textTest != null) textTest.Cancel(); pet.GuideWorkspacePractice = Step == 14 || Current.Action == "live-test";
-                if (PetLesson) { Owner = pet; settingsHost.Hide(); pet.SetGuideInteraction(new[] { "drag", "menu", "wheel", "click", "double-click" }[Step - 3]); } else if (Step == 14) { Owner = pet; settingsHost.Hide(); pet.ShowChat(); Owner = (Window)Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible) ?? pet; } else if(Bookend&&(!settingsHost.IsVisible||settingsHost.WindowState==WindowState.Minimized)){Owner=pet.IsLoaded?pet:null;settingsHost.Hide();} else { ShowSettingsHost(); Owner = settingsHost; if(!Bookend)SelectSettingsPage(); }
+                if (PetLesson) { Owner = pet; settingsHost.Hide(); pet.SetGuideInteraction(new[] { "drag", "menu", "wheel", "click", "double-click" }[Step - 3]); } else if (McpLesson) { Owner=pet; settings.SelectMcpSettings(Current.Id=="mcp.transport"); Owner=(Window)Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w=>w.IsVisible)??pet; } else if (Step == 14) { Owner = pet; settingsHost.Hide(); pet.ShowChat(); Owner = (Window)Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible) ?? pet; } else if(Bookend&&(!settingsHost.IsVisible||settingsHost.WindowState==WindowState.Minimized)){Owner=pet.IsLoaded?pet:null;settingsHost.Hide();} else { ShowSettingsHost(); Owner = settingsHost; if(!Bookend)SelectSettingsPage(); }
                 LocalizedUi.Set(title,"Text",()=>Current.Title); LocalizedUi.Set(instruction,"Text",()=>Current.Text); TargetName = Current.Target; var lessons = OnboardingLessons.All.Where(l => l.Chapter == Step && (l == Current || Applies(l))).ToArray(); LocalizedUi.Set(progress,"Text",()=>{var currentLessons=OnboardingLessons.All.Where(l=>l.Chapter==Step&&(l==Current||Applies(l))).ToArray();return TextResources.Format("onboardingWindow.navigate.progress",Step+1,Array.IndexOf(currentLessons,Current)+1,currentLessons.Length);}); updatingContents = true; contents.SelectedIndex = Step; updatingContents = false; back.IsEnabled = index > 0; LocalizedUi.Set(next,"Content",()=>Current.Action == "complete" ? TextResources.Get("onboardingWindow.navigate.currentActionStartsWith") : Current.Action == "intro" ? TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeA") : Current.Action.StartsWith("ai") || new[] { "persona", "hotkey", "greeting", "work-save", "prompt-save", "network" }.Contains(Current.Action) ? TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeB") : TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeC"));
                 if (Step == 14) { sectionCount = pet.Projects.Sections.Count; projectCount = pet.Projects.Projects.Count; var practice = Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible); draftId = practice == null ? null : practice.ConversationId; if (Current.Action == "wide") ActionButton(()=>TextResources.Get("onboardingWindow.navigate.actionButton"), "GuideMaximizeChat", delegate { var chat = Application.Current.Windows.OfType<ChatWindow>().FirstOrDefault(w => w.IsVisible); if (chat != null) { chat.WindowState = WindowState.Maximized; chat.Activate(); } }); if (Current.Action == "section") ActionButton(()=>TextResources.Get("onboardingWindow.navigate.actionButton.alternativeA"), "GuideOpenSectionMore", delegate { Click(FindTarget("SectionMore_projects")); }); }
                 if (Current.Action == "speech-test") { speechRevision = settings.GuideSpeechTestRevision; heard = LocalizedUi.With(new CheckBox { Foreground=Ui.Ink, Name = "GuideHeardSpeech", Content = TextResources.Get("onboardingWindow.navigate.content"), Margin = new Thickness(0, 8, 0, 6) },"Content",()=>(TextResources.Get("onboardingWindow.navigate.content"))); heard.Checked += delegate { RefreshReadiness(); }; heard.Unchecked += delegate { RefreshReadiness(); }; actions.Children.Add(heard); }
@@ -152,7 +168,7 @@ namespace Dafeiyu
                 if(Current.Action=="language")BuildLanguagePage();
                 StyleBookend();if(Bookend){PositionNearTarget();}else Locate(); if (Current.Action != "speech-test") { var preview = settings.FindControl("PreviewSpeech"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
                 if (Current.Action != "live-test") { var preview = settings.FindControl("PreviewLive"); if (preview != null) otherScopes.Add(new GuideFocusScope(preview)); }
-                foreach (Window w in Application.Current.Windows.Cast<Window>().ToArray()) if (w != this && w != settingsHost && w != pet && w.Name!="OfficialPreparationProgress" && !(Step == 14 && w is ChatWindow) && w.Content is UIElement) otherScopes.Add(new GuideFocusScope((UIElement)w.Content)); if(persist)Persist();
+                foreach (Window w in Application.Current.Windows.Cast<Window>().ToArray()) if (w != this && w != settingsHost && w != pet && w.Name!="OfficialPreparationProgress" && !((Step == 14 || McpLesson) && w is ChatWindow) && w.Content is UIElement) otherScopes.Add(new GuideFocusScope((UIElement)w.Content)); if(persist)Persist();
             }
             finally { navigating = false; RefreshReadiness(); }
         }
@@ -189,8 +205,11 @@ namespace Dafeiyu
                 LocalizedUi.Set(status,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));status.Visibility=Visibility.Visible;return false;
             }
         }
+        bool McpLesson {get{return Current.Id.StartsWith("mcp.",StringComparison.Ordinal);}}
+        bool ConversationPreferenceLesson{get{return Current.Id=="work.process"||Current.Id.StartsWith("editor.",StringComparison.Ordinal);}}
         void SelectSettingsPage()
         {
+            if(Current.Id=="search.overview"){settings.RestoreNavigation(7,0,null);return;}
             if(Current.Id=="update.channel"){settings.SelectPage(6);return;}
             if(Current.Id.StartsWith("network.",StringComparison.Ordinal)){settings.SelectPage(6);networkPreview=settings.FindControl("UpdateNetwork") as Expander;if(networkPreview!=null){networkWasExpanded=networkPreview.IsExpanded;networkPreview.IsExpanded=true;}return;}
             switch (Step)
@@ -201,8 +220,9 @@ namespace Dafeiyu
                 case 12: settings.SelectCompanionSection(2); break;
                 case 13: settings.SelectPage(7); break;
                 case 15:
+                    if(ConversationPreferenceLesson){settings.SelectNavigation(6);settings.FocusGuideTarget(Current.Target);break;}
                     if(Current.Id.StartsWith("mcp.",StringComparison.Ordinal)){bool listStep=Current.Id=="mcp.intro"||Current.Id=="mcp.connect";settings.SelectMcpSettings(!listStep);if(listStep)Click(settings.FindControl("BackMcpServers"));break;}
-                    if (settings.FindControl("WorkSettingsPanel") == null) settings.SelectWorkSettings();
+                    settings.SelectWorkSettings();
                     Click(settings.FindControl(Current.Id.StartsWith("work.prompt") ? "WorkSettingsPromptTab" : "WorkSettingsGeneralTab"));
                     break;
                 case 16:
@@ -217,6 +237,7 @@ namespace Dafeiyu
         }
         string CurrentScope()
         {
+            if(Current.Id=="search.overview")return "ToolsSettingsPanel";
             if(Current.Id=="update.channel")return "UpdateChannel";
             if(Current.Id.StartsWith("network.",StringComparison.Ordinal))return "UpdateNetwork";
             switch (Step)
@@ -230,7 +251,7 @@ namespace Dafeiyu
                 case 11: return "GuideLiveProviderSection";
                 case 12: return "GuideGreetingSection";
                 case 13: return TargetName.StartsWith("Hotkey") ? "GuideShortcut" + TargetName.Substring(6) : TargetName;
-                case 15: return Current.Id.StartsWith("mcp.",StringComparison.Ordinal)?"McpSettingsPanel":"WorkSettingsPanel";
+                case 15: return ConversationPreferenceLesson?"ConversationSettingsPanel":Current.Id.StartsWith("mcp.",StringComparison.Ordinal)?"McpSettingsPanel":"WorkSettingsPanel";
                 default: return "UpdateNetwork";
             }
         }
@@ -238,7 +259,12 @@ namespace Dafeiyu
         {
             if (finished || Bookend) return; RemoveHighlight(); if (focusScope != null) { focusScope.Dispose(); focusScope = null; }
             if (petScope != null) { petScope.Dispose(); petScope = null; }
-            if (Step == 14) { target = FindTarget(TargetName); if (target != null) { target.BringIntoView(); target.Focus(); } }
+            if(Current.Action=="approval-demo"&&approvalDemo!=null&&!approvalDemo.IsCancellationRequested){
+                var approval=Application.Current.Windows.OfType<Window>().FirstOrDefault(w=>w.Name=="AgentApprovalWindow"&&Equals(w.Tag,approvalDemoCallId));
+                if(approval!=null){TargetName="RejectAgentOperation";target=Walk(approval).OfType<Button>().FirstOrDefault(b=>b.Name==TargetName);Owner=approval.Owner;if(approval.Owner!=null)focusScope=new GuideFocusScope((UIElement)approval.Owner.Content);if(target!=null)target.Focus();}
+            }
+            else if (McpLesson) { target=FindTarget(TargetName);var host=Owner as ChatWindow;var allowed=FindTarget("McpSettingsPanel");if(target==null||!target.IsVisible)target=allowed;if(target!=null){target.BringIntoView();target.Focus();}if(host!=null)focusScope=new GuideFocusScope((UIElement)host.Content,allowed); }
+            else if (Step == 14) { target = FindTarget(TargetName); if (target != null) { target.BringIntoView(); target.Focus(); } }
             else if (PetLesson) target = pet.Content as FrameworkElement;
             else
             {
@@ -249,7 +275,7 @@ namespace Dafeiyu
             if (!PetLesson) petScope = new GuideFocusScope((UIElement)pet.Content); AddHighlight(); UpdateLayout(); PositionNearTarget(); Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(delegate { if (!finished) { if (highlight != null) highlight.InvalidateVisual(); PositionNearTarget(); } }));
         }
         void AddHighlight() { if (target == null) return; target.IsVisibleChanged += TargetVisibilityChanged; layer = AdornerLayer.GetAdornerLayer(target); if (layer != null) { highlight = new GuideAdorner(target); layer.Add(highlight); } }
-        FrameworkElement FindTarget(string name) { if (Step == 14) return Application.Current.Windows.OfType<ChatWindow>().Where(w => w.IsVisible).SelectMany(w => Walk(w)).OfType<FrameworkElement>().FirstOrDefault(e => e.Name == name); return settings.FindControl(name); }
+        FrameworkElement FindTarget(string name) { if (Step == 14 || McpLesson) return Application.Current.Windows.OfType<ChatWindow>().Where(w => w.IsVisible).SelectMany(w => Walk(w)).OfType<FrameworkElement>().FirstOrDefault(e => e.Name == name); return settings.FindControl(name); }
         static IEnumerable<DependencyObject> Walk(DependencyObject node) { yield return node; for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) foreach (var x in Walk(VisualTreeHelper.GetChild(node, i))) yield return x; }
         static void Click(FrameworkElement e) { var b = e as Button; if (b != null && b.IsEnabled) b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
         async void TestText()

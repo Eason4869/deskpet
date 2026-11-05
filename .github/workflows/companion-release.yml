@@ -15,10 +15,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Check immutable source identity
@@ -46,7 +46,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Native package validation failed' }
           python tools/companion_release.py --tag $env:RESOURCE_TAG --artifacts work/companion-release/artifacts --output work/companion-release/publication.json
           if ($LASTEXITCODE) { throw 'Resource publication binding failed' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: verified-complete-companions
           path: |
@@ -62,13 +62,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: verified-complete-companions
           path: work/companion-release

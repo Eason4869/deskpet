@@ -72,8 +72,7 @@ namespace Dafeiyu.Tests
                             Configure(workspace,manager);workspace.Session.SendTextAsync("start the fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             var owner=new AgentJobOwner(project.Id,definition.Id,"primary");AgentJobSnapshot snapshot;
                             Check(manager.TrySnapshot(owner,model.JobId,out snapshot)&&snapshot.State==AgentJobState.Running&&model.FirstWorkspace.AvailableToolNames.IndexOf("start_job",StringComparison.Ordinal)<0,"first real conversation turn disposes its tool workspace while the real process remains running");
-                            var ready=Stopwatch.StartNew();while(!File.Exists(marker)&&ready.ElapsedMilliseconds<10000)Thread.Sleep(10);
-                            Check(File.Exists(marker)&&File.ReadAllText(marker)==nonce,"real background command signals readiness with the fixture nonce");
+                            Check(AgentJobTestSupport.ReadCompletedMarker(marker,10000)==nonce,"real background command signals readiness with the fixture nonce");
                             Check(model.StartMilliseconds<=2000,"real unsandboxed long-lived background start returns within two seconds (actual "+model.StartMilliseconds+" ms)");
                             project.PlanMode=true;workspace.Session.SendTextAsync("inspect the running fixture",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             Check(model.Calls==2&&(string)((Dictionary<string,object>)Json(model.LastResult)["job"])["agent_id"]=="primary","second real model turn in Plan reads the same stable primary owner");
@@ -112,8 +111,7 @@ namespace Dafeiyu.Tests
                             Check(model.StartMilliseconds<=2000,"actual 30-second command returns its start result within two seconds (actual "+model.StartMilliseconds+" ms)");
                             workspace.Session.ResumeAgentTaskAsync(workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             Check((bool)Json(model.LastResult)["replayed"]&&manager.ListForProject(project.Id).Count==1,"resuming the persisted task replays its original start call without a second job");
-                            var ready=Stopwatch.StartNew();while(!File.Exists(once)&&ready.ElapsedMilliseconds<10000)Thread.Sleep(10);
-                            Check(File.Exists(once)&&File.ReadAllLines(once).SequenceEqual(new[]{nonce}),"actual command side effect occurs exactly once across lost response and resume");
+                            Check(AgentJobTestSupport.ReadCompletedMarker(once,10000)==nonce+Environment.NewLine,"actual command side effect occurs exactly once across lost response and resume");
                             project.TerminalPolicy=AgentTerminalPolicy.Disabled;workspace.Session.SendTextAsync("inspect after disabling terminal",workspace.EffectiveSettings(),"pet").GetAwaiter().GetResult();
                             Check((bool)Json(model.LastResult)["ok"],"real conversation still reads an existing job after terminal execution is disabled");
                             var stopped=manager.StopForUserAsync(model.JobId,AgentJobStopReason.User,CancellationToken.None).GetAwaiter().GetResult();

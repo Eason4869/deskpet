@@ -46,6 +46,7 @@ internal sealed class GuideWindow : Window
     public GuideWindow(DesktopController controller)
     {
         owner = controller; LocalizedUi.Set(this,"Title",()=>(TextResources.Get("guideWindow.guideWindow.title"))); Width = 390; Height = 540; MinWidth = 320; MinHeight = 280; Topmost = true;WindowStartupLocation=WindowStartupLocation.Manual;
+        title.Name="GuideLessonTitle";detail.Name="GuideInstruction";
 
         int saved=Array.FindIndex(Steps,item=>item.Id==owner.Settings.OnboardingLessonId);
         step=owner.Settings.OnboardingState is "completed" or "skipped"?0:owner.Settings.OnboardingState=="new"?(owner.Settings.OnboardingStep==0?0:Math.Clamp(owner.Settings.OnboardingStep+6,0,Steps.Length-1)):saved>=0?saved:Math.Clamp(owner.Settings.OnboardingStep+6,0,Steps.Length-1);
@@ -57,18 +58,18 @@ internal sealed class GuideWindow : Window
         back = LocalizedUi.Button(()=>(TextResources.Get("guideWindow.guideWindow.text.alternativeA")), () => { if (step > 0&&SaveProgress(()=>step--)) Refresh(); });
         next = LocalizedUi.Button(()=>(TextResources.Get("guideWindow.guideWindow.text.alternativeB")), Advance);
         back.Name="GuideBack";next.Name="GuideNext";
-        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 14 };
-        layout.Children.Add(title);
+        var layout = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), RowSpacing = 14 };
         var body = new ScrollViewer { Name="GuideBody",Content = bodyContent, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
-        Grid.SetRow(body, 1); layout.Children.Add(body);
+        layout.Children.Add(body);
         exit = LocalizedUi.Button(()=>(TextResources.Get("guideWindow.guideWindow.text.alternativeC")), () => Finish("skipped"));
         exit.Name = "GuideSkip"; exit.FontSize = 14; exit.FontWeight = Avalonia.Media.FontWeight.SemiBold; exit.Foreground = DesktopTheme.Brush("#203754");
         explore=LocalizedUi.Button(()=>(TextResources.Get("onboarding.explore")),ExploreIndependently);explore.Name="GuideExplore";explore.Background=DesktopTheme.Brush("#E9ECF0");explore.Foreground=DesktopTheme.Brush("#203754");explore.HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch;
         next.Background=DesktopTheme.Brush("#456DE6");next.Foreground=Avalonia.Media.Brushes.White;next.HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch;
         defer=LocalizedUi.Button(()=>(TextResources.Get("guideWindow.guideWindow.text.alternativeD")),()=>Finish("deferred"));defer.Name="GuideDefer";
-        var footer = Ui.Column(open, next, explore, saveNotice, Ui.Row(back, defer, exit));
-        Grid.SetRow(footer, 2); layout.Children.Add(footer);
-        Content = new Border { Padding = new Thickness(24), Child = layout };
+        var exits=new WrapPanel();foreach(var button in new[]{back,defer,exit}){button.Margin=new Thickness(0,0,8,6);exits.Children.Add(button);}
+        var footer = Ui.Column(next, explore, saveNotice, exits);footer.Name="GuideFooter";
+        Grid.SetRow(footer, 1); layout.Children.Add(footer);
+        title.Margin=new Thickness(0,0,32,0);DialogUi.Apply(this,new Border { Padding = new Thickness(24), Child = layout });
         Closing += (_, args) => { if (!finished&&!SaveProgress(()=>owner.Settings.OnboardingState="deferred")) args.Cancel=true; };
         preparationStatus.Name="GuidePreparationStatus";owner.OfficialPreparation.Changed+=RefreshPreparation;
         Closed+=(_,_)=>{closed=true;placement.Stop();owner.OfficialPreparation.Changed-=RefreshPreparation;};
@@ -89,7 +90,7 @@ internal sealed class GuideWindow : Window
             LocalizedUi.Set(saveNotice,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));saveNotice.IsVisible=true;return false;
         }
     }
-    private static (string Id,string Title,string Detail,string Section)[] BuildSteps(){return new[]{("language",TextResources.Get("onboarding.language.title"),TextResources.Get("onboarding.language.liveDetail"),"language"),("welcome",TextResources.Get("onboardingLessons.build.add"),TextResources.Get("onboarding.timeEstimate")+"\n\n"+TextResources.Get("onboardingLessons.build.add.alternativeA"),"intro"),("prepare.network",TextResources.Get("onboarding.prepare.network"),TextResources.Get("onboarding.prepare.networkDetail"),"prepare-network"),("prepare.channel",TextResources.Get("onboarding.channel.title"),TextResources.Get("onboarding.channel.detail")+"\n\n"+TextResources.Get("onboarding.channel.manual"),"prepare-channel"),("prepare.character",TextResources.Get("guideWindow.steps.steps"),TextResources.Get("guideWindow.steps.steps.alternativeA"),"prepare-character"),("prepare.packs",TextResources.Get("onboarding.prepare.packs"),TextResources.Get("onboarding.prepare.packsDetail"),"prepare-packs")}.Concat(LegacySteps.Select((item,index)=>("ava.legacy."+index,item.Title,item.Detail,item.Section))).Concat(new[]{("finish.congratulations",TextResources.Get("onboardingLessons.build.add.alternativeIZ"),TextResources.Get("onboardingLessons.build.add.alternativeJA"),"complete")}).ToArray();}
+    private static (string Id,string Title,string Detail,string Section)[] BuildSteps(){return new[]{("language",TextResources.Get("onboarding.language.title"),TextResources.Get("onboarding.language.liveDetail"),"language"),("welcome",TextResources.Get("onboardingLessons.build.add"),TextResources.Get("onboarding.timeEstimate")+"\n\n"+TextResources.Get("onboardingLessons.build.add.alternativeA"),"intro"),("prepare.network",TextResources.Get("onboarding.prepare.network"),TextResources.Get("onboarding.prepare.networkDetail"),"prepare-network"),("prepare.channel",TextResources.Get("onboarding.channel.title"),TextResources.Get("onboarding.channel.detail")+"\n\n"+TextResources.Get("onboarding.channel.manual"),"prepare-channel"),("prepare.character",TextResources.Get("guideWindow.steps.steps"),TextResources.Get("guideWindow.steps.steps.alternativeA"),"prepare-character"),("prepare.packs",TextResources.Get("onboarding.prepare.packs"),TextResources.Get("onboarding.prepare.packsDetail"),"prepare-packs")}.Concat(LegacySteps.Select((item,index)=>("ava.legacy."+index,item.Title,item.Detail,item.Section))).Concat(new[]{("search.overview",TextResources.Get("onboarding.search.title"),TextResources.Get("onboarding.search.detail"),"tools"),("finish.congratulations",TextResources.Get("onboardingLessons.build.add.alternativeIZ"),TextResources.Get("onboardingLessons.build.add.alternativeJA"),"complete")}).ToArray();}
     private void Advance()
     {
         if(step==0&&languagePicker?.SelectedItem is UiLanguageChoice selectedLanguage){
@@ -112,7 +113,7 @@ internal sealed class GuideWindow : Window
     }
     private void Refresh()
     {
-        var item=Steps[step];LocalizedUi.Set(title,"Text",()=>$"{step+1} / {Steps.Length} · {Steps[step].Title}");LocalizedUi.Set(detail,"Text",()=>Steps[step].Detail);detail.IsVisible=true;bodyContent.Children.Clear();bodyContent.Children.Add(detail);back.IsEnabled=step>0;
+        var item=Steps[step];LocalizedUi.Set(title,"Text",()=>$"{step+1} / {Steps.Length} · {Steps[step].Title}");LocalizedUi.Set(detail,"Text",()=>Steps[step].Detail);detail.IsVisible=true;bodyContent.Children.Clear();bodyContent.Children.Add(title);bodyContent.Children.Add(detail);back.IsEnabled=step>0;
         LocalizedUi.Set(next,"Content",()=>(item.Section=="intro"?TextResources.Get("onboardingWindow.navigate.currentActionStartsWith.alternativeA"):step==Steps.Length-1?TextResources.Get("guideWindow.refresh.stepStepsLength"):TextResources.Get("guideWindow.refresh.stepStepsLength.alternativeA")));open.IsVisible=!item.Section.StartsWith("prepare-")&&item.Section!="language"&&item.Section!="intro"&&item.Section!="complete";
         explore.IsVisible=item.Section=="intro";exit.IsVisible=defer.IsVisible=item.Section!="language"&&item.Section!="intro"&&item.Section!="complete";
         title.TextAlignment=detail.TextAlignment=item.Section=="complete"?Avalonia.Media.TextAlignment.Center:Avalonia.Media.TextAlignment.Left;
@@ -128,7 +129,7 @@ internal sealed class GuideWindow : Window
             var start=LocalizedUi.Button(()=>(TextResources.Get("onboarding.prepare.start")),()=>{AllowsCompanionPreparation=true;owner.Run(owner.OfficialPreparation.StartAsync);});start.Name="GuidePreparePacks";start.Content=LocalizedUi.Text(()=>(TextResources.Get("onboarding.prepare.start")));start.HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch;start.HorizontalContentAlignment=Avalonia.Layout.HorizontalAlignment.Center;start.Background=DesktopTheme.Brush("#357FF5");start.Foreground=Avalonia.Media.Brushes.White;((TextBlock)start.Content).Foreground=Avalonia.Media.Brushes.White;
             bodyContent.Children.Add(preparationStatus);bodyContent.Children.Add(start);var progressButton=LocalizedUi.Button(()=>(TextResources.Get("onboarding.prepare.progress")),owner.ShowOfficialPreparation);progressButton.Content=LocalizedUi.Text(()=>(TextResources.Get("onboarding.prepare.progress")));progressButton.HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Stretch;bodyContent.Children.Add(progressButton);LocalizedUi.Set(next,"Content",()=>(TextResources.Get("onboarding.prepare.later")));
         }
-        RefreshPreparation();
+        bodyContent.Children.Add(open);RefreshPreparation();
     }
     private void BuildLanguagePage()
     {

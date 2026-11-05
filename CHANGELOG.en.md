@@ -2,6 +2,28 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.2 · Unreleased
+
+- Include the web search, settings layout, guidance and conversation link-opening improvements from dev.1 and dev.2.
+- Align in-app dialogs with a borderless rounded style and compact cache maintenance layout. Center review dialogs over the actual operation window, use the real review window for the guide exercise, and keep actions accessible in small windows.
+- Replace tray reminders with consistent passive cards. Add four gentle marimba cues for completion, review, permission and failure, with a separate preference, volume control and immediate DND cancellation without replay afterward.
+- Rename the proactive-greeting option and add automatic reading. When global read-aloud is enabled, preset, AI and automatic screen-aware greetings can speak while yielding to other speech, recording and DND.
+- Prepare the 1.0.2 source version without creating a tag or publishing a release.
+
+## 1.0.2-dev.2 · Development preview
+
+- Fix Windows web-source citations at the bottom of long replies jumping to the top instead of opening the page, while preserving automatic scrolling when extending a text selection to the document end.
+- Open conversation web links in embedded browser tool tabs by default, including named links, bare URLs, quotes, tables and source lists. Quick chat opens the browser tools in the full chat window; temporary side chat uses its owning window's tools.
+- Retain right-click actions for the external browser and copying link addresses, along with image previews. Narrow windows keep the existing full-tab layout.
+- Update both READMEs with the source version, web search instructions and link-opening behavior.
+
+## 1.0.2-dev.1 · Development preview
+
+- Fix duplicate `@` and `/` menus when quick chat expands into a full conversation.
+- Add native web search and ten external search providers across conversation, quick chat and work mode, plus one custom endpoint with a compatible API format and separate encrypted credentials.
+- Reorganize settings while retaining primary navigation, remove the duplicate skills entry, align disclosure controls, and show instruction and capability details directly.
+- Shorten setup guidance, correct moved targets and plugin navigation, and preserve progress and verification evidence.
+
 ## 1.0.1 · Unreleased
 
 - Allow custom work and chat sections to be deleted, moving their contents to the default section while preserving records and workspace files. Default sections are retained.

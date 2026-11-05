@@ -91,9 +91,10 @@ internal static class AgentJobExitUiChecks
     internal static int RunPreview(string directory)
     {
         if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException("Native preview acceptance requires Windows");Directory.CreateDirectory(directory);
-        var info=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true};if(Path.GetFileNameWithoutExtension(Environment.ProcessPath).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
+        var info=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true};if(Path.GetFileNameWithoutExtension(info.FileName).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
         foreach(string argument in new[]{"--agent-job-exit-fixture","preview",directory})info.ArgumentList.Add(argument);using var host=System.Diagnostics.Process.Start(info)!;
-        if(!host.WaitForExit(60000)){host.Kill();host.WaitForExit(5000);throw new TimeoutException("Native Avalonia preview host");}
+        // Cover the bounded cold-server and browser startup waits in the child fixture.
+        if(!host.WaitForExit(120000)){host.Kill();host.WaitForExit(5000);throw new TimeoutException("Native Avalonia preview host");}
         if(host.ExitCode!=0||!File.Exists(Path.Combine(directory,"exit.complete")))throw new Exception("Native Avalonia preview failed: "+(File.Exists(Path.Combine(directory,"fixture.error"))?File.ReadAllText(Path.Combine(directory,"fixture.error")):"exit="+host.ExitCode));
         using var report=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(directory,"preview.report.json")));return report.RootElement.GetProperty("checks").GetInt32();
     }
@@ -105,7 +106,7 @@ internal static class AgentJobExitUiChecks
         foreach(string fixture in new[]{"normal","held","writer","kill","direct"}.Where(value=>only==null||value==only))
         {
             string data=Path.Combine(directory,fixture);Directory.CreateDirectory(data);var info=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true};
-            if(Path.GetFileNameWithoutExtension(Environment.ProcessPath).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
+            if(Path.GetFileNameWithoutExtension(info.FileName).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
             foreach(string argument in new[]{"--agent-job-exit-fixture",fixture,data})info.ArgumentList.Add(argument);
             using var host=System.Diagnostics.Process.Start(info)!;var owned=new List<System.Diagnostics.Process>();Exception? failure=null;
             try

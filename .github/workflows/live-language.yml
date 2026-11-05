@@ -18,8 +18,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Build shared language tests
@@ -34,8 +34,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Build existing desktop UI and live language checks
@@ -59,7 +59,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Native wardrobe selection checks failed' }
           ./Build.ps1 -Target DataManagementUiTests
           if ($LASTEXITCODE) { throw 'Deferred settings retry checks failed' }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: runner.os == 'Windows'
         with:
           python-version: '3.x'

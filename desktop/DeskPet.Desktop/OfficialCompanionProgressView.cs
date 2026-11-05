@@ -22,7 +22,7 @@ internal sealed class OfficialCompanionProgressView : IDisposable, IProgress<Off
     {
         this.passive = passive; this.cancel = cancel;this.lazy=lazy;this.parent=parent;this.isCurrent=isCurrent;
         retry = LocalizedUi.Button(()=>(TextResources.Get("common.retry")), () => retryAnswer?.TrySetResult(true)); retry.IsVisible = false;
-        window = LocalizedUi.Window(()=>(passive ? TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window") : TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window.alternativeA")), passive ? label : Ui.Column(label, bar, Ui.Row(retry, LocalizedUi.Button(()=>(TextResources.Get("common.cancel")), () => { cancel.Cancel(); retryAnswer?.TrySetResult(false); window?.Close(); }))), passive ? 350 : 460, passive ? 140 : 240);
+        window = LocalizedUi.Window(()=>(passive ? TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window") : TextResources.Get("officialCompanionProgressView.officialCompanionProgressView.window.alternativeA")), passive ? label : Ui.Column(label, bar, Ui.Row(retry, LocalizedUi.Button(()=>(TextResources.Get("dialog.cancelDownload")), () => { cancel.Cancel(); retryAnswer?.TrySetResult(false); window?.Close(); }))), passive ? 350 : 460, passive ? 140 : 240);
         window.Name = passive ? "OfficialCompanionDownloadBubble" : "OfficialCompanionProgressDialog";
         if (passive) { window.MinHeight = 0; window.Height = 140; window.CanResize = false; }
         window.ShowInTaskbar = false; window.Topmost = topmost;

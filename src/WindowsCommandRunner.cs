@@ -11,11 +11,15 @@ namespace Dafeiyu
 {
     internal static partial class WindowsCommandRunner
     {
+#if PORTABLE
+        [System.Runtime.Versioning.SupportedOSPlatformGuard("windows")]
+#endif
+        internal static bool IsWindowsHost {get{return Environment.OSVersion.Platform==PlatformID.Win32NT;}}
         // Suspended creation closes the spawn/assign race: no project code runs
         // until it belongs to a kill-on-close Job, including all descendants.
         internal static CommandResult Run(AgentCommand command,int timeoutSeconds,CancellationToken token,bool cleanEnvironment=false,WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> environmentOverrides=null,bool labelOutput=true)
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException(TextResources.Get("windowsCommandRunner.run.text"));
+            if(!IsWindowsHost)throw new PlatformNotSupportedException(TextResources.Get("windowsCommandRunner.run.text"));
             token.ThrowIfCancellationRequested();IntPtr job=IntPtr.Zero,input=IntPtr.Zero;ProcessInfo process=new ProcessInfo();
             SafeFileHandle readOut=null,writeOut=null,readError=null,writeError=null;Task stdout=null,stderr=null;
             var captured=new BoundedOutput();var watch=Stopwatch.StartNew();bool timedOut=false,cancelled=false;
@@ -75,6 +79,9 @@ namespace Dafeiyu
                 if(used>0)output.Add(line,used,label);
             }
         }
+#if PORTABLE
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         static IntPtr BuildEnvironment(WindowsSandboxLease sandbox=null,System.Collections.Generic.IDictionary<string,string> overrides=null)
         {
             var values=new System.Collections.Generic.SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
@@ -90,7 +97,7 @@ namespace Dafeiyu
         }
         internal static StdioProcess StartStdio(AgentCommand command)
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException();
+            if(!IsWindowsHost)throw new PlatformNotSupportedException();
             var result=new StdioProcess();var process=new ProcessInfo();SafeFileHandle inputRead=null,inputWrite=null,outputRead=null,outputWrite=null,errorRead=null,errorWrite=null;IntPtr environment=IntPtr.Zero;
             try{
                 var security=new SecurityAttributes{Length=Marshal.SizeOf(typeof(SecurityAttributes)),Inherit=true};

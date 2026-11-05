@@ -22,7 +22,7 @@ internal static class LocalizationUiChecks
             DesktopTheme.Apply(mode);
             var settings=new SettingsWindow(owner);settings.Show();Dispatcher.UIThread.RunJobs();
             var navigation=settings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
-            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作设置"));
+            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text=="工作与权限"));
             Check(work!=null,mode+" settings independent Chinese navigation expectation");
             navigation.SelectedItem=work;Dispatcher.UIThread.RunJobs();
             Check(settings.GetLogicalDescendants().Any(x=>x.GetType().Name=="WorkSettingsView"),mode+" actual work navigation displays work settings");

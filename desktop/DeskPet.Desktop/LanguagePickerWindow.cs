@@ -26,7 +26,7 @@ internal sealed class LanguagePickerWindow : Window
         var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Spacing=10};
         var cancel=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")),Close);cancel.Name="CancelLanguageSelection";cancel.IsCancel=true;actions.Children.Add(cancel);
         var confirm=LocalizedUi.Button(()=>(TextResources.Get("common.save")),()=>{try{save(SelectedLanguage);Close();}catch(Exception error)when(error is IOException or UnauthorizedAccessException or System.Security.SecurityException){LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("petWindow.saveSettings.notice")));}});confirm.Name="SaveLanguageSelection";confirm.IsDefault=true;actions.Children.Add(confirm);
-        var footer=Ui.Column(notice,actions);footer.Margin=new Thickness(0,16,0,0);Grid.SetRow(footer,2);body.Children.Add(footer);Content=body;
+        var footer=Ui.Column(notice,actions);footer.Margin=new Thickness(0,16,0,0);Grid.SetRow(footer,2);body.Children.Add(footer);body.Children[0].Margin=new Thickness(0,0,32,0);DialogUi.Apply(this,body);
         confirm.IsEnabled=choices.SelectedItem!=null;choices.SelectionChanged+=(_,_)=>confirm.IsEnabled=choices.SelectedItem!=null;
         Opened+=(_,_)=>{choices.ScrollIntoView(choices.SelectedItem!);choices.Focus();};
     }

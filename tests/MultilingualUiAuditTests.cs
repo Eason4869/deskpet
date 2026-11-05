@@ -225,6 +225,8 @@ namespace Dafeiyu.Tests
                     for(int section=0;section<3;section++){settings.SelectCompanionSection(section);await ScrollCaptures(chat,"settings-companion-"+section+"-"+theme+"-"+width);}
                     for(int section=0;section<5;section++){settings.SelectAiSection(section);await ScrollCaptures(chat,"settings-model-"+section+"-"+theme+"-"+width);}
                     settings.SelectWorkSettings();await ScrollCaptures(chat,"settings-work-"+theme+"-"+width);
+                    for(int section=0;section<3;section++){settings.RestoreNavigation(6,section,null);await ScrollCaptures(chat,"settings-conversation-"+section+"-"+theme+"-"+width);Check(settings.SelectedNavigationIndex==6&&All<ConversationSettingsPanel>(settings).Single().SelectedSection==section,"selected conversation audit section "+section);}
+                    foreach(int section in new[]{0,2}){settings.RestoreNavigation(7,section,null);await ScrollCaptures(chat,"settings-tools-"+section+"-"+theme+"-"+width);Check(settings.SelectedNavigationIndex==7&&All<ToolsSettingsPanel>(settings).Single().SelectedSection==section,"selected tools audit section "+section);}
                     for(int section=0;section<3;section++){settings.SelectGeneralSection(section);await ScrollCaptures(chat,"settings-general-"+section+"-"+theme+"-"+width);}
                     settings.SelectNavigation(4);await ScrollCaptures(chat,"settings-about-"+theme+"-"+width);
                 }
@@ -260,7 +262,7 @@ namespace Dafeiyu.Tests
                 await Dialog(new ShortcutHelpDialog(chat,commands),chat,"dialog-shortcuts-"+theme);
                 Click(chat,"ShellSettings");await Settle();
                 // Direct saved-lesson fixtures show instructional text without pressing action/test controls.
-                foreach(string lesson in new[]{"welcome","network.intro","pet.select","pet.packages","persona.read","behavior.size","text.provider","asr.intro","finish.summary","finish.congratulations"})
+                foreach(string lesson in new[]{"welcome","network.intro","pet.select","pet.packages","persona.edit","behavior.size","text.provider","asr.intro","finish.summary","finish.congratulations"})
                 {
                     cfg.OnboardingState="deferred";cfg.OnboardingLessonId=lesson;
                     var guide=new OnboardingWindow(pet,settings,chat);guide.Show();try{await Settle();Check(guide.CurrentLessonId==lesson,"requested guide lesson "+lesson);await ScrollCaptures(guide,"guide-"+lesson+"-"+theme);}finally{guide.Close();}await Settle();

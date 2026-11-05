@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Check proactive core and UI test registration
@@ -55,7 +55,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $failedTargets = @()
-          foreach ($target in @('PersonaScreenAccessTests','DesktopObservationToggleTests','ImageDescriptionSettingsTests','ImChannelTests','FeishuRegistrationTests','OfficialBotRegistrationTests','WecomRegistrationTests','ImChannelUiTests','SettingsPerformanceTests','PreferenceSaveTests','ProviderMemoryTests','CompanionPreparationUiTests','ExplicitSettingsSaveTests','ProjectConfigurationSaveTests','ProjectBindingAdmissionTests','RelationshipTitleFontTests','RelationshipStageArtTests','HolidayKeepsakeTests','SettingsFeatureNavigationTests','RelationshipExperienceTests','RelationshipExperienceUiTests','WpfRelationshipPackTests','QuietMotionTests','ReplyLanguagePolicyTests','LanguagePackTests','AgentJobContractTests','AgentJobStoreTests','AgentJobLogTests','AgentJobManagerTests','AgentJobLifecycleTests','AgentJobViewStateTests','AgentJobUiTests','AgentJobLifecycleUiTests','AgentJobProjectTests','UiControlSnapshotTests','LocalizationTests','LocalizationMissingResourceTests','LocalizationUiTests','CompanionStartupTests','PowerShellStartupTests','OfficialCompanionLegacyTests','OfficialCompanionIdentityTests','HolidaySourceBindingTests','OfficialCompanionTests','ConversationArchiveRegressionTests','HolidayAssetTests','HolidayProductionSmoke','HolidayRuntimeTests','HolidayHoverTests','HolidayIdentityTests','HolidayVisualSmoke','HolidaySettingsSmoke','HolidayGreetingTests','HolidayCalendarTests','HolidayStateTests','ConversationWorkspaceManagerTests','ImageGenerationTaskStoreTests','ImageGenerationTaskManagerTests','ImageGenerationMotionTests','GeneratedImageGroupTests','ImageGalleryManagementTests','ImageGalleryExportTests','ImageTaskCenterLifecycleTests','ImageTaskCenterUiTests','ImageGenerationBackendTests','ImageProviderProtocolTests','ImageGalleryLayoutTests','ImageGenerationIntegrationTests','ImageGenerationUiTests','AgentProjectToolsTests','AgentQuestionUiSmoke','LanServiceTests','LanSettingsUiTests','ThemeTests','ContextPreviewTests','LiveWaveformTests','ReleaseIdentityTests','UpdateChannelTests','ReleaseVersionTests','WindowsTerminalTests','WorkspaceSandboxTests','BrowserProfileCleanupTests','ManualRunTests','GuideBookendTests','LiveLanguageUiTests','RequestLanguageSnapshotTests','PopupLifecycleTests','CacheMaintenanceTests','CacheMaintenanceUiTests','DataManagementTests','DataManagementUiTests','DataMaintenanceAdmissionTests','HistoryMaintenanceTests','DataMaintenanceHostTests','RelationshipFeedbackTests','RelationshipPresentationTests','CompanionHomeUiTests','AppShellTests','PluginsUiTests','ManagedSkillLibraryTests','SkillRepositoryTests','SkillDiscoveryUiTests','UsageTrackingTests','UsageStatisticsUiTests','EmbeddedSettingsTests','ChatImagePreviewTests','ShortcutHelpTests','TrayInteractionTests','ChangeSummaryPersistenceTests','ChangeSummaryIntegrationTests','ConversationViewportTests','UnifiedWorkspaceTests','UnifiedPreviewTabsTests','SidebarWorkspaceTests','SummaryNavigationTests','SideChatTests','BrowserPaneTests','TerminalUiTests','FilePreviewTests','ProcessAvatarTests','ChatAtmosphereTests','FinalOutputFilesTests','WorkspacePermissionTests','PermissionUiSmoke','ConversationSwitchRegressionTests','PetRuntimeTests','AgentEvolutionRegressionTests','ComposerSmoke','AgentCapabilityTests','AgentApprovalTests','AgentApprovalUiSmoke','AgentTerminalTests','AgentIsolationTests','AgentCodingWorkflowTests','AgentContextPolicyTests','AgentInstructionTests','McpConnectionTests','McpUiSmoke','AgentTaskRunnerTests','AgentSubagentExecutionTests','AgentRunRecoveryTests','AgentTaskMemoryTests','GuidanceUiTests','ComposerRenderingTests','DeleteDialogTests','UiResourceTests','QueueHandleTests','ConversationVisualTests','ConversationOwnershipUiTests','WelcomeSuggestionTests','DetailedGuideTests','ConversationModeUiTests','ConversationOwnershipTests','CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','DevReviewRegressionTests','SidebarSectionsTests','DraftConversationTests','ComposerPaletteTests','ContextUsageTests','ModelConfigurationSmoke','SettingsMaximizeTests','SidebarProjectInteractionTests','SidebarActionTests','ConversationUiSmoke','ApplicationSnapshotTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','SteeringSmoke')) {
+          foreach ($target in @('PersonaScreenAccessTests','DesktopObservationToggleTests','ImageDescriptionSettingsTests','ImChannelTests','FeishuRegistrationTests','OfficialBotRegistrationTests','WecomRegistrationTests','ImChannelUiTests','SettingsPerformanceTests','PreferenceSaveTests','ProviderMemoryTests','CompanionPreparationUiTests','ExplicitSettingsSaveTests','ProjectConfigurationSaveTests','ProjectBindingAdmissionTests','RelationshipTitleFontTests','RelationshipStageArtTests','HolidayKeepsakeTests','SettingsFeatureNavigationTests','RelationshipExperienceTests','RelationshipExperienceUiTests','WpfRelationshipPackTests','QuietMotionTests','ReplyLanguagePolicyTests','LanguagePackTests','AgentJobContractTests','AgentJobStoreTests','AgentJobLogTests','AgentJobManagerTests','AgentJobLifecycleTests','AgentJobViewStateTests','AgentJobUiTests','AgentJobLifecycleUiTests','AgentJobProjectTests','UiControlSnapshotTests','LocalizationTests','LocalizationMissingResourceTests','LocalizationUiTests','CompanionStartupTests','PowerShellStartupTests','OfficialCompanionLegacyTests','OfficialCompanionIdentityTests','HolidaySourceBindingTests','OfficialCompanionTests','ConversationArchiveRegressionTests','HolidayAssetTests','HolidayProductionSmoke','HolidayRuntimeTests','HolidayHoverTests','HolidayIdentityTests','HolidayVisualSmoke','HolidaySettingsSmoke','HolidayGreetingTests','HolidayCalendarTests','HolidayStateTests','ConversationWorkspaceManagerTests','ImageGenerationTaskStoreTests','ImageGenerationTaskManagerTests','ImageGenerationMotionTests','GeneratedImageGroupTests','ImageGalleryManagementTests','ImageGalleryExportTests','ImageTaskCenterLifecycleTests','ImageTaskCenterUiTests','ImageGenerationBackendTests','ImageProviderProtocolTests','ImageGalleryLayoutTests','ImageGenerationIntegrationTests','ImageGenerationUiTests','AgentProjectToolsTests','AgentQuestionUiSmoke','LanServiceTests','LanSettingsUiTests','ThemeTests','ContextPreviewTests','LiveWaveformTests','ReleaseIdentityTests','UpdateChannelTests','ReleaseVersionTests','WindowsTerminalTests','WorkspaceSandboxTests','BrowserProfileCleanupTests','ManualRunTests','GuideBookendTests','LiveLanguageUiTests','RequestLanguageSnapshotTests','PopupLifecycleTests','NotificationSoundTests','ProactiveGreetingSpeechTests','CacheMaintenanceTests','CacheMaintenanceUiTests','DataManagementTests','DataManagementUiTests','DataMaintenanceAdmissionTests','HistoryMaintenanceTests','DataMaintenanceHostTests','RelationshipFeedbackTests','RelationshipPresentationTests','CompanionHomeUiTests','AppShellTests','PluginsUiTests','ManagedSkillLibraryTests','SkillRepositoryTests','SkillDiscoveryUiTests','UsageTrackingTests','UsageStatisticsUiTests','EmbeddedSettingsTests','ChatImagePreviewTests','ShortcutHelpTests','TrayInteractionTests','ChangeSummaryPersistenceTests','ChangeSummaryIntegrationTests','ConversationViewportTests','UnifiedWorkspaceTests','UnifiedPreviewTabsTests','SidebarWorkspaceTests','SummaryNavigationTests','SideChatTests','BrowserPaneTests','TerminalUiTests','FilePreviewTests','ProcessAvatarTests','ChatAtmosphereTests','FinalOutputFilesTests','WorkspacePermissionTests','PermissionUiSmoke','ConversationSwitchRegressionTests','PetRuntimeTests','AgentEvolutionRegressionTests','ComposerSmoke','AgentCapabilityTests','AgentApprovalTests','AgentApprovalUiSmoke','AgentTerminalTests','AgentIsolationTests','AgentCodingWorkflowTests','AgentContextPolicyTests','AgentInstructionTests','McpConnectionTests','McpUiSmoke','AgentTaskRunnerTests','AgentSubagentExecutionTests','AgentRunRecoveryTests','AgentTaskMemoryTests','GuidanceUiTests','ComposerRenderingTests','DeleteDialogTests','UiResourceTests','QueueHandleTests','ConversationVisualTests','ConversationOwnershipUiTests','WelcomeSuggestionTests','DetailedGuideTests','ConversationModeUiTests','ConversationOwnershipTests','CoreTests','ProfileTests','ApiTests','ConversationTests','HistoryTests','StreamingTests','VoicePresetTests','LiveTests','UpdateTests','UpdateApplyTests','GreetingTests','StartupTests','ProxyTests','QueueTests','DictationTests','InteractionTests','SpriteAlignmentTests','ProviderTests','OnboardingModelSmoke','ImportedSkinTests','AiGreetingTests','BundledSkinTests','OnboardingUpgradeTests','RecorderFailureTests','UpdateScheduleTests','MarkdownTests','AgentWorkspaceTests','AgentProtocolTests','AgentSessionTests','WorkSettingsTests','DevReviewRegressionTests','SidebarSectionsTests','DraftConversationTests','ComposerPaletteTests','WebSearchTests','WebSearchProviderTests','WebSearchUiTests','SettingsExpanderTests','SettingsOrganizationTests','SettingsSeparationTests','ContextUsageTests','ModelConfigurationSmoke','SettingsMaximizeTests','SidebarProjectInteractionTests','SidebarActionTests','ConversationUiSmoke','ApplicationSnapshotTests','AgentReliabilityTests','AgentFileToolsTests','AgentChangesTests','AgentDocumentTests','AgentCommandTests','AgentTaskTests','AgentWorkbenchSmoke','AgentContextTests','PredictionTests','SteeringSmoke')) {
             try {
               if ($target -eq 'PredictionTests') { & .\Build.ps1 -Target $target -TestArguments '--ui' } else { & .\Build.ps1 -Target $target }
               if ($LASTEXITCODE -ne 0) { throw "Failed: $target" }
@@ -194,7 +194,7 @@ jobs:
         run: |
           python tests/ImageWorkflowRegistrationTests.py
           if ($LASTEXITCODE) { throw 'Image registration checks failed' }
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: desktop/global.json
       - name: Avalonia UI and separate native quit routes
@@ -349,7 +349,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Update worker receipt regression failed' }
       - name: Preserve owned uninstall handoff diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: uninstall-handoff-${{ github.sha }}
           if-no-files-found: ignore
@@ -375,7 +375,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Installed locale acceptance failed' }
       - name: Preserve localization acceptance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: localization-acceptance-windows-${{ github.sha }}
           if-no-files-found: ignore
@@ -391,7 +391,7 @@ jobs:
             work/relationship-experience/**/*.png
       - name: Preserve compact WPF language diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wpf-language-diagnostics-${{ github.sha }}
           if-no-files-found: ignore
@@ -405,14 +405,14 @@ jobs:
             work/feature-navigation/process/**/native-events.json
       - name: Preserve background job acceptance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: agent-jobs-acceptance-windows-${{ github.sha }}
           if-no-files-found: warn
           path: work/agent-jobs-validation/ci/
       - name: Preserve failed native link test diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: native-link-input-diagnostics
           if-no-files-found: ignore

@@ -65,9 +65,9 @@ namespace Dafeiyu
             foreach(var key in values.Keys)merged.Orders[key]=next.Orders.ContainsKey(key)?next.Orders[key]:previous.Orders[key];return merged;
         }
         // Test seam deliberately contains neither configuration nor credentials.
-        internal Action BeforePreferenceCommit;
-        internal Action BeforeExactSave;
-        internal Action BeforeLanguageCommit;
+        internal Action BeforePreferenceCommit=null;
+        internal Action BeforeExactSave=null;
+        internal Action BeforeLanguageCommit=null;
         internal Task SavePreferencePatchAsync(PreferenceChangeSet patch)
         {
             return Task.Run(delegate{

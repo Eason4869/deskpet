@@ -14,8 +14,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Complete package policy and inventory
@@ -60,14 +60,14 @@ jobs:
           if ($LASTEXITCODE) { throw 'Key capture failed' }
           ./Build.ps1 -Target LocalImportUiTests
           if ($LASTEXITCODE) { throw 'Import cancellation failed' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always() && runner.os == 'Windows'
         with:
           name: dev3-native-cards
           path: work/festive-scenes/native-cards
           if-no-files-found: ignore
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: dev3-performance-${{ runner.os }}

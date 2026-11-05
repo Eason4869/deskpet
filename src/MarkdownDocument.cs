@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -58,8 +57,6 @@ namespace Dafeiyu
             else { Inline(paragraph.Inlines, node.Children); if (node.Kind == "heading") { paragraph.FontSize = node.Level == 1 ? 23 : node.Level == 2 ? 20 : node.Level == 3 ? 17 : 15; paragraph.FontWeight = FontWeights.SemiBold; paragraph.Margin = new Thickness(0, 8, 0, 9); } }
             return paragraph;
         }
-        static void OpenLink(Uri uri)
-        { try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); } catch (System.ComponentModel.Win32Exception) { } catch (InvalidOperationException) { } }
         void Inline(InlineCollection target, IEnumerable<MarkdownNode> nodes)
         {
             foreach (var node in nodes)
@@ -76,7 +73,7 @@ namespace Dafeiyu
                         if(!editable)link.ContextMenu=MarkdownLinkMenu.Create(link);
                         bool previewImage=node.Kind=="image"&&!editable&&(uri.Scheme=="http"||uri.Scheme=="https");
                         if(previewImage)LocalizedUi.Set(link,"ToolTip",()=>(TextResources.Format("markdownDocument.inline.toolTipUriAbsoluteUri",uri.AbsoluteUri)));
-                        link.RequestNavigate += delegate (object sender, System.Windows.Navigation.RequestNavigateEventArgs e) { if(previewImage){var host=Window.GetWindow(link);if(host!=null)ChatImagePreview.OpenRemote(host,e.Uri,new System.Windows.Documents.TextRange(link.ContentStart,link.ContentEnd).Text);}else if(!editable || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control)!=0)OpenLink(e.Uri); e.Handled = true; };
+                        link.RequestNavigate += delegate (object sender, System.Windows.Navigation.RequestNavigateEventArgs e) { if(previewImage){var host=Window.GetWindow(link);if(host!=null)ChatImagePreview.OpenRemote(host,e.Uri,new System.Windows.Documents.TextRange(link.ContentStart,link.ContentEnd).Text);}else if(!editable || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control)!=0)MarkdownLinkMenu.Open(link); e.Handled = true; };
                         string iconName = uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase) ? "github" : "globe";
                         var icon = UiIcons.Image(iconName, linkInk); icon.Name = iconName == "github" ? "MarkdownGitHubIcon" : "MarkdownGlobeIcon"; icon.Width = icon.Height = 14; icon.Margin = new Thickness(0, 0, 5, 0); icon.IsHitTestVisible=false;icon.Focusable=false;link.Inlines.Add(new InlineUIContainer(icon) { BaselineAlignment = BaselineAlignment.Center,Focusable=false });
                         if (node.Children.Count > 0) Inline(link.Inlines, node.Children); else link.Inlines.Add(new Run(node.Text.Length > 0 ? node.Text : uri.AbsoluteUri));

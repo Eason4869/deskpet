@@ -34,10 +34,10 @@ internal sealed class CompanionPreparationWindow:Window
         body.Children.Add(new Border{Child=new StackPanel{Children={detail,status,bar}},CornerRadius=new CornerRadius(14),Background=DesktopTheme.CardSurface,BorderBrush=DesktopTheme.CardBorder,BorderThickness=new Thickness(1),Padding=new Thickness(18),Margin=new Thickness(0,0,0,16)});
         root.Children.Add(new ScrollViewer{Content=body,VerticalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled});
         var start=LocalizedUi.Button(Caption,()=>owner.Run(preparation.StartAsync));start.Name="StartOfficialPreparation";start.HorizontalAlignment=HorizontalAlignment.Stretch;start.MinHeight=40;
-        var cancel=LocalizedUi.Button(()=>TextResources.Get("onboarding.prepare.cancel"),preparation.Cancel);cancel.Name="CancelOfficialPreparation";
+        var cancel=LocalizedUi.Button(()=>TextResources.Get("dialog.cancelDownload"),preparation.Cancel);cancel.Name="CancelOfficialPreparation";
         var close=LocalizedUi.Button(()=>TextResources.Get("common.close"),Close);close.Name="CloseOfficialPreparation";
-        var secondary=new DockPanel{LastChildFill=false,Margin=new Thickness(0,9,0,0)};DockPanel.SetDock(cancel,Dock.Left);secondary.Children.Add(cancel);DockPanel.SetDock(close,Dock.Right);secondary.Children.Add(close);
-        var actions=new StackPanel{Margin=new Thickness(0,14,0,0),Children={start,secondary}};Grid.SetRow(actions,1);root.Children.Add(actions);Content=root;
+        var secondary=new DockPanel{LastChildFill=false,Margin=new Thickness(0,9,0,0)};DockPanel.SetDock(cancel,Dock.Left);secondary.Children.Add(cancel);DockPanel.SetDock(close,Dock.Right);secondary.Children.Add(close);var background=SettingsVisual.Text(()=>TextResources.Get("dialog.backgroundContinue"),12,true);background.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(background,Dock.Right);secondary.Children.Add(background);
+        var actions=new StackPanel{Margin=new Thickness(0,14,0,0),Children={start,secondary}};Grid.SetRow(actions,1);root.Children.Add(actions);heading.Margin=new Thickness(0,0,32,14);DialogUi.Apply(this,root);
         bool closed=false;int refreshQueued=0;
         void Apply(){
             var state=preparation.State;var value=preparation.Progress;bool running=state==OfficialCompanionPreparationState.Running;

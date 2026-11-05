@@ -23,7 +23,7 @@ internal sealed class ThemeModePicker : UserControl
     internal ThemeModePicker(string initial)
     {
         Name = "ThemeModePicker";
-        var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), RowDefinitions = new RowDefinitions("Auto,Auto") };
         layout.Children.Add(LocalizedUi.With(new TextBlock { Text = TextResources.Get("themeModePicker.themeModePicker.text"), FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },"Text",()=>(TextResources.Get("themeModePicker.themeModePicker.text"))));
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var mode in new[] { "system", "light", "dark" })
@@ -35,6 +35,8 @@ internal sealed class ThemeModePicker : UserControl
             button.Click += (_, _) => { Value = mode; Changed?.Invoke(mode); }; choices.Add(mode, button); row.Children.Add(button);
         }
         Grid.SetColumn(row, 1); layout.Children.Add(row);
+        void Reflow(){bool narrow=layout.Bounds.Width<420;Grid.SetColumn(row,narrow?0:1);Grid.SetRow(row,narrow?1:0);Grid.SetColumnSpan(row,narrow?2:1);row.Margin=new Thickness(0,narrow?12:0,0,0);}
+        layout.SizeChanged+=(_,_)=>Reflow();Reflow();
         Content = new Border { CornerRadius = new CornerRadius(16), Background = DesktopTheme.Brush("#FDFEFF"), BorderBrush = DesktopTheme.Brush("#DCE5F4"), BorderThickness = new Thickness(1), Padding = new Thickness(14, 8), Child = layout };
         Value = initial;
     }

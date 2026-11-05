@@ -56,7 +56,7 @@ namespace Dafeiyu
             rows=new StackPanel();var list=Ui.Scroll(rows);list.MaxHeight=compact?112:160;queueBody.Children.Add(list);
             reorder=new QueueReorderController(rows,list,(id,before)=>queue.MoveBefore(id,before),Error);
             Unloaded+=delegate{reorder.Cancel();};
-            IsVisibleChanged+=delegate{if(!IsVisible)reorder.Cancel();};
+            IsVisibleChanged+=delegate{if(!IsVisible){reorder.Cancel();CloseTrigger();}};
             queueBox=new Border{Child=queueBody,BorderBrush=Ui.Line,BorderThickness=new Thickness(1,1,1,0),CornerRadius=new CornerRadius(14,14,0,0),Margin=new Thickness(10,0,10,-10),Padding=new Thickness(0,0,0,14),Background=Ui.Brush("#FAFBFD")};Children.Add(queueBox);
             var controls=new StackPanel{Orientation=Orientation.Horizontal};record.Margin=new Thickness(0);record.Width=32;record.Height=32;record.MinHeight=32;
             options=UiIcons.Button("down",()=>(TextResources.Get("conversationComposer.conversationComposer.uiIcons")));options.Name="SendOptions";options.Width=22;options.MinWidth=0;options.Margin=new Thickness(0,0,3,0);options.Padding=new Thickness(2);controls.Children.Add(options);
@@ -159,9 +159,8 @@ namespace Dafeiyu
         }
         void BindApprovals()
         {
-            if(approvals!=null){Children.Remove(approvals);approvals.Dispose();}
-            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r));
-            Children.Insert(Children.IndexOf(normalSurface),approvals);
+            if(approvals!=null)approvals.Dispose();
+            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r),host);
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
@@ -274,7 +273,7 @@ namespace Dafeiyu
         {
             var dialog=new Window{Owner=host,WindowStartupLocation=WindowStartupLocation.CenterOwner};LocalizedUi.Window(dialog,()=>(TextResources.Get("conversationComposer.showGoal.window")),470,320);dialog.ResizeMode=ResizeMode.NoResize;
             var body=new StackPanel{Margin=new Thickness(20)};body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text")),18));body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeA")),12,Ui.Muted));var goal=Ui.Field(WorkSettings.AgentGoal,true);goal.Name="AgentGoalInput";goal.MaxLength=4000;goal.Height=115;goal.Margin=new Thickness(0,12,0,12);body.Children.Add(goal);
-            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{pet.SetConversationGoal(session,goal.Text.Trim());dialog.Close();};buttons.Children.Add(save);body.Children.Add(buttons);dialog.Content=body;dialog.ShowDialog();
+            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{pet.SetConversationGoal(session,goal.Text.Trim());dialog.Close();};buttons.Children.Add(save);body.Children.Add(buttons);body.Margin=new Thickness(24);((FrameworkElement)body.Children[0]).Margin=new Thickness(0,0,32,0);DialogUi.Apply(dialog,Ui.Scroll(body));dialog.ShowDialog();
         }
         async System.Threading.Tasks.Task CaptureApplication(ApplicationSnapshotTarget target)
         {
@@ -357,6 +356,9 @@ namespace Dafeiyu
         void RefreshTrigger()
         {
             if(closed || triggerPopup==null)return;
+            // Shared drafts also update hidden composers. Only the focused,
+            // visible editor may own a command popup.
+            if(!host.IsVisible || !input.IsVisible || !input.IsKeyboardFocusWithin){CloseTrigger();return;}
             int caret=input.CaretIndex;if(caret<0)caret=input.Text.Length;
             string before=input.Text.Substring(0,Math.Min(caret,input.Text.Length));
             int start=before.Length;string query="";char kind='\0';

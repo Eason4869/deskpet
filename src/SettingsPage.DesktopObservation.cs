@@ -61,7 +61,7 @@ namespace Dafeiyu
             var confirm=LocalizedUi.Button(()=>TextResources.Get("desktopObservation.confirm"));observationConfirm=confirm;confirm.Name="DesktopObservationConfirm";confirm.IsEnabled=pet.Settings.DesktopObservationEnabled;confirm.Click+=async delegate{if(pet.Settings.DesktopObservationEnabled)await SaveObservationEnabledAsync(true);};actions.Children.Add(confirm);
             details.Children.Add(actions);
             var configureText=new TextBlock{Margin=new Thickness(0,4,0,0)};var configureRun=new Run();LocalizedUi.Set(configureRun,"Text",()=>TextResources.Get("desktopObservation.configure"));var configure=new Hyperlink(configureRun){Foreground=ThemeManager.Brush("#456DE6","#9DBBFF")};configure.Click+=delegate{pet.ShowSettings(true);};configureText.Inlines.Add(configure);details.Children.Add(configureText);
-            var advanced=new Expander{Name="DesktopObservationDetails",Content=details,Margin=new Thickness(0,16,0,0)};LocalizedUi.Set(advanced,"Header",()=>TextResources.Get("desktopObservation.details"));observationGroup.Children.Add(advanced);
+            var advanced=new Expander{Name="DesktopObservationDetails",Content=details,Margin=new Thickness(0,16,0,0)};SettingsSurface.StyleExpander(advanced);LocalizedUi.Set(advanced,"Header",()=>TextResources.Get("desktopObservation.details"));observationGroup.Children.Add(advanced);
             RefreshObservation();return observationGroup;
         }
         async Task SaveObservationScopeAsync(DesktopObservationCaptureScope scope)

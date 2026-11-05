@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using Dafeiyu;
 
@@ -134,7 +134,7 @@ internal sealed partial class DesktopController
                             var result = await officialCompanions.EnsureAsync(requested.OfficialCharacterId, CompanionRouting(), origin == CompanionSelectionOrigin.StartupRestore ? OfficialCompanionCheckMode.AfterApplicationUpdate : OfficialCompanionCheckMode.Cached, progress, cancellation.Token);
                             if (!Owns()) return;
                             var published = await Task.Run(() => ReadPublished(result.Installation, requested.Id), cancellation.Token);
-                            next = published.Skin; nextCatalog = published.Catalog; break;
+                            next = published.Skin; nextCatalog = published.Catalog;if(result.InstalledNow&&origin==CompanionSelectionOrigin.Settings)PlayNotificationCue(NotificationCue.Complete,"download:"+Guid.NewGuid().ToString("N"));break;
                         }
                         catch (OperationCanceledException) { throw; }
                         catch (Exception error) { if (!Owns() || !await progress.RetryAsync(error)) return; }
@@ -206,6 +206,7 @@ internal sealed partial class DesktopController
             var result = await officialCompanions.EnsureAsync(previous.OfficialCharacterId!, CompanionRouting(), mode, progress, cancellation.Token);
             if (exiting || !officialCompanions.OwnsSelection(token) || !ReferenceEquals(Skin, previous)) return;
             var next = await Task.Run(() => ReadPublished(result.Installation, previous.Id), companionLifetime.Token);
+            if(result.InstalledNow&&origin==CompanionSelectionOrigin.Settings)PlayNotificationCue(NotificationCue.Complete,"download:"+Guid.NewGuid().ToString("N"));
             if (next.Skin.SourceKey == previous.SourceKey) return;
             QueueAppearance(next.Skin, next.Catalog, previous, token, order);
         }
@@ -256,7 +257,7 @@ internal sealed partial class DesktopController
     private long companionSelectionGeneration;
     private OfficialCompanionPreparation? preparation;
     internal Func<IProgress<OfficialCompanionProgress>,CancellationToken,Task>? PreparationDownloadOverride;
-    internal OfficialCompanionPreparation OfficialPreparation=>preparation??=new OfficialCompanionPreparation((progress,token)=>PreparationDownloadOverride?.Invoke(progress,token)??PrepareAllOfficialAsync(progress,token),companionLifetime.Token);
+    internal OfficialCompanionPreparation OfficialPreparation=>preparation??=TrackPreparationNotifications(new OfficialCompanionPreparation((progress,token)=>PreparationDownloadOverride?.Invoke(progress,token)??PrepareAllOfficialAsync(progress,token),companionLifetime.Token));
     internal Task DownloadAllOfficialAsync()
     {
         if(ExplainGuideCompanions()||exiting)return Task.CompletedTask;

@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: python tests/MacPackagingTests.py
@@ -47,10 +47,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Author all five complete packages from this source
@@ -66,7 +66,7 @@ jobs:
           python tools/build_official_companions.py --output work/macos-complete-companions --version $version
           if ($LASTEXITCODE) { throw 'Complete companion authoring failed' }
           if (@(Get-ChildItem work/macos-complete-companions/artifacts -File).Count -ne 6) { throw 'Expected five ZIPs and one index' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: macos-complete-companions-${{ github.sha }}
           path: |
@@ -93,13 +93,13 @@ jobs:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       REPORT_ROOT: work/macos-reports-${{ matrix.arch }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: desktop/global.json
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Verify host architecture and SDK
@@ -189,7 +189,7 @@ jobs:
           dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only | tee "$REPORT_ROOT/thin-companions.log"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: macos-complete-companions-${{ github.sha }}
           path: work/macos-complete-companions/artifacts
@@ -227,7 +227,7 @@ jobs:
           PY
       - name: Preserve reports and preview disk image
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: DeskPet-macOS-${{ matrix.arch }}-preview-${{ github.sha }}
           retention-days: 3

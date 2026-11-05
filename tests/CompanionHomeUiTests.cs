@@ -15,6 +15,27 @@ namespace Dafeiyu.Tests
     {
         static Application app;static PetWindow pet;static int checks;
         static void Check(bool ok,string reason){if(!ok)throw new Exception(reason);checks++;Console.WriteLine("PASS "+reason);}
+        static Task<byte[]> ReplaceLedgerAsync(string root,byte[] replacement)
+        {
+            return Task.Run(delegate{
+                var store=new RelationshipStore(root);
+                // Home refreshes and feedback can read outside the runtime worker.
+                // Use their transaction lock before reading or replacing fixture bytes.
+                using(store.Acquire()){var previous=File.ReadAllBytes(store.FilePath);File.WriteAllBytes(store.FilePath,replacement);return previous;}
+            });
+        }
+        static async Task VerifyLedgerFaultInjection(string root)
+        {
+            var store=new RelationshipStore(root);Check(new RelationshipService(store).UpdateSettings(true,true,true).Success,"ledger injection fixture starts from a real saved transaction");
+            byte[] original=File.ReadAllBytes(store.FilePath);Task<byte[]> replacement;
+            using(store.Acquire())using(var reader=new FileStream(store.FilePath,FileMode.Open,FileAccess.Read,FileShare.Read)){
+                bool rejected=false;try{File.WriteAllText(store.FilePath,"{broken");}catch(IOException){rejected=true;}
+                Check(rejected,"unsynchronized ledger injection conflicts with an active real-store reader");
+                replacement=ReplaceLedgerAsync(root,System.Text.Encoding.UTF8.GetBytes("{broken"));
+            }
+            Check((await replacement).SequenceEqual(original)&&File.ReadAllText(store.FilePath)=="{broken","serialized ledger injection preserves original bytes after the reader releases");
+            await ReplaceLedgerAsync(root,original);
+        }
         static async Task SelectCommitted(SkinDefinition skin,Window owner,string reason)
         {
             Check(await pet.RequestSkinAsync(skin,CompanionSelectionOrigin.MainWindow,owner),reason+" request succeeds");
@@ -149,7 +170,7 @@ namespace Dafeiyu.Tests
             HeartIcons();
             var sparseBytes=new byte[40*60*4];sparseBytes[(10*40+12)*4+3]=255;sparseBytes[(49*40+27)*4+3]=255;var sparse=BitmapSource.Create(40,60,96,96,PixelFormats.Bgra32,null,sparseBytes,40*4);var trimmed=CompanionPortraitSource.Trim(sparse);Check(trimmed.PixelWidth==20&&trimmed.PixelHeight==44,"transparent exterior is removed with safe margin around every opaque pixel");Check(CompanionPortraitSource.Trim(BitmapSource.Create(20,20,96,96,PixelFormats.Bgra32,null,new byte[20*20*4],20*4))==null,"fully transparent artwork enters fallback");
             string captures=Path.GetFullPath(Path.Combine("work","relationship-validation","f3","wpf"));Directory.CreateDirectory(captures);
-            string root=Path.Combine(captures,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            string root=Path.Combine(captures,"fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);await VerifyLedgerFaultInjection(root);
             string sourceRoot=Path.Combine(root,"portrait-source");Directory.CreateDirectory(sourceRoot);File.WriteAllText(Path.Combine(sourceRoot,"bad.png"),"broken");var avatarBytes=new byte[64*64*4];for(int y=12;y<52;y++)for(int x=20;x<44;x++){avatarBytes[(y*64+x)*4]=220;avatarBytes[(y*64+x)*4+3]=255;}var ownAvatar=BitmapSource.Create(64,64,96,96,PixelFormats.Bgra32,null,avatarBytes,64*4);var avatarPng=new PngBitmapEncoder();avatarPng.Frames.Add(BitmapFrame.Create(ownAvatar));using(var stream=File.Create(Path.Combine(sourceRoot,"own.png")))avatarPng.Save(stream);
             var damagedSkin=new SkinDefinition("portrait-fixture",sourceRoot,new SkinManifest{Version=2,Name="Imported portrait",Preview="bad.png",Avatar="own.png",CellWidth=480,CellHeight=520,Animations=new System.Collections.Generic.Dictionary<string,IllustratedAnimation>{{"idle",new IllustratedAnimation{File="bad.png",Columns=1,Frames=1}}}});var ownPortrait=CompanionPortraitSource.Load(damagedSkin);Check(ownPortrait.Image!=null&&ownPortrait.Image.PixelWidth<ownPortrait.Image.PixelHeight,"damaged preview and idle fall back to the imported companion own avatar");damagedSkin.Manifest.Avatar="bad.png";var neutralPortrait=CompanionPortraitSource.Load(damagedSkin);Check(neutralPortrait.Image==null,"unreadable artwork produces neutral fallback without borrowing official art");foreach(string fallbackTheme in new[]{"light","dark"}){var fallback=new StackPanel{Width=640,Height=300,Orientation=Orientation.Horizontal};fallback.Children.Add(new CompanionPortraitVisual(ownPortrait,fallbackTheme=="dark"){Width=300,Height=280});fallback.Children.Add(new CompanionPortraitVisual(neutralPortrait,fallbackTheme=="dark"){Width=300,Height=280});fallback.Measure(new Size(640,300));fallback.Arrange(new Rect(0,0,640,300));Capture(fallback,Path.Combine(captures,locale+"-imported-fallback-"+fallbackTheme+".png"));}
 
@@ -253,9 +274,9 @@ namespace Dafeiyu.Tests
             var exp=All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings");exp.IsExpanded=true;await Task.Delay(30);var growth=All<CheckBox>(page).Single(x=>x.Name=="RelationshipGrowthEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(growth,null);await page.PendingSettings;await page.RefreshAsync();page.UpdateLayout();
             Check(!pet.RelationshipService.GetSnapshot(pet.RelationshipCompanionId).Settings.GrowthEnabled,"growth checkbox persists shared global settings");
             var savedBeforeZero=page.View;var zeroSkin=pet.Catalog.Skins.First(x=>!x.IsPlaceholder&&x.PickerKey!=originalSkin.PickerKey&&x.PickerKey!=otherSkin.PickerKey);Check(pet.SelectSkin(zeroSkin),"unmet companion selects while growth is off");chat.ShowCompanionPage();await pet.Relationships.FlushAsync();await page.RefreshAsync();page.UpdateLayout();Check(page.View.Snapshot.State==null&&page.View.Progress.Score==0,"unmet companion shows true empty zero state without invented dates");Check(!All<TextBlock>(page).Any(x=>x.Name=="CompanionCurrentWelcome"),"uninitialized ledger never synthesizes first-meeting welcome");typeof(CompanionHomePage).GetProperty("View").SetValue(page,savedBeforeZero,null);ThemeManager.Apply(ThemeManager.IsDark?"light":"dark");page.UpdateLayout();Check(All<TextBlock>(page).Single(x=>x.Name=="CompanionRelationshipScore").Text==RelationshipProgress.FromScore(0).ScoreText,"normal home suite rejects stale high facts during fresh-owner theme refresh");await page.RefreshAsync();page.UpdateLayout();foreach(string zeroTheme in new[]{"light","dark"}){ThemeManager.Apply(zeroTheme);await Task.Delay(40);Capture(chat,Path.Combine(captures,locale+"-zero-"+zeroTheme+".png"));}await SelectCommitted(originalSkin,chat,"later original companion restore");chat.ShowCompanionPage();await pet.Relationships.FlushAsync();await page.RefreshAsync();page.UpdateLayout();Check(page.View.CompanionId==originalId,"zero-state return settles original identity");
-            page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();string file=Path.Combine(root,"relationships","state.json");byte[] original=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");var feedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(feedback,null);await page.PendingSettings;await page.RefreshAsync();page.UpdateLayout();Check(All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled").IsChecked==true&&File.ReadAllText(file)=="{broken","failed settings save retains committed checkbox and original bytes");
+            page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();string file=Path.Combine(root,"relationships","state.json");byte[] original=await ReplaceLedgerAsync(root,System.Text.Encoding.UTF8.GetBytes("{broken"));var feedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(feedback,null);await page.PendingSettings;await page.RefreshAsync();page.UpdateLayout();Check(All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled").IsChecked==true&&File.ReadAllText(file)=="{broken","failed settings save retains committed checkbox and original bytes");
             Check(page.View.ReadFailed&&page.View.Snapshot.State.Score==156&&All<TextBlock>(page).Any(x=>x.Name=="RelationshipWarning"&&x.Visibility==Visibility.Visible),"corrupt ledger preserves saved view and shows retry warning");
-            Capture(chat,Path.Combine(captures,locale+"-read-failure.png"));File.WriteAllBytes(file,original);await page.RefreshAsync();page.UpdateLayout();
+            Capture(chat,Path.Combine(captures,locale+"-read-failure.png"));await ReplaceLedgerAsync(root,original);await page.RefreshAsync();page.UpdateLayout();
             var context=All<CheckBox>(page).Single(x=>x.Name=="RelationshipAiContextEnabled");var priorSave=page.PendingSettings;
             using(var lease=new FileStream(Path.Combine(root,"relationships",".transaction.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)){
                 Click(Button(page,"RelationshipRetry"));
@@ -276,12 +297,12 @@ namespace Dafeiyu.Tests
             // separately verify the real deadline and that SetInteraction cannot renew it.
             ((System.Windows.Threading.DispatcherTimer)typeof(RelationshipFeedbackWindow).GetField("lifetime",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(savedNotice)).Stop();
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-capture-observation");await CaptureFeedback(savedNotice,captures,locale,"gain");await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
-            byte[] settingsBytes=File.ReadAllBytes(file);File.WriteAllText(file,"{broken");
+            byte[] settingsBytes=await ReplaceLedgerAsync(root,System.Text.Encoding.UTF8.GetBytes("{broken"));
             await Task.Delay(RelationshipFeedbackPolicy.LifetimeMilliseconds+200);
             // A failed save must preserve this notice even beyond its ordinary deadline.
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-failure-observation");
             var failedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(failedFeedback,null);await page.PendingSettings;
-            Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");File.WriteAllBytes(file,settingsBytes);await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
+            Check(savedNotice.IsVisible,"failed feedback settings save does not dismiss a visible notice");await ReplaceLedgerAsync(root,settingsBytes);await page.RefreshAsync();page.UpdateLayout();All<Expander>(page).Single(x=>x.Name=="CompanionRelationshipSettings").IsExpanded=true;page.UpdateLayout();
             savedNotice.SetInteraction(RelationshipContent.Interaction("first_meeting"),"settings-success-observation");Check(savedNotice.IsVisible,"saved feedback is still visible immediately before disabling it");
             var savedFeedback=All<CheckBox>(page).Single(x=>x.Name=="RelationshipFeedbackEnabled");typeof(CheckBox).GetMethod("OnClick",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(savedFeedback,null);await page.PendingSettings;
             deadline.Restart();while(savedNotice.IsVisible&&deadline.ElapsedMilliseconds<1500)await Task.Delay(10);

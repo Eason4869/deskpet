@@ -13,6 +13,23 @@ namespace Dafeiyu.Tests
 {
     internal static class AgentJobTestSupport
     {
+        internal static string ReadCompletedMarker(string path,int timeoutMilliseconds)
+        {
+            var elapsed=System.Diagnostics.Stopwatch.StartNew();
+            do
+            {
+                try { return File.ReadAllText(path); }
+                catch(FileNotFoundException) { }
+                catch(IOException error)
+                {
+                    // A visible marker can still be open for writing by the child.
+                    if((error.HResult & 0xffff)!=32)throw;
+                }
+                Thread.Sleep(10);
+            } while(elapsed.ElapsedMilliseconds<timeoutMilliseconds);
+            throw new TimeoutException("Timed out reading the completed marker: "+path);
+        }
+
         internal static void DirectoryLink(string path,string target)
         {
             if(Environment.OSVersion.Platform!=PlatformID.Win32NT)
@@ -74,11 +91,11 @@ namespace Dafeiyu.Tests
         }
         internal sealed class ControlledIO : AgentJobStorageIO,IDisposable
         {
-            internal bool FailCommit,HoldWrites,HoldMetadataCommit,HoldIndexCommit;
-            internal string FailAppendFor;
+            internal bool FailCommit=false,HoldWrites=false,HoldMetadataCommit=false,HoldIndexCommit=false;
+            internal string FailAppendFor=null;
             internal long AppendedBytes;
             internal int IndexCommits;
-            internal Action AfterMetadataCommit;
+            internal Action AfterMetadataCommit=null;
             internal readonly ManualResetEventSlim Entered=new ManualResetEventSlim(false),Release=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim IndexSaved=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim CommitEntered=new ManualResetEventSlim(false),CommitRelease=new ManualResetEventSlim(false);

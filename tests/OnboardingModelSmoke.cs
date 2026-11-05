@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -53,7 +53,7 @@ namespace Dafeiyu.Tests
                 Go(guide,"asr.provider");Choose(settings,"AddAsrProvider","xiaomimimo");
                 Check(Find<TextBox>(settings,"TranscriptionModel").IsEnabled && Find<TextBox>(settings,"TranscriptionModel").Text=="mimo-v2.5-asr" && settings.FindControl("FetchAsrModels")==null,"ASR guide allows manufacturer selection and its editable prefilled model without discovery");
                 Find<PasswordBox>(settings,"TranscriptionKey").Password="guide-asr-key";Go(guide,"asr.save");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
-                Check(guide.CurrentLessonId=="asr.operate" && pet.Settings.Transcription.ApiKey=="guide-asr-key" && pet.Settings.Text.ApiKey=="guide-text-key","ASR next saves its independent key without changing the text key");
+                Check(guide.CurrentLessonId=="speech.intro" && pet.Settings.Transcription.ApiKey=="guide-asr-key" && pet.Settings.Text.ApiKey=="guide-text-key","ASR next saves its independent key without changing the text key");
                 Go(guide,"speech.intro");Check(Find<CheckBox>(settings,"UseCloudVoice").IsEnabled,"TTS guide unlocks the moved cloud toggle");
                 Choose(settings,"AddSpeechProvider","xiaomimimo");Find<CheckBox>(settings,"UseCloudVoice").IsChecked=true;Go(guide,"speech.key");Find<PasswordBox>(settings,"SpeechKey").Password="guide-speech-key";
                 Check(Find<ComboBox>(settings,"SpeechVoice").IsEnabled && Find<Slider>(settings,"VoiceVolume").IsEnabled,"TTS guide permits editing voice and volume outside connection fields");
@@ -62,8 +62,8 @@ namespace Dafeiyu.Tests
                 Go(guide,"live.provider");Choose(settings,"AddLiveProvider","gemini");Find<PasswordBox>(settings,"LiveServiceKey").Password="guide-live-key";
                 Check(Find<ComboBox>(settings,"LiveVoice").IsEnabled && Find<TextBox>(settings,"LiveServiceModel").Text=="gemini-3.8-live","Live guide enables the manufacturer, prefilled model and independent voice");
                 Check(!Find<Button>(settings,"PreviewLive").IsEnabled && !pet.LiveActive,"guide blocks the Live test and never connects automatically");
-                Go(guide,"live.save");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");
-                Check(guide.CurrentLessonId=="live.test" && pet.Settings.Live.ApiKey=="guide-live-key" && !pet.LiveActive,"Live next saves only Live configuration without a call");
+                Go(guide,"live.save");Until(()=>Find<Button>(guide,"GuideNext").IsEnabled);Click(guide,"GuideNext");Until(()=>!(bool)Field(guide,"advancing"));
+                Check(guide.CurrentLessonId=="live.test" && pet.Settings.Live.ApiKey=="guide-live-key" && !pet.LiveActive,"Live next saves only Live configuration without a call (lesson="+guide.CurrentLessonId+", keySaved="+(pet.Settings.Live.ApiKey=="guide-live-key")+", active="+pet.LiveActive+")");
                 Click(guide,"GuideBack");Check(!Find<Button>(settings,"PreviewLive").IsEnabled,"returning to Live keeps its test guarded during the guide");
                 Click(guide,"GuideSkip");Check(Find<Button>(settings,"PreviewLive").IsEnabled && Find<Button>(settings,"SaveConnections").IsEnabled,"leaving the guide restores page tests and global save");
                 CheckManualFallback(pet,folder);
@@ -72,7 +72,7 @@ namespace Dafeiyu.Tests
             catch(Exception e){Console.WriteLine("FAIL onboarding models: "+e);return 1;}
             finally{if(pet!=null)pet.Close();Pump();app.Shutdown();}
         }
-        static void Go(OnboardingWindow guide,string id){typeof(OnboardingWindow).GetField("index",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==id));typeof(OnboardingWindow).GetMethod("Navigate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(guide,null);Pump();}
+        static void Go(OnboardingWindow guide,string id){typeof(OnboardingWindow).GetField("index",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(guide,Array.FindIndex(OnboardingLessons.All,l=>l.Id==OnboardingLessons.ResolveLessonId(id)));typeof(OnboardingWindow).GetMethod("Navigate",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(guide,null);Pump();}
         static void CheckManualFallback(PetWindow pet,string folder)
         {
             pet.Settings.OnboardingState="deferred";pet.Settings.OnboardingStep=8;pet.Settings.OnboardingLessonId="text.save";pet.ShowOnboarding();Pump();

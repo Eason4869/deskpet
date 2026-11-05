@@ -72,10 +72,10 @@ namespace Dafeiyu.Tests
                 typeof(TextProviderEditor).GetMethod("RemoveModel",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(removal,null);
                 Check(Field(removal,"modelForm")==null&&removal.ReadProviders().Single().Models.Count==0,"remove model works before model dialog is ever opened");
                 page=new SettingsPage(pet);host=new Window{Content=page,Width=1030,Height=760};host.Show();Render(host);
-                foreach(string field in new[]{"connections","aiConfiguration","work","quiet","about","imChannels"})Check(Field(page,field)==null,"unvisited settings do not construct "+field);
+                foreach(string field in new[]{"connections","aiConfiguration","work","quiet","about","conversationSettings","toolsSettings"})Check(Field(page,field)==null,"unvisited settings do not construct "+field);
                 Check(!page.HasUnsavedEdits&&!page.HasUnsavedWorkEdits,"dirty queries do not instantiate settings pages");
                 page.RefreshTextProviders();page.RefreshState();page.CanChangeWorkSettingsProject(null);
-                foreach(string field in new[]{"connections","work","quiet","about","imChannels"})Check(Field(page,field)==null,"background refresh does not construct "+field);
+                foreach(string field in new[]{"connections","work","quiet","about","conversationSettings","toolsSettings"})Check(Field(page,field)==null,"background refresh does not construct "+field);
                 page.SelectAiSection(0);Render(host);var ai=Field(page,"connections");
                 Check(Field(Field(ai,"text"),"modelForm")==null,"unopened model dialog allocates no form controls");
                 var validSettings=new PetSettings{Text=new ConnectionSettings{BaseUrl="http://127.0.0.1:18999/v1",Model="offline-fixture"}};
@@ -107,9 +107,9 @@ namespace Dafeiyu.Tests
                 page.SelectNavigation(0);page.RefreshState();page.SelectWorkSettings();Render(host);
                 Check(ReferenceEquals(work,Field(page,"work"))&&goal.Text=="local unsaved work","work page is reused and unsaved edits survive activation");
                 page.SelectGeneralSection(2);Render(host);Check(page.FindControl("ClearAllHistory")!=null,"direct general deep link materializes its page");
-                page.SelectNavigation(5);Render(host);var channels=Field(page,"imChannels");var channelName=(TextBox)page.FindControl("ImChannelName");channelName.Text="local unsaved channel";
+                page.SelectNavigation(5);Render(host);var channels=Field(Field(page,"toolsSettings"),"channels");var channelName=(TextBox)page.FindControl("ImChannelName");channelName.Text="local unsaved channel";
                 page.SelectNavigation(0);page.SelectNavigation(5);Render(host);
-                Check(ReferenceEquals(channels,Field(page,"imChannels"))&&channelName.Text=="local unsaved channel","channel draft and controls survive navigation");
+                Check(ReferenceEquals(channels,Field(Field(page,"toolsSettings"),"channels"))&&channelName.Text=="local unsaved channel","channel draft and controls survive navigation");
                 page.SelectNavigation(4);Render(host);Check(Field(page,"about")!=null,"about page materializes on demand");
                 page.Dispose();page.Dispose();Check(true,"disposing all visited pages is idempotent");
                 using(var direct=new SettingsPage(pet)){direct.SelectAiSection(4);var editor=Field(direct,"connections");Check(Field(editor,"images")!=null&&Field(editor,"text")==null,"direct image route does not construct text editor first");}

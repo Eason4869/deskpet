@@ -38,7 +38,7 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
         if (choice == null) return new TextBlock();
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("40,*"), Name = "HolidayWardrobeItem" };
         Control thumbnail = choice.Outfit != null && choice.Skin != null
-            ? new HolidayOutfitThumbnail(avatars, choice.Skin, choice.Outfit) { Name = "HolidayOutfitThumbnail", Width = 32, Height = 32 }
+            ? new HolidayOutfitThumbnail(avatars, choice.Outfit) { Name = "HolidayOutfitThumbnail", Width = 32, Height = 32 }
             : choice.Skin != null ? new AvatarView { Assets = avatars, Skin = choice.Skin, Name = "HolidayDefaultThumbnail" }
             : new Border { Name = "HolidayDefaultThumbnail", Width = 32, Height = 32, CornerRadius = new CornerRadius(6), Background = DesktopTheme.Brush("#F2F3F5") };
         var label = new TextBlock { Text = choice.Label, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
@@ -81,7 +81,7 @@ internal sealed class HolidayOutfitPanel : StackPanel, IDisposable
     }
 }
 
-internal sealed class HolidayOutfitThumbnail(SpriteAssets assets, PetSkin skin, OutfitDefinition outfit) : Control
+internal sealed class HolidayOutfitThumbnail(SpriteAssets assets, OutfitDefinition outfit) : Control
 {
     public override void Render(DrawingContext context)
     {

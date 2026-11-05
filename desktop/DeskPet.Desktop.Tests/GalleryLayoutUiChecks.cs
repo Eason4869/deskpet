@@ -95,7 +95,7 @@ internal static class GalleryLayoutUiChecks
         var details = window.OwnedWindows.Single(w => w.Name == "GeneratedImagePreviewWindow");
         Check(details.GetLogicalDescendants().OfType<SelectableTextBlock>().Any(t => t.Name == "GalleryDetailPrompt" && t.Text!.StartsWith("layout fixture")) && details.GetLogicalDescendants().OfType<Button>().Any(b => b.Content as string == "打开目录"), "clicking tile opens large preview with prompt metadata and image actions");
         var viewport = details.GetLogicalDescendants().OfType<Border>().Single(b => b.Name == "ImagePreviewViewport"); Check(((Image)viewport.Child!).Width > 100, "details image fits measured viewport after window opens");
-        Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "artifacts")); using (var screenshot = details.CaptureRenderedFrame()) screenshot!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "image-gallery-details.png")); details.Close();
+        Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "artifacts")); using (var screenshot = details.CaptureRenderedFrame()) screenshot!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "image-gallery-details.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); details.Close();
         var artifacts = Path.Combine(AppContext.BaseDirectory, "artifacts"); Directory.CreateDirectory(artifacts);
         foreach (var mode in new[] { "masonry", "grid" })
         {
@@ -122,7 +122,7 @@ internal static class GalleryLayoutUiChecks
                         Check(label.Bounds.Width + .5 >= text.Width && presenter.Bounds.Width + .5 >= optionText.Width, "complete dropdown text fits its actual presenter: " + option + " label=" + label.Bounds.Width + " presenter=" + presenter.Bounds.Width + " required=" + optionText.Width);
                     }
                 }
-                screenshot!.Save(Path.Combine(artifacts, "image-gallery-" + mode + "-" + width + "-" + theme + ".png"));
+                screenshot!.Save(Path.Combine(artifacts, "image-gallery-" + mode + "-" + width + "-" + theme + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
             }
         }
         Click("GalleryMasonryLayout"); Render();
@@ -156,7 +156,7 @@ internal static class GalleryLayoutUiChecks
         var selectable = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single(); var selectedId = owner.ImageStore.List().Single(i => i.Prompt == "layout fixture 42").Id;
         var pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); var overlayClock = System.Diagnostics.Stopwatch.StartNew(); while (overlayClock.ElapsedMilliseconds < 5000 && pick.Opacity != 1) { Thread.Sleep(10); Render(); selectable = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single(); pick = selectable.GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileSelect"); } Check(pick.Focusable && pick.Opacity == 1, "multi-select exposes keyboard focusable selection overlay");
         int windowsBefore = window.OwnedWindows.Count; pick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); var selectedClock = System.Diagnostics.Stopwatch.StartNew(); while (selectedClock.ElapsedMilliseconds < 5000 && page.GallerySelectedCount != 1) { Thread.Sleep(10); Render(); } Check(window.OwnedWindows.Count == windowsBefore && page.GallerySelectedCount == 1, "selection click changes stable ID without opening details");
-        Render(); using (var selectedShot = window.CaptureRenderedFrame()) selectedShot!.Save(Path.Combine(artifacts, "image-gallery-selected-dark.png"));
+        Render(); using (var selectedShot = window.CaptureRenderedFrame()) selectedShot!.Save(Path.Combine(artifacts, "image-gallery-selected-dark.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
         var star = page.GalleryPanel.Children.OfType<GeneratedImageCard>().Single().GetLogicalDescendants().OfType<Button>().Single(b => b.Name == "GalleryTileFavorite");
         var emptyHeart = (Avalonia.Controls.Shapes.Path)star.Content!; var heartSize = emptyHeart.Bounds.Size;
         Check(((ISolidColorBrush)emptyHeart.Fill!).Color.A == 0, "uncollected image uses an outline heart");
@@ -172,7 +172,7 @@ internal static class GalleryLayoutUiChecks
             Thread.Sleep(10);
         }
         Check(owner.ImageStore.Get(selectedId).IsFavorite && window.OwnedWindows.Count == windowsBefore && filledHeart?.Fill is ISolidColorBrush filled && filled.Color.A > 0 && filledHeart.Bounds.Size == heartSize, "favorite fills the heart without changing its rendered size or opening details");
-        owner.ImageStore.MoveToTrash(new[] { selectedId }); var trashView = Menu("GalleryTrashView"); trashView.IsChecked = true; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); var trashClock = System.Diagnostics.Stopwatch.StartNew(); while (trashClock.ElapsedMilliseconds < 5000 && !Menu("GalleryClearTrash").IsVisible) { Thread.Sleep(10); Render(); } Check(Menu("GalleryClearTrash").IsVisible, "trash exposes reference-protected clear action"); using (var trashShot = window.CaptureRenderedFrame()) trashShot!.Save(Path.Combine(artifacts, "image-gallery-trash-dark.png")); owner.ImageStore.Restore(new[] { selectedId }); trashView.IsChecked = false; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        owner.ImageStore.MoveToTrash(new[] { selectedId }); var trashView = Menu("GalleryTrashView"); trashView.IsChecked = true; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); var trashClock = System.Diagnostics.Stopwatch.StartNew(); while (trashClock.ElapsedMilliseconds < 5000 && !Menu("GalleryClearTrash").IsVisible) { Thread.Sleep(10); Render(); } Check(Menu("GalleryClearTrash").IsVisible, "trash exposes reference-protected clear action"); using (var trashShot = window.CaptureRenderedFrame()) trashShot!.Save(Path.Combine(artifacts, "image-gallery-trash-dark.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); owner.ImageStore.Restore(new[] { selectedId }); trashView.IsChecked = false; trashView.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         page.Search.Text = "no image matches"; Render(); Check(page.GallerySelectedCount == 0, "filter clears loaded selection");
         page.Search.Text = ""; DesktopTheme.Apply(owner.Settings.ThemeMode); window.Width = 880; Render(); return checks;
     }
@@ -188,6 +188,6 @@ internal static class GalleryLayoutUiChecks
                 Marshal.Copy(row, 0, pixels.Address + y * pixels.RowBytes, row.Length);
             }
         }
-        using var output = new MemoryStream(); bitmap.Save(output); return output.ToArray();
+        using var output = new MemoryStream(); bitmap.Save(output, new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); return output.ToArray();
     }
 }

@@ -27,7 +27,9 @@ internal static class AgentJobNativeUiChecks
         {
             Check(window.TryGetPlatformHandle()?.HandleDescriptor=="HWND","task panel uses an actual native Avalonia Windows window");
             var watch=Stopwatch.StartNew();var job=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-preview",command);Check(watch.ElapsedMilliseconds<2000,"native server task hands off within two seconds");
-            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");}
+            // A fresh Windows PowerShell can initialize slowly on a cold runner.
+            // This fixture readiness budget is separate from the two-second handoff/exit checks.
+            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),30000,"native server readiness");}
             catch(TimeoutException error)
             {
                 string diagnostic;
@@ -48,7 +50,7 @@ internal static class AgentJobNativeUiChecks
             var preview=AgentJobUiChecks.All<Button>(panel).Single(button=>button.Name=="AgentJobPreview");Check(ToolTip.GetTip(preview)?.ToString()=="http://127.0.0.1:"+port+"/fixture","native preview candidate removes credentials, query and fragment");
             preview.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await browser.Ready.Task.WaitAsync(TimeSpan.FromSeconds(30));
             Check(File.Exists(requests)&&File.ReadAllText(requests).Contains("GET /fixture HTTP/")&&!File.ReadAllText(requests).Contains("secret"),"explicit Avalonia click loads the fixture body in actual isolated Edge");
-            await browser.CaptureAsync(Path.Combine(output,"native-browser.png"));using(var capture=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96))){capture.Render(window);capture.Save(Path.Combine(output,"native-panel.png"));}
+            await browser.CaptureAsync(Path.Combine(output,"native-browser.png"));using(var capture=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96))){capture.Render(window);capture.Save(Path.Combine(output,"native-panel.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());}
             AgentJobUiChecks.All<Button>(panel).Single(button=>button.Name=="AgentJobStop").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await WaitAsync(()=>owner.WorkBindings.Jobs.Manager.ListForProject(project.Id).Single(value=>value.Id==job.Id).CleanupConfirmed,6000,"native UI stop confirmation");
             var reuse=new TcpListener(IPAddress.Loopback,port);reuse.Start();reuse.Stop();Check(true,"native stop button confirms cleanup and releases the real listening port");
             await WaitAsync(()=>idleConnection.Client.Poll(0,SelectMode.SelectRead)&&idleConnection.Available==0,1000,"native idle preconnection cleanup");Check(true,"native stop closes the owned server's idle preconnection");

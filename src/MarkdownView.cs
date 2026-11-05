@@ -59,6 +59,11 @@ namespace Dafeiyu
             result.FontFamily = inline.FontFamily; result.FontSize = inline.FontSize; result.FontWeight = inline.FontWeight; result.FontStyle = inline.FontStyle; result.FontStretch = inline.FontStretch; return result;
         }
         public MarkdownView()
-        { IsReadOnly = true; IsDocumentEnabled = true; BorderThickness = new Thickness(0); Background = Brushes.Transparent; Foreground = Ui.Ink; Padding = new Thickness(0); VerticalScrollBarVisibility = ScrollBarVisibility.Disabled; HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; ContextMenu = ChatUi.EditorMenu(this, true); }
+        {
+            IsReadOnly = true; IsDocumentEnabled = true; BorderThickness = new Thickness(0); Background = Brushes.Transparent; Foreground = Ui.Ink; Padding = new Thickness(0); VerticalScrollBarVisibility = ScrollBarVisibility.Disabled; HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled; ContextMenu = ChatUi.EditorMenu(this, true);
+            // Focusing a link also asks the inner text scroller to reveal its old
+            // caret. In an auto-sized message that scrolls the whole answer away.
+            RequestBringIntoView += delegate(object sender,RequestBringIntoViewEventArgs e){if(e.TargetObject is ScrollViewer&&System.Windows.Input.Keyboard.FocusedElement is Hyperlink)e.Handled=true;};
+        }
     }
 }

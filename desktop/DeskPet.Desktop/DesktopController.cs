@@ -25,9 +25,7 @@ internal sealed partial class DesktopController : IDisposable
     private bool exiting,exitPrepared;
     private ImageTaskCompletionTracker imageCompletions=null!;
     private Window? imageNotification;
-    private TextBlock? imageNotificationText;
     private string? imageNotificationId;
-    private readonly DispatcherTimer imageNoticeTimer=new(){Interval=TimeSpan.FromSeconds(8)};
     private readonly bool showAutomaticGuide;
     internal bool ShouldShowAutomaticGuide => showAutomaticGuide;
     internal bool IsExiting=>exiting;
@@ -112,14 +110,15 @@ internal sealed partial class DesktopController : IDisposable
         ImageTasks = new ImageGenerationTaskManager(new ImageGenerationTaskStore(DataDirectory), ImageStore, ImageClient, ImageUsage,DataMaintenance);
         ImageTasks.RestoreAsync(CancellationToken.None).GetAwaiter().GetResult();
         ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;
-        imageCompletions=new ImageTaskCompletionTracker(ImageTasks.List());ImageTasks.Changed+=ImageTaskCompleted;imageNoticeTimer.Tick+=(_,_)=>{imageNoticeTimer.Stop();imageNotification?.Hide();};
+        imageCompletions=new ImageTaskCompletionTracker(ImageTasks.List());ImageTasks.Changed+=ImageTaskCompleted;
         Session.ImageStore = ImageStore; Session.ImageClient = ImageClient; Session.ImageTasks = ImageTasks; Session.ImageUsage = ImageUsage;
         ImageManagement = new ImageAssetManagementService(ImageStore, ImageUsage, new ImageAssetReferenceResolver(DataDirectory, ImageStore, ImageTasks));
         Session.QuestionProvider = Questions;
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings,DataMaintenance);
         Session.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);
-        Queue = new ConversationQueue(Session, () => WorkBindings.RootSettings(Session.PersonaId), () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
+        // The queue evaluates this callback after WorkBindings has been initialized below.
+        Queue = new ConversationQueue(Session, () => WorkBindings!.RootSettings(Session.PersonaId), () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
         Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput,DataMaintenance);
         Live.RelationshipCompanion=()=>RelationshipCompanionId;
         Live.LogicalTurnCommitted += turn =>
@@ -130,10 +129,10 @@ internal sealed partial class DesktopController : IDisposable
         };
         Session.StateChanged += Notify; Session.MessageAdded += _ => Notify(); Session.MessageUpdated += _ => Notify(); Session.HistoryChanged += Notify;
         Queue.Changed += Notify; Live.StateChanged += Notify; Dictation.Changed += Notify;
-        Questions.Changed += Notify;
+        Questions.Changed += Notify;Questions.Changed+=NotificationQuestionsChanged;
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
-        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());
+        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());ObserveNotificationSession(Session);
         relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
@@ -159,23 +158,15 @@ internal sealed partial class DesktopController : IDisposable
     private void ImageTaskCompleted(ImageGenerationTaskSnapshot task)
     {
         if(!imageCompletions.Observe(task))return;
-        Dispatcher.UIThread.Post(()=>
-        {
+        Dispatcher.UIThread.Post(()=>{
             if(exiting)return;imageNotificationId=task.Id;
-            if(imageNotification==null)
-            {
-                imageNotificationText=Ui.Text("");
-                imageNotification=LocalizedUi.Window(()=>(TextResources.Get("desktopController.imageTaskCompleted.window")),Ui.Column(imageNotificationText,Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("desktopController.imageTaskCompleted.text")),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}}),LocalizedUi.Button(()=>(TextResources.Get("common.close")),()=>{imageNotification?.Hide();imageNoticeTimer.Stop();}))),400,230);
-                imageNotification.Name="ImageTaskCompletionNotification";imageNotification.ShowActivated=false;imageNotification.ShowInTaskbar=false;
-                imageNotification.Closed+=(_,_)=>{imageNotification=null;imageNoticeTimer.Stop();};
-            }
-            imageNotificationText!.Text=TextResources.Format("desktopController.imageTaskCompleted.imageNotificationTextImageGenerationMotion",ImageGenerationMotion.Label(task));
-            imageNotification.Show();imageNoticeTimer.Stop();imageNoticeTimer.Start();
+            imageNotification=ShowTrayNotification(()=>TextResources.Get("desktopController.imageTaskCompleted.window"),()=>TextResources.Format("desktopController.imageTaskCompleted.imageNotificationTextImageGenerationMotion",ImageGenerationMotion.Label(task)),()=>TextResources.Get("desktopController.imageTaskCompleted.text"),()=>{if(imageNotificationId!=null){ShowChat(false);fullChat!.ShowImageTask(imageNotificationId);}},"ImageTaskCompletionNotification");
+            if(task.State==ImageGenerationTaskState.Succeeded)PlayNotificationCue(NotificationCue.Complete,"image:"+task.Id);else if(task.State is ImageGenerationTaskState.Failed or ImageGenerationTaskState.Interrupted)PlayNotificationCue(NotificationCue.Failure,"image:"+task.Id);
         });
     }
     internal void NotifyWorkChanged()=>Notify();
     internal ChatWindow? WorkApprovalHost(string session)=>chatHosts.FirstOrDefault(host=>host.IsVisible&&host.QuestionSessionId==session);
-    private void Notify() {Observation.Invalidate(false);Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });}
+    private void Notify() {RefreshNotificationSounds();if(Settings.QuietMode){StopNotificationSounds();Dispatcher.UIThread.Post(()=>trayNotification?.Close());}RefreshProactiveGreetingSpeech();Observation.Invalidate(false);Dispatcher.UIThread.Post(() => { ApplyPendingCompanionAppearance(); Changed?.Invoke(); });}
     bool deferredSettingsSave;
     internal void SaveProviderDraft(string kind,ServiceProviderSettings view,ModelReference? imageModel,bool imageChanged,bool providerChanged)
     {
@@ -188,6 +179,10 @@ internal sealed partial class DesktopController : IDisposable
             if(providerChanged)Settings.ApplyProviders(kind,view.Providers.Select(p=>p.Copy()).ToList(),selected.Id,selected.Connection.Copy());
             if(imageChanged)Settings.ImageDescriptionModel=imageModel?.Copy();Observation.Policy.RefreshConfiguration(previousObservationSettings,Settings);if(kind=="text"&&(providerChanged||imageChanged))ObservationReason=ObservationReason.Allowed;deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency;Notify();
         }
+    }
+    internal void SaveWebSearchDraft(WebSearchSettings search)
+    {
+        using(DataMaintenance.EnterActivity()){var draft=Settings.Copy();draft.WebSearch=search.Copy();store.Save(draft);Settings.WebSearch=search.Copy();Notify();}
     }
     public void Save() { Observation.Invalidate();if(DataMaintenance.IsMaintenanceActive||observationSaving){deferredSettingsSave=true;return;}store.Save(Settings);deferredSettingsSave=false;ImageTasks.Concurrency=Settings.ImageGenerationConcurrency; Notify(); }
     internal async Task<string> FlushDeferredSettingsAsync()
@@ -309,7 +304,7 @@ internal sealed partial class DesktopController : IDisposable
     private void ShutdownRequested(object? sender,ShutdownRequestedEventArgs args) { if(exitPrepared)return;args.Cancel=true;if(!exiting)Run(ExitAsync); }
     public async Task ExitAsync()
     {
-        if (exiting) return; Observation.Invalidate();using var admission=DataMaintenance.EnterActivity();exiting = true;foreach(var host in chatHosts)host.FreezeForExit();
+        if (exiting) return; Observation.Invalidate();using var admission=DataMaintenance.EnterActivity();exiting = true;StopNotificationSounds();StopProactiveGreetingSpeech();foreach(var host in chatHosts)host.FreezeForExit();
         try
         {
             using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -352,7 +347,7 @@ internal sealed partial class DesktopController : IDisposable
         relationshipFeedback.Dispose();relationshipNotice?.Close();
         companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
-        CloseAgentJobViews();imageNoticeTimer.Stop();
+        CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();
         proactiveHistory?.Close();
         imageNotification?.Close();
         ImageTasks.Changed-=ImageTaskCompleted;

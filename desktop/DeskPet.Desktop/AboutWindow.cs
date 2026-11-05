@@ -56,6 +56,7 @@ internal sealed class AboutWindow : Window
         repository.TextChanged += (_, _) => { releaseDownload = null; download.IsEnabled = false; };
         var cache=LocalizedUi.Button(()=>(TextResources.Get("cache.title")),()=>{_ = new CacheMaintenanceWindow(owner.DataDirectory).ShowDialog(this);});cache.Name="ClearCache";
         Content = new Border { Padding = new Thickness(24), Child = Ui.Column(LocalizedUi.Text(()=>(TextResources.Format("aboutWindow.aboutWindow.template",ReleaseInfo.DisplayVersion)), 24), LocalizedUi.Text(()=>(TextResources.Get("aboutWindow.aboutWindow.text"))), LocalizedUi.Field(()=>(TextResources.Get("aboutWindow.aboutWindow.field")), repository), LocalizedUi.AsyncButton(()=>(TextResources.Get("aboutWindow.aboutWindow.asyncButton.alternativeA")), CheckAsync, owner.Error), download, notice, LocalizedUi.Text(()=>(TextResources.Get("aboutWindow.aboutWindow.text.alternativeA"))), Ui.Row(cache,LocalizedUi.Button(()=>(TextResources.Get("common.close")), Close))) };
+        var dialogBody=(Border)Content!;Content=null;if(dialogBody.Child is StackPanel panel&&panel.Children.Count>0)panel.Children[0].Margin=new Thickness(0,0,32,0);DialogUi.Apply(this,dialogBody);
         Closed += (_, _) => { cancel.Cancel(); cancel.Dispose(); };
     }
     private async Task CheckAsync()

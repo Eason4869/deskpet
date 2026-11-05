@@ -57,7 +57,7 @@ internal static class LanguageUiChecks
             Check(String.IsNullOrEmpty(owner.Session.LastNotice),mode+" selection explains the restart requirement");Select(pending,code);menu.Close();chat.Close();
             var settings=new SettingsWindow(owner);settings.Show();Dispatcher.UIThread.RunJobs();
             var navigation=settings.GetLogicalDescendants().OfType<ListBox>().Single(x=>x.Name=="SettingsNavigation");
-            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==TextResources.Get("settingsWindow.settingsWindow.text.alternativeE")));
+            var work=navigation.ItemsSource!.Cast<ListBoxItem>().Single(x=>x.GetLogicalDescendants().OfType<TextBlock>().Any(t=>t.Text==TextResources.Get("settingsLayout.workTitle")));
             Check(work!=null,mode+" settings use the selected language");
             navigation.SelectedItem=work;Dispatcher.UIThread.RunJobs();
             Check(settings.GetLogicalDescendants().Any(x=>x.GetType().Name=="WorkSettingsView"),mode+" translated work navigation displays work settings");

@@ -11,6 +11,7 @@ namespace Dafeiyu
         bool runtimeOwnsAnimation,runtimeWasBusy;
         private void ConversationChanged()
         {
+            RefreshProactiveGreetingSpeech();RefreshNotificationSounds();
             if(closing)return;
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(ConversationChanged));return;}
             bool busy=DialogueBusy;

@@ -24,9 +24,8 @@ internal sealed partial class DesktopController
         {
             if(exiting)return;string text=TextResources.Format("agent.jobs.ui.finishedNotice",job.Spec.Title,AgentJobUiText.State(job.State));
             var source=WorkBindings.Manager.OpenWorkspaces.FirstOrDefault(workspace=>workspace.Id==job.Owner.ConversationId&&workspace.ProjectId==job.Owner.ProjectId);source?.Session.ReportNotice(text);
-            agentJobNotice?.Close();var notice=LocalizedUi.Window(()=>(TextResources.Get("agent.jobs.ui.title")),new Border(),420,240);notice.Name="AgentJobCompletionNotification";notice.ShowActivated=false;
-            notice.Content=Ui.Column(Ui.Text(text),Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("agent.jobs.ui.openLog")),()=>{notice.Close();ShowAgentJobs(job.Owner.ProjectId,job.Owner.ConversationId);}),LocalizedUi.Button(()=>(TextResources.Get("common.close")),notice.Close)));
-            agentJobNotice=notice;notice.Closed+=(_,_)=>{if(ReferenceEquals(agentJobNotice,notice))agentJobNotice=null;};notice.Show();
+            agentJobNotice=ShowTrayNotification(()=>TextResources.Get("agent.jobs.ui.title"),()=>TextResources.Format("agent.jobs.ui.finishedNotice",job.Spec.Title,AgentJobUiText.State(job.State)),()=>TextResources.Get("agent.jobs.ui.openLog"),()=>ShowAgentJobs(job.Owner.ProjectId,job.Owner.ConversationId));
+            if(job.State==AgentJobState.Succeeded)PlayNotificationCue(NotificationCue.Complete,"job:"+job.Id);else if(job.State!=AgentJobState.Stopped)PlayNotificationCue(NotificationCue.Failure,"job:"+job.Id);
         });
     }
     private void CloseAgentJobViews()
