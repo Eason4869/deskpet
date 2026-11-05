@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protectedBaseCommit": "fde04835ffce544c334205d881a232c579ded4df",
-  "resourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173",
+  "resourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
   "translationMethod": "mixed-assistant-and-google-translate",
   "nativeHumanReview": "not_performed",
   "technicalReview": "pending_parent_review",
@@ -49,7 +49,7 @@
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "7357415e49adf271f5f0aa5ad0e83e260ac0feb3e1410115300dbfc37f444887",
+          "contextHash": "d84368d5caee64fc992157a43e9623f34fe18ad24ab87adc0cef1ebc38ddc444",
           "count": 1
         }
       ],
@@ -112,12 +112,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "a0bec40f09db4c6364ffb1ee94b442f9ddde59ab5f340460770d0bf9d0ba9974",
+          "contextHash": "8a2cffcc5a061335b794401e023ca7a9a192bf7fb0780a836840ff99a9986993",
           "count": 1
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "36e825a4c696b3aa0f451520a2ee70cd4ac8bf05db6dcbe8e405fe97009dcbe4",
+          "contextHash": "fef33b9cf2d110b93d44cf42c66bdfc0ed2a493637d2d81eea683229d2cb84bb",
           "count": 1
         }
       ],
@@ -209,12 +209,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "a0bec40f09db4c6364ffb1ee94b442f9ddde59ab5f340460770d0bf9d0ba9974",
+          "contextHash": "8a2cffcc5a061335b794401e023ca7a9a192bf7fb0780a836840ff99a9986993",
           "count": 1
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "36e825a4c696b3aa0f451520a2ee70cd4ac8bf05db6dcbe8e405fe97009dcbe4",
+          "contextHash": "fef33b9cf2d110b93d44cf42c66bdfc0ed2a493637d2d81eea683229d2cb84bb",
           "count": 1
         },
         {
@@ -271,12 +271,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "d8b73d0a85acc95b594dbec318cc6848949e6f48928b1c2e773640fd542d2620",
+          "contextHash": "3e01d19592214e603f6b9b6b4544af92c204e9cf438f525bbb3fadcb86e300d3",
           "count": 1
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "93f3ca980820d92dc171256ffc43fbda1d02279061e7d46d0cd0c0a9d9bdebca",
+          "contextHash": "f0137c0463f534cc33be79df3cae1d9df05817aca5747c2ae04c9c4f7e9db972",
           "count": 1
         }
       ],
@@ -441,12 +441,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "dda12b29ce0d184b464671459106cd8499df6dd2d636a095ac93cc0d3bd3bba5",
+          "contextHash": "da709633dc5a68f869feefce76222d7058c243ecd4646134cd7ed85d6526889f",
           "count": 1
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "84bb18867b4ce216780bc560d8d1e4fcba2de270d80a47e7e7569a15c31ebff7",
+          "contextHash": "717fc6adb307223012dc78f0c2ee77f11447f29f21caa0ee982209d95be014ed",
           "count": 1
         }
       ],
@@ -480,7 +480,12 @@
         },
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "cdad5e1718beabcd477df598ad75a7243aa90b83a4c68ad31e2685874c48d574",
+          "contextHash": "47312ce5d47b41aeaa70f5c5ca67ba30b7c86c3de6297d280bd910a17a916ca1",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
+          "contextHash": "70dedc330c8c2708bc830470a02ffd84748ea07101b237b9541ec11b8502fd08",
           "count": 1
         },
         {
@@ -500,7 +505,12 @@
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "aea3146b566a7a734448c502021a3f02b0b8ce2fec3d78b93917448c879aac62",
+          "contextHash": "ead737d3b20474e50dc8ddf336e0bfa9402e05087df3b1481fb762446338671c",
+          "count": 1
+        },
+        {
+          "file": "src/CacheMaintenanceWindow.cs",
+          "contextHash": "fee6e2b3cbeceeb9ebe3a0facebbf0232b660d0b348366e19d6ab823b2b22950",
           "count": 1
         },
         {
@@ -578,12 +588,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
-          "contextHash": "a0bec40f09db4c6364ffb1ee94b442f9ddde59ab5f340460770d0bf9d0ba9974",
+          "contextHash": "8a2cffcc5a061335b794401e023ca7a9a192bf7fb0780a836840ff99a9986993",
           "count": 1
         },
         {
           "file": "src/CacheMaintenanceWindow.cs",
-          "contextHash": "36e825a4c696b3aa0f451520a2ee70cd4ac8bf05db6dcbe8e405fe97009dcbe4",
+          "contextHash": "fef33b9cf2d110b93d44cf42c66bdfc0ed2a493637d2d81eea683229d2cb84bb",
           "count": 1
         }
       ],
@@ -670,12 +680,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/LocalCompanionImportWindow.cs",
-          "contextHash": "33c290a5dda32644f48816a01b4cb2bc62d763cb324843d57659963def466f1c",
+          "contextHash": "8022f30c398fc3882e6395ee5bd29352930231fff42141aea4a6d75245db5799",
           "count": 1
         },
         {
           "file": "src/LocalCompanionImportWindow.cs",
-          "contextHash": "7064257a9bd96c3ce55f769be66442339e84ddf6e7bbbd358f3659bff8b01fbb",
+          "contextHash": "45ae694a93aeb4bd78c85ae2b1e8e89560a9017581921e571c0a033982f13add",
           "count": 1
         }
       ],
@@ -733,12 +743,12 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/LocalCompanionImportWindow.cs",
-          "contextHash": "33c290a5dda32644f48816a01b4cb2bc62d763cb324843d57659963def466f1c",
+          "contextHash": "8022f30c398fc3882e6395ee5bd29352930231fff42141aea4a6d75245db5799",
           "count": 1
         },
         {
           "file": "src/LocalCompanionImportWindow.cs",
-          "contextHash": "7064257a9bd96c3ce55f769be66442339e84ddf6e7bbbd358f3659bff8b01fbb",
+          "contextHash": "45ae694a93aeb4bd78c85ae2b1e8e89560a9017581921e571c0a033982f13add",
           "count": 1
         }
       ],
@@ -1472,7 +1482,7 @@
         },
         {
           "file": "src/DataActionConfirmationWindow.cs",
-          "contextHash": "b9994cc3898dbc8a6767c1824ef814f0a5736405dab5dbd016155e40ce83a6b6",
+          "contextHash": "3237cf6ebd70669a5311a7b384ca88622b947833358f38b4ac52a30a07d85fec",
           "count": 1
         },
         {
@@ -2615,7 +2625,7 @@
         },
         {
           "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "9a573f76cbce20a2a148f6ccc275b60cb8467bf5dc4c35422ae0c1aae016a174",
+          "contextHash": "d752111929b97c0cab300022f00ec461362a765fc362feb58599a459fec847e3",
           "count": 1
         }
       ],
@@ -2672,7 +2682,7 @@
         },
         {
           "file": "src/DesktopObservationConsentWindow.cs",
-          "contextHash": "9a573f76cbce20a2a148f6ccc275b60cb8467bf5dc4c35422ae0c1aae016a174",
+          "contextHash": "d752111929b97c0cab300022f00ec461362a765fc362feb58599a459fec847e3",
           "count": 1
         }
       ],
@@ -3306,7 +3316,7 @@
       "sourceReferences": [
         {
           "file": "desktop/DeskPet.Desktop/DesktopObservationSettingsPanel.cs",
-          "contextHash": "0ca15fcce4ed1f748f7ddb43274be58bf1ea4813b6e93c8939fc83e90ea5a7b9",
+          "contextHash": "65808c74fd9d2ddef09ac10ad25e729f586a7989f5552690c560b2f9071d5a51",
           "count": 1
         }
       ],
@@ -12015,13 +12025,7 @@
       "originKey": "settingsPage.greeting.enabled",
       "originValueSha256": "4f145794d7078d1d6e27a05c6846705f4d308c623099de572ef6d1d44524937f",
       "textSha256": "4f145794d7078d1d6e27a05c6846705f4d308c623099de572ef6d1d44524937f",
-      "sourceReferences": [
-        {
-          "file": "src/SettingsPage.cs",
-          "contextHash": "f8abc87115b8e83bcbb340ddd943db48ba13e03f48c36e0fba879b7889810398",
-          "count": 1
-        }
-      ],
+      "sourceReferences": [],
       "translations": {
         "de_DE": "13dcb1813c54a06ebc4dc376e94105c5a793cf4f06d555b8babd4231ba24b3f9",
         "en_US": "32aa306a1c6d992742363c2a1388572eb2b5509922664dbc4a3aabf2edcd768e",
@@ -12313,7 +12317,7 @@
       "sourceReferences": [
         {
           "file": "src/ShortcutCaptureDialog.cs",
-          "contextHash": "b30063e8843bbcd90335c596cfabeb7e8dff22fc34d94cb5f11540963bb268b4",
+          "contextHash": "b3646445958b25114dcf62362322f028e79bbdafc0ff06156186c942256fe293",
           "count": 1
         }
       ],
@@ -12434,7 +12438,7 @@
         },
         {
           "file": "src/ShortcutCaptureDialog.cs",
-          "contextHash": "b30063e8843bbcd90335c596cfabeb7e8dff22fc34d94cb5f11540963bb268b4",
+          "contextHash": "b3646445958b25114dcf62362322f028e79bbdafc0ff06156186c942256fe293",
           "count": 1
         }
       ],
@@ -14977,6 +14981,11 @@
       "originValueSha256": "11170f7de5293624730772d2096049ebde77114d54ab5ae02ee2a1ae3a76e2b8",
       "textSha256": "11170f7de5293624730772d2096049ebde77114d54ab5ae02ee2a1ae3a76e2b8",
       "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "dd7f1603c8c9d2c132c60bf18997cfc46f09dbae82a8a2bb44bf7a86accbc25f",
+          "count": 1
+        },
         {
           "file": "src/QuietPanel.cs",
           "contextHash": "ed58f869746f0254de865a4e2236db24c221877c34e4a6c3ffc83bbfedcef0f7",
@@ -17568,6 +17577,429 @@
         "zh_CN": "52f334e682dcf810e0579265943414d5171e0e7091215d9322e99a1625ea0c8a",
         "zh_TW": "b0e4e3e881c519f90e685d6a3d3aa2b23be935f799073f8c30ce65acad329a67"
       }
+    },
+    {
+      "key": "cache.empty",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "cache.empty",
+      "originValueSha256": "693c18c7c6d3fcdeb9878f897aa2bdc44ae74009ba436bca2198554178e67eec",
+      "textSha256": "693c18c7c6d3fcdeb9878f897aa2bdc44ae74009ba436bca2198554178e67eec",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        },
+        {
+          "file": "src/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "367aaf9eac9cf4920d877868e0229b0c3b738b97e9720f3ef0a27cadb9ab6d28",
+        "en_US": "571658f3174a3cad3d84595ec8a7ea7b8c425025df22c7bfc74698255e2f8a85",
+        "es_419": "58cd06997a69635986bbf1ea64c715839037dc7ab1e828128aee1e3db07e3fb3",
+        "es_ES": "58cd06997a69635986bbf1ea64c715839037dc7ab1e828128aee1e3db07e3fb3",
+        "fr_FR": "e1054da3136471ec83b96383991da4a09fd17e79a88165f20617ea7585dd2884",
+        "hi_IN": "be4ba4861fab3d574e1300c4b37dc8c4f9850835f414b6860a18df4992bf75f4",
+        "id_ID": "68ee03d0922d2b08304e8aa4fc8148f876b875afa0d6d40fd5d1d5f3f0a64924",
+        "it_IT": "321c0e37789fcd8302e26d2b3e8ac4ab41ca38736d0638b7a1574747aa2b8473",
+        "ja_JP": "5f6227cfb43f867ef42f2f9462b445e718d93a5111ebcd67cc7183d07af4e99d",
+        "ko_KR": "02e2c1a6d8188eaa038f8d6d4682ada4099f64d9e4ae1b66bb7fbf4612e72699",
+        "pt_BR": "1cf2a317eab8f62b91c8e12fc27b885ab1106c4ee0762421db9420c62681fce5",
+        "zh_CN": "693c18c7c6d3fcdeb9878f897aa2bdc44ae74009ba436bca2198554178e67eec",
+        "zh_TW": "28689775b66b2951509a16056df16b85850ed80acdbeb0328308acc3e36b29c2"
+      }
+    },
+    {
+      "key": "cache.ready",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "cache.ready",
+      "originValueSha256": "4de0c892d525da676d6fdd1e8fb1542c1b1b5e1c0ca39707a6152bf7f7948255",
+      "textSha256": "4de0c892d525da676d6fdd1e8fb1542c1b1b5e1c0ca39707a6152bf7f7948255",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        },
+        {
+          "file": "src/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5b3917c7ad278f6e9c0eb3e4726f563f7261733e91c0eba539e95992c7a46de3",
+        "en_US": "9add9f6f4017f4d5659de5f794f6c080c99cbc95e19ba50006c08beda31b4e9a",
+        "es_419": "76ee51c451ea5ab19c558335ac865494738ba44ce9f386e9007723e0da684c13",
+        "es_ES": "76ee51c451ea5ab19c558335ac865494738ba44ce9f386e9007723e0da684c13",
+        "fr_FR": "2cb408895f4c63079daa976142d975be2f2aeff5ea079fd46f142b73d5567dec",
+        "hi_IN": "8997b7bea0b1e4c8eb13d95c8a5c58d7e2e72bf1fefd7c139f362d6c3e9b158c",
+        "id_ID": "799ce5d987e5ef320226a10ca5ba5227af8c20f2f926ede05c527e18bd9080cf",
+        "it_IT": "c79d7a95552f4b95bc475d2c2c6327c19405a7e93a10dfee0fdb25ac1216f96f",
+        "ja_JP": "bda3f63851bff899d800f8a337de86838f354d062f1c322fdd67637771f61a8e",
+        "ko_KR": "594f8ea1a77b2ea01a71e6a4b32416f65d03e8b493438cbf4b09ad1cf427c1cc",
+        "pt_BR": "f351614f5e77bfa5eb7f5e0208cc4f48fdbf0f1f9cfcedeab80dfd208e062820",
+        "zh_CN": "4de0c892d525da676d6fdd1e8fb1542c1b1b5e1c0ca39707a6152bf7f7948255",
+        "zh_TW": "4c355b821ec8160168010fab9276da11578b192a1a4044e378802cf424c23be1"
+      }
+    },
+    {
+      "key": "cache.scanPartial",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "cache.scanPartial",
+      "originValueSha256": "557984c21e09117b2511775bdf5a0dbb5aa2b22debf88988c397629371921edf",
+      "textSha256": "557984c21e09117b2511775bdf5a0dbb5aa2b22debf88988c397629371921edf",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        },
+        {
+          "file": "src/CacheMaintenanceWindow.cs",
+          "contextHash": "2eb979ed733730040d35e40c964efb6f5bacf2813b320ae0d44ae2f8d4c11ee7",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "b3bd454c7b00915a5b47b9186c0bb947111e4012a48795072ad1adca5d7e63f1",
+        "en_US": "9b82e751ea722929ca61c07ed954bb81113f165c0a4cb9441d5f3348cc7333ba",
+        "es_419": "c96965da40ea94a478d54d357a1e436453560200c15bf572217dc0506001d760",
+        "es_ES": "c96965da40ea94a478d54d357a1e436453560200c15bf572217dc0506001d760",
+        "fr_FR": "4c428d7984ed4f7c1ba718b9100df721e8ecd2f6ab711e9723ffdfc70eebfc44",
+        "hi_IN": "f82d8070d037fd394f983a0d417aa8ec528c9ce05ed2e63f81419104704fb96a",
+        "id_ID": "0ed9756dba8a6c42391993de4ffb3b8704c98abf91e86b7989800ea219b1b7ba",
+        "it_IT": "1dbaa2dcba5a1aaa5a89e21cb3b43815678a8b77e93ab3c8f9dd3bef18c6a083",
+        "ja_JP": "1d12aadb0c9b7d6e98efd1d050d1e873759e9606064fb5f5b9b2d85dc854ab08",
+        "ko_KR": "dd48e6165bd95b8dd45da21a6b6ca57ab9037310d053a78c39aeee4b57412655",
+        "pt_BR": "5556d27fbf6008729918b145c17e077a97b1c44815cb8330ab13011212e21ee7",
+        "zh_CN": "557984c21e09117b2511775bdf5a0dbb5aa2b22debf88988c397629371921edf",
+        "zh_TW": "48e6e9e585224c1005a812e2bd0088981c282d0b3974c550c3be954887954b9b"
+      }
+    },
+    {
+      "key": "dialog.backgroundContinue",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "dialog.backgroundContinue",
+      "originValueSha256": "ac1613b06f9d6e662afa529613c624a169e7f4f1ca671c3f17b13bb4844556bf",
+      "textSha256": "ac1613b06f9d6e662afa529613c624a169e7f4f1ca671c3f17b13bb4844556bf",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/CompanionPreparationWindow.cs",
+          "contextHash": "6acee5c50b1858f9a141e8a03e1d8ad6d735122f9550cb145269ef6561076ca9",
+          "count": 1
+        },
+        {
+          "file": "src/CompanionPreparationWindow.cs",
+          "contextHash": "cfb6775db836568cd9911c13cb782cc64d5336fe8d1fe1f0d4859552ab83ef54",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "5b0fa278ef4eed3a0be13e08514c46f01ad3dcd43e8b738704c1296e85db8a88",
+        "en_US": "493f020171a51fd6994486b631033790fb88a94ba21c836cf338a9b17557a060",
+        "es_419": "8b7b7951eca5206f4cca6b5e25dc765a7700167f4e894f37b626c8bb7f23d9c7",
+        "es_ES": "8b7b7951eca5206f4cca6b5e25dc765a7700167f4e894f37b626c8bb7f23d9c7",
+        "fr_FR": "5d23863fd52aef697f77943df80e0e08d76ee8a348e02e15e98b5d8206c85714",
+        "hi_IN": "12baba8e16e791b4c825e04e7f30928ee61081db67d04ca6ebfe3e990ee2df36",
+        "id_ID": "7e49504101a25e7d74792bb33a16dd0990b148948f4b8d4900c44a80cd33de36",
+        "it_IT": "bd0e144889a80c409a24a6105c3cf96768e5327ad1d30771e91d386d33c94d1c",
+        "ja_JP": "b26abb93da07b8a66aefd30e95b8862db19c34e618c80c9d5825d880461034c1",
+        "ko_KR": "a810febf9d599a2894dadbe95562a40b606b602e9dbe4ad6cba171706cefe7c5",
+        "pt_BR": "037d91583b27489801fc24f19b120ad48ecfa7f4562accefdfa78f43b0f83494",
+        "zh_CN": "ac1613b06f9d6e662afa529613c624a169e7f4f1ca671c3f17b13bb4844556bf",
+        "zh_TW": "8313ab0ba378903abe23f0a9659ac310ee1d4f98b6d01d05df0d5fd12b6d16ad"
+      }
+    },
+    {
+      "key": "dialog.cancelDownload",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "dialog.cancelDownload",
+      "originValueSha256": "14d1e349b14010a9c7bf385e443a088d9dc80f0353ed295349c7018a6ae5d1c3",
+      "textSha256": "14d1e349b14010a9c7bf385e443a088d9dc80f0353ed295349c7018a6ae5d1c3",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/CompanionPreparationWindow.cs",
+          "contextHash": "710f10f16c507e4e2998e95e36ff3dc150f2763e76b0964904b1b1446c0155cd",
+          "count": 1
+        },
+        {
+          "file": "desktop/DeskPet.Desktop/OfficialCompanionProgressView.cs",
+          "contextHash": "5ab240252aa9037218bbe90e43e1348bc22f20ed174e4fd49788a46fa97a9532",
+          "count": 1
+        },
+        {
+          "file": "src/CompanionPreparationWindow.cs",
+          "contextHash": "24179f28ce0e59589c1989fcc622c8ce50fdfdeb643bcb4bb3f7e402c128f6c0",
+          "count": 1
+        },
+        {
+          "file": "src/OfficialCompanionProgressWindow.cs",
+          "contextHash": "379d75fb5b35fd0cbc2903c443fabdfe9da1a2323f11bed862d17d832ea3846e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "15c3d8c5349aacb003d40b8dee285cde2f43740d13938a33699116fe9b7225ab",
+        "en_US": "de5b23e69cd1763bd3a1f436568f3f1c3bd278fd3b4802fce5df4eb6c7a8c67f",
+        "es_419": "bc3ae0036270de22b6a15121db5ffa8d130d1fb4ac9a6586d4ea12e713247cee",
+        "es_ES": "bc3ae0036270de22b6a15121db5ffa8d130d1fb4ac9a6586d4ea12e713247cee",
+        "fr_FR": "1571b7a5cb375f56c1ee6d230b8e4a3716b454415de76cf56ce622becbcca1ab",
+        "hi_IN": "c6328e37bda1eaaa12345c9ea276cd9a9e5eabb2e617487fe8a682eda6bd3396",
+        "id_ID": "333bab178378bcdb9acbe8c71b181f7935b8e9e794457d9cf8b7e81462cab86e",
+        "it_IT": "072eccbe84f8d8450c3ff5b5b67d436ca4d271ed73244641c0ddc04b3d56cc2d",
+        "ja_JP": "34d203d3054ed652d706e876e8b74ef6a2236510c58870242770533d068948a7",
+        "ko_KR": "1125c68f3c22e2b03095cf22036a4d22492fbfed23b1b3cba69f9bf5cb4aca92",
+        "pt_BR": "cdd64d8d4333711f68515bf2e17704afdc8ea961e758907071b80e7d64457085",
+        "zh_CN": "14d1e349b14010a9c7bf385e443a088d9dc80f0353ed295349c7018a6ae5d1c3",
+        "zh_TW": "39698567d078b8c60c4c5fb10523ee70c261c28d582ab32cd67d9c0ac9d12b6d"
+      }
+    },
+    {
+      "key": "dialog.cancelImport",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "dialog.cancelImport",
+      "originValueSha256": "26bff7125c631192e8e8ced4fa1d5842d162e731d99acd0c023864db9068e4b0",
+      "textSha256": "26bff7125c631192e8e8ced4fa1d5842d162e731d99acd0c023864db9068e4b0",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/LocalCompanionImportWindow.cs",
+          "contextHash": "8022f30c398fc3882e6395ee5bd29352930231fff42141aea4a6d75245db5799",
+          "count": 1
+        },
+        {
+          "file": "src/LocalCompanionImportWindow.cs",
+          "contextHash": "45ae694a93aeb4bd78c85ae2b1e8e89560a9017581921e571c0a033982f13add",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "1cefdcfa6e2f9c50280c165bbb0c30834c0403086ee3b5fcb431636148cf509c",
+        "en_US": "6dd6cafb0d3f5ef8867f364887027505d3056f75afe8d393a8bcf5b9c458a828",
+        "es_419": "588d672bcf743a6fb0d1c451cc703dd2b5454e6fcedca97d44f8fb2332e69a6a",
+        "es_ES": "588d672bcf743a6fb0d1c451cc703dd2b5454e6fcedca97d44f8fb2332e69a6a",
+        "fr_FR": "2734ab00ff6bde03db2a37ee0f10677155db5d298393e12f32bef5b55894dd5a",
+        "hi_IN": "e4e8980775ac3f52cc2ea90e0090651a407d70df2e81cff3f579dbe7d34bb513",
+        "id_ID": "afa3210e5e182653b73977ffa65e232fbf860e568f3d6004510c1bc4c06e5188",
+        "it_IT": "d233a5a176385437a040799900e4d7b13601d4c732a0c32ed6a10862c48410fe",
+        "ja_JP": "abac6e59fa2166f89d2718e3ba2bff5a03961545b9d6eab17ece7eec877d54f7",
+        "ko_KR": "550890da122c1a1d44ce6fa76334d46756c4e138d00755bf4cf212f3cbea8269",
+        "pt_BR": "59f0e6ea2eae4a9b13316d533753cc1b1f435420f96e6fd80670dfa89c9888b1",
+        "zh_CN": "26bff7125c631192e8e8ced4fa1d5842d162e731d99acd0c023864db9068e4b0",
+        "zh_TW": "29b45fe5da43ad169d257e9837266c5eb51ecd5e432fc645b3c7d150b96444a8"
+      }
+    },
+    {
+      "key": "dialog.cancelling",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "dialog.cancelling",
+      "originValueSha256": "0addd7784578abf47dfb20b8d10e5b53501ec1703426adc89d441d640c7eab17",
+      "textSha256": "0addd7784578abf47dfb20b8d10e5b53501ec1703426adc89d441d640c7eab17",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/LocalCompanionImportWindow.cs",
+          "contextHash": "8022f30c398fc3882e6395ee5bd29352930231fff42141aea4a6d75245db5799",
+          "count": 2
+        },
+        {
+          "file": "src/LocalCompanionImportWindow.cs",
+          "contextHash": "45ae694a93aeb4bd78c85ae2b1e8e89560a9017581921e571c0a033982f13add",
+          "count": 2
+        },
+        {
+          "file": "src/OfficialCompanionProgressWindow.cs",
+          "contextHash": "379d75fb5b35fd0cbc2903c443fabdfe9da1a2323f11bed862d17d832ea3846e",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "9ff59afd7bcb40a616520b53b3140c35a9be6bf49b250a7a8ad008d3f1e4b8f5",
+        "en_US": "91b104db05da1b2d48c57a5aa60128f660e6572f89835ec858f6eb25b8f4af0f",
+        "es_419": "c5b0af9a5e5c89581a4871e720625356696a63d8d9b1b4479986c361fb4fa05e",
+        "es_ES": "c5b0af9a5e5c89581a4871e720625356696a63d8d9b1b4479986c361fb4fa05e",
+        "fr_FR": "9508e20147cb23cdb6b6ae18c4c84bc65d7b22ddc583331e2ebb885d453ac4ad",
+        "hi_IN": "81e0acabfa3a5ee7ef7a836de7003cb1c045ccfbeea0cdf37c1b54cefaf8d0a5",
+        "id_ID": "206f9f3aa8e087f53f205d1c19e7eec1dbb0bc7bc1c74cf5b0acb57b04a9c0df",
+        "it_IT": "6600bae21172fd4b910f18ef0e81c8e4c0d3a4c6272b6fcf15ac08e4351dfa16",
+        "ja_JP": "9890291be4c044df873f23dd483b973ee5ba384e9b68a430c9a0f08ce13dfe4c",
+        "ko_KR": "6978544ed97b044f74d46146bd1e2c787e5f2a328ddc044b57a274bb66932cb7",
+        "pt_BR": "c5b0af9a5e5c89581a4871e720625356696a63d8d9b1b4479986c361fb4fa05e",
+        "zh_CN": "0addd7784578abf47dfb20b8d10e5b53501ec1703426adc89d441d640c7eab17",
+        "zh_TW": "0addd7784578abf47dfb20b8d10e5b53501ec1703426adc89d441d640c7eab17"
+      }
+    },
+    {
+      "key": "greeting.autoRead",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "greeting.autoRead",
+      "originValueSha256": "213b81f4850f50e7d3898e3159233cdc3ed480d8216164b4ef37f3e000347f91",
+      "textSha256": "213b81f4850f50e7d3898e3159233cdc3ed480d8216164b4ef37f3e000347f91",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "88650f601458ffda9b57216284fbc4c83fe84d14f2dc66c0d433cd14239aacf7",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "97853aac57c97c339c2d549a94a20ad685406d7067ffb248921203fb03ad8d42",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "ec64e39c4b68352a21d5f96c41a5a91cacb7b50aa97ec7f8d4d3951cf003de43",
+        "en_US": "64bbe9bebed311773352e7cb180ec349e0d4ad5103fd6c8292fffe9b30948fc7",
+        "es_419": "0e6dd39aa50ceb1a89234740cdbf54acba418f21f6cf983eed6c8d18dbf9d190",
+        "es_ES": "0e6dd39aa50ceb1a89234740cdbf54acba418f21f6cf983eed6c8d18dbf9d190",
+        "fr_FR": "3fd60bd8c0abd49c1c257ed4c94a9fb3230a588f834a6802d4436b39653c2be5",
+        "hi_IN": "f27fa6d34df406523edddb7ec5b3fa4abf7a4d0e49e261471c60297225e01d18",
+        "id_ID": "8cf0930347136319de57b2700c655a458d3e4015ab7fd106c81b51c94cf3c575",
+        "it_IT": "272d88628f703e964d8013b1706eedce8cc39b0f918c003319b1d264487ecf67",
+        "ja_JP": "009291a4cefec50cf08b88021f0020341f1d149c65239c53edfe8a2e5088598f",
+        "ko_KR": "53889184f9d7e75e3b89dd9b91e8a98be22a1a8f447557d9026f192bc50cea22",
+        "pt_BR": "4a4224d1a49f1ad301c0bbd26305e09e58460d6ca1adbec490acab32255aa8ac",
+        "zh_CN": "213b81f4850f50e7d3898e3159233cdc3ed480d8216164b4ef37f3e000347f91",
+        "zh_TW": "709d93f2eaca5f0abcbe79c60c2bb297d63d1c96f300a34bce23007367f843c1"
+      }
+    },
+    {
+      "key": "greeting.autoReadHelp",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "greeting.autoReadHelp",
+      "originValueSha256": "fff770db87f72a7eced0c604e5e635d8874522bc84cdff393c1c58ef68f9b9e3",
+      "textSha256": "fff770db87f72a7eced0c604e5e635d8874522bc84cdff393c1c58ef68f9b9e3",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "54e335961ed4ee96bc8ff907693a39b7005fce7937f24ae13772c7f2025284e2",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "cccde5758dc93e8d1b98755a07e00d431dffa1354dd741329f76b1176cad8003",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a56dc3a7fa5bcc9dddd3bceb7b5358f29e52e34f6184b2af1f1ad65264886d9c",
+        "en_US": "ff2cf8812ca57a5822aa1515238a7a4061dcb05a79eb33062c1eaeadb8acb79a",
+        "es_419": "61ae47b76defe66a311ef8bc1b8c66396b083516a44d2745a0da100fa1f35c19",
+        "es_ES": "61ae47b76defe66a311ef8bc1b8c66396b083516a44d2745a0da100fa1f35c19",
+        "fr_FR": "47c262fbf9f06107886d8ba5f07f811756554b2f2b721fb4d1fbced26f20ef63",
+        "hi_IN": "f5912ee4b6d0eb92111d71495974218ff0439cbb4c03060ab3df8c4172895954",
+        "id_ID": "d424d42ab72d6a001a378438d83c6717bd8180f63144857270c3e0022803f1b1",
+        "it_IT": "7421983bfec255ff5076b67c032dc991a5a7cb5754e7883c9b86a974cf2e2a85",
+        "ja_JP": "d5df0954b7b7647e7bed2f04afae2b9608f8fef3c7acf3241f04d560fcd6bf84",
+        "ko_KR": "5ae850335448358e12669585e691b6de72db7cb7e94cdd2a6f87d98fd207840d",
+        "pt_BR": "e92bdcc743988b47f01ce2eaeaaf7d50ec9546aa0fbd2b8425fcdab1c5ddba8b",
+        "zh_CN": "fff770db87f72a7eced0c604e5e635d8874522bc84cdff393c1c58ef68f9b9e3",
+        "zh_TW": "2412830f912686ef0aab125cfaae10960b33a75c477c2962c13e4d37e57c6c00"
+      }
+    },
+    {
+      "key": "greeting.proactive",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "greeting.proactive",
+      "originValueSha256": "ce414faa790d0008aacbbbb420e28a9a64e4357282596f89271cd68032ca5101",
+      "textSha256": "ce414faa790d0008aacbbbb420e28a9a64e4357282596f89271cd68032ca5101",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "1a554668b65164ba2b5969fa5310bcf02ac155593f840cd34d8e1cb830684645",
+          "count": 1
+        },
+        {
+          "file": "src/SettingsPage.cs",
+          "contextHash": "d83ee846167441c3529bc5319ef69d9721b359ca97cdf8f2a35458a0005e3186",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "a17d373d7fca1a8b378e91ae2c4902b21a3f4cff1fa5ad4cce574142e012e8a0",
+        "en_US": "ad096060b74addffdcd43f67e9efacafbab95f7213dab1aca990e4287f204d27",
+        "es_419": "161a1d814d9ebbc67dc7ac1f8a226f968fa1e442e4545e33c31cacc0969cb243",
+        "es_ES": "161a1d814d9ebbc67dc7ac1f8a226f968fa1e442e4545e33c31cacc0969cb243",
+        "fr_FR": "c3cbb3613b6cf6d3a1140d88237d1f0e3ceb1bc4792adc5fdca9653b9fc02313",
+        "hi_IN": "6229bf8ea3414faa2a4eea6f916e97cbcde4be8e1d4c458f9542f8928fdb5dd0",
+        "id_ID": "8d970d20d6f2380fa74621d0426f5052bc9accd1c98d47228f5fb5a990e00ad3",
+        "it_IT": "ee3ce4969699603cacad98f2983bbee17e1e413f3fdbbf772b55f6a1a58c0181",
+        "ja_JP": "f0a7ceecbb52621fe66ea3969fb740b13db1834557f02057b0791d6b149fe2c6",
+        "ko_KR": "ed4a4d4c8df390ae7643a33ecd5b7b23a447b2163a2a9ce561d94d1dbedb3c43",
+        "pt_BR": "2b3b66b26d90203949a8ecfd578667f735d73bd50087a074b83b4152332f92aa",
+        "zh_CN": "ce414faa790d0008aacbbbb420e28a9a64e4357282596f89271cd68032ca5101",
+        "zh_TW": "d0fbe7a9a2d89625a2dcc7efb3cc9f993ec2e3cae73f2d857b5b82224bc90e12"
+      }
+    },
+    {
+      "key": "notificationSounds.enabled",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "notificationSounds.enabled",
+      "originValueSha256": "fdd8ff337f90943e9f0ed9aa88c904fd7b9ee524077bca98455e7a3317195b7d",
+      "textSha256": "fdd8ff337f90943e9f0ed9aa88c904fd7b9ee524077bca98455e7a3317195b7d",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "013b16a22cbea59b8fd1b16175129fecc0796a0515894434c924d558ec42d6ba",
+          "count": 1
+        },
+        {
+          "file": "src/QuietPanel.cs",
+          "contextHash": "2b48452d5291052d70eb5397c394c3a1c12bc0972d30b3e4e9d48727499affa4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "31ae76f6b3c2ad8955f1844291223ba3ce3310af55bf8fc46400ed284b0cfc04",
+        "en_US": "7c3c8805424fac6f6567f6cc04b38705b62a191464995c5e9d2a89a2d5da9f7d",
+        "es_419": "3ea5716743afe581f484e7dc12a9c08b8bf6487a88ccf68d38d8eafb4735fdfc",
+        "es_ES": "3ea5716743afe581f484e7dc12a9c08b8bf6487a88ccf68d38d8eafb4735fdfc",
+        "fr_FR": "3849cfc5b1d84b9b73e348f1d472f49670fe3d49e4c97ab96be89bf01364697a",
+        "hi_IN": "f5732165c0250bc588182fd22c631db0105b721d005860fc7329b594b0624c7f",
+        "id_ID": "0848599f28f85efb1bbe6642baa9a565d57ec85adcf5da0db60462e68975423f",
+        "it_IT": "5c76cac99bef150eb183fcd10c4863736296b2829efb1329864b92fd411506f8",
+        "ja_JP": "0d87b80dd06c9c2e2828d0428186b2098c6f0df422f93a0965a3435cd2568359",
+        "ko_KR": "f219700fdd8aad8364e04d2c96855d01c384e50edb4ebd0de798f54a0f77ba5c",
+        "pt_BR": "5496ee9b7033434ef157eabaecae1a76c548ec627fbd2da97a7d7106a96c5408",
+        "zh_CN": "fdd8ff337f90943e9f0ed9aa88c904fd7b9ee524077bca98455e7a3317195b7d",
+        "zh_TW": "fdd8ff337f90943e9f0ed9aa88c904fd7b9ee524077bca98455e7a3317195b7d"
+      }
+    },
+    {
+      "key": "notificationSounds.help",
+      "originCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3",
+      "originKey": "notificationSounds.help",
+      "originValueSha256": "71584a33e3743316f029b9ddae6709ec6bfaf8269e0903917a7c30cfd0ec67f3",
+      "textSha256": "71584a33e3743316f029b9ddae6709ec6bfaf8269e0903917a7c30cfd0ec67f3",
+      "sourceReferences": [
+        {
+          "file": "desktop/DeskPet.Desktop/SettingsWindow.cs",
+          "contextHash": "dd7f1603c8c9d2c132c60bf18997cfc46f09dbae82a8a2bb44bf7a86accbc25f",
+          "count": 1
+        },
+        {
+          "file": "src/QuietPanel.cs",
+          "contextHash": "2b48452d5291052d70eb5397c394c3a1c12bc0972d30b3e4e9d48727499affa4",
+          "count": 1
+        }
+      ],
+      "translations": {
+        "de_DE": "21af21dd80190cc67c6c714bbf87b72ec95b9a1bfe2a4a3365e218cf2ec29f29",
+        "en_US": "798d54ac8a31dc10bca99ed997b895bea538f6777134f12394b7ab2affe1b524",
+        "es_419": "cab220c86ff6dc8dc0e3eb2f3057f790f89c8671e21a4a0b24bec92dc2571a6f",
+        "es_ES": "cab220c86ff6dc8dc0e3eb2f3057f790f89c8671e21a4a0b24bec92dc2571a6f",
+        "fr_FR": "bb415f2be03bac20c66736cf127d27327c4ffb4ffc24f5bfb9b0d38781b8b4da",
+        "hi_IN": "1ea1469106e91afaed94c97af55d45567daf82d937bdbd160b2ca6443ebc5948",
+        "id_ID": "530ff13607202f2d6ecb6fe4fa36f276699464b79ba1f12b8d6bd1246ee6e90d",
+        "it_IT": "4b4c7ce6f6b39dc2debdeaf852a4384b0145cbcb224b3099967d15ebb50d9b93",
+        "ja_JP": "23628ad7379764ab05ff0bf94fca9323e3516ebad3d06c37fe50a9e1cc3829bd",
+        "ko_KR": "44abbef192453b0f902dadd011b8982f97124a617c039b25ec79f3dcb663cec5",
+        "pt_BR": "93a88b87b07b828670fabda72adc7875235477af6433b8460c95f8b5a6256ddc",
+        "zh_CN": "71584a33e3743316f029b9ddae6709ec6bfaf8269e0903917a7c30cfd0ec67f3",
+        "zh_TW": "bf2d3d7c59209304c459bcdf8b56deddc635c2ac0f5b6ceafc2609bf7bc8beee"
+      }
     }
   ],
   "sourceExclusions": [
@@ -17577,7 +18009,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "f72908d65587e06b0d86a4b5b5a64da993682e40590ca0543bb8eb692d5fd0cf",
       "reason": "Stable shell-command group identity used to select help commands; visible menu headers use localized resources.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/GreetingService.cs",
@@ -17585,7 +18017,7 @@
       "literalHash": "abc9525114ab5865663f9a95fdac8a64fb38ab6706effa98f3039649a803f8ef",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Model-only greeting prompt context/delimiter; passed to ChatMessage rather than rendered as UI copy. ReplyLanguagePolicy selects the output language.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/GreetingService.cs",
@@ -17593,7 +18025,7 @@
       "literalHash": "56971032bc4aeb8ad193392111c9bf05ae90543b41c4ab0630ce62b23658b799",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Model-only greeting prompt context/delimiter; passed to ChatMessage rather than rendered as UI copy. ReplyLanguagePolicy selects the output language.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/GreetingService.cs",
@@ -17601,7 +18033,7 @@
       "literalHash": "3eb1a705053ab2a14f93f1aa897cdd303847dfdf487745d0fa49ea3f27a5778c",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Model-only greeting prompt context/delimiter; passed to ChatMessage rather than rendered as UI copy. ReplyLanguagePolicy selects the output language.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/GreetingService.cs",
@@ -17609,7 +18041,7 @@
       "literalHash": "a6fc2ece004573adacc9351b5f712d777525d1570c18c8a7b6b796332caa8a01",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Model-only greeting prompt context/delimiter; passed to ChatMessage rather than rendered as UI copy. ReplyLanguagePolicy selects the output language.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/GreetingService.cs",
@@ -17617,7 +18049,7 @@
       "literalHash": "9e329b9da3c4a83ca86944815e2885827bb8799be83425035bf43a8b8fc55fb7",
       "sourceContextHash": "2c9d0223f016bb717e8bb1f5054379087d1aedb6b9c958b49df47e047d7a90fc",
       "reason": "Model-only greeting prompt context/delimiter; passed to ChatMessage rather than rendered as UI copy. ReplyLanguagePolicy selects the output language.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/Maintenance/CacheUpdateRetirement.cs",
@@ -17625,7 +18057,7 @@
       "literalHash": "9be897545e59066e130add235566968d51d6397fea003d1ea182008d98eae37d",
       "sourceContextHash": "8714c5ac036105a6e6b184125baf37405f2e0856c15dcb4b851f979191b59be3",
       "reason": "Compatibility filename for the installed executable when validating a retired update proof; never a display label.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17633,7 +18065,7 @@
       "literalHash": "02739d1bae8bd99675b71004af168632561488093a24ab198dadbc1d841038a7",
       "sourceContextHash": "665d27b93e05d9ab09393e759f1cf86ce9e0059cb66bebb0373035d46735f017",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17641,7 +18073,7 @@
       "literalHash": "5e84ea61e8386af724d827a09e7ef778d0d0d414dc6fe9f0a26473a18df02c3a",
       "sourceContextHash": "3f70b1bbd95a017871f17b9d8ad706bf096efb8ab31ed6cdeb5920a5d276eaa4",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17649,7 +18081,7 @@
       "literalHash": "05fdf30411d98d32ce080e6993c26cbb9a8141e49e030c55710ef99f9e1b700b",
       "sourceContextHash": "5314ad0dc8f1338da343cbdb6c6e543827913d3cd3adcb3cb987f478f70d6b71",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17657,7 +18089,7 @@
       "literalHash": "455ece81de5605d85e54ec419682f595d39b6b3136ae23cb439d5ce97b549e08",
       "sourceContextHash": "7103e4e0aea0ef511f1bc46b9474bb43fe97f8b928cbdec25809badcf0902981",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17665,7 +18097,7 @@
       "literalHash": "f64660efbe61dd28d59620b9cad6dc440af50570d5e42bd5757eb70ef47504ff",
       "sourceContextHash": "7103e4e0aea0ef511f1bc46b9474bb43fe97f8b928cbdec25809badcf0902981",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/SettingsFeatureNavigation.cs",
@@ -17673,7 +18105,7 @@
       "literalHash": "f30b4fa151f2516db75d827df987623084ff04e522f31fe07b00234172683c3b",
       "sourceContextHash": "7103e4e0aea0ef511f1bc46b9474bb43fe97f8b928cbdec25809badcf0902981",
       "reason": "Additional Chinese search alias for the settings destination; the displayed destination label is a localized resource and aliases intentionally remain searchable across UI languages.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17681,7 +18113,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "3a76247f14b8d266e2e7c942c092e4e16807dbd1cc949ffedfa34f750e41ee70",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17689,7 +18121,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "53b1629aa17e9c919d98b652a814450cff32c5acc5b0c4abb55273af49d831b3",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17697,7 +18129,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66e086e03730e51a3dcc13111c167c6b1c7ddefd1d1efb9df3ed1aaf646bc9c0",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17705,7 +18137,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a765e5e64fbfbf9e15a5c00840829eef94c692015a9e00a7cceb7c98f2244ae4",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17713,7 +18145,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "4f323ff075a93286f6b0531bc927db02f16c6aac695e735106ed3ac7761f4425",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17721,7 +18153,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "66965669153c6aae7fb7e30e0b78b0c8fc8cb46018dedd63aeb03e3621062626",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17729,7 +18161,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "a4989a41bbd742a38ef402b6e42e81defe343c0746021275f1db6a8bb76e2393",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17737,7 +18169,7 @@
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "3cce2170be110675c800bef3fc7e7f3181abafe0e480b2914d1ef08bdd00adb8",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17745,7 +18177,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "bbf4c998828d954210f1aea9b2fc8f71aa7f32a91db6c713244673ba4944581c",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17753,7 +18185,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "64361d6680134622fed228803703346918d4559afdd91d01b19d958fd50b94d4",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17761,7 +18193,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d6822484bd20c8263c682ecb3b12d87e1063bd756cff27004c2d5d8a67d3560a",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17769,7 +18201,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "fb1d1bfd8d6e740b4ae9164f7ef357657eb96ad18bad651707c31426fa57bc33",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17777,7 +18209,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "d752a359faec73a531841c975f5e138666e007827d1a58e4c842aa195e42f1e4",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17785,7 +18217,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "6a5110c17934e744caab849e3d3f50c5e3244e47220f4f51cf613ef07540a920",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17793,7 +18225,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "676dfce61d20fdc54f8d0e4687cb0ad664b6459afd1f79e7477a394fa446b4e5",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17801,7 +18233,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "00bd20bbf52ced1b79bf086f7a76798ba121b1541d748aeae7368d9a07b76212",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17809,7 +18241,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "e3daa0322d06d926f576500e489abef69dfed6bb8350e5e35ababe8ca9bbaf9d",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17817,7 +18249,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "95e320469f6f811d6ef0200fa770b68b38271d543cecfae7a207503c23ed16da",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17825,7 +18257,7 @@
       "literalHash": "e72622fe470d04bc588375b9a788202c36a9a133eba8701f2ce12ecdb8924e0d",
       "sourceContextHash": "1bc4c0d47338e24afad97b8d0b6c0c6b80251bf7fbfa6b1eec19c9293f483b8e",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17833,7 +18265,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "d7a58c5fe3abf17c36cc29c9afbb4b88a1faf948a758745d9e24da0b088788b8",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17841,7 +18273,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "42746d584c3c1f683fc2c5955359c18fb6b958f3e6cfc0bee7b8ec97cf3ce055",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17849,7 +18281,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "3f6a0ef79b038fbc88db2a2d6d70ca95d5933cf6ec7f93b12f7080ba704b99a9",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17857,7 +18289,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "bfd9b66e19a39d6c0010732d54bcf324c57129692893a1fdf3753d608da74ea0",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17865,7 +18297,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "e5662bf85260da8d84b6c91de176b55d2b39438fe065b891875fd169e468d133",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17873,7 +18305,7 @@
       "literalHash": "a57cfcb8428da4085ea1de04cb094d2cc158c1e63a5769e51056f0dc73f1d38a",
       "sourceContextHash": "83a38dfd4df79380143f068081c3355bc078bd83db96964452ae1291a4c49b2d",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17881,7 +18313,7 @@
       "literalHash": "39932f24fe11a6baf55145a8ea05e1abd8f773d4a98a0785ca27183f2ececedb",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17889,7 +18321,7 @@
       "literalHash": "051836569928a9f91145a70e00b212b62a06c21a97d2d828cb75acd3fbe851b9",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/ShellMenus.cs",
@@ -17897,7 +18329,7 @@
       "literalHash": "1c5c067138704dda85efa73e3fe04a0af5baa1311a05b175a16e717864902ade",
       "sourceContextHash": "1e805e353ad2e02f12f5572d90f21ce86e73daa4c8f5f57b3ed2b6df4ffc32fc",
       "reason": "Stable shell-command group identity or equality comparison; ShortcutCatalog.GroupTitle localizes every visible group header.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     },
     {
       "file": "src/UpdateWorker.cs",
@@ -17905,7 +18337,7 @@
       "literalHash": "e37f6cedc054c16a53a4f60bfdd99037ac10e98f668bb3db5c1173191c1fbc69",
       "sourceContextHash": "fb67de1c52669f52a672728fee7aad6643412e4b3d49a59be9e437fbc3e2114a",
       "reason": "AssemblyDescription metadata of the maintenance helper; fixed executable metadata, outside the application live-language UI.",
-      "sourceCommit": "f014c05b8c6a242ac29e665e3dbdf65e7a63a173"
+      "sourceCommit": "b2f7bcc84270ba2dab0168dc0b58dadf1914a7d3"
     }
   ]
 }

@@ -28,4 +28,6 @@ Preset, AI and automatic screen-aware greetings speak their actual visible text 
 
 Regression coverage includes real Windows dialog ownership, focus, cancellation and cache operations; passive-card position/expiry; pending and playing sound cancellation; actual preset/AI/screen greeting hooks; request migration; Chinese/German constrained guide layouts; and the portable desktop headless suite. Embedded language packs retain protected historical text and pin new copy separately.
 
+Final local verification: all 17 Windows regression targets passed; the complete portable desktop suite passed 14,775 UI/resource/animation assertions. Focused native checks also passed for tray cards (17), import cancellation (6), notification audio priority (4), image tasks (55) and onboarding/preparation (47). The complete localization audit passed with 5,058 resources and zero errors; language-pack snapshots, build compile-only checks and resource-provenance tests passed. The Windows preview executable was built successfully.
+
 Real macOS audio devices, cloud-provider TTS and physical mixed-DPI multi-monitor acceptance still require their corresponding environments. Tests use controlled audio/capture providers; they do not represent authenticated platform-account acceptance.
