@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: python tests/MacPackagingTests.py
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Author all five complete packages from this source
@@ -99,7 +99,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: desktop/global.json
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Verify host architecture and SDK

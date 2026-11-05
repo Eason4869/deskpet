@@ -59,7 +59,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Native wardrobe selection checks failed' }
           ./Build.ps1 -Target DataManagementUiTests
           if ($LASTEXITCODE) { throw 'Deferred settings retry checks failed' }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: runner.os == 'Windows'
         with:
           python-version: '3.x'
