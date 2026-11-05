@@ -4,9 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.0 · First production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**1.0.1 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Current source version: **1.0.2-dev.2 (development preview, unreleased)**. Building on the web search and settings improvements in `1.0.2-dev.1`, this patch fixes Windows source citations jumping to the top of replies and opens conversation web links in the embedded browser by default. See the [changelog](CHANGELOG.en.md). The download links below still point to the published `1.0.0` production release.
+Current source version: **1.0.2-dev.2 (development preview)**. [Download the preview](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2). Building on the web search and settings improvements in `1.0.2-dev.1`, this patch fixes Windows source citations jumping to the top of replies and opens conversation web links in the embedded browser by default. See the [changelog](CHANGELOG.en.md). Production downloads below point to `1.0.1`; the preview does not replace the stable update channel.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@ Current source version: **1.0.2-dev.2 (development preview, unreleased)**. Build
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.0 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) and choose the `DeskPet-Windows-Setup-1.0.0.exe` installer or `DeskPet-Windows-1.0.0.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.1 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) and choose the `DeskPet-Windows-Setup-1.0.1.exe` installer or `DeskPet-Windows-1.0.1.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).

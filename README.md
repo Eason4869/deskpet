@@ -4,9 +4,9 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**1.0.0 · 首个正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**1.0.1 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-当前源码版本：**1.0.2-dev.2（开发预览，待发布）**。在 `1.0.2-dev.1` 的网页搜索与设置改进基础上，修复 Windows 网页来源引用点击跳回回答顶部的问题，并将对话网页链接默认改为内置浏览器打开，详见[更新日志](CHANGELOG.md)。下方下载安装入口仍指向已发布的 `1.0.0` 正式版。
+当前源码版本：**1.0.2-dev.2（开发预览）**。[预览版下载](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2)。在 `1.0.2-dev.1` 的网页搜索与设置改进基础上，修复 Windows 网页来源引用点击跳回回答顶部的问题，并将对话网页链接默认改为内置浏览器打开，详见[更新日志](CHANGELOG.md)。下方正式版下载安装入口指向 `1.0.1`；预览版不会替换正式更新通道。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@
 
 | 平台 | 系统要求 | 下载与范围 |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0)，选择 `DeskPet-Windows-Setup-1.0.0.exe` 安装版或 `DeskPet-Windows-1.0.0.zip` 便携版。下文主要介绍 Windows。 |
+| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.1 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1)，选择 `DeskPet-Windows-Setup-1.0.1.exe` 安装版或 `DeskPet-Windows-1.0.1.zip` 便携版。下文主要介绍 Windows。 |
 | **macOS 预览** | macOS 14+，Apple Silicon 或 Intel | 在同一发布页选择对应架构的 `preview` DMG / ZIP。共享部分核心，使用独立界面；Windows 的文件 Agent、工具标签与终端不代表 Mac 已支持。 |
 
 发布页同时提供源码、角色包、创作模板及 SHA256 校验文件；实际附件以发布页为准。Windows 安装包当前未做应用代码签名；Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。下载请认准 [Eason4869/deskpet](https://github.com/Eason4869/deskpet)。
