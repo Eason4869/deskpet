@@ -194,7 +194,7 @@ jobs:
         run: |
           python tests/ImageWorkflowRegistrationTests.py
           if ($LASTEXITCODE) { throw 'Image registration checks failed' }
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: desktop/global.json
       - name: Avalonia UI and separate native quit routes
