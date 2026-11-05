@@ -58,7 +58,7 @@ jobs:
             ./Build.ps1 -Target $target
             if ($LASTEXITCODE) { throw ('WPF messaging checks failed: ' + $target) }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: messaging-ui-${{ matrix.os }}

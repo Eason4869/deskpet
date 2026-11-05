@@ -67,7 +67,7 @@ jobs:
           & ./BuildInstaller.ps1 -OutputDirectory $artifacts
           if ($LASTEXITCODE) { throw 'Installer build failed' }
           Copy-Item work/release-metadata.json $artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: verified-windows-release
           path: |

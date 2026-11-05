@@ -66,7 +66,7 @@ jobs:
           python tools/build_official_companions.py --output work/macos-complete-companions --version $version
           if ($LASTEXITCODE) { throw 'Complete companion authoring failed' }
           if (@(Get-ChildItem work/macos-complete-companions/artifacts -File).Count -ne 6) { throw 'Expected five ZIPs and one index' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: macos-complete-companions-${{ github.sha }}
           path: |
@@ -227,7 +227,7 @@ jobs:
           PY
       - name: Preserve reports and preview disk image
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: DeskPet-macOS-${{ matrix.arch }}-preview-${{ github.sha }}
           retention-days: 3
