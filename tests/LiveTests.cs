@@ -70,7 +70,7 @@ namespace Dafeiyu.Tests
             public void Abort(){} public void Dispose(){Disposed=true;}
         }
         sealed class FakeMic : IPcmMicrophone
-        {public event Action<byte[]> PcmAvailable;public event Action<string> Failed;public bool Started,Disposed;public void Start(){Started=true;}public void Emit(byte[] bytes){PcmAvailable(bytes);}public void Dispose(){Disposed=true;}}
+        {public event Action<byte[]> PcmAvailable;public event Action<string> Failed{add{}remove{}}public bool Started,Disposed;public void Start(){Started=true;}public void Emit(byte[] bytes){PcmAvailable(bytes);}public void Dispose(){Disposed=true;}}
         sealed class FakeOutput : ILiveAudioOutput,ILiveAudioFailureSource
         {public event Action<string> Failed;public void ReportFailure(string message){if(Failed!=null)Failed(message);}public int Chunks,Rate,Volume,Interruptions;public bool Disposed;public void Enqueue(byte[] bytes,int rate){Chunks++;Rate=rate;}public void Interrupt(){Interruptions++;}public void SetVolume(int value){Volume=value;}public void Dispose(){Disposed=true;}}
         sealed class NoopApi:IConversationApi

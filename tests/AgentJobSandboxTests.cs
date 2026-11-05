@@ -73,6 +73,9 @@ namespace Dafeiyu.Tests
                 }
             }
         }
+#if NET8_0_OR_GREATER
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         static void FailedGrantWithdrawalCanBeRetried()
         {
             using(var project=new AgentJobTestSupport.TemporaryDirectory())
@@ -100,7 +103,12 @@ namespace Dafeiyu.Tests
         }
         public static int Main()
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.Error.WriteLine("Windows AppContainer background jobs are unsupported on this platform");return 2;}
+#if NET8_0_OR_GREATER
+            if(!OperatingSystem.IsWindows())
+#else
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)
+#endif
+            {Console.Error.WriteLine("Windows AppContainer background jobs are unsupported on this platform");return 2;}
             checks=0;int failures=0;foreach(var test in new Action[]{AppContainerAllowsProjectAndDeniesOutsideWrites,SandboxPreparationFailureDoesNotRunOnHost,ExplicitReadDirectoryRemainsReadOnly,SandboxLeaseOutlivesRootProcess,FailedGrantWithdrawalCanBeRetried})try{test();}catch(Exception error){failures++;Console.WriteLine("FAIL "+test.Method.Name+": "+error);}
             Console.WriteLine("AgentJobSandboxTests: "+checks+" passed");return failures==0?0:1;
         }

@@ -250,7 +250,7 @@ namespace Dafeiyu.Tests
             public void Push(string message){messages.Add(message);}public Task ConnectAsync(ConnectionSettings s,CancellationToken c){return Task.FromResult(0);}public Task SendTextAsync(string text,CancellationToken c){return Task.FromResult(0);}
             public Task<string> ReceiveTextAsync(CancellationToken c){return Task.Run(()=>{var message=messages.Take(c);Interlocked.Increment(ref Received);return message;},c);}public void Abort(){}public void Dispose(){messages.Dispose();}
         }
-        sealed class Mic:IPcmMicrophone{public event Action<byte[]> PcmAvailable;public event Action<string> Failed;public void Start(){}public void Dispose(){}}
+        sealed class Mic:IPcmMicrophone{public event Action<byte[]> PcmAvailable{add{}remove{}}public event Action<string> Failed{add{}remove{}}public void Start(){}public void Dispose(){}}
         sealed class Output:ILiveAudioOutput{public void Enqueue(byte[] bytes,int rate){}public void Interrupt(){}public void SetVolume(int v){}public void Dispose(){}}
         sealed class Api:IConversationApi,IAgentConversationApi{
             public bool Fail;public int Delay,Calls;public IList<ChatMessage> Messages;
