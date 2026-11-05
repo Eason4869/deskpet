@@ -151,11 +151,11 @@ try
         finally{guideController.Pet.Close();guideController.Dispose();Complete(guideController.ImageServicesShutdown);}
         Console.WriteLine("PASS: "+assertions+" guide UI assertions");return;
     }
+    assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     Check(Dafeiyu.Tests.NotificationSoundTests.Main()==0,"shared notification sound contracts");
     assertions+=ImportDialogUiChecks.Run();
     assertions+=NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"));
     assertions+=TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"));
-    assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);
     assertions+=CompanionHomeUiChecks.RunMaintenanceSettings(Path.Combine(directory,"settings-maintenance-default"));
