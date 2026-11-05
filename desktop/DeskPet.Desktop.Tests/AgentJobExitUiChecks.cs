@@ -93,7 +93,8 @@ internal static class AgentJobExitUiChecks
         if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException("Native preview acceptance requires Windows");Directory.CreateDirectory(directory);
         var info=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true};if(Path.GetFileNameWithoutExtension(info.FileName).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
         foreach(string argument in new[]{"--agent-job-exit-fixture","preview",directory})info.ArgumentList.Add(argument);using var host=System.Diagnostics.Process.Start(info)!;
-        if(!host.WaitForExit(60000)){host.Kill();host.WaitForExit(5000);throw new TimeoutException("Native Avalonia preview host");}
+        // Cover the bounded cold-server and browser startup waits in the child fixture.
+        if(!host.WaitForExit(120000)){host.Kill();host.WaitForExit(5000);throw new TimeoutException("Native Avalonia preview host");}
         if(host.ExitCode!=0||!File.Exists(Path.Combine(directory,"exit.complete")))throw new Exception("Native Avalonia preview failed: "+(File.Exists(Path.Combine(directory,"fixture.error"))?File.ReadAllText(Path.Combine(directory,"fixture.error")):"exit="+host.ExitCode));
         using var report=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(directory,"preview.report.json")));return report.RootElement.GetProperty("checks").GetInt32();
     }

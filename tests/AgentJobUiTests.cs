@@ -89,7 +89,8 @@ namespace Dafeiyu.Tests
                 try
                 {
                     var elapsed=Stopwatch.StartNew();var job=await Start(service.Manager,root.Path,"native-project","native-conversation","native-reply",command);Check(elapsed.ElapsedMilliseconds<2000,"real preview server task hands off within the two-second launch budget");
-                    await Wait(()=>File.Exists(ready)&&All<Expander>(panel).Any(),"native preview server readiness");All<Expander>(panel).Single(value=>value.Name=="AgentJobLogExpander").IsExpanded=true;
+                    // Fixture startup can be cold; the application handoff above still has its two-second budget.
+                    await Wait(()=>File.Exists(ready)&&All<Expander>(panel).Any(),"native preview server readiness",30000);All<Expander>(panel).Single(value=>value.Name=="AgentJobLogExpander").IsExpanded=true;
                     await Wait(()=>All<Button>(panel).Any(button=>Object.Equals(button.Content,TextResources.Get("agent.jobs.ui.openPreview"))),"native log preview candidate");Check(!File.Exists(requests),"discovering and displaying native preview candidates performs zero HTTP requests");
                     using(var idle=new TcpClient())
                     {

@@ -27,7 +27,9 @@ internal static class AgentJobNativeUiChecks
         {
             Check(window.TryGetPlatformHandle()?.HandleDescriptor=="HWND","task panel uses an actual native Avalonia Windows window");
             var watch=Stopwatch.StartNew();var job=await AgentJobUiChecks.Start(owner.WorkBindings.Jobs.Manager,root,project.Id,conversation.Id,"native-preview",command);Check(watch.ElapsedMilliseconds<2000,"native server task hands off within two seconds");
-            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),7000,"native server readiness");}
+            // A fresh Windows PowerShell can initialize slowly on a cold runner.
+            // This fixture readiness budget is separate from the two-second handoff/exit checks.
+            try{await WaitAsync(()=>File.Exists(ready)&&AgentJobUiChecks.All<Expander>(panel).Any(),30000,"native server readiness");}
             catch(TimeoutException error)
             {
                 string diagnostic;
