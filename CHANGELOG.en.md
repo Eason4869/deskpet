@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.2 · Unreleased
+
+- Include the web search, settings layout, guidance and conversation link-opening improvements from dev.1 and dev.2.
+- Align in-app dialogs with a borderless rounded style and compact cache maintenance layout. Center review dialogs over the actual operation window, use the real review window for the guide exercise, and keep actions accessible in small windows.
+- Replace tray reminders with consistent passive cards. Add four gentle marimba cues for completion, review, permission and failure, with a separate preference, volume control and immediate DND cancellation without replay afterward.
+- Rename the proactive-greeting option and add automatic reading. When global read-aloud is enabled, preset, AI and automatic screen-aware greetings can speak while yielding to other speech, recording and DND.
+- Prepare the 1.0.2 source version without creating a tag or publishing a release.
+
 ## 1.0.2-dev.2 · Development preview
 
 - Fix Windows web-source citations at the bottom of long replies jumping to the top instead of opening the page, while preserving automatic scrolling when extending a text selection to the document end.

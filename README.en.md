@@ -6,7 +6,7 @@ A desktop companion for interactions, conversation and project work.
 
 **1.0.1 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Current source version: **1.0.2-dev.2 (development preview)**. [Download the preview](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2). Building on the web search and settings improvements in `1.0.2-dev.1`, this patch fixes Windows source citations jumping to the top of replies and opens conversation web links in the embedded browser by default. See the [changelog](CHANGELOG.en.md). Production downloads below point to `1.0.1`; the preview does not replace the stable update channel.
+Current source version: **1.0.2 (unreleased)**. It includes web search, settings and link-opening improvements, consistent dialogs and tray reminders, gentle notification sounds and automatic proactive-greeting speech. See the [changelog](CHANGELOG.en.md). No 1.0.2 tag or release has been created; production downloads below still point to `1.0.1`.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 

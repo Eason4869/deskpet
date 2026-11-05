@@ -6,7 +6,7 @@
 
 **1.0.1 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-当前源码版本：**1.0.2-dev.2（开发预览）**。[预览版下载](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2)。在 `1.0.2-dev.1` 的网页搜索与设置改进基础上，修复 Windows 网页来源引用点击跳回回答顶部的问题，并将对话网页链接默认改为内置浏览器打开，详见[更新日志](CHANGELOG.md)。下方正式版下载安装入口指向 `1.0.1`；预览版不会替换正式更新通道。
+当前源码版本：**1.0.2（待发布）**。包含网页搜索、设置与链接打开改进，以及统一弹窗、托盘提醒、轻柔提示音和主动问候自动朗读，详见[更新日志](CHANGELOG.md)。1.0.2 尚未创建标签或发布；下方正式版下载安装入口仍指向 `1.0.1`。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
