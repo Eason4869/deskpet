@@ -69,7 +69,7 @@ internal sealed class RelationshipFeedbackWindow : Window
         int suppressionVersion=owner.Relationships.FeedbackSuppressionVersion;
         Action savedSettingsChanged=()=>{if(!owner.Relationships.FeedbackEnabled||suppressionVersion!=owner.Relationships.FeedbackSuppressionVersion)Close();};
         owner.Relationships.FeedbackSettingsChanged+=savedSettingsChanged;
-        Closed+=(_,_)=>{closed=true;lifetime.Dispose();owner.Pet.PositionChanged-=moved;owner.Relationships.FeedbackSettingsChanged-=savedSettingsChanged;assets.Dispose();};
+        Closed+=(_,_)=>{closed=true;lifetime?.Dispose();owner.Pet.PositionChanged-=moved;owner.Relationships.FeedbackSettingsChanged-=savedSettingsChanged;assets.Dispose();};
         // A coalesced wall-clock pulse reaches the UI dispatcher after Show/layout,
         // so a slow first frame cannot consume the 200ms entrance before it renders.
         lifetime=new System.Threading.Timer(_=>{

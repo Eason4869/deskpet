@@ -1287,7 +1287,7 @@ namespace Dafeiyu
             timer.Stop();CompositionTarget.Rendering-=RenderFrame;if(hotkeys!=null)hotkeys.Dispose();if(updates!=null)updates.Dispose();
             var position=handle==IntPtr.Zero?new Rect():DesktopInterop.Bounds(handle);if(handle!=IntPtr.Zero){Settings.X=position.Left;Settings.Y=position.Top;}
             try{await ImageTaskCenterState.BeginExitDrain(()=>DrainApplicationForExitAsync(),out applicationExitDrain);}
-            catch(OperationCanceledException){}finally{exitPrepared=true;Dispatcher.BeginInvoke(new Action(Close));}
+            catch(OperationCanceledException){}finally{exitPrepared=true;var closeDispatch=Dispatcher.BeginInvoke(new Action(Close));}
         }
 
     }

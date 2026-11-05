@@ -13,7 +13,7 @@ internal static class RelationshipExperienceChecks
 
     internal static int Run(string directory,bool crossing=false,string? language=null,bool visibilityOnly=false)
     {
-        int count=0;void Check(bool ok,string reason){if(!ok)throw new Exception(reason);count++;Console.WriteLine("PASS "+reason);}
+        int count=0;void Check([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool ok,string reason){if(!ok)throw new Exception(reason);count++;Console.WriteLine("PASS "+reason);}
         void Complete(Task task){var watch=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(watch.ElapsedMilliseconds>15000)throw new TimeoutException("S1 native fixture");Dispatcher.UIThread.RunJobs();Thread.Sleep(1);}task.GetAwaiter().GetResult();Dispatcher.UIThread.RunJobs();}
         void Pause(int ms){var watch=System.Diagnostics.Stopwatch.StartNew();var frame=new DispatcherFrame();using(var timer=new System.Threading.Timer(_=>Dispatcher.UIThread.Post(()=>{if(watch.ElapsedMilliseconds>=ms)frame.Continue=false;}),null,0,10))Dispatcher.UIThread.PushFrame(frame);}
         void Until(Func<bool> ready,string name){var watch=System.Diagnostics.Stopwatch.StartNew();while(!ready()){if(watch.ElapsedMilliseconds>10000)throw new TimeoutException(name);Pause(10);}Console.WriteLine("SETTLED "+name+" elapsedMs="+watch.ElapsedMilliseconds);}

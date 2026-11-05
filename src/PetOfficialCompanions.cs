@@ -273,7 +273,7 @@ namespace Dafeiyu
             Holidays.ReplaceCatalog(merged);
         }
         OfficialCompanionPreparation preparation;
-        internal Func<IProgress<OfficialCompanionProgress>,CancellationToken,Task> PreparationDownloadOverride;
+        internal Func<IProgress<OfficialCompanionProgress>,CancellationToken,Task> PreparationDownloadOverride=null;
         internal OfficialCompanionPreparation OfficialPreparation {get{return preparation??(preparation=TrackPreparationNotifications(new OfficialCompanionPreparation((progress,token)=>PreparationDownloadOverride==null?PrepareAllOfficialAsync(progress,token):PreparationDownloadOverride(progress,token),officialLifetime.Token)));}}
         async Task PrepareAllOfficialAsync(IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
         {

@@ -121,8 +121,8 @@ namespace Dafeiyu
     }
     public sealed class ImageAssetManagementService
     {
-        internal Action AfterReservations;
-        internal Action BeforeAssetReservations;
+        internal Action AfterReservations=null;
+        internal Action BeforeAssetReservations=null;
         readonly GeneratedImageStore store;
         readonly ImageAssetUsageRegistry usage;
         readonly ImageAssetReferenceResolver resolver;

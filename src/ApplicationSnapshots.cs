@@ -99,7 +99,7 @@ namespace Dafeiyu
             try { return await DesktopCaptureWorker.WaitAsync(capture, token).ConfigureAwait(false); }
             catch
             {
-                capture.ContinueWith(delegate(Task<byte[]> finished)
+                var captureCleanup=capture.ContinueWith(delegate(Task<byte[]> finished)
                 {
                     if (finished.Status == TaskStatus.RanToCompletion && finished.Result != null) Array.Clear(finished.Result, 0, finished.Result.Length);
                     else if (finished.IsFaulted) { var ignored = finished.Exception; }

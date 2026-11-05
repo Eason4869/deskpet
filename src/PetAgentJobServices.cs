@@ -10,7 +10,7 @@ namespace Dafeiyu
     {
         readonly object agentJobServicesGate=new object();
         AgentJobApplicationService agentJobServices;
-        internal Action<string> AgentJobExitNotice;
+        internal Action<string> AgentJobExitNotice=null;
         internal AgentJobApplicationService AgentJobs
         {
             get

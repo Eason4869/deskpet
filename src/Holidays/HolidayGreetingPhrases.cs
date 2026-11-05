@@ -13,13 +13,13 @@ namespace Dafeiyu
         static readonly IDictionary<string,IList<string>> halloween=Load();
         static readonly IList<string> empty=new ReadOnlyCollection<string>(new string[0]);
         [DataContract] sealed class Library {
-            [DataMember(Name="schema_version")]public int Version;
-            [DataMember(Name="holiday_id")]public string Holiday;
-            [DataMember(Name="characters")]public List<Character> Characters;
+            [DataMember(Name="schema_version")]public int Version=0;
+            [DataMember(Name="holiday_id")]public string Holiday=null;
+            [DataMember(Name="characters")]public List<Character> Characters=null;
         }
         [DataContract] sealed class Character {
-            [DataMember(Name="character_id")]public string Id;
-            [DataMember(Name="phrases")]public List<string> Phrases;
+            [DataMember(Name="character_id")]public string Id=null;
+            [DataMember(Name="phrases")]public List<string> Phrases=null;
         }
         static IDictionary<string,IList<string>> Load()
         {

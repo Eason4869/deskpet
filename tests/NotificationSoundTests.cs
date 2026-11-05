@@ -11,37 +11,43 @@ namespace Dafeiyu.Tests
     public static class NotificationSoundTests
     {
         static int checks;
-        static Type playerType,cueType;
         static void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
         static void Until(Func<bool> ready,string name){Check(SpinWait.SpinUntil(ready,4000),name);}
         static object Player(PetSettings settings,Func<ILiveAudioOutput> output,Func<bool> busy,Func<DateTime> clock)
-        {return Activator.CreateInstance(playerType,new object[]{new Func<PetSettings>(()=>settings),output,busy,clock});}
-        static bool Play(object player,string cue,string id){return (bool)playerType.GetMethod("TryPlay").Invoke(player,new[]{Enum.Parse(cueType,cue),(object)id});}
-        static void Stop(object player){playerType.GetMethod("Stop").Invoke(player,null);}
+        {return new NotificationSoundPlayer(()=>settings,output,busy,clock);}
+        static object Player(PetSettings settings,Func<ILiveAudioOutput> output,Func<DateTime> clock)
+        {return new NotificationSoundPlayer(()=>settings,output,clock:clock);}
+        static bool Play(object player,string cue,string id){return ((NotificationSoundPlayer)player).TryPlay((NotificationCue)Enum.Parse(typeof(NotificationCue),cue),id);}
+        static void Stop(object player){((NotificationSoundPlayer)player).Stop();}
         static void Dispose(object player){((IDisposable)player).Dispose();}
-        [STAThread] public static int Main()
+#if !NET8_0_OR_GREATER
+        [STAThread] public static int Main(){return Run();}
+#endif
+        public static int Run()
         {
             try
             {
                 var enabled=typeof(PetSettings).GetProperty("NotificationSoundsEnabled");
-                Check(enabled!=null,"notification sound preference exists");
-                Check((bool)enabled.GetValue(new PetSettings(),null),"notification sounds default on");
+                if(enabled==null)throw new Exception("Missing notification sound preference");
+                Check(enabled.PropertyType==typeof(bool),"notification sound preference exists");
+                Check(true.Equals(enabled.GetValue(new PetSettings(),null)),"notification sounds default on");
                 using(var stream=new MemoryStream(Encoding.UTF8.GetBytes("{}")))
-                    Check((bool)enabled.GetValue(new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream),null),"old settings default notification sounds on");
+                    Check(true.Equals(enabled.GetValue(new DataContractJsonSerializer(typeof(PetSettings)).ReadObject(stream),null)),"old settings default notification sounds on");
                 var settings=new PetSettings();enabled.SetValue(settings,false,null);
-                Check(!(bool)enabled.GetValue(settings.Copy(),null),"copy preserves disabled sounds");
+                Check(false.Equals(enabled.GetValue(settings.Copy(),null)),"copy preserves disabled sounds");
                 string root=Path.Combine("work","notification-sounds-"+Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(root);
                 try
                 {
                     var store=new SettingsStore(Path.Combine(root,"settings.json"));store.Save(settings);
-                    Check(!(bool)enabled.GetValue(store.Load(),null),"disabled sounds persist");
-                    typeof(SettingsStore).GetMethod("CopyPreferences",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{new PetSettings(),settings});
-                    Check((bool)enabled.GetValue(settings,null),"preference reset restores sounds default");
+                    Check(false.Equals(enabled.GetValue(store.Load(),null)),"disabled sounds persist");
+                    var copy=typeof(SettingsStore).GetMethod("CopyPreferences",BindingFlags.Static|BindingFlags.NonPublic);
+                    if(copy==null)throw new Exception("Missing preference copy contract");
+                    copy.Invoke(null,new object[]{new PetSettings(),settings});
+                    Check(true.Equals(enabled.GetValue(settings,null)),"preference reset restores sounds default");
                 }
                 finally{Directory.Delete(root,true);}
-                playerType=typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationSoundPlayer");cueType=typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationCue");
-                Check(playerType!=null&&cueType!=null,"shared notification sound service exists");
+                Check(typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationSoundPlayer")!=null&&typeof(PetSettings).Assembly.GetType("Dafeiyu.NotificationCue")!=null,"shared notification sound service exists");
                 Resources();Policy(enabled);Lifecycle(enabled);QuietLifecycle();SerializedRestart();
                 Console.WriteLine("Notification sound tests: "+checks+" passed");return 0;
             }
@@ -53,6 +59,7 @@ namespace Dafeiyu.Tests
             using(var stream=typeof(PetSettings).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+file+".wav"))
             {
                 Check(stream!=null,"embedded approved cue "+file);
+                if(stream==null)throw new Exception("Missing approved cue "+file);
                 using(var reader=new BinaryReader(stream))
                 {
                     Check(new string(reader.ReadChars(4))=="RIFF","WAV container "+file);reader.ReadInt32();
@@ -90,20 +97,20 @@ namespace Dafeiyu.Tests
                 enabled.SetValue(settings,false,null);bool allSuppressed=true;for(int i=0;i<130;i++)allSuppressed&=!Play(player,"Review","history-"+i);Check(allSuppressed,"disabled event history stays silent");enabled.SetValue(settings,true,null);
                 Check(Play(player,"Failure","done"),"bounded dedup evicts old events and failure cue is supported");Until(()=>outputs[2]!=null&&outputs[2].Plays==1,"failure PCM delivered");output=outputs[2];
                 Stop(player);Until(()=>output.Disposals==1&&output.Interrupts>0,"stop interrupts and disposes output");
-                Check(!Play(player,"Review",null)&&!Play(player,"Review",""),"empty event identity suppressed");
+                Check(!((NotificationSoundPlayer)player).TryPlay(NotificationCue.Review,null)&&!Play(player,"Review",""),"empty event identity suppressed");
             }
             finally{Dispose(player);}
         }
         static void Lifecycle(PropertyInfo enabled)
         {
             var settings=new PetSettings();DateTime now=new DateTime(2026,11,5);var entered=new ManualResetEventSlim();var release=new ManualResetEventSlim();var output=new FakeOutput();
-            int creates=0;var player=Player(settings,()=>{Interlocked.Increment(ref creates);entered.Set();release.Wait();return output;},null,()=>now);
+            int creates=0;var player=Player(settings,()=>{Interlocked.Increment(ref creates);entered.Set();release.Wait();return output;},()=>now);
             Check(Play(player,"Review","waiting"),"pending cue admitted");Until(()=>entered.IsSet,"device factory runs on background worker");
             var admission=Task.Run(()=>Play(player,"Permission","while-factory-blocked"));Check(admission.Wait(500)&&!admission.Result,"new event admission does not wait for device creation");
             var stop=Task.Run(()=>{Stop(player);Dispose(player);});Check(stop.Wait(500),"stop and dispose do not wait for device creation");
             release.Set();Until(()=>output.Disposals==1,"device created during shutdown is disposed");
             Check(output.Plays==0&&!Play(player,"Complete","closed")&&creates==1,"shutdown prevents pending and future playback");
-            output=new FakeOutput();player=Player(settings,()=>output,null,()=>now);
+            output=new FakeOutput();player=Player(settings,()=>output,()=>now);
             try
             {
                 Check(Play(player,"Complete","interrupt"),"playback admitted before explicit mute");Until(()=>output.Plays==1,"playback begins before mute");
@@ -111,17 +118,17 @@ namespace Dafeiyu.Tests
             }
             finally{Dispose(player);}
             enabled.SetValue(settings,true,null);int calls=0;
-            player=Player(settings,()=>{Interlocked.Increment(ref calls);throw new InvalidOperationException("device unavailable");},null,()=>now);
+            player=Player(settings,()=>{Interlocked.Increment(ref calls);throw new InvalidOperationException("device unavailable");},()=>now);
             try{Check(Play(player,"Failure","unavailable"),"device failure stays asynchronous");Until(()=>calls==1,"unavailable factory attempted once");now=now.AddSeconds(4);int retry=0;Until(()=>Play(player,"Review","retry-"+Interlocked.Increment(ref retry)),"unavailable audio safely clears pending playback");}
             finally{Dispose(player);}
-            output=new FakeOutput{ThrowOnEnqueue=true};player=Player(settings,()=>output,null,()=>now);
+            output=new FakeOutput{ThrowOnEnqueue=true};player=Player(settings,()=>output,()=>now);
             try{Check(Play(player,"Complete","device-error"),"enqueue failure stays asynchronous");Until(()=>output.Disposals==1,"failed output is released");}
             finally{Dispose(player);}
         }
         static void QuietLifecycle()
         {
             var settings=new PetSettings();DateTime now=new DateTime(2026,11,5);var entered=new ManualResetEventSlim();var release=new ManualResetEventSlim();var output=new FakeOutput();int creates=0;
-            var player=Player(settings,()=>{Interlocked.Increment(ref creates);entered.Set();release.Wait();return output;},null,()=>now);
+            var player=Player(settings,()=>{Interlocked.Increment(ref creates);entered.Set();release.Wait();return output;},()=>now);
             try
             {
                 Check(Play(player,"Complete","pending-before-quiet"),"pending sound accepted before quiet");Until(()=>entered.IsSet,"pending factory entered before quiet");
@@ -131,7 +138,7 @@ namespace Dafeiyu.Tests
                 Check(!Play(player,"Complete","pending-before-quiet")&&!Play(player,"Review","during-quiet"),"quiet exit never replays old or suppressed events");
             }
             finally{release.Set();Dispose(player);}
-            output=new FakeOutput();player=Player(settings,()=>output,null,()=>now);
+            output=new FakeOutput();player=Player(settings,()=>output,()=>now);
             try
             {
                 Check(Play(player,"Permission","playing-before-quiet"),"cue accepted before quiet begins");Until(()=>output.Plays==1,"cue starts before quiet begins");
@@ -144,7 +151,7 @@ namespace Dafeiyu.Tests
         {
             var settings=new PetSettings();DateTime now=new DateTime(2026,11,5);var firstEntered=new ManualResetEventSlim();var releaseFirst=new ManualResetEventSlim();var secondEntered=new ManualResetEventSlim();
             var first=new FakeOutput();var second=new FakeOutput();int creates=0;
-            var player=Player(settings,()=>{if(Interlocked.Increment(ref creates)==1){firstEntered.Set();releaseFirst.Wait();return first;}secondEntered.Set();return second;},null,()=>now);
+            var player=Player(settings,()=>{if(Interlocked.Increment(ref creates)==1){firstEntered.Set();releaseFirst.Wait();return first;}secondEntered.Set();return second;},()=>now);
             try
             {
                 Check(Play(player,"Review","old-pending"),"first pending request admitted");Until(()=>firstEntered.IsSet,"first factory held");Stop(player);now=now.AddSeconds(4);

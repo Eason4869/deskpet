@@ -74,7 +74,7 @@ namespace Dafeiyu
                 surface=new AgentApprovalSurface(controller,r=>r.CallId==callId,host);
                 var request=new AgentApprovalRequest{SessionId=session.KernelSession==null?"guide-demo":session.KernelSession.SessionId,ToolName=TextResources.Get("onboardingWindow.showApprovalDemo.toolName"),Action="shell",IsolationDescription=TextResources.Get("onboardingWindow.showApprovalDemo.isolationDescription"),ReviewReason=TextResources.Get("onboardingWindow.showApprovalDemo.reviewReason"),Resource=TextResources.Get("onboardingWindow.showApprovalDemo.resource"),ProjectId="guide-demo",TaskId="guide-demo",CallId=callId,Arguments="{\"command\":\"Write-Output 'DeskPet approval demo'\",\"working_directory\":\"guide-demo\",\"timeout_seconds\":5}"};
                 var pending=controller.ApproveAsync(request,cancel.Token);
-                Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(!finished&&ReferenceEquals(approvalDemo,cancel)&&!cancel.IsCancellationRequested)Locate();}));
+                var locateDispatch=Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(delegate{if(!finished&&ReferenceEquals(approvalDemo,cancel)&&!cancel.IsCancellationRequested)Locate();}));
                 // This exercises only the real decision provider. No tool runtime
                 // receives this request, so either choice has no command effects.
                 await pending;if(cancel.IsCancellationRequested||finished)return;approvalDemoReviewed=true;LocalizedUi.Set(status,"Text",()=>(TextResources.Get("onboardingWindow.showApprovalDemo.status")));RefreshReadiness();

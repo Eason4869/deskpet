@@ -13,7 +13,7 @@ namespace Dafeiyu
         static readonly FieldInfo[] configurationFields=("Name Workspace Goal FullAccess BackupFiles PlanMode ApprovalMode SandboxEnabled SandboxReadDirectories TrustProjectInstructions GlobalInstructions SkillsDirectory TerminalPolicy CommandTimeoutSeconds BackgroundJobTimeoutSeconds ContextTokenLimit").Split(' ').Select(name=>typeof(ProjectDefinition).GetField(name)).ToArray();
         static readonly object configurationGate=new object();
         static readonly Dictionary<string,List<ProjectConfigurationPublication>> configurationPublications=new Dictionary<string,List<ProjectConfigurationPublication>>(Path.DirectorySeparatorChar=='\\'?StringComparer.OrdinalIgnoreCase:StringComparer.Ordinal);
-        internal Action BeforeConfigurationWrite,BeforeConfigurationCommit,BeforeConfigurationPublication;
+        internal Action BeforeConfigurationWrite=null,BeforeConfigurationCommit=null,BeforeConfigurationPublication=null;
 
         internal sealed class ConfigurationChange
         {internal FieldInfo Field;internal object Original,Current;}

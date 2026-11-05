@@ -33,7 +33,7 @@ AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatfo
 if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
 if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
 if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
-if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTests.Main()!=0)throw new Exception("Notification sound contracts failed");return;}
+if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTests.Run()!=0)throw new Exception("Notification sound contracts failed");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
@@ -97,9 +97,9 @@ try
     if(args.Contains("--relationship-feedback-motion")){Console.WriteLine("RelationshipFeedbackMotion: "+RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion"))+" passed");return;}
     if(args.Contains("--relationship-feedback-placement")){Console.WriteLine("RelationshipFeedbackPlacement: "+RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement"))+" passed");return;}
     if(args.Contains("--relationship-experience-crossing")){Console.WriteLine("RelationshipExperienceCrossing: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-crossing"),true)+" passed");return;}
-    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
+    if(args.Contains("--relationship-experience-contract-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");return;}
     if(args.Contains("--relationship-experience-visibility-only")){Console.WriteLine("RelationshipExperienceVisibility: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-visibility"),visibilityOnly:true)+" passed");return;}
-    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
+    if(args.Contains("--relationship-experience-only")){if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");Console.WriteLine("RelationshipExperienceChecks: "+RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience"))+" passed");return;}
     if(args.Contains("--companion-home-ui-only")){Console.WriteLine("CompanionHomeUiChecks: "+CompanionHomeUiChecks.Run(Path.Combine(directory,"companion-home"))+" passed");return;}
     if(args.Any(arg=>arg.StartsWith("--work-binding-ui="))){var language=args.Single(arg=>arg.StartsWith("--work-binding-ui=")).Substring("--work-binding-ui=".Length);Console.WriteLine("WorkBindingUiChecks: "+WorkBindingUiChecks.Run(Path.Combine(directory,"work-binding"),language)+" passed");return;}
     if(args.Contains("--agent-job-native-ui-only")){Console.WriteLine("AgentJobNativeUiChecks: "+AgentJobExitUiChecks.RunPreview(Path.Combine(directory,"agent-job-native-ui"))+" passed");return;}
@@ -152,7 +152,7 @@ try
         Console.WriteLine("PASS: "+assertions+" guide UI assertions");return;
     }
     assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
-    Check(Dafeiyu.Tests.NotificationSoundTests.Main()==0,"shared notification sound contracts");
+    Check(Dafeiyu.Tests.NotificationSoundTests.Run()==0,"shared notification sound contracts");
     assertions+=ImportDialogUiChecks.Run();
     assertions+=NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"));
     assertions+=TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"));
@@ -162,7 +162,7 @@ try
     assertions+=DataManagementUiChecks.Run(Path.Combine(directory,"data-management-default"),TextResources.CurrentLanguage);
     assertions+=CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance-default"),TextResources.CurrentLanguage);
     assertions+=RelationshipPackChecks.Run();
-    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.Main()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
+    if(Task.Run(()=>Dafeiyu.Tests.RelationshipExperienceTests.RunChecks()).GetAwaiter().GetResult()!=0)throw new Exception("Shared relationship experience checks failed");
     assertions+=RelationshipExperienceChecks.Run(Path.Combine(directory,"relationship-experience-default"),false,TextResources.CurrentLanguage);
     assertions+=RelationshipFeedbackMotionChecks.Run(Path.Combine(directory,"feedback-motion-default"));
     assertions+=RelationshipFeedbackMotionChecks.RunPlacement(Path.Combine(directory,"feedback-placement-default"));

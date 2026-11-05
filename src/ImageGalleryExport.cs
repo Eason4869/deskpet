@@ -26,8 +26,8 @@ namespace Dafeiyu
     {
         readonly GeneratedImageStore store;
         readonly ImageAssetUsageRegistry usage;
-        internal Action<string> AfterTemporaryWrite;
-        internal Action<string> DeleteTemporary;
+        internal Action<string> AfterTemporaryWrite=null;
+        internal Action<string> DeleteTemporary=null;
         public ImageGalleryExport(GeneratedImageStore store, ImageAssetUsageRegistry usage) { this.store = store; this.usage = usage; }
         public Task<ImageExportResult> ExportAsync(IEnumerable<string> ids, string destination, IProgress<ImageExportItem> progress, CancellationToken token)
         {

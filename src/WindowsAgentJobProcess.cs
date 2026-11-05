@@ -19,9 +19,14 @@ namespace Dafeiyu
         {if(clock==null||assign==null)throw new ArgumentNullException("services");this.clock=clock;this.assign=assign;}
         public Task<IAgentJobProcess> PrepareAsync(AgentJobSpec spec,AgentJobPolicySnapshot policy,Action<AgentJobOutputChunk> output,CancellationToken token)
         {
-            if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new PlatformNotSupportedException("background_jobs_unavailable");
+            if(!WindowsCommandRunner.IsWindowsHost)throw new PlatformNotSupportedException("background_jobs_unavailable");
             if(spec==null||policy==null||output==null)throw new ArgumentNullException("job");
-            return Task.Run<IAgentJobProcess>(()=>new WindowsCommandRunner.BackgroundJobProcess(spec,policy,output,clock,assign,token),token);
+            return Task.Run<IAgentJobProcess>(()=>{
+#if PORTABLE
+                if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();
+#endif
+                return new WindowsCommandRunner.BackgroundJobProcess(spec,policy,output,clock,assign,token);
+            },token);
         }
     }
     internal static partial class WindowsCommandRunner
@@ -31,6 +36,9 @@ namespace Dafeiyu
         {internal long UserTime,KernelTime,PeriodUserTime,PeriodKernelTime;internal uint Faults,Total,Active,Terminated;}
         [DllImport("kernel32.dll",SetLastError=true)]static extern bool QueryInformationJobObject(IntPtr job,int informationClass,out JobAccounting accounting,uint length,IntPtr returned);
         [DllImport("kernel32.dll",SetLastError=true)]static extern bool PeekNamedPipe(SafeFileHandle pipe,IntPtr buffer,uint size,IntPtr read,out uint available,IntPtr remaining);
+#if PORTABLE
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
         internal sealed class BackgroundJobProcess : IAgentJobProcess,IAgentJobPreparationMetrics,IAgentJobCompletionMetrics
         {
             readonly object nativeGate=new object();

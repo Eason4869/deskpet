@@ -20,7 +20,7 @@ namespace Dafeiyu
         readonly ContentControl detailLogo=new ContentControl{Margin=new Thickness(0,0,12,0)};readonly TextBlock detailTitle;
         readonly StackPanel manualFields=new StackPanel();readonly RadioButton scanMode,manualMode;Window connectionDialog;
         readonly Grid profilePicker;
-        internal Func<ImChannelProfile,Action<string>,CancellationToken,Task<ImChannelProfile>> RegistrationOverride;
+        internal Func<ImChannelProfile,Action<string>,CancellationToken,Task<ImChannelProfile>> RegistrationOverride=null;
         public bool HasUnsavedChanges{get{return draft!=null&&!busy&&(name.Text!=draft.Name||appId.Text!=draft.AppId||secret.Password!=draft.Secret||String.Join("\n",draft.Users)!=users.Text||String.Join("\n",draft.Chats)!=groups.Text||ImChannelProfile.Kinds[Math.Max(0,platform.SelectedIndex)]!=draft.Kind);}}
         public ImChannelSettingsPanel(PetWindow owner)
         {

@@ -28,7 +28,13 @@ namespace Dafeiyu
         {
             if (IsDocx(path)) return ReadDocxText(bytes, token);
             if (IsXlsx(path)) return ReadXlsxText(bytes, token);
-            if (IsLegacyWord(path) || IsLegacyExcel(path)) return DocumentFormatsLegacy.ReadText(path, IsLegacyWord(path), token);
+            if (IsLegacyWord(path) || IsLegacyExcel(path))
+            {
+#if PORTABLE
+                if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();
+#endif
+                return DocumentFormatsLegacy.ReadText(path, IsLegacyWord(path), token);
+            }
             throw new ArgumentException(TextResources.Get("documentFormats.readDocumentText.text"));
         }
 
@@ -40,7 +46,13 @@ namespace Dafeiyu
             if (content.IndexOf('\0') >= 0) throw new ArgumentException(TextResources.Get("documentFormats.writeDocumentBytes.text"));
             if (IsDocx(path)) return WriteDocx(content);
             if (IsXlsx(path)) return WriteXlsx(content, token);
-            if (IsLegacyWord(path) || IsLegacyExcel(path)) return DocumentFormatsLegacy.Write(path, content, IsLegacyWord(path), token);
+            if (IsLegacyWord(path) || IsLegacyExcel(path))
+            {
+#if PORTABLE
+                if(!OperatingSystem.IsWindows())throw new PlatformNotSupportedException();
+#endif
+                return DocumentFormatsLegacy.Write(path, content, IsLegacyWord(path), token);
+            }
             throw new ArgumentException(TextResources.Get("documentFormats.writeDocumentBytes.text.alternativeA"));
         }
 
@@ -426,6 +438,9 @@ namespace Dafeiyu
     }
 
     // Legacy .doc/.xls conversion through the installed Word/Excel or WPS.
+#if PORTABLE
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
     internal static class DocumentFormatsLegacy
     {
         static readonly string[] WordProgIds = { "KWPS.Application", "Word.Application" };

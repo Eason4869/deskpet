@@ -117,7 +117,8 @@ internal sealed partial class DesktopController : IDisposable
         Session.SelectPersona(Skin.Id);
         Dictation = new DictationSession(new ApiClient(), runtime.CreateRecorder, () => Settings,DataMaintenance);
         Session.ConfigureRelationships(Relationships,()=>RelationshipCompanionId);
-        Queue = new ConversationQueue(Session, () => WorkBindings.RootSettings(Session.PersonaId), () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
+        // The queue evaluates this callback after WorkBindings has been initialized below.
+        Queue = new ConversationQueue(Session, () => WorkBindings!.RootSettings(Session.PersonaId), () => Skin.Name, Path.Combine(DataDirectory, "queue.json"));
         Live = new GeminiLiveSession(() => new GeminiLiveSocket(), runtime.CreateMicrophone, runtime.CreateLiveOutput,DataMaintenance);
         Live.RelationshipCompanion=()=>RelationshipCompanionId;
         Live.LogicalTurnCommitted += turn =>

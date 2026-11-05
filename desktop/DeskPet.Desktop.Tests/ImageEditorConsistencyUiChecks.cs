@@ -41,13 +41,13 @@ internal static class ImageEditorConsistencyUiChecks
         var artifacts = Path.Combine(AppContext.BaseDirectory, "artifacts"); Directory.CreateDirectory(artifacts);
         foreach (var theme in new[] { "light", "dark" })
         {
-            DesktopTheme.Apply(theme); scroll.Content = image; scroll.Offset = default; Render(); using (var screenshot = host.CaptureRenderedFrame()) { Check(screenshot != null && screenshot.PixelSize.Width == 570, "narrow image provider form renders in " + theme); screenshot!.Save(Path.Combine(artifacts, "image-provider-consistent-570-" + theme + ".png")); }
-            scroll.Content = null; scroll.Content = text; scroll.Offset = default; Render(); using (var reference = host.CaptureRenderedFrame()) reference!.Save(Path.Combine(artifacts, "text-provider-reference-570-" + theme + ".png"));
+            DesktopTheme.Apply(theme); scroll.Content = image; scroll.Offset = default; Render(); using (var screenshot = host.CaptureRenderedFrame()) { Check(screenshot != null && screenshot.PixelSize.Width == 570, "narrow image provider form renders in " + theme); screenshot!.Save(Path.Combine(artifacts, "image-provider-consistent-570-" + theme + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions()); }
+            scroll.Content = null; scroll.Content = text; scroll.Offset = default; Render(); using (var reference = host.CaptureRenderedFrame()) reference!.Save(Path.Combine(artifacts, "text-provider-reference-570-" + theme + ".png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
             scroll.Content = null;
         }
         scroll.Content = image; parameters.IsExpanded = true; Render();
         Check(parameters.GetLogicalDescendants().OfType<NumericUpDown>().Any(c => c.Name == "ImageProviderTimeout") && parameters.GetLogicalDescendants().OfType<ComboBox>().Distinct().Count() == 2 && parameters.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Name == "ImagePresetNotes"), "expanded image settings retain timeout size quality and native service notes");
-        scroll.Offset = new Vector(0, scroll.Extent.Height); Render(); using (var expanded = host.CaptureRenderedFrame()) expanded!.Save(Path.Combine(artifacts, "image-provider-settings-expanded-570-dark.png"));
+        scroll.Offset = new Vector(0, scroll.Extent.Height); Render(); using (var expanded = host.CaptureRenderedFrame()) expanded!.Save(Path.Combine(artifacts, "image-provider-settings-expanded-570-dark.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
         DesktopTheme.Apply(owner.Settings.ThemeMode); host.Close(); Render(); return checks;
     }
 }

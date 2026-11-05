@@ -8,8 +8,8 @@ namespace Dafeiyu
 {
     public sealed partial class GeneratedImageStore
     {
-        internal Action<string> ManagementFault;
-        internal bool ManagementSimulateCrash;
+        internal Action<string> ManagementFault=null;
+        internal bool ManagementSimulateCrash=false;
         bool purgeRecoveryPending;
         readonly HashSet<string> purgedJobKeys=new HashSet<string>(StringComparer.Ordinal);
         readonly HashSet<string> purgedIds=new HashSet<string>(StringComparer.Ordinal);

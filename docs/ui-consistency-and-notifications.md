@@ -31,3 +31,11 @@ Regression coverage includes real Windows dialog ownership, focus, cancellation 
 Final local verification: all 17 Windows regression targets passed; the complete portable desktop suite passed 14,775 UI/resource/animation assertions. Focused native checks also passed for tray cards (17), import cancellation (6), notification audio priority (4), image tasks (55) and onboarding/preparation (47). The complete localization audit passed with 5,058 resources and zero errors; language-pack snapshots, build compile-only checks and resource-provenance tests passed. The Windows preview executable was built successfully.
 
 Real macOS audio devices, cloud-provider TTS and physical mixed-DPI multi-monitor acceptance still require their corresponding environments. Tests use controlled audio/capture providers; they do not represent authenticated platform-account acceptance.
+
+## 1.0.2 PR and CI follow-up
+
+Source display/manifest versions are `1.0.2` / `1.0.2.0`; the README and changelogs describe an unreleased version and retain the existing production download links. No tag or release is created by this change.
+
+CI keeps composer geometry first in the default desktop regression order. The warning cleanup gives Windows-only sandbox/background-process/Office COM implementations explicit platform contracts and runtime guards; retains cancellation precedence; updates obsolete PNG encoders; declares assertion null-flow contracts; validates reflection results; separates reusable checks from executable entry points; and makes intentional asynchronous dispatch and optional test-hook defaults explicit. Both the complete native desktop rebuild and Windows application build report zero compiler warnings and zero errors without disabling analysis. Focused Windows sandbox (44), background sandbox (10), process (17), document (24), sound (95), relationship (23), snapshot (20) and detailed-guide (213) regressions pass.
+
+Official Action manifests and major-release notes were checked before migration to Node 24: checkout v5, setup-python v6, setup-dotnet v5, upload-artifact v6 and download-artifact v7. Each dependency update is isolated in its own commit. Workflow inputs, permissions, publication conditions and artifact names remain unchanged, and the background-job registration guard follows the current upload action.
