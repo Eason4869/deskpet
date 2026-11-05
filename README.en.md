@@ -6,11 +6,11 @@ A desktop companion for interactions, conversation and project work.
 
 **1.0.0 · First production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Current source version: **1.0.1 (unreleased)**. This patch fixes section deletion and makes deletion dialogs consistent; see the [changelog](CHANGELOG.en.md).
+Current source version: **1.0.2-dev.2 (development preview, unreleased)**. Building on the web search and settings improvements in `1.0.2-dev.1`, this patch fixes Windows source citations jumping to the top of replies and opens conversation web links in the embedded browser by default. See the [changelog](CHANGELOG.en.md). The download links below still point to the published `1.0.0` production release.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
-> Screenshots are generated from this version's Windows UI using an isolated preview. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
+> Screenshots come from an isolated preview of the `1.0.0` Windows release; the development preview may have UI changes. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
 
 ## Download
 
@@ -67,6 +67,12 @@ Quick chat is for a short exchange. Reopening starts a new topic; previous recor
 Organize conversations into sections, rename, pin, archive, drag to reorder or move work conversations between projects. Switching preserves each conversation's draft and reading position; new-conversation drafts support encrypted recovery. Use Markdown or plain text, and add image, file and folder references through **+**, paste or drag and drop. A folder attachment does not expand file permissions.
 
 The Agent's public progress explanations remain in the reply body. Later tool calls do not move already displayed text into the thinking section. Tool records, changes and delivered files have their own entries. Queue follow-up instructions, or **Steer** at the next adjustable boundary. Completed changes are not automatically undone.
+
+### Web search and source citations
+
+Open **Settings → Tools and connections → Web search**, enable it, choose native model search, an external search provider or a custom endpoint with a compatible API format, then save. Native search requires support from the selected model service. External providers use separate addresses and credentials and may incur additional charges. Ordinary chat, quick chat and work mode can use web search. Enable **Show source citations** to include retrieved sources at the bottom of replies.
+
+On Windows, left-clicking an HTTP/HTTPS link in a conversation, including a source citation below a reply, opens an embedded browser tool tab by default. Quick chat opens the tools in the full chat window; temporary side chat uses its owning window's tools. Narrow windows switch to the full-tab layout. Right-click a link and choose **Open in default browser** to use the external browser, or copy its address. Citation clicks preserve the reading position, keyboard selection to the document end still scrolls correctly, and Markdown images in replies retain image previews.
 
 ### Tools belonging to the current conversation
 
