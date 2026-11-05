@@ -5044,5 +5044,17 @@
   "webSearch.custom": "自定义接口",
   "webSearch.doubao": "豆包搜索",
   "webSearch.customProtocol": "接口格式",
-  "webSearch.customHelp": "填写完整请求 URL，并选择该接口兼容的请求与响应格式。API Key 可留空。"
+  "webSearch.customHelp": "填写完整请求 URL，并选择该接口兼容的请求与响应格式。API Key 可留空。",
+  "dialog.backgroundContinue": "后台继续",
+  "dialog.cancelDownload": "取消下载",
+  "dialog.cancelImport": "取消导入",
+  "dialog.cancelling": "取消中…",
+  "cache.empty": "暂无可清理缓存。",
+  "cache.ready": "扫描完成，可以清理。",
+  "cache.scanPartial": "部分项目未能扫描，可重新扫描。",
+  "notificationSounds.enabled": "提示音",
+  "notificationSounds.help": "重要事件播放短音，免打扰时静音。",
+  "greeting.proactive": "主动问候",
+  "greeting.autoRead": "自动朗读",
+  "greeting.autoReadHelp": "跟随朗读开关，免打扰时静音。"
 }

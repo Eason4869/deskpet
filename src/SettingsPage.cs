@@ -19,7 +19,7 @@ namespace Dafeiyu
         private readonly ColumnDefinition wardrobeColumn,wardrobeGap;
         private readonly TextBlock wardrobeHeading;
         private readonly Button restoreCompanions;
-        private readonly CheckBox follow,wander,top,pause,autoStart,greetings,aiGreetings,stumble,autoSleep;
+        private readonly CheckBox follow,wander,top,pause,autoStart,greetings,greetingAutoRead,aiGreetings,stumble,autoSleep;
         private readonly TextBox greetingInterval,greetingJitter;
         private readonly StartupRegistration startup=new StartupRegistration(Process.GetCurrentProcess().MainModule.FileName);
         private readonly Slider size;
@@ -115,7 +115,9 @@ namespace Dafeiyu
             behavior.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeM")),11,Ui.Muted)); behaviorPage.Children.Add(GlassSurface.Card(behavior));
 
             var hello=new StackPanel{Name="GuideGreetingSection"};hello.Children.Add(Heading(()=>(TextResources.Get("settingsPage.settingsPage.heading.alternativeC"))));
-            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.enabled")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            greetings=LocalizedUi.Toggle(()=>(TextResources.Get("greeting.proactive")),pet.Settings.GreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingEnabled=value;pet.ConfigureGreetings();}});greetings.Name="GreetingEnabled";hello.Children.Add(greetings);
+            greetingAutoRead=LocalizedUi.Toggle(()=>TextResources.Get("greeting.autoRead"),pet.Settings.GreetingAutoReadEnabled,delegate(bool value){if(!refreshing){pet.Settings.GreetingAutoReadEnabled=value;pet.RefreshProactiveGreetingSpeech();pet.SaveSettings();}});greetingAutoRead.Name="GreetingAutoReadEnabled";hello.Children.Add(greetingAutoRead);
+            hello.Children.Add(LocalizedUi.Text(()=>TextResources.Get("greeting.autoReadHelp"),12,Ui.Muted));
             aiGreetings=LocalizedUi.Toggle(()=>(TextResources.Get("settingsPage.greeting.aiEnabled")),pet.Settings.AiGreetingEnabled,delegate(bool value){if(!refreshing){pet.Settings.AiGreetingEnabled=value;pet.ConfigureGreetings();}});aiGreetings.Name="AiGreetingEnabled";hello.Children.Add(aiGreetings);
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.aiHelp")),12,Ui.Muted));
             hello.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("settingsPage.greeting.quietHelp")),12,Ui.Muted));
@@ -269,7 +271,7 @@ namespace Dafeiyu
             if(!ReferenceEquals(displayedSkin,pet.Skin))RefreshAvatar();
             if(restoreCompanions!=null)restoreCompanions.IsEnabled=pet.Catalog.HasRemoved;
             refreshing=true; follow.IsChecked=pet.Settings.FollowCursor; wander.IsChecked=pet.Settings.Wander;stumble.IsChecked=pet.Settings.StumbleEnabled;autoSleep.IsChecked=pet.Settings.AutoSleepEnabled;
-            top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
+            top.IsChecked=pet.Settings.Topmost; pause.IsChecked=pet.Paused;greetings.IsChecked=pet.Settings.GreetingEnabled;greetingAutoRead.IsChecked=pet.Settings.GreetingAutoReadEnabled;aiGreetings.IsChecked=pet.Settings.AiGreetingEnabled; size.Value=pet.Settings.Scale;
             sizeLabel.Text=Math.Round(pet.Settings.Scale*100)+"%"; skins.SelectedItem=pet.Skin; refreshing=false;
             RefreshAutoStart();if(observationGroup!=null)RefreshObservation();if(IsVisible)RefreshActiveCategory();
         }

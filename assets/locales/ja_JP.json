@@ -5044,5 +5044,17 @@
   "webSearch.custom": "Custom API",
   "webSearch.doubao": "Doubao Search",
   "webSearch.customProtocol": "API format",
-  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional."
+  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional.",
+  "dialog.backgroundContinue": "バックグラウンドで継続",
+  "dialog.cancelDownload": "ダウンロードを中止",
+  "dialog.cancelImport": "インポートを中止",
+  "dialog.cancelling": "中止中…",
+  "cache.empty": "削除できるキャッシュはありません。",
+  "cache.ready": "スキャン完了。削除できます。",
+  "cache.scanPartial": "一部をスキャンできませんでした。再スキャンできます。",
+  "notificationSounds.enabled": "通知音",
+  "notificationSounds.help": "重要なイベントを短い音で通知します。静音モードでは鳴りません。",
+  "greeting.proactive": "自発的なあいさつ",
+  "greeting.autoRead": "自動読み上げ",
+  "greeting.autoReadHelp": "読み上げ設定に従います。静音モードでは読み上げません。"
 }

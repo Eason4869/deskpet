@@ -3234,6 +3234,78 @@
       "expected": "当前模型服务没有可识别的原生搜索协议，请在“工具与连接 → 网页搜索”中选择原生协议或独立搜索服务。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "dialog.backgroundContinue",
+      "expected": "后台继续",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dialog.cancelDownload",
+      "expected": "取消下载",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dialog.cancelImport",
+      "expected": "取消导入",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "dialog.cancelling",
+      "expected": "取消中…",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.empty",
+      "expected": "暂无可清理缓存。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.ready",
+      "expected": "扫描完成，可以清理。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "cache.scanPartial",
+      "expected": "部分项目未能扫描，可重新扫描。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "notificationSounds.enabled",
+      "expected": "提示音",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "notificationSounds.help",
+      "expected": "重要事件播放短音，免打扰时静音。",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "greeting.proactive",
+      "expected": "主动问候",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "greeting.autoRead",
+      "expected": "自动朗读",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "greeting.autoReadHelp",
+      "expected": "跟随朗读开关，免打扰时静音。",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

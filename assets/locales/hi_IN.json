@@ -5044,5 +5044,17 @@
   "webSearch.custom": "Custom API",
   "webSearch.doubao": "Doubao Search",
   "webSearch.customProtocol": "API format",
-  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional."
+  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional.",
+  "dialog.backgroundContinue": "पृष्ठभूमि में जारी",
+  "dialog.cancelDownload": "डाउनलोड रद्द करें",
+  "dialog.cancelImport": "आयात रद्द करें",
+  "dialog.cancelling": "रद्द हो रहा है…",
+  "cache.empty": "साफ़ करने के लिए कोई कैश नहीं है।",
+  "cache.ready": "स्कैन पूरा। सफ़ाई कर सकते हैं।",
+  "cache.scanPartial": "कुछ आइटम स्कैन नहीं हुए। फिर से स्कैन करें।",
+  "notificationSounds.enabled": "सूचना ध्वनियाँ",
+  "notificationSounds.help": "ज़रूरी घटनाओं के लिए छोटी ध्वनियाँ। शांत मोड में मौन।",
+  "greeting.proactive": "स्वतः अभिवादन",
+  "greeting.autoRead": "अपने आप पढ़कर सुनाएँ",
+  "greeting.autoReadHelp": "पढ़कर सुनाने की सेटिंग का पालन करता है। शांत मोड में मौन।"
 }

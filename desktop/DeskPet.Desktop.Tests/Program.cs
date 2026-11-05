@@ -33,6 +33,7 @@ AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatfo
 if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
 if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
 if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}
+if(args.Contains("--notification-sounds")){if(Dafeiyu.Tests.NotificationSoundTests.Main()!=0)throw new Exception("Notification sound contracts failed");return;}
 int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
@@ -139,6 +140,9 @@ try
     if(args.Any(a=>a.StartsWith("--settings-visual-ui="))){var language=args.Single(a=>a.StartsWith("--settings-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"settings-visual"),language)+" settings visual assertions");return;}
     if(args.Contains("--data-management-ui-only")){Console.WriteLine("PASS: "+DataManagementUiChecks.Run(Path.Combine(directory,"data-management"))+" data UI assertions");return;}
     if(args.Any(a=>a.StartsWith("--cache-visual-ui="))){var language=args.Single(a=>a.StartsWith("--cache-visual-ui=")).Split('=')[1];Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-visual"),language)+" cache visual assertions");return;}
+    if(args.Contains("--notification-integration")){Console.WriteLine("PASS: "+NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"))+" notification integration assertions");return;}
+    if(args.Contains("--import-ui-only")){Console.WriteLine("PASS: "+ImportDialogUiChecks.Run()+" import UI assertions");return;}
+    if(args.Contains("--tray-ui-only")){Console.WriteLine("PASS: "+TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"))+" tray UI assertions");return;}
     if(args.Contains("--cache-ui-only")){Console.WriteLine("PASS: "+CacheMaintenanceUiChecks.Run(Path.Combine(directory,"cache-maintenance"))+" cache UI assertions");return;}
     if(args.Contains("--companion-lifecycle-smoke")){Console.WriteLine("CompanionLifecycleSmoke: "+CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle"))+" passed");return;}
     if(args.Contains("--guide-ui-only")){
@@ -147,6 +151,10 @@ try
         finally{guideController.Pet.Close();guideController.Dispose();Complete(guideController.ImageServicesShutdown);}
         Console.WriteLine("PASS: "+assertions+" guide UI assertions");return;
     }
+    Check(Dafeiyu.Tests.NotificationSoundTests.Main()==0,"shared notification sound contracts");
+    assertions+=ImportDialogUiChecks.Run();
+    assertions+=NotificationIntegrationUiChecks.Run(Path.Combine(directory,"notification-integration"));
+    assertions+=TrayNotificationUiChecks.Run(Path.Combine(directory,"tray-notification"));
     assertions += ComposerLayoutUiChecks.Run(Path.Combine(directory, "composer-layout"));
     assertions+=CompanionLifecycleSmoke(Path.Combine(directory,"companion-lifecycle-default"));
     assertions+=DataMaintenanceHostChecks.Run(Path.Combine(directory,"data-admission-default"),TextResources.CurrentLanguage);

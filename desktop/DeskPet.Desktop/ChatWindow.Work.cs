@@ -31,7 +31,7 @@ internal sealed partial class ChatWindow
         if(closed||request!=bindingEpoch)return;
         SaveDraft();
         string oldSession=QuestionSessionId;binding=next;boundSession=next?.Session;boundQueue=next?.Queue;uploadEpoch++;
-        owner.WorkViewChanged(this,oldSession);
+        owner.WorkViewChanged(this,oldSession);owner.ObserveNotificationSession(BoundSession);
         foreach(var view in rendered.Values)view.DisposeImages();rendered.Clear();messages.Children.Clear();queuedEdits.Clear();questionSignature="";
         draft.Text=LoadDraft();RefreshAttachments();Refresh();
         if(workBindingButton!=null)workBindingButton.Content=new TextBlock{Text=binding==null?TextResources.Get("agent.work.choose"):TextResources.Format("agent.work.current",owner.WorkBindings.Snapshot.Projects.Single(project=>project.Id==binding.ProjectId).Name,binding.Name),TextTrimming=Avalonia.Media.TextTrimming.CharacterEllipsis,MaxWidth=210};

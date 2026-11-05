@@ -5044,5 +5044,17 @@
   "webSearch.custom": "Custom API",
   "webSearch.doubao": "Doubao Search",
   "webSearch.customProtocol": "API format",
-  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional."
+  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional.",
+  "dialog.backgroundContinue": "Berlanjut di latar belakang",
+  "dialog.cancelDownload": "Batalkan unduhan",
+  "dialog.cancelImport": "Batalkan impor",
+  "dialog.cancelling": "Membatalkan…",
+  "cache.empty": "Tidak ada cache untuk dibersihkan.",
+  "cache.ready": "Pemindaian selesai. Siap dibersihkan.",
+  "cache.scanPartial": "Beberapa item tidak dapat dipindai. Pindai ulang.",
+  "notificationSounds.enabled": "Suara notifikasi",
+  "notificationSounds.help": "Suara singkat untuk peristiwa penting. Senyap dalam mode tenang.",
+  "greeting.proactive": "Sapaan proaktif",
+  "greeting.autoRead": "Bacakan otomatis",
+  "greeting.autoReadHelp": "Mengikuti pengaturan baca lantang. Senyap dalam mode tenang."
 }

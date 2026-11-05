@@ -40,8 +40,17 @@ namespace Dafeiyu.Tests
                 var close=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool owned=false;close.Tick+=delegate{var dialog=app.Windows.OfType<CacheMaintenanceWindow>().FirstOrDefault();if(dialog!=null){owned=dialog.Owner==window;close.Stop();dialog.Close();}};close.Start();Click(clean);Check(owned&&pet.IsVisible,"general data opens owned dialog; close leaves pet alive");
                 string path=Path.Combine(root,"updates",new string('a',32));using(CacheResourceLease.Acquire(root,path))File.WriteAllBytes(Path.Combine(path,"package.zip"),new byte[123]);File.SetLastWriteTimeUtc(Path.Combine(path,"package.zip"),DateTime.UtcNow.AddDays(-8));Directory.SetLastWriteTimeUtc(path,DateTime.UtcNow.AddDays(-8));
                 var cache=new CacheMaintenanceWindow(root){Owner=window};cache.Show();Wait(cache.PendingOperation);
+                var monitorProbe=new Window{Width=900,Height=800,MinWidth=800,MinHeight=600};DialogUi.FitToWorkArea(monitorProbe,new Rect(1920,0,1200,900),1.5);
+                Check(monitorProbe.Width<=776&&monitorProbe.Height<=576&&monitorProbe.MinWidth<=776&&monitorProbe.MinHeight<=576,"dialog constraints convert secondary monitor pixels using target DPI");monitorProbe.Close();
+                Check(cache.WindowStyle==WindowStyle.None&&cache.Content is Border&&((Border)cache.Content).CornerRadius.TopLeft==20,"cache uses the borderless rounded application dialog");
+                var defaultScroll=Find<ScrollViewer>(cache,"");
+                Check(defaultScroll!=null&&defaultScroll.ScrollableHeight<1,"default cache dialog shows the complete body without scrolling");
+                var preserved=Find<TextBlock>(cache,"CachePreservedData");var cancelCache=Find<Button>(cache,"CancelCache");
+                Check(preserved.TransformToAncestor(cache).TransformBounds(new Rect(preserved.RenderSize)).Bottom<cancelCache.TransformToAncestor(cache).TransformBounds(new Rect(cancelCache.RenderSize)).Top,"preservation explanation is fully above the actions");
+                Capture(cache,Path.Combine(root,"approved-default.png"));
                 Check(cache.ResizeMode==ResizeMode.CanMinimize||cache.ResizeMode==ResizeMode.NoResize,"cache dialog disallows maximize");
-                cache.Height=340;Pump();var scroll=Find<ScrollViewer>(cache, "");var bar=scroll==null?null:scroll.Template.FindName("PART_VerticalScrollBar",scroll) as ScrollBar;
+                cache.SizeToContent=SizeToContent.Manual;cache.Height=340;Pump();var scroll=Find<ScrollViewer>(cache, "");var bar=scroll==null?null:scroll.Template.FindName("PART_VerticalScrollBar",scroll) as ScrollBar;
+                Check(cancelCache.TransformToAncestor(cache).TransformBounds(new Rect(cancelCache.RenderSize)).Bottom<=cache.ActualHeight-12,"cache actions remain reachable at constrained height");
                 Check(bar!=null&&cache.Resources.Contains(typeof(ScrollBar))&&ReferenceEquals(bar.Style,cache.Resources[typeof(ScrollBar)]),"cache dialog uses the shared slim scrollbar style");
                 Check(cache.Scan.TotalBytes==123&&Find<Button>(cache,"CleanCache").IsEnabled,"async scan renders actual cleanable bytes");
                 Check(Find<TextBlock>(cache,"CacheSummary").Text==CachePresentation.FormatBytes(123)&&Find<TextBlock>(cache,"CacheUpdates").Text==CachePresentation.FormatBytes(123)&&Find<TextBlock>(cache,"CacheDownloads").Text==CachePresentation.FormatBytes(0),"visible cache total and categories reflect actual scan fields");

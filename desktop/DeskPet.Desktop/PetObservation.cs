@@ -26,8 +26,8 @@ internal sealed partial class PetWindow
         var area=WorkArea();bubble.Position=new PixelPoint(Math.Clamp(Position.X-50,area.X,Math.Max(area.X,area.Right-(int)(320*RenderScaling))),Math.Max(area.Y,Position.Y-(int)(135*RenderScaling)));
         greetingBubble=bubble;bubble.Show();
         if(bubble.IsVisible&&host.IsCurrent(epoch)&&ObservationEligible()&&host.IsForegroundCurrent())
-        {owner.RegisterShownProactive(item,settings);recentGreetings.Add(decision.Message);if(recentGreetings.Count>6)recentGreetings.RemoveAt(0);}
+        {owner.RegisterShownProactive(item,settings);recentGreetings.Add(decision.Message);if(recentGreetings.Count>6)recentGreetings.RemoveAt(0);owner.SpeakProactiveGreeting(decision.Message);}
         else{greetingBubble=null;bubble.Close();return;}
-        var dismiss=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};dismiss.Tick+=(_,_)=>{dismiss.Stop();if(ReferenceEquals(greetingBubble,bubble))DismissGreeting();};bubble.Closed+=(_,_)=>dismiss.Stop();dismiss.Start();
+        var dismiss=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};dismiss.Tick+=(_,_)=>{if(!ReferenceEquals(greetingBubble,bubble)){dismiss.Stop();return;}if(owner.ProactiveGreetingSpeechActive){dismiss.Interval=TimeSpan.FromMilliseconds(250);return;}dismiss.Stop();DismissGreeting();};bubble.Closed+=(_,_)=>{dismiss.Stop();if(ReferenceEquals(greetingBubble,bubble)){greetingBubble=null;owner.StopProactiveGreetingSpeech();}};dismiss.Start();
     }
 }

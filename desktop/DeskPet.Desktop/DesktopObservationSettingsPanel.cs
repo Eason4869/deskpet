@@ -66,7 +66,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
             bool saved=await owner.SaveObservationSettingsAsync(s=>{var global=s.Copy();global.ImageDescriptionOverride=null;if(DesktopObservationConsent.Destination(global)!=digest)throw new InvalidOperationException();s.DesktopObservationConsentVersion=DesktopObservationConsent.Version;s.DesktopObservationConsentDestination=digest;});
             transientStatus=saved?null:TextResources.Get("desktopObservation.saveFailed");Refresh();
         });
-        permission=Action(()=>TextResources.Get("desktopObservation.permission"),"ObservationPermission",async()=>{permissionGranted=await owner.RequestScreenCaptureAccessAsync();Refresh();});
+        permission=Action(()=>TextResources.Get("desktopObservation.permission"),"ObservationPermission",async()=>{owner.PlayNotificationCue(NotificationCue.Permission,"screen-permission:"+Guid.NewGuid().ToString("N"));permissionGranted=await owner.RequestScreenCaptureAccessAsync();Refresh();});
         var configure=SettingsVisual.Button(()=>TextResources.Get("desktopObservation.configure"),()=>owner.ShowSettingsSection("text"));configure.Name="ObservationConfigure";
         configure.BorderThickness=new Thickness(0);configure.Background=Brushes.Transparent;configure.Foreground=SettingsVisual.Muted;if(configure.Content is TextBlock configureText)configureText.Foreground=SettingsVisual.Muted;
         Children.Add(SettingsVisual.Wrap(confirm,permission,configure));
@@ -118,6 +118,7 @@ internal sealed class DesktopObservationSettingsPanel : StackPanel,IDisposable
         if(addresses.Length==0||digest.Length==0){transientStatus=TextResources.Get("desktopObservation.settings.noDestination");return null;}
         var dialog=LocalizedUi.Window(()=>TextResources.Get("desktopObservation.consentTitle"),new Border(),500,350);dialog.Background=DesktopTheme.Surface;
         dialog.Content=new Border{Padding=new Thickness(22),Child=new ScrollViewer{HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,Content=Ui.Column(SettingsVisual.Text(()=>TextResources.Format("desktopObservation.consent.description",DesktopObservationUiText.ReceivingSummary(settings)),14),SettingsVisual.Wrap(SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentCancel"),()=>dialog.Close(false)),SettingsVisual.Button(()=>TextResources.Get("desktopObservation.consentAccept"),()=>dialog.Close(true))))}};
+        owner.PlayNotificationCue(NotificationCue.Permission,"screen-consent:"+Guid.NewGuid().ToString("N"));
         return await dialog.ShowDialog<bool>(host)?digest:null;
     }
     private async Task TestAsync(bool upload)

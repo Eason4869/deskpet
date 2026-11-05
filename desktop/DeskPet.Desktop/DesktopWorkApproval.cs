@@ -19,6 +19,7 @@ internal sealed class DesktopWorkApproval(DesktopController owner):ICancellableA
         var details=TextResources.Format("agent.work.approvalSource",request.ProjectId,request.SessionId,request.TaskId,request.CallId,request.ToolName)+"\n\n"+
             TextResources.Format("agent.work.approvalPayload",request.Arguments,request.Resource,request.IsolationDescription,request.PayloadHash);
         var content=new TextBox{Name="WorkApprovalDetails",Text=details,IsReadOnly=true,AcceptsReturn=true,TextWrapping=Avalonia.Media.TextWrapping.Wrap};
+        owner.PlayNotificationCue(NotificationCue.Review,"approval:"+request.SessionId+":"+request.TaskId+":"+request.CallId+":"+request.Id);
         var dialog=LocalizedUi.Window(()=>(TextResources.Get("agent.work.approvalTitle")),new Border(),620,570);dialog.Name="WorkApprovalDialog";
         var buttons=Ui.Row(LocalizedUi.Button(()=>(TextResources.Get("agent.work.deny")),()=>dialog.Close(false)),LocalizedUi.Button(()=>(TextResources.Get("agent.work.allow")),()=>dialog.Close(true)));
         var root=new DockPanel{Margin=new Thickness(20)};DockPanel.SetDock(buttons,Dock.Bottom);root.Children.Add(buttons);root.Children.Add(new ScrollViewer{Content=content});dialog.Content=root;

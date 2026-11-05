@@ -30,14 +30,14 @@ namespace Dafeiyu
             talk=LocalizedUi.Button(()=>eventId==null?TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text"):TextResources.Get("desktopObservation.reply"));talk.Name="GreetingQuickChat";talk.MinHeight=25;talk.FontSize=11;talk.Padding=new Thickness(10,2,10,2);talk.Margin=new Thickness(0);talk.HorizontalAlignment=HorizontalAlignment.Left;talk.Click+=delegate {Hide();if(eventId==null)pet.ShowQuickChat();else pet.OpenProactiveReply(eventId);};Grid.SetRow(talk,2);body.Children.Add(talk);
             root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});
             tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
-            lifetime=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};lifetime.Tick+=delegate {Hide();};
+            lifetime=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};lifetime.Tick+=delegate {if(pet.ProactiveGreetingSpeechActive){lifetime.Interval=TimeSpan.FromMilliseconds(250);return;}Hide();};
             SourceInitialized+=delegate {DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
-            IsVisibleChanged+=delegate {if(!IsVisible)lifetime.Stop();};Closed+=delegate {lifetime.Stop();};
+            IsVisibleChanged+=delegate {if(!IsVisible){lifetime.Stop();pet.StopProactiveGreetingSpeech();}};Closed+=delegate {lifetime.Stop();pet.StopProactiveGreetingSpeech();};
         }
         public void ShowGreeting(string text,string shownEventId=null)
         {
             eventId=shownEventId;talk.Content=eventId==null?TextResources.Get("greetingBubbleWindow.greetingBubbleWindow.text"):TextResources.Get("desktopObservation.reply");LocalizedUi.Set(name,"Text",()=>(TextResources.Format("greetingBubbleWindow.showGreeting.petSkinName",pet.Skin.DisplayName)));message.Text=text;Topmost=pet.Settings.Topmost;
-            if(!IsVisible)Show();FollowPet();lifetime.Stop();lifetime.Start();
+            if(!IsVisible)Show();FollowPet();lifetime.Stop();lifetime.Interval=TimeSpan.FromSeconds(12);lifetime.Start();
         }
         public void FollowPet(){BubblePlacement.Follow(this,pet,tail);}
     }

@@ -41,11 +41,11 @@ internal static class Ui
         check.IsCheckedChanged += (_, _) => changed(check.IsChecked == true);
         return check;
     }
-    public static Window Window(string title, Control content, double width = 650, double height = 620) => new()
+    public static Window Window(string title, Control content, double width = 650, double height = 620)
     {
-        Title = title, Width = width, Height = height, MinWidth = Math.Min(360, width), MinHeight = 280,
-        Content = new Border { Padding = new Thickness(20), Child = content }, WindowStartupLocation = WindowStartupLocation.CenterScreen
-    };
+        var window=new Window{Title=title,Width=width,Height=height,MinWidth=Math.Min(360,width),MinHeight=Math.Min(180,height),Content=content,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        DialogUi.Install(window);return window;
+    }
     public static Control Field(string label, Control input) => Column(Text(label), input);
     public static void ReadOnlyMenu(SelectableTextBlock text)
     {

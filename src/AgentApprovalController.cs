@@ -33,7 +33,7 @@ namespace Dafeiyu
             var scheduled=owner.Dispatcher.BeginInvoke(new Action(delegate
             {
                 if(cancel.IsCancellationRequested||ownerClosed){item.Result.TrySetCanceled();return;}
-                pending.Add(item);Announce();
+                pending.Add(item);var pet=owner as PetWindow;if(pet!=null)pet.PlayNotificationCue(NotificationCue.Review,"approval:"+snapshot.SessionId+":"+snapshot.TaskId+":"+snapshot.CallId+":"+snapshot.Id);Announce();
             }));
             try{using(cancel.Register(()=>item.Result.TrySetCanceled()))return await item.Result.Task.ConfigureAwait(false);}
             finally

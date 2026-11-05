@@ -22,15 +22,15 @@ namespace Dafeiyu
             this.passive=passive;
             LocalizedUi.Window(this,()=>(all?TextResources.Get("officialCompanionProgressWindow.officialCompanionProgressWindow.window"):TextResources.Get("officialCompanionProgressWindow.officialCompanionProgressWindow.window.alternativeA")),430,280);Name="OfficialCompanionProgress";
             if(owner!=null&&owner.IsLoaded){Owner=owner;WindowStartupLocation=WindowStartupLocation.CenterOwner;}ShowInTaskbar=false;ResizeMode=ResizeMode.NoResize;
-            var panel=new StackPanel{Margin=new Thickness(22)};
+            var panel=new StackPanel();
             message=LocalizedUi.Text(()=>(TextResources.Get("officialCompanionProgressWindow.officialCompanionProgressWindow.text")),13);message.Name="OfficialDownloadStatus";panel.Children.Add(message);
             progress=new ProgressBar{Name="OfficialDownloadProgress",Minimum=0,Maximum=100,IsIndeterminate=true,Height=8,Margin=new Thickness(0,14,0,12)};panel.Children.Add(progress);
             roles=Ui.Text("",11,Ui.Muted);roles.TextWrapping=TextWrapping.Wrap;panel.Children.Add(roles);
             var actions=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,16,0,0)};
-            stop=LocalizedUi.Button(()=>(TextResources.Get("common.cancel")));stop.Name="CancelOfficialDownload";stop.Click+=delegate{if(finished)Close();else{cancel.Cancel();stop.IsEnabled=false;LocalizedUi.Set(message,"Text",()=>(TextResources.Get("officialCompanionProgressWindow.officialCompanionProgressWindow.message")));}};actions.Children.Add(stop);
-            retry=LocalizedUi.Button(()=>(TextResources.Get("common.retry")));retry.Name="RetryOfficialDownload";retry.Visibility=Visibility.Collapsed;actions.Children.Add(retry);panel.Children.Add(actions);Content=panel;
+            stop=LocalizedUi.Button(()=>(TextResources.Get("dialog.cancelDownload")));stop.Name="CancelOfficialDownload";stop.Click+=delegate{if(finished)Close();else{cancel.Cancel();stop.IsEnabled=false;LocalizedUi.Set(message,"Text",()=>(TextResources.Get("dialog.cancelling")));}};actions.Children.Add(stop);
+            retry=LocalizedUi.Button(()=>(TextResources.Get("common.retry")));retry.Name="RetryOfficialDownload";retry.Visibility=Visibility.Collapsed;actions.Children.Add(retry);panel.Children.Add(actions);
             if(passive){Name="OfficialCompanionDownloadBubble";Height=140;MinHeight=0;ShowActivated=false;Focusable=false;progress.Visibility=roles.Visibility=actions.Visibility=Visibility.Collapsed;LocalizedUi.Set(message,"Text",()=>(TextResources.Get("companions.package.updating")));}
-            Closed+=delegate{closed=true;if(!finished&&!passive)cancel.Cancel();};
+            DialogUi.ApplyTitled(this,Ui.Scroll(panel));Closed+=delegate{closed=true;if(!finished&&!passive)cancel.Cancel();};
         }
         internal void Report(OfficialCompanionProgress value)
         {
@@ -45,10 +45,10 @@ namespace Dafeiyu
             if(profile!=null)status[profile.Id]=name+"："+stage;
             roles.Text=String.Join("　",OfficialCompanionProfiles.All.Where(p=>status.ContainsKey(p.Id)).Select(p=>status[p.Id]));
         }
-        internal void Complete(){if(closed)return;finished=true;progress.IsIndeterminate=false;progress.Value=100;Close();}
+        internal void Complete(){if(closed)return;if(!passive)PetWindow.PlayApplicationCue(NotificationCue.Complete,"download:"+Guid.NewGuid().ToString("N"));finished=true;progress.IsIndeterminate=false;progress.Value=100;Close();}
         internal void Failure(string text,Action again)
         {
-            if(closed)return;finished=true;progress.IsIndeterminate=false;message.Text=text;LocalizedUi.Set(stop,"Content",()=>(TextResources.Get("common.close")));stop.IsEnabled=true;
+            if(closed)return;if(!passive)PetWindow.PlayApplicationCue(NotificationCue.Failure,"download:"+Guid.NewGuid().ToString("N"));finished=true;progress.IsIndeterminate=false;message.Text=text;LocalizedUi.Set(stop,"Content",()=>(TextResources.Get("common.close")));stop.IsEnabled=true;
             if(again!=null){retry.Visibility=Visibility.Visible;retry.Click+=delegate{Close();again();};}
         }
     }

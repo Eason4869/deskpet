@@ -91,7 +91,7 @@ namespace Dafeiyu
                 {
                     if(disposed)return;var content=AgentChangePreviewContent.Create(preview);
                     if(navigate!=null){navigate(TextResources.Format("agentTaskPanel.showDiff.navigate",Path.GetFileName(path)),content);return;}
-                    var host=new Window{Name="AgentChangePreview"};Ui.Window(host,TextResources.Format("agentTaskPanel.showDiff.window",Path.GetFileName(path)),900,650);host.MinWidth=540;host.MinHeight=360;host.Content=content;host.Show();
+                    var host=new Window{Name="AgentChangePreview"};Ui.Window(host,TextResources.Format("agentTaskPanel.showDiff.window",Path.GetFileName(path)),900,650);host.MinWidth=540;host.MinHeight=360;DialogUi.ApplyTitled(host,content,true);host.Show();
                 }));
             }
             catch(Exception error){Dispatcher.BeginInvoke(new Action(delegate{if(!disposed)Error(error);}));}

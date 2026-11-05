@@ -159,9 +159,8 @@ namespace Dafeiyu
         }
         void BindApprovals()
         {
-            if(approvals!=null){Children.Remove(approvals);approvals.Dispose();}
-            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r));
-            Children.Insert(Children.IndexOf(normalSurface),approvals);
+            if(approvals!=null)approvals.Dispose();
+            var bound=session;approvals=new AgentApprovalSurface(bound.ApprovalProvider as AgentApprovalController,r=>AgentApprovalSurface.Matches(bound,r),host);
         }
         internal void Rebind(ConversationSession nextSession,ConversationQueue nextQueue)
         {
@@ -274,7 +273,7 @@ namespace Dafeiyu
         {
             var dialog=new Window{Owner=host,WindowStartupLocation=WindowStartupLocation.CenterOwner};LocalizedUi.Window(dialog,()=>(TextResources.Get("conversationComposer.showGoal.window")),470,320);dialog.ResizeMode=ResizeMode.NoResize;
             var body=new StackPanel{Margin=new Thickness(20)};body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text")),18));body.Children.Add(LocalizedUi.Text(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeA")),12,Ui.Muted));var goal=Ui.Field(WorkSettings.AgentGoal,true);goal.Name="AgentGoalInput";goal.MaxLength=4000;goal.Height=115;goal.Margin=new Thickness(0,12,0,12);body.Children.Add(goal);
-            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{pet.SetConversationGoal(session,goal.Text.Trim());dialog.Close();};buttons.Children.Add(save);body.Children.Add(buttons);dialog.Content=body;dialog.ShowDialog();
+            var buttons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};var clear=LocalizedUi.Button(()=>(TextResources.Get("conversationComposer.showGoal.text.alternativeB")));clear.Click+=delegate{goal.Clear();};buttons.Children.Add(clear);var save=LocalizedUi.Button(()=>(TextResources.Get("common.save")),true);save.Name="SaveAgentGoal";save.Click+=delegate{pet.SetConversationGoal(session,goal.Text.Trim());dialog.Close();};buttons.Children.Add(save);body.Children.Add(buttons);body.Margin=new Thickness(24);((FrameworkElement)body.Children[0]).Margin=new Thickness(0,0,32,0);DialogUi.Apply(dialog,Ui.Scroll(body));dialog.ShowDialog();
         }
         async System.Threading.Tasks.Task CaptureApplication(ApplicationSnapshotTarget target)
         {

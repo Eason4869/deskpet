@@ -335,6 +335,7 @@ internal sealed partial class PetWindow : Window
     private async Task ShowGreetingAsync()
     {
         if(!GreetingAllowed)return;
+        owner.StopProactiveGreetingSpeech();
         if(owner.Settings.DesktopObservationEnabled){await ShowObservationAsync();return;}
         var cancellation = new CancellationTokenSource(); greetingRequest = cancellation;
         var id = owner.Skin.Id; var name = owner.Skin.Name;
@@ -362,15 +363,15 @@ internal sealed partial class PetWindow : Window
             greetingBubble = bubble;
             var area = WorkArea(); bubble.Position = new PixelPoint(Math.Clamp(Position.X - 50, area.X, Math.Max(area.X, area.Right - (int)(320 * RenderScaling))), Math.Max(area.Y, Position.Y - (int)(120 * RenderScaling)));
             bubble.Show();
-            if(bubble.IsVisible)owner.RegisterShownProactive(new ProactiveEvent(eventId,id,text,null,DateTime.UtcNow,"",""),settings);
+            if(bubble.IsVisible){owner.RegisterShownProactive(new ProactiveEvent(eventId,id,text,null,DateTime.UtcNow,"",""),settings);owner.SpeakProactiveGreeting(text);}
             if(bubble.IsVisible)RememberRelationshipWelcome(stage,text);
             if (holiday != null) owner.Holidays.MarkGreetingShown(holiday);
-            var dismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) }; dismiss.Tick += (_, _) => { dismiss.Stop(); if (ReferenceEquals(greetingBubble, bubble)) DismissGreeting(); };
-            bubble.Closed += (_, _) => dismiss.Stop(); dismiss.Start();
+            var dismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) }; dismiss.Tick += (_, _) => {if(!ReferenceEquals(greetingBubble,bubble)){dismiss.Stop();return;}if(owner.ProactiveGreetingSpeechActive){dismiss.Interval=TimeSpan.FromMilliseconds(250);return;}dismiss.Stop();DismissGreeting();};
+            bubble.Closed += (_, _) => {dismiss.Stop();if(ReferenceEquals(greetingBubble,bubble)){greetingBubble=null;owner.StopProactiveGreetingSpeech();}}; dismiss.Start();
         }
         catch (OperationCanceledException) { }
         finally { if (ReferenceEquals(greetingRequest, cancellation)) greetingRequest = null; cancellation.Dispose(); }
     }
-    private void DismissGreeting(bool invalidateRelationship=true) { if(invalidateRelationship){relationshipContentEpoch++;owner.Observation.Invalidate(false);}greetingRequest?.Cancel(); var bubble = greetingBubble; greetingBubble = null; bubble?.Close(); }
+    private void DismissGreeting(bool invalidateRelationship=true) {owner.StopProactiveGreetingSpeech(); if(invalidateRelationship){relationshipContentEpoch++;owner.Observation.Invalidate(false);}greetingRequest?.Cancel(); var bubble = greetingBubble; greetingBubble = null; bubble?.Close(); }
     private static bool SameGreetingConnection(ConnectionSettings a,ConnectionSettings b)=>a.BaseUrl==b.BaseUrl&&a.Model==b.Model&&a.EncryptedKey==b.EncryptedKey&&a.Protocol==b.Protocol&&a.UseProxy==b.UseProxy&&a.ProxyAddress==b.ProxyAddress;
 }

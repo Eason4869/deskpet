@@ -5044,5 +5044,17 @@
   "webSearch.custom": "Custom API",
   "webSearch.doubao": "Doubao Search",
   "webSearch.customProtocol": "API format",
-  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional."
+  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional.",
+  "dialog.backgroundContinue": "Continúa en segundo plano",
+  "dialog.cancelDownload": "Cancelar descarga",
+  "dialog.cancelImport": "Cancelar importación",
+  "dialog.cancelling": "Cancelando…",
+  "cache.empty": "No hay caché para limpiar.",
+  "cache.ready": "Análisis completo. Listo para limpiar.",
+  "cache.scanPartial": "No se pudieron analizar algunos elementos. Vuelve a analizar.",
+  "notificationSounds.enabled": "Sonidos de notificación",
+  "notificationSounds.help": "Sonidos breves para eventos importantes. Silenciosos en modo tranquilo.",
+  "greeting.proactive": "Saludos proactivos",
+  "greeting.autoRead": "Leer automáticamente",
+  "greeting.autoReadHelp": "Sigue la configuración de lectura. Silencioso en modo tranquilo."
 }

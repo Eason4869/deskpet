@@ -110,5 +110,9 @@
   "settingsLayout.archivesHelp": "Archive management renders its dedicated ArchivedConversationsPanel description; this provisional tab help is unused and retained as feature history.",
   "settingsLayout.shortcutsGroup": "The desktop shortcut section keeps settingsWindow.behavior.text.alternativeD; the provisional alternate heading is retained as feature history.",
   "settingsLayout.advanced": "The final settings layout uses named sections and the specific sandbox expander; the provisional generic heading is retained as feature history.",
-  "webSearch.keyOptional": "Both search settings views label credentials with webSearch.key; the provisional optional-key variant is unused and retained as feature history."
+  "webSearch.keyOptional": "Both search settings views label credentials with webSearch.key; the provisional optional-key variant is unused and retained as feature history.",
+  "onboarding.prepare.cancel": "The unified preparation dialog uses the shorter dialog.cancelDownload label; the former longer caption is retained as feature history.",
+  "officialCompanionProgressWindow.officialCompanionProgressWindow.message": "The unified progress dialog uses the concise dialog.cancelling status; the former longer cancellation message is retained as feature history.",
+  "settingsWindow.behavior.check.alternativeJ": "The proactive greeting toggle now uses greeting.proactive consistently on both clients; this former caption is preserved as historical translation evidence.",
+  "settingsPage.greeting.enabled": "The proactive greeting toggle now uses the user-requested greeting.proactive caption; this former caption is preserved as historical translation evidence."
 }

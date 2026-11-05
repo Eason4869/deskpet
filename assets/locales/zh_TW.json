@@ -5044,5 +5044,17 @@
   "webSearch.custom": "Custom API",
   "webSearch.doubao": "Doubao Search",
   "webSearch.customProtocol": "API format",
-  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional."
+  "webSearch.customHelp": "Enter the complete request URL and choose its compatible request and response format. API Key is optional.",
+  "dialog.backgroundContinue": "背景繼續",
+  "dialog.cancelDownload": "取消下載",
+  "dialog.cancelImport": "取消匯入",
+  "dialog.cancelling": "取消中…",
+  "cache.empty": "目前沒有可清理的快取。",
+  "cache.ready": "掃描完成，可以清理。",
+  "cache.scanPartial": "部分項目未能掃描，可重新掃描。",
+  "notificationSounds.enabled": "提示音",
+  "notificationSounds.help": "重要事件播放短音，勿擾模式時靜音。",
+  "greeting.proactive": "主動問候",
+  "greeting.autoRead": "自動朗讀",
+  "greeting.autoReadHelp": "跟隨朗讀開關，勿擾模式時靜音。"
 }

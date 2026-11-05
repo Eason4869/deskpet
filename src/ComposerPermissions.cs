@@ -29,6 +29,7 @@ namespace Dafeiyu
         {
             if(session.IsBusy||queue.HasPending){LocalizedUi.Set(status,"Text",()=>(TextResources.Get("composerPermissions.selectPermissions.status")));return;}
             var current=WorkSettings;bool expanding=mode==AgentApprovalMode.Full&&current.AgentApprovalMode!=AgentApprovalMode.Full||current.AgentSandboxEnabled&&!sandbox;
+            if(expanding)pet.PlayNotificationCue(NotificationCue.Permission,"permission:"+Guid.NewGuid().ToString("N"));
             if(expanding&&!(mode==AgentApprovalMode.Full?PermissionChangeDialog.ConfirmFullAccess(host):PermissionChangeDialog.Confirm(host,TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm"),TextResources.Get("composerPermissions.selectPermissions.permissionChangeDialogConfirm.alternativeA"))))return;
             Try(delegate{pet.SetConversationPermissions(session,mode,sandbox);RefreshMode();status.Text=TextResources.Format("composerPermissions.selectPermissions.statusAgentAccessPolicy",AgentAccessPolicy.Label(WorkSettings));});
         }

@@ -421,7 +421,7 @@ internal static class OfficialCompanionUiChecks
             progress.Report(new OfficialCompanionProgress("dafeiyu","install","",100,100,100));Dispatcher.UIThread.RunJobs();
             Check(!window.IsVisible,"settings cache reuse has no dialog");
             progress.Report(new OfficialCompanionProgress("dafeiyu","download","",25,100,25));Dispatcher.UIThread.RunJobs();
-            Check(window.IsVisible&&window.Name=="OfficialCompanionProgressDialog"&&window.GetLogicalDescendants().OfType<Button>().Any(b=>b.Content?.ToString()=="取消"),"settings actual update retains normal cancellable progress dialog");
+            Check(window.IsVisible&&window.Name=="OfficialCompanionProgressDialog"&&window.GetLogicalDescendants().OfType<Button>().Any(b=>b.Content?.ToString()==TextResources.Get("dialog.cancelDownload")),"settings actual update retains normal cancellable progress dialog");
             progress.Dispose();
             Check(!window.IsVisible&&!cancellation.IsCancellationRequested,"completed progress closes without cancelling the operation");
             progress.Report(new OfficialCompanionProgress("dafeiyu","download","",50,100,50));Dispatcher.UIThread.RunJobs();
