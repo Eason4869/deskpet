@@ -104,12 +104,14 @@ void *dp_microphone_start(int *error) {
         if (!mic.converter) { *error = -3; return NULL; }
         __weak DPMicrophone *weakMic = mic;
         [input installTapOnBus:0 bufferSize:2048 format:source block:^(AVAudioPCMBuffer *buffer, AVAudioTime *time) {
+            (void)time;
             DPMicrophone *strongMic = weakMic; if (!strongMic) return;
             @autoreleasepool {
                 AVAudioFrameCount capacity = (AVAudioFrameCount)ceil(buffer.frameLength * 16000.0 / source.sampleRate) + 32;
                 AVAudioPCMBuffer *output = [[AVAudioPCMBuffer alloc] initWithPCMFormat:target frameCapacity:capacity];
                 __block BOOL supplied = NO; NSError *conversionError = nil;
                 AVAudioConverterOutputStatus status = [strongMic.converter convertToBuffer:output error:&conversionError withInputFromBlock:^AVAudioBuffer *(AVAudioPacketCount count, AVAudioConverterInputStatus *state) {
+                    (void)count;
                     if (supplied) { *state = AVAudioConverterInputStatus_NoDataNow; return nil; }
                     supplied = YES; *state = AVAudioConverterInputStatus_HaveData; return buffer;
                 }];
@@ -127,6 +129,7 @@ void *dp_microphone_start(int *error) {
             *error = (int)(startError.code ?: -4); return NULL;
         }
         mic.observer = [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioEngineConfigurationChangeNotification object:mic.engine queue:nil usingBlock:^(NSNotification *note) {
+            (void)note;
             DPMicrophone *strongMic = weakMic; [strongMic.lock lock]; strongMic.failed = YES; [strongMic.lock unlock];
         }];
         *error = 0; return (__bridge_retained void *)mic;
@@ -184,6 +187,7 @@ int dp_output_enqueue(void *handle, const uint8_t *data, int length) {
         [output.lock lock]; output.pending += length; NSUInteger generation = output.generation; [output.lock unlock];
         __weak DPOutput *weakOutput = output;
         [output.player scheduleBuffer:buffer completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type) {
+            (void)type;
             DPOutput *strongOutput = weakOutput; if (!strongOutput) return;
             [strongOutput.lock lock];
             if (generation == strongOutput.generation) {
@@ -279,12 +283,12 @@ int dp_session_interactive(void) {
             } else sessionActive = NO;
             observers = [NSMutableArray array];
             NSNotificationCenter *center = NSWorkspace.sharedWorkspace.notificationCenter;
-            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { sessionActive = NO; DPWorkspaceLifecycleRevision++; }]];
-            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { sessionActive = YES; }]];
-            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { screensAwake = NO; DPWorkspaceLifecycleRevision++; }]];
-            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { screensAwake = YES; }]];
-            [observers addObject:[center addObserverForName:NSWorkspaceWillSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { systemAwake = NO; DPWorkspaceLifecycleRevision++; }]];
-            [observers addObject:[center addObserverForName:NSWorkspaceDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { systemAwake = YES; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; sessionActive = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceSessionDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; sessionActive = YES; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; screensAwake = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceScreensDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; screensAwake = YES; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceWillSleepNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; systemAwake = NO; DPWorkspaceLifecycleRevision++; }]];
+            [observers addObject:[center addObserverForName:NSWorkspaceDidWakeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { (void)note; systemAwake = YES; }]];
         });
         result = sessionActive && screensAwake && systemAwake ? 1 : 0;
     });
@@ -356,6 +360,7 @@ static NSMutableSet<NSNumber *> *HotKeyCombinations(void) {
     dispatch_once(&once, ^{ combinations = [NSMutableSet new]; }); return combinations;
 }
 static OSStatus HotKeyEvent(EventHandlerCallRef next, EventRef event, void *context) {
+    (void)next;
     DPHotKey *hotkey = context; EventHotKeyID identifier;
     if (GetEventParameter(event, kEventParamDirectObject, typeEventHotKeyID, NULL, sizeof(identifier), NULL, &identifier) == noErr && identifier.signature == 'DPet' && identifier.id == hotkey->identifier) { hotkey->callback(); return noErr; }
     return eventNotHandledErr;

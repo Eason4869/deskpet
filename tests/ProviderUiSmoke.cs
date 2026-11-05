@@ -240,7 +240,7 @@ namespace Dafeiyu.Tests
     }finally{window.Close();pet.Close();Pump();}
    }
   }
-  sealed class TestLiveMic:IPcmMicrophone{public event Action<byte[]> PcmAvailable;public event Action<string> Failed;public bool Started,Disposed;public void Start(){Started=true;}public void Emit(byte[] data){if(PcmAvailable!=null)PcmAvailable(data);}public void Dispose(){Disposed=true;}}
+  sealed class TestLiveMic:IPcmMicrophone{public event Action<byte[]> PcmAvailable;public event Action<string> Failed{add{}remove{}}public bool Started,Disposed;public void Start(){Started=true;}public void Emit(byte[] data){if(PcmAvailable!=null)PcmAvailable(data);}public void Dispose(){Disposed=true;}}
   sealed class TestLiveOutput:ILiveAudioOutput{public int Chunks;public bool Disposed;public void Enqueue(byte[] data,int rate){Chunks++;}public void Interrupt(){}public void SetVolume(int volume){}public void Dispose(){Disposed=true;}}
   static void ChooseProvider(DependencyObject editor,string brand,string capture=null,string addName="AddTextProvider")
   {

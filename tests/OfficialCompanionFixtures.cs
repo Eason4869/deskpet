@@ -21,7 +21,7 @@ namespace Dafeiyu.Tests
         // Leave room for immutable version names and unique .part names on Framework hosts.
         // The dedicated long-path case below controls its own boundary explicitly.
         internal readonly string Root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"oc",Guid.NewGuid().ToString("N"));
-        internal bool Offline,CorruptMirror,WrongSize,WrongDigest,ForeignUrl,IndexIncomplete,AllIncompatible;
+        internal bool Offline=false,CorruptMirror=false,WrongSize=false,WrongDigest=false,ForeignUrl=false,IndexIncomplete=false,AllIncompatible=false;
         internal Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> Intercept;
         internal int Packages,Metadata;
         internal OfficialCompanionFixture(){Directory.CreateDirectory(Root);foreach(string id in Ids)Files[PackageName(id)]=Package(id,null);}

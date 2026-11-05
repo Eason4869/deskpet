@@ -91,11 +91,11 @@ namespace Dafeiyu.Tests
         }
         internal sealed class ControlledIO : AgentJobStorageIO,IDisposable
         {
-            internal bool FailCommit,HoldWrites,HoldMetadataCommit,HoldIndexCommit;
-            internal string FailAppendFor;
+            internal bool FailCommit=false,HoldWrites=false,HoldMetadataCommit=false,HoldIndexCommit=false;
+            internal string FailAppendFor=null;
             internal long AppendedBytes;
             internal int IndexCommits;
-            internal Action AfterMetadataCommit;
+            internal Action AfterMetadataCommit=null;
             internal readonly ManualResetEventSlim Entered=new ManualResetEventSlim(false),Release=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim IndexSaved=new ManualResetEventSlim(false);
             internal readonly ManualResetEventSlim CommitEntered=new ManualResetEventSlim(false),CommitRelease=new ManualResetEventSlim(false);
