@@ -4,19 +4,19 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.0 · First production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**1.0.1 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Current source version: **1.0.1 (unreleased)**. This patch fixes section deletion and makes deletion dialogs consistent; see the [changelog](CHANGELOG.en.md).
+Current source version: **1.0.2-dev.2 (development preview)**. [Download the preview](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2). Building on the web search and settings improvements in `1.0.2-dev.1`, this patch fixes Windows source citations jumping to the top of replies and opens conversation web links in the embedded browser by default. See the [changelog](CHANGELOG.en.md). Production downloads below point to `1.0.1`; the preview does not replace the stable update channel.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
-> Screenshots are generated from this version's Windows UI using an isolated preview. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
+> Screenshots come from an isolated preview of the `1.0.0` Windows release; the development preview may have UI changes. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.
 
 ## Download
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.0 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) and choose the `DeskPet-Windows-Setup-1.0.0.exe` installer or `DeskPet-Windows-1.0.0.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.1 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) and choose the `DeskPet-Windows-Setup-1.0.1.exe` installer or `DeskPet-Windows-1.0.1.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).
@@ -67,6 +67,12 @@ Quick chat is for a short exchange. Reopening starts a new topic; previous recor
 Organize conversations into sections, rename, pin, archive, drag to reorder or move work conversations between projects. Switching preserves each conversation's draft and reading position; new-conversation drafts support encrypted recovery. Use Markdown or plain text, and add image, file and folder references through **+**, paste or drag and drop. A folder attachment does not expand file permissions.
 
 The Agent's public progress explanations remain in the reply body. Later tool calls do not move already displayed text into the thinking section. Tool records, changes and delivered files have their own entries. Queue follow-up instructions, or **Steer** at the next adjustable boundary. Completed changes are not automatically undone.
+
+### Web search and source citations
+
+Open **Settings → Tools and connections → Web search**, enable it, choose native model search, an external search provider or a custom endpoint with a compatible API format, then save. Native search requires support from the selected model service. External providers use separate addresses and credentials and may incur additional charges. Ordinary chat, quick chat and work mode can use web search. Enable **Show source citations** to include retrieved sources at the bottom of replies.
+
+On Windows, left-clicking an HTTP/HTTPS link in a conversation, including a source citation below a reply, opens an embedded browser tool tab by default. Quick chat opens the tools in the full chat window; temporary side chat uses its owning window's tools. Narrow windows switch to the full-tab layout. Right-click a link and choose **Open in default browser** to use the external browser, or copy its address. Citation clicks preserve the reading position, keyboard selection to the document end still scrolls correctly, and Markdown images in replies retain image previews.
 
 ### Tools belonging to the current conversation
 

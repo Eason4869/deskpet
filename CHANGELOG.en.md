@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## 1.0.2-dev.2 · Development preview
+
+- Fix Windows web-source citations at the bottom of long replies jumping to the top instead of opening the page, while preserving automatic scrolling when extending a text selection to the document end.
+- Open conversation web links in embedded browser tool tabs by default, including named links, bare URLs, quotes, tables and source lists. Quick chat opens the browser tools in the full chat window; temporary side chat uses its owning window's tools.
+- Retain right-click actions for the external browser and copying link addresses, along with image previews. Narrow windows keep the existing full-tab layout.
+- Update both READMEs with the source version, web search instructions and link-opening behavior.
+
 ## 1.0.2-dev.1 · Development preview
 
 - Fix duplicate `@` and `/` menus when quick chat expands into a full conversation.

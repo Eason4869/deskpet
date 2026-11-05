@@ -4,19 +4,19 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**1.0.0 · 首个正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**1.0.1 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-当前源码版本：**1.0.1（待发布）**。本次修复分区删除和删除确认窗口一致性，详见[更新日志](CHANGELOG.md)。
+当前源码版本：**1.0.2-dev.2（开发预览）**。[预览版下载](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2-dev.2)。在 `1.0.2-dev.1` 的网页搜索与设置改进基础上，修复 Windows 网页来源引用点击跳回回答顶部的问题，并将对话网页链接默认改为内置浏览器打开，详见[更新日志](CHANGELOG.md)。下方正式版下载安装入口指向 `1.0.1`；预览版不会替换正式更新通道。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
-> 本页界面图由本版 Windows 程序的隔离预览生成。会话、项目和模型名称均为演示内容，不含个人聊天或真实账号配置。macOS 仍为独立界面的平台预览。
+> 本页界面图来自 `1.0.0` Windows 正式版的隔离预览；开发预览的界面可能有所调整。会话、项目和模型名称均为演示内容，不含个人聊天或真实账号配置。macOS 仍为独立界面的平台预览。
 
 ## 下载安装
 
 | 平台 | 系统要求 | 下载与范围 |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.0 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.0)，选择 `DeskPet-Windows-Setup-1.0.0.exe` 安装版或 `DeskPet-Windows-1.0.0.zip` 便携版。下文主要介绍 Windows。 |
+| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.1 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1)，选择 `DeskPet-Windows-Setup-1.0.1.exe` 安装版或 `DeskPet-Windows-1.0.1.zip` 便携版。下文主要介绍 Windows。 |
 | **macOS 预览** | macOS 14+，Apple Silicon 或 Intel | 在同一发布页选择对应架构的 `preview` DMG / ZIP。共享部分核心，使用独立界面；Windows 的文件 Agent、工具标签与终端不代表 Mac 已支持。 |
 
 发布页同时提供源码、角色包、创作模板及 SHA256 校验文件；实际附件以发布页为准。Windows 安装包当前未做应用代码签名；Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。下载请认准 [Eason4869/deskpet](https://github.com/Eason4869/deskpet)。
@@ -67,6 +67,12 @@ DeskPet 使用你自己的模型服务，不附赠模型账号、API Key 或调�
 会话支持分区、重命名、置顶、归档、拖动排序与跨项目移动。切换会话保留相应草稿和阅读位置，新对话草稿支持加密恢复。输入支持 Markdown、纯文本切换，以及通过 **+**、粘贴或拖放添加图片、文件和目录引用。目录附件不会自动扩大文件权限。
 
 Agent 公开说明的处理步骤持续保留在回复正文中，后续工具调用不会把已显示的文字挪入思考区。工具记录、变更和最终交付文件各有入口。运行中可排队追加要求，或使用“引导”在下一处可调整的边界补充要求；已经完成的修改不会自动撤销。
+
+### 网页搜索与引用来源
+
+打开 **设置 → 工具与连接 → 网页搜索**，启用后选择模型原生搜索、独立搜索服务或兼容格式的自定义接口，再保存配置。原生搜索需要模型服务支持对应接口；独立搜索服务使用各自的地址与密钥，可能产生额外费用。普通对话、快速对话和工作模式均可使用网页搜索；启用 **显示来源引用** 后，搜索得到的来源可附在回答底部。
+
+在 Windows 中，左键点击对话里的 HTTP／HTTPS 链接，包括回答底部的来源引用，默认在内置浏览器工具标签打开。快速对话会转入完整聊天窗口的工具区，临时侧聊使用所属窗口的工具区；窄窗口切到完整标签视图。右键链接仍可选择 **在默认浏览器打开** 或复制地址。点击引用时保持阅读位置，键盘扩选到文末仍会正常滚动；回答中的 Markdown 图片继续使用图片预览。
 
 ### 当前会话自己的工具区
 
