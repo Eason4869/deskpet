@@ -2,13 +2,22 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
-## 1.0.2 · Unreleased
+## [1.0.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3-dev.1) · Development preview
+
+**Release date: 2026-11-06 (Asia/Shanghai)**
+
+- Build on production release 1.0.2 with eye buttons for masked model, voice, image, web-search, messaging and MCP credentials. Keys start hidden, remain editable while revealed, and return to a hidden state when switching providers or leaving a page. Existing save behavior is retained.
+- Fix Windows web-search API keys losing their input border when revealed. The border remains after focus moves elsewhere, with theme colors and busy-state disabling preserved.
+- Reorganize Windows image-test and conversation image-card actions: a full-width primary Preview button, equal-width Save as and Copy image buttons, a separate folder action, and a divider before image details. Long labels wrap inside narrow cards.
+- Add show/hide tooltips and accessible names in all thirteen languages. Update both READMEs with preview downloads, current production links and usage instructions.
+- Publish on the Preview channel without replacing production release 1.0.2 as Latest. App, installer and update packages retain the full `1.0.3-dev.1` identity.
+
+## [1.0.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2) · Production release
 
 - Include the web search, settings layout, guidance and conversation link-opening improvements from dev.1 and dev.2.
 - Align in-app dialogs with a borderless rounded style and compact cache maintenance layout. Center review dialogs over the actual operation window, use the real review window for the guide exercise, and keep actions accessible in small windows.
 - Replace tray reminders with consistent passive cards. Add four gentle marimba cues for completion, review, permission and failure, with a separate preference, volume control and immediate DND cancellation without replay afterward.
 - Rename the proactive-greeting option and add automatic reading. When global read-aloud is enabled, preset, AI and automatic screen-aware greetings can speak while yielding to other speech, recording and DND.
-- Prepare the 1.0.2 source version without creating a tag or publishing a release.
 
 ## 1.0.2-dev.2 · Development preview
 
@@ -24,7 +33,7 @@
 - Reorganize settings while retaining primary navigation, remove the duplicate skills entry, align disclosure controls, and show instruction and capability details directly.
 - Shorten setup guidance, correct moved targets and plugin navigation, and preserve progress and verification evidence.
 
-## 1.0.1 · Unreleased
+## [1.0.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · Production release
 
 - Allow custom work and chat sections to be deleted, moving their contents to the default section while preserving records and workspace files. Default sections are retained.
 - Use consistent in-app confirmation and error dialogs for section and project deletion, with Cancel focused by default and support for themes and live language changes.
