@@ -29,6 +29,8 @@ internal static class SecretFieldChecks
             window.Content=parent;Dispatcher.UIThread.RunJobs();
             Check(!input.RevealPassword,"native reused page stays masked");
             Check(Avalonia.Automation.AutomationProperties.GetName(eye)==TextResources.Get("secretField.show"),"native eye has a localized accessible name");
+            DesktopTheme.Apply("dark");var glyph=(Avalonia.Controls.Shapes.Path)((Viewbox)eye.Content!).Child!;
+            Check(((Avalonia.Media.ISolidColorBrush)glyph.Stroke!).Color==((Avalonia.Media.ISolidColorBrush)SettingsVisual.Muted).Color,"native eye follows the dark theme ink");DesktopTheme.Apply("light");
             parent.Children.Remove(field);input.Text=new string('x',512);window.Content=SettingsVisual.ActionRow("",()=>"API Key",()=>"",field);window.Width=700;Dispatcher.UIThread.RunJobs();window.UpdateLayout();
             Check(field.Width==280&&field.Bounds.Width<=280,"native secret action row retains the standard field width");
             window.Width=300;Dispatcher.UIThread.RunJobs();window.UpdateLayout();eye.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));window.UpdateLayout();

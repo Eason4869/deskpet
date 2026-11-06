@@ -3306,6 +3306,18 @@
       "expected": "跟随朗读开关，免打扰时静音。",
       "format": false,
       "argument_count": 0
+    },
+    {
+      "key": "secretField.show",
+      "expected": "显示密钥",
+      "format": false,
+      "argument_count": 0
+    },
+    {
+      "key": "secretField.hide",
+      "expected": "隐藏密钥",
+      "format": false,
+      "argument_count": 0
     }
   ]
 }

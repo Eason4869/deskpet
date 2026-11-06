@@ -36,6 +36,6 @@ internal sealed class SecretField : Grid
         LocalizedUi.Automation(eye,()=>input.RevealPassword?TextResources.Get("secretField.hide"):TextResources.Get("secretField.show"));
         string shape="M2,12 C6,4 18,4 22,12 C18,20 6,20 2,12 M15,12 A3,3 0 1 1 9,12 A3,3 0 1 1 15,12";
         if(input.RevealPassword)shape+=" M3,3 L21,21";
-        eye.Content=new Viewbox{Width=20,Height=20,Child=new Path{Data=Geometry.Parse(shape),Stroke=input.Foreground,StrokeThickness=1.8,Width=24,Height=24}};
+        eye.Content=new Viewbox{Width=20,Height=20,Child=new Path{Data=Geometry.Parse(shape),Stroke=SettingsVisual.Muted,StrokeThickness=1.8,Width=24,Height=24}};
     }
 }
