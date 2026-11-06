@@ -22,7 +22,11 @@ namespace Dafeiyu
             var padding=password.Padding;password.Padding=new Thickness(padding.Left,padding.Top,padding.Right+36,padding.Bottom);
             plain=Ui.Field();plain.Name=String.IsNullOrEmpty(password.Name)?"":password.Name+"Visible";
             plain.Visibility=Visibility.Collapsed;plain.MinHeight=password.MinHeight;plain.Padding=password.Padding;
-            plain.MaxLength=password.MaxLength;plain.Background=password.Background;plain.BorderBrush=password.BorderBrush;
+            plain.MaxLength=password.MaxLength;
+            // Unset PasswordBox brushes are null until its window style is applied.
+            // Keep Ui.Field's themed surface/outline unless the editor supplied one.
+            if(password.ReadLocalValue(Control.BackgroundProperty)!=DependencyProperty.UnsetValue)plain.Background=password.Background;
+            if(password.ReadLocalValue(Control.BorderBrushProperty)!=DependencyProperty.UnsetValue)plain.BorderBrush=password.BorderBrush;
             plain.FontSize=password.FontSize;
             eye=new Button{Width=32,Height=30,Padding=new Thickness(5),Margin=new Thickness(0,0,4,0),HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Center,Background=Brushes.Transparent,BorderThickness=new Thickness(0)};
             eye.Name=String.IsNullOrEmpty(password.Name)?"ToggleSecretVisibility":password.Name+"Visibility";

@@ -25,6 +25,8 @@ namespace Dafeiyu.Tests
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Check(plain.IsVisible&&!password.IsVisible&&plain.Text==password.Password,"eye reveals current value");
                 Check(changes==0,"revealing does not edit or save the key");
+                button.Focus();window.UpdateLayout();var outline=plain.BorderBrush as SolidColorBrush;
+                Check(plain.BorderThickness.Left>0&&outline!=null&&outline.Color.A>0,"revealed search-style key retains an outline after losing focus");
                 password.IsEnabled=false;Check(!plain.IsEnabled&&!button.IsEnabled,"disabled credentials also disable visible editing and the eye");password.IsEnabled=true;
                 Capture(window,"light-visible");ThemeManager.Apply("dark");Capture(window,"dark-visible");Check(((SolidColorBrush)plain.Foreground).Color==((SolidColorBrush)Ui.Ink).Color,"revealed text follows the dark theme ink");ThemeManager.Apply("light");
                 plain.Text="edited-dummy-key";Check(password.Password==plain.Text&&changes==1,"visible edits reach the original password field once");
