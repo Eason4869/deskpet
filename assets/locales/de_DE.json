@@ -1,4 +1,6 @@
 {
+  "secretField.show": "Schlüssel anzeigen",
+  "secretField.hide": "Schlüssel ausblenden",
   "aboutPanel.aboutPanel.addMirrorRow": "Benutzerdefiniert",
   "aboutPanel.aboutPanel.choice": "GitHub-Beschleunigung nicht verwenden",
   "aboutPanel.aboutPanel.choice.alternativeA": "GitHub-Beschleunigung verwenden",

@@ -37,7 +37,7 @@ namespace Dafeiyu
             name=Field("ImChannelName");appId=Field("ImAppId");
             secret=new PasswordBox{Name="ImSecret",MinHeight=36,Padding=new Thickness(8),MaxLength=8192,Background=ThemeManager.FieldSurface,BorderBrush=Ui.Line};
             platform.Visibility=Visibility.Collapsed;details.Children.Add(platform);LocalizedUi.Label(details,()=>ImText.Get("im.name"),name);
-            AddFieldPair("im.appId",appId,"im.secret",secret);
+            AddFieldPair("im.appId",appId,"im.secret",new SecretField(secret));
             companion=LocalizedUi.Text(()=>ImText.Get("im.binding"),12,Ui.Muted);details.Children.Add(companion);
             users=Field("ImAllowedUsers");users.AcceptsReturn=true;users.MinHeight=66;
             groups=Field("ImAllowedGroups");groups.AcceptsReturn=true;groups.MinHeight=66;var access=new StackPanel{Margin=new Thickness(0,12,0,0)};LocalizedUi.Label(access,()=>ImText.Get("im.users"),users);LocalizedUi.Label(access,()=>ImText.Get("im.groups"),groups);access.Children.Add(LocalizedUi.Text(()=>ImText.Get("im.allowHint"),12,Ui.Muted));var accessOptions=new Expander{Name="ImAccessOptions",Content=access,IsExpanded=false,Margin=new Thickness(0,16,0,0)};SettingsSurface.StyleExpander(accessOptions);LocalizedUi.Set(accessOptions,"Header",()=>TextResources.Get("im.accessOptions"));details.Children.Add(accessOptions);

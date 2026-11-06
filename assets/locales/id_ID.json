@@ -1,4 +1,6 @@
 {
+  "secretField.show": "Tampilkan kunci",
+  "secretField.hide": "Sembunyikan kunci",
   "aboutPanel.aboutPanel.addMirrorRow": "Kustom",
   "aboutPanel.aboutPanel.choice": "Jangan gunakan akselerasi GitHub",
   "aboutPanel.aboutPanel.choice.alternativeA": "Gunakan akselerasi GitHub",

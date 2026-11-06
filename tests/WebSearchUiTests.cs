@@ -14,6 +14,7 @@ namespace Dafeiyu.Tests
         {
             var app=new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;Window host=null;
             try{
+                SecretFieldChecks.Run();
                 var cfg=new PetSettings{AutoUpdate=false,GreetingEnabled=false,ReadReplies=false,Text=new ConnectionSettings{BaseUrl="https://old-provider.invalid/v1",Model="old-model",ApiKey="dummy-model-key"},WebSearch=new WebSearchSettings{Provider="native",Connection=new ConnectionSettings{BaseUrl="https://legacy-search.example",Model="search",ApiKey="fixture-legacy-tavily-key"}}};foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 var legacy=cfg.WebSearch.Copy();
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"search-ui-"+Guid.NewGuid().ToString("N"),"settings.json")),null);

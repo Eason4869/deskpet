@@ -1,4 +1,6 @@
 {
+  "secretField.show": "顯示金鑰",
+  "secretField.hide": "隱藏金鑰",
   "aboutPanel.aboutPanel.addMirrorRow": "自訂",
   "aboutPanel.aboutPanel.choice": "不使用 GitHub 加速",
   "aboutPanel.aboutPanel.choice.alternativeA": "使用 GitHub 加速",

@@ -1,4 +1,6 @@
 {
+  "secretField.show": "키 표시",
+  "secretField.hide": "키 숨기기",
   "aboutPanel.aboutPanel.addMirrorRow": "사용자 지정",
   "aboutPanel.aboutPanel.choice": "GitHub 가속 사용 안 함",
   "aboutPanel.aboutPanel.choice.alternativeA": "GitHub 가속 사용",

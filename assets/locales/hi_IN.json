@@ -1,4 +1,6 @@
 {
+  "secretField.show": "कुंजी दिखाएँ",
+  "secretField.hide": "कुंजी छिपाएँ",
   "aboutPanel.aboutPanel.addMirrorRow": "कस्टम",
   "aboutPanel.aboutPanel.choice": "GitHub त्वरण का उपयोग न करें",
   "aboutPanel.aboutPanel.choice.alternativeA": "GitHub त्वरण का उपयोग करें",

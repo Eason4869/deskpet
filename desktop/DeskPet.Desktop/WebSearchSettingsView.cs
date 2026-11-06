@@ -29,7 +29,7 @@ internal sealed class WebSearchSettingsView : Grid
         var native=Ui.Column(SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.protocol"),()=>"",protocol));
         customProtocol=LocalizedUi.SetOptions(new ComboBox{Name="WebSearchCustomProtocol"},()=>Array.ConvertAll(WebSearchProviders.SchemaIds,WebSearchProviders.DisplayName));
         var customRow=SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.customProtocol"),()=>TextResources.Get("webSearch.customHelp"),customProtocol);
-        var externalFields=Ui.Column(customRow,SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.address"),()=>"",address),SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.key"),()=>"",key));
+        var externalFields=Ui.Column(customRow,SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.address"),()=>"",address),SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.key"),()=>"",new SecretField(key)));
         var body=SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("webSearch.title"),
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.enabled"),()=>"",enabled),
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.provider"),()=>"",provider),native,externalFields,

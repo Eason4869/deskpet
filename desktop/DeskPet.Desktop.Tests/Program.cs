@@ -46,6 +46,8 @@ var directory = Path.Combine(AppContext.BaseDirectory, "DeskPet-UI-" + Guid.NewG
 Directory.CreateDirectory(directory);
 try
 {
+    if(args.Contains("--secret-fields")){Console.WriteLine("SecretFieldChecks: "+SecretFieldChecks.Run()+" passed");return;}
+    Check(SecretFieldChecks.Run()>0,"secret field behavior checks");
     if(args.Any(arg=>arg.StartsWith("--proactive-"))){
         try{
             int count=args.Contains("--proactive-host-only")?ProactiveConversationChecks.RunHost():args.Contains("--proactive-admission-only")?ProactiveConversationChecks.RunAdmission(Path.Combine(directory,"proactive-admission")):args.Contains("--proactive-reply-only")?ProactiveConversationChecks.RunReply(Path.Combine(directory,"proactive-reply")):args.Contains("--proactive-settings-only")?ProactiveConversationChecks.RunSettings(Path.Combine(directory,"proactive-settings")):throw new ArgumentException("Unknown proactive fixture");
