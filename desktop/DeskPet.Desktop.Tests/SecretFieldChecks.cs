@@ -2,11 +2,66 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.LogicalTree;
+using Avalonia.Controls.ApplicationLifetimes;
 using DeskPet.Desktop;
 using Dafeiyu;
 
 internal static class SecretFieldChecks
 {
+    internal static int RunProviderSwitch(string directory)
+    {
+        Directory.CreateDirectory(directory);
+        var settings=new PetSettings{UiLanguage="zh_CN",AutoUpdate=false,OnboardingState="completed",GreetingEnabled=false,SaveChatHistory=false};
+        var runtime=new TestRuntime(directory);
+        runtime.InitializeProtection();
+        new SettingsStore(Path.Combine(directory,"settings.json")).Save(settings);
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),runtime);
+        settings=owner.Settings;
+        settings.WebSearch.Enabled=true;
+        settings.WebSearch.Provider="tavily";
+        foreach(var id in new[]{"tavily","custom"})
+            settings.WebSearch.SetConnection(id,new ConnectionSettings{BaseUrl="https://api.tavily.com",ApiKey="shared-fixture-key"});
+        var page=new WebSearchSettingsView(owner);
+        var window=new Window{Width=700,Height=600,Content=page};
+        window.Show();Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var key=page.GetLogicalDescendants().OfType<TextBox>().Single(c=>c.Name=="WebSearchKey");
+            var provider=page.GetLogicalDescendants().OfType<ComboBox>().Single(c=>c.Name=="WebSearchProvider");
+            var eye=(Button)key.InnerRightContent!;
+            foreach(bool moveFocus in new[]{false,true})
+            foreach(var id in new[]{"custom","tavily"})
+            {
+                eye.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                if(!key.RevealPassword)throw new Exception("fixture reveals the current provider key");
+                if(moveFocus)provider.Focus();
+                provider.SelectedIndex=Array.IndexOf(WebSearchProviders.Ids,id);
+                Dispatcher.UIThread.RunJobs();
+                if(key.RevealPassword||key.Text!="shared-fixture-key")throw new Exception("same-key provider switch must mask and preserve the key");
+                if(Avalonia.Automation.AutomationProperties.GetName(eye)!=TextResources.Get("secretField.show"))throw new Exception("provider switch must refresh the reveal action name");
+            }
+            if(page.HasUnsavedChanges)throw new Exception("round-trip provider switch must preserve the saved draft");
+            eye.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            page.GetLogicalDescendants().OfType<Button>().Single(c=>c.Name=="RestoreWebSearch").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            if(key.RevealPassword||key.Text!="shared-fixture-key"||page.HasUnsavedChanges)throw new Exception("restore must mask the unchanged saved credential");
+            Console.WriteLine("PASS same-key provider switches mask credentials and preserve draft");
+            return 10;
+        }
+        finally
+        {
+            window.Close();owner.Pet.Close();owner.Dispose();
+            var deadline=DateTime.UtcNow.AddSeconds(15);
+            while(!owner.ImageServicesShutdown.IsCompleted)
+            {
+                if(DateTime.UtcNow>deadline)throw new TimeoutException("Secret field fixture shutdown");
+                Dispatcher.UIThread.RunJobs();Thread.Sleep(1);
+            }
+            owner.ImageServicesShutdown.GetAwaiter().GetResult();
+        }
+    }
+
     internal static int Run()
     {
         int count=0;

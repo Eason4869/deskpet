@@ -9,6 +9,7 @@ if (!$speechAssembly) { throw 'Windows System.Speech assembly was not found.' }
 $referenceFiles = @('System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Net.Http.dll','System.Runtime.Serialization.dll','System.Security.dll','System.Web.Extensions.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','System.Xaml.dll','WPF\WindowsBase.dll','WPF\PresentationCore.dll','WPF\PresentationFramework.dll')
 $references = @($referenceFiles | ForEach-Object { '/reference:' + (Join-Path $frameworkRoot $_) }) + @('/reference:' + $speechAssembly)
 if ($Target -eq 'AttachmentPickerTests') { foreach ($automation in @('UIAutomationClient.dll','UIAutomationTypes.dll')) { $references += '/reference:' + (Join-Path $frameworkRoot ('WPF\' + $automation)) } }
+if ($Target -eq 'WebSearchUiTests') { foreach ($automation in @('UIAutomationProvider.dll','UIAutomationTypes.dll')) { $references += '/reference:' + (Join-Path $frameworkRoot ('WPF\' + $automation)) } }
 $workRoot = Join-Path $projectRoot 'work'
 New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 if ($Target -eq 'App') {

@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.3](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · Production release
+
+- Release the key visibility controls and Windows image-card layout improvements from 1.0.3-dev.1.
+- Mask credentials when switching between macOS providers that share the same key.
+- Restore accessible names for masked and revealed Windows web-search key fields, including live language changes.
+- Add regression coverage for shared-key provider switches and Windows accessible names.
+
 ## [1.0.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3-dev.1) · Development preview
 
 **Release date: 2026-11-06 (Asia/Shanghai)**

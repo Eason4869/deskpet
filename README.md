@@ -4,9 +4,9 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**1.0.2 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**1.0.3 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-当前开发预览：**[1.0.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3-dev.1)**，基于正式版 1.0.2。密钥输入框新增显示／隐藏按钮，Windows 生图结果卡片重新排列操作按钮，并修复网页搜索密钥显示后外框消失的问题，详见[更新日志](CHANGELOG.md)。预览版适合提前体验；下方默认下载安装入口仍为正式版。
+1.0.3 为密钥输入框加入显示／隐藏按钮，改进 Windows 生图结果卡片，并修复同密钥切换遮挡及 Windows 无障碍名称问题。详见[更新日志](CHANGELOG.md)。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
@@ -16,12 +16,10 @@
 
 | 平台 | 系统要求 | 下载与范围 |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.2 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.2)，选择 `DeskPet-Windows-Setup-1.0.2.exe` 安装版或 `DeskPet-Windows-1.0.2.zip` 便携版。下文主要介绍 Windows。 |
+| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.3 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3)，选择 `DeskPet-Windows-Setup-1.0.3.exe` 安装版或 `DeskPet-Windows-1.0.3.zip` 便携版。下文主要介绍 Windows。 |
 | **macOS 预览** | macOS 14+，Apple Silicon 或 Intel | 在同一发布页选择对应架构的 `preview` DMG / ZIP。共享部分核心，使用独立界面；Windows 的文件 Agent、工具标签与终端不代表 Mac 已支持。 |
 
 发布页同时提供源码、角色包、创作模板及 SHA256 校验文件；实际附件以发布页为准。Windows 安装包当前未做应用代码签名；Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。下载请认准 [Eason4869/deskpet](https://github.com/Eason4869/deskpet)。
-
-体验本次改动可打开 [1.0.3-dev.1 预览发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3-dev.1)，选择 `DeskPet-Windows-Setup-1.0.3-dev.1.exe` 或 `DeskPet-Windows-1.0.3-dev.1.zip`；应用内更新需切换到“预览”通道，正式通道不会自动安装预览版。
 
 Windows 安装版按当前用户安装，默认目录为 `%LOCALAPPDATA%\Programs\EbaoDeskPet`，通常不需要管理员权限。便携版需完整解压到可写目录，再运行 **桌面伙伴.exe**，不要在压缩包内启动。
 

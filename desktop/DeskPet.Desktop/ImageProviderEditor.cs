@@ -66,6 +66,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     private void ApplyPreset()
     {
         if (loading || presets.SelectedItem is not ImageServicePreset preset) return;
+        key.RevealPassword=false;
         if (selected == null) { if (items.Count >= 32) { LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("imageProviderEditor.applyPreset.notice"))); return; } var provider = new ImageGenerationProvider(); items.Add(provider); Reload(provider.Id); }
         loading = true; presets.SelectedItem = preset; loading = false;
         if (!ServicePresets.SameOrigin(address.Text ?? "", preset.BaseUrl)) key.Text = "";
@@ -82,6 +83,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     }
     private void Load()
     {
+        key.RevealPassword=false;
         loading = true;
         presets.SelectedItem = null; LocalizedUi.Set(presetNotes,"Text",()=>(TextResources.Get("imageProviderEditor.load.presetNotes")));
         name.Text = selected?.Name ?? ""; address.Text = selected?.Connection.BaseUrl ?? ""; key.Text = selected?.Connection.ApiKey ?? ""; model.Text = selected?.Connection.Model ?? "";

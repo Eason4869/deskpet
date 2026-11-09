@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.3](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · 正式版
+
+- 发布密钥显示／隐藏按钮和 Windows 生图卡片布局改进，包含 1.0.3-dev.1 的全部功能。
+- 修复 macOS 切换共用密钥的服务商时仍显示明文的问题，切换后恢复遮挡。
+- 恢复 Windows 网页搜索密钥输入框在遮挡和明文状态下的无障碍名称，并支持即时语言切换。
+- 补充同密钥切换及 Windows 无障碍名称的回归测试。
+
 ## [1.0.3-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3-dev.1) · 开发预览
 
 **发布日期：2026-11-06（Asia/Shanghai）**

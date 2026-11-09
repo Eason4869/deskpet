@@ -22,6 +22,22 @@ namespace Dafeiyu.Tests
                 var enabled=All<CheckBox>(panel).Single(c=>c.Name=="WebSearchEnabled");var provider=All<ComboBox>(panel).Single(c=>c.Name=="WebSearchProvider");var keyInput=All<PasswordBox>(panel).Single();
                 Check(!enabled.IsChecked.Value&&!panel.HasUnsavedChanges,"native search starts clean with legacy Tavily credentials retained separately");
                 enabled.IsChecked=true;provider.SelectedIndex=Array.IndexOf(WebSearchProviders.Ids,"tavily");keyInput.Password="fixture-tavily-key";var draft=panel.Read();
+                var secret=(SecretField)VisualTreeHelper.GetParent(keyInput);
+                var visibleKey=secret.Children.OfType<TextBox>().Single();
+                var eye=secret.Children.OfType<Button>().Single();
+                var originalLanguage=TextResources.CurrentLanguage;
+                try{
+                    foreach(var language in new[]{"en_US","zh_CN"}){
+                        TextResources.ApplyLanguage(TextResources.PrepareLanguage(language));
+                        host.UpdateLayout();
+                        var maskedPeer=new System.Windows.Automation.Peers.PasswordBoxAutomationPeer(keyInput);
+                        Check(maskedPeer.GetName()==TextResources.Get("webSearch.key"),"masked search key has a localized accessible name "+language);
+                        eye.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        var visiblePeer=new System.Windows.Automation.Peers.TextBoxAutomationPeer(visibleKey);
+                        Check(visibleKey.IsVisible&&visiblePeer.GetName()==TextResources.Get("webSearch.key"),"revealed search key has a localized accessible name "+language);
+                        eye.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                }finally{TextResources.ApplyLanguage(TextResources.PrepareLanguage(originalLanguage));}
                 Check(draft.Enabled&&draft.Provider=="tavily"&&draft.Connection.ApiKey=="fixture-tavily-key"&&panel.HasUnsavedChanges,"Tavily selection and masked key produce an isolated draft");
                 Check(provider.Items.Count==WebSearchProviders.Ids.Length,"every supported provider is selectable");
                 provider.SelectedIndex=Array.IndexOf(WebSearchProviders.Ids,"brave");Check(keyInput.Password==""&&All<TextBox>(panel).Single(t=>t.Name=="WebSearchAddress").Text==WebSearchProviders.DefaultBaseUrl("brave"),"switching providers uses a separate key and official endpoint");keyInput.Password="fixture-brave-key";

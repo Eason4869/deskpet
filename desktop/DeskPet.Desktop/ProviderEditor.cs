@@ -31,6 +31,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         presets.SelectionChanged += (_, _) =>
         {
             if (presets.SelectedItem is not ServicePreset preset) return;
+            key.RevealPassword=false;
             CancelFetch();
             if (!ServicePresets.SameOrigin(address.Text ?? "", preset.Url)) key.Text = "";
             name.Text = preset.Name; address.Text = preset.Url; model.Text = preset.Model; protocol.SelectedItem = preset.Protocol;
@@ -81,6 +82,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     }
     private void LoadFields()
     {
+        key.RevealPassword=false;
         if (selected == null) return; loading = true;
         name.Text = selected.Name; address.Text = selected.Connection.BaseUrl; key.Text = selected.Connection.ApiKey;
         model.Text = selected.Connection.Model; alias.Text = selected.ModelDisplayNames.GetValueOrDefault(selected.Connection.Model, "");

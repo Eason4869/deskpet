@@ -23,6 +23,8 @@ namespace Dafeiyu
             plain=Ui.Field();plain.Name=String.IsNullOrEmpty(password.Name)?"":password.Name+"Visible";
             plain.Visibility=Visibility.Collapsed;plain.MinHeight=password.MinHeight;plain.Padding=password.Padding;
             plain.MaxLength=password.MaxLength;
+            password.SetBinding(AutomationProperties.NameProperty,new Binding{Source=this,Path=new PropertyPath(AutomationProperties.NameProperty)});
+            plain.SetBinding(AutomationProperties.NameProperty,new Binding{Source=this,Path=new PropertyPath(AutomationProperties.NameProperty)});
             // Unset PasswordBox brushes are null until its window style is applied.
             // Keep Ui.Field's themed surface/outline unless the editor supplied one.
             if(password.ReadLocalValue(Control.BackgroundProperty)!=DependencyProperty.UnsetValue)plain.Background=password.Background;

@@ -21,14 +21,17 @@ internal sealed class SecretField : Grid
         eye=new Button{Width=32,Height=30,Padding=new Thickness(5),Background=Brushes.Transparent,BorderThickness=new Thickness(0),VerticalAlignment=VerticalAlignment.Center};
         eye.Name=string.IsNullOrEmpty(input.Name)?"ToggleSecretVisibility":input.Name+"Visibility";
         input.InnerRightContent=eye;Children.Add(input);
-        eye.Click+=(_,_)=>{input.RevealPassword=!input.RevealPassword;UpdateEye();input.Focus();};
-        input.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty&&!input.IsFocused)Hide();};
+        eye.Click+=(_,_)=>{input.RevealPassword=!input.RevealPassword;input.Focus();};
+        input.PropertyChanged+=(_,e)=>{
+            if(e.Property==TextBox.RevealPasswordProperty)UpdateEye();
+            if(e.Property==TextBox.TextProperty&&!input.IsFocused)Hide();
+        };
         AttachedToVisualTree+=(_,_)=>{foreach(var host in this.GetVisualAncestors()){visibilityHosts.Add(host);host.PropertyChanged+=HostChanged;}};
         DetachedFromVisualTree+=(_,_)=>{Hide();foreach(var host in visibilityHosts)host.PropertyChanged-=HostChanged;visibilityHosts.Clear();};
         PropertyChanged+=(_,e)=>{if(e.Property==IsVisibleProperty&&!IsVisible)Hide();};
         UpdateEye();
     }
-    void Hide(){if(!input.RevealPassword)return;input.RevealPassword=false;UpdateEye();}
+    void Hide(){input.RevealPassword=false;}
     void HostChanged(object? sender,AvaloniaPropertyChangedEventArgs e){if(e.Property==IsVisibleProperty&&!IsEffectivelyVisible)Hide();}
     void UpdateEye()
     {
