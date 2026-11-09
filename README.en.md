@@ -4,9 +4,9 @@
 
 A desktop companion for interactions, conversation and project work.
 
-**1.0.1 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
+**1.0.3 · Current production release:** [Download](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [Quick start](#quick-start) · [Changelog](CHANGELOG.en.md) · [Issues](https://github.com/Eason4869/deskpet/issues)
 
-Current source version: **1.0.2 (unreleased)**. It includes web search, settings and link-opening improvements, consistent dialogs and tray reminders, gentle notification sounds and automatic proactive-greeting speech. See the [changelog](CHANGELOG.en.md). No 1.0.2 tag or release has been created; production downloads below still point to `1.0.1`.
+Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@ Current source version: **1.0.2 (unreleased)**. It includes web search, settings
 
 | Platform | Requirements | Download and scope |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.1 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) and choose the `DeskPet-Windows-Setup-1.0.1.exe` installer or `DeskPet-Windows-1.0.1.zip` portable package. This page primarily describes Windows. |
+| **Windows** | Windows 10 / 11 x64, .NET Framework 4.8 or later | Open the [1.0.3 release](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) and choose the `DeskPet-Windows-Setup-1.0.3.exe` installer or `DeskPet-Windows-1.0.3.zip` portable package. This page primarily describes Windows. |
 | **macOS preview** | macOS 14+, Apple Silicon or Intel | Choose the matching `preview` DMG / ZIP on the same release page. The Mac app shares part of the core and has its own interface. Windows file-Agent, tool-tab and terminal support does not imply Mac support. |
 
 The release also provides source, companion packs, an authoring template and SHA256 checksums; consult its actual asset list. Windows packages are currently not code-signed. Mac previews are ad-hoc signed, without Developer ID signing or notarization. Download from [Eason4869/deskpet](https://github.com/Eason4869/deskpet).
@@ -32,6 +32,8 @@ The Windows installer installs for the current user, normally without administra
 5. **Switch to Work for files.** Add a project and bind its folder, select a model with native tool calling, review permissions and send a task. Use plan mode to inspect a project first, or stay in ordinary chat.
 
 The setup guide supports skipping steps and continuing later. Configure dictation, speech, images and Live separately as needed. Saving settings alone does not test a service. See the [setup guide](docs/configuration-guide.md) and [model and voice configuration](docs/dialogue-setup.md).
+
+Key fields start hidden. Click the eye on the right to reveal a key, and click again to hide it. Toggling visibility does not change the value or save configuration automatically; use the page's Save action as before.
 
 ### Models, accounts and costs
 
@@ -114,7 +116,7 @@ Windows settings and personal data live in the application's **data** folder, no
 
 | Feature | Use and limits |
 | --- | --- |
-| **Image generation, gallery and tasks** | Configure an image model separately, generate with references, track progress, cancel or retry explicitly. The gallery supports favorites, filtering, batch export and a recycle bin. Agent replies can display generated images. |
+| **Image generation, gallery and tasks** | Configure an image model separately, generate with references, track progress, cancel or retry explicitly. The gallery supports favorites, filtering, batch export and a recycle bin. Agent replies can display generated images. Windows result cards offer preview, save, copy and folder actions; long labels wrap inside narrow cards. |
 | **Dictation, speech and Live** | Dictation fills a draft; replies can be read aloud. Gemini Live uses a separate real-time voice connection. Microphone access starts after an explicit action. |
 | **Greetings and desktop observation** | Use local preset or AI greetings. Observation is off by default and requires confirmation of capture scope and receiving services. Windows can capture the active application or full desktop; images may contain sensitive content and automatic redaction is not guaranteed. |
 | **Skills and MCP** | Discover skills in public GitHub repositories, or import ZIP/local folders. Explicitly connect stdio / HTTP MCP servers; HTTP supports a JSON subset, not SSE. Saving a connection is not a successful startup or test. |
@@ -143,9 +145,9 @@ Windows offers stable/preview channels under **About and updates**. Updates veri
 | [Setup guide](docs/configuration-guide.md) | Companions, models, voice and work settings |
 | [Work and tools](docs/agent-workflows.md) | Permissions, tabs, file delivery and task recovery |
 | [Character packs](docs/character-packs.md) · [format](docs/skin-format.md) | Importing, updating and creating companions |
-| [1.0.0 changelog](CHANGELOG.en.md) · [development log](docs/development-log.en.md) | Production release overview and complete history |
+| [Changelog](CHANGELOG.en.md) · [development log](docs/development-log.en.md) | Current preview, production release overview and complete history |
 
-Some detailed guides retain titles and screenshots from their original versions. For current side-chat, tool-state and UI behavior, use this page and the 1.0.0 changelog. Some detailed guides are in Chinese.
+Some detailed guides retain titles and screenshots from their original versions. For current side-chat, tool-state and UI behavior, use this page and the changelog. Some detailed guides are in Chinese.
 
 Source layout: `src/` contains Windows WPF and shared business logic; `desktop/` contains .NET 10 / Avalonia and Mac platform services; `tests/` contains Windows checks; `.github/workflows/` defines build and publication checks. Ongoing development is on [dev](https://github.com/Eason4869/deskpet/tree/dev).
 

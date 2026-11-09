@@ -1,4 +1,6 @@
 {
+  "secretField.show": "Mostra chiave",
+  "secretField.hide": "Nascondi chiave",
   "aboutPanel.aboutPanel.addMirrorRow": "Personalizzato",
   "aboutPanel.aboutPanel.choice": "Non accelerare GitHub",
   "aboutPanel.aboutPanel.choice.alternativeA": "Accelera GitHub",

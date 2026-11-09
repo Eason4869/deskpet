@@ -9,6 +9,7 @@ if (!$speechAssembly) { throw 'Windows System.Speech assembly was not found.' }
 $referenceFiles = @('System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Net.Http.dll','System.Runtime.Serialization.dll','System.Security.dll','System.Web.Extensions.dll','System.IO.Compression.dll','System.IO.Compression.FileSystem.dll','System.Xaml.dll','WPF\WindowsBase.dll','WPF\PresentationCore.dll','WPF\PresentationFramework.dll')
 $references = @($referenceFiles | ForEach-Object { '/reference:' + (Join-Path $frameworkRoot $_) }) + @('/reference:' + $speechAssembly)
 if ($Target -eq 'AttachmentPickerTests') { foreach ($automation in @('UIAutomationClient.dll','UIAutomationTypes.dll')) { $references += '/reference:' + (Join-Path $frameworkRoot ('WPF\' + $automation)) } }
+if ($Target -eq 'WebSearchUiTests') { foreach ($automation in @('UIAutomationProvider.dll','UIAutomationTypes.dll')) { $references += '/reference:' + (Join-Path $frameworkRoot ('WPF\' + $automation)) } }
 $workRoot = Join-Path $projectRoot 'work'
 New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 if ($Target -eq 'App') {
@@ -23,6 +24,7 @@ if ($Target -eq 'App') {
     $sourceNames = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -Recurse | ForEach-Object { $_.FullName.Substring((Join-Path $projectRoot 'src').Length + 1) })
     $sources = @($sourceNames | ForEach-Object { Join-Path $projectRoot ('src\' + $_) } | Where-Object { Test-Path -LiteralPath $_ }) + @((Join-Path $projectRoot ('tests\' + $Target + '.cs')))
     if ($Target -eq 'WebSearchTests') { $sources += Join-Path $projectRoot 'tests/ApiTests.cs' }
+    if ($Target -eq 'WebSearchUiTests') { $sources += Join-Path $projectRoot 'tests/SecretFieldChecks.cs' }
     if ($Target -eq 'DesktopObservationServiceTests') { $sources += Join-Path $projectRoot 'tests/DesktopObservationPolicyTests.cs' }
     if ($Target -eq 'ImageInputRouterTests' -or $Target -eq 'ModelConfigurationSmoke' -or $Target -eq 'ContextUsageTests' -or $Target -eq 'UiSmoke' -or $Target -eq 'ChatSmoke' -or $Target -eq 'AudioSmoke' -or $Target -eq 'LiveTests' -or $Target -eq 'UpdateTests' -or $Target -eq 'ProxyTests' -or $Target -eq 'ProviderUiSmoke' -or $Target -eq 'OnboardingModelSmoke') { $sources += Join-Path $projectRoot 'tests\ApiTests.cs' }
     if ($Target -eq 'ChatSmoke' -or $Target -eq 'ProviderUiSmoke') { $sources += Join-Path $projectRoot 'tests\LiveTests.cs' }

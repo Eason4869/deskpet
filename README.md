@@ -4,9 +4,9 @@
 
 一个可以互动、聊天，也能陪你处理项目文件的桌面伙伴。
 
-**1.0.1 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
+**1.0.3 · 当前正式版**：[下载安装](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3) · [快速开始](#快速开始) · [更新日志](CHANGELOG.md) · [问题反馈](https://github.com/Eason4869/deskpet/issues)
 
-当前源码版本：**1.0.2（待发布）**。包含网页搜索、设置与链接打开改进，以及统一弹窗、托盘提醒、轻柔提示音和主动问候自动朗读，详见[更新日志](CHANGELOG.md)。1.0.2 尚未创建标签或发布；下方正式版下载安装入口仍指向 `1.0.1`。
+1.0.3 为密钥输入框加入显示／隐藏按钮，改进 Windows 生图结果卡片，并修复同密钥切换遮挡及 Windows 无障碍名称问题。详见[更新日志](CHANGELOG.md)。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 
@@ -16,7 +16,7 @@
 
 | 平台 | 系统要求 | 下载与范围 |
 | --- | --- | --- |
-| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.1 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.1)，选择 `DeskPet-Windows-Setup-1.0.1.exe` 安装版或 `DeskPet-Windows-1.0.1.zip` 便携版。下文主要介绍 Windows。 |
+| **Windows** | Windows 10 / 11 x64，.NET Framework 4.8 或更新版本 | [1.0.3 发布页](https://github.com/Eason4869/deskpet/releases/tag/v1.0.3)，选择 `DeskPet-Windows-Setup-1.0.3.exe` 安装版或 `DeskPet-Windows-1.0.3.zip` 便携版。下文主要介绍 Windows。 |
 | **macOS 预览** | macOS 14+，Apple Silicon 或 Intel | 在同一发布页选择对应架构的 `preview` DMG / ZIP。共享部分核心，使用独立界面；Windows 的文件 Agent、工具标签与终端不代表 Mac 已支持。 |
 
 发布页同时提供源码、角色包、创作模板及 SHA256 校验文件；实际附件以发布页为准。Windows 安装包当前未做应用代码签名；Mac 预览为 ad-hoc 签名，未做 Developer ID 签名或公证。下载请认准 [Eason4869/deskpet](https://github.com/Eason4869/deskpet)。
@@ -32,6 +32,8 @@ Windows 安装版按当前用户安装，默认目录为 `%LOCALAPPDATA%\Program
 5. **需要处理文件时切到“工作”。** 添加项目并绑定目录，选择支持原生工具调用的模型，核对权限后发送任务。先用计划模式阅读项目，也可以只使用普通聊天。
 
 配置引导可以跳过、稍后继续；听写、朗读、生图和 Live 按需单独配置。仅保存设置不会自动完成服务测试。详见[配置引导](docs/configuration-guide.md)和[模型与语音配置](docs/dialogue-setup.md)。
+
+密钥输入框默认隐藏；点击右侧眼睛临时显示，再次点击隐藏。显隐切换不会修改已填内容或自动保存配置，仍需使用所在页面的保存操作。
 
 ### 模型、账号与费用
 
@@ -114,7 +116,7 @@ Windows 设置和个人数据保存在程序目录的 **data** 文件夹；默�
 
 | 功能 | 使用方式与边界 |
 | --- | --- |
-| **生图、图库与任务** | 独立配置图片模型，可带参考图生成，查看进度、取消或手动重试；图库支持收藏、筛选、多选导出及回收站。Agent 可在对话中返回生成图片。 |
+| **生图、图库与任务** | 独立配置图片模型，可带参考图生成，查看进度、取消或手动重试；图库支持收藏、筛选、多选导出及回收站。Agent 可在对话中返回生成图片。Windows 结果卡片提供预览、另存为、复制图片与打开所在文件夹，窄卡片的长按钮文案自动换行。 |
 | **听写、朗读与 Live** | 听写将语音转成草稿，回复可自动朗读；Gemini Live 提供独立实时语音连接。麦克风在你主动操作后启用。 |
 | **主动问候与识屏** | 可使用本地预设或 AI 问候；识屏默认关闭，需明确确认截图范围与接收服务。Windows 可选择活动应用或全屏，截图可能包含敏感信息，不保证自动打码。 |
 | **技能与 MCP** | 技能支持公开 GitHub 仓库发现、ZIP 与本机目录导入。MCP 支持主动连接 stdio / HTTP；HTTP 为 JSON 子集，暂不支持 SSE。保存连接不等于已经启动或验证。 |
@@ -143,9 +145,9 @@ Windows 可在 **关于与更新** 选择正式或预览通道。更新校验附
 | [配置引导](docs/configuration-guide.md) | 伙伴、模型、语音与工作配置 |
 | [工作与工具](docs/agent-workflows.md) | 权限、工具标签、文件交付与任务恢复 |
 | [角色包与自制外观](docs/character-packs.md) · [格式](docs/skin-format.md) | 导入、更新与制作伙伴 |
-| [1.0.0 更新日志](CHANGELOG.md) · [开发日志](docs/development-log.md) | 正式版概览及完整历史记录 |
+| [更新日志](CHANGELOG.md) · [开发日志](docs/development-log.md) | 当前预览、正式版概览及完整历史记录 |
 
-详细指南中部分标题和截图保留其编写时的版本，最新侧聊、工具状态和界面行为以本页及 1.0.0 更新日志为准。
+详细指南中部分标题和截图保留其编写时的版本，最新侧聊、工具状态和界面行为以本页及更新日志为准。
 
 源码结构：`src/` 为 Windows WPF 与共用业务，`desktop/` 为 .NET 10 / Avalonia 与 Mac 平台服务，`tests/` 为 Windows 验证，`.github/workflows/` 为构建与发布检查。开发分支为 [dev](https://github.com/Eason4869/deskpet/tree/dev)。
 

@@ -31,6 +31,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         presets.SelectionChanged += (_, _) =>
         {
             if (presets.SelectedItem is not ServicePreset preset) return;
+            key.RevealPassword=false;
             CancelFetch();
             if (!ServicePresets.SameOrigin(address.Text ?? "", preset.Url)) key.Text = "";
             name.Text = preset.Name; address.Text = preset.Url; model.Text = preset.Model; protocol.SelectedItem = preset.Protocol;
@@ -47,7 +48,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         if(kind=="text")CreateDescriptionPicker();
         Children.Add(SettingsVisual.Wrap(providers, LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text")), AddProvider), LocalizedUi.Button(()=>(TextResources.Get("common.delete")), RemoveProvider)));
         Children.Add(LocalizedUi.Text(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeA"))));
-        Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeB")), key));
+        Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeB")), new SecretField(key)));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeC")), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, stream)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeD")), proxy));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeE")), models)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeF")), model)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("providerEditor.providerEditor.field.alternativeG")), alias));
         Children.Add(SettingsVisual.Wrap(LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeB")), AddModel), LocalizedUi.Button(()=>(TextResources.Get("providerEditor.providerEditor.text.alternativeC")), RemoveModel)));
@@ -81,6 +82,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
     }
     private void LoadFields()
     {
+        key.RevealPassword=false;
         if (selected == null) return; loading = true;
         name.Text = selected.Name; address.Text = selected.Connection.BaseUrl; key.Text = selected.Connection.ApiKey;
         model.Text = selected.Connection.Model; alias.Text = selected.ModelDisplayNames.GetValueOrDefault(selected.Connection.Model, "");

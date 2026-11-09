@@ -29,7 +29,7 @@ internal sealed class WebSearchSettingsView : Grid
         var native=Ui.Column(SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.protocol"),()=>"",protocol));
         customProtocol=LocalizedUi.SetOptions(new ComboBox{Name="WebSearchCustomProtocol"},()=>Array.ConvertAll(WebSearchProviders.SchemaIds,WebSearchProviders.DisplayName));
         var customRow=SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.customProtocol"),()=>TextResources.Get("webSearch.customHelp"),customProtocol);
-        var externalFields=Ui.Column(customRow,SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.address"),()=>"",address),SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.key"),()=>"",key));
+        var externalFields=Ui.Column(customRow,SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.address"),()=>"",address),SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.key"),()=>"",new SecretField(key)));
         var body=SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("webSearch.title"),
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.enabled"),()=>"",enabled),
             SettingsVisual.ActionRow("",()=>TextResources.Get("webSearch.provider"),()=>"",provider),native,externalFields,
@@ -51,6 +51,7 @@ internal sealed class WebSearchSettingsView : Grid
     private void SwitchProvider()
     {
         if(refreshing)return;
+        key.RevealPassword=false;
         var current=connections.ReadConnection(selectedProvider);current.BaseUrl=(address.Text??"").Trim();current.ApiKey=key.Text??"";connections.SetConnection(selectedProvider,current);
         selectedProvider=ProviderId;connections.Provider=selectedProvider;var next=connections.ReadConnection(selectedProvider);connections.Connection=next.Copy();address.Text=next.BaseUrl;key.Text=next.ApiKey;
     }
@@ -60,6 +61,7 @@ internal sealed class WebSearchSettingsView : Grid
     }
     private void Restore()
     {
+        key.RevealPassword=false;
         refreshing=true;
         try{baseline=(owner.Settings.WebSearch??new WebSearchSettings()).Copy();baseline.Normalize();enabled.IsChecked=baseline.Enabled;sources.IsChecked=baseline.ShowSources;connections=baseline.Copy();selectedProvider=baseline.Provider;provider.SelectedIndex=Array.IndexOf(WebSearchProviders.Ids,baseline.Provider);protocol.SelectedIndex=Math.Max(0,Array.IndexOf(protocols,baseline.NativeProtocol));customProtocol.SelectedIndex=Math.Max(0,Array.IndexOf(WebSearchProviders.SchemaIds,baseline.CustomProtocol));address.Text=baseline.ReadConnection(selectedProvider).BaseUrl;key.Text=baseline.ReadConnection(selectedProvider).ApiKey;}
         finally{refreshing=false;}

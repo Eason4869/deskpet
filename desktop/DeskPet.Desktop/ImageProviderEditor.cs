@@ -41,7 +41,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
         var remove = LocalizedUi.Button(()=>(TextResources.Get("common.delete")), RemoveProvider); remove.Name = "DeleteImageProvider";
         Children.Add(SettingsVisual.Wrap(providers, add, remove));
         Children.Add(LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeA"))));
-        Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeB")), key));
+        Children.Add(presets); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field")), name)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeA")), address)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeB")), new SecretField(key)));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeC")), protocol)); Children.Add(SettingsVisual.Wrap(useProxy, edits)); Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeD")), proxy));
         Children.Add(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeE")), model));
         var parameters = new Expander { Name = "ImageProviderParameters", Header = LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeB"))), HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = Ui.Column(LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeF")), timeout), LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeG")), size), LocalizedUi.Field(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.field.alternativeH")), quality), LocalizedUi.Text(()=>(TextResources.Get("imageProviderEditor.imageProviderEditor.text.alternativeC")), 13), presetNotes) };
@@ -66,6 +66,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     private void ApplyPreset()
     {
         if (loading || presets.SelectedItem is not ImageServicePreset preset) return;
+        key.RevealPassword=false;
         if (selected == null) { if (items.Count >= 32) { LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("imageProviderEditor.applyPreset.notice"))); return; } var provider = new ImageGenerationProvider(); items.Add(provider); Reload(provider.Id); }
         loading = true; presets.SelectedItem = preset; loading = false;
         if (!ServicePresets.SameOrigin(address.Text ?? "", preset.BaseUrl)) key.Text = "";
@@ -82,6 +83,7 @@ internal sealed class ImageProviderEditor : StackPanel, IDisposable
     }
     private void Load()
     {
+        key.RevealPassword=false;
         loading = true;
         presets.SelectedItem = null; LocalizedUi.Set(presetNotes,"Text",()=>(TextResources.Get("imageProviderEditor.load.presetNotes")));
         name.Text = selected?.Name ?? ""; address.Text = selected?.Connection.BaseUrl ?? ""; key.Text = selected?.Connection.ApiKey ?? ""; model.Text = selected?.Connection.Model ?? "";

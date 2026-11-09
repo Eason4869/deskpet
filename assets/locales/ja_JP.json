@@ -1,4 +1,6 @@
 {
+  "secretField.show": "キーを表示",
+  "secretField.hide": "キーを非表示",
   "aboutPanel.aboutPanel.addMirrorRow": "カスタム",
   "aboutPanel.aboutPanel.choice": "GitHub 高速化を使用しない",
   "aboutPanel.aboutPanel.choice.alternativeA": "GitHub 高速化を使用",
