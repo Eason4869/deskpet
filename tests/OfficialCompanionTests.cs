@@ -13,8 +13,101 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
+                RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
+        }
+        static void SnapshotReads()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);
+                var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0));
+                using(var snapshot=service.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)){
+                    Check(snapshot!=null&&service.Storage.VerificationCount==0,"snapshot reads receipt without full pack verification");
+                    var original=snapshot.ReadVerifiedBytes("pet.json");Check(original.SequenceEqual(File.ReadAllBytes(first.PetManifestPath)),"snapshot returns exact verified bytes");
+                    var corrupt=(byte[])original.Clone();corrupt[0]^=1;File.WriteAllBytes(first.PetManifestPath,corrupt);
+                    bool rejected=false;try{snapshot.ReadVerifiedBytes("pet.json");}catch(InvalidDataException){rejected=true;}
+                    Check(rejected,"same-length tamper rejected on every read");Check(service.Installed("dafeiyu")==null,"full installed contract continues to reject tamper");File.WriteAllBytes(first.PetManifestPath,original);
+                    foreach(string invalid in new[]{"../pet.json","/pet.json","unlisted.png","receipt.json"}){rejected=false;try{snapshot.ReadVerifiedBytes(invalid);}catch(InvalidDataException){rejected=true;}Check(rejected,"unlisted or unsafe snapshot path rejected: "+invalid);}
+                    Revision(store,fixture,2);Revision(store,fixture,3);service.Dispose();
+                    var sweep=Maintenance.OfficialCompanionMaintenance.MaintainHistory(fixture.Root,DateTime.UtcNow.AddDays(8),CancellationToken.None);
+                    Check(Directory.Exists(first.RootDirectory)&&snapshot.ReadVerifiedBytes("pet.json").SequenceEqual(original),"snapshot lease survives service disposal and pointer replacement");
+                }
+                var clean=Maintenance.OfficialCompanionMaintenance.MaintainHistory(fixture.Root,DateTime.UtcNow.AddDays(8),CancellationToken.None);Check(!Directory.Exists(first.RootDirectory),"disposing snapshot releases retired root for cleanup");
+                using(var next=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                    string root=store.CurrentRoot("dafeiyu"),receiptPath=Path.Combine(root,"receipt.json");byte[] saved=File.ReadAllBytes(receiptPath);
+                    var receipt=OfficialJson.File(receiptPath,1024*1024);var files=OfficialJson.Array(receipt["files"]);OfficialJson.Object(files[0])["size"]=CompanionPackagePolicy.MaximumExpandedBytes+1;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));
+                    Check(next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)==null,"snapshot rejects receipt file size limits");File.WriteAllBytes(receiptPath,new byte[1024*1024+1]);Check(next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)==null,"snapshot rejects oversized receipt");File.WriteAllBytes(receiptPath,saved);
+                    foreach(string path in new[]{"../escape.png","CON.png","a\\b.png"}){receipt=OfficialJson.Object(OfficialJson.Parse(saved,1024*1024));OfficialJson.Object(OfficialJson.Array(receipt["files"])[0])["path"]=path;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));Check(next.CaptureLocalSnapshot("dafeiyu")==null,"unsafe receipt path rejected: "+path);}
+                    receipt=OfficialJson.Object(OfficialJson.Parse(saved,1024*1024));var tooMany=new object[CompanionPackagePolicy.MaximumEntries+1];for(int i=0;i<tooMany.Length;i++)tooMany[i]=OfficialJson.Array(receipt["files"])[0];receipt["files"]=tooMany;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));Check(next.CaptureLocalSnapshot("dafeiyu")==null,"snapshot rejects excessive receipt entry count");File.WriteAllBytes(receiptPath,saved);
+                    var disposed=next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None);disposed.Dispose();bool rejected=false;try{disposed.ReadVerifiedBytes("pet.json");}catch(ObjectDisposedException){rejected=true;}Check(rejected,"disposed snapshot rejects asset reads");
+                }
+            }
+        }
+        static async Task TransferAdmission()
+        {
+            var admission=new OfficialCompanionTransferAdmission();var first=await admission.AcquireAsync(()=>false,CancellationToken.None);var second=await admission.AcquireAsync(()=>false,CancellationToken.None);
+            var background=admission.AcquireAsync(()=>true,CancellationToken.None);var foreground=admission.AcquireAsync(()=>false,CancellationToken.None);Check(!background.IsCompleted&&!foreground.IsCompleted,"transfer admission bounds concurrency to two");
+            first.Dispose();using(await Timeout(foreground)){Check(!background.IsCompleted,"waiting foreground admitted before background");}
+            using(await Timeout(background)){}second.Dispose();
+            first=await admission.AcquireAsync(()=>false,CancellationToken.None);second=await admission.AcquireAsync(()=>false,CancellationToken.None);
+            using(var cancel=new CancellationTokenSource()){var pending=admission.AcquireAsync(()=>true,cancel.Token);cancel.Cancel();bool cancelled=false;try{await pending;}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"cancelled waiting transfer releases only its admission");}
+            first.Dispose();second.Dispose();using(await admission.AcquireAsync(()=>false,CancellationToken.None)){}
+            first=await admission.AcquireAsync(()=>false,CancellationToken.None);second=await admission.AcquireAsync(()=>false,CancellationToken.None);
+            var olderBackground=admission.AcquireAsync(()=>true,CancellationToken.None);bool promoted=false;var promotedWork=admission.AcquireAsync(()=>!promoted,CancellationToken.None);promoted=true;first.Dispose();
+            using(await Timeout(promotedWork)){Check(!olderBackground.IsCompleted,"foreground subscriber promotes queued background work");}using(await olderBackground){}second.Dispose();
+        }
+        static async Task ForcedRepair()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var first=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);int packages=fixture.Packages;
+                var repaired=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);
+                Check(repaired.InstalledNow&&repaired.Installation.RootDirectory!=first.Installation.RootDirectory&&fixture.Packages>packages,"forced repair republishes identical remote content");
+                var bytes=File.ReadAllBytes(repaired.Installation.PetManifestPath);bytes[0]^=1;File.WriteAllBytes(repaired.Installation.PetManifestPath,bytes);
+                var fixedBytes=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);Check(fixedBytes.InstalledNow&&service.Installed("dafeiyu")!=null,"forced repair restores corrupt current identical remote content");
+                var background=await service.UpdateInBackgroundAsync("dafeiyu",Direct,CancellationToken.None);Check(!background.InstalledNow&&fixture.Metadata==1,"independent background update reuses five minute metadata");
+            }
+        }
+        static async Task SnapshotAudit()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                Revision(new OfficialCompanionStorage(fixture.Root),fixture,1);int nativeCalls=0;
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>{nativeCalls++;return Task.FromResult(0);}))using(var snapshot=service.CaptureLocalSnapshot("dafeiyu")){
+                    var first=service.ValidateSnapshotInBackgroundAsync(snapshot);var second=service.ValidateSnapshotInBackgroundAsync(snapshot);
+                    Check(await first&&await second&&service.Storage.VerificationCount==1,"background audit deduplicates once per generation");
+                    var bytes=snapshot.ReadVerifiedBytes("pet.json");bytes[0]^=1;File.WriteAllBytes(snapshot.Installation.PetManifestPath,bytes);bool rejected=false;try{snapshot.ReadVerifiedBytes("pet.json");}catch(InvalidDataException){rejected=true;}Check(rejected,"successful background audit never bypasses per-read verification");
+                    File.WriteAllBytes(snapshot.Installation.PetManifestPath,bytes.Select((b,i)=>i==0?(byte)(b^1):b).ToArray());
+                    string receiptPath=Path.Combine(snapshot.Installation.RootDirectory,"receipt.json");File.AppendAllText(receiptPath," ");using(var changed=service.CaptureLocalSnapshot("dafeiyu")){Check(changed.Generation!=snapshot.Generation&&await service.ValidateSnapshotInBackgroundAsync(changed)&&service.Storage.VerificationCount==2&&nativeCalls==2,"receipt digest changes invalidate background audit generation");}
+                    using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{await service.ValidateSnapshotInBackgroundAsync(snapshot,cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"background audit honors caller cancellation even when already audited");}
+                }
+            }
+        }
+        static async Task BackgroundLeases()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,async(i,c)=>{entered.TrySetResult(true);await release.Task;}))using(var cancel=new CancellationTokenSource()){
+                    var background=service.UpdateInBackgroundAsync("dafeiyu",Direct,cancel.Token);await Timeout(entered.Task);
+                    var foreground=service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await WaitUntil(()=>Subscribers(service)==2);cancel.Cancel();await Canceled(background,"background cancellation releases its own transfer lease");release.SetResult(true);
+                    var result=await foreground;Check(result.InstalledNow&&fixture.Packages==1,"foreground and background deduplicate same role transfer");
+                }
+            }
+        }
+        static async Task RepairInFlight()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                using(var seed=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0)))await seed.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();int calls=0;
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,async(i,c)=>{if(Interlocked.Increment(ref calls)==1){entered.TrySetResult(true);await release.Task;}})){
+                    var warm=service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await Timeout(entered.Task);
+                    var repair=service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);await WaitUntil(()=>Subscribers(service)==2);release.SetResult(true);
+                    var normal=await warm;var repaired=await repair;Check(!normal.InstalledNow&&repaired.InstalledNow&&normal.Installation.RootDirectory!=repaired.Installation.RootDirectory,"forced repair cannot reuse in-flight ordinary warm ensure");
+                }
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var newer=Revision(new OfficialCompanionStorage(fixture.Root),fixture,3);
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){var kept=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);Check(!kept.InstalledNow&&kept.Installation.RootDirectory==newer.RootDirectory&&fixture.Packages==0,"forced repair never downgrades newer compatible material");}
+            }
         }
         static int passed;
         public static int OptimizationOnly()
@@ -158,8 +251,8 @@ namespace Dafeiyu.Tests
                 var a=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,OfficialCompanionFixture.Tag,name,bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
                 var b=new OfficialCompanionAsset(a.Id,a.Name,a.Version,a.MinimumAppVersion,"companions-v0.10.4-dev.1",name,a.Size,a.Sha256,a.Outfits);
                 var method=typeof(OfficialCompanionDownloads).GetMethod("InstallAsync",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
-                var first=(Task)method.Invoke(downloads,new object[]{a,Direct,null,CancellationToken.None});await entered.Task;
-                var second=(Task)method.Invoke(downloads,new object[]{b,Direct,null,CancellationToken.None});
+                var first=(Task)method.Invoke(downloads,new object[]{a,Direct,null,CancellationToken.None,false,false});await entered.Task;
+                var second=(Task)method.Invoke(downloads,new object[]{b,Direct,null,CancellationToken.None,false,false});
                 await Task.WhenAny(duplicate.Task,Task.Delay(200));release.SetResult(true);await Task.WhenAll(first,second);
                 Check(fixture.Packages==1,"concurrent equal material across tags transfers exactly one ZIP");
             }
@@ -383,11 +476,16 @@ namespace Dafeiyu.Tests
                     if(r.RequestUri.AbsolutePath.EndsWith(".json"))return OfficialCompanionFixture.Response(serveNew?f.Index():oldIndex);
                     if(r.RequestUri.AbsoluteUri.Contains("/"+OfficialCompanionFixture.Tag+"/")&&r.RequestUri.AbsolutePath.EndsWith(OfficialCompanionFixture.PackageName("dafeiyu"))){entered.TrySetResult(true);await release.Task;return OfficialCompanionFixture.Response(oldZip);}return null;
                 };
-                using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
+                // Separate clients model a second process. One service now serializes all
+                // digests for the same role, so its own newer job correctly waits.
+                using(var s=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0)))
+                using(var other=new OfficialCompanionDownloads(f.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,t,(i,c)=>Task.FromResult(0))) {
                     var slow=s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await Timeout(entered.Task);
-                    f.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{66});serveNew=true;
-                    var fresh=await Timeout(s.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None));release.TrySetResult(true);var older=await Timeout(slow);
-                    Check(fresh.Installation.Asset.Sha256==s.Installed("dafeiyu").Asset.Sha256&&older.Installation.RootDirectory==fresh.Installation.RootDirectory,"slow old digest cannot replace a newer completed immutable package or return stale root");
+                    try{
+                        f.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{66});serveNew=true;
+                        var fresh=await Timeout(other.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None));release.TrySetResult(true);var older=await Timeout(slow);
+                        Check(fresh.Installation.Asset.Sha256==s.Installed("dafeiyu").Asset.Sha256&&older.Installation.RootDirectory==fresh.Installation.RootDirectory,"slow old digest cannot replace a newer completed immutable package or return stale root");
+                    }finally{release.TrySetResult(true);Timeout(slow).GetAwaiter().GetResult();}
                 }
             }
         }
