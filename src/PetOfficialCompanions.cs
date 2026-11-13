@@ -97,12 +97,12 @@ namespace Dafeiyu
             if(preferences!=null)preferences.ShowNotice(Notice);return true;
         }
         internal bool GuideCompanionSelection {get{return GuideActive&&guide.TargetName=="SkinPicker";}}
-        bool CanRequestCompanion(bool onboarding=false)
+        bool CanRequestCompanion(bool onboarding=false,bool startupRestore=false)
         {
             if(onboarding&&GuideCompanionSelection)guide.AllowCompanionPreparation();else if(NoticeOnlyCompanionGuide())return false;
             if(closing||IsUpdating)return false;
             if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
-            if(CompanionBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
+            if(startupRestore?HolidayBusinessBusy:CompanionBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
             return true;
         }
         long BeginCompanionSelection(SkinDefinition target)
@@ -131,7 +131,7 @@ namespace Dafeiyu
         }
         internal async Task<bool> RequestSkinAsync(SkinDefinition skin,CompanionSelectionOrigin origin,Window owner)
         {
-            if(skin==null||!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding))return false;
+            if(skin==null||!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding,origin==CompanionSelectionOrigin.StartupRestore))return false;
             if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey))return false;
             RecordPetInteraction();long token=BeginCompanionSelection(skin);selectionClocks.Clear();selectionClocks[token]=System.Diagnostics.Stopwatch.StartNew();
             using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(officialLifetime.Token)) {
@@ -162,7 +162,7 @@ namespace Dafeiyu
                     }
                     if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
                     SelectionStage(token,ready,origin,"prepared",cached);
-                    if(!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding)){SelectionStage(token,ready,origin,"reselect-required");return false;}
+                    if(!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding,origin==CompanionSelectionOrigin.StartupRestore)){SelectionStage(token,ready,origin,"reselect-required");return false;}
                     bool changed=Skin.PickerKey!=ready.PickerKey;
                     if(!ActivateSkin(ready))return false;
                     WpfPreparedCompanion.Activate(ready);Catalog.PreserveActive(ready);MergeOfficialHoliday(ready);RefreshHoliday();UpdateFrame();

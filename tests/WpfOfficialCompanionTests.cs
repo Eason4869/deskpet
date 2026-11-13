@@ -452,9 +452,39 @@ namespace Dafeiyu.Tests
                     CompanionPackStorage.SetHidden(pet.Store.DirectoryPath,"official:e-bao",true);Check(new SkinCatalog(pet.Store.DirectoryPath).Skins.Any(s=>s.BuiltinCharacterId=="e-bao"),"persisted Ebao hidden flag cannot remove offline fallback");CompanionPackStorage.SetHidden(pet.Store.DirectoryPath,"official:e-bao",false);
                     var fallback=pet.Catalog.EmbeddedFallback();Wait(pet.RequestSkinAsync(fallback,CompanionSelectionOrigin.StartupRestore,null));Check(pet.Skin.Source==eSource&&!pet.Skin.Embedded,"cached embedded Ebao option prefers receipt-verified installed source without metadata delay");
                     foreach(var window in Application.Current.Windows.OfType<OfficialCompanionProgressWindow>().ToArray())window.Close();
+                    StartupFeedbackRace(pet);
                 }
                 Field("officialDownloads").SetValue(pet,null);
             }
+        }
+        static void StartupFeedbackRace(PetWindow pet)
+        {
+            var prepare=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(string),typeof(CancellationToken)},null).Invoke(pet,new object[]{"dafeiyu",CancellationToken.None});Wait(prepare);
+            var target=prepare.Result;var original=pet.Skin;var history=pet.Conversation.History;
+            Check(target.Snapshot!=null && target.PreparedOfficialAtlas!=null && target.PickerKey!=original.PickerKey,"startup race uses a real prepared verified source distinct from the displayed fallback");
+            // An upgrade can retain the desired role key while displaying fallback.
+            pet.Settings.SelectedCompanionKey=target.PickerKey;pet.Settings.PendingOfficialCompanionId="";pet.Store.Save(pet.Settings);
+            string persona=pet.Settings.SkinId,prompt=pet.Settings.SystemPrompt;
+            string settingsPath=Path.Combine(pet.Store.DirectoryPath,"settings.json");var settingsBytes=File.ReadAllBytes(settingsPath);
+            var deferred=Field("deferredOfficial").GetValue(pet);Field("completionUntil").SetValue(pet,0d);
+            var snapshotGate=typeof(OfficialCompanionSnapshot).GetField("gate",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(target.Snapshot);
+            Task<bool> restore=null;
+            Monitor.Enter(snapshotGate);
+            try {
+                restore=pet.RequestSkinAsync(target,CompanionSelectionOrigin.StartupRestore,null);
+                Check(!restore.IsCompleted && pet.CurrentCompanionSelection.Stage=="requested" && (int)Field("officialPreparationReaders").GetValue(pet)>0,"startup restore is awaiting real asynchronous verified-byte preparation before feedback begins");
+                // Hold the existing consumed-byte read gate, rather than sleeping
+                // or bypassing integrity/decode work to manufacture the race.
+                Field("completionUntil").SetValue(pet,Double.MaxValue);
+            }finally{Monitor.Exit(snapshotGate);}
+            try {
+                Wait(restore);
+                Check(!restore.Result && ReferenceEquals(pet.Skin,original) && pet.CurrentCompanionSelection.Stage=="reselect-required","startup restore cannot commit feedback that began during preparation");
+                Check(pet.Settings.SelectedCompanionKey==target.PickerKey && pet.Settings.SkinId==persona && pet.Settings.SystemPrompt==prompt && ReferenceEquals(pet.Conversation.History,history) && File.ReadAllBytes(settingsPath).SequenceEqual(settingsBytes),"refused automatic restore preserves selected role key, persona, history and persisted settings");
+                Check(ReferenceEquals(Field("deferredOfficial").GetValue(pet),deferred),"refused startup restore does not silently queue another automatic selection");
+                var explicitSelection=pet.RequestSkinAsync(target,CompanionSelectionOrigin.Settings,null);Wait(explicitSelection);
+                Check(explicitSelection.Result && pet.Skin.PickerKey==target.PickerKey,"explicit user selection still commits the same prepared source during completed feedback");
+            }finally{Field("completionUntil").SetValue(pet,0d);}
         }
         internal static byte[] NativePackage(string id,byte color,bool coldAction=false)
         {
