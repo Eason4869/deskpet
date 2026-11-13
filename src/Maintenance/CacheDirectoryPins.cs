@@ -52,7 +52,7 @@ namespace Dafeiyu.Maintenance
         }
         void Tree(string path){Pin(path);foreach(string child in Directory.GetDirectories(path)){CachePaths.Check(child);Tree(child);}}
         int Descriptor(string path){return handles[path].DangerousGetHandle().ToInt32();}
-        internal void DeleteFile(CacheFile file)
+        internal void DeleteFile(CacheFile file,Action<Action> commit=null)
         {
             CachePaths.Check(file.Path);SafeFileHandle handle;
             if(Windows){handle=CreateFile(CachePaths.NativePath(file.Path),0x80010000,0,IntPtr.Zero,3,0x00200000,IntPtr.Zero);if(handle.IsInvalid){handle.Dispose();throw IoError();}}
@@ -60,8 +60,9 @@ namespace Dafeiyu.Maintenance
             using(handle)using(var stream=new FileStream(handle,FileAccess.Read))using(var hash=SHA256.Create()){
                 if(stream.Length!=file.Bytes||Convert.ToBase64String(hash.ComputeHash(stream))!=file.Hash)throw new IOException("Cache file changed before deletion.");
                 CachePaths.Check(file.Path);
-                if(Windows){byte disposition=1;if(!SetFileInformationByHandle(handle,4,ref disposition,1))throw IoError();}
-                else if(unlinkat(Descriptor(Path.GetDirectoryName(file.Path)),Path.GetFileName(file.Path),0)!=0)throw IoError();
+                Action remove=()=>{if(Windows){byte disposition=1;if(!SetFileInformationByHandle(handle,4,ref disposition,1))throw IoError();}
+                else if(unlinkat(Descriptor(Path.GetDirectoryName(file.Path)),Path.GetFileName(file.Path),0)!=0)throw IoError();};
+                if(commit==null)remove();else commit(remove);
             }
         }
         internal void DeleteDirectory(string path)

@@ -97,6 +97,29 @@ namespace Dafeiyu.Tests
                 Check(bundle.PrefersBundle("0.11.0-dev.3")&&!bundle.PrefersBundle("9.0.0"),"bundle floor rejects older and preserves newer compatible versions");
                 using(WpfPreparedCompanion.Hold(skin)){skin.PreparedOfficialAtlas=skin.Load();var clip=WpfPreparedCompanion.Load(skin,skin.Manifest.Animations["idle"]);Check(skin.PreparedOfficialAtlas.DecodedBytes<32L*1024*1024&&clip.Count==8,"E uses bounded idle and gaze instead of legacy full atlas");}
                 Check(!Directory.GetDirectories(root,"*",SearchOption.AllDirectories).Any(p=>p.Contains("versions")||p.Contains("bundled-skins")),"embedded selection extracts no package into user cache");
+                using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+                using(var downloads=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);
+                    var install=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
+                    using(var reader=downloads.CaptureLocalSnapshot("e-bao")){
+                    string transaction=Path.Combine(downloads.Storage.CharacterRoot("e-bao"),"bundle-transaction.json");
+                    File.WriteAllBytes(transaction,OfficialJson.Bytes(new{schema_version=99,old_current=Path.GetFileName(install.Result.Installation.RootDirectory),bundle=bundle.Generation+"|"+bundle.Version+"|"+bundle.MinimumAppVersion+"|"+bundle.ZipSha256}));
+                    bool rejected=false;try{Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));}catch(IOException){rejected=true;}
+                    Check(rejected&&downloads.Storage.CurrentRoot("e-bao")==install.Result.Installation.RootDirectory,"unknown bundle transaction preserves old pointer and complete source");File.Delete(transaction);
+                    downloads.Storage.Commit=(from,to)=>{throw new IOException("fixture interrupted bundle handoff");};
+                    rejected=false;try{Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));}catch(IOException){rejected=true;}
+                    Check(rejected&&downloads.Storage.CurrentRoot("e-bao")==install.Result.Installation.RootDirectory&&Directory.Exists(install.Result.Installation.RootDirectory),"failed bundle pointer commit preserves working managed E");downloads.Storage.Commit=AtomicFile.Commit;
+                    var handoff=downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None);Wait(handoff);Wait(downloads.HistoryMaintenance);
+                    Check(reader!=null&&Directory.Exists(install.Result.Installation.RootDirectory)&&reader.ReadVerifiedBytes("pet.json").Length>0,"full bundle handoff protects an outstanding old E reader");
+                    Check(downloads.CaptureLocalSnapshot("e-bao")==null,"bundle lifecycle handoff clears managed pointer without fake filesystem source");
+                    string bundleProof=OfficialJson.Text(OfficialJson.File(Path.Combine(downloads.Storage.CharacterRoot("e-bao"),"versions.json"),1024*1024),"bundle",400);
+                    Check(bundleProof.Contains(bundle.Version)&&bundleProof.Contains(bundle.MinimumAppVersion)&&bundleProof.Contains(bundle.PayloadSha256)&&bundleProof.Contains(bundle.ZipSha256),"durable bundle handoff binds version minimum payload and actual archive identity");
+                    reader.Dispose();Wait(downloads.HistoryMaintenance);
+                    Check(!Directory.Exists(install.Result.Installation.RootDirectory)&&bundle.CreateHolidayCatalog().Outfits.Count==10,"last old E reader release reclaims managed E while complete bundle stays usable");
+                    var next=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(next);
+                    using(var resumed=downloads.CaptureLocalSnapshot("e-bao"))Check(next.Result.InstalledNow&&resumed!=null,"later explicit publication can resume from bundle lifecycle state");
+                    }
+                }
                 var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
                 using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
                     fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);

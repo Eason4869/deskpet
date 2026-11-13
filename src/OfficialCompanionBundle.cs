@@ -50,6 +50,16 @@ namespace Dafeiyu
                 return new OfficialCompanionBundle((Inventory)new DataContractJsonSerializer(typeof(Inventory)).ReadObject(stream));
             }
         }
+        readonly object auditGate=new object();internal bool CompletelyVerified {get;private set;}
+        internal void VerifyComplete(System.Threading.CancellationToken cancel)
+        {
+            lock(auditGate){
+                if(CompletelyVerified)return;
+                foreach(string path in Paths){cancel.ThrowIfCancellationRequested();ReadVerifiedBytes(path);}
+                var catalog=CreateHolidayCatalog();catalog.WithCharacter("e-bao",catalog);
+                cancel.ThrowIfCancellationRequested();CompletelyVerified=true;
+            }
+        }
         public bool PrefersBundle(string installedVersion) {ReleaseVersion installed;return !ReleaseVersion.TryParse(installedVersion,out installed)||installed.CompareTo(ReleaseVersion.Parse(Version))<0;}
         public Stream Open(string path) {return new MemoryStream(ReadVerifiedBytes(path),false);}
         public byte[] ReadVerifiedBytes(string path) {

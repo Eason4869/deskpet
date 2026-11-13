@@ -18,7 +18,7 @@ namespace Dafeiyu.Maintenance
             CacheCleanResult result;int protectedItems=0;
             try{
                 cancel.ThrowIfCancellationRequested();var service=new CacheMaintenanceService(dataRoot);
-                var scan=service.ScanPackHistory(now,cancel);protectedItems=scan.ProtectedItems;
+                var scan=service.ScanAfterUpdate(now,cancel);protectedItems=scan.ProtectedItems;
                 cancel.ThrowIfCancellationRequested();result=service.Clean(scan,now,cancel);result.FailedItems+=scan.FailedItems;
             }catch(OperationCanceledException){result=new CacheCleanResult{SkippedItems=1};}
             catch(Exception){Trace.TraceWarning("Official companion history maintenance could not complete.");result=new CacheCleanResult{FailedItems=1};}
@@ -32,7 +32,7 @@ namespace Dafeiyu.Maintenance
         sealed class VersionRecord { internal string Name,Identity;internal long Retired; }
         sealed class State
         {
-            internal string Current="",Previous="";
+            internal string Current="",Previous="",Bundle="";
             internal readonly Dictionary<string,VersionRecord> Versions=new Dictionary<string,VersionRecord>(StringComparer.Ordinal);
         }
         internal static bool Managed(string name){return name!=null&&name.Length<=200&&Regex.IsMatch(name,@"\Av2-[a-zA-Z0-9.-]+-[a-f0-9]{32}-[a-f0-9]{32}\z");}
@@ -85,6 +85,7 @@ namespace Dafeiyu.Maintenance
             string path=PathFor(role,"versions.json");var state=new State();if(!File.Exists(path))return state;
             var data=OfficialJson.File(path,1024*1024);
             if(OfficialJson.Integer(data,"schema_version")!=1)throw new IOException("Unknown official lifecycle schema.");
+            object bundle;if(data.TryGetValue("bundle",out bundle)){state.Bundle=bundle as string;if(state.Bundle==null||state.Bundle.Length>400)throw new IOException("Invalid bundle lifecycle identity.");}
             state.Current=Name(OfficialJson.Required(data,"current"));state.Previous=Name(OfficialJson.Required(data,"previous"));
             foreach(var raw in OfficialJson.Array(OfficialJson.Required(data,"versions"))){
                 var item=OfficialJson.Object(raw);string name=Name(OfficialJson.Required(item,"name"));
@@ -102,7 +103,7 @@ namespace Dafeiyu.Maintenance
         }
         static void Save(string role,State state)
         {
-            Write(role,"versions.json",new{schema_version=1,current=state.Current,previous=state.Previous,versions=state.Versions.Values.OrderBy(x=>x.Name,StringComparer.Ordinal).Select(x=>new{name=x.Name,identity=x.Identity,retired_utc_ticks=x.Retired}).ToArray()});
+            Write(role,"versions.json",new{schema_version=1,current=state.Current,previous=state.Previous,bundle=state.Bundle,versions=state.Versions.Values.OrderBy(x=>x.Name,StringComparer.Ordinal).Select(x=>new{name=x.Name,identity=x.Identity,retired_utc_ticks=x.Retired}).ToArray()});
         }
         // Publication alone may repair a corrupt pointer, after the incoming
         // complete receipt is verified and while its caller holds the role lock.
@@ -115,6 +116,7 @@ namespace Dafeiyu.Maintenance
             if(store.ReadVersionCore(stage,id,asset,cancel,true,null,null,true)==null)throw new IOException("Incoming companion is not fully verified.");
             if(File.Exists(PathFor(role,"version-transaction.json")))throw new IOException("Cannot repair an ambiguous publication transaction.");
             var state=Read(role);string current=state.Current;
+            if(current.Length==0&&state.Bundle.Length!=0)return;
             if(current.Length!=0){
                 VersionRecord record;string root=PathFor(role,current);
                 if(!Managed(current)||!state.Versions.TryGetValue(current,out record)||!Directory.Exists(root)||record.Identity!=CachePaths.Identity(root))throw new IOException("Cannot recover an unrecognized current installation.");
@@ -134,7 +136,7 @@ namespace Dafeiyu.Maintenance
         }
         internal static void Recover(OfficialCompanionStorage store,string id)
         {
-            string role=store.CharacterRoot(id),path=PathFor(role,"version-transaction.json");if(!File.Exists(path))return;
+            string role=store.CharacterRoot(id),path=PathFor(role,"version-transaction.json");if(File.Exists(PathFor(role,"bundle-transaction.json")))throw new IOException("Bundle handoff is incomplete.");if(!File.Exists(path))return;
             var tx=OfficialJson.File(path,16384);if(OfficialJson.Integer(tx,"schema_version")!=1)throw new IOException("Unknown publication transaction.");
             string old=Name(OfficialJson.Required(tx,"old_current")),priorState=Name(OfficialJson.Required(tx,"state_current")),next=Name(OfficialJson.Required(tx,"new_current")),keep=Name(OfficialJson.Required(tx,"keep_previous")),pointer=Pointer(role);
             Name(OfficialJson.Required(tx,"old_previous"));
@@ -148,22 +150,67 @@ namespace Dafeiyu.Maintenance
             foreach(var name in state.Versions.Keys.ToArray())if(!Directory.Exists(PathFor(role,name)))state.Versions.Remove(name);
             state.Versions[next]=new VersionRecord{Name=next,Identity=identity,Retired=0};
             long now=DateTime.UtcNow.Ticks;
-            foreach(var record in state.Versions.Values){if(record.Name==next||record.Name==keep)record.Retired=0;else if(record.Retired==0)record.Retired=now;}
-            state.Current=next;state.Previous=keep;Save(role,state);
+            foreach(var record in state.Versions.Values){if(record.Name==next)record.Retired=0;else if(record.Retired==0)record.Retired=now;}
+            state.Current=next;state.Previous=keep;state.Bundle="";Save(role,state);
             RegisterInstalled(Path.GetDirectoryName(store.Root),destination);
             File.Delete(path);
         }
-        internal static string RetirementProof(string dataRoot,string directory,DateTime now,CancellationToken cancel)
+        static string BundleIdentity(OfficialCompanionBundle bundle)
+        {return bundle.Generation+"|"+bundle.Version+"|"+bundle.MinimumAppVersion+"|"+bundle.ZipSha256;}
+        internal static void HandoffBundle(OfficialCompanionStorage store,OfficialCompanionBundle bundle,CancellationToken cancel)
+        {
+            if(bundle==null||!ReferenceEquals(bundle,OfficialCompanionBundle.Ebao)||!bundle.CompletelyVerified)throw new IOException("Complete bundled replacement is not verified.");
+            string role=store.CharacterRoot("e-bao"),transaction=PathFor(role,"bundle-transaction.json");
+            using(Lock(role,cancel)){
+                if(File.Exists(PathFor(role,"version-transaction.json")))return;
+                var state=Read(role);string current=Pointer(role);
+                if(File.Exists(transaction)){
+                    var tx=OfficialJson.File(transaction,16384);if(OfficialJson.Integer(tx,"schema_version")!=1)throw new IOException("Unknown bundle handoff schema.");string old=Name(OfficialJson.Required(tx,"old_current"));
+                    if(OfficialJson.Text(tx,"bundle",400)!=BundleIdentity(bundle)||current!=old&&current.Length!=0||state.Current!=old&&!(state.Current.Length==0&&state.Bundle==BundleIdentity(bundle)))throw new IOException("Ambiguous bundle handoff.");
+                }else{
+                    if(current.Length==0||state.Current!=current||!Managed(current))return;
+                    VersionRecord record;if(!state.Versions.TryGetValue(current,out record)||record.Identity!=CachePaths.Identity(PathFor(role,current)))return;
+                    var installed=store.ReadVersionCore(PathFor(role,current),"e-bao",null,cancel,false,null);
+                    if(installed==null||!bundle.PrefersBundle(installed.Asset.Version))return;
+                    Write(role,"bundle-transaction.json",new{schema_version=1,old_current=current,bundle=BundleIdentity(bundle)});
+                }
+                cancel.ThrowIfCancellationRequested();
+                string temporary=PathFor(role,".bundle-pointer-"+Guid.NewGuid().ToString("N"));
+                try{File.WriteAllText(temporary,"",new UTF8Encoding(false));store.Commit(temporary,PathFor(role,"current.txt"));}
+                finally{if(File.Exists(temporary))File.Delete(temporary);}
+                state.Current="";state.Previous="";state.Bundle=BundleIdentity(bundle);
+                foreach(var record in state.Versions.Values)if(record.Retired==0)record.Retired=DateTime.UtcNow.Ticks;
+                Save(role,state);File.Delete(transaction);
+            }
+        }
+        // Verification is deliberately outside the role lock. A short, immutable token
+        // is rechecked at each delete commit; foreground snapshot capture never waits
+        // for a full package hash or a large obsolete file hash.
+        internal static string RetirementProof(string dataRoot,string directory,DateTime now,CancellationToken cancel,Func<string,string,CancellationToken,bool> verifyReplacement=null)
         {
             cancel.ThrowIfCancellationRequested();
             if(!Managed(Path.GetFileName(directory)))return null;
-            string role=Path.GetDirectoryName(directory),transaction=PathFor(role,"version-transaction.json");if(File.Exists(transaction))return null;
+            string role=Path.GetDirectoryName(directory),token,current;IDisposable lease=null;
+            try{
+                using(Lock(role,cancel)){
+                    token=RetirementToken(directory);if(token==null)return null;
+                    current=Pointer(role);if(current.Length!=0)lease=OfficialCompanionSnapshot.Protect(dataRoot,PathFor(role,current));
+                }
+                var store=new OfficialCompanionStorage(dataRoot);
+                if(current.Length!=0){string replacement=PathFor(role,current),id=Path.GetFileName(role);
+                    if(verifyReplacement!=null?!verifyReplacement(replacement,id,cancel):store.ReadVersionCancelable(replacement,id,null,cancel)==null)return null;
+                }
+                using(Lock(role,cancel))return token==RetirementToken(directory)?token:null;
+            }finally{if(lease!=null)lease.Dispose();}
+        }
+        internal static string RetirementToken(string directory)
+        {
+            string role=Path.GetDirectoryName(directory);if(File.Exists(PathFor(role,"version-transaction.json"))||File.Exists(PathFor(role,"bundle-transaction.json")))return null;
             var state=Read(role);string current=Pointer(role),name=Path.GetFileName(directory);VersionRecord record;
-            if(current.Length==0||state.Current!=current||name==current||name==state.Previous||!state.Versions.TryGetValue(name,out record)||record.Retired==0||record.Retired>now.AddDays(-7).Ticks||record.Identity!=CachePaths.Identity(directory))return null;
-            var store=new OfficialCompanionStorage(dataRoot);string id=Path.GetFileName(role);
-            // If recovery resources are damaged, older material may be the only usable copy.
-            if(store.InstalledCancelable(id,cancel)==null||state.Previous.Length!=0&&store.ReadVersionCancelable(PathFor(role,state.Previous),id,null,cancel)==null||store.ReadVersionCancelable(directory,id,null,cancel)==null)return null;
-            return OfficialCompanionStorage.HashFile(PathFor(role,"versions.json"))+"|"+current+"|"+record.Identity;
+            if(state.Current!=current||name==current||!state.Versions.TryGetValue(name,out record)||record.Identity!=CachePaths.Identity(directory))return null;
+            if(current.Length==0){var bundle=OfficialCompanionBundle.Ebao;if(Path.GetFileName(role)!="e-bao"||bundle==null||!bundle.CompletelyVerified||state.Bundle!=BundleIdentity(bundle))return null;return OfficialCompanionStorage.HashFile(PathFor(role,"versions.json"))+"|"+BundleIdentity(bundle)+"|"+record.Identity;}
+            string receipt=PathFor(PathFor(role,current),"receipt.json");
+            return OfficialCompanionStorage.HashFile(PathFor(role,"versions.json"))+"|"+current+"|"+record.Identity+"|"+CachePaths.Identity(PathFor(role,current))+"|"+OfficialCompanionStorage.HashFile(receipt);
         }
     }
 }

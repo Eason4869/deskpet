@@ -13,12 +13,105 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
+                if(Environment.GetCommandLineArgs().Contains("--automatic-cleanup")){RetainOneHistory();MaintenanceColdSelection();CoalescedReaderRetry();NativeReaderRetirement().GetAwaiter().GetResult();SnapshotReaderRetirement().GetAwaiter().GetResult();Console.WriteLine("Automatic cleanup tests: "+passed+" passed");return 0;}
                 BundleDownloadBaseline().GetAwaiter().GetResult();
                 if(Environment.GetCommandLineArgs().Contains("--bundle-baseline-only")){Console.WriteLine("Bundle download baseline tests: "+passed+" passed");return 0;}
                 CorruptPointerRepair().GetAwaiter().GetResult();
                 if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
+                RetainOneHistory();MaintenanceColdSelection();CoalescedReaderRetry();NativeReaderRetirement().GetAwaiter().GetResult();SnapshotReaderRetirement().GetAwaiter().GetResult();
                 RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
+        }
+        static void MaintenanceColdSelection()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var reader=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0)))
+            using(var entered=new ManualResetEventSlim())using(var release=new ManualResetEventSlim()){
+                var older=Revision(reader.Storage,fixture,1);var current=Revision(reader.Storage,fixture,2);
+                var unselected=Revision(reader.Storage,fixture,1,"marfu");
+                var maintenance=new Maintenance.CacheMaintenanceService(fixture.Root,(path,id,cancel)=>{
+                    entered.Set();release.Wait(cancel);return reader.Storage.ReadVersionCancelable(path,id,null,cancel)!=null;
+                });
+                var sweeping=Task.Run(()=>maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow));
+                Task<OfficialCompanionSnapshot> capturing=null;
+                try{
+                    Check(entered.Wait(5000),"maintenance entered complete replacement verification");
+                    capturing=Task.Run(()=>reader.CaptureLocalSnapshot("dafeiyu"));
+                    Check(capturing.Wait(2000)&&capturing.Result!=null,"cold snapshot capture completes while complete maintenance verification is gated");
+                    Check(!sweeping.IsCompleted&&capturing.Result.Installation.RootDirectory==current.RootDirectory,"cold selection completes before concurrent maintenance verification ends");
+                }finally{release.Set();sweeping.GetAwaiter().GetResult();if(capturing!=null&&capturing.Result!=null)capturing.Result.Dispose();}
+                Check(!Directory.Exists(older.RootDirectory)&&Directory.Exists(current.RootDirectory)&&Directory.Exists(unselected.RootDirectory),"cleanup retains latest usable version per role including unselected sole local role");
+            }
+        }
+        static void CoalescedReaderRetry()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots))
+            using(var entered=new ManualResetEventSlim())using(var release=new ManualResetEventSlim()){
+                var first=Revision(service.Storage,fixture,1);var snapshot=service.CaptureLocalSnapshot("dafeiyu");Revision(service.Storage,fixture,2);
+                int passes=0;service.UtcNow=()=>{if(Interlocked.Increment(ref passes)==1){entered.Set();release.Wait();}return DateTime.UtcNow;};
+                var sweep=service.ScheduleMaintenance();
+                try{Check(entered.Wait(5000),"maintenance pass is running before old reader releases");snapshot.Dispose();for(int i=0;i<20;i++)service.ScheduleMaintenance();}
+                finally{release.Set();sweep.GetAwaiter().GetResult();snapshot.Dispose();}
+                Check(passes==2&&!Directory.Exists(first.RootDirectory),"real reader release during active maintenance causes one coalesced trailing pass");
+                Thread.Sleep(100);Check(passes==2&&service.HistoryMaintenance.IsCompleted,"maintenance-owned leases do not self-trigger further sweeps");
+            }
+        }
+        static async Task NativeReaderRetirement()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,async(i,c)=>{entered.TrySetResult(true);await release.Task;Check(File.Exists(i.PetManifestPath),"native validator keeps its exact generation throughout its read");},OfficialCompanionReadMode.Snapshots)){
+                    var first=Revision(service.Storage,fixture,1);
+                    var validating=service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);
+                    await Timeout(entered.Task);Revision(service.Storage,fixture,2);
+                    try{await service.ScheduleMaintenance();Check(Directory.Exists(first.RootDirectory),"in-flight native validation protects retired generation");}
+                    finally{release.TrySetResult(true);}
+                    await validating;
+                    await service.HistoryMaintenance;
+                    Check(!Directory.Exists(first.RootDirectory),"native validation lease release retries deferred cleanup");
+                }
+            }
+        }
+        static async Task SnapshotReaderRetirement()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots)){
+                var result=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);
+                var first=result.Installation;var reader=service.CaptureLocalSnapshot("dafeiyu");
+                var next=Revision(service.Storage,fixture,7);
+                await service.ScheduleMaintenance();
+                Check(Directory.Exists(first.RootDirectory)&&reader.ReadVerifiedBytes("pet.json").Length>0,"snapshot mode retains real reader across replacement");
+                reader.Dispose();await service.HistoryMaintenance;
+                Check(!Directory.Exists(first.RootDirectory)&&Directory.Exists(next.RootDirectory),"last real reader release triggers retry without disposing download service");
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var first=Revision(service.Storage,fixture,1);var raw=service.Installed("dafeiyu");Revision(service.Storage,fixture,2);
+                await service.ScheduleMaintenance();Check(File.Exists(raw.PetManifestPath),"legacy raw Installation contract retains path until service disposal");
+            }
+        }
+        static void RetainOneHistory()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var store=new OfficialCompanionStorage(fixture.Root);var first=Revision(store,fixture,1);var second=Revision(store,fixture,2);
+                var maintenance=new Maintenance.CacheMaintenanceService(fixture.Root);
+                var scan=maintenance.Scan(DateTime.UtcNow);
+                Check(scan.Candidates.Any(c=>c.DirectoryPath==first.RootDirectory),"successful replacement retires previous immediately without a seven-day wait");
+                using(var reader=Maintenance.CacheResourceLease.ProtectExisting(fixture.Root,first.RootDirectory)){
+                    Check(maintenance.Clean(scan,DateTime.UtcNow).DeletedItems==0&&Directory.Exists(first.RootDirectory),"real reader defers previous cleanup");
+                }
+                File.AppendAllText(second.PetManifestPath,"damaged");
+                Check(maintenance.Scan(DateTime.UtcNow).Candidates.Count==0,"corrupt newest preserves sole usable previous");
+                var third=Revision(store,fixture,3);
+                string denied=Path.Combine(first.RootDirectory,"z-denied.txt");File.WriteAllText(denied,"retry");File.SetAttributes(denied,FileAttributes.ReadOnly);
+                var partial=maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow);
+                Check(Directory.Exists(first.RootDirectory)&&Directory.Exists(third.RootDirectory),"partial retirement preserves replacement and is not counted as full success");
+                File.SetAttributes(denied,FileAttributes.Normal);
+                var retry=maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow);
+                Check(!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory)&&Directory.Exists(third.RootDirectory),"partial deletion retries without requiring intact obsolete receipt");
+                Check(maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow).DeletedItems==0,"retain-one cleanup is idempotent and preserves sole local version");
+            }
         }
         static async Task BundleDownloadBaseline()
         {
@@ -205,10 +298,10 @@ namespace Dafeiyu.Tests
                 string update=Path.Combine(fixture.Root,"updates",Guid.NewGuid().ToString("N"));using(Maintenance.CacheResourceLease.Acquire(fixture.Root,update))File.WriteAllBytes(Path.Combine(update,"keep.zip"),new byte[64]);
                 string tag="companions-v0.10.4-dev.4",name=OfficialCompanionFixture.PackageName("dafeiyu");fixture.Files[name]=OfficialCompanionFixture.Package("dafeiyu",files=>files["README.txt"]=new byte[]{4});
                 fixture.Intercept=(r,c)=>Task.FromResult(r.RequestUri.Host=="api.github.com"?OfficialCompanionFixture.Response(OfficialCompanionFixture.Json(new[]{fixture.Release(tag,fixture.Index())})):null);
-                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
-                    service.UtcNow=()=>DateTime.UtcNow.AddDays(8);var fourth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var sweep=await service.HistoryMaintenance;
-                    Check(fourth.InstalledNow&&sweep.DeletedItems==2&&!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory),"successful install automatically reclaims expired unused managed history");
-                    Check(Directory.Exists(third.RootDirectory)&&Directory.Exists(fourth.Installation.RootDirectory)&&Directory.Exists(update),"automatic sweep retains recovery active resources and unrelated update caches");
+                using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots)){
+                    service.UtcNow=()=>DateTime.UtcNow;var fourth=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Force,null,CancellationToken.None);var sweep=await service.HistoryMaintenance;
+                    Check(fourth.InstalledNow&&sweep.DeletedItems==4&&!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory),"successful install automatically reclaims expired unused managed history");
+                    Check(!Directory.Exists(third.RootDirectory)&&Directory.Exists(fourth.Installation.RootDirectory)&&!Directory.Exists(update),"automatic sweep retains latest role and removes inactive owned temporary update downloads");
                     string summary=Path.Combine(fixture.Root,"cache-maintenance","last-companion-history.json");Check(File.Exists(summary),"automatic maintenance retains a numeric diagnostic summary");
                     string savedSummary=summary+".saved";File.Move(summary,savedSummary);Directory.CreateDirectory(summary);
                     try{
@@ -260,9 +353,9 @@ namespace Dafeiyu.Tests
                 Check(new Maintenance.CacheMaintenanceService(fixture.Root).Scan(DateTime.UtcNow.AddDays(8)).TotalBytes==0,"unknown transaction remains protected from cleanup");
             }
         }
-        static OfficialCompanionInstallation Revision(OfficialCompanionStorage store,OfficialCompanionFixture fixture,int revision)
+        static OfficialCompanionInstallation Revision(OfficialCompanionStorage store,OfficialCompanionFixture fixture,int revision,string id="dafeiyu")
         {
-            string id="dafeiyu",role=store.CharacterRoot(id);Directory.CreateDirectory(role);
+            string role=store.CharacterRoot(id);Directory.CreateDirectory(role);
             string stage=Path.Combine(role,".stage-"+Guid.NewGuid().ToString("N")),zip=Path.Combine(fixture.Root,"revision.zip");
             byte[] bytes=OfficialCompanionFixture.Package(id,files=>files["README.txt"]=new[]{(byte)revision});File.WriteAllBytes(zip,bytes);
             var asset=new OfficialCompanionAsset(id,id,OfficialCompanionFixture.Version,OfficialCompanionFixture.Version,"companions-v0.10.4-dev."+revision,OfficialCompanionFixture.PackageName(id),bytes.Length,OfficialCompanionFixture.Hash(bytes),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
@@ -281,13 +374,13 @@ namespace Dafeiyu.Tests
                 Check(failed&&store.Installed("dafeiyu").RootDirectory==second.RootDirectory&&OfficialJson.Text(OfficialJson.File(state,1024*1024),"previous",220)==previous,"failed current commit preserves original previous and current");
                 store.Commit=AtomicFile.Commit;using(Maintenance.OfficialCompanionMaintenance.Lock(role))Maintenance.OfficialCompanionMaintenance.Recover(store,"dafeiyu");
                 var fourth=Revision(store,fixture,4);var service=new Maintenance.CacheMaintenanceService(fixture.Root);DateTime future=DateTime.UtcNow.AddDays(8);
-                Check(!service.Scan(DateTime.UtcNow).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"retired root has a seven-day grace period");
+                Check(service.Scan(DateTime.UtcNow).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"retired root is eligible immediately after verified replacement");
                 using(Maintenance.CacheResourceLease.ProtectExisting(fixture.Root,first.RootDirectory))Check(!service.Scan(future).Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"active root lease prevents historical cleanup");
                 var scan=service.Scan(future);
-                Check(scan.Candidates.Count(x=>x.Category=="pack-versions")==1&&scan.Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"only retired managed history is reclaimable");
+                Check(scan.Candidates.Count(x=>x.Category=="pack-versions")==2&&scan.Candidates.Any(x=>x.DirectoryPath==first.RootDirectory),"only retired managed history is reclaimable");
                 File.WriteAllText(pointer,Path.GetFileName(first.RootDirectory));var changed=service.Clean(scan,future);Check(changed.DeletedItems==0&&Directory.Exists(first.RootDirectory),"changed current pointer invalidates historical cleanup scan");
                 File.WriteAllText(pointer,Path.GetFileName(fourth.RootDirectory));string legacy=Path.Combine(role,"v-"+OfficialCompanionFixture.Version+"-"+new string('a',64));Directory.CreateDirectory(legacy);File.WriteAllText(Path.Combine(legacy,"unknown.png"),"legacy");
-                var result=service.Clean(service.Scan(future),future);Check(result.DeletedItems==1&&!Directory.Exists(first.RootDirectory)&&Directory.Exists(second.RootDirectory)&&Directory.Exists(fourth.RootDirectory)&&Directory.Exists(legacy),"cleanup retains current previous and all legacy readers' unknown roots");
+                var result=service.Clean(service.Scan(future),future);Check(result.DeletedItems==2&&!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory)&&Directory.Exists(fourth.RootDirectory)&&Directory.Exists(legacy),"cleanup retains current and all legacy readers' unknown roots");
                 string legacyCurrent=Path.Combine(role,"v-"+fourth.Asset.Version+"-"+fourth.Asset.Sha256);Directory.CreateDirectory(legacyCurrent);
                 foreach(string file in Directory.GetFiles(fourth.RootDirectory,"*",SearchOption.AllDirectories)){string target=Path.Combine(legacyCurrent,file.Substring(fourth.RootDirectory.Length+1));Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target);}
                 var legacyReceipt=OfficialJson.File(Path.Combine(legacyCurrent,"receipt.json"),1024*1024);legacyReceipt["schema_version"]=1;File.WriteAllBytes(Path.Combine(legacyCurrent,"receipt.json"),OfficialJson.Bytes(legacyReceipt));File.WriteAllText(pointer,Path.GetFileName(legacyCurrent));

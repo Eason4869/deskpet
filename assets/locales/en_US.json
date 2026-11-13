@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Follows the read-aloud setting. Silent in quiet mode.",
   "companions.install.preparing": "Installing the latest companion pack for {0}…",
   "companions.install.failed": "Could not install {0}. You can retry.",
-  "companions.install.reselect": "{0} is ready. Please select again when you are free."
+  "companions.install.reselect": "{0} is ready. Please select again when you are free.",
+  "cache.preservedLatest": "Chat, settings, attachments, relationships and projects are kept. Successful updates automatically remove old installers and character packs, keeping the latest valid installer and latest usable version of each character. Files in use, unfinished updates, uncertain files and legacy copies remain protected."
 }

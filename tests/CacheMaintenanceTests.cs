@@ -41,6 +41,63 @@ namespace Dafeiyu.Tests
             if(args.Length==3&&args[0]=="--cache-lease-fixture"){
                 using(CacheResourceLease.Acquire(args[1],args[2])){File.WriteAllText(Path.Combine(args[1],"child-ready"),"ready");while(!File.Exists(Path.Combine(args[1],"child-release")))Thread.Sleep(20);}return 0;
             }
+            Run("automatic update cleanup retains latest verified package but trims completed rollback",()=>{
+                using(var f=new Fixture()){
+                    string install=Path.GetDirectoryName(f.Root);File.Copy(typeof(CacheMaintenanceTests).Assembly.Location,Path.Combine(install,"桌面伙伴.exe"),true);
+                    var json=new System.Web.Script.Serialization.JavaScriptSerializer();
+                    string old=f.Candidate("updates/"+new string('a',32)),latest=f.Candidate("updates/"+new string('b',32));
+                    foreach(string path in new[]{old,latest}){
+                        string package=Path.Combine(path,"package.zip");
+                        File.WriteAllText(Path.Combine(path,"job.json"),json.Serialize(new{InstallationDirectory=install,WorkDirectory=path,TargetVersion=ReleaseInfo.DisplayVersion,PackagePath=package,Size=17,Digest=OfficialCompanionStorage.HashFile(package)}));
+                        File.WriteAllText(Path.Combine(path,"result.json"),json.Serialize(new{Success=true,Version=ReleaseInfo.DisplayVersion}));
+                        Directory.CreateDirectory(Path.Combine(path,"backup"));File.WriteAllText(Path.Combine(path,"backup","previous.exe"),"retired rollback");
+                        CacheUpdateRetirement.RecordCompleted(f.Root,path,ReleaseInfo.DisplayVersion);
+                    }
+                    var service=new CacheMaintenanceService(f.Root);
+                    using(CacheResourceLease.ProtectExisting(f.Root,old)){
+                        var result=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
+                        Check(Directory.Exists(old)&&File.Exists(Path.Combine(latest,"package.zip"))&&!Directory.Exists(Path.Combine(latest,"backup")),"latest package must not retain obsolete rollback; active old worker must survive");
+                    }
+                    var clean=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
+                    Check(!Directory.Exists(old)&&File.Exists(Path.Combine(latest,"package.zip")),"retain exactly latest valid package after owner releases");
+                    Check(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None).TotalBytes==0,"retained package must not be offered repeatedly");
+                }
+            });
+            Run("automatic update retirement retries partial deletes and preserves corrupt-newest fallback",()=>{
+                using(var f=new Fixture()){
+                    string install=Path.GetDirectoryName(f.Root);File.Copy(typeof(CacheMaintenanceTests).Assembly.Location,Path.Combine(install,"桌面伙伴.exe"),true);
+                    var json=new System.Web.Script.Serialization.JavaScriptSerializer();
+                    string old=f.Candidate("updates/"+new string('a',32)),latest=f.Candidate("updates/"+new string('b',32));
+                    foreach(string path in new[]{old,latest}){
+                        string package=Path.Combine(path,"package.zip");
+                        File.WriteAllText(Path.Combine(path,"job.json"),json.Serialize(new{InstallationDirectory=install,WorkDirectory=path,TargetVersion=ReleaseInfo.DisplayVersion,PackagePath=package,Size=17,Digest=OfficialCompanionStorage.HashFile(package)}));
+                        File.WriteAllText(Path.Combine(path,"result.json"),json.Serialize(new{Success=true,Version=ReleaseInfo.DisplayVersion}));
+                        CacheUpdateRetirement.RecordCompleted(f.Root,path,ReleaseInfo.DisplayVersion);
+                    }
+                    var service=new CacheMaintenanceService(f.Root);string packageLatest=Path.Combine(latest,"package.zip");
+                    File.WriteAllBytes(packageLatest,Enumerable.Repeat((byte)9,17).ToArray());
+                    var scan=service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None);
+                    Check(!scan.Candidates.Any(c=>c.DirectoryPath==old),"corrupt latest package must preserve older digest-valid installer");
+                    File.WriteAllBytes(packageLatest,new byte[17]);
+                    File.WriteAllText(Path.Combine(latest,"retired-backup.txt"),"backup");
+                    string receipt=Path.Combine(old,"result.json");File.SetAttributes(receipt,FileAttributes.ReadOnly);
+                    var partial=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
+                    Check(File.Exists(receipt)&&!File.Exists(Path.Combine(old,"job.json"))&&File.Exists(packageLatest),"partial cleanup leaves durable retirement proof after deleting job");
+                    File.SetAttributes(receipt,FileAttributes.Normal);
+                    var retry=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
+                    Check(!Directory.Exists(old)&&File.Exists(packageLatest),"partial completed-update cleanup retries from identity-bound external proof");
+                    File.WriteAllText(Path.Combine(latest,"result.json"),json.Serialize(new{Success=false,Version=ReleaseInfo.DisplayVersion}));
+                    File.WriteAllText(Path.Combine(latest,"rollback.txt"),"preserve");
+                    Check(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None).Candidates.Count==0,"changed failed receipt overrides a prior retirement marker");
+                }
+            });
+            Run("protect-existing lease never recreates a concurrently retired directory",()=>{
+                using(var f=new Fixture()){
+                    string missing=Path.Combine(f.Root,"updates",Guid.NewGuid().ToString("N"));bool rejected=false;
+                    try{using(CacheResourceLease.ProtectExisting(f.Root,missing)){}}catch(IOException){rejected=true;}
+                    Check(rejected&&!Directory.Exists(missing),"read lease recreated an absent cache root");
+                }
+            });
             Run("only registered expired cache roots are candidates; all user data unchanged",()=>{
                 using(var f=new Fixture()){
                     f.Candidate("updates/"+new string('a',32),17);f.Candidate("official-companions/e-bao/.stage-"+new string('b',32),23);

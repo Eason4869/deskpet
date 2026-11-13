@@ -4,6 +4,8 @@ namespace DeskPet.Desktop;
 
 internal interface IOfficialCompanionSource : IDisposable
 {
+    Task MaintainAfterStartupAsync(CancellationToken cancel) => Task.CompletedTask;
+    Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel) => Task.CompletedTask;
     long BeginSelection();
     bool OwnsSelection(long token);
     OfficialCompanionInstallation? Installed(string id);
@@ -22,8 +24,10 @@ internal sealed class OfficialCompanionSource : IOfficialCompanionSource
     internal OfficialCompanionSource(string data, Func<OfficialCompanionInstallation, CancellationToken, Task> validate)
     {
         var version = ReleaseVersion.Parse(ReleaseInfo.DisplayVersion);
-        downloads = new OfficialCompanionDownloads(data, version.Canonical, version.IsPreview ? UpdateChannel.Preview : UpdateChannel.Stable, transport, validate);
+        downloads = new OfficialCompanionDownloads(data, version.Canonical, version.IsPreview ? UpdateChannel.Preview : UpdateChannel.Stable, transport, validate, OfficialCompanionReadMode.Snapshots);
     }
+    public Task MaintainAfterStartupAsync(CancellationToken cancel) => downloads.MaintainAfterStartupAsync(cancel);
+    public Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel) => downloads.ConfirmBundleReadyAsync(bundle,cancel);
     public long BeginSelection() => downloads.BeginSelection();
     public bool OwnsSelection(long token) => downloads.OwnsSelection(token);
     public OfficialCompanionInstallation? Installed(string id) => downloads.Installed(id);

@@ -29,7 +29,9 @@ namespace Dafeiyu.Maintenance
             string key=Key(registry,path);CachePaths.Check(key+".lock");
             var stream=new FileStream(key+".lock",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite);
             try{
-                CachePaths.Check(path);bool created=!Directory.Exists(path);Directory.CreateDirectory(path);CachePaths.Check(path);
+                CachePaths.Check(path);bool created=!Directory.Exists(path);
+                if(created&&!register)throw new IOException("Cache resource was retired before the read lease was acquired.");
+                Directory.CreateDirectory(path);CachePaths.Check(path);
                 string record=key+".owner";CachePaths.Check(record);
                 if(register&&(created||!File.Exists(record))){
                     // Existing unregistered directories cannot be adopted: an older downloader

@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "跟随朗读开关，免打扰时静音。",
   "companions.install.preparing": "正在为{0}安装最新角色包…",
   "companions.install.failed": "{0}安装失败，可以重试。",
-  "companions.install.reselect": "{0}已准备好。当前正在忙，请空闲后重新选择。"
+  "companions.install.reselect": "{0}已准备好。当前正在忙，请空闲后重新选择。",
+  "cache.preservedLatest": "保留聊天、设置、附件、关系和项目资料。成功更新后自动清理旧安装包和旧角色包，保留最新有效安装包及每个角色的最新可用版本。使用中、更新未完成、状态不明和旧格式的文件继续受到保护。"
 }

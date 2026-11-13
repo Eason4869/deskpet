@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Segue l’impostazione di lettura. Silenziosa in modalità silenziosa.",
   "companions.install.preparing": "Installazione del pacchetto personaggio più recente per {0}…",
   "companions.install.failed": "Impossibile installare {0}. Puoi riprovare.",
-  "companions.install.reselect": "{0} è pronto. Selezionalo di nuovo quando hai finito."
+  "companions.install.reselect": "{0} è pronto. Selezionalo di nuovo quando hai finito.",
+  "cache.preservedLatest": "Chat, impostazioni, allegati, relazioni e progetti vengono conservati. Dopo un aggiornamento riuscito, i vecchi programmi di installazione e pacchetti dei personaggi vengono puliti automaticamente. Restano l’ultimo programma di installazione valido e l’ultima versione utilizzabile di ogni personaggio. File in uso o incerti, aggiornamenti incompleti e copie di vecchio formato restano protetti."
 }

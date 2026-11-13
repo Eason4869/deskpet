@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Suit le réglage de lecture. Silencieux en mode discret.",
   "companions.install.preparing": "Installation du dernier pack de personnage pour {0}…",
   "companions.install.failed": "Impossible d’installer {0}. Vous pouvez réessayer.",
-  "companions.install.reselect": "{0} est prêt. Sélectionnez-le à nouveau une fois disponible."
+  "companions.install.reselect": "{0} est prêt. Sélectionnez-le à nouveau une fois disponible.",
+  "cache.preservedLatest": "Discussions, réglages, pièces jointes, relations et projets sont conservés. Après une mise à jour réussie, les anciens installateurs et packs sont nettoyés automatiquement. Le dernier installateur valide et la dernière version utilisable de chaque personnage sont conservés. Les fichiers utilisés, les mises à jour inachevées, les fichiers incertains et les anciennes copies restent protégés."
 }

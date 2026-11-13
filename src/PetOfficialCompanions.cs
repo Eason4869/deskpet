@@ -39,17 +39,34 @@ namespace Dafeiyu
         internal void CancelCompanionSelection(long token){if(OwnsOfficial(token)&&officialSelection!=null)officialSelection.Cancel();}
         void CompanionFirstFrameRendered()
         {
-            if(IsPetVisible)officialFirstFrameRendered=true;
+            if(IsPetVisible&&!officialFirstFrameRendered){officialFirstFrameRendered=true;Dispatcher.BeginInvoke(new Action(()=>{var maintenance=MaintainCompanionCachesAsync();}));}
             var update=renderedSelection;if(update==null||Skin.PickerKey!=update.PickerKey)return;renderedSelection=null;
             if(OwnsOfficial(update.Request))SelectionStage(update.Request,Skin,(CompanionSelectionOrigin)Enum.Parse(typeof(CompanionSelectionOrigin),update.Origin),"completed");selectionClocks.Remove(update.Request);
         }
 
+        async Task MaintainCompanionCachesAsync()
+        {
+            try{
+                // Foreground restore/render has completed. Preparing the pinned fallback
+                // does not select it or touch identity/business state.
+                var downloads=OfficialDownloads;var retry=downloads.MaintainAfterStartupAsync(officialLifetime.Token);
+                try{
+                    var bundle=OfficialCompanionBundle.Ebao;
+                    if(bundle!=null){
+                        var fallback=Catalog.EmbeddedFallback();
+                        await Task.Run(()=>{PrepareDefault(fallback);fallback.PackageHolidayCatalog.WithCharacter("e-bao",fallback.PackageHolidayCatalog);},officialLifetime.Token);
+                        await downloads.ConfirmBundleReadyAsync(bundle,officialLifetime.Token);
+                    }
+                }catch(OperationCanceledException){}catch(Exception error){if(!OfficialError(error))throw;System.Diagnostics.Trace.TraceWarning("Bundled companion cache handoff will retry on a later launch.");}
+                await retry;
+            }catch(OperationCanceledException){}catch(Exception error){if(!OfficialError(error))throw;System.Diagnostics.Trace.TraceWarning("Automatic cache maintenance will retry on a later launch.");}
+        }
         sealed class PendingOfficialSource
         {internal SkinDefinition Skin;internal long Request;internal bool Select;internal string ExpectedKey;internal SkinDefinition ExpectedSource;internal string Pointer;}
         OfficialCompanionDownloads OfficialDownloads
         {
             get {
-                if(officialDownloads==null){officialTransport=new GitHubUpdates();officialDownloads=new OfficialCompanionDownloads(Store.DirectoryPath,ReleaseInfo.DisplayVersion,ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).IsPreview?UpdateChannel.Preview:UpdateChannel.Stable,officialTransport,officialNative.ValidateAsync);}
+                if(officialDownloads==null){officialTransport=new GitHubUpdates();officialDownloads=new OfficialCompanionDownloads(Store.DirectoryPath,ReleaseInfo.DisplayVersion,ReleaseVersion.Parse(ReleaseInfo.DisplayVersion).IsPreview?UpdateChannel.Preview:UpdateChannel.Stable,officialTransport,officialNative.ValidateAsync,OfficialCompanionReadMode.Snapshots);}
                 return officialDownloads;
             }
         }

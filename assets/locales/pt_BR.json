@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Segue a configuração de leitura. Silencioso no modo silencioso.",
   "companions.install.preparing": "Instalando o pacote de personagem mais recente de {0}…",
   "companions.install.failed": "Não foi possível instalar {0}. Tente novamente.",
-  "companions.install.reselect": "{0} está pronto. Selecione novamente quando terminar."
+  "companions.install.reselect": "{0} está pronto. Selecione novamente quando terminar.",
+  "cache.preservedLatest": "Conversas, configurações, anexos, relações e projetos são mantidos. Após atualizações bem-sucedidas, instaladores e pacotes de personagens antigos são limpos automaticamente. São mantidos o instalador válido mais recente e a versão utilizável mais recente de cada personagem. Arquivos em uso ou incertos, atualizações incompletas e cópias de formato antigo continuam protegidos."
 }

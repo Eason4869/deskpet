@@ -16,15 +16,16 @@ namespace Dafeiyu
     // every decoder must consume the bytes returned by ReadVerifiedBytes.
     public sealed class OfficialCompanionSnapshot : IDisposable
     {
+        readonly Action released;
         readonly object gate=new object();readonly Dictionary<string,OfficialCompanionFile> files;readonly string dataRoot;IDisposable lease;bool disposed;
         public OfficialCompanionInstallation Installation {get;private set;}
         public string Generation {get;private set;}
         public ReadOnlyCollection<string> Files {get;private set;}
-        internal OfficialCompanionSnapshot(OfficialCompanionInstallation installation,Dictionary<string,OfficialCompanionFile> files,string generation,string dataRoot,IDisposable lease)
-        {Installation=installation;this.files=files;Generation=generation;this.dataRoot=dataRoot;this.lease=lease;Files=new ReadOnlyCollection<string>(files.Keys.OrderBy(x=>x,StringComparer.Ordinal).ToArray());}
+        internal OfficialCompanionSnapshot(OfficialCompanionInstallation installation,Dictionary<string,OfficialCompanionFile> files,string generation,string dataRoot,IDisposable lease,Action released=null)
+        {this.released=released;Installation=installation;this.files=files;Generation=generation;this.dataRoot=dataRoot;this.lease=lease;Files=new ReadOnlyCollection<string>(files.Keys.OrderBy(x=>x,StringComparer.Ordinal).ToArray());}
         internal OfficialCompanionSnapshot Retain()
         {
-            lock(gate){Alive();return new OfficialCompanionSnapshot(Installation,files,Generation,dataRoot,Protect(dataRoot,Installation.RootDirectory));}
+            lock(gate){Alive();return new OfficialCompanionSnapshot(Installation,files,Generation,dataRoot,Protect(dataRoot,Installation.RootDirectory),released);}
         }
         internal static IDisposable Protect(string dataRoot,string directory)
         {return Maintenance.OfficialCompanionMaintenance.Managed(Path.GetFileName(directory))?Maintenance.CacheResourceLease.ProtectExisting(dataRoot,directory):null;}
@@ -47,6 +48,6 @@ namespace Dafeiyu
                 if(stream.ReadByte()!=-1)throw new InvalidDataException("Companion file grew beyond its bound.");cancel.ThrowIfCancellationRequested();return bytes;
             }
         }
-        public void Dispose(){lock(gate){if(disposed)return;disposed=true;if(lease!=null){lease.Dispose();lease=null;}}}
+        public void Dispose(){lock(gate){if(disposed)return;disposed=true;if(lease!=null){lease.Dispose();lease=null;}}if(released!=null)released();}
     }
 }

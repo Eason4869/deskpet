@@ -28,11 +28,24 @@ internal sealed partial class DesktopController
     internal void CancelCompanionSelection(long token){if(officialCompanions.OwnsSelection(token))companionSelection?.Cancel();}
     internal void CompanionFirstFrameRendered()
     {
-        if(!companionFirstVisibleFrame&&Pet.IsPetVisible){companionFirstVisibleFrame=true;Dispatcher.UIThread.Post(()=>Run(StartOfficialCompanionsAsync));}
+        if(!companionFirstVisibleFrame&&Pet.IsPetVisible){companionFirstVisibleFrame=true;Dispatcher.UIThread.Post(()=>{Run(StartOfficialCompanionsAsync);Run(MaintainCompanionCachesAsync);});}
         var pending=awaitingCompanionFrame;if(pending==null||pending.PickerKey!=Skin.PickerKey)return;
         awaitingCompanionFrame=null;
         if(officialCompanions.OwnsSelection(pending.Request))SelectionStage(pending.Request,Skin,Enum.Parse<CompanionSelectionOrigin>(pending.Origin),"completed");
         companionClocks.Remove(pending.Request);RetireCompanionSources();
+    }
+    private async Task MaintainCompanionCachesAsync()
+    {
+        try{
+            var retry=officialCompanions.MaintainAfterStartupAsync(companionLifetime.Token);
+            try{
+                if(SpriteAssets.BundledEbao is { } bundle){
+                    await Task.Run(()=>{var skin=SpriteAssets.ReadBundledEbao("e-bao");using(companionAssets.Prepare(skin)){}skin.PackageHolidayCatalog!.WithCharacter("e-bao",skin.PackageHolidayCatalog);},companionLifetime.Token);
+                    await officialCompanions.ConfirmBundleReadyAsync(bundle,companionLifetime.Token);
+                }
+            }catch(OperationCanceledException){}catch(Exception){System.Diagnostics.Trace.TraceWarning("Bundled companion cache handoff will retry on a later launch.");}
+            await retry;
+        }catch(OperationCanceledException){}catch(Exception){System.Diagnostics.Trace.TraceWarning("Automatic cache maintenance will retry on a later launch.");}
     }
     private bool CanSelectCompanion()=>!exiting&&!HolidayBusinessBusy&&settingsWindow?.HasUnsavedChanges!=true;
     private readonly CancellationTokenSource companionLifetime = new();

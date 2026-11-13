@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace Dafeiyu
 {
+    // Snapshot mode returns installation metadata only; every filesystem reader must
+    // acquire CaptureLocalSnapshot. The default retains the original raw-path contract.
+    public enum OfficialCompanionReadMode { RetainedPaths, Snapshots }
     public sealed class OfficialCompanionDownloads : IDisposable
     {
         readonly object gate=new object();readonly OfficialCompanionStorage store;readonly OfficialCompanionFeed feed;
@@ -19,17 +22,48 @@ namespace Dafeiyu
         readonly Dictionary<string,Work<InstallResult>> installs=new Dictionary<string,Work<InstallResult>>();
         readonly HashSet<string> nativeValidated=new HashSet<string>(StringComparer.Ordinal),upgradeChecked=new HashSet<string>(StringComparer.Ordinal);
         readonly Dictionary<string,IDisposable> installedLeases=new Dictionary<string,IDisposable>(StringComparer.Ordinal);
+        bool maintenanceRunning,maintenanceRequested;
         Task<Maintenance.CacheCleanResult> historyMaintenance=Task.FromResult(new Maintenance.CacheCleanResult());
         internal Task<Maintenance.CacheCleanResult> HistoryMaintenance {get{lock(gate)return historyMaintenance;}}
+        readonly OfficialCompanionReadMode readMode;
         readonly string appVersion;bool disposed;long selection;
         internal Func<DateTime> UtcNow=()=>DateTime.UtcNow;
         internal OfficialCompanionStorage Storage {get{return store;}}
-        void ScheduleHistoryMaintenance()
+        public Task<Maintenance.CacheCleanResult> ScheduleMaintenance()
         {
-            try{lock(gate){
-                if(disposed)return;var previous=historyMaintenance;var cancel=lifetime.Token;DateTime now=UtcNow();string dataRoot=System.IO.Path.GetDirectoryName(store.Root);
-                historyMaintenance=Task.Run(async()=>{try{await previous.ConfigureAwait(false);}catch{}return Maintenance.OfficialCompanionMaintenance.MaintainHistory(dataRoot,now,cancel);});
-            }}catch(Exception){System.Diagnostics.Trace.TraceWarning("Official companion history maintenance could not be scheduled.");}
+            lock(gate){
+                if(disposed)return historyMaintenance;maintenanceRequested=true;if(maintenanceRunning)return historyMaintenance;
+                maintenanceRunning=true;var cancel=lifetime.Token;string dataRoot=System.IO.Path.GetDirectoryName(store.Root);
+                historyMaintenance=Task.Run(()=>{
+                    var total=new Maintenance.CacheCleanResult();
+                    try{while(true){
+                        lock(gate){if(disposed||!maintenanceRequested){maintenanceRunning=false;return total;}maintenanceRequested=false;}
+                        var result=Maintenance.OfficialCompanionMaintenance.MaintainHistory(dataRoot,UtcNow(),cancel);
+                        total.DeletedItems+=result.DeletedItems;total.FreedBytes+=result.FreedBytes;total.SkippedItems+=result.SkippedItems;total.FailedItems+=result.FailedItems;
+                    }}catch{lock(gate)maintenanceRunning=false;throw;}
+                });
+                return historyMaintenance;
+            }
+        }
+        // Call only after the platform has prepared the real bundled default/wardrobe.
+        // Full byte validation and durable pointer handoff run on the background pool.
+        public Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel)
+        {
+            return Task.Run(async()=>{
+                using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
+                    bundle.VerifyComplete(linked.Token);Maintenance.OfficialCompanionMaintenance.HandoffBundle(store,bundle,linked.Token);
+                    await ScheduleMaintenance().ConfigureAwait(false);
+                }
+            },cancel);
+        }
+        public async Task MaintainAfterStartupAsync(CancellationToken cancel)
+        {
+            // A restarted app can render before its updater releases the cache lease.
+            // Bounded retries also cover transient sharing violations; later installs and
+            // snapshot releases provide further lifecycle opportunities.
+            using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
+                foreach(int delay in new[]{0,2000,10000,30000}){if(delay!=0)await Task.Delay(delay,linked.Token).ConfigureAwait(false);linked.Token.ThrowIfCancellationRequested();await ScheduleMaintenance().ConfigureAwait(false);}
+            }
         }
         sealed class Cache {internal OfficialCompanionFeed.Snapshot Snapshot;internal DateTime Expires;}
         sealed class Metadata {internal OfficialCompanionFeed.Snapshot Snapshot;internal bool Checked;}
@@ -42,17 +76,19 @@ namespace Dafeiyu
             internal void Report(OfficialCompanionProgress progress,object sync){IProgress<OfficialCompanionProgress>[] listeners;lock(sync)listeners=Listeners.Values.Where(x=>x!=null).ToArray();foreach(var listener in listeners)try{listener.Report(progress);}catch{} }
         }
         public OfficialCompanionDownloads(string dataRoot,string appVersion,UpdateChannel channel,GitHubUpdates transport,Func<OfficialCompanionInstallation,CancellationToken,Task> validateNative)
+            :this(dataRoot,appVersion,channel,transport,validateNative,OfficialCompanionReadMode.RetainedPaths){}
+        public OfficialCompanionDownloads(string dataRoot,string appVersion,UpdateChannel channel,GitHubUpdates transport,Func<OfficialCompanionInstallation,CancellationToken,Task> validateNative,OfficialCompanionReadMode readMode)
         {
             if(transport==null)throw new ArgumentNullException("transport");if(validateNative==null)throw new ArgumentNullException("validateNative");
             OfficialCompanionRules.Version(appVersion);if(channel!=UpdateChannel.Stable&&channel!=UpdateChannel.Preview)throw new ArgumentException(TextResources.Get("officialCompanionDownloads.officialCompanionDownloads.text"));
-            this.appVersion=appVersion;this.transport=transport;this.validateNative=validateNative;store=new OfficialCompanionStorage(dataRoot);feed=new OfficialCompanionFeed(transport,appVersion,channel,store.Root);
+            this.readMode=readMode;this.appVersion=appVersion;this.transport=transport;this.validateNative=validateNative;store=new OfficialCompanionStorage(dataRoot);feed=new OfficialCompanionFeed(transport,appVersion,channel,store.Root);
         }
         void Alive(){if(disposed)throw new ObjectDisposedException("OfficialCompanionDownloads");}
         void CheckAlive(){lock(gate){Alive();lifetime.Token.ThrowIfCancellationRequested();}}
         bool Compatible(OfficialCompanionInstallation installation){return installation!=null&&ReleaseVersion.Parse(installation.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0;}
         void Retain(OfficialCompanionInstallation installed)
         {
-            if(!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return;
+            if(readMode==OfficialCompanionReadMode.Snapshots||!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return;
             lock(gate){Alive();if(!installedLeases.ContainsKey(installed.RootDirectory))installedLeases.Add(installed.RootDirectory,Maintenance.CacheResourceLease.ProtectExisting(System.IO.Path.GetDirectoryName(store.Root),installed.RootDirectory));}
         }
         OfficialCompanionInstallation Usable(string id)
@@ -75,7 +111,7 @@ namespace Dafeiyu
                     var files=new Dictionary<string,OfficialCompanionFile>(StringComparer.Ordinal);
                     var installed=store.ReadVersionCore(root,id,null,linked.Token,false,files,receipt);if(!Compatible(installed))return null;
                     string dataRoot=System.IO.Path.GetDirectoryName(store.Root);lease=OfficialCompanionSnapshot.Protect(dataRoot,root);CheckAlive();
-                    var snapshot=new OfficialCompanionSnapshot(installed,files,root+":"+OfficialCompanionSnapshot.Digest(receipt),dataRoot,lease);lease=null;return snapshot;
+                    var snapshot=new OfficialCompanionSnapshot(installed,files,root+":"+OfficialCompanionSnapshot.Digest(receipt),dataRoot,lease,readMode==OfficialCompanionReadMode.Snapshots?(Action)(()=>ScheduleMaintenance()):null);lease=null;return snapshot;
                 }catch(Exception error){if(Expected(error))return null;throw;}finally{if(lease!=null)lease.Dispose();}
             }
         }
@@ -227,7 +263,7 @@ namespace Dafeiyu
                     if(existing!=null&&(ReuseExisting(existing.Asset,asset)&&(!forceRepair||OfficialCompanionRules.CompareContent(existing.Asset,asset)>0))){installed=existing;installedNow=false;}
                     else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}},appVersion,out installedNow,forceRepair);stage=null;if(installedNow)lock(gate)nativeValidated.Add(installed.RootDirectory+":"+installed.Asset.Sha256);Retain(installed);}
                 }
-                if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);if(installedNow)ScheduleHistoryMaintenance();return new InstallResult{Installation=installed,Installed=installedNow};
+                if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);if(installedNow){var maintenance=ScheduleMaintenance();}return new InstallResult{Installation=installed,Installed=installedNow};
             }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();if(transferPermit!=null)transferPermit.Dispose();contentSlot.Release();}}
         }
         static bool ReuseExisting(OfficialCompanionAsset existing,OfficialCompanionAsset remote)
@@ -241,7 +277,13 @@ namespace Dafeiyu
         async Task NativeAsync(OfficialCompanionInstallation installation,CancellationToken cancel)
         {
             string key=installation.RootDirectory+":"+installation.Asset.Sha256;lock(gate){Alive();if(nativeValidated.Contains(key))return;}
-            await ValidateNativeAsync(installation,cancel).ConfigureAwait(false);cancel.ThrowIfCancellationRequested();lock(gate){Alive();nativeValidated.Add(key);}
+            IDisposable reader;using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot(installation.Asset.Id),cancel)){
+                if(!System.IO.Directory.Exists(installation.RootDirectory))throw new System.IO.IOException("Companion was retired before native validation.");
+                reader=OfficialCompanionSnapshot.Protect(System.IO.Path.GetDirectoryName(store.Root),installation.RootDirectory);
+            }
+            try{using(reader)await ValidateNativeAsync(installation,cancel).ConfigureAwait(false);}
+            finally{if(readMode==OfficialCompanionReadMode.Snapshots){var maintenance=ScheduleMaintenance();}}
+            cancel.ThrowIfCancellationRequested();lock(gate){Alive();nativeValidated.Add(key);}
         }
         async Task ValidateNativeAsync(OfficialCompanionInstallation installation,CancellationToken cancel)
         {

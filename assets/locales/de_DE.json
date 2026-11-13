@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Folgt der Vorleseeinstellung. Im Ruhemodus stumm.",
   "companions.install.preparing": "Das neueste Begleiterpaket für {0} wird installiert…",
   "companions.install.failed": "{0} konnte nicht installiert werden. Bitte erneut versuchen.",
-  "companions.install.reselect": "{0} ist bereit. Bitte nach Abschluss der aktuellen Aufgabe erneut auswählen."
+  "companions.install.reselect": "{0} ist bereit. Bitte nach Abschluss der aktuellen Aufgabe erneut auswählen.",
+  "cache.preservedLatest": "Chats, Einstellungen, Anhänge, Beziehungen und Projekte bleiben erhalten. Nach erfolgreichen Updates werden alte Installations- und Figurenpakete automatisch bereinigt. Das neueste gültige Installationspaket und die neueste nutzbare Version jeder Figur bleiben erhalten. Verwendete oder unklare Dateien, unvollständige Updates und alte Formate bleiben geschützt."
 }

@@ -5061,5 +5061,6 @@
   "greeting.autoReadHelp": "Mengikuti pengaturan baca lantang. Senyap dalam mode tenang.",
   "companions.install.preparing": "Memasang paket karakter terbaru untuk {0}…",
   "companions.install.failed": "Tidak dapat memasang {0}. Anda dapat mencoba lagi.",
-  "companions.install.reselect": "{0} siap. Pilih lagi setelah pekerjaan selesai."
+  "companions.install.reselect": "{0} siap. Pilih lagi setelah pekerjaan selesai.",
+  "cache.preservedLatest": "Chat, pengaturan, lampiran, hubungan, dan proyek tetap disimpan. Setelah pembaruan berhasil, penginstal dan paket karakter lama dibersihkan otomatis. Penginstal valid terbaru dan versi terbaru yang dapat digunakan untuk setiap karakter tetap disimpan. Berkas yang digunakan, pembaruan belum selesai, berkas tak pasti, dan salinan format lama tetap dilindungi."
 }
