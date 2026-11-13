@@ -13,15 +13,27 @@ internal static class HolidayWardrobeLayoutChecks
     {
         using var fixture = new HolidayReviewChecks.Fixture(directory, "e-bao", null, false); fixture.EnterHoliday();
         var owner = fixture.Owner;
-        Complete(owner.SelectSkinAsync(owner.Skins.Single(s => s.BuiltinCharacterId == "dafeiyu")));
+        var other = owner.Skins.Single(s => s.BuiltinCharacterId == "dafeiyu");
+        Complete(owner.SelectSkinAsync(other));
+        var sprite = (SpriteView)typeof(PetWindow).GetField("sprite", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)!;
+        if (!ReferenceEquals(owner.Skin, other) || !ReferenceEquals(sprite.Skin, other)) throw new Exception("Source-switch fixture did not activate its preceding companion");
         var custom = ImportCustom(owner, fixture.Root);
         if (File.Exists(Path.Combine(custom.Folder!, "spritesheet.png"))) throw new Exception("Fixture accidentally contains the old filename");
         Complete(owner.SelectSkinAsync(custom));
-        var sprite = (SpriteView)typeof(PetWindow).GetField("sprite", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)!;
-        if (!ReferenceEquals(sprite.Skin, custom) || sprite.Clip?.File != "custom-atlas.png" || custom.BuiltinCharacterId != null || owner.Holidays.EffectiveOutfit != null) throw new Exception("New custom source was not atomically rebound without holiday trust");
+        if (!ReferenceEquals(owner.Skin, other) || !ReferenceEquals(sprite.Skin, other)) throw new Exception("Unregistered custom source bypassed companion catalog admission");
+        RegisterImport(owner, custom);
+        Complete(owner.SelectSkinAsync(custom));
+        if (!ReferenceEquals(owner.Skin, custom) || !ReferenceEquals(sprite.Skin, custom) || sprite.Clip?.File != "custom-atlas.png" || custom.BuiltinCharacterId != null || owner.Holidays.EffectiveOutfit != null) throw new Exception("New custom source was not atomically rebound without holiday trust");
         Complete(owner.SelectSkinAsync(owner.Skins.Single(s => s.BuiltinCharacterId == "e-bao")));
         if (sprite.Skin.BuiltinCharacterId != "e-bao" || sprite.Clip!.File.Contains("custom-atlas")) throw new Exception("Returning to built-in still reads the custom source");
-        return 3;
+        return 5;
+    }
+    private static void RegisterImport(DesktopController owner, PetSkin skin)
+    {
+        // Match the actual Settings import path: publish the validated custom
+        // entry before requesting selection. Unknown picker keys stay refused.
+        var existing = owner.Skins.FindIndex(s => s.PickerKey == skin.PickerKey);
+        if (existing >= 0) owner.Skins[existing] = skin; else owner.Skins.Add(skin);
     }
     private static PetSkin ImportCustom(DesktopController owner, string root)
     {
@@ -89,8 +101,10 @@ internal static class HolidayWardrobeLayoutChecks
             var defaultRow = wardrobe.ItemTemplate!.Build(wardrobe.Items[0])!;
             Check(defaultRow.GetLogicalDescendants().OfType<AvatarView>().Single().Skin == owner.Skin, "default thumbnail follows the newly selected companion");
             var imported = ImportCustom(owner, fixture.Root);
-            var custom = new PetSkin { Id = "e-bao", Name = "自定义E包", Prompt = "", Folder = imported.Folder, Atlas = imported.Atlas };
+            var custom = new PetSkin { Id = "e-bao", PickerKey = imported.PickerKey, SourceKey = imported.SourceKey, Name = "自定义E包", Prompt = "", Folder = imported.Folder, Atlas = imported.Atlas };
+            RegisterImport(owner, custom);
             Complete(owner.SelectSkinAsync(custom)); Dispatcher.UIThread.RunJobs();
+            Check(ReferenceEquals(owner.Skin, custom) && custom.BuiltinCharacterId == null && owner.Holidays.EffectiveOutfit == null, "matching persona identity actually selects its custom source without builtin holiday trust");
             Check(panel.IsVisible && wardrobe.Items.Count == 1 && wardrobe.Items[0]!.ToString() == "默认", "custom matching identity cannot inherit builtin wardrobe choices");
             Complete(owner.SelectSkinAsync(owner.Skins.Single(s => s.BuiltinCharacterId == "e-bao"))); Dispatcher.UIThread.RunJobs();
             Check(wardrobe.Items.Count == 2 && wardrobe.SelectedIndex == 1 && owner.Holidays.PreferredOutfitId == fixture.Outfit.OutfitId, "returning companion restores its independently selected outfit");
