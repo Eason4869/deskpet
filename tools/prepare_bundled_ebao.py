@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 
 from build_official_companions import (read_json, payload_digest, verify_material_record,
-                                      check_manifest, safe_path, collect_role, write_json, write_archive)
+                                      check_manifest, safe_path, collect_role, collect_reviewed_role, write_json, write_archive)
 
 
 def prepare(repository, package, output):
@@ -112,11 +112,15 @@ def ensure(repository, output):
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='author-', dir=output) as temporary:
         temporary=Path(temporary)
-        defaults=temporary/'defaults'
-        subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(repository/'Build.ps1'),'-Target','SkinPackExport','-TestArguments',str(defaults)],cwd=repository,check=True)
         record=read_json(repository/'assets/official/companion-versions.json')['companions']['e-bao']
         source=temporary/'e-bao'
-        identity, outfits, references=collect_role(repository,defaults,source,'e-bao',record['pack_version'])
+        reviewed=repository/'assets/complete-defaults'
+        if reviewed.is_dir():
+            identity, outfits, references=collect_reviewed_role(repository,reviewed,source,'e-bao',record['pack_version'])
+        else:
+            defaults=temporary/'defaults'
+            subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(repository/'Build.ps1'),'-Target','SkinPackExport','-TestArguments',str(defaults)],cwd=repository,check=True)
+            identity, outfits, references=collect_role(repository,defaults,source,'e-bao',record['pack_version'])
         verify_material_record(record,payload_digest(source,references))
         identity['min_app_version']=record['min_app_version'];write_json(source/'companions.json',identity)
         package=temporary/'e-bao.zip';write_archive(source,references,package)

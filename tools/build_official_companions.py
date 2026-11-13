@@ -1,6 +1,7 @@
 """Build complete, lossless official companion packages from repository sources.
 
-Windows authoring invokes the existing pixel-verified SkinPackExport by default.
+Complete checkouts use reviewed default atlases without reencoding.
+Without those templates, Windows invokes the pixel-verified SkinPackExport.
 An explicit --defaults directory accepts that export on another build host.
 Native client validation is a separate publication gate; this tool never publishes.
 """
@@ -190,9 +191,21 @@ def check_manifest(root, manifest, role, version):
         raise ValueError('Jump variants must complete at the same time')
 
 
+def apply_canonical_profile(repository, manifest, role):
+    # Reviewed atlases are immutable artwork templates. Profile updates come
+    # from the same source catalog as the native exporter, on every build host.
+    suffix = {'e-bao': 'ebao', 'dafeiyu': 'dafeiyu', 'marfu': 'marfu'}.get(role)
+    if suffix is not None:
+        value = read_json(repository / 'assets/locales/zh_CN.json')['personaProfiles.defaultsUpdated.' + suffix]
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError('Missing canonical source profile: ' + role)
+        manifest['system_prompt'] = value
+
+
 def collect_role(repository, defaults, destination, role, version):
     source = repository / 'assets/bundled-skins' / role if role in IDS[3:] else defaults / role
     manifest = read_json(source / 'pet.json')
+    apply_canonical_profile(repository, manifest, role)
     destination.mkdir()
     for name in sorted(manifest_references(manifest)):
         copy_reference(source, destination, name)
@@ -282,6 +295,7 @@ def collect_reviewed_role(repository, reviewed, destination, role, version):
     manifest = read_json(source / 'pet.json')
     if manifest.get('id') != role:
         raise ValueError('Reviewed role identity mismatch')
+    apply_canonical_profile(repository, manifest, role)
     references = manifest_references(manifest) | {'companions.json', 'holidays/catalog.json'}
     for name in sorted(manifest_references(manifest)):
         copy_reference(source, destination, name)

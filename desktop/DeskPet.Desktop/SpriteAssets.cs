@@ -64,11 +64,13 @@ internal sealed class SpriteAssets : IDisposable
     private void RemoveImage(string key){recentImages.Remove(key);images[key].Dispose();images.Remove(key);retiredImages.Remove(key);foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(key+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);}
 
     internal long RetainedPixelBytes {get{lock(assetGate)return images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);}}
+    internal long UnpinnedPixelBytes {get{lock(assetGate)return images.Where(p=>!pins.ContainsKey(p.Key)).Sum(p=>(long)p.Value.PixelSize.Width*p.Value.PixelSize.Height*4)+masks.Where(p=>!pins.Keys.Any(k=>p.Key.Item1.StartsWith(k+"/",StringComparison.Ordinal))).Sum(p=>(long)p.Value.Length);}}
+    internal int PinnedImageCount {get{lock(assetGate)return images.Keys.Count(pins.ContainsKey);}}
     internal int DecodeCount {get;private set;}
     private void TrimImages(string? requested=null)
     {
         foreach(var key in retiredImages.Where(k=>!pins.ContainsKey(k)).ToArray())RemoveImage(key);
-        while(images.Where(p=>!pins.ContainsKey(p.Key)).Sum(p=>(long)p.Value.PixelSize.Width*p.Value.PixelSize.Height*4)+masks.Where(p=>!pins.Keys.Any(k=>p.Key.Item1.StartsWith(k+"/",StringComparison.Ordinal))).Sum(p=>(long)p.Value.Length)>64L*1024*1024) {
+        while(UnpinnedPixelBytes>64L*1024*1024) {
             var oldest=recentImages.FirstOrDefault(k=>k!=requested&&!pins.ContainsKey(k));if(oldest==null)break;
             RemoveImage(oldest);
         }

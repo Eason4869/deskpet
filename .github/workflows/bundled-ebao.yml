@@ -1,0 +1,34 @@
+name: Prepare pinned Ebao for native UI checks
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  author:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Author the exact pinned bundle from this source
+        shell: pwsh
+        env:
+          PYTHONUTF8: '1'
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+          python tools/build_official_companions.py --check-material-history
+          if ($LASTEXITCODE) { throw 'Material history check failed' }
+          python -X utf8 tools/prepare_bundled_ebao.py
+          if ($LASTEXITCODE) { throw 'Pinned Ebao authoring failed' }
+      - uses: actions/upload-artifact@v6
+        with:
+          name: pinned-ebao-${{ github.sha }}
+          path: work/bundled-ebao/e-bao.zip
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0

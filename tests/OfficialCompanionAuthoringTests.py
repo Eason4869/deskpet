@@ -17,6 +17,7 @@ class AuthoringTests(unittest.TestCase):
     def test_reviewed_default_images_are_copied_without_reencoding(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            authoring.write_json(root/'assets/locales/zh_CN.json',{'personaProfiles.defaultsUpdated.ebao':'approved E profile'})
             source = root / 'defaults/e-bao'
             source.mkdir(parents=True)
             payload = b'original reviewed PNG bytes'
@@ -38,6 +39,7 @@ class AuthoringTests(unittest.TestCase):
         for role in ('e-bao', 'gugugaga'):
             with self.subTest(role=role), tempfile.TemporaryDirectory() as directory:
                 root=Path(directory); repo=root/'repo'; defaults=root/'defaults'
+                authoring.write_json(repo/'assets/locales/zh_CN.json',{'personaProfiles.defaultsUpdated.ebao':'approved E profile'})
                 source=repo/'assets/bundled-skins'/role if role=='gugugaga' else defaults/role
                 source.mkdir(parents=True)
                 animations={a:{'file':'animations/'+a+'.png','columns':8,'frames':4,'fps':8,'loop':a in ('idle','sleeping','lifted')} for a in authoring.BASE+authoring.INTERACTIONS}
@@ -69,6 +71,23 @@ class AuthoringTests(unittest.TestCase):
                     self.assertEqual((8,8,4 if action=='idle' else 2.5,True),(selected['columns'],selected['frames'],selected['fps'],selected['loop']))
                     self.assertEqual((quiet/(sheet+'.png')).read_bytes(),(destination/selected['file']).read_bytes())
                 self.assertEqual(b'old',(destination/final['animations']['waving']['file']).read_bytes())
+    def test_reviewed_templates_use_the_same_current_profile_as_native_export(self):
+        for role in authoring.IDS:
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as folder:
+                root=Path(folder); source=root/'assets/complete-defaults'/role;source.mkdir(parents=True)
+                manifest={'id':role,'name':role,'system_prompt':'historical template','preview':'preview.png','gaze':{'file':'gaze.png'},'animations':{'idle':{'file':'idle.png'}}}
+                authoring.write_json(source/'pet.json',manifest)
+                for name in ('preview.png','gaze.png','idle.png'):(source/name).write_bytes(b'approved PNG bytes')
+                canonical={f'personaProfiles.defaultsUpdated.{suffix}':'approved current '+candidate for candidate,suffix in [('e-bao','ebao'),('dafeiyu','dafeiyu'),('marfu','marfu')]}
+                authoring.write_json(root/'assets/locales/zh_CN.json',canonical)
+                output=root/'output';output.mkdir()
+                with patch.object(authoring,'collect_holidays',return_value=[]),patch.object(authoring,'check_manifest'):
+                    authoring.collect_reviewed_role(root,root/'assets/complete-defaults',output,role,'1.0.4-dev.1')
+                actual=authoring.read_json(output/'pet.json')
+                self.assertEqual('approved current '+role if role in authoring.IDS[:3] else 'historical template',actual['system_prompt'])
+                self.assertEqual(manifest,authoring.read_json(source/'pet.json'))
+                for name in ('preview.png','gaze.png','idle.png'):self.assertEqual((source/name).read_bytes(),(output/name).read_bytes())
+
     def test_paths_reject_traversal_and_platform_aliases(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

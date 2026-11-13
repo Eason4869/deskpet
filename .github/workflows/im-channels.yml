@@ -11,15 +11,24 @@ on:
       - 'docs/im-channels*'
       - 'tests/**'
       - 'tools/runtime_package.py'
+      - 'tools/prepare_bundled_ebao.py'
+      - 'tools/build_official_companions.py'
+      - 'assets/complete-defaults/**'
+      - 'assets/official/**'
+      - 'assets/holidays/**'
       - 'templates/runtime-readme*'
       - '.github/workflows/im-channels.yml'
+      - '.github/workflows/bundled-ebao.yml'
   push:
     branches: [dev]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  bundle:
+    uses: ./.github/workflows/bundled-ebao.yml
   channels:
+    needs: bundle
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +55,16 @@ jobs:
         run: python tools/verify_language_packs.py
       - name: Runtime guide packaging
         run: python tests/RuntimePackageTests.py
+      - uses: actions/download-artifact@v6
+        with:
+          name: pinned-ebao-${{ github.sha }}
+          path: work/messaging-bundle-input
+      - name: Verify the Windows-authored bundle before native UI compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install Pillow
+          python -X utf8 tools/prepare_bundled_ebao.py --package work/messaging-bundle-input/e-bao.zip
       - name: Build desktop fixtures
         run: dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 -nr:false -p:DeskPetFullResourceFixtures=false
       - name: Native controls and all thirteen locales

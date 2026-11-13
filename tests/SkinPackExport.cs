@@ -20,6 +20,7 @@ namespace Dafeiyu.Tests
         {
             try {
                 if(args.Length!=1)throw new ArgumentException("Supply an isolated export directory.");
+                TextResources.ApplyLanguage(TextResources.PrepareLanguage("zh_CN"));
                 string output=Path.GetFullPath(args[0]);Directory.CreateDirectory(output);
                 var pets=new[]{
                     new SkinDefinition("e-bao","E包","Dafeiyu.EbaoAtlas","Dafeiyu.EbaoPreview",true,PersonaProfiles.Ebao),
