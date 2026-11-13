@@ -153,7 +153,7 @@ internal sealed partial class DesktopController
     {
         if((origin!=CompanionSelectionOrigin.Onboarding&&ExplainGuideCompanions())||exiting)return;
         if(!CanSelectCompanion()){
-            CompanionSelectionNotice=TextResources.Get(settingsWindow?.HasUnsavedChanges==true?"petOfficialCompanions.canRequestCompanion.notice":"petOfficialCompanions.canRequestCompanion.notice.alternativeA");
+            CompanionSelectionNotice=settingsWindow?.HasUnsavedChanges==true?TextResources.Get("petOfficialCompanions.canRequestCompanion.notice"):TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");
             SelectionStage(latestCompanionToken,requested,origin,"refused");Notify();return;
         }
         if(!Skins.Any(s=>s.PickerKey==requested.PickerKey))return;

@@ -8,6 +8,8 @@ A desktop companion for interactions, conversation and project work.
 
 Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
 
+Current source development preview: **1.0.4-dev.1**. Local companion switching, retained selection and silent material updates after upgrades, a complete bundled Ebao, and unified sound settings are described in the [changelog](CHANGELOG.en.md). Check the [release list](https://github.com/Eason4869/deskpet/releases) for preview packages.
+
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
 > Screenshots come from an isolated preview of the `1.0.0` Windows release; the development preview may have UI changes. Conversations, projects and model names are demonstration data, without personal chats or account configuration. macOS remains a platform preview with a separate interface.

@@ -50,6 +50,7 @@ if ($Target -eq 'App') {
     if ($Target -like 'AgentJob*' -or $Target -eq 'DataMaintenanceAdmissionTests') { $sources += Join-Path $projectRoot 'tests/AgentJobTestSupport.cs' }
     if ($Target -in @('AgentJobLifecycleUiTests','AgentJobProjectTests')) { $sources += Join-Path $projectRoot 'tests/AgentJobExitHost.cs' }
     if ($Target -in @('OfficialCompanionTests','WpfOfficialCompanionTests')) { $sources += Join-Path $projectRoot 'tests\OfficialCompanionFixtures.cs' }
+    if ($Target -in @('WpfOfficialCompanionTests','CompanionStartupTests')) { $sources += Join-Path $projectRoot 'tests/WpfCompanionPerformance.cs'; $sources += Join-Path $projectRoot 'tests/CompanionPerformancePackages.cs' }
     if ($Target -eq 'CompanionStartupTests') { $sources += Join-Path $projectRoot 'tests/OfficialCompanionFixtures.cs'; $sources += Join-Path $projectRoot 'tests/WpfOfficialCompanionTests.cs' }
     if ($Target -eq 'HolidayHoverTests') { $sources += Join-Path $projectRoot 'tests\HolidayRuntimeTests.cs' }
     if ($Target -eq 'LanServiceTests') { $sources += Join-Path $projectRoot 'tests\ApiTests.cs' }
@@ -71,7 +72,7 @@ $assets += '/resource:' + (Join-Path $projectRoot 'vendor/qrcoder/net40/QRCoder.
 $assets += '/resource:' + (Join-Path $projectRoot 'vendor/qrcoder/LICENSE.txt') + ',Dafeiyu.QRCoder.LICENSE.txt'
 $assets += '/resource:' + (Join-Path $projectRoot 'assets/official/companion-package-policy.json') + ',Dafeiyu.CompanionPackagePolicy'
 # Production and explicit thin-bundle acceptance only; authoring fixtures never recurse.
-if ($Target -eq 'App' -or ($Target -eq 'WpfOfficialCompanionTests' -and $TestArguments -contains '--bundled-e')) {
+if ($Target -eq 'App' -or ($Target -eq 'WpfOfficialCompanionTests' -and ($TestArguments -contains '--bundled-e' -or @($TestArguments | Where-Object { $_ -like '--real-performance=*' }).Count -gt 0))) {
     & python -X utf8 (Join-Path $projectRoot 'tools/prepare_bundled_ebao.py') --output (Join-Path $workRoot 'bundled-ebao')
     if ($LASTEXITCODE) { throw 'Pinned Ebao preparation failed.' }
     $assets += '/resource:'+(Join-Path $workRoot 'bundled-ebao/e-bao.zip')+',Dafeiyu.BundledEbao.zip'

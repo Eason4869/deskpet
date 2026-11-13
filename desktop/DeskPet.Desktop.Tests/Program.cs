@@ -30,6 +30,7 @@ if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPac
 var systemLanguageFixture=args.SingleOrDefault(arg=>arg.StartsWith("--system-language-ui="));
 System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.GetCultureInfo(systemLanguageFixture==null?"zh-CN":systemLanguageFixture.Substring("--system-language-ui=".Length));
 AppBuilder.Configure<TestApp>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+if(args.Any(a=>a.StartsWith("--real-performance="))){CompanionPerformanceChecks.Run(args.Single(a=>a.StartsWith("--performance-index=")).Split('=',2)[1],args.Single(a=>a.StartsWith("--real-performance=")).Split('=',2)[1],args.SingleOrDefault(a=>a.StartsWith("--owned-fixtures="))?.Split('=',2)[1],args.Contains("--natural-background"));return;}
 if(args.Length==3&&args[0]=="--holiday-keepsake-child"){Environment.ExitCode=Dafeiyu.Tests.HolidayKeepsakeContractChecks.Child(args[1],args[2],new HolidayKeepsakeSceneValidator());return;}
 if(args.Contains("--holiday-keepsake-json-boundary")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.RunJsonBoundary("work/h1a/json-native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" JSON document boundary contracts");return;}
 if(args.Contains("--holiday-keepsakes")){Console.WriteLine("PASS: "+Dafeiyu.Tests.HolidayKeepsakeContractChecks.Run("work/h1a/native-"+Guid.NewGuid().ToString("N"),new HolidayKeepsakeSceneValidator())+" holiday keepsake contracts");return;}

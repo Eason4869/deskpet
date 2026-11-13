@@ -17,9 +17,10 @@ namespace Dafeiyu.Tests
                 BundleDownloadBaseline().GetAwaiter().GetResult();
                 if(Environment.GetCommandLineArgs().Contains("--bundle-baseline-only")){Console.WriteLine("Bundle download baseline tests: "+passed+" passed");return 0;}
                 CorruptPointerRepair().GetAwaiter().GetResult();
-                if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
+                if(Environment.GetCommandLineArgs().Contains("--metadata-path-only")){SnapshotReads();SnapshotUnusedPaths();Console.WriteLine("Snapshot metadata path tests: "+passed+" passed");return 0;}
+                if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();SnapshotUnusedPaths();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
                 RetainOneHistory();MaintenanceColdSelection();CoalescedReaderRetry();NativeReaderRetirement().GetAwaiter().GetResult();SnapshotReaderRetirement().GetAwaiter().GetResult();
-                RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();SnapshotUnusedPaths();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static void MaintenanceColdSelection()
@@ -152,10 +153,34 @@ namespace Dafeiyu.Tests
                     string root=store.CurrentRoot("dafeiyu"),receiptPath=Path.Combine(root,"receipt.json");byte[] saved=File.ReadAllBytes(receiptPath);
                     var receipt=OfficialJson.File(receiptPath,1024*1024);var files=OfficialJson.Array(receipt["files"]);OfficialJson.Object(files[0])["size"]=CompanionPackagePolicy.MaximumExpandedBytes+1;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));
                     Check(next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)==null,"snapshot rejects receipt file size limits");File.WriteAllBytes(receiptPath,new byte[1024*1024+1]);Check(next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)==null,"snapshot rejects oversized receipt");File.WriteAllBytes(receiptPath,saved);
-                    foreach(string path in new[]{"../escape.png","CON.png","a\\b.png"}){receipt=OfficialJson.Object(OfficialJson.Parse(saved,1024*1024));OfficialJson.Object(OfficialJson.Array(receipt["files"])[0])["path"]=path;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));Check(next.CaptureLocalSnapshot("dafeiyu")==null,"unsafe receipt path rejected: "+path);}
+                    foreach(string path in new[]{"../escape.png","/escape.png","C:/escape.png","CON.png","a\\b.png","a//b.png","a/../b.png","a./b.png"}){receipt=OfficialJson.Object(OfficialJson.Parse(saved,1024*1024));OfficialJson.Object(OfficialJson.Array(receipt["files"])[0])["path"]=path;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));Check(next.CaptureLocalSnapshot("dafeiyu")==null,"unsafe receipt path rejected: "+path);}
                     receipt=OfficialJson.Object(OfficialJson.Parse(saved,1024*1024));var tooMany=new object[CompanionPackagePolicy.MaximumEntries+1];for(int i=0;i<tooMany.Length;i++)tooMany[i]=OfficialJson.Array(receipt["files"])[0];receipt["files"]=tooMany;File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));Check(next.CaptureLocalSnapshot("dafeiyu")==null,"snapshot rejects excessive receipt entry count");File.WriteAllBytes(receiptPath,saved);
                     var disposed=next.CaptureLocalSnapshot("dafeiyu",CancellationToken.None);disposed.Dispose();bool rejected=false;try{disposed.ReadVerifiedBytes("pet.json");}catch(ObjectDisposedException){rejected=true;}Check(rejected,"disposed snapshot rejects asset reads");
                 }
+            }
+        }
+        static void SnapshotUnusedPaths()
+        {
+            if(Environment.OSVersion.Platform!=PlatformID.Win32NT){Console.WriteLine("SKIP Windows junction metadata deferral fixture");return;}
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                var store=new OfficialCompanionStorage(fixture.Root);var installed=Revision(store,fixture,1);
+                string target=Path.Combine(fixture.Root,"unused-target"),junction=Path.Combine(installed.RootDirectory,"unused"),receiptPath=Path.Combine(installed.RootDirectory,"receipt.json");
+                Directory.CreateDirectory(target);byte[] bytes=new byte[]{1,2,3};File.WriteAllBytes(Path.Combine(target,"unused.png"),bytes);byte[] original=File.ReadAllBytes(receiptPath);
+                var start=new System.Diagnostics.ProcessStartInfo("cmd.exe","/c mklink /J \""+junction+"\" \""+target+"\""){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
+                using(var process=System.Diagnostics.Process.Start(start)){string output=process.StandardOutput.ReadToEnd(),error=process.StandardError.ReadToEnd();process.WaitForExit();if(process.ExitCode!=0)throw new IOException("Could not create owned junction fixture: "+output+error);}
+                try{
+                    var receipt=OfficialJson.Object(OfficialJson.Parse(original,1024*1024));var files=OfficialJson.Array(receipt["files"]).ToList();files.Add(new{path="unused/unused.png",size=bytes.Length,sha256=OfficialCompanionSnapshot.Digest(bytes)});receipt["files"]=files.ToArray();File.WriteAllBytes(receiptPath,OfficialJson.Bytes(receipt));
+                    using(var blocked=new FileStream(Path.Combine(target,"unused.png"),FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+                    using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots))
+                    using(var snapshot=service.CaptureLocalSnapshot("dafeiyu")){
+                        Check(snapshot!=null,"metadata snapshot defers unused per-file filesystem inspection");
+                        Check(snapshot.ReadVerifiedBytes("pet.json").Length>0,"metadata deferral preserves exact consumed default reads");
+                        bool rejected=false;try{snapshot.ReadVerifiedBytes("unused/unused.png");}catch(InvalidDataException){rejected=true;}
+                        Check(rejected,"consumed asset still rejects an unused receipt path through a junction");
+                        Check(service.Installed("dafeiyu")==null,"full package validation still rejects a junction entry");
+                    }
+                    Check(File.ReadAllBytes(Path.Combine(target,"unused.png")).SequenceEqual(bytes),"deferred path never changes the outside target");
+                }finally{Directory.Delete(junction);File.WriteAllBytes(receiptPath,original);}
             }
         }
         static async Task TransferAdmission()

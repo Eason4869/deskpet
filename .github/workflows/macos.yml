@@ -9,6 +9,7 @@ on:
       - 'installer/macos/**'
       - 'tools/mac_package.py'
       - 'tools/build_official_companions.py'
+      - 'tools/prepare_bundled_ebao.py'
       - 'tools/fonts/**'
       - 'tools/verify_localization.py'
       - 'tools/verify_language_packs.py'
@@ -203,6 +204,8 @@ jobs:
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --bundled-e | tee "$REPORT_ROOT/bundled-ebao.log"
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --installation-status | tee "$REPORT_ROOT/installation-status.log"
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only | tee "$REPORT_ROOT/thin-companions.log"
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds | tee "$REPORT_ROOT/operation-sounds.log"
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --operation-sounds-ui | tee "$REPORT_ROOT/operation-sounds-ui.log"
       - name: Decode all five complete packages with the actual native backend
         shell: bash
         run: |

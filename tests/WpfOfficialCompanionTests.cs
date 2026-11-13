@@ -47,8 +47,23 @@ namespace Dafeiyu.Tests
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {if(args.Contains("--operation-sounds-ui")){OperationSoundChecks();Console.WriteLine("WPF operation sounds: "+passed+" passed");return 0;}if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {if(args.Contains("--selection-admission")){SelectionAdmissionChecks();Console.WriteLine("WPF selection admission: "+passed+" passed");return 0;}if(args.Any(a=>a.StartsWith("--real-performance="))){WpfCompanionPerformance.Run(args.Single(a=>a.StartsWith("--performance-index=")).Substring("--performance-index=".Length),args.Single(a=>a.StartsWith("--real-performance=")).Substring("--real-performance=".Length),args.Where(a=>a.StartsWith("--owned-fixtures=")).Select(a=>a.Substring("--owned-fixtures=".Length)).FirstOrDefault(),args.Contains("--phase-probe"),args.Contains("--natural-background"));return 0;}if(args.Contains("--operation-sounds-ui")){OperationSoundChecks();Console.WriteLine("WPF operation sounds: "+passed+" passed");return 0;}if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
+        }
+        static void SelectionAdmissionChecks()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"admission-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            var settings=new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};var store=new SettingsStore(Path.Combine(root,"settings.json"));var pet=new PetWindow(null,settings,store,null);
+            try{
+                Field("officialStartupStarted").SetValue(pet,true);store.Save(settings);string path=Path.Combine(root,"settings.json"),selected=settings.SelectedCompanionKey;
+                var time=new DateTime(2001,1,1,0,0,0,DateTimeKind.Utc);File.SetLastWriteTimeUtc(path,time);
+                var begin=typeof(PetWindow).GetMethod("BeginCompanionSelection",BindingFlags.NonPublic|BindingFlags.Instance);
+                begin.Invoke(pet,new object[]{pet.Skin});
+                Check(File.GetLastWriteTimeUtc(path)==time,"admission does not write unchanged settings before requested feedback");
+                settings.PendingOfficialCompanionId="dafeiyu";begin.Invoke(pet,new object[]{pet.Skin});var persisted=store.Load();
+                Check(persisted.PendingOfficialCompanionId==""&&persisted.SelectedCompanionKey==selected,"admission still persists a legacy pending clear without changing last successful selection");
+            }finally{pet.Close();Pump();Directory.Delete(root,true);}
         }
         sealed class OperationOutput:ILiveAudioOutput
         {

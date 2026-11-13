@@ -114,5 +114,15 @@
   "onboarding.prepare.cancel": "The unified preparation dialog uses the shorter dialog.cancelDownload label; the former longer caption is retained as feature history.",
   "officialCompanionProgressWindow.officialCompanionProgressWindow.message": "The unified progress dialog uses the concise dialog.cancelling status; the former longer cancellation message is retained as feature history.",
   "settingsWindow.behavior.check.alternativeJ": "The proactive greeting toggle now uses greeting.proactive consistently on both clients; this former caption is preserved as historical translation evidence.",
-  "settingsPage.greeting.enabled": "The proactive greeting toggle now uses the user-requested greeting.proactive caption; this former caption is preserved as historical translation evidence."
+  "settingsPage.greeting.enabled": "The proactive greeting toggle now uses the user-requested greeting.proactive caption; this former caption is preserved as historical translation evidence.",
+  "petOfficialCompanions.prepareOfficialAsync.text": "Official source preparation now verifies consumed bytes through protected generation snapshots without eager whole-pack native preparation.",
+  "petOfficialCompanions.prepareOfficialAsync.text.alternativeA": "Protected snapshot preparation supersedes the old eager package preparation failure path.",
+  "petOfficialCompanions.refreshOfficialAsync.dialogFailure": "Explicit selection now reports installation failure in the passive installation bubble instead of the former modal download dialog.",
+  "petOfficialCompanions.refreshOfficialAsync.dialogFailure.alternativeA": "Explicit selection now reports installation failure in the passive installation bubble instead of the former modal download dialog.",
+  "petOfficialCompanions.refreshOfficialAsync.notice.alternativeA": "Independent silent background updates no longer announce package completion.",
+  "petOfficialCompanions.refreshOfficialAsync.notice.alternativeB": "Independent silent background updates retain the working source without a failure notice.",
+  "petOfficialCompanions.requestSkinAsync.notice": "The shared installation status presenter now owns selection progress and retry copy.",
+  "petOfficialCompanions.selectSkin.notice": "Usable companions now switch through asynchronous prepared selection and the shared installation status presenter.",
+  "cache.preservedPackVersions": "Managed companion cleanup retains the latest usable source per role; cache.preservedLatest describes this policy.",
+  "notificationSounds.help": "soundCues.help now describes one NotificationSoundsEnabled master for task notifications and companion operations."
 }

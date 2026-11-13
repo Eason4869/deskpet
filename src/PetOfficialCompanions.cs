@@ -109,8 +109,8 @@ namespace Dafeiyu
         {
             if(officialSelection!=null)officialSelection.Cancel();
             officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;
-            Settings.PendingOfficialCompanionId="";
-            SaveSettings();return officialRequest;
+            bool hadPending=!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId);Settings.PendingOfficialCompanionId="";
+            if(hadPending)SaveSettings();return officialRequest;
         }
         // Compatibility for local callers of the original synchronous API.
         // Application pickers use RequestSkinAsync so all disk preparation yields.
