@@ -19,7 +19,7 @@ namespace Dafeiyu
                 IllustratedAnimation idle;
                 if(skin.Manifest.Animations.TryGetValue("idle",out idle)&&idle!=null)image=Try(delegate{
                     int width=skin.Manifest.CellWidth,height=skin.Manifest.CellHeight;
-                    var atlas=IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,idle.File),width*idle.Columns,height*(int)Math.Ceiling((double)idle.Frames/idle.Columns));
+                    var atlas=skin.ReadImage(idle.File,width*idle.Columns,height*(int)Math.Ceiling((double)idle.Frames/idle.Columns));
                     var frame=new CroppedBitmap(atlas,new Int32Rect(0,0,width,height));frame.Freeze();return frame;
                 });
             }

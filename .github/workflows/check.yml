@@ -150,6 +150,17 @@ jobs:
         run: |
           & ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments @('--thin-ui', ('--legacy-assets=' + (Join-Path $PWD 'assets/bundled-skins')))
           if ($LASTEXITCODE) { throw 'Thin WPF companion acceptance failed' }
+      - name: Verify complete bundled Ebao and installation status
+        shell: powershell
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+          python tests/BundledEbaoAuthoringTests.py
+          if ($LASTEXITCODE) { throw 'Bundled authoring checks failed' }
+          ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments '--installation-status'
+          if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
+          ./Build.ps1 -Target WpfOfficialCompanionTests -TestArguments '--bundled-e'
+          if ($LASTEXITCODE) { throw 'Bundled Ebao acceptance failed' }
       - name: Compile application
         shell: powershell
         run: .\Build.ps1 -Target App -OutputDirectory work/dev3-ci-package/DafeiyuDeskPet
@@ -315,10 +326,16 @@ jobs:
       - name: Verify actual thin Avalonia companion resources and restoration
         shell: powershell
         run: |
+          python -X utf8 tools/prepare_bundled_ebao.py
+          if ($LASTEXITCODE) { throw 'Pinned Ebao preparation failed' }
           dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
           if ($LASTEXITCODE) { throw 'Thin desktop restore failed' }
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
           if ($LASTEXITCODE) { throw 'Thin desktop build failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --bundled-e
+          if ($LASTEXITCODE) { throw 'Bundled Ebao acceptance failed' }
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --installation-status
+          if ($LASTEXITCODE) { throw 'Installation status acceptance failed' }
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only
           if ($LASTEXITCODE) { throw 'Thin desktop acceptance failed' }
       - name: Pre-tag Windows installer preflight

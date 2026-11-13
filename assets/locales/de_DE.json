@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "Kurze Töne für wichtige Ereignisse. Im Ruhemodus stumm.",
   "greeting.proactive": "Proaktive Begrüßungen",
   "greeting.autoRead": "Automatisch vorlesen",
-  "greeting.autoReadHelp": "Folgt der Vorleseeinstellung. Im Ruhemodus stumm."
+  "greeting.autoReadHelp": "Folgt der Vorleseeinstellung. Im Ruhemodus stumm.",
+  "companions.install.preparing": "Das neueste Begleiterpaket für {0} wird installiert…",
+  "companions.install.failed": "{0} konnte nicht installiert werden. Bitte erneut versuchen.",
+  "companions.install.reselect": "{0} ist bereit. Bitte nach Abschluss der aktuellen Aufgabe erneut auswählen."
 }

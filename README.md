@@ -154,10 +154,11 @@ Windows 可在 **关于与更新** 选择正式或预览通道。更新校验附
 在仓库根目录的 PowerShell 中构建 Windows 程序，输出明确留在本仓库：
 
 ```powershell
+python -m pip install Pillow
 .\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
 ```
 
-Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。打包另需 Python / Pillow，安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
+Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。完整内置鹅宝的构建也需要 Python / Pillow：脚本按素材注册表校验完整角色包并嵌入 EXE，运行时只读取所需条目，不解压整包。Avalonia 生产构建前运行 `python tools/prepare_bundled_ebao.py`；Mac 使用同一源码在 Windows 生成的鹅宝 ZIP，并传入 `--package`（见 [Mac 打包说明](installer/macos/README.md)）。安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
 
 ## 源码、素材与许可
 

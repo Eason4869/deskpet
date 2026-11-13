@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "Short sounds for important events. Silent in quiet mode.",
   "greeting.proactive": "Proactive greetings",
   "greeting.autoRead": "Read aloud automatically",
-  "greeting.autoReadHelp": "Follows the read-aloud setting. Silent in quiet mode."
+  "greeting.autoReadHelp": "Follows the read-aloud setting. Silent in quiet mode.",
+  "companions.install.preparing": "Installing the latest companion pack for {0}…",
+  "companions.install.failed": "Could not install {0}. You can retry.",
+  "companions.install.reselect": "{0} is ready. Please select again when you are free."
 }

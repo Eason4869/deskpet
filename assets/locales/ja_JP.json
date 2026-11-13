@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "重要なイベントを短い音で通知します。静音モードでは鳴りません。",
   "greeting.proactive": "自発的なあいさつ",
   "greeting.autoRead": "自動読み上げ",
-  "greeting.autoReadHelp": "読み上げ設定に従います。静音モードでは読み上げません。"
+  "greeting.autoReadHelp": "読み上げ設定に従います。静音モードでは読み上げません。",
+  "companions.install.preparing": "{0}の最新キャラクターパックをインストールしています…",
+  "companions.install.failed": "{0}をインストールできませんでした。再試行できます。",
+  "companions.install.reselect": "{0}の準備ができました。処理が終わったらもう一度選んでください。"
 }

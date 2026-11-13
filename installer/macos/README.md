@@ -6,6 +6,16 @@
 
 ## 在 Mac 构建预览
 
+生产资源需要先准备完整鹅宝。使用同一源码在 Windows 通过 `tools/build_official_companions.py` 生成的鹅宝 ZIP；素材版本和内容必须匹配 `assets/official/companion-versions.json`。准备脚本会核对完整 payload pin，生成 `work/bundled-ebao/` 中的 ZIP 和逐文件校验清单，然后再执行下方构建。CI 会在所有 .NET 编译前下载、准备同一提交生成的素材。
+
+```bash
+python3 -m pip install Pillow
+python3 tools/prepare_bundled_ebao.py --package "path/to/DeskPet-Companion-e-bao-MATERIAL_VERSION.zip"
+```
+
+这些文件只用于编译期嵌入程序集；成品 App 离线按需读取，不在启动时解压完整角色包。
+
+
 需要 Xcode Command Line Tools、仓库 `desktop/global.json` 指定的 .NET SDK 和 Python 3。无需 Docker。
 
 ```bash

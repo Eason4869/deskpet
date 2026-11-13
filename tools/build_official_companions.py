@@ -244,7 +244,7 @@ def collect_role(repository, defaults, destination, role, version):
         shutil.copyfile(original, target)
         if target.read_bytes() != original.read_bytes():
             raise ValueError('Quiet overlay changed source bytes')
-        clip.update(columns=8, frames=8, fps=4 if action == 'idle' else 2.5, loop=True)
+        clip.update(columns=8, frames=8, fps=4.0 if action == 'idle' else 2.5, loop=True)
     write_json(destination / 'pet.json', manifest)
     identity = {'schema_version': 1, 'id': role, 'name': manifest['name'], 'version': version, 'min_app_version': version}
     write_json(destination / 'companions.json', identity)

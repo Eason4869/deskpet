@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -10,6 +10,14 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+  <Target Name="RequireBundledEbao" BeforeTargets="PrepareForBuild" Condition="'$(DeskPetFullResourceFixtures)' != 'true'">
+    <Error Condition="!Exists('../../work/bundled-ebao/e-bao.zip') Or !Exists('../../work/bundled-ebao/e-bao.inventory.json')" Text="Run python tools/prepare_bundled_ebao.py (Windows), or pass --package with the pinned Windows-authored Ebao ZIP, before building the production app." />
+    <PropertyGroup>
+      <BundlePython>python3</BundlePython>
+      <BundlePython Condition="$([MSBuild]::IsOSPlatform('Windows'))">python</BundlePython>
+    </PropertyGroup>
+    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)../.." Command="$(BundlePython) -X utf8 tools/prepare_bundled_ebao.py --verify" />
+  </Target>
   <ItemGroup>
     <Content Include="../../docs/im-channels.md" Link="docs/im-channels.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../docs/third-party-notices.md" Link="docs/third-party-notices.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

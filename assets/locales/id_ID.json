@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "Suara singkat untuk peristiwa penting. Senyap dalam mode tenang.",
   "greeting.proactive": "Sapaan proaktif",
   "greeting.autoRead": "Bacakan otomatis",
-  "greeting.autoReadHelp": "Mengikuti pengaturan baca lantang. Senyap dalam mode tenang."
+  "greeting.autoReadHelp": "Mengikuti pengaturan baca lantang. Senyap dalam mode tenang.",
+  "companions.install.preparing": "Memasang paket karakter terbaru untuk {0}…",
+  "companions.install.failed": "Tidak dapat memasang {0}. Anda dapat mencoba lagi.",
+  "companions.install.reselect": "{0} siap. Pilih lagi setelah pekerjaan selesai."
 }

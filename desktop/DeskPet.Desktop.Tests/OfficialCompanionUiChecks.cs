@@ -478,6 +478,44 @@ internal static class OfficialCompanionUiChecks
         }
         return checks;
     }
+    internal static int RunInstallationBubble(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Installation bubble: "+label);checks++;}
+        var source=new FakeSource();using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(directory),officialSourceFactory:_=>source);
+        var old=owner.Skin;var placeholder=new PetSkin{Id="dafeiyu",Name="D",Prompt="",OfficialCharacterId="dafeiyu",PickerKey="official:dafeiyu",IsPlaceholder=true};
+        var operation=owner.SelectSkinAsync(placeholder,CompanionSelectionOrigin.Settings);Until(()=>source.Calls==1);
+        var bubble=(CompanionInstallationBubble)typeof(DesktopController).GetField("companionInstallationBubble",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
+        Check(bubble!=null&&bubble.Status.CanCancel&&ReferenceEquals(owner.Skin,old),"missing selection retains current pet and owns status");
+        bubble!.RenderStatus();Check(!bubble.IsVisible,"hidden pet has no visible status window");owner.Pet.Show();Dispatcher.UIThread.RunJobs();bubble.RenderStatus();Check(bubble.IsVisible&&!bubble.ShowActivated,"status window appears without activation");
+        var close=bubble.GetLogicalDescendants().OfType<Button>().First(b=>b.Name=="DismissCompanionInstallation");close.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        source.Progress!.Report(new OfficialCompanionProgress("dafeiyu","download","",10,20,50));Dispatcher.UIThread.RunJobs();bubble.RenderStatus();Check(!bubble.IsVisible&&!operation.IsCompleted&&bubble.Status.CanCancel,"close hides only UI and progress cannot reopen it");
+        source.Result.SetException(new IOException("fixture failure"));Complete(operation);bubble.RenderStatus();Check(bubble.Status.CanRetry&&!bubble.IsVisible,"failed dismissed request stays hidden and remains retryable");
+        bubble.Close();source.Result=new(TaskCreationOptions.RunContinuationsAsynchronously);var retry=owner.SelectSkinAsync(placeholder,CompanionSelectionOrigin.Settings);Until(()=>source.Calls==2);bubble.RenderStatus();Check(bubble.IsVisible&&!bubble.Status.Dismissed,"explicit retry starts a new visible intent");
+        owner.CancelCompanionSelection(owner.CurrentCompanionSelection!.Request);source.Result.SetCanceled();Complete(retry);bubble.RenderStatus();Check(!bubble.IsVisible&&ReferenceEquals(owner.Skin,old),"cancel keeps current pet and closes status");Finish(owner);return checks;
+    }
+    internal static int RunBundledEbao(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Bundled Ebao: "+label);checks++;}
+        var bundle=OfficialCompanionBundle.Ebao;Check(bundle!=null,"production Core contains complete pinned bundle");
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"e-bao",null,false);
+        var installed=CreatePackage(Path.Combine(directory,"installed"),"e-bao",fixture.Root);var source=new FakeSource{InstalledValue=installed};var assets=new SpriteAssets();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"data")),spriteAssetsFactory:()=>assets,officialSourceFactory:_=>source)){
+            Check(owner.Skin.Bundle!=null&&owner.Skin.PackageHolidayCatalog!.Outfits.Count==10&&owner.Holidays.Catalog.Outfits.Count(o=>o.CharacterId=="e-bao")==10,"startup rejects older installed E before cache and retains full embedded wardrobe");
+            Complete(owner.SelectSkinAsync(owner.Skin,CompanionSelectionOrigin.StartupRestore));Check(owner.Skin.Bundle!=null&&assets.RetainedPixelBytes<64L*1024*1024,"explicit E reselect uses small prepared idle gaze resources");
+            var read=typeof(DesktopController).GetMethod("ReadPublished",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!;
+            var next=((PetSkin Skin,HolidayCatalog Catalog))read.Invoke(owner,new object[]{installed,owner.Skin.Id})!;Check(next.Skin.Bundle!=null,"background publication cannot downgrade bundled E");
+            source.NoNewerBundle=true;long token=source.BeginSelection();
+            var refresh=(Task)typeof(DesktopController).GetMethod("RefreshOfficialAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,new object?[]{owner.Skin,token,OfficialCompanionCheckMode.AfterApplicationUpdate,CompanionSelectionOrigin.StartupRestore,null})!;Complete(refresh);
+            Check(source.AvailableVersion==bundle!.Version&&owner.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion,"Avalonia background passes bundle baseline and records metadata-only upgrade success");Finish(owner);
+        }
+        string manifest=Path.Combine(installed.RootDirectory,"pet.json");File.WriteAllText(manifest,File.ReadAllText(manifest).Replace("0.10.3-dev.1","9.0.0"));
+        var asset=new OfficialCompanionAsset("e-bao","E","9.0.0","0.10.3-dev.1","v9.0.0","new.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+        var newer=new FakeSource{InstalledValue=new OfficialCompanionInstallation(asset,installed.RootDirectory)};
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"newer-data")),officialSourceFactory:_=>newer)){
+            Check(owner.Skin.Snapshot!=null&&owner.Skin.PackVersion=="9.0.0","newer compatible local E wins at startup");Finish(owner);
+        }
+        return checks;
+    }
     internal static int RunPreparedSwitch(string directory)
     {
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Prepared switch: "+label);checks++;}
@@ -599,7 +637,9 @@ internal static class OfficialCompanionUiChecks
     private sealed class FakeSource : IOfficialCompanionSource
     {
         internal int Calls, BulkCalls, Selections, InstalledCalls, Repairs;
-        internal bool RepairBackground;
+        internal bool RepairBackground, NoNewerBundle;
+        internal string? AvailableVersion;
+        public async Task<OfficialCompanionResult?> UpdateAsync(string id,OfficialDownloadRouting routing,CancellationToken cancel,OfficialCompanionCheckMode mode=OfficialCompanionCheckMode.Cached,string? availableVersion=null){AvailableVersion=availableVersion;if(NoNewerBundle)return null;return await EnsureAsync(id,routing,mode,null,cancel);}
         public Task<OfficialCompanionResult> RepairAsync(string id,OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel,bool background=false){Repairs++;RepairBackground=background;return EnsureAsync(id,routing,OfficialCompanionCheckMode.Cached,progress,cancel);}
         internal readonly List<string> RequestedIds=new();
         internal OfficialCompanionInstallation? InstalledValue;

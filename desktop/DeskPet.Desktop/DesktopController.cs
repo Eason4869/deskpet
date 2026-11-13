@@ -75,7 +75,7 @@ internal sealed partial class DesktopController : IDisposable
         DataDirectory = runtime.DataDirectory;
         Relationships=new RelationshipRuntime(DataDirectory,action=>Dispatcher.UIThread.Post(action),DataMaintenance);
         Directory.CreateDirectory(DataDirectory);
-        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
+        Holidays = holidays ?? new HolidayController(new HolidayCalendar(), SpriteAssets.BundledEbao?.CreateHolidayCatalog() ?? new HolidayCatalog(), new HolidayStateStore(Path.Combine(DataDirectory, "holiday-state.json")));
         InitializeHolidayKeepsakes();
         runtime.InitializeProtection();
         var settingsPath = Path.Combine(DataDirectory, "settings.json");
@@ -101,6 +101,7 @@ internal sealed partial class DesktopController : IDisposable
         Skin = RestoreCachedStartupCompanion(requested);
         bool companionFallback=Skin.IsPlaceholder;
         if (companionFallback) { Skin = embeddedEbao; }
+        if(Skin.Bundle!=null)RebuildCompanionCatalogFor(Skin);
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
         if(!companionFallback||Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
@@ -137,7 +138,7 @@ internal sealed partial class DesktopController : IDisposable
         Questions.Changed += Notify;Questions.Changed+=NotificationQuestionsChanged;
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
-        if(Skin.Snapshot!=null)activeCompanionPins=Task.Run(()=>companionAssets.Prepare(Skin)).GetAwaiter().GetResult();
+        if(Skin.Snapshot!=null||Skin.Bundle!=null)activeCompanionPins=Task.Run(()=>companionAssets.Prepare(Skin)).GetAwaiter().GetResult();
         Pet = new PetWindow(this, companionAssets);ObserveNotificationSession(Session);
         relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
@@ -352,7 +353,7 @@ internal sealed partial class DesktopController : IDisposable
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
         companionAssets.DefaultClipFailed-=DefaultCompanionFailed;companionLifetime.Cancel();
-        activeCompanionPins?.Dispose();lock(preparedCompanions){foreach(var snapshot in companionSnapshots)snapshot.Dispose();companionSnapshots.Clear();}
+        companionInstallationBubble?.Shutdown();activeCompanionPins?.Dispose();lock(preparedCompanions){foreach(var snapshot in companionSnapshots)snapshot.Dispose();companionSnapshots.Clear();}
          preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();

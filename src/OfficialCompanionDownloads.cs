@@ -104,6 +104,28 @@ namespace Dafeiyu
         }
         public Task<OfficialCompanionResult> UpdateInBackgroundAsync(string id,OfficialDownloadRouting routing,CancellationToken cancel=default(CancellationToken))
         {return EnsureAsync(id,routing,OfficialCompanionCheckMode.Cached,null,cancel,false,true);}
+        // Null means the verified metadata requires no replacement of the caller's
+        // already usable bundle. It never represents a filesystem installation.
+        public Task<OfficialCompanionResult> UpdateBeyondVersionAsync(string id,string availableVersion,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,CancellationToken cancel)
+        {
+            OfficialCompanionRules.Id(id);var baseline=ReleaseVersion.Parse(availableVersion);
+            if(routing==null)throw new ArgumentNullException("routing");
+            if(mode<OfficialCompanionCheckMode.Cached||mode>OfficialCompanionCheckMode.AfterApplicationUpdate)throw new ArgumentOutOfRangeException("mode");CheckAlive();
+            return Task.Run(async()=>{
+                using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
+                    var token=linked.Token;
+                    try{
+                        var metadata=await MetadataAsync(routing,mode,null,token).ConfigureAwait(false);
+                        OfficialCompanionAsset asset;if(!metadata.Snapshot.Assets.TryGetValue(id,out asset))throw new ApiException(OfficialCompanionRules.SafeMessage);
+                        if(ReleaseVersion.Parse(asset.Version).CompareTo(baseline)<=0)return null;
+                        var result=await InstallAsync(asset,routing,null,token,false,true).ConfigureAwait(false);
+                        return new OfficialCompanionResult(result.Installation,false,metadata.Checked,result.Installed,null);
+                    }catch(OperationCanceledException){throw;}
+                    catch(MetadataConflictException){token.ThrowIfCancellationRequested();throw new ApiException(TextResources.Get("companions.package.metadataConflict"));}
+                    catch(Exception){token.ThrowIfCancellationRequested();throw new ApiException(id+"："+OfficialCompanionRules.SafeMessage);}
+                }
+            },cancel);
+        }
         public long BeginSelection(){lock(gate){Alive();return ++selection;}}
         public bool OwnsSelection(long token){lock(gate)return !disposed&&token==selection;}
         public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)

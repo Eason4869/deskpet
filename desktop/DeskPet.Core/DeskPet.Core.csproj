@@ -6,6 +6,10 @@
     <DefineConstants>$(DefineConstants);PORTABLE</DefineConstants>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <ItemGroup Condition="Exists('../../work/bundled-ebao/e-bao.zip')">
+    <EmbeddedResource Include="../../work/bundled-ebao/e-bao.zip" LogicalName="Dafeiyu.BundledEbao.zip" />
+    <EmbeddedResource Include="../../work/bundled-ebao/e-bao.inventory.json" LogicalName="Dafeiyu.BundledEbao.inventory.json" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/NotificationSounds.cs" Link="Shared/NotificationSounds.cs" />
     <EmbeddedResource Include="../../assets/sounds/*.wav" LogicalName="Dafeiyu.Sounds.%(Filename)%(Extension)" />
@@ -19,6 +23,7 @@
     <Compile Include="../../src/CompanionPackagePolicy.cs;../../src/CompanionPackageInventory.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../assets/official/companion-package-policy.json" LogicalName="Dafeiyu.CompanionPackagePolicy" />
     <Compile Include="../../src/ComposerDraftStore.cs" Link="Shared/ComposerDraftStore.cs" />
+    <Compile Include="../../src/CompanionInstallationStatus.cs" Link="Shared/CompanionInstallationStatus.cs" />
     <Compile Include="../../src/CompanionSelectionUpdate.cs" Link="Shared/CompanionSelectionUpdate.cs" />
     <Compile Include="../../src/CompanionQuietClips.cs" Link="Shared/CompanionQuietClips.cs" />
     <Compile Include="../../src/Maintenance/*.cs" Link="Shared/Maintenance/%(Filename)%(Extension)" />

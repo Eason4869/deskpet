@@ -114,6 +114,9 @@ internal sealed class SettingsWindow : Window
     {
         var prompt = Ui.Input(owner.Settings.SystemPrompt); prompt.AcceptsReturn = true; prompt.Height = 250; prompt.TextWrapping = Avalonia.Media.TextWrapping.Wrap;
         var description = Ui.Text(()=>(owner.Skin.DisplayDescription));
+        var installationStatus=Ui.Text(owner.CompanionSelectionNotice);installationStatus.Name="CompanionInstallationStatus";
+        void InstallationChanged(){installationStatus.Text=owner.CompanionSelectionNotice;}
+        owner.Changed+=InstallationChanged;Closed+=(_,_)=>owner.Changed-=InstallationChanged;
         bool refreshingPartners = false;
         var choices = new ComboBox { Name = "PartnerPicker", MinWidth = 0, MinHeight = 44, HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = owner.Skins, SelectedItem = owner.Skin, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         choices.Styles.Add(new Style(s => s.OfType<ComboBoxItem>()) { Setters = { new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch) } });
@@ -171,7 +174,7 @@ internal sealed class SettingsWindow : Window
             LocalizedUi.Set(description,"Text",()=>(owner.Skin.DisplayDescription));
         }
         owner.Changed += CatalogChanged; Closed += (_, _) => owner.Changed -= CatalogChanged;
-        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description),
+        return SettingsVisual.Page(SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.text.alternativeB"),selectors,SettingsVisual.Wrap(import,bulk),description,installationStatus),
             SettingsVisual.Group(()=>TextResources.Get("settingsWindow.partner.field"),prompt,
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeC")), () => { try { PersonaProfiles.Save(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, prompt.Text ?? "", owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); owner.Save(); } catch (Exception e) { owner.Error(e); } }),
             LocalizedUi.Button(()=>(TextResources.Get("settingsWindow.partner.text.alternativeD")), () => { PersonaProfiles.Reset(owner.Settings, owner.Skin.Id, owner.Skin.Prompt, owner.Skin.Voices, owner.Skin.OfficialCharacterId ?? owner.Skin.BuiltinCharacterId); prompt.Text = owner.Settings.SystemPrompt; owner.Save(); }),

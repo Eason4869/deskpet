@@ -109,6 +109,18 @@ jobs:
           [[ "$(uname -m)" == '${{ matrix.arch }}' ]]
           mkdir -p "$REPORT_ROOT"
           dotnet --info | tee "$REPORT_ROOT/dotnet-info.log"
+      - uses: actions/download-artifact@v7
+        with:
+          name: macos-complete-companions-${{ github.sha }}
+          path: work/macos-complete-companions/artifacts
+      - name: Prepare pinned embedded Ebao before compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install Pillow
+          packages=(work/macos-complete-companions/artifacts/DeskPet-Companion-e-bao-*.zip)
+          [[ "${#packages[@]}" == 1 ]]
+          python3 tools/prepare_bundled_ebao.py --package "${packages[0]}"
       - name: Shared business regression
         shell: bash
         run: |
@@ -188,11 +200,9 @@ jobs:
           set -euo pipefail
           dotnet restore desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --locked-mode --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -m:1
           dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj --no-restore -c Release --artifacts-path work/official-ava-thin -p:DeskPetFullResourceFixtures=false -p:BuildInParallel=false -m:1 -nr:false
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --bundled-e | tee "$REPORT_ROOT/bundled-ebao.log"
+          dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --installation-status | tee "$REPORT_ROOT/installation-status.log"
           dotnet work/official-ava-thin/bin/DeskPet.Desktop.Tests/release/DeskPet.Desktop.Tests.dll --official-thin-ui-only | tee "$REPORT_ROOT/thin-companions.log"
-      - uses: actions/download-artifact@v7
-        with:
-          name: macos-complete-companions-${{ github.sha }}
-          path: work/macos-complete-companions/artifacts
       - name: Decode all five complete packages with the actual native backend
         shell: bash
         run: |

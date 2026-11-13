@@ -56,7 +56,7 @@ namespace Dafeiyu
             var quiet=action==0?AdditionalInteractions.Quiet(definition,"idle",true):null;
             bool imported=definition!=null && definition.Illustrated;
             if(quiet==null && !imported && !Counts.TryGetValue(skin+"-"+action,out count))return null;
-            if(imported&&definition.Snapshot!=null)return WpfPreparedCompanion.Ready(definition,definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]]);
+            if(imported&&(definition.Snapshot!=null||definition.Bundle!=null))return WpfPreparedCompanion.Ready(definition,definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]]);
             MotionClip clip;
             if(clips.TryGetValue(action,out clip)){if(recent.Last.Value!=action){var node=recent.Find(action);recent.Remove(node);recent.AddLast(node);}return clip;}
             if(quiet!=null)clip=AdditionalInteractions.LoadQuiet(quiet);

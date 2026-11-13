@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "ज़रूरी घटनाओं के लिए छोटी ध्वनियाँ। शांत मोड में मौन।",
   "greeting.proactive": "स्वतः अभिवादन",
   "greeting.autoRead": "अपने आप पढ़कर सुनाएँ",
-  "greeting.autoReadHelp": "पढ़कर सुनाने की सेटिंग का पालन करता है। शांत मोड में मौन।"
+  "greeting.autoReadHelp": "पढ़कर सुनाने की सेटिंग का पालन करता है। शांत मोड में मौन।",
+  "companions.install.preparing": "{0} के लिए नवीनतम साथी पैक इंस्टॉल किया जा रहा है…",
+  "companions.install.failed": "{0} इंस्टॉल नहीं हो सका। फिर कोशिश कर सकते हैं।",
+  "companions.install.reselect": "{0} तैयार है। काम पूरा होने पर फिर चुनें।"
 }

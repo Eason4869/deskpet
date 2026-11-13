@@ -144,6 +144,10 @@ namespace Dafeiyu
                 image.Freeze();return image;
             }
         }
+        public static BitmapSource ReadImage(Stream input,int width,int height)
+        {
+            using(input){var image=BitmapDecoder.Create(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];if(image.PixelWidth!=width||image.PixelHeight!=height)throw new InvalidDataException("Invalid companion image geometry.");image.Freeze();return image;}
+        }
         public static BitmapSource ReadImage(string path,int width,int height)
         {
             ValidateHeader(path,width,height);

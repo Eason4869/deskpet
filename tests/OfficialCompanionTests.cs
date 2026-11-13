@@ -13,10 +13,30 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
+                BundleDownloadBaseline().GetAwaiter().GetResult();
+                if(Environment.GetCommandLineArgs().Contains("--bundle-baseline-only")){Console.WriteLine("Bundle download baseline tests: "+passed+" passed");return 0;}
                 CorruptPointerRepair().GetAwaiter().GetResult();
                 if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
                 RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
+        }
+        static async Task BundleDownloadBaseline()
+        {
+            foreach(string baseline in new[]{OfficialCompanionFixture.Version,"1.0.0","0.9.0"})
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var result=await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);
+                bool newer=baseline=="0.9.0";
+                Check(fixture.Packages==(newer?1:0),"bundle baseline downloads only strictly newer compatible remote: "+baseline);
+                Check(newer?result!=null&&result.InstalledNow:result==null&&service.Installed("e-bao")==null,"bundle success never fabricates a filesystem installation: "+baseline);
+                Check(File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"successful bundle metadata check records upgrade marker: "+baseline);
+                await service.UpdateBeyondVersionAsync("e-bao",baseline,Direct,OfficialCompanionCheckMode.Cached,CancellationToken.None);
+                Check(fixture.Metadata==1&&fixture.Packages==(newer?1:0),"bundle check shares metadata TTL and managed installation reuse: "+baseline);
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                fixture.Offline=true;
+                await Reject(async()=>{await service.UpdateBeyondVersionAsync("e-bao",OfficialCompanionFixture.Version,Direct,OfficialCompanionCheckMode.AfterApplicationUpdate,CancellationToken.None);},"offline bundle metadata check remains unsuccessful");
+                Check(fixture.Packages==0&&!File.Exists(Path.Combine(service.Storage.Root,"last-checked-app-version.txt")),"offline bundle check neither downloads nor writes success marker");
+            }
         }
         static void SnapshotReads()
         {

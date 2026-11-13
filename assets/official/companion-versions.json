@@ -3,19 +3,19 @@
   "payload_algorithm": "official-payload-v1",
   "companions": {
     "e-bao": {
-      "pack_version": "0.11.0-dev.3",
+      "pack_version": "1.0.4-dev.1",
       "min_app_version": "0.11.0-dev.3",
-      "payload_sha256": "f9b67c558ede0410fd65e8cf8962c13e8e29853eac81c61080d38fd3fcfc8e18"
+      "payload_sha256": "fcd63fd82a6a816227f5151f3da79e1644769dd2479e6c2bcd7c93a39b565ea8"
     },
     "dafeiyu": {
-      "pack_version": "0.11.0-dev.3",
+      "pack_version": "1.0.4-dev.1",
       "min_app_version": "0.11.0-dev.3",
-      "payload_sha256": "f2149f79f7c55adfd96468eda9b2a189ba06362f5521433506e13a2475db907b"
+      "payload_sha256": "c1f44a2cf6403bccefdf878cf44efdb6c8236fe15d463506de32dc2cc2328b5e"
     },
     "marfu": {
-      "pack_version": "0.11.0-dev.3",
+      "pack_version": "1.0.4-dev.1",
       "min_app_version": "0.11.0-dev.3",
-      "payload_sha256": "1eedffd23df248c41d94be0ee64c879f7fd3742a434ea6a9d171041a78b3bb21"
+      "payload_sha256": "8496951d28695e122ff93ae7a22ca971b4366466a0de20fcbfadbe876005e762"
     },
     "xiaobei": {
       "pack_version": "0.11.0-dev.3",

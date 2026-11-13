@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "Suoni brevi per eventi importanti. Silenziosi in modalità silenziosa.",
   "greeting.proactive": "Saluti spontanei",
   "greeting.autoRead": "Lettura automatica",
-  "greeting.autoReadHelp": "Segue l’impostazione di lettura. Silenziosa in modalità silenziosa."
+  "greeting.autoReadHelp": "Segue l’impostazione di lettura. Silenziosa in modalità silenziosa.",
+  "companions.install.preparing": "Installazione del pacchetto personaggio più recente per {0}…",
+  "companions.install.failed": "Impossibile installare {0}. Puoi riprovare.",
+  "companions.install.reselect": "{0} è pronto. Selezionalo di nuovo quando hai finito."
 }

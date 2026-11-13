@@ -68,7 +68,7 @@ namespace Dafeiyu
             bool original = action.EndsWith("-original", StringComparison.Ordinal);
             string name = original ? action.Substring(0, action.Length - 9) : action;
             if (original ? !HasOriginal(skin, name) : !Has(skin, action)) return null;
-            IllustratedAnimation verifiedSpec;if(skin.Snapshot!=null&&Specification(skin,name,original,out verifiedSpec))return WpfPreparedCompanion.Ready(skin,verifiedSpec);
+            IllustratedAnimation verifiedSpec;if((skin.Snapshot!=null||skin.Bundle!=null)&&Specification(skin,name,original,out verifiedSpec))return WpfPreparedCompanion.Ready(skin,verifiedSpec);
             MotionClip clip; if (clips.TryGetValue(action, out clip))
             {
                 if (recent.Last.Value != action) { var node = recent.Find(action); recent.Remove(node); recent.AddLast(node); }

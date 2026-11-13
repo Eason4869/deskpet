@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "Sons courts pour les événements importants. Silencieux en mode discret.",
   "greeting.proactive": "Salutations spontanées",
   "greeting.autoRead": "Lecture automatique",
-  "greeting.autoReadHelp": "Suit le réglage de lecture. Silencieux en mode discret."
+  "greeting.autoReadHelp": "Suit le réglage de lecture. Silencieux en mode discret.",
+  "companions.install.preparing": "Installation du dernier pack de personnage pour {0}…",
+  "companions.install.failed": "Impossible d’installer {0}. Vous pouvez réessayer.",
+  "companions.install.reselect": "{0} est prêt. Sélectionnez-le à nouveau une fois disponible."
 }

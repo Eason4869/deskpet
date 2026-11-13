@@ -70,7 +70,8 @@ namespace Dafeiyu
         public string NativeSourceKey {get{return nativeSourceKey;}}
         internal OfficialCompanionInstallation OfficialInstallation {get;set;}
         internal OfficialCompanionSnapshot Snapshot {get;set;}
-        internal BitmapSource ReadImage(string path,int width,int height){return Snapshot==null?IllustratedPack.ReadImage(IllustratedPack.AssetPath(Source,path),width,height):IllustratedPack.ReadImage(Snapshot,path,width,height);}
+        internal OfficialCompanionBundle Bundle {get;set;}
+        internal BitmapSource ReadImage(string path,int width,int height){return Bundle!=null?IllustratedPack.ReadImage(Bundle.Open(path),width,height):Snapshot==null?IllustratedPack.ReadImage(IllustratedPack.AssetPath(Source,path),width,height):IllustratedPack.ReadImage(Snapshot,path,width,height);}
         internal SpriteAtlas PreparedOfficialAtlas {get{return WpfPreparedCompanion.Atlas(this);}set{WpfPreparedCompanion.Atlas(this,value);}}
         internal bool FixtureEmbedded {get;set;}
         public VoiceRecommendations VoiceRecommendations {get{return Manifest!=null&&Manifest.VoicePresets!=null?Manifest.VoicePresets:IsOfficial?OfficialCompanionProfiles.Find(BuiltinCharacterId).VoicePresets:null;}}
@@ -142,6 +143,10 @@ namespace Dafeiyu
                     registered=embedded?new SkinDefinition(persona,profile.Name,atlas,preview,true,profile.SystemPrompt,profile.Description){BuiltinCharacterId=profile.Id,FixtureEmbedded=profile.Id!="e-bao"}:new SkinDefinition(persona,profile.Name,null,null,false,profile.SystemPrompt,profile.Description){BuiltinCharacterId=profile.Id,IsPlaceholder=true};
                 }
                 if(registered.Id!=persona&&registered.Illustrated)registered=new SkinDefinition(persona,registered.Source,registered.Manifest){BuiltinCharacterId=profile.Id};
+                if(profile.Id=="e-bao"&&OfficialCompanionBundle.Ebao!=null){
+                    var bundle=OfficialCompanionBundle.Ebao;SkinManifest manifest;using(var input=bundle.Open("pet.json"))manifest=ReadManifest(input);
+                    registered=new SkinDefinition(persona,bundle.Generation,manifest){BuiltinCharacterId="e-bao",Bundle=bundle,PackageHolidayCatalog=bundle.CreateHolidayCatalog(),PackageHolidaysChecked=true};embeddedFallback=registered;
+                }
                 if(profile.Id=="e-bao"&&registered.Embedded)embeddedFallback=registered;
                 if(resources.Contains("Dafeiyu.Bundled."+(profile.Id=="xiaobei"?"Xiaobei":profile.Id=="gugugaga"?"Gugugaga":"None")+".pet.json")){registered.FixtureEmbedded=true;registered.Bundled=true;}
                 officialRegistry[profile.Id]=registered;skins.Add(registered);
@@ -357,6 +362,12 @@ namespace Dafeiyu
         public static BitmapSource GetAvatar(SkinDefinition skin)
         {
             if(skin.IsPlaceholder)return OfficialAvatar(skin);
+            if(skin.Bundle!=null&&!String.IsNullOrEmpty(skin.Manifest.Avatar)){
+                string key=skin.Bundle.Generation+"/"+skin.Manifest.Avatar;
+                lock(avatars){BitmapSource cached;if(avatars.TryGetValue(key,out cached))return cached;
+                    using(var stream=skin.Bundle.Open(skin.Manifest.Avatar)){var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.DecodePixelWidth=256;image.StreamSource=stream;image.EndInit();image.Freeze();if(avatars.Count>=24)avatars.Clear();avatars[key]=image;return image;}}
+            }
+
             if(skin.Illustrated && !String.IsNullOrEmpty(skin.Manifest.Avatar)) {
                 string path=IllustratedPack.AssetPath(skin.Source,skin.Manifest.Avatar);
                 lock(avatars) { BitmapSource cached;if(avatars.TryGetValue(path,out cached))return cached;
@@ -406,7 +417,7 @@ namespace Dafeiyu
         }
         public static BitmapSource GetPreview(SkinDefinition skin)
         {
-            if(skin.Illustrated) return IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,skin.Manifest.Preview),480,520);
+            if(skin.Illustrated) return skin.ReadImage(skin.Manifest.Preview,480,520);
             using(Stream stream=skin.Embedded ? Assembly.GetExecutingAssembly().GetManifestResourceStream(skin.Preview) : File.OpenRead(skin.Source))
             {
                 if(stream==null) throw new InvalidOperationException(TextResources.Get("skinCatalog.getPreview.text"));

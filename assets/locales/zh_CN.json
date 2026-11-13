@@ -5058,5 +5058,8 @@
   "notificationSounds.help": "重要事件播放短音，免打扰时静音。",
   "greeting.proactive": "主动问候",
   "greeting.autoRead": "自动朗读",
-  "greeting.autoReadHelp": "跟随朗读开关，免打扰时静音。"
+  "greeting.autoReadHelp": "跟随朗读开关，免打扰时静音。",
+  "companions.install.preparing": "正在为{0}安装最新角色包…",
+  "companions.install.failed": "{0}安装失败，可以重试。",
+  "companions.install.reselect": "{0}已准备好。当前正在忙，请空闲后重新选择。"
 }

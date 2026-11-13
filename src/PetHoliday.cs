@@ -83,7 +83,7 @@ namespace Dafeiyu
             holidayPlayback.Cancel();holidayTransition.FinishImmediately();holidayTransition.TakeCommit();
             holidayCommitted=holidayTarget=null;holidaySourceKey=holidayFailedKey=null;
             holidayAssets=new HolidayVisualAssets(open);
-            Holidays=controller??new HolidayController(new HolidayCalendar(),new HolidayCatalog(),new HolidayStateStore(Path.Combine(Store.DirectoryPath,"holiday-state.json")));
+            Holidays=controller??new HolidayController(new HolidayCalendar(),OfficialCompanionBundle.Ebao==null?new HolidayCatalog():OfficialCompanionBundle.Ebao.CreateHolidayCatalog(),new HolidayStateStore(Path.Combine(Store.DirectoryPath,"holiday-state.json")));
             Holidays.Changed+=HolidayChanged;
             var surface=image as HolidayPetImage;if(surface!=null){surface.DrawClouds=DrawHolidayClouds;surface.FrameRendered=HolidayFrameRendered;}
             RefreshHoliday();if(!Skin.IsOfficial){var restore=RestoreLocalOutfitsAsync();}
@@ -167,7 +167,7 @@ namespace Dafeiyu
             if(Holidays==null)return false;RefreshHoliday();
             var ticket=Holidays.TryBeginHover(random.NextDouble());if(ticket==null)return false;
             var outfit=Holidays.EffectiveOutfit;
-            try {if(Skin.Snapshot!=null&&!ReferenceEquals(WpfPreparedCompanion.ReadyHoliday(ticket.Clip,outfit.FindClip("idle","default")),ticket.Clip)){Holidays.CancelHover();return false;}holidayAssets.Get(ticket.Clip);holidayPlayback.Start(ticket);DismissGreeting();UpdateFrame();return holidayPlayback.Active;}
+            try {if((Skin.Snapshot!=null||Skin.Bundle!=null)&&!ReferenceEquals(WpfPreparedCompanion.ReadyHoliday(ticket.Clip,outfit.FindClip("idle","default")),ticket.Clip)){Holidays.CancelHover();return false;}holidayAssets.Get(ticket.Clip);holidayPlayback.Start(ticket);DismissGreeting();UpdateFrame();return holidayPlayback.Active;}
             catch(Exception error){if(!HolidayAssetError(error))throw;RejectHolidayOutfit(outfit);return false;}
         }
         void HolidayFrameRendered()
@@ -202,12 +202,12 @@ namespace Dafeiyu
                         bool original=interaction.Active?originalInteraction:originalAction;
                         bool alternate=!original && outfit.FindClip(action,"alternate")!=null && (AdditionalInteractions.Has(Skin,action));
                         spec=outfit.FindClip(action,alternate?"alternate":"default");
-                        if(Skin.Snapshot!=null)spec=WpfPreparedCompanion.ReadyHoliday(spec,outfit.FindClip("idle","default"));
+                        if((Skin.Snapshot!=null||Skin.Bundle!=null))spec=WpfPreparedCompanion.ReadyHoliday(spec,outfit.FindClip("idle","default"));
                         if(spec==null)return false;var clip=holidayAssets.Get(spec);double elapsed=interaction.Active?interaction.Elapsed:Animation.Elapsed;
                         sample=clip.Sample(elapsed);
                     }
                 }
-                if(Skin.Snapshot!=null)spec=WpfPreparedCompanion.ReadyHoliday(spec,outfit.FindClip("idle","default"));
+                if((Skin.Snapshot!=null||Skin.Bundle!=null))spec=WpfPreparedCompanion.ReadyHoliday(spec,outfit.FindClip("idle","default"));
                 if(spec==null)return false;var visual=holidayAssets.Get(spec);sample=Math.Max(0,Math.Min(visual.Count-1,sample));
                 if(shownMotion==visual && shownSample==sample && shownWidth==Width && shownHeight==Height)return true;
                 WpfPreparedCompanion.PinFrame(visual);shownMotion=visual;shownSample=sample;shownRow=interaction.Active?interaction.Row:Animation.Row;shownCol=sample;shownSupplemental=interaction.Active;

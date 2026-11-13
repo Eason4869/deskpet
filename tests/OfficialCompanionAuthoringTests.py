@@ -63,6 +63,7 @@ class AuthoringTests(unittest.TestCase):
                 with patch.object(authoring,'check_png'),patch.object(authoring,'check_manifest'):
                     authoring.collect_role(repo,defaults,destination,role,'0.10.5-dev.3')
                 final=authoring.read_json(destination/'pet.json')
+                self.assertIs(type(final['animations']['idle']['fps']), float, 'canonical published idle fps must remain JSON float 4.0')
                 for group,action,sheet in (('animations','idle','idle'),('animations','sleeping','sleeping'),('alternate_animations','sleeping','sleeping-alternate')):
                     selected=final[group][action]
                     self.assertEqual((8,8,4 if action=='idle' else 2.5,True),(selected['columns'],selected['frames'],selected['fps'],selected['loop']))

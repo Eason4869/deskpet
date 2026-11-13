@@ -23,7 +23,7 @@ internal sealed partial class DesktopController
         var ms=companionClocks.TryGetValue(token,out var clock)?clock.Elapsed.TotalMilliseconds:0;
         CompanionSelectionUpdate.WriteTrace($"Companion request={token} stage={stage} cache={cached} ms={ms:F1}");
         CurrentCompanionSelection=new CompanionSelectionUpdate(token,skin.PickerKey,origin.ToString(),stage,ms,cached,progress!);
-        CompanionSelectionChanged?.Invoke(CurrentCompanionSelection);
+        PresentCompanionInstallation(CurrentCompanionSelection);CompanionSelectionChanged?.Invoke(CurrentCompanionSelection);
     }
     internal void CancelCompanionSelection(long token){if(officialCompanions.OwnsSelection(token))companionSelection?.Cancel();}
     internal void CompanionFirstFrameRendered()
@@ -93,6 +93,9 @@ internal sealed partial class DesktopController
     }
     private (PetSkin Skin,HolidayCatalog Catalog) ReadSnapshot(OfficialCompanionSnapshot snapshot,string persona)
     {
+        if(snapshot.Installation.Asset.Id=="e-bao"&&SpriteAssets.BundledEbao is { } bundle&&bundle.PrefersBundle(snapshot.Installation.Asset.Version)){
+            snapshot.Dispose();var bundledSkin=SpriteAssets.ReadBundledEbao(persona);return (bundledSkin,bundledSkin.PackageHolidayCatalog!);
+        }
         lock(preparedCompanions){
             if(preparedCompanions.TryGetValue(snapshot.Installation.Asset.Id,out var existing)&&existing.Skin.Snapshot?.Generation==snapshot.Generation){snapshot.Dispose();return existing;}
         }
@@ -113,7 +116,7 @@ internal sealed partial class DesktopController
         var snapshot=await Task.Run(()=>officialCompanions.CaptureLocalSnapshot(entry.OfficialCharacterId!,cancel),cancel);
         if(snapshot==null)return null;
         // Application-pinned E must never be downgraded by an older installed copy.
-        if(entry.OfficialCharacterId=="e-bao"&&ReleaseVersion.TryParse(entry.PackVersion,out var bundled)&&ReleaseVersion.TryParse(snapshot.Installation.Asset.Version,out var installed)&&installed.CompareTo(bundled)<0){snapshot.Dispose();return null;}
+        if(entry.OfficialCharacterId=="e-bao"&&SpriteAssets.BundledEbao is { } bundled&&bundled.PrefersBundle(snapshot.Installation.Asset.Version)){snapshot.Dispose();return null;}
         return await Task.Run(()=>ReadSnapshot(snapshot,entry.Id));
     }
     private HolidayCatalog? embeddedHolidayCatalog;
@@ -168,6 +171,7 @@ internal sealed partial class DesktopController
             if(requested.OfficialCharacterId==null&&requested.PackageId!=null&&requested.Folder!=null&&OfficialCompanionRules.Ids.Contains(requested.PackageId)){
                 nextCatalog=await Task.Run(()=>{var root=Path.Combine(requested.Folder,"holidays");if(!Directory.Exists(root))return null;var catalog=new HolidayCatalog(root);if(!string.IsNullOrEmpty(catalog.Warning)||catalog.Outfits.Any(o=>!o.Ready||o.CharacterId!=requested.PackageId))throw new InvalidDataException("Invalid companion wardrobe.");return catalog;},cancellation.Token);
             }
+            if(next.Bundle!=null)nextCatalog=next.PackageHolidayCatalog;
             preparedPins??=await Task.Run(()=>companionAssets.Prepare(next),cancellation.Token);
             if(nextCatalog!=null){
                 var outfit=Holidays.PreviewOutfit(next.OutfitCharacterId!,next.PickerKey,Pet.HolidayLocalNow(),nextCatalog);
@@ -215,8 +219,12 @@ internal sealed partial class DesktopController
         long order = ++appearanceOperation;
         try
         {
-            var result=await officialCompanions.UpdateAsync(id,CompanionRouting(),companionLifetime.Token,mode);
+            var result=await officialCompanions.UpdateAsync(id,CompanionRouting(),companionLifetime.Token,mode,id=="e-bao"?SpriteAssets.BundledEbao?.Version:null);
             if(exiting)return;
+            if(result==null){
+                if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&officialCompanions.OwnsSelection(token)&&Settings.SelectedCompanionKey=="official:"+id){Settings.LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion;Save();}
+                return;
+            }
             var next=await Task.Run(()=>ReadPublished(result.Installation,Skins.First(s=>s.OfficialCharacterId==id).Id),companionLifetime.Token);
             if(!officialCompanions.OwnsSelection(token)||!ReferenceEquals(Skin,previous))return;
             if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&!result.UsedOfflineFallback&&Settings.SelectedCompanionKey==next.Skin.PickerKey){Settings.LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion;Save();}

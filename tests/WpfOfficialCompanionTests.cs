@@ -47,8 +47,66 @@ namespace Dafeiyu.Tests
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
+        }
+        static void InstallationStatusChecks()
+        {
+            var status=new CompanionInstallationStatus();Action<long,string,string> send=(r,key,stage)=>status.Accept(new CompanionSelectionUpdate(r,key,"Settings",stage,0));
+            send(1,"official:dafeiyu","requested");Check(!status.Active,"usable local selection has no installation presentation");
+            send(1,"official:dafeiyu","installing");Check(status.Visible(true)&&!status.Visible(false)&&status.CanCancel&&!status.CanRetry,"install shows passive state only while pet visible");
+            status.Dismiss();send(1,"official:dafeiyu","progress");Check(!status.Visible(true)&&status.CanCancel,"close hides request without cancelling it");
+            send(1,"official:dafeiyu","failed");Check(status.CanRetry&&!status.CanCancel&&!status.Visible(true),"failure exposes retry but does not reopen dismissed bubble");
+            send(2,"official:marfu","requested");send(2,"official:marfu","installing");send(1,"official:dafeiyu","completed");Check(status.Request==2&&status.Visible(true),"new intent resets dismissal and rejects stale completion");
+            send(2,"official:marfu","reselect-required");Check(status.Active&&!status.CanCancel&&!status.CanRetry&&status.Text.Length>0,"busy completion explains explicit reselect without queuing");
+            send(3,"official:marfu","requested");send(3,"official:marfu","installing");send(3,"official:marfu","committed");Check(!status.Active,"committed install dismisses progress before sound owned render completion");
+            status.Accept(new CompanionSelectionUpdate(4,"official:marfu","StartupRestore","requested",0));status.Accept(new CompanionSelectionUpdate(4,"official:marfu","StartupRestore","installing",0));Check(!status.Active,"startup restore never presents installation bubble");
+            send(5,"official:marfu","requested");send(5,"official:marfu","installing");send(5,"official:marfu","cancelled");Check(!status.Active,"cancel removes install presentation");
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            string data=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bubble-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(data);PetWindow pet=null;CompanionInstallationBubble bubble=null;
+            try {
+                pet=new PetWindow(null,new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(data,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);
+                bubble=new CompanionInstallationBubble(pet);bubble.Accept(new CompanionSelectionUpdate(1,"official:dafeiyu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(1,"official:dafeiyu","Settings","installing",0));bubble.RenderStatus();Check(!bubble.IsVisible,"hidden pet does not expose installation window");
+                pet.Show();Pump();bubble.RenderStatus();Check(bubble.IsVisible&&bubble.ShowActivated==false,"visible pet uses nonactivating independent status window");CaptureBubble(bubble,"task-3-installing.png");
+                var close=Descendants(bubble).OfType<Button>().First(b=>b.Name=="DismissCompanionInstallation");close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));bubble.Accept(new CompanionSelectionUpdate(1,"official:dafeiyu","Settings","progress",0));bubble.RenderStatus();Check(!bubble.IsVisible&&bubble.Status.CanCancel,"UI close preserves request through later progress");
+                bubble.Accept(new CompanionSelectionUpdate(2,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(2,"official:marfu","Settings","installing",0));bubble.Accept(new CompanionSelectionUpdate(2,"official:marfu","Settings","failed",0));bubble.RenderStatus();Check(bubble.IsVisible&&Descendants(bubble).OfType<Button>().First(b=>b.Name=="RetryCompanionInstallation").IsVisible,"new failed install offers retry in native bubble");CaptureBubble(bubble,"task-3-failed.png");bubble.Close();bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(3,"official:marfu","Settings","installing",0));bubble.RenderStatus();Check(bubble.IsVisible,"system close hides presentation and permits a later new request");
+            }finally{if(bubble!=null)bubble.Shutdown();if(pet!=null)pet.Close();Pump();Directory.Delete(data,true);}
+        }
+        static void CaptureBubble(Window window,string name){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name)))png.Save(output);}
+        static System.Collections.Generic.IEnumerable<DependencyObject> Descendants(DependencyObject root){for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++){var child=System.Windows.Media.VisualTreeHelper.GetChild(root,i);yield return child;foreach(var nested in Descendants(child))yield return nested;}}
+        static void BundledEbaoChecks()
+        {
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bundle-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            try {
+                var catalog=new SkinCatalog(root);var skin=catalog.FindOfficial("e-bao");Check(skin.Illustrated&&skin.Bundle!=null,"production E uses separate illustrated resources");
+                var bundle=skin.Bundle;Check(bundle.Paths.Count()==354&&skin.PackageHolidayCatalog.Outfits.Count==10,"complete embedded source contains ten matching outfits");
+                Check(bundle.PrefersBundle("0.11.0-dev.3")&&!bundle.PrefersBundle("9.0.0"),"bundle floor rejects older and preserves newer compatible versions");
+                using(WpfPreparedCompanion.Hold(skin)){skin.PreparedOfficialAtlas=skin.Load();var clip=WpfPreparedCompanion.Load(skin,skin.Manifest.Animations["idle"]);Check(skin.PreparedOfficialAtlas.DecodedBytes<32L*1024*1024&&clip.Count==8,"E uses bounded idle and gaze instead of legacy full atlas");}
+                Check(!Directory.GetDirectories(root,"*",SearchOption.AllDirectories).Any(p=>p.Contains("versions")||p.Contains("bundled-skins")),"embedded selection extracts no package into user cache");
+                var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);
+                    var install=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
+                    var pet=new PetWindow(null,new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(root,"settings.json")),null);
+                    try {
+                        Field("officialStartupStarted").SetValue(pet,true);Check(pet.Holidays.Catalog.Outfits.Count(o=>o.CharacterId=="e-bao")==10,"startup exposes all bundled E outfits");Check(pet.Skin.Bundle!=null,"startup chooses bundle before caching an older installed E");
+                        var sources=(System.Collections.IDictionary)Field("officialSources").GetValue(pet);Check(!sources.Contains("e-bao")||((SkinDefinition)sources["e-bao"]).Bundle!=null,"older installed E is never retained in prepared source cache");
+                        var select=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null);Wait(select);Check(select.Result&&pet.Skin.Bundle!=null,"explicit E reselect cannot reactivate rejected older installation");
+                        var method=typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(OfficialCompanionInstallation),typeof(bool)},null);
+                        var background=(Task<SkinDefinition>)method.Invoke(pet,new object[]{install.Result.Installation,true});Wait(background);Check(background.Result.Bundle!=null,"background publication also honors bundled version floor");
+                        ((OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet)).Dispose();Field("officialDownloads").SetValue(pet,downloads);
+                        int packages=fixture.Packages;long token=downloads.BeginSelection();
+                        var refresh=(Task<bool>)typeof(PetWindow).GetMethod("RefreshOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{"e-bao",token,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate});Wait(refresh);
+                        Check(refresh.Result&&fixture.Packages==packages&&pet.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion,"WPF background check uses bundle baseline without downloading older remote E");
+                        var installed=install.Result.Installation;string json=Path.Combine(installed.RootDirectory,"pet.json");File.WriteAllText(json,File.ReadAllText(json).Replace(OfficialCompanionFixture.Version,"9.0.0"));
+                        var entries=Directory.GetFiles(installed.RootDirectory,"*",SearchOption.AllDirectories).Where(f=>!f.EndsWith("receipt.json")).ToDictionary(f=>f.Substring(installed.RootDirectory.Length+1).Replace('\\','/'),f=>new OfficialCompanionFile(new FileInfo(f).Length,OfficialCompanionSnapshot.Digest(File.ReadAllBytes(f))));
+                        var asset=new OfficialCompanionAsset("e-bao","E","9.0.0","0.10.3-dev.1","v9.0.0","new.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
+                        var snapshot=new OfficialCompanionSnapshot(new OfficialCompanionInstallation(asset,installed.RootDirectory),entries,"newer-E",root,null);
+                        var prepare=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareSnapshotAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{snapshot,CancellationToken.None});Wait(prepare);Check(prepare.Result.Snapshot==snapshot&&prepare.Result.Bundle==null,"newer compatible installed E wins over application bundle");
+                    }finally{pet.Close();Pump();}
+                }
+
+            }finally{try{Directory.Delete(root,true);}catch(IOException){}}
         }
         static void ReviewFailurePaths()
         {

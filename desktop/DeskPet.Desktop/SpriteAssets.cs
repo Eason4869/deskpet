@@ -20,6 +20,7 @@ internal sealed class PetSkin
     public bool IsPlaceholder { get; set; }
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
     internal OfficialCompanionSnapshot? Snapshot { get; set; }
+    internal OfficialCompanionBundle? Bundle {get;set;}
     public string? BuiltinCharacterId { get; set; }
     internal HolidayCatalog? PackageHolidayCatalog { get; set; }
     internal string? OutfitCharacterId => OfficialCharacterId ?? BuiltinCharacterId ?? (PackageHolidayCatalog != null ? PackageId : null);
@@ -159,6 +160,7 @@ internal sealed class SpriteAssets : IDisposable
                     else skin = new PetSkin { Id = persona, Name = profile.Name, Prompt = profile.SystemPrompt, Description = profile.Description, Voices = profile.VoicePresets, SpecialAction = profile.SpecialAction, SpecialAction2 = profile.SpecialAction2, IsPlaceholder = true };
                 }
             }
+            if(profile.Id=="e-bao"&&BundledEbao!=null)skin=ReadBundledEbao(persona);
             skin.CanonicalBuiltIn = skin.BuiltIn && !skin.IsPlaceholder;
             skin.OfficialCharacterId = skin.BuiltinCharacterId = profile.Id; skin.PickerKey = "official:" + profile.Id;
             skin.Avatar = skin.Folder == null ? skin.Avatar ?? "avatars/" + profile.Id + ".png" : skin.Avatar;
@@ -259,6 +261,13 @@ internal sealed class SpriteAssets : IDisposable
         var hold = clip.TryGetProperty("hold_last_seconds", out var value) ? value.GetDouble() : 0;
         if (!double.IsFinite(hold) || hold < 0 || hold > 2 || hold != 0 && (action != "jumping" || loop)) throw new InvalidDataException(TextResources.Get("spriteAssets.readHold.text"));
         return hold;
+    }
+    internal static OfficialCompanionBundle? BundledEbao => AssetLoader.Exists(new Uri("avares://DeskPet/Assets/spritesheet.png"))?null:OfficialCompanionBundle.Ebao;
+    internal static PetSkin ReadBundledEbao(string persona)
+    {
+        var bundle=OfficialCompanionBundle.Ebao;using var source=bundle.Open("pet.json");var skin=ReadManifest(source,persona,null);
+        skin.Bundle=bundle;skin.SourceKey=bundle.Generation;skin.PackageHolidayCatalog=bundle.CreateHolidayCatalog();skin.CanonicalBuiltIn=true;
+        skin.OfficialCharacterId=skin.BuiltinCharacterId="e-bao";skin.PickerKey="official:e-bao";return skin;
     }
     internal static PetSkin ReadOfficial(OfficialCompanionSnapshot snapshot, string personaId)
     {
@@ -381,7 +390,7 @@ internal sealed class SpriteAssets : IDisposable
         finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
     }
     public Bitmap Get(PetSkin skin, string path) => GetImage(ImageKey(skin, path), () => path.StartsWith("holiday|", StringComparison.Ordinal)
-        ? OpenHoliday(path.Split('|')[2]) : skin.Snapshot != null ? new MemoryStream(skin.Snapshot.ReadVerifiedBytes(path),false) : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null)));
+        ? OpenHoliday(path.Split('|')[2]) : skin.Bundle != null ? skin.Bundle.Open(path) : skin.Snapshot != null ? new MemoryStream(skin.Snapshot.ReadVerifiedBytes(path),false) : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null)));
     private Stream OpenHoliday(string resource) => openHoliday != null ? openHoliday(resource) : typeof(HolidayCatalog).Assembly.GetManifestResourceStream(resource) ?? throw new InvalidDataException(TextResources.Get("spriteAssets.openHoliday.text"));
     public Bitmap Get(PetSkin skin, ClipSpec clip) => clip.HolidaySource is { } source
         ? GetImage(clip.File, () => openHoliday != null ? openHoliday(source.ResourceName) : source.OpenResource() ?? throw new InvalidDataException(TextResources.Get("spriteAssets.get.getImage")))
@@ -430,7 +439,7 @@ internal sealed class SpriteAssets : IDisposable
     private readonly HashSet<string> pendingClips=new(StringComparer.Ordinal), failedClips=new(StringComparer.Ordinal);
     internal ClipSpec Ready(PetSkin skin,ClipSpec clip)
     {
-        if(skin.Snapshot==null)return clip;
+        if(skin.Snapshot==null&&skin.Bundle==null)return clip;
         var key=ImageKey(skin,clip.File);
         lock(assetGate){
             if(images.ContainsKey(key)&&!failedClips.Contains(key))return clip;
@@ -467,7 +476,7 @@ internal sealed class SpriteAssets : IDisposable
             var clip = outfit.FindClip(action, useAlternate ? "alternate" : "default") ?? throw new InvalidDataException(TextResources.Get("spriteAssets.resolve.clipOutfitFindClip"));
             return OutfitClip(outfit, clip);
         }
-        var quiet = skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
+        var quiet = skin.Bundle==null && skin.BuiltIn && skin.CanonicalBuiltIn ? CompanionQuietClips.Find(skin.OfficialCharacterId, action, original) : null;
         if (quiet != null) return new ClipSpec(quiet.Path, quiet.Columns, quiet.Frames, quiet.Fps, quiet.Loop, quiet.Width, quiet.Height);
         if (!original && skin.Alternates.TryGetValue(action, out var alternate)) return alternate;
         if (!original && action == "jumping" && skin.BuiltIn && (skin.OfficialCharacterId ?? skin.Id) == "e-bao")

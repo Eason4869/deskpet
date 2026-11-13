@@ -259,7 +259,7 @@ namespace Dafeiyu
             if(String.IsNullOrEmpty(savedCompanionKey))savedCompanionKey=Skin.PickerKey;
             Skin=RestoreCachedStartupCompanion(Skin);
             if(Skin.IsPlaceholder){companionFallback=true;Settings.PendingOfficialCompanionId="";PersonaProfiles.SaveVoices(Settings);if(!String.IsNullOrWhiteSpace(Settings.SystemPrompt)&&Settings.PersonaProfileVersion>0)Settings.PersonaOverrides[Settings.SkinId]=Settings.SystemPrompt;Skin=Catalog.EmbeddedFallback();}
-            try { atlas=Skin.Load(); }
+            try { if(Skin.Bundle!=null)Task.Run(()=>PrepareDefault(Skin)).GetAwaiter().GetResult();atlas=Skin.Load(); }
             catch {companionFallback=true;if(Skin.IsOfficial)Settings.PendingOfficialCompanionId="";Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
             WpfPreparedCompanion.Prepared+=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed+=DefaultCompanionFailed;WpfPreparedCompanion.Activate(Skin);interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
             PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);ProactiveCompanionChanged(Skin.Id);Settings.SelectedCompanionKey=companionFallback&&!String.IsNullOrEmpty(savedCompanionKey)?savedCompanionKey:Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
@@ -319,7 +319,7 @@ namespace Dafeiyu
             tray.MouseUp+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Right)Dispatcher.BeginInvoke(new Action(ShowTrayMenu));};
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
-            InitializeRelationshipFeedback();InitializeHoliday();InitializeHolidayKeepsakes();if(Skin.OfficialInstallation!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
+            InitializeRelationshipFeedback();InitializeHoliday();InitializeHolidayKeepsakes();if(Skin.OfficialInstallation!=null||Skin.Bundle!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
             IsVisibleChanged+=delegate { Relationships.InvalidateFeedback();RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
         }
         private void RefreshRendering()

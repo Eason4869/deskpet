@@ -154,6 +154,7 @@ Source layout: `src/` contains Windows WPF and shared business logic; `desktop/`
 From PowerShell at the repository root, build Windows with an explicit output directory inside the repository:
 
 ```powershell
+python -m pip install Pillow
 .\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
 ```
 
@@ -164,3 +165,5 @@ Windows uses the system .NET Framework compiler and System.Speech. Docker is not
 Author: **彧晟Eason**. Artwork, platform identifiers, fonts and dependencies have their own sources and licenses. See [artwork and platform sources](docs/sources.md) and [third-party notices](docs/third-party-notices.md). Provider identifiers do not imply a partnership or endorsement.
 
 The repository currently has no standalone LICENSE covering the entire project. Publicly viewable source does not make third-party component licenses apply to the whole project. Confirm authorization with the author before redistribution or commercial use.
+
+Production builds embed the complete pinned Ebao pack. Python and Pillow prepare and validate it before WPF compilation; runtime reads only demanded ZIP entries. Before an Avalonia production build, run `python tools/prepare_bundled_ebao.py` on Windows. On macOS, pass `--package` with the matching Windows-authored Ebao ZIP; see [macOS packaging](installer/macos/README.md).
