@@ -31,10 +31,16 @@ namespace Dafeiyu
             retry=LocalizedUi.Button(()=>TextResources.Get("common.retry"));retry.Name="RetryCompanionInstallation";retry.Click+=async delegate{var skin=pet.Catalog.FindPicker(status.PickerKey);if(skin!=null)await pet.RequestSkinAsync(skin,(CompanionSelectionOrigin)Enum.Parse(typeof(CompanionSelectionOrigin),status.Origin),null);};actions.Children.Add(retry);body.Children.Add(actions);
             root.Children.Add(new Border{Child=body,CornerRadius=new CornerRadius(18),BorderThickness=new Thickness(1),BorderBrush=Ui.Line,Background=ThemeManager.Surface});tail=new Polygon{Fill=ThemeManager.Surface,Stroke=Ui.Line,StrokeThickness=1};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
             SourceInitialized+=delegate{DesktopInterop.MakeToolWindow(new WindowInteropHelper(this).Handle);};
-            timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)};timer.Tick+=delegate{RenderStatus();};timer.Start();Closing+=delegate(object sender,System.ComponentModel.CancelEventArgs args){if(!shuttingDown){args.Cancel=true;status.Dismiss();Hide();}};Closed+=delegate{timer.Stop();};
+            timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)};timer.Tick+=delegate{RenderStatus();};Closing+=delegate(object sender,System.ComponentModel.CancelEventArgs args){if(!shuttingDown){args.Cancel=true;status.Dismiss();Hide();}};Closed+=delegate{timer.Stop();};
         }
         internal void Shutdown(){shuttingDown=true;Close();}
-        internal void Accept(CompanionSelectionUpdate update){status.Accept(update);if(!timer.IsEnabled)timer.Start();}
+        internal void Accept(CompanionSelectionUpdate update)
+        {
+            bool wasActive=status.Active;string previousStage=status.Stage;status.Accept(update);
+            // Lifecycle feedback is immediate; only continuous progress waits for the timer.
+            if(status.Active!=wasActive||(status.Stage!=previousStage&&status.Stage!="progress"))RenderStatus();
+            if(status.Active&&!timer.IsEnabled)timer.Start();
+        }
         internal void RenderStatus()
         {
             var text=status.Text;if(text!=previousText){previousText=text;message.Text=text;pet.ShowCompanionInstallationStatus(status.Origin,text);}

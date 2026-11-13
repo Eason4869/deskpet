@@ -27,10 +27,16 @@ internal sealed class CompanionInstallationBubble : Window
         var body=new Border{CornerRadius=new CornerRadius(18),Padding=new Thickness(16,10),Background=DesktopTheme.Brush("#FAFAFB"),BorderBrush=DesktopTheme.Brush("#DDDEE1"),BorderThickness=new Thickness(1),Child=Ui.Column(close,message,Ui.Row(cancel,retry))};
         var root=new Grid{RowDefinitions=new RowDefinitions("Auto,14")};root.Children.Add(body);
         var tail=new Avalonia.Controls.Shapes.Polygon{Points=new Avalonia.Collections.AvaloniaList<Point>{new(158,0),new(170,13),new(182,0)},Fill=DesktopTheme.Brush("#FAFAFB")};Grid.SetRow(tail,1);root.Children.Add(tail);Content=root;
-        timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)};timer.Tick+=(_,_)=>RenderStatus();timer.Start();Closing+=(_,args)=>{if(!shuttingDown){args.Cancel=true;Status.Dismiss();Hide();}};Closed+=(_,_)=>timer.Stop();
+        timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(250)};timer.Tick+=(_,_)=>RenderStatus();Closing+=(_,args)=>{if(!shuttingDown){args.Cancel=true;Status.Dismiss();Hide();}};Closed+=(_,_)=>timer.Stop();
     }
     internal void Shutdown(){shuttingDown=true;Close();}
-    internal void Accept(CompanionSelectionUpdate update){Status.Accept(update);if(!timer.IsEnabled)timer.Start();}
+    internal void Accept(CompanionSelectionUpdate update)
+    {
+        bool wasActive=Status.Active;string? previousStage=Status.Stage;Status.Accept(update);
+        // Lifecycle feedback is immediate; only continuous progress waits for the timer.
+        if(Status.Active!=wasActive||(Status.Stage!=previousStage&&Status.Stage!="progress"))RenderStatus();
+        if(Status.Active&&!timer.IsEnabled)timer.Start();
+    }
     internal void RenderStatus()
     {
         string text=Status.Text;if(text!=previousText){previousText=text;message.Text=text;owner.ShowCompanionInstallationStatus(Status.Origin,text);}
