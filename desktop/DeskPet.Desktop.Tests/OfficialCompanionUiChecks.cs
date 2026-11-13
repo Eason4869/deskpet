@@ -268,7 +268,7 @@ internal static class OfficialCompanionUiChecks
             Check(assets.RetainedPixelBytes <= 64L*1024*1024, "retired source switches keep bitmap and alpha cache bounded");
         }
         var root = Path.Combine(directory, "package"); Directory.CreateDirectory(root);
-        var installation = CreatePackage(root, "e-bao", first.Root);
+        var installation = CreatePackage(root, "e-bao", first.Root,packVersion:"9.0.0");
         var holidays = installation.HolidayRootDirectory;
         OfficialCompanionPackageValidation.Validate(root, installation.Asset, CancellationToken.None);
         Check(true, "native fixture also satisfies complete trusted pure package validation");
@@ -312,13 +312,13 @@ internal static class OfficialCompanionUiChecks
             using var installedOwner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(installedData), officialSourceFactory: _ => installedSource);
             installedOwner.Settings.OnboardingState = "completed";
             var embedded = installedOwner.Skin;
-            Check(embedded.Folder==root, "constructor restores compatible installed E with bounded default preparation");
+            Check(embedded.Folder==root, "constructor restores newer compatible installed E with bounded default preparation");
             var startup = (Task)typeof(DesktopController).GetMethod("StartOfficialCompanionsAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(installedOwner, null)!;
             Complete(startup);
             Check(installedOwner.Skin.Folder==root&&installedSource.Calls==0,"installed E startup remains offline across restart");
             installedSource.Result.TrySetResult(new OfficialCompanionResult(installation,true,false,false,""));
             Complete(installedOwner.SelectSkinAsync(embedded, CompanionSelectionOrigin.PetMenu));
-            Check(installedOwner.Skin.Folder == root, "reselecting embedded E still prefers its verified installed full package");
+            Check(installedOwner.Skin.Folder == root, "reselecting embedded E still prefers its newer verified installed full package");
             Finish(installedOwner);
         }
         using var bad = new HolidayReviewChecks.Fixture(Path.Combine(directory, "bad-idat"), "e-bao", "feeding", false);
@@ -363,7 +363,7 @@ internal static class OfficialCompanionUiChecks
         Check(!owner.Skins.Any(s => s.PickerKey == entry.PickerKey), "late inactive refresh also respects hidden membership");
         Finish(owner); return checks;
     }
-    private static OfficialCompanionInstallation CreatePackage(string root, string role, string holidayRoot,bool coldAction=false)
+    private static OfficialCompanionInstallation CreatePackage(string root, string role, string holidayRoot,bool coldAction=false,string packVersion="0.10.3-dev.1")
     {
         Directory.CreateDirectory(root);
         var profile = OfficialCompanionProfiles.Find(role)!;
@@ -377,15 +377,15 @@ internal static class OfficialCompanionUiChecks
         var extras = new[] { "stumble", "special2" }.ToDictionary(action => action, _ => Clip("normal.png"));
         var alternateNames = SpriteAssets.PairedActions.Concat(role is "e-bao" or "gugugaga" ? new[] { "jumping" } : Array.Empty<string>());
         var alternates = alternateNames.ToDictionary(action => action, _ => Clip("normal.png"));
-        File.WriteAllText(Path.Combine(root, "pet.json"), JsonSerializer.Serialize(new { version = 2, id = role, pack_version = "0.10.3-dev.1", name = profile.Name, format = "illustrated-atlases-v1", system_prompt = profile.SystemPrompt, description = profile.Description, special_action = profile.SpecialAction, special_action2 = profile.SpecialAction2, voice_presets = new { speech = new[] { "nova" }, live = new[] { "Puck" } }, cell_width = 480, cell_height = 520, animations = normal, extra_animations = extras, alternate_animations = alternates, gaze = new { file = "gaze.png", columns = 4, frames = 16, interpolation = "none", order = "clockwise-from-up" }, avatar = "avatar.png", preview = "preview.png" }));
-        File.WriteAllText(Path.Combine(root, "companions.json"), JsonSerializer.Serialize(new { schema_version = 1, id = role, name = profile.Name, version = "0.10.3-dev.1", min_app_version = "0.10.3-dev.1" }));
+        File.WriteAllText(Path.Combine(root, "pet.json"), JsonSerializer.Serialize(new { version = 2, id = role, pack_version = packVersion, name = profile.Name, format = "illustrated-atlases-v1", system_prompt = profile.SystemPrompt, description = profile.Description, special_action = profile.SpecialAction, special_action2 = profile.SpecialAction2, voice_presets = new { speech = new[] { "nova" }, live = new[] { "Puck" } }, cell_width = 480, cell_height = 520, animations = normal, extra_animations = extras, alternate_animations = alternates, gaze = new { file = "gaze.png", columns = 4, frames = 16, interpolation = "none", order = "clockwise-from-up" }, avatar = "avatar.png", preview = "preview.png" }));
+        File.WriteAllText(Path.Combine(root, "companions.json"), JsonSerializer.Serialize(new { schema_version = 1, id = role, name = profile.Name, version = packVersion, min_app_version = "0.10.3-dev.1" }));
         var holidays = Path.Combine(root, "holidays"); Directory.CreateDirectory(holidays);
         foreach (var file in new[] { "normal.png", "gaze.png", "preview.png", "outfit.json", "catalog.json" })
         {
             File.Copy(Path.Combine(holidayRoot, file), Path.Combine(holidays, file));
             if (file.EndsWith(".json", StringComparison.Ordinal)) File.WriteAllText(Path.Combine(holidays, file), File.ReadAllText(Path.Combine(holidays, file)).Replace("\"version\":\"1\"", "\"version\":\"1.0.0\"", StringComparison.Ordinal));
         }
-        var asset = new OfficialCompanionAsset(role, profile.Name, "0.10.3-dev.1", "0.10.3-dev.1", "v0.10.3-dev.1", "DeskPet-Companion-" + role + "-0.10.3-dev.1.zip", 1, new string('b', 64), new[] { new OfficialCompanionOutfit("halloween-2026", "1.0.0") });
+        var asset = new OfficialCompanionAsset(role, profile.Name, packVersion, "0.10.3-dev.1", "v"+packVersion, "DeskPet-Companion-" + role + "-"+packVersion+".zip", 1, new string('b', 64), new[] { new OfficialCompanionOutfit("halloween-2026", "1.0.0") });
         return new OfficialCompanionInstallation(asset, root);
     }
     internal static int RunStartupRestore(string directory)
