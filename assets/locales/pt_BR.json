@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "Instalando o pacote de personagem mais recente de {0}…",
   "companions.install.failed": "Não foi possível instalar {0}. Tente novamente.",
   "companions.install.reselect": "{0} está pronto. Selecione novamente quando terminar.",
-  "cache.preservedLatest": "Conversas, configurações, anexos, relações e projetos são mantidos. Após atualizações bem-sucedidas, instaladores e pacotes de personagens antigos são limpos automaticamente. São mantidos o instalador válido mais recente e a versão utilizável mais recente de cada personagem. Arquivos em uso ou incertos, atualizações incompletas e cópias de formato antigo continuam protegidos."
+  "cache.preservedLatest": "Conversas, configurações, anexos, relações e projetos são mantidos. Após atualizações bem-sucedidas, instaladores e pacotes de personagens antigos são limpos automaticamente. São mantidos o instalador válido mais recente e a versão utilizável mais recente de cada personagem. Arquivos em uso ou incertos, atualizações incompletas e cópias de formato antigo continuam protegidos.",
+  "operationSounds.help": "Sons suaves para eventos importantes de tarefas e ao mostrar, trocar ou ocultar o companheiro. Sem som no modo silencioso ou durante o uso de voz.",
+  "operationSounds.volume": "Volume dos sons de ação",
+  "operationSounds.appear": "Ouvir aparição",
+  "operationSounds.switch": "Ouvir troca",
+  "operationSounds.hide": "Ouvir ocultação"
 }

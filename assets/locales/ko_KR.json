@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "{0}의 최신 캐릭터 팩을 설치하는 중…",
   "companions.install.failed": "{0} 설치에 실패했습니다. 다시 시도할 수 있습니다.",
   "companions.install.reselect": "{0} 준비가 완료되었습니다. 작업이 끝나면 다시 선택해 주세요.",
-  "cache.preservedLatest": "채팅, 설정, 첨부 파일, 관계 및 프로젝트를 보존합니다. 업데이트 성공 후 이전 설치 파일과 캐릭터 팩을 자동 정리하고 최신 유효 설치 파일과 각 캐릭터의 최신 사용 가능한 버전을 유지합니다. 사용 중인 파일, 미완료 업데이트, 상태가 불확실한 파일과 이전 형식 사본은 보호합니다."
+  "cache.preservedLatest": "채팅, 설정, 첨부 파일, 관계 및 프로젝트를 보존합니다. 업데이트 성공 후 이전 설치 파일과 캐릭터 팩을 자동 정리하고 최신 유효 설치 파일과 각 캐릭터의 최신 사용 가능한 버전을 유지합니다. 사용 중인 파일, 미완료 업데이트, 상태가 불확실한 파일과 이전 형식 사본은 보호합니다.",
+  "operationSounds.help": "중요한 작업 알림과 친구 표시, 전환, 숨김 시 부드러운 소리를 재생합니다. 무음 모드나 음성 사용 중에는 재생하지 않습니다.",
+  "operationSounds.volume": "조작 효과음 볼륨",
+  "operationSounds.appear": "표시 소리 미리 듣기",
+  "operationSounds.switch": "전환 소리 미리 듣기",
+  "operationSounds.hide": "숨김 소리 미리 듣기"
 }

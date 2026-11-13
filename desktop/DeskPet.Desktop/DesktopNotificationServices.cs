@@ -8,17 +8,33 @@ namespace DeskPet.Desktop;
 internal sealed partial class DesktopController
 {
     NotificationSoundPlayer? notificationSounds;
+    readonly CompanionOperationGestures operationGestures=new();
+    bool operationLaunchObserved;
     TrayNotificationWindow? trayNotification;
     readonly ConditionalWeakTable<ConversationSession,object> notificationSessions=new();
     internal void StopNotificationSounds()=>notificationSounds?.Stop();
     internal bool NotificationAudioBusy=>ProactiveGreetingSpeechActive||Live.IsActive||Dictation.IsBusy||new[]{Session}.Concat(WorkBindings.Manager.OpenWorkspaces.Select(w=>w.Session)).Concat(ProactiveBindingsSnapshot().Select(b=>b.Session)).Any(s=>s.Stage==ConversationStage.Speaking);
-    void RefreshNotificationSounds(){if(Settings.QuietMode||!Settings.NotificationSoundsEnabled||Settings.Volume<=0||NotificationAudioBusy)StopNotificationSounds();}
+    internal void RefreshCompanionSoundSettings()=>RefreshNotificationSounds();
+    void RefreshNotificationSounds()=>notificationSounds?.Refresh();
+    NotificationSoundPlayer SoundPlayer()=>notificationSounds??=new NotificationSoundPlayer(()=>Settings,runtime.CreateLiveOutput,()=>NotificationAudioBusy);
+    internal void PreviewCompanionOperation(CompanionOperationCue cue)=>PlayCompanionOperation(cue,true);
+    void PlayCompanionOperation(CompanionOperationCue cue,bool preview=false)
+    {
+        if(exiting)return;
+        SoundPlayer().TryPlayOperation(cue,Guid.NewGuid().ToString("N"),preview);
+    }
+    void ObserveCompanionOperation(CompanionSelectionUpdate update){if(operationGestures.Selection(update,Pet.IsPetVisible))PlayCompanionOperation(CompanionOperationCue.Switch);}
+    internal void InvalidateCompanionOperation()=>operationGestures.VisibilityGesture();
+    void ObserveCompanionAppearance()
+    {
+        if(operationLaunchObserved||!Pet.IsPetVisible)return;operationLaunchObserved=true;
+        operationGestures.VisibilityGesture();PlayCompanionOperation(CompanionOperationCue.Appear);
+    }
     internal void PlayNotificationCue(NotificationCue cue,string eventId)
     {
         if(exiting||!runtime.ShowTray)return;
         if(!Dispatcher.UIThread.CheckAccess()){Dispatcher.UIThread.Post(()=>PlayNotificationCue(cue,eventId));return;}
-        notificationSounds??=new NotificationSoundPlayer(()=>Settings,runtime.CreateLiveOutput,()=>NotificationAudioBusy);
-        notificationSounds.TryPlay(cue,eventId);
+        SoundPlayer().TryPlay(cue,eventId);
     }
     TrayNotificationWindow? ShowTrayNotification(Func<string> title,Func<string> message,Func<string> actionLabel,Action open,string? name=null)
     {

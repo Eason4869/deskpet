@@ -34,11 +34,12 @@ namespace Dafeiyu
             System.Diagnostics.Stopwatch clock;selectionClocks.TryGetValue(token,out clock);
             var update=new CompanionSelectionUpdate(token,skin.PickerKey,origin.ToString(),stage,clock==null?0:clock.Elapsed.TotalMilliseconds,cached,progress);
             CompanionSelectionUpdate.WriteTrace("Companion request="+token+" stage="+stage+" cache="+cached+" ms="+update.Milliseconds.ToString("F1",System.Globalization.CultureInfo.InvariantCulture));
-            CurrentCompanionSelection=update;PresentCompanionInstallation(update);if(CompanionSelectionChanged!=null)CompanionSelectionChanged(update);
+            CurrentCompanionSelection=update;PresentCompanionInstallation(update);ObserveCompanionOperation(update);if(CompanionSelectionChanged!=null)CompanionSelectionChanged(update);
         }
         internal void CancelCompanionSelection(long token){if(OwnsOfficial(token)&&officialSelection!=null)officialSelection.Cancel();}
         void CompanionFirstFrameRendered()
         {
+            ObserveCompanionAppearance();
             if(IsPetVisible&&!officialFirstFrameRendered){officialFirstFrameRendered=true;Dispatcher.BeginInvoke(new Action(()=>{var maintenance=MaintainCompanionCachesAsync();}));}
             var update=renderedSelection;if(update==null||Skin.PickerKey!=update.PickerKey)return;renderedSelection=null;
             if(OwnsOfficial(update.Request))SelectionStage(update.Request,Skin,(CompanionSelectionOrigin)Enum.Parse(typeof(CompanionSelectionOrigin),update.Origin),"completed");selectionClocks.Remove(update.Request);

@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "Installazione del pacchetto personaggio più recente per {0}…",
   "companions.install.failed": "Impossibile installare {0}. Puoi riprovare.",
   "companions.install.reselect": "{0} è pronto. Selezionalo di nuovo quando hai finito.",
-  "cache.preservedLatest": "Chat, impostazioni, allegati, relazioni e progetti vengono conservati. Dopo un aggiornamento riuscito, i vecchi programmi di installazione e pacchetti dei personaggi vengono puliti automaticamente. Restano l’ultimo programma di installazione valido e l’ultima versione utilizzabile di ogni personaggio. File in uso o incerti, aggiornamenti incompleti e copie di vecchio formato restano protetti."
+  "cache.preservedLatest": "Chat, impostazioni, allegati, relazioni e progetti vengono conservati. Dopo un aggiornamento riuscito, i vecchi programmi di installazione e pacchetti dei personaggi vengono puliti automaticamente. Restano l’ultimo programma di installazione valido e l’ultima versione utilizzabile di ogni personaggio. File in uso o incerti, aggiornamenti incompleti e copie di vecchio formato restano protetti.",
+  "operationSounds.help": "Suoni delicati per gli eventi importanti e quando mostri, cambi o nascondi il compagno. Nessun suono in modalità silenziosa o durante le attività vocali.",
+  "operationSounds.volume": "Volume dei suoni delle azioni",
+  "operationSounds.appear": "Ascolta comparsa",
+  "operationSounds.switch": "Ascolta cambio",
+  "operationSounds.hide": "Ascolta scomparsa"
 }

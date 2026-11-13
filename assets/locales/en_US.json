@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "Installing the latest companion pack for {0}…",
   "companions.install.failed": "Could not install {0}. You can retry.",
   "companions.install.reselect": "{0} is ready. Please select again when you are free.",
-  "cache.preservedLatest": "Chat, settings, attachments, relationships and projects are kept. Successful updates automatically remove old installers and character packs, keeping the latest valid installer and latest usable version of each character. Files in use, unfinished updates, uncertain files and legacy copies remain protected."
+  "cache.preservedLatest": "Chat, settings, attachments, relationships and projects are kept. Successful updates automatically remove old installers and character packs, keeping the latest valid installer and latest usable version of each character. Files in use, unfinished updates, uncertain files and legacy copies remain protected.",
+  "operationSounds.help": "Play soft sounds for important task events and when showing, switching or hiding a companion. Silent in quiet mode or while voice audio is in use.",
+  "operationSounds.volume": "Operation sound volume",
+  "operationSounds.appear": "Preview appear",
+  "operationSounds.switch": "Preview switch",
+  "operationSounds.hide": "Preview hide"
 }

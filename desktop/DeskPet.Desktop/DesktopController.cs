@@ -215,7 +215,8 @@ internal sealed partial class DesktopController : IDisposable
         UiLanguageChange.Apply(store,Settings,code);
         Notify();
     }
-    public void ShowPet() { if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible); }
+    public void ShowPet() { bool visible=Pet.IsPetVisible;if(!visible){operationGestures.VisibilityGesture();operationLaunchObserved=true;}if (!Pet.IsVisible) Pet.Show(); Pet.Clamp();Relationships.EnqueueVisit(RelationshipCompanionId,Pet.IsPetVisible);if(!visible&&Pet.IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Appear); }
+    public void HidePet(){bool visible=Pet.IsPetVisible;operationGestures.VisibilityGesture();operationLaunchObserved=true;Pet.Hide();if(visible&&!Pet.IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Hide); }
     public void ShowChat(bool quick)
     {
         Observation.Invalidate();
@@ -291,7 +292,7 @@ internal sealed partial class DesktopController : IDisposable
         foreach (var binding in hotkeys) binding.Dispose(); hotkeys.Clear();
         if (!OperatingSystem.IsMacOS()) return;
         // Carbon key codes: Space, D, H. Defaults remain explicit in Settings UI.
-        foreach (var binding in new (string Id, uint Key, Action Action)[] { ("chat", 49, () => ShowChat(true)), ("show", 2, ShowPet), ("hide", 4, Pet.Hide) })
+        foreach (var binding in new (string Id, uint Key, Action Action)[] { ("chat", 49, () => ShowChat(true)), ("show", 2, ShowPet), ("hide", 4, HidePet) })
         {
             if (!Settings.Hotkeys.TryGetValue(binding.Id, out var value) || value != "enabled") continue;
             try { hotkeys.Add(MacServices.RegisterHotKey(binding.Key, MacHotKeyModifiers.Command | MacHotKeyModifiers.Shift, () => Dispatcher.UIThread.Post(binding.Action))); }

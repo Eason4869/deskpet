@@ -53,7 +53,7 @@ namespace Dafeiyu
             if(guideInteraction=="double-click" && quick!=null){quick.SetGuidePreview(false);quick.Hide();}
             if(guideInteraction.Length>0){if(ContextMenu!=null)ContextMenu.IsOpen=false;if(palette!=null)palette.Close();SetPaused(guidePaused);if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,Settings.ClickThrough || !petDisplayed);}
             guideInteraction=action??"";guideWheelOpened=false;
-            if(guideInteraction.Length>0){guidePaused=Paused;SetPaused(false);RestorePet();if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,false);}
+            if(guideInteraction.Length>0){guidePaused=Paused;SetPaused(false);RestorePet(false);if(handle!=IntPtr.Zero)DesktopInterop.SetClickThrough(handle,false);}
         }
         internal void NotifyGuideInteraction(string action)
         {
@@ -320,7 +320,7 @@ namespace Dafeiyu
             tray.MouseDoubleClick+=delegate(object sender,Forms.MouseEventArgs args){if(args.Button==Forms.MouseButtons.Left)HandleTrayDoubleClick();};
             timer=new DispatcherTimer(DispatcherPriority.Background) { Interval=TimeSpan.FromMilliseconds(250) };
             InitializeRelationshipFeedback();InitializeHoliday();InitializeHolidayKeepsakes();if(Skin.OfficialInstallation!=null||Skin.Bundle!=null)MergeOfficialHoliday(Skin);timer.Tick+=Tick; Closing+=OnClosing; UpdateFrame();
-            IsVisibleChanged+=delegate { Relationships.InvalidateFeedback();RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
+            IsVisibleChanged+=delegate { if(!IsPetVisible)operationGestures.VisibilityGesture();Relationships.InvalidateFeedback();RefreshRendering();if(IsPetVisible)Relationships.EnqueueVisit(RelationshipCompanionId,true); };
         }
         private void RefreshRendering()
         {
@@ -1155,8 +1155,9 @@ namespace Dafeiyu
             Settings.ReadReplies=enabled;if(!enabled)StopReplySpeech();SaveSettings();
             if(ReplySpeechChanged!=null)ReplySpeechChanged();
         }
-        public void HidePet() { if(ContextMenu!=null)ContextMenu.IsOpen=false;if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();visibility.UserVisible=false;visibility.OverrideFullscreen=false;DismissGreeting();walking=false;Animation.Play("idle",0);SavePosition();if(quick!=null)quick.Hide();ApplyVisibility(); }
-        public void RestorePet() {RecordPetInteraction();visibility.UserVisible=true;PollVisibility();DesktopInterop.ClampWindow(handle);previousTick=watch.Elapsed.TotalSeconds;}
+        public void HidePet() { bool wasVisible=IsPetVisible;operationGestures.VisibilityGesture();operationLaunchObserved=true; if(ContextMenu!=null)ContextMenu.IsOpen=false;if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();visibility.UserVisible=false;visibility.OverrideFullscreen=false;DismissGreeting();walking=false;Animation.Play("idle",0);SavePosition();if(quick!=null)quick.Hide();ApplyVisibility();if(wasVisible&&!IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Hide); }
+        public void RestorePet(){RestorePet(true);}
+        void RestorePet(bool userInitiated) {bool wasVisible=IsPetVisible;if(!wasVisible){operationGestures.VisibilityGesture();operationLaunchObserved=true;}RecordPetInteraction();visibility.UserVisible=true;PollVisibility();DesktopInterop.ClampWindow(handle);previousTick=watch.Elapsed.TotalSeconds;if(userInitiated&&!wasVisible&&IsPetVisible)PlayCompanionOperation(CompanionOperationCue.Appear);}
         private void PollVisibility()
         {
             if(handle==IntPtr.Zero || closing)return;
@@ -1185,6 +1186,7 @@ namespace Dafeiyu
             }
             else if(petDisplayed)
             {
+                operationGestures.VisibilityGesture();
                 if(ContextMenu!=null)ContextMenu.IsOpen=false;
                 if(palette!=null)palette.Close();if(call!=null)call.Close();CancelInteraction();DismissGreeting();
                 walking=false;Animation.Play("idle",0);petDisplayed=false;IsHitTestVisible=false;

@@ -13,6 +13,35 @@ using System.Security.Cryptography;
 
 internal static class OfficialCompanionUiChecks
 {
+    sealed class OperationOutput:ILiveAudioOutput
+    {
+        internal int Plays,Disposals,LastBytes,Volume;public void SetVolume(int v){Volume=v;}public void Enqueue(byte[] bytes,int rate){LastBytes=bytes.Length;Interlocked.Increment(ref Plays);}public void Interrupt(){}public void Dispose(){Interlocked.Increment(ref Disposals);}
+    }
+    internal static int RunOperationSounds(string directory)
+    {
+        int checks=0;void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"fixture"),"dafeiyu",null,false);
+        var installation=CreatePackage(Path.Combine(directory,"installed"),"dafeiyu",fixture.Root);var source=new FakeSource{NoNewerBundle=true};
+        string data=Path.Combine(directory,"data");Directory.CreateDirectory(data);new SettingsStore(Path.Combine(data,"settings.json")).Save(new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,HideOnFullscreen=false,FollowCursor=false,LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion});
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>source);
+        typeof(DesktopController).GetField("companionFirstVisibleFrame",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.SetValue(owner,true);
+        var output=new OperationOutput();DateTime now=DateTime.UtcNow;var player=new NotificationSoundPlayer(()=>owner.Settings,()=>output,()=>owner.NotificationAudioBusy,()=>now);
+        typeof(DesktopController).GetField("notificationSounds",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.SetValue(owner,player);
+        void FinishSound(int count){Until(()=>output.Plays>=count);Check(output.Plays==count,"actual sound count "+count);player.Stop();Until(()=>output.Disposals>=count);now=now.AddSeconds(2);}
+        var sprite=(SpriteView)typeof(PetWindow).GetField("sprite",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(owner.Pet)!;
+        void Render(){using var target=new RenderTargetBitmap(new PixelSize(192,208));using var context=target.CreateDrawingContext();sprite.Render(context);}
+        try{
+            owner.Pet.Show();Render();FinishSound(1);Check(output.LastBytes==36480,"actual launch frame emits approved Appear");owner.HidePet();FinishSound(2);Check(!owner.Pet.IsPetVisible&&output.LastBytes==38400,"explicit hide emits approved Hide");owner.HidePet();Dispatcher.UIThread.RunJobs();Check(output.Plays==2,"already hidden is silent");owner.ShowPet();Render();FinishSound(3);Check(output.LastBytes==36480,"explicit Show emits Appear");owner.ShowPet();Render();Check(output.Plays==3,"already visible is silent");
+            Complete(owner.SelectSkinAsync(owner.Skin,CompanionSelectionOrigin.Settings));Render();Check(output.Plays==3,"same role selection silent");
+            var previous=owner.Skin;var installing=owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.Settings);Until(()=>source.Progress!=null);Check(ReferenceEquals(previous,owner.Skin)&&output.Plays==3,"missing install preserves current companion without premature cue");source.InstalledValue=installation;source.Result.TrySetResult(new OfficialCompanionResult(installation,false,true,true,""));Complete(installing);Render();FinishSound(4);Check(output.LastBytes==41280,"first install actual rendered target emits exactly one Switch");
+            owner.HidePet();FinishSound(5);Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.Settings));Dispatcher.UIThread.RunJobs();Check(output.Plays==5,"hidden completed selection silent");owner.ShowPet();Render();FinishSound(6);Check(output.LastBytes==36480,"explicit Show beats hidden stale Switch");Render();Check(output.Plays==6,"no duplicate from next frame");
+            owner.Settings.QuietMode=true;owner.HidePet();Check(output.Plays==6,"quiet hide silent");owner.Settings.QuietMode=false;owner.Settings.NotificationSoundsEnabled=false;
+            var settingsWindow=new SettingsWindow(owner);settingsWindow.Show();settingsWindow.SelectSection("general");Dispatcher.UIThread.RunJobs();Check(settingsWindow.GetLogicalDescendants().OfType<CheckBox>().Distinct().Count(c=>c.Name=="NotificationSoundsEnabled")==1&&!settingsWindow.GetLogicalDescendants().OfType<CheckBox>().Any(c=>c.Name=="CompanionOperationSoundsEnabled"),"one visible sound master");var preview=settingsWindow.GetLogicalDescendants().OfType<Button>().Distinct().Single(b=>b.Name=="PreviewCompanionSwitch");var displayedVolume=settingsWindow.GetLogicalDescendants().OfType<Slider>().Distinct().Single(v=>v.Name=="CompanionOperationSoundVolume");displayedVolume.Value=67;preview.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));FinishSound(7);Check(output.LastBytes==41280&&!owner.Settings.NotificationSoundsEnabled,"real preview button works while disabled");Check(output.Volume==67,"preview uses displayed independent volume");
+            var volume=settingsWindow.GetLogicalDescendants().OfType<Slider>().Distinct().Single(v=>v.Name=="CompanionOperationSoundVolume");Check(volume.Minimum==0&&volume.Maximum==100,"native volume range");volume.Value=67;Check(owner.Settings.CompanionOperationSoundVolume==67,"volume writes independent setting");
+            foreach(var language in UiLanguages.Choices.Where(c=>c.Code!="system")){TextResources.ApplyLanguage(TextResources.PrepareLanguage(language.Code));Dispatcher.UIThread.RunJobs();Check(Avalonia.Automation.AutomationProperties.GetName(preview)==TextResources.Get("operationSounds.switch")&&Avalonia.Automation.AutomationProperties.GetName(volume)==TextResources.Get("operationSounds.volume")&&volume.Value==67,"live localized accessible controls "+language.Code);}settingsWindow.Close();
+            return checks;
+        }finally{Finish(owner);}
+    }
     // Opt-in acceptance for authored release candidates. CI transfers only the
     // index and five ZIPs; local authoring can also compare the original files.
     internal static int RunActualMaterials(string? materialRoot, string indexPath, string reportPath)

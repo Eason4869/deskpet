@@ -6,7 +6,24 @@ using System.Threading.Tasks;
 
 namespace Dafeiyu
 {
+    public enum CompanionOperationCue { Appear,Switch,Hide }
     public enum NotificationCue { Complete,Review,Permission,Failure }
+
+    // UI-thread gesture eligibility. Hidden work cannot become a later Show sound.
+    public sealed class CompanionOperationGestures
+    {
+        long eligibleRequest=-1;
+        public void VisibilityGesture(){eligibleRequest=-1;}
+        public bool Selection(CompanionSelectionUpdate update,bool visible)
+        {
+            if(update.Stage=="requested")eligibleRequest=visible&&update.Origin!="StartupRestore"?update.Request:-1;
+            if(!visible){eligibleRequest=-1;return false;}
+            if(update.Request!=eligibleRequest)return false;
+            if(update.Stage=="completed"){eligibleRequest=-1;return true;}
+            if(update.Stage=="cancelled"||update.Stage=="failed"||update.Stage=="reselect-required")eligibleRequest=-1;
+            return false;
+        }
+    }
 
     // Cues are short, optional feedback. No device operation runs on the caller.
     public sealed class NotificationSoundPlayer:IDisposable
@@ -20,7 +37,8 @@ namespace Dafeiyu
         readonly HashSet<string> known=new HashSet<string>(StringComparer.Ordinal);
         readonly SemaphoreSlim playback=new SemaphoreSlim(1,1);
         Request pending;
-        DateTime lastPlayed;
+        DateTime lastPlayed,lastOperation;
+        bool operationActive,hasOperation;
         bool active,disposed,hasPlayed;
 
         public NotificationSoundPlayer(Func<PetSettings> settings,Func<ILiveAudioOutput> createOutput,Func<bool> audioBusy=null,Func<DateTime> clock=null)
@@ -41,33 +59,60 @@ namespace Dafeiyu
                 try
                 {
                     var current=settings();var now=clock();
-                    if(active||!Allowed(current)||audioBusy()||(hasPlayed&&now-lastPlayed<TimeSpan.FromSeconds(3)))return false;
+                    if((active&&!operationActive)||!Allowed(current)||audioBusy()||(hasPlayed&&now-lastPlayed<TimeSpan.FromSeconds(3)))return false;
+                    if(operationActive)CancelPending();operationActive=false;
                     active=true;hasPlayed=true;lastPlayed=now;
                     var request=new Request();pending=request;
-                    Task.Run(()=>PlayAsync(cue,request));return true;
+                    Task.Run(()=>PlayAsync((int)cue,false,false,request));return true;
                 }
                 catch{return false;}
             }
         }
 
+        public bool TryPlayOperation(CompanionOperationCue cue,string eventId,bool preview=false)
+        {
+            if(String.IsNullOrWhiteSpace(eventId)||eventId.Length>512||cue<CompanionOperationCue.Appear||cue>CompanionOperationCue.Hide)return false;
+            lock(gate)
+            {
+                if(disposed||!known.Add("operation:"+eventId))return false;
+                recent.Enqueue("operation:"+eventId);while(recent.Count>128)known.Remove(recent.Dequeue());
+                try
+                {
+                    var now=clock();
+                    if(active||!OperationAllowed(settings(),preview)||audioBusy()||(hasOperation&&now-lastOperation<TimeSpan.FromSeconds(1)))return false;
+                    // Operations never wait behind a slow cancelled device.
+                    if(!playback.Wait(0))return false;
+                    active=true;operationActive=true;hasOperation=true;lastOperation=now;
+                    var request=new Request{Preview=preview};pending=request;
+                    Task.Run(()=>PlayAsync((int)cue,true,preview,request));return true;
+                }
+                catch{return false;}
+            }
+        }
+        static bool OperationAllowed(PetSettings value,bool preview){return value!=null&&(preview||value.NotificationSoundsEnabled)&&!value.QuietMode&&value.CompanionOperationSoundVolume>0;}
+        public void Refresh()
+        {
+            lock(gate)try{if(audioBusy()||(operationActive?!OperationAllowed(settings(),pending!=null&&pending.Preview):!Allowed(settings())))CancelPending();}catch{CancelPending();}
+        }
+
         static bool Allowed(PetSettings value){return value!=null&&value.NotificationSoundsEnabled&&!value.QuietMode&&value.Volume>0;}
 
-        async Task PlayAsync(NotificationCue cue,Request request)
+        async Task PlayAsync(int cue,bool operation,bool preview,Request request)
         {
             ILiveAudioOutput output=null;bool entered=false;
             try
             {
-                await playback.WaitAsync().ConfigureAwait(false);entered=true;
+                if(!operation)await playback.WaitAsync().ConfigureAwait(false);entered=true;
                 request.ThrowIfStopped();
-                int rate;byte[] pcm=ReadPcm(cue,out rate);
-                if(!Allowed(settings())||audioBusy())return;
+                int rate;byte[] pcm=ReadPcm(cue,operation,out rate);
+                if(!(operation?OperationAllowed(settings(),preview):Allowed(settings()))||audioBusy())return;
                 request.ThrowIfStopped();
                 output=createOutput();
                 // A device factory can be slow. Recheck after it returns so Stop/Dispose
                 // also cancel a request that has not reached the device yet.
                 request.ThrowIfStopped();var current=settings();
-                if(output==null||!Allowed(current)||audioBusy())return;
-                output.SetVolume(Math.Max(0,Math.Min(100,current.Volume)));
+                if(output==null||!(operation?OperationAllowed(current,preview):Allowed(current))||audioBusy())return;
+                output.SetVolume(Math.Max(0,Math.Min(100,(operation?current.CompanionOperationSoundVolume:current.Volume))));
                 request.ThrowIfStopped();
                 output.Enqueue(pcm,rate);
                 await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(pcm.Length/(rate*2.0)+.05)),request.Stopped.Task).ConfigureAwait(false);
@@ -81,9 +126,9 @@ namespace Dafeiyu
             }
         }
 
-        static byte[] ReadPcm(NotificationCue cue,out int rate)
+        static byte[] ReadPcm(int cue,bool operation,out int rate)
         {
-            string[] names={"task-complete","review-needed","permission-needed","attention-failed"};
+            string[] names=operation?new[]{"companion-appear","companion-switch","companion-hide"}:new[]{"task-complete","review-needed","permission-needed","attention-failed"};
             using(var stream=typeof(NotificationSoundPlayer).Assembly.GetManifestResourceStream("Dafeiyu.Sounds."+names[(int)cue]+".wav"))
             {
                 if(stream==null)throw new InvalidDataException("Notification cue is unavailable.");
@@ -120,6 +165,7 @@ namespace Dafeiyu
         public void Dispose(){lock(gate){if(disposed)return;disposed=true;CancelPending();}}
         sealed class Request
         {
+            internal bool Preview;
             // Stop may run on the UI thread. Continuations must not interrupt or
             // dispose a platform device inline on that caller.
             internal readonly TaskCompletionSource<bool> Stopped=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

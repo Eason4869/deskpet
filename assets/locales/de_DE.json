@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "Das neueste Begleiterpaket für {0} wird installiert…",
   "companions.install.failed": "{0} konnte nicht installiert werden. Bitte erneut versuchen.",
   "companions.install.reselect": "{0} ist bereit. Bitte nach Abschluss der aktuellen Aufgabe erneut auswählen.",
-  "cache.preservedLatest": "Chats, Einstellungen, Anhänge, Beziehungen und Projekte bleiben erhalten. Nach erfolgreichen Updates werden alte Installations- und Figurenpakete automatisch bereinigt. Das neueste gültige Installationspaket und die neueste nutzbare Version jeder Figur bleiben erhalten. Verwendete oder unklare Dateien, unvollständige Updates und alte Formate bleiben geschützt."
+  "cache.preservedLatest": "Chats, Einstellungen, Anhänge, Beziehungen und Projekte bleiben erhalten. Nach erfolgreichen Updates werden alte Installations- und Figurenpakete automatisch bereinigt. Das neueste gültige Installationspaket und die neueste nutzbare Version jeder Figur bleiben erhalten. Verwendete oder unklare Dateien, unvollständige Updates und alte Formate bleiben geschützt.",
+  "operationSounds.help": "Sanfte Klänge bei wichtigen Aufgabenereignissen und beim Anzeigen, Wechseln oder Ausblenden des Begleiters. Im Ruhemodus oder bei Sprachnutzung stumm.",
+  "operationSounds.volume": "Lautstärke der Aktionsklänge",
+  "operationSounds.appear": "Erscheinen anhören",
+  "operationSounds.switch": "Wechsel anhören",
+  "operationSounds.hide": "Ausblenden anhören"
 }

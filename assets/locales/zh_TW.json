@@ -5062,5 +5062,10 @@
   "companions.install.preparing": "正在為{0}安裝最新角色包…",
   "companions.install.failed": "{0}安裝失敗，可以重試。",
   "companions.install.reselect": "{0}已準備好。目前正在忙，請空閒後重新選擇。",
-  "cache.preservedLatest": "保留聊天、設定、附件、關係和專案資料。成功更新後自動清理舊安裝包和舊角色包，保留最新有效安裝包及每個角色的最新可用版本。使用中、更新未完成、狀態不明和舊格式的檔案繼續受到保護。"
+  "cache.preservedLatest": "保留聊天、設定、附件、關係和專案資料。成功更新後自動清理舊安裝包和舊角色包，保留最新有效安裝包及每個角色的最新可用版本。使用中、更新未完成、狀態不明和舊格式的檔案繼續受到保護。",
+  "operationSounds.help": "重要任務事件，以及顯示、切換或隱藏夥伴時播放輕柔提示音；勿擾模式或語音使用中靜音。",
+  "operationSounds.volume": "操作音效音量",
+  "operationSounds.appear": "試聽顯示",
+  "operationSounds.switch": "試聽切換",
+  "operationSounds.hide": "試聽隱藏"
 }

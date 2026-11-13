@@ -23,11 +23,12 @@ internal sealed partial class DesktopController
         var ms=companionClocks.TryGetValue(token,out var clock)?clock.Elapsed.TotalMilliseconds:0;
         CompanionSelectionUpdate.WriteTrace($"Companion request={token} stage={stage} cache={cached} ms={ms:F1}");
         CurrentCompanionSelection=new CompanionSelectionUpdate(token,skin.PickerKey,origin.ToString(),stage,ms,cached,progress!);
-        PresentCompanionInstallation(CurrentCompanionSelection);CompanionSelectionChanged?.Invoke(CurrentCompanionSelection);
+        PresentCompanionInstallation(CurrentCompanionSelection);ObserveCompanionOperation(CurrentCompanionSelection);CompanionSelectionChanged?.Invoke(CurrentCompanionSelection);
     }
     internal void CancelCompanionSelection(long token){if(officialCompanions.OwnsSelection(token))companionSelection?.Cancel();}
     internal void CompanionFirstFrameRendered()
     {
+        ObserveCompanionAppearance();
         if(!companionFirstVisibleFrame&&Pet.IsPetVisible){companionFirstVisibleFrame=true;Dispatcher.UIThread.Post(()=>{Run(StartOfficialCompanionsAsync);Run(MaintainCompanionCachesAsync);});}
         var pending=awaitingCompanionFrame;if(pending==null||pending.PickerKey!=Skin.PickerKey)return;
         awaitingCompanionFrame=null;

@@ -72,7 +72,7 @@ internal sealed partial class PetWindow : Window
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
         PointerExited += (_, _) => LeaveHolidayHover();
-        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty){owner.Relationships.InvalidateFeedback();owner.Observation.Invalidate();}};
+        PropertyChanged += (_, e) => {if(e.Property==IsVisibleProperty){if(!IsPetVisible)owner.InvalidateCompanionOperation();owner.Relationships.InvalidateFeedback();owner.Observation.Invalidate();}};
         Screens.Changed += ScreensChanged;
         DoubleTapped += (_, _) => owner.ShowChat(true);
         ContextMenu = BuildMenu();
@@ -132,7 +132,7 @@ internal sealed partial class PetWindow : Window
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeB")), ShowPalette); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeC")), () => UserInteract("feeding")); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeD")), () => UserInteract("petting"));
         Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeE")), () => { if (action == "sleeping") {Play("idle", false);RecordRelationshipInteraction(true,true);} else UserInteract("sleeping"); });
         Add(()=> (owner.Skin.SpecialAction), () => UserInteract("special")); if (SpriteAssets.HasExtra(owner.Skin,"special2")) Add(()=> (owner.Skin.SpecialAction2), () => UserInteract("special2"));
-        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), Hide);
+        Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeF")), () => Paused = !Paused); Add(()=> (TextResources.Get("petWindow.buildMenu.text.alternativeG")), owner.HidePet);
         items.Add(new Separator());
         foreach (var skin in owner.Skins)
         {
@@ -317,7 +317,7 @@ internal sealed partial class PetWindow : Window
     {
         var wasHidden=fullscreenHidden;
         if(hidden!=wasHidden)owner.Relationships.InvalidateFeedback();
-        if(hidden&&!wasHidden)DismissGreeting();
+        if(hidden&&!wasHidden){owner.InvalidateCompanionOperation();DismissGreeting();}
         fullscreenHidden=hidden;Opacity=hidden?0:1;
         if(wasHidden&&IsPetVisible)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,true);
         if(fullscreenHidden)CancelHoliday();
