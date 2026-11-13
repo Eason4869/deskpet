@@ -14,6 +14,11 @@ namespace Dafeiyu
         readonly LinkedList<string> recent=new LinkedList<string>();
         internal CompanionDecodedCache(long bytes,Action<T> dispose=null){budget=bytes;release=dispose;}
         internal long UnpinnedBytes {get{lock(gate)return entries.Where(p=>!pins.ContainsKey(p.Key)).Sum(p=>p.Value.Bytes);}}
+        internal long RetainedBytes {get{lock(gate)return entries.Values.Sum(entry=>entry.Bytes);}}
+        internal long PinnedBytes {get{lock(gate)return entries.Where(p=>pins.ContainsKey(p.Key)).Sum(p=>p.Value.Bytes);}}
+        // Count all pin holders, including preparation keys with no decoded entry.
+        internal int PinnedResourceCount {get{lock(gate)return pins.Count;}}
+        internal int PinLeaseCount {get{lock(gate)return pins.Values.Sum();}}
         internal T Get(string key){lock(gate){Entry entry;if(!entries.TryGetValue(key,out entry))return null;recent.Remove(key);recent.AddLast(key);return entry.Value;}}
         internal void Put(string key,T value,long bytes){lock(gate){Remove(key);entries[key]=new Entry{Value=value,Bytes=bytes};recent.AddLast(key);Trim();}}
         internal void Pin(string key){lock(gate){int n;pins.TryGetValue(key,out n);pins[key]=n+1;}}

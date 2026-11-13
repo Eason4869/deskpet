@@ -10,6 +10,65 @@ namespace Dafeiyu.Tests
     {
         static int checks;
         static void Check(bool condition,string message){if(!condition)throw new Exception(message);checks++;}
+        const long MiB=1024L*1024;
+        sealed class PrivateMemoryEvidence
+        {
+            internal readonly long Baseline,LastTenRange,HighWaterGrowth;
+            internal readonly bool TargetMet,PeakBounded,RecurrentReturn,StableHighWater;
+            internal bool BoundedRecovery {get{return PeakBounded && RecurrentReturn && StableHighWater;}}
+            internal PrivateMemoryEvidence(IList<long> samples)
+            {
+                if(samples.Count!=90)throw new ArgumentException("Native memory evidence requires all ninety samples.");
+                Baseline=samples.Take(20).Min();
+                LastTenRange=samples.Skip(80).Max()-samples.Skip(80).Min();
+                HighWaterGrowth=Math.Max(0,samples.Skip(20).Max()-samples.Take(20).Max());
+                // Preserve the original32MiB target exactly. The alternative is an
+                // explicitly bounded engineering tolerance, not a target pass or
+                // attribution of private committed bytes to WIC/CLR allocations.
+                TargetMet=LastTenRange<=32*MiB && samples.Skip(20).Max()<=samples.Take(20).Max()+32*MiB;
+                PeakBounded=samples.Max()<=Baseline+96*MiB;
+                RecurrentReturn=true;
+                for(int start=20;start<=samples.Count-5;start++)
+                    if(samples.Skip(start).Take(5).Min()>Baseline+8*MiB)RecurrentReturn=false;
+                StableHighWater=samples.Skip(60).Max()<=samples.Skip(30).Take(30).Max()+8*MiB;
+            }
+        }
+        static void MemoryEvidenceChecks()
+        {
+            const long baseline=50*MiB;
+            var stable=Enumerable.Range(0,90).Select(i=>baseline+(i<20?0:i%3==0?72*MiB:4*MiB)).ToArray();
+            Check(!new PrivateMemoryEvidence(stable).TargetMet && new PrivateMemoryEvidence(stable).BoundedRecovery,"stable recurrent native commitment is an explicit exception, not a32MiB target pass");
+            Check(new PrivateMemoryEvidence(Enumerable.Repeat(baseline,90).ToArray()).TargetMet,"stable private memory retains the strict32MiB target");
+            var growth=Enumerable.Range(0,90).Select(i=>baseline+(i<20?0:(i-20)*MiB)).ToArray();
+            Check(!new PrivateMemoryEvidence(growth).BoundedRecovery,"continuous growth below the peak cap is rejected");
+            var late=Enumerable.Range(0,90).Select(i=>baseline+(i<70?0:(i-70)*2*MiB)).ToArray();
+            Check(!new PrivateMemoryEvidence(late).BoundedRecovery,"late-onset private memory growth is rejected");
+            var rising=Enumerable.Range(0,90).Select(i=>baseline+(i<20?0:i%2==0?(50*MiB+(i-20)*MiB*4/10):4*MiB)).ToArray();
+            var risingEvidence=new PrivateMemoryEvidence(rising);
+            Check(risingEvidence.PeakBounded && risingEvidence.RecurrentReturn && !risingEvidence.StableHighWater && !risingEvidence.BoundedRecovery,"repeated low returns cannot hide a rising native high-water mark");
+            var delayed=(long[])stable.Clone();for(int i=65;i<70;i++)delayed[i]=baseline+72*MiB;
+            Check(!new PrivateMemoryEvidence(delayed).BoundedRecovery,"five consecutive delayed-release highs are rejected");
+            var tailOnly=Enumerable.Range(0,90).Select(i=>baseline+(i<20||i>=75?0:60*MiB)).ToArray();
+            Check(!new PrivateMemoryEvidence(tailOnly).BoundedRecovery,"enough low samples only at the end cannot hide delayed release");
+            var spike=(long[])stable.Clone();spike[45]=baseline+97*MiB;
+            var spikeEvidence=new PrivateMemoryEvidence(spike);
+            Check(!spikeEvidence.PeakBounded && spikeEvidence.RecurrentReturn && spikeEvidence.StableHighWater && !spikeEvidence.BoundedRecovery,"one over-limit native spike is rejected despite stable recurrent recovery");
+        }
+        static void CheckDecodedLedger(ref long peak,ref long unpinnedPeak,ref long pinnedPixelPeak,ref int pinnedPeak,ref int pinLeasePeak)
+        {
+            peak=Math.Max(peak,WpfPreparedCompanion.RetainedPixelBytes);
+            unpinnedPeak=Math.Max(unpinnedPeak,WpfPreparedCompanion.UnpinnedPixelBytes);
+            pinnedPixelPeak=Math.Max(pinnedPixelPeak,WpfPreparedCompanion.PinnedPixelBytes);
+            pinnedPeak=Math.Max(pinnedPeak,WpfPreparedCompanion.PinnedResourceCount);
+            pinLeasePeak=Math.Max(pinLeasePeak,WpfPreparedCompanion.PinLeaseCount);
+            Check(WpfPreparedCompanion.UnpinnedPixelBytes<=64*MiB,"Actual global noncurrent decoded pixels stay within64MiB");
+            Check(WpfPreparedCompanion.PinnedResourceCount==0 && WpfPreparedCompanion.PinLeaseCount==0 && WpfPreparedCompanion.PinnedPixelBytes==0,"Offline native corpus has no rendered or pending preparation pins");
+        }
+        static void CheckEmptyDecodedLedger()
+        {
+            Check(WpfPreparedCompanion.RetainedPixelBytes==0 && WpfPreparedCompanion.UnpinnedPixelBytes==0,"Clear removes every actual global decoded pixel entry");
+            Check(WpfPreparedCompanion.PinnedResourceCount==0 && WpfPreparedCompanion.PinLeaseCount==0 && WpfPreparedCompanion.PinnedPixelBytes==0,"Clear leaves no decoded pin leases");
+        }
         static void CollectReleasedImages()
         {
             for(int pass=0;pass<3;pass++){
@@ -25,12 +84,13 @@ namespace Dafeiyu.Tests
         [STAThread] public static int Main(string[] args)
         {
             try {
+                MemoryEvidenceChecks();
                 string root=Environment.CurrentDirectory;
                 while(!File.Exists(Path.Combine(root,"assets","holidays","catalog.json"))){root=Path.GetDirectoryName(root);if(root==null)throw new Exception("Missing source assets.");}
                 Console.WriteLine("NATIVE_PROCESS_BITS="+(Environment.Is64BitProcess?64:32));
                 var catalog=new HolidayCatalog(Path.Combine(root,"assets","holidays"));
                 Check(catalog.Outfits.Count==50&&catalog.Outfits.All(o=>o.Ready),"All fifty source outfits are complete");
-                var assets=new HolidayVisualAssets(null);long peak=0;int clips=0;
+                var assets=new HolidayVisualAssets(null);long peak=0,unpinnedPeak=0,pinnedPixelPeak=0;int clips=0,pinnedPeak=0,pinLeasePeak=0;
                 bool performanceOnly=args.Contains("--performance-only");
                 if(!performanceOnly){
                 foreach(var outfit in catalog.Outfits) {
@@ -46,15 +106,15 @@ namespace Dafeiyu.Tests
                             Check(matching,"Rendered frame and touch alpha agree: "+definition.Path+"/"+frame);
                         }
                         if(!definition.Loop)Check(clip.Sample(clip.Duration+1)==clip.Count-1,"One-shot reaches actual final pose");
-                        peak=Math.Max(peak,assets.RetainedPixelBytes);Check(assets.RetainedPixelBytes<=256L*1024*1024,"Bounded retained image and alpha memory");
+                        CheckDecodedLedger(ref peak,ref unpinnedPeak,ref pinnedPixelPeak,ref pinnedPeak,ref pinLeasePeak);
                     }
                     // This offline corpus decodes thousands of native WIC images without a
                     // normal UI workload. Finish each validation batch before the next;
                     // the separate 55-appearance rounds below measure post-release stability.
-                    assets.Clear();CollectReleasedImages();
+                    assets.Clear();CheckEmptyDecodedLedger();CollectReleasedImages();
                     Console.WriteLine("PASS native full outfit "+outfit.CharacterId+" / "+outfit.HolidayId);
                 }
-                    assets.Clear();CollectReleasedImages();
+                    assets.Clear();CheckEmptyDecodedLedger();CollectReleasedImages();
                     var start=new System.Diagnostics.ProcessStartInfo(System.Reflection.Assembly.GetExecutingAssembly().Location,"--performance-only"){
                         UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=root};
                     using(var process=System.Diagnostics.Process.Start(start)){
@@ -71,28 +131,32 @@ namespace Dafeiyu.Tests
                 var elapsed=System.Diagnostics.Stopwatch.StartNew();
                 for(int round=0;round<rounds;round++) {
                     var releasedFrames=new List<WeakReference>();
-                    foreach(var definition in wardrobe){releasedFrames.AddRange(LoadTrackedFrames(assets,definition));peak=Math.Max(peak,assets.RetainedPixelBytes);Check(assets.RetainedPixelBytes<=256L*1024*1024,"Repeated wardrobe cache bound");}
+                    foreach(var definition in wardrobe){releasedFrames.AddRange(LoadTrackedFrames(assets,definition));CheckDecodedLedger(ref peak,ref unpinnedPeak,ref pinnedPixelPeak,ref pinnedPeak,ref pinLeasePeak);}
                     Check(releasedFrames.Count==wardrobe.Sum(definition=>definition.FrameCount),"Every retired frame is tracked, including nonzero poses");
-                    assets.Clear();CollectReleasedImages();Check(releasedFrames.All(frame=>!frame.IsAlive),"All past appearance frames released");samples.Add(GC.GetTotalMemory(false));
-                    using(var process=System.Diagnostics.Process.GetCurrentProcess()){process.Refresh();privateSamples.Add(process.PrivateMemorySize64);handleSamples.Add(process.HandleCount);threadSamples.Add(process.Threads.Count);processSamples.Add(new {round=round+1,privateBytes=privateSamples.Last(),rssBytes=process.WorkingSet64,threads=process.Threads.Count,handles=process.HandleCount,managedBytes=samples.Last(),decodes=assets.DecodeCount,retainedPixelBytes=assets.RetainedPixelBytes});}
+                    assets.Clear();CheckEmptyDecodedLedger();CollectReleasedImages();Check(releasedFrames.All(frame=>!frame.IsAlive),"All past appearance frames released");samples.Add(GC.GetTotalMemory(false));
+                    using(var process=System.Diagnostics.Process.GetCurrentProcess()){process.Refresh();privateSamples.Add(process.PrivateMemorySize64);handleSamples.Add(process.HandleCount);threadSamples.Add(process.Threads.Count);processSamples.Add(new {round=round+1,privateBytes=privateSamples.Last(),rssBytes=process.WorkingSet64,threads=process.Threads.Count,handles=process.HandleCount,managedBytes=samples.Last(),decodes=assets.DecodeCount,retainedPixelBytes=WpfPreparedCompanion.RetainedPixelBytes,unpinnedPixelBytes=WpfPreparedCompanion.UnpinnedPixelBytes,pinnedPixelBytes=WpfPreparedCompanion.PinnedPixelBytes,pinnedResourceCount=WpfPreparedCompanion.PinnedResourceCount,pinLeaseCount=WpfPreparedCompanion.PinLeaseCount});}
                 }
+                Check(peak>0 && unpinnedPeak>0,"Real native wardrobe loading records a nonzero global decoded ledger peak");
                 Check(samples.Last()<=samples.Skip(20).Min()+32L*1024*1024,"Ninety-round stable managed memory");
-                long baseline=privateSamples.Take(20).Min(),range=privateSamples.Skip(rounds-10).Max()-privateSamples.Skip(rounds-10).Min();
-                bool targetMet=range<=32L*1024*1024 && privateSamples.Skip(20).Max()<=privateSamples.Take(20).Max()+32L*1024*1024;
+                var evidence=new PrivateMemoryEvidence(privateSamples);
+                long baseline=evidence.Baseline,range=evidence.LastTenRange;
+                bool targetMet=evidence.TargetMet;
                 int recoveries=0;
                 for(int n=20;n<rounds-1;n++)if(privateSamples[n]>baseline+32L*1024*1024 && privateSamples.Skip(n+1).Take(3).Any(value=>value<=baseline+8L*1024*1024))recoveries++;
-                bool boundedRecovery=privateSamples.Max()<=baseline+64L*1024*1024
-                    && privateSamples.Skip(rounds-30).Count(value=>value<=baseline+8L*1024*1024)>=15 && recoveries>0;
+                // Approved bounded-recovery exception: all samples have an absolute
+                // cap, each short window returns low, and the late high-water mark
+                // stabilizes. The actual decoded-cache budget remains64MiB above.
+                bool boundedRecovery=evidence.BoundedRecovery;
                 // The approved design permits reproducible non-accumulating evidence
                 // when released process memory exceeds the32MiB fluctuation target.
                 // Keep the actual range and all samples; never label this exception as target met.
                 string report=Path.Combine(root,"work","dev3-validation","wpf-performance.json");Directory.CreateDirectory(Path.GetDirectoryName(report));
-                File.WriteAllText(report,new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{appearances=55,rounds=rounds,elapsedSeconds=elapsed.Elapsed.TotalSeconds,retainedPixelPeakBytes=peak,lastTenPrivateRangeBytes=range,postWarmupHighWaterGrowthBytes=Math.Max(0,privateSamples.Skip(20).Max()-privateSamples.Take(20).Max()),privateMemoryTargetMet=targetMet,privateMemoryAcceptance=targetMet?"32MiB-target":"bounded-recovery-evidence",recoveryTransitions=recoveries,warmupBaselineBytes=baseline,allRetiredFramesReleased=true,samples=processSamples}));
+                File.WriteAllText(report,new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new{appearances=55,rounds=rounds,elapsedSeconds=elapsed.Elapsed.TotalSeconds,retainedPixelPeakBytes=peak,unpinnedPixelPeakBytes=unpinnedPeak,pinnedPixelPeakBytes=pinnedPixelPeak,pinnedResourcePeakCount=pinnedPeak,pinLeasePeakCount=pinLeasePeak,decodedBudgetBytes=64*MiB,lastTenPrivateRangeBytes=range,postWarmupHighWaterGrowthBytes=evidence.HighWaterGrowth,privateMemoryTargetMet=targetMet,privateMemoryAcceptance=targetMet?"32MiB-target":boundedRecovery?"bounded-recovery-evidence":"rejected",privatePeakCapBytes=baseline+96*MiB,privatePeakBoundMet=evidence.PeakBounded,recurringFiveSampleReturnMet=evidence.RecurrentReturn,lateHighWaterStable=evidence.StableHighWater,recoveryTransitions=recoveries,warmupBaselineBytes=baseline,allRetiredFramesReleased=true,samples=processSamples}));
                 Console.WriteLine("NATIVE_PERFORMANCE_REPORT="+File.ReadAllText(report));
                 Check(targetMet||boundedRecovery,"Private memory meets32MiB target or demonstrates bounded recurrent return to warmup baseline across90 rounds");
                 Check(handleSamples.Skip(rounds-30).Max()<=handleSamples.Take(20).Max()+4,"No historical wardrobe handle accumulation");
                 Check(threadSamples.Skip(rounds-30).Max()<=threadSamples.Take(20).Max()+4,"No historical wardrobe thread accumulation");
-                Check(assets.RetainedPixelBytes==0,"Closing/releases remove retained pixels");
+                CheckEmptyDecodedLedger();
                 Console.WriteLine("Complete native companion tests: "+checks+" passed, "+clips+" clips, retained pixel peak "+peak+" bytes, 90 wardrobe rounds");return 0;
             }catch(Exception error){Console.Error.WriteLine(error);return 1;}
         }

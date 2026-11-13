@@ -6,6 +6,11 @@ namespace Dafeiyu
     internal static class WpfPreparedCompanion
     {
         static readonly CompanionDecodedCache<object> cache=new CompanionDecodedCache<object>(64L*1024*1024);
+        internal static long RetainedPixelBytes {get{return cache.RetainedBytes;}}
+        internal static long UnpinnedPixelBytes {get{return cache.UnpinnedBytes;}}
+        internal static long PinnedPixelBytes {get{return cache.PinnedBytes;}}
+        internal static int PinLeaseCount {get{return cache.PinLeaseCount;}}
+        internal static int PinnedResourceCount {get{return cache.PinnedResourceCount;}}
         static readonly object gate=new object();
         static readonly HashSet<string> preparing=new HashSet<string>(StringComparer.Ordinal);
         static readonly HashSet<string> failed=new HashSet<string>(StringComparer.Ordinal);

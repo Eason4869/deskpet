@@ -98,9 +98,10 @@ namespace Dafeiyu.Tests
             var app=new Application {ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
             var previousContext=SynchronizationContext.Current;
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
-            string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"voice-profile-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+            string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"voice-profile-ui-"+Guid.NewGuid().ToString("N"));
             try
             {
+                Directory.CreateDirectory(folder);
                 var cfg=new PetSettings {GreetingEnabled=false,Wander=false,AutoUpdate=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in cfg.Hotkeys.Keys.ToArray())cfg.Hotkeys[key]="";
                 pet=new PetWindow(null,cfg,new SettingsStore(Path.Combine(folder,"settings.json")),null);

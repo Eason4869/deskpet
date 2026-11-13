@@ -25,7 +25,13 @@ namespace Dafeiyu.Tests
             var cache=new CompanionDecodedCache<object>(64);var a=new object();var b=new object();var c=new object();
             cache.Put("a",a,60);cache.Pin("a");cache.Put("b",b,40);cache.Put("c",c,40);
             Check(cache.Get("a")==a&&cache.Get("b")==null&&cache.Get("c")==c,"decoded LRU retains current pin and limits noncurrent bytes");
+            Check(cache.RetainedBytes==100 && cache.UnpinnedBytes==40 && cache.PinnedBytes==60 && cache.PinnedResourceCount==1 && cache.PinLeaseCount==1,"decoded ledger separates pinned and noncurrent bytes");
+            cache.Pin("a");cache.Pin("pending");
+            Check(cache.PinnedResourceCount==2 && cache.PinLeaseCount==3 && cache.PinnedBytes==60,"pin ledger includes multiple holders and pending preparation without a cache entry");
+            cache.Unpin("a");cache.Unpin("pending");
             cache.Unpin("a");Check(cache.UnpinnedBytes<=64,"unpin enforces decoded budget immediately");
+            Check(cache.RetainedBytes==40 && cache.PinnedBytes==0 && cache.PinnedResourceCount==0 && cache.PinLeaseCount==0,"unpin removes the pin ledger and evicts the retired resource");
+            cache.Remove("c");Check(cache.RetainedBytes==0 && cache.UnpinnedBytes==0 && cache.PinnedBytes==0 && cache.PinnedResourceCount==0 && cache.PinLeaseCount==0,"removing final decoded entry clears the actual byte and pin ledger");
         }
         static void VerifiedDecode()
         {
