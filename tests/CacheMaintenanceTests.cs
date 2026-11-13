@@ -80,12 +80,16 @@ namespace Dafeiyu.Tests
                     Check(!scan.Candidates.Any(c=>c.DirectoryPath==old),"corrupt latest package must preserve older digest-valid installer");
                     File.WriteAllBytes(packageLatest,new byte[17]);
                     File.WriteAllText(Path.Combine(latest,"retired-backup.txt"),"backup");
-                    string receipt=Path.Combine(old,"result.json");File.SetAttributes(receipt,FileAttributes.ReadOnly);
-                    var partial=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
-                    Check(File.Exists(receipt)&&!File.Exists(Path.Combine(old,"job.json"))&&File.Exists(packageLatest),"partial cleanup leaves durable retirement proof after deleting job");
-                    File.SetAttributes(receipt,FileAttributes.Normal);
+                    string receipt=Path.Combine(old,"result.json");long remainingBytes;
+                    // Keep the receipt readable for proof checks while the real deletion
+                    // layer's exclusive handle/flock fails, including on POSIX.
+                    using(var reader=new FileStream(receipt,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete)){
+                        remainingBytes=reader.Length;var partialScan=service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None);var partial=service.Clean(partialScan,DateTime.UtcNow);
+                        Check(File.Exists(receipt)&&!File.Exists(Path.Combine(old,"job.json"))&&!File.Exists(Path.Combine(old,"package.zip"))&&File.Exists(packageLatest)&&!File.Exists(Path.Combine(latest,"retired-backup.txt")),"partial cleanup leaves durable retirement proof after deleting job and trims latest backup");
+                        Check(partial.DeletedItems==1&&partial.SkippedItems+partial.FailedItems==1&&partial.FreedBytes==partialScan.TotalBytes-remainingBytes,"partial update cleanup counts only completed deletion and actual freed bytes");
+                    }
                     var retry=service.Clean(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None),DateTime.UtcNow);
-                    Check(!Directory.Exists(old)&&File.Exists(packageLatest),"partial completed-update cleanup retries from identity-bound external proof");
+                    Check(!Directory.Exists(old)&&File.Exists(packageLatest)&&retry.DeletedItems==1&&retry.SkippedItems==0&&retry.FailedItems==0&&retry.FreedBytes==remainingBytes,"partial completed-update cleanup retries from identity-bound external proof");
                     File.WriteAllText(Path.Combine(latest,"result.json"),json.Serialize(new{Success=false,Version=ReleaseInfo.DisplayVersion}));
                     File.WriteAllText(Path.Combine(latest,"rollback.txt"),"preserve");
                     Check(service.ScanAfterUpdate(DateTime.UtcNow,CancellationToken.None).Candidates.Count==0,"changed failed receipt overrides a prior retirement marker");

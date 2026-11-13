@@ -105,12 +105,16 @@ namespace Dafeiyu.Tests
                 File.AppendAllText(second.PetManifestPath,"damaged");
                 Check(maintenance.Scan(DateTime.UtcNow).Candidates.Count==0,"corrupt newest preserves sole usable previous");
                 var third=Revision(store,fixture,3);
-                string denied=Path.Combine(first.RootDirectory,"z-denied.txt");File.WriteAllText(denied,"retry");File.SetAttributes(denied,FileAttributes.ReadOnly);
-                var partial=maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow);
-                Check(Directory.Exists(first.RootDirectory)&&Directory.Exists(third.RootDirectory),"partial retirement preserves replacement and is not counted as full success");
-                File.SetAttributes(denied,FileAttributes.Normal);
+                string denied=Path.Combine(first.RootDirectory,"z-denied.txt");File.WriteAllText(denied,"retry");long remainingBytes;
+                // A shared reader permits inventory hashing but blocks the deletion layer's
+                // exclusive handle/flock on Windows and POSIX; ReadOnly does not block unlink.
+                using(var reader=new FileStream(denied,FileMode.Open,FileAccess.Read,FileShare.Read|FileShare.Delete)){
+                    remainingBytes=reader.Length;var partialScan=maintenance.Scan(DateTime.UtcNow);var partial=maintenance.Clean(partialScan,DateTime.UtcNow);
+                    Check(File.Exists(denied)&&!File.Exists(Path.Combine(first.RootDirectory,"receipt.json"))&&!Directory.Exists(second.RootDirectory)&&store.Installed("dafeiyu").RootDirectory==third.RootDirectory,"partial retirement deletes obsolete receipt while preserving blocked file and verified replacement");
+                    Check(partial.DeletedItems==1&&partial.SkippedItems+partial.FailedItems==1&&partial.FreedBytes==partialScan.TotalBytes-remainingBytes,"partial retirement counts only completed deletion and actual freed bytes");
+                }
                 var retry=maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow);
-                Check(!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory)&&Directory.Exists(third.RootDirectory),"partial deletion retries without requiring intact obsolete receipt");
+                Check(!Directory.Exists(first.RootDirectory)&&!Directory.Exists(second.RootDirectory)&&store.Installed("dafeiyu").RootDirectory==third.RootDirectory&&retry.DeletedItems==1&&retry.SkippedItems==0&&retry.FailedItems==0&&retry.FreedBytes==remainingBytes,"partial deletion retries without requiring intact obsolete receipt");
                 Check(maintenance.Clean(maintenance.Scan(DateTime.UtcNow),DateTime.UtcNow).DeletedItems==0,"retain-one cleanup is idempotent and preserves sole local version");
             }
         }
