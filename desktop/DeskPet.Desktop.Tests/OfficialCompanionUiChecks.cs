@@ -71,6 +71,55 @@ internal static class OfficialCompanionUiChecks
         File.WriteAllText(reportPath, JsonSerializer.Serialize(new { materialRoot, indexPath, backend = "Avalonia Skia Headless on " + System.Runtime.InteropServices.RuntimeInformation.OSDescription, results }, new JsonSerializerOptions { WriteIndented = true }));
         return results.Count;
     }
+    internal static int RunBulkReaderLifetime(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Bulk reader lifetime: "+label);checks++;}
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"dafeiyu",null,false);
+        string data=Path.Combine(directory,"data");using var source=new ManagedRecoverySource(data);
+        OfficialCompanionInstallation Publish(char digest){
+            string stage=Path.Combine(source.Downloads.Storage.CharacterRoot("dafeiyu"),".stage-"+Guid.NewGuid().ToString("N"));
+            var package=CreatePackage(stage,"dafeiyu",fixture.Root);var a=package.Asset;
+            var asset=new OfficialCompanionAsset(a.Id,a.Name,a.Version,a.MinimumAppVersion,a.Tag,a.AssetName,a.Size,new string(digest,64),a.Outfits);source.Downloads.Storage.WriteReceipt(stage,asset,CancellationToken.None);
+            return source.Downloads.Storage.Publish(stage,asset,CancellationToken.None,()=>{},action=>action());
+        }
+        var original=Publish('b');
+        using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>source);
+        var native=(OfficialCompanionNativeValidator)typeof(DesktopController).GetField("companionNative",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
+        var gate=(SemaphoreSlim)typeof(OfficialCompanionNativeValidator).GetField("gate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(native)!;
+        var waiters=typeof(SemaphoreSlim).GetField("m_asyncHead",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!;
+        Task? recovery=null;bool held=false;
+        try{
+            string selected=owner.Settings.SelectedCompanionKey;gate.Wait();held=true;
+            recovery=(Task)typeof(DesktopController).GetMethod("PrepareAllOfficialAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,new object?[]{null,CancellationToken.None})!;
+            Until(()=>waiters.GetValue(gate)!=null||recovery.IsCompleted);
+            Check(waiters.GetValue(gate)!=null&&!recovery.IsCompleted,"actual Avalonia partial bulk recovery waits at native validation semaphore");
+            var replacement=Publish('c');Complete(source.Downloads.ScheduleMaintenance());
+            Check(replacement.RootDirectory!=original.RootDirectory&&File.Exists(original.PetManifestPath),"Avalonia bulk reader keeps exact old root across publication and cleanup");
+            gate.Release();held=false;bool partial=false;try{Complete(recovery);}catch(IOException error) when(error.Message==ManagedRecoverySource.Failure){partial=true;}
+            Complete(source.Downloads.HistoryMaintenance);
+            var validated=(HashSet<string>)typeof(OfficialCompanionNativeValidator).GetField("validated",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(native)!;
+            Check(partial&&validated.Contains(original.Asset.Id+":"+original.Asset.Sha256),"Avalonia partial recovery decodes original native source before returning original bulk failure");
+            Check(!Directory.Exists(original.RootDirectory)&&Directory.Exists(replacement.RootDirectory)&&owner.Settings.SelectedCompanionKey==selected,"Avalonia recovery reader release retries cleanup without selecting another role");
+        }finally{
+            if(held)gate.Release();if(recovery!=null)try{Complete(recovery);}catch(IOException error) when(error.Message==ManagedRecoverySource.Failure){}
+            Finish(owner);
+        }
+        return checks;
+    }
+    private sealed class ManagedRecoverySource : IOfficialCompanionSource
+    {
+        internal const string Failure="fixture partial bulk download";
+        private readonly GitHubUpdates transport=new();
+        internal readonly OfficialCompanionDownloads Downloads;
+        internal ManagedRecoverySource(string data){Downloads=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,(i,c)=>Task.CompletedTask,OfficialCompanionReadMode.Snapshots);}
+        public long BeginSelection()=>Downloads.BeginSelection();
+        public bool OwnsSelection(long token)=>Downloads.OwnsSelection(token);
+        public OfficialCompanionInstallation? Installed(string id)=>Downloads.Installed(id);
+        public OfficialCompanionSnapshot? CaptureLocalSnapshot(string id,CancellationToken cancel)=>Downloads.CaptureLocalSnapshot(id,cancel);
+        public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<OfficialCompanionResult>(new IOException(Failure));
+        public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<IList<OfficialCompanionResult>>(new IOException(Failure));
+        public void Dispose(){Downloads.Dispose();transport.Dispose();}
+    }
     internal static int RunThin(string directory)
     {
         int checks = 0;

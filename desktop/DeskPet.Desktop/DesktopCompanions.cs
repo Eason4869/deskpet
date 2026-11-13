@@ -360,7 +360,16 @@ internal sealed partial class DesktopController
         catch(Exception error){failure=error;}
         if(failure!=null&&!exiting){
             foreach(var entry in Skins.Where(skin=>skin.OfficialCharacterId!=null).ToArray()){
-                var installed=await Task.Run(()=>officialCompanions.Installed(entry.OfficialCharacterId!),companionLifetime.Token);
+                using var snapshot=await Task.Run(()=>officialCompanions.CaptureLocalSnapshot(entry.OfficialCharacterId!,companionLifetime.Token),companionLifetime.Token);
+                if(snapshot==null)continue;
+                // Native validation may wait behind another reader; keep the captured
+                // generation leased until validation and recovery publication finish.
+                var installed=await Task.Run(()=>{
+                    try{return new OfficialCompanionStorage(DataDirectory).ReadVersionCancelable(snapshot.Installation.RootDirectory,entry.OfficialCharacterId!,snapshot.Installation.Asset,companionLifetime.Token);}
+                    // Preserve Installed's invalid-source fallback while verifying the
+                    // captured root rather than following a newly published pointer.
+                    catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or OverflowException){return null;}
+                },companionLifetime.Token);
                 if(installed!=null){await companionNative.ValidateAsync(installed,companionLifetime.Token);await PublishBulkResultAsync(installed,captured,generation,order,companionLifetime.Token);}
             }
         }

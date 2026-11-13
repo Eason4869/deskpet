@@ -363,11 +363,16 @@ namespace Dafeiyu
             foreach(var profile in OfficialCompanionProfiles.All) {
                 if(closing)return;
                 try {
-                    var installed=await Task.Run(()=>OfficialDownloads.Installed(profile.Id));if(installed==null)continue;
-                    await officialNative.ValidateAsync(installed,officialLifetime.Token);
-                    var result=results==null?null:results.FirstOrDefault(r=>r.Installation.Asset.Id==profile.Id);
-                    var ready=await PrepareOfficialAsync(installed,result==null||result.InstalledNow);
-                    if(Skin.PickerKey==ready.PickerKey&&String.IsNullOrEmpty(Settings.PendingOfficialCompanionId)&&(deferredOfficial==null||!deferredOfficial.Select)){QueueOfficial(ready,officialRequest,false);TryApplyDeferredOfficial();}else PublishInactiveOfficial(ready);
+                    using(var snapshot=await Task.Run(()=>OfficialDownloads.CaptureLocalSnapshot(profile.Id,officialLifetime.Token))){
+                        if(snapshot==null)continue;
+                        // Retain this exact generation through full verification, native
+                        // semaphore waiting/decoding, and recovery publication.
+                        var installed=await Task.Run(()=>OfficialDownloads.Storage.ReadVersionCancelable(snapshot.Installation.RootDirectory,profile.Id,snapshot.Installation.Asset,officialLifetime.Token));if(installed==null)continue;
+                        await officialNative.ValidateAsync(installed,officialLifetime.Token);
+                        var result=results==null?null:results.FirstOrDefault(r=>r.Installation.Asset.Id==profile.Id);
+                        var ready=await PrepareOfficialAsync(installed,result==null||result.InstalledNow);
+                        if(Skin.PickerKey==ready.PickerKey&&String.IsNullOrEmpty(Settings.PendingOfficialCompanionId)&&(deferredOfficial==null||!deferredOfficial.Select)){QueueOfficial(ready,officialRequest,false);TryApplyDeferredOfficial();}else PublishInactiveOfficial(ready);
+                    }
                 }catch(OperationCanceledException){return;}catch(Exception error){if(!OfficialError(error))throw;}
             }
         }

@@ -47,7 +47,7 @@ namespace Dafeiyu.Tests
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
         }
         static void InstallationStatusChecks()
@@ -293,7 +293,7 @@ namespace Dafeiyu.Tests
                 Check(Walk(guide).OfType<Button>().Single(b=>b.Name=="GuideNext").IsEnabled,"notice-only companion lesson remains advanceable");
                 guide.Close();Pump();Check(pet.SelectSkin(pet.Skin),"explicit already-visible Ebao selection succeeds");
                 Check(settings.PendingOfficialCompanionId=="","explicit Ebao selection clears older automatic restore");
-                NativeSelectionRaces(pet);
+                NativeSelectionRaces(pet);BulkRecoveryReaderLifetime();
                 if(legacyAssets!=null)LegacyCacheWithoutEmbeddedPngs(legacyAssets.Substring("--legacy-assets=".Length));
             }finally {
                 if(pet!=null){pet.Close();Pump();}foreach(var window in app.Windows.Cast<Window>().ToArray())window.Close();Pump();app.Shutdown();
@@ -307,6 +307,35 @@ namespace Dafeiyu.Tests
         static void Wait(Task task)
         {var end=DateTime.UtcNow.AddSeconds(60);while(!task.IsCompleted&&DateTime.UtcNow<end)Pump();Check(task.IsCompleted,"controlled asynchronous operation completes within bounded test time");task.GetAwaiter().GetResult();}
         static FieldInfo Field(string name){return typeof(PetWindow).GetField(name,BindingFlags.NonPublic|BindingFlags.Instance);}
+        static void BulkRecoveryReaderLifetime()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0),OfficialCompanionReadMode.Snapshots)){
+                fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                var install=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Force,null,CancellationToken.None);Wait(install);Wait(service.HistoryMaintenance);
+                var original=install.Result.Installation;
+                var pet=new PetWindow(null,new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(fixture.Root,"settings.json")),null);
+                var native=(WpfOfficialNativeValidator)Field("officialNative").GetValue(pet);
+                var gate=(SemaphoreSlim)typeof(WpfOfficialNativeValidator).GetField("gate",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(native);
+                var waiters=typeof(SemaphoreSlim).GetField("m_asyncHead",BindingFlags.NonPublic|BindingFlags.Instance);
+                Task recovery=null;bool held=false;
+                try{
+                    var previous=(OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet);if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,service);Field("officialStartupStarted").SetValue(pet,true);
+                    string selected=pet.Settings.SelectedCompanionKey;gate.Wait();held=true;
+                    recovery=(Task)typeof(PetWindow).GetMethod("RefreshBulkInstallations",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(pet,new object[]{pet.Skin,0L,null});
+                    var until=DateTime.UtcNow.AddSeconds(10);while(waiters.GetValue(gate)==null&&!recovery.IsCompleted&&DateTime.UtcNow<until)Pump();
+                    Check(waiters.GetValue(gate)!=null&&!recovery.IsCompleted,"actual WPF bulk recovery is queued at native validation semaphore");
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",112);
+                    var replace=service.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Force,null,CancellationToken.None,true,true);Wait(replace);Wait(service.ScheduleMaintenance());
+                    Check(replace.Result.Installation.RootDirectory!=original.RootDirectory&&File.Exists(original.PetManifestPath),"WPF bulk native reader keeps exact old root through concurrent publication and cleanup");
+                    gate.Release();held=false;Wait(recovery);Wait(service.HistoryMaintenance);
+                    var validated=(System.Collections.Generic.HashSet<string>)typeof(WpfOfficialNativeValidator).GetField("validated",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(native);
+                    Check(validated.Contains(original.Asset.Id+":"+original.Asset.Sha256),"WPF bulk recovery finishes actual native decoding of its captured generation");
+                    Check(!Directory.Exists(original.RootDirectory)&&Directory.Exists(replace.Result.Installation.RootDirectory)&&pet.Settings.SelectedCompanionKey==selected,"WPF bulk reader release reclaims old root without changing selected role");
+                }finally{if(held)gate.Release();if(recovery!=null)Wait(recovery);pet.Close();Pump();}
+            }
+        }
         static void NativeSelectionRaces(PetWindow pet)
         {
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()) {
