@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -95,6 +96,8 @@ namespace Dafeiyu.Tests
         private static void RealVoiceControls()
         {
             var app=new Application {ShutdownMode=ShutdownMode.OnExplicitShutdown};PetWindow pet=null;
+            var previousContext=SynchronizationContext.Current;
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
             string folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"voice-profile-ui-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
             try
             {
@@ -104,11 +107,14 @@ namespace Dafeiyu.Tests
                 // This suite exercises saved voice drafts, not the official package updater.
                 // Keep the embedded e-bao source stable while repeatedly switching roles.
                 Assert(pet.Skin.BuiltinCharacterId=="e-bao" && pet.Skin.Embedded,"expected embedded e-bao voice fixture");
-                pet.Skin.FixtureEmbedded=true;pet.Show();pet.ShowSettings();Pump();
+                pet.Skin.FixtureEmbedded=true;
+                foreach(string field in new[]{"officialStartupStarted","officialFirstFrameRendered"})
+                    typeof(PetWindow).GetField(field,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(pet,true);
+                pet.Show();pet.ShowSettings();Pump();
                 var settings=SettingsPageFor(pet);
                 foreach(string id in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"})
                 {
-                    settings.SelectPage(0);Pump();((ComboBox)settings.FindControl("SkinPicker")).SelectedItem=pet.Catalog.Find(id);Pump();Equal(id,pet.Skin.Id);
+                    SelectCompanion(settings,pet,id);
                     settings.SelectAiSection(2);Pump();((CheckBox)settings.FindControl("UseCloudVoice")).IsChecked=true;
                     ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=3;Pump();
                     var speech=(ComboBox)settings.FindControl("SpeechVoice");Assert(speech.Items.Cast<VoicePreset>().Any(v=>v.Id=="alloy"),"OpenAI catalog missing");
@@ -126,7 +132,7 @@ namespace Dafeiyu.Tests
                 }
                 foreach(string id in new[]{"e-bao","dafeiyu","marfu","xiaobei","gugugaga"})
                 {
-                    settings.SelectPage(0);Pump();((ComboBox)settings.FindControl("SkinPicker")).SelectedItem=pet.Catalog.Find(id);Pump();Equal(id,pet.Skin.Id);
+                    SelectCompanion(settings,pet,id);
                     settings.SelectAiSection(2);Pump();var voice=(ComboBox)settings.FindControl("SpeechVoice");Equal("voice-"+id+"-openai",Editable(voice).Text);
                     ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=1;Pump();Equal("voice-"+id+"-mimo",Editable(voice).Text);SaveRestoredVoice(settings,pet,id,"restored MiMo save failed");
                     ((ComboBox)settings.FindControl("SpeechPreset")).SelectedIndex=3;Pump();Equal("voice-"+id+"-openai",Editable(voice).Text);SaveRestoredVoice(settings,pet,id,"restored provider save failed");
@@ -138,7 +144,21 @@ namespace Dafeiyu.Tests
                 SameIdentityUpdate(pet,settings,folder);
                 Console.WriteLine("Voice UI previews: "+folder);
             }
-            finally{if(pet!=null)pet.Close();Pump();app.Shutdown();}
+            finally{try{if(pet!=null)pet.Close();Pump();app.Shutdown();}finally{SynchronizationContext.SetSynchronizationContext(previousContext);}}
+        }
+        private static void SelectCompanion(SettingsPage settings,PetWindow pet,string id)
+        {
+            settings.SelectPage(0);Pump();
+            var picker=(ComboBox)settings.FindControl("SkinPicker");
+            picker.SelectedItem=pet.Catalog.Find(id);
+            // Local preparation is asynchronous. Wait for the actual picker commit,
+            // rather than assuming it completes within one fixed timer tick.
+            var deadline=DateTime.UtcNow.AddSeconds(15);
+            while(pet.Skin.Id!=id || !ReferenceEquals(picker.SelectedItem,pet.Skin)) {
+                if(DateTime.UtcNow>deadline)throw new TimeoutException("Voice companion selection did not complete: "+id+"; "+pet.Notice);
+                Pump();
+            }
+            Pump();Equal(id,pet.Skin.Id);
         }
         private static void SameIdentityUpdate(PetWindow pet,SettingsPage settings,string output)
         {
@@ -184,7 +204,13 @@ namespace Dafeiyu.Tests
             Capture((FrameworkElement)popup.Child,Path.Combine(output,"gugugaga-partner-dropdown.png"));picker.IsDropDownOpen=false;
             var timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};bool confirmed=false;
             timer.Tick+=delegate {var dialog=Application.Current.Windows.OfType<DeleteConversationDialog>().FirstOrDefault(w=>w.Name=="RemoveCompanionDialog");if(dialog==null)return;confirmed=true;dialog.DialogResult=true;};
-            timer.Start();try{settings.RemoveCompanion(updated);}finally{timer.Stop();}Pump();
+            timer.Start();try{settings.RemoveCompanion(updated);}finally{timer.Stop();}
+            var removalDeadline=DateTime.UtcNow.AddSeconds(15);
+            while(pet.Skin.Id==updated.Id || pet.Catalog.Skins.Count!=originalCount) {
+                if(DateTime.UtcNow>removalDeadline)throw new TimeoutException("Voice companion removal did not complete; "+pet.Notice);
+                Pump();
+            }
+            Pump();
             Assert(confirmed && pet.Skin.Id!=updated.Id && pet.Catalog.Skins.Count==originalCount,"removing current partner confirms and selects another companion");
             Assert(pet.Settings.VoiceProfiles.ContainsKey(updated.Id) && Directory.Exists(updated.Source),"removing partner preserves voice configuration and source files");
             ((Button)settings.FindControl("RestoreCompanions")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
