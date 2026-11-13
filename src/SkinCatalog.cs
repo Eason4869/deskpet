@@ -69,7 +69,9 @@ namespace Dafeiyu
         readonly string nativeSourceKey=Guid.NewGuid().ToString("N");
         public string NativeSourceKey {get{return nativeSourceKey;}}
         internal OfficialCompanionInstallation OfficialInstallation {get;set;}
-        internal SpriteAtlas PreparedOfficialAtlas {get;set;}
+        internal OfficialCompanionSnapshot Snapshot {get;set;}
+        internal BitmapSource ReadImage(string path,int width,int height){return Snapshot==null?IllustratedPack.ReadImage(IllustratedPack.AssetPath(Source,path),width,height):IllustratedPack.ReadImage(Snapshot,path,width,height);}
+        internal SpriteAtlas PreparedOfficialAtlas {get{return WpfPreparedCompanion.Atlas(this);}set{WpfPreparedCompanion.Atlas(this,value);}}
         internal bool FixtureEmbedded {get;set;}
         public VoiceRecommendations VoiceRecommendations {get{return Manifest!=null&&Manifest.VoicePresets!=null?Manifest.VoicePresets:IsOfficial?OfficialCompanionProfiles.Find(BuiltinCharacterId).VoicePresets:null;}}
         internal bool Bundled { get; set; }
@@ -86,7 +88,7 @@ namespace Dafeiyu
         {
             if(IsPlaceholder)throw new InvalidOperationException(TextResources.Get("skinCatalog.load.text"));
             if(PreparedOfficialAtlas!=null)return PreparedOfficialAtlas;
-            return Illustrated ? new SpriteAtlas(Source,Manifest) : new SpriteAtlas(Source,Embedded);
+            return Illustrated ? new SpriteAtlas(this) : new SpriteAtlas(Source,Embedded);
         }
         public int ActionFrame(int row,int phase)
         {

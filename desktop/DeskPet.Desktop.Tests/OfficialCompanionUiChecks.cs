@@ -1,4 +1,4 @@
-﻿using Avalonia.LogicalTree;
+using Avalonia.LogicalTree;
 using Avalonia.Controls;
 using Dafeiyu;
 using DeskPet.Desktop;
@@ -83,7 +83,7 @@ internal static class OfficialCompanionUiChecks
         using (var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(data), officialSourceFactory: _ => fake))
         {
             Check(owner.Skins.Count(s => s.OfficialCharacterId != null) == 5 && owner.Skins.Count(s => s.IsPlaceholder) == 4, "production contains E plus four lightweight placeholders");
-            Check(owner.Skin.OfficialCharacterId == "e-bao" && owner.Settings.PendingOfficialCompanionId == "dafeiyu", "missing selected role uses E while preserving pending request");
+            Check(owner.Skin.OfficialCharacterId == "e-bao" && owner.Settings.PendingOfficialCompanionId == "", "missing selected role uses offline E without durable pending request");
             Check(owner.Settings.PersonaOverrides["dafeiyu"] == "原有大肥鱼人格" && fake.Calls == 0, "offline startup preserves desired persona and does not start HTTP in constructor");
             using var assets = new SpriteAssets();
             foreach (var entry in owner.Skins)
@@ -98,7 +98,7 @@ internal static class OfficialCompanionUiChecks
         }
         using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(data), officialSourceFactory: _ => new FakeSource()))
         {
-            Check(restarted.Settings.PendingOfficialCompanionId == "dafeiyu", "offline pending desired role survives restart");
+            Check(restarted.Settings.PendingOfficialCompanionId == "", "restart never restores a stale pending request");
             Complete(restarted.SelectSkinAsync(restarted.Skin, CompanionSelectionOrigin.PetMenu));
             Check(restarted.Settings.PendingOfficialCompanionId == "", "explicit current E supersedes automatic restore");
             Finish(restarted);
@@ -187,7 +187,7 @@ internal static class OfficialCompanionUiChecks
             }
             var images = (System.Collections.IDictionary)typeof(SpriteAssets).GetField("images", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(assets)!;
             var masks = (System.Collections.IDictionary)typeof(SpriteAssets).GetField("masks", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(assets)!;
-            Check(images.Count <= 5 && masks.Count <= 5, "retired source switches keep bitmap and alpha cache bounded");
+            Check(assets.RetainedPixelBytes <= 64L*1024*1024, "retired source switches keep bitmap and alpha cache bounded");
         }
         var root = Path.Combine(directory, "package"); Directory.CreateDirectory(root);
         var installation = CreatePackage(root, "e-bao", first.Root);
@@ -219,12 +219,12 @@ internal static class OfficialCompanionUiChecks
             using var cancelQuestion = new CancellationTokenSource();
             var question = automatic.Questions.AskAsync(new AgentQuestionRequest { SessionId = "busy", TaskId = "work", CallId = "call", Question = "请保留正在进行的工作" }, cancelQuestion.Token);
             var restore = automatic.SelectSkinAsync(SpriteAssets.ReadOfficial(installation, fallback.Id), CompanionSelectionOrigin.StartupRestore);
-            Until(() => autoSource.InstalledCalls > 0);
-            Complete(Task.Delay(200));
-            Check(!restore.IsCompleted && ReferenceEquals(automatic.Skin, fallback) && automatic.Questions.Requests.Count == 1, "automatic completion waits for current business and keeps work question alive");
-            cancelQuestion.Cancel(); try { question.GetAwaiter().GetResult(); } catch (OperationCanceledException) { }
             Complete(restore);
-            Check(automatic.Skin.Folder == root, "automatic restore adopts source only after work becomes safe");
+            Check(autoSource.InstalledCalls==1&&ReferenceEquals(automatic.Skin,fallback)&&automatic.Questions.Requests.Count==1,"busy selection is refused without interrupting or queueing business");
+            cancelQuestion.Cancel();try{question.GetAwaiter().GetResult();}catch(OperationCanceledException){}
+            Check(ReferenceEquals(automatic.Skin,fallback),"business completion never replays a refused selection");
+            Complete(automatic.SelectSkinAsync(SpriteAssets.ReadOfficial(installation,fallback.Id),CompanionSelectionOrigin.PetMenu));
+            Check(automatic.Skin.Folder==root,"user may explicitly select again after work becomes safe");
             Finish(automatic);
         }
         var installedData = Path.Combine(directory, "installed-ebao");
@@ -234,11 +234,11 @@ internal static class OfficialCompanionUiChecks
             using var installedOwner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(installedData), officialSourceFactory: _ => installedSource);
             installedOwner.Settings.OnboardingState = "completed";
             var embedded = installedOwner.Skin;
-            Check(embedded.BuiltIn, "constructor keeps usable embedded E without blocking on full native decode");
+            Check(embedded.Folder==root, "constructor restores compatible installed E with bounded default preparation");
             var startup = (Task)typeof(DesktopController).GetMethod("StartOfficialCompanionsAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(installedOwner, null)!;
-            Until(() => installedOwner.Skin.Folder == root && installedSource.Calls > 0);
-            Check(!startup.IsCompleted && !installedSource.Result.Task.IsCompleted, restart ? "restart prefers installed E before metadata completes" : "startup prefers installed E before metadata completes");
-            installedSource.Result.TrySetResult(new OfficialCompanionResult(installation, true, false, false, "")); Complete(startup);
+            Complete(startup);
+            Check(installedOwner.Skin.Folder==root&&installedSource.Calls==0,"installed E startup remains offline across restart");
+            installedSource.Result.TrySetResult(new OfficialCompanionResult(installation,true,false,false,""));
             Complete(installedOwner.SelectSkinAsync(embedded, CompanionSelectionOrigin.PetMenu));
             Check(installedOwner.Skin.Folder == root, "reselecting embedded E still prefers its verified installed full package");
             Finish(installedOwner);
@@ -265,7 +265,7 @@ internal static class OfficialCompanionUiChecks
         using var fixture = new HolidayReviewChecks.Fixture(Path.Combine(directory, "outfit"), "dafeiyu", null, false);
         var installation = CreatePackage(Path.Combine(directory, "package"), "dafeiyu", fixture.Root);
         OfficialCompanionPackageValidation.Validate(installation.RootDirectory, installation.Asset, CancellationToken.None);
-        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")), officialSourceFactory: _ => new FakeSource());
+        using var owner = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")), officialSourceFactory: _ => new FakeSource{InstalledValue=installation});
         var entry = owner.Skins.Single(s => s.OfficialCharacterId == "dafeiyu");
         var method = typeof(DesktopController).GetMethod("PublishBulkResultAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         Task Publish() => (Task)method.Invoke(owner, new object[] { installation, owner.Skin, 0L, 1L, CancellationToken.None })!;
@@ -273,7 +273,7 @@ internal static class OfficialCompanionUiChecks
         Hide(); Complete(Publish());
         Check(!owner.Skins.Any(s => s.PickerKey == entry.PickerKey), "bulk keeps an already hidden official role hidden");
         CompanionPackStorage.SetHidden(owner.DataDirectory, entry.PickerKey, false); owner.Skins.Add(entry);
-        var catalogs = typeof(DesktopController).GetField("companionCatalogs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
+        var catalogs = typeof(DesktopController).GetField("preparedCompanions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
         Task pending;
         Monitor.Enter(catalogs);
         try { pending = Publish(); Hide(); }
@@ -330,25 +330,33 @@ internal static class OfficialCompanionUiChecks
             Check(source.Calls==0&&source.BulkCalls==0,"restoration makes no HTTP/update calls");
             owner.Save();Finish(owner);
         }
-        // Startup must also check the built-in current E role when no downloaded
-        // package exists. It stays usable while acquisition is held in the background.
-        using(var eFixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"e-holiday"),"e-bao",null,false))
-        {
-            var ePackage=CreatePackage(Path.Combine(directory,"e-installed"),"e-bao",eFixture.Root);
-            string startupData=Path.Combine(directory,"startup-ebao");Directory.CreateDirectory(startupData);
-            new SettingsStore(Path.Combine(startupData,"settings.json")).Save(new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped"});
-            var source=new FakeSource();
-            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(startupData),officialSourceFactory:_=>source);
-            owner.Settings.OnboardingState="completed";
-            var previous=owner.Skin;string persona=owner.Settings.SkinId,key=owner.Settings.SelectedCompanionKey;
-            var startup=(Task)typeof(DesktopController).GetMethod("StartOfficialCompanionsAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,null)!;
-            Until(()=>source.Calls>0||startup.IsCompleted);
-            Check(source.Calls==1&&!startup.IsCompleted&&ReferenceEquals(owner.Skin,previous),"startup checks built-in current role without waiting for a user switch or hiding old art");
-            Check(source.Progress==null,"startup update is silent");
-            source.InstalledValue=ePackage;source.Result.TrySetResult(new OfficialCompanionResult(ePackage,false,true,true,""));Complete(startup);
-            Until(()=>owner.Skin.Folder==ePackage.RootDirectory);
-            Check(owner.Settings.SkinId==persona&&owner.Settings.SelectedCompanionKey==key,"startup update hot loads the same role identity");
-            Finish(owner);
+        // Startup ignores a stale in-flight request and performs no update.
+        string startupData=Path.Combine(directory,"startup-ebao");Directory.CreateDirectory(startupData);
+        new SettingsStore(Path.Combine(startupData,"settings.json")).Save(new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",PendingOfficialCompanionId="dafeiyu",OnboardingState="skipped"});
+        var offline=new FakeSource();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(startupData),officialSourceFactory:_=>offline)){
+            var previous=owner.Skin;
+            Complete((Task)typeof(DesktopController).GetMethod("StartOfficialCompanionsAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,null)!);
+            Check(offline.Calls==0&&ReferenceEquals(previous,owner.Skin)&&owner.Skin.OfficialCharacterId=="e-bao","startup remains fully offline on last successful selection");
+            Check(owner.Settings.PendingOfficialCompanionId=="","stale pending intent cannot auto-select after restart");Finish(owner);
+        }
+        string upgradeData=Path.Combine(directory,"upgrade-data");Directory.CreateDirectory(upgradeData);
+        new SettingsStore(Path.Combine(upgradeData,"settings.json")).Save(new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",LastCompanionUpgradeVersion="1.0.2",OnboardingState="skipped"});
+        for(int attempt=0;attempt<3;attempt++){
+            var upgrade=new FakeSource{InstalledValue=installation};
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(upgradeData),officialSourceFactory:_=>upgrade);
+            owner.Settings.OnboardingState="completed";var selected=owner.Skin;var events=new List<CompanionSelectionUpdate>();owner.CompanionSelectionChanged+=events.Add;
+            Check(selected.OfficialCharacterId=="dafeiyu"&&upgrade.Calls==0,"upgrade restores prior selected role locally before first visible frame");
+            owner.Pet.Show();var sprite=(SpriteView)typeof(PetWindow).GetField("sprite",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner.Pet)!;
+            using(var target=new RenderTargetBitmap(new PixelSize(192,208)))using(var context=target.CreateDrawingContext())sprite.Render(context);
+            if(attempt<2){
+                Until(()=>upgrade.Calls==1);
+                Check(upgrade.RequestedIds.SequenceEqual(new[]{"dafeiyu"})&&upgrade.Progress==null&&ReferenceEquals(owner.Skin,selected),"upgrade checks only visible selected role silently after rendering");
+                upgrade.Result.SetResult(new OfficialCompanionResult(installation,attempt==0,true,false,""));
+                if(attempt==0){Complete(Task.Delay(100));Check(owner.Settings.LastCompanionUpgradeVersion=="1.0.2","offline fallback does not mark failed upgrade installation complete");}
+                else Until(()=>owner.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion);
+            }else{Complete(Task.Delay(100));Check(upgrade.Calls==0,"successful upgrade check is deduplicated on ordinary restart");}
+            Check(owner.Settings.SelectedCompanionKey=="official:dafeiyu"&&!events.Any(e=>e.Stage=="completed"),"upgrade preserves selected identity and emits no selection completion cue");Finish(owner);
         }
         // Cached manual selection must finish while the metadata response is held.
         string switchData=Path.Combine(directory,"switch-data");Directory.CreateDirectory(switchData);
@@ -362,12 +370,15 @@ internal static class OfficialCompanionUiChecks
             Check(owner.Skin.Folder==installation.RootDirectory,"cached old package is selected without awaiting metadata");
             Until(()=>switchSource.Calls>0);
             Check(!switchSource.Result.Task.IsCompleted,"new metadata may remain pending after selection completes");
+            var oldSnapshot=owner.Skin.Snapshot;
             var next=CreatePackage(Path.Combine(directory,"updated"),"dafeiyu",fixture.Root);
             switchSource.InstalledValue=next;
             string persona=owner.Skin.Id,key=owner.Settings.SelectedCompanionKey;
             switchSource.Result.TrySetResult(new OfficialCompanionResult(next,false,true,true,""));
             Until(()=>owner.Skin.Folder==next.RootDirectory);
             Check(owner.Skin.Id==persona&&owner.Settings.SelectedCompanionKey==key,"silent update reloads the same role identity");
+            owner.ApplyPendingCompanionAppearance();bool retired=false;try{oldSnapshot!.ReadVerifiedBytes("pet.json");}catch(ObjectDisposedException){retired=true;}
+            Check(retired,"safe appearance replacement releases retired snapshot lease");
             Complete(owner.SelectSkinAsync(owner.Skins.Single(role=>role.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.PetMenu));
             owner.Settings.OnboardingState="completed";owner.ShowGuide();Until(()=>owner.GuideLocked);
             var guide=(GuideWindow)typeof(DesktopController).GetField("guide",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
@@ -377,6 +388,7 @@ internal static class OfficialCompanionUiChecks
             Check(owner.Skin.Folder==next.RootDirectory&&guide.IsVisible&&!bulk.IsCompleted,"cached last-choice role is usable while guide-owned full metadata is pending");
             var latest=CreatePackage(Path.Combine(directory,"bulk-updated"),"dafeiyu",fixture.Root);switchSource.InstalledValue=latest;var selectedHistory=owner.Session.History;
             switchSource.BulkResult.SetResult(new[]{new OfficialCompanionResult(latest,false,true,true,"")});Complete(bulk);
+            Until(()=>owner.Skin.Folder==latest.RootDirectory);
             Check(owner.OfficialPreparation.State==OfficialCompanionPreparationState.Completed&&owner.Skin.Folder==latest.RootDirectory&&owner.Skin.Id==persona&&owner.Settings.SelectedCompanionKey==key&&ReferenceEquals(owner.Session.History,selectedHistory),"bulk completion hotloads the cached role chosen during metadata wait without changing persona or history");guide.Close();
 
             Finish(owner);
@@ -387,12 +399,10 @@ internal static class OfficialCompanionUiChecks
         using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(staleData),officialSourceFactory:_=>staleSource))
         {
             Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.Settings));
-            Until(()=>staleSource.Progress!=null);
-            var progress=(OfficialCompanionProgressView)staleSource.Progress!;
-            var window=(Window)typeof(OfficialCompanionProgressView).GetField("window",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(progress)!;
+            Until(()=>staleSource.Calls>0);
+            Check(staleSource.Progress==null,"background update has no visible progress sink");
             Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.PetMenu));
-            progress.Report(new OfficialCompanionProgress("dafeiyu","download","",0,100,0));Dispatcher.UIThread.RunJobs();
-            Check(!window.IsVisible&&owner.Skin.OfficialCharacterId=="e-bao","late download from previous role cannot open a dialog or change the current role");
+            Check(owner.Skin.OfficialCharacterId=="e-bao","new selection remains active while previous background update is pending");
             staleSource.Result.TrySetResult(new OfficialCompanionResult(installation,false,false,true,""));Dispatcher.UIThread.RunJobs();
             Finish(owner);
         }
@@ -426,6 +436,48 @@ internal static class OfficialCompanionUiChecks
             Check(!window.IsVisible&&!cancellation.IsCancellationRequested,"completed progress closes without cancelling the operation");
             progress.Report(new OfficialCompanionProgress("dafeiyu","download","",50,100,50));Dispatcher.UIThread.RunJobs();
             Check(!window.IsVisible,"late progress cannot reopen a completed dialog");
+        }
+        return checks;
+    }
+    internal static int RunPreparedSwitch(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Prepared switch: "+label);checks++;}
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"dafeiyu",null,false);
+        var installed=CreatePackage(Path.Combine(directory,"installed"),"dafeiyu",fixture.Root);
+        var source=new FakeSource{InstalledValue=installed};var assets=new SpriteAssets();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"data")),spriteAssetsFactory:()=>assets,officialSourceFactory:_=>source)){
+            var updates=new List<CompanionSelectionUpdate>();owner.CompanionSelectionChanged+=updates.Add;
+            var e=owner.Skin;var d=owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu");
+            Complete(owner.SelectSkinAsync(d,CompanionSelectionOrigin.PetMenu));
+            Check(owner.Skin.Snapshot!=null&&source.Calls==1&&!source.Result.Task.IsCompleted,"local activation precedes unresolved network update");
+            Check(updates.Any(x=>x.Stage=="committed")&&!updates.Any(x=>x.Stage=="completed"),"commit is not an actual render completion");
+            var sprite=(SpriteView)typeof(PetWindow).GetField("sprite",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner.Pet)!;
+            using(var target=new RenderTargetBitmap(new PixelSize(192,208)))using(var context=target.CreateDrawingContext())sprite.Render(context);
+            Check(updates.Count(x=>x.Stage=="completed")==1&&updates.Last().Milliseconds>0,"first rendered target emits one measured completion");
+            using(var target=new RenderTargetBitmap(new PixelSize(192,208)))using(var context=target.CreateDrawingContext())sprite.Render(context);
+            Check(updates.Count(x=>x.Stage=="completed")==1,"repeated frames do not duplicate completion");
+            int captures=source.InstalledCalls;
+            Complete(owner.SelectSkinAsync(e,CompanionSelectionOrigin.PetMenu));
+            int native=assets.DecodeCount;
+            Complete(owner.SelectSkinAsync(d,CompanionSelectionOrigin.PetMenu));
+            Check(source.InstalledCalls==captures+1,"warm retained generation avoids recapturing pointer behind background lifecycle work");
+            Check(assets.DecodeCount==native,"A to B to A reuses prepared native default pixels");
+            Complete(owner.SelectSkinAsync(e,CompanionSelectionOrigin.PetMenu));
+            var normal=Path.Combine(installed.RootDirectory,"normal.png");var bytes=File.ReadAllBytes(normal);bytes[^1]^=1;File.WriteAllBytes(normal,bytes);
+            var corrupt=owner.SelectSkinAsync(d,CompanionSelectionOrigin.PetMenu);Until(()=>updates.Any(u=>u.Stage=="installing"));
+            Check(owner.Skin.PickerKey==e.PickerKey&&!corrupt.IsCompleted,"same-length tampering forces repair and keeps the old visible role");
+            owner.CancelCompanionSelection(owner.CurrentCompanionSelection!.Request);source.Result.TrySetCanceled();Complete(corrupt);
+            Check(owner.Skin.PickerKey==e.PickerKey&&updates.Any(u=>u.Stage=="cancelled"),"cancelled repair cannot select damaged default");
+            Finish(owner);
+        }
+        var arrived=CreatePackage(Path.Combine(directory,"arrival"),"dafeiyu",fixture.Root);var missing=new FakeSource();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"missing-data")),officialSourceFactory:_=>missing)){
+            var old=owner.Skin;var placeholder=new PetSkin{Id="dafeiyu",Name="D",Prompt="",OfficialCharacterId="dafeiyu",PickerKey="official:dafeiyu",IsPlaceholder=true};
+            var selection=owner.SelectSkinAsync(placeholder,CompanionSelectionOrigin.PetMenu);Until(()=>missing.Calls==1);
+            var question=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId="busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+            missing.InstalledValue=arrived;missing.Result.SetResult(new OfficialCompanionResult(arrived,false,true,true,""));Complete(selection);
+            Check(ReferenceEquals(owner.Skin,old)&&owner.CurrentCompanionSelection?.Stage=="reselect-required"&&owner.Questions.Requests.Count==1,"installation arriving during business revokes auto-selection without stopping work");
+            owner.Questions.CancelSession("busy");Dispatcher.UIThread.RunJobs();Check(ReferenceEquals(owner.Skin,old),"idle does not replay the revoked selection");Finish(owner);
         }
         return checks;
     }
@@ -465,17 +517,22 @@ internal static class OfficialCompanionUiChecks
         source.Result = new TaskCompletionSource<OfficialCompanionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         owner.Settings.PendingOfficialCompanionId = "dafeiyu";
         var hiddenRequest = owner.SelectSkinAsync(placeholder, CompanionSelectionOrigin.StartupRestore);
-        Until(() => source.Calls == 2);
+        Until(() => source.Calls == 3);
         CompanionPackStorage.SetHidden(owner.DataDirectory, placeholder.PickerKey, true);
         owner.CompanionHidden(placeholder); owner.Skins.RemoveAll(s => s.PickerKey == placeholder.PickerKey);
         source.Result.TrySetResult(new OfficialCompanionResult(new OfficialCompanionInstallation(asset, Path.Combine(directory, "never-read-hidden")), false, true, true, ""));
         Complete(hiddenRequest);
         Check(ReferenceEquals(owner.Skin, ebao) && owner.Skins.All(s => s.PickerKey != placeholder.PickerKey) && owner.Settings.PendingOfficialCompanionId == "", "hiding an in-flight automatic role blocks late activation and clears durable pending restore");
+        owner.Questions.AskAsync(new AgentQuestionRequest{SessionId="busy",TaskId="task",CallId="call",Question="waiting"},CancellationToken.None);
+        var beforeBusy=source.Selections;var active=owner.Skin;
+        Complete(owner.SelectSkinAsync(active,CompanionSelectionOrigin.PetMenu));
+        Check(source.Selections==beforeBusy&&owner.Questions.Requests.Count==1&&ReferenceEquals(owner.Skin,active)&&owner.CompanionSelectionNotice.Length>0,"business refusal leaves pending agent question and active companion untouched");
+        owner.Questions.CancelSession("busy");
         owner.ShowGuide(); Until(() => owner.GuideLocked);
         var before = source.Selections; var persona = owner.Settings.SkinId; var picker = owner.Settings.SelectedCompanionKey;
         Complete(owner.SelectSkinAsync(placeholder, CompanionSelectionOrigin.PetMenu));
         Complete(owner.DownloadAllOfficialAsync());
-        Check(source.Selections == before && source.Calls == 2 && source.BulkCalls == 0, "guide attempts never create selection tokens or downloads");
+        Check(source.Selections == before && source.Calls == 3 && source.BulkCalls == 0, "guide attempts never create selection tokens or downloads");
         Check(owner.Settings.SkinId == persona && owner.Settings.SelectedCompanionKey == picker && owner.Settings.PendingOfficialCompanionId == "", "guide attempt preserves persona and pending settings");
         ((GuideWindow?)typeof(DesktopController).GetField("guide", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(owner))?.Close();
         Finish(owner);
@@ -503,14 +560,27 @@ internal static class OfficialCompanionUiChecks
     private sealed class FakeSource : IOfficialCompanionSource
     {
         internal int Calls, BulkCalls, Selections, InstalledCalls;
+        internal readonly List<string> RequestedIds=new();
         internal OfficialCompanionInstallation? InstalledValue;
         internal TaskCompletionSource<IList<OfficialCompanionResult>>? BulkResult;
         internal TaskCompletionSource<OfficialCompanionResult> Result = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public long BeginSelection() => ++Selections;
         public bool OwnsSelection(long token) => token == Selections;
         public OfficialCompanionInstallation? Installed(string id) { Interlocked.Increment(ref InstalledCalls); return InstalledValue?.Asset.Id == id ? InstalledValue : null; }
+        private readonly Dictionary<string,Dictionary<string,OfficialCompanionFile>> snapshots=new(StringComparer.Ordinal);
+        public OfficialCompanionSnapshot? CaptureLocalSnapshot(string id,CancellationToken cancel)
+        {
+            var installed=Installed(id);if(installed==null)return null;
+            lock(snapshots){
+                if(!snapshots.TryGetValue(installed.RootDirectory,out var files)){
+                    files=Directory.GetFiles(installed.RootDirectory,"*",SearchOption.AllDirectories).ToDictionary(path=>Path.GetRelativePath(installed.RootDirectory,path).Replace('\\','/'),path=>{var bytes=File.ReadAllBytes(path);return new OfficialCompanionFile(bytes.Length,OfficialCompanionSnapshot.Digest(bytes));},StringComparer.Ordinal);
+                    snapshots[installed.RootDirectory]=files;
+                }
+                return new OfficialCompanionSnapshot(installed,files,installed.RootDirectory,installed.RootDirectory,null);
+            }
+        }
         internal IProgress<OfficialCompanionProgress>? Progress;
-        public Task<OfficialCompanionResult> EnsureAsync(string id, OfficialDownloadRouting routing, OfficialCompanionCheckMode mode, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { Calls++; Progress=progress; return Result.Task; }
+        public Task<OfficialCompanionResult> EnsureAsync(string id, OfficialDownloadRouting routing, OfficialCompanionCheckMode mode, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { Calls++; RequestedIds.Add(id);Progress=progress; return Result.Task; }
         public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing, IProgress<OfficialCompanionProgress>? progress, CancellationToken cancel) { BulkCalls++; return BulkResult?.Task??Task.FromResult<IList<OfficialCompanionResult>>(Array.Empty<OfficialCompanionResult>()); }
         public void Dispose() { Result.TrySetCanceled(); }
     }

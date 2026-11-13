@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -79,7 +79,7 @@ namespace Dafeiyu
                 refreshing=true;skins.SelectedItem=pet.Skin;refreshing=false;
                 await pet.RequestSkinAsync(selected,pet.GuideCompanionSelection?CompanionSelectionOrigin.Onboarding:CompanionSelectionOrigin.Settings,HostWindow);RefreshSkinChoices();ShowNotice(pet.Notice);
             };
-            skins.AddHandler(UIElement.PreviewMouseLeftButtonUpEvent,new System.Windows.Input.MouseButtonEventHandler(delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){var item=FindParentItem(e.OriginalSource as DependencyObject);if(item!=null&&item.IsSelected&&ReferenceEquals(item.DataContext,pet.Skin)){pet.SelectSkin(pet.Skin);ShowNotice(pet.Notice);}}),true);
+            skins.AddHandler(UIElement.PreviewMouseLeftButtonUpEvent,new System.Windows.Input.MouseButtonEventHandler(async delegate(object sender,System.Windows.Input.MouseButtonEventArgs e){var item=FindParentItem(e.OriginalSource as DependencyObject);if(item!=null&&item.IsSelected&&ReferenceEquals(item.DataContext,pet.Skin)){await pet.RequestSkinAsync(pet.Skin,CompanionSelectionOrigin.Settings,HostWindow);ShowNotice(pet.Notice);}}),true);
             Grid.SetRow(skins,1);appearanceRow.Children.Add(skins);
             holidayOutfits=new HolidayOutfitPanel(pet.Holidays,()=>pet.Skin){Margin=new Thickness(0,8,0,0)};Grid.SetColumn(holidayOutfits,2);Grid.SetRow(holidayOutfits,1);appearanceRow.Children.Add(holidayOutfits);
             var import=LocalizedUi.Button(()=>(TextResources.Get("settingsPage.settingsPage.text.alternativeB"))); import.Name="ImportSkin"; import.Margin=new Thickness(0,8,0,0);import.VerticalAlignment=VerticalAlignment.Top;import.SetBinding(HeightProperty,new System.Windows.Data.Binding("ActualHeight"){Source=skins}); import.Click+=ImportSkin;
@@ -238,7 +238,7 @@ namespace Dafeiyu
                 ShowNotice(()=>(TextResources.Format("settingsPage.importSkin.showNotice.alternativeA",e.Message)));
             }
         }
-        internal void RemoveCompanion(SkinDefinition skin)
+        internal async void RemoveCompanion(SkinDefinition skin)
         {
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             if(skin!=null&&skin.IsOfficial&&skin.BuiltinCharacterId=="e-bao"){ShowNotice(()=>(TextResources.Get("settingsPage.removeCompanion.showNotice.alternativeA")));return;}
@@ -250,7 +250,7 @@ namespace Dafeiyu
             if(pet.NoticeOnlyCompanionGuide()){ShowNotice(pet.Notice);return;}
             if(pet.Skin.PickerKey==skin.PickerKey) {
                 SkinDefinition next=null;foreach(var candidate in pet.Catalog.Skins)if(candidate.PickerKey!=skin.PickerKey&&!candidate.IsPlaceholder){next=candidate;break;}
-                if(next==null || !pet.SelectSkin(next)){ShowNotice(pet.Notice);return;}
+                if(next==null || !await pet.RequestSkinAsync(next,CompanionSelectionOrigin.Settings,HostWindow)){ShowNotice(pet.Notice);return;}
             }
             pet.Catalog.Remove(skin);RefreshSkinChoices();ShowNotice(()=>(TextResources.Format("settingsPage.removeCompanion.showNotice",skin.DisplayName)));
         }

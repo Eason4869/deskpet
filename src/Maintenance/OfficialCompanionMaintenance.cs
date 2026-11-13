@@ -104,6 +104,25 @@ namespace Dafeiyu.Maintenance
         {
             Write(role,"versions.json",new{schema_version=1,current=state.Current,previous=state.Previous,versions=state.Versions.Values.OrderBy(x=>x.Name,StringComparer.Ordinal).Select(x=>new{name=x.Name,identity=x.Identity,retired_utc_ticks=x.Retired}).ToArray()});
         }
+        // Publication alone may repair a corrupt pointer, after the incoming
+        // complete receipt is verified and while its caller holds the role lock.
+        // Recover/cleanup remain strict: ambiguous transactions are never guessed.
+        internal static void RepairPointerForPublication(OfficialCompanionStorage store,string id,string stage,OfficialCompanionAsset asset,CancellationToken cancel)
+        {
+            string role=store.CharacterRoot(id),pointer=PathFor(role,"current.txt");
+            try{Pointer(role);return;}catch(IOException){}
+            cancel.ThrowIfCancellationRequested();
+            if(store.ReadVersionCore(stage,id,asset,cancel,true,null,null,true)==null)throw new IOException("Incoming companion is not fully verified.");
+            if(File.Exists(PathFor(role,"version-transaction.json")))throw new IOException("Cannot repair an ambiguous publication transaction.");
+            var state=Read(role);string current=state.Current;
+            if(current.Length!=0){
+                VersionRecord record;string root=PathFor(role,current);
+                if(!Managed(current)||!state.Versions.TryGetValue(current,out record)||!Directory.Exists(root)||record.Identity!=CachePaths.Identity(root))throw new IOException("Cannot recover an unrecognized current installation.");
+            }else if(state.Previous.Length!=0||state.Versions.Count!=0)throw new IOException("Cannot recover inconsistent lifecycle state.");
+            string temporary=PathFor(role,".pointer-repair-"+Guid.NewGuid().ToString("N"));
+            try{File.WriteAllText(temporary,current,new UTF8Encoding(false));cancel.ThrowIfCancellationRequested();store.Commit(temporary,pointer);}
+            finally{if(File.Exists(temporary))File.Delete(temporary);}
+        }
         internal static void Begin(OfficialCompanionStorage store,string id,string next,string stage)
         {
             string role=store.CharacterRoot(id);Recover(store,id);var state=Read(role);string current=Pointer(role);

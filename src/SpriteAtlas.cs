@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -11,6 +11,7 @@ namespace Dafeiyu
     {
         private readonly BitmapSource[][] frames = new BitmapSource[11][];
         private readonly byte[][][] alpha = new byte[11][][];
+        internal long DecodedBytes {get;private set;}
         public int CellWidth { get; private set; }
         public int CellHeight { get; private set; }
         public bool HasGaze { get; private set; }
@@ -32,6 +33,7 @@ namespace Dafeiyu
             for (int row = 0; row < 11; row++)
             {
                 int count = (row < 9 ? AnimationPlayer.Counts[row] : 8)*FrameMultiplier;
+                DecodedBytes+=(long)count*CellWidth*CellHeight*5;
                 frames[row] = new BitmapSource[count]; alpha[row] = new byte[count][];
                 for (int col = 0; col < count; col++)
                 {
@@ -51,10 +53,12 @@ namespace Dafeiyu
                 }
             }
         }
-        internal SpriteAtlas(string folder,SkinManifest manifest)
+        internal SpriteAtlas(string folder,SkinManifest manifest):this(new SkinDefinition("",folder,manifest)){}
+        internal SpriteAtlas(SkinDefinition skin)
         {
-            CellWidth=480;CellHeight=520;FrameMultiplier=1;HasGaze=true;
-            var image=IllustratedPack.ReadImage(IllustratedPack.AssetPath(folder,manifest.Gaze.File),1920,2080);
+            var manifest=skin.Manifest;
+            CellWidth=480;CellHeight=520;FrameMultiplier=1;HasGaze=true;DecodedBytes=16L*480*520*5;
+            var image=skin.ReadImage(manifest.Gaze.File,1920,2080);
             for(int row=0;row<11;row++) { int count=row<9?AnimationPlayer.Counts[row]:8;frames[row]=new BitmapSource[count];alpha[row]=new byte[count][]; }
             for(int i=0;i<16;i++) {
                 var crop=new CroppedBitmap(image,new Int32Rect(i%4*480,i/4*520,480,520));

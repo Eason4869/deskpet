@@ -13,6 +13,7 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
+                CorruptPointerRepair().GetAwaiter().GetResult();
                 if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
                 RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
@@ -56,6 +57,23 @@ namespace Dafeiyu.Tests
             first=await admission.AcquireAsync(()=>false,CancellationToken.None);second=await admission.AcquireAsync(()=>false,CancellationToken.None);
             var olderBackground=admission.AcquireAsync(()=>true,CancellationToken.None);bool promoted=false;var promotedWork=admission.AcquireAsync(()=>!promoted,CancellationToken.None);promoted=true;first.Dispose();
             using(await Timeout(promotedWork)){Check(!olderBackground.IsCompleted,"foreground subscriber promotes queued background work");}using(await olderBackground){}second.Dispose();
+        }
+        static async Task CorruptPointerRepair()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0))){
+                var first=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);
+                var second=await service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None,true,false);
+                string role=Path.GetDirectoryName(second.Installation.RootDirectory),pointer=Path.Combine(role,"current.txt");File.WriteAllText(pointer,"invalid-pointer");
+                var repaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
+                Check(!repaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs corrupt pointer from known managed lifecycle current");
+                Check(Directory.Exists(first.Installation.RootDirectory)&&Directory.Exists(second.Installation.RootDirectory),"pointer repair preserves current and previous resource directories");
+                File.WriteAllText(pointer,"invalid-pointer");string transaction=Path.Combine(role,"version-transaction.json");File.WriteAllText(transaction,"{}");
+                bool rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
+                Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&File.Exists(transaction),"corrupt pointer with unknown transaction fails closed without changing recovery evidence");File.Delete(transaction);
+                string lifecycle=Path.Combine(role,"versions.json");var state=OfficialJson.File(lifecycle,1024*1024);state["current"]="../escape";File.WriteAllBytes(lifecycle,OfficialJson.Bytes(state));
+                rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
+                Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&Directory.Exists(second.Installation.RootDirectory),"malformed lifecycle paths cannot authorize pointer repair or remove old resources");
+            }
         }
         static async Task ForcedRepair()
         {

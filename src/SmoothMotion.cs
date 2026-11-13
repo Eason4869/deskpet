@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -56,13 +56,13 @@ namespace Dafeiyu
             var quiet=action==0?AdditionalInteractions.Quiet(definition,"idle",true):null;
             bool imported=definition!=null && definition.Illustrated;
             if(quiet==null && !imported && !Counts.TryGetValue(skin+"-"+action,out count))return null;
+            if(imported&&definition.Snapshot!=null)return WpfPreparedCompanion.Ready(definition,definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]]);
             MotionClip clip;
             if(clips.TryGetValue(action,out clip)){if(recent.Last.Value!=action){var node=recent.Find(action);recent.Remove(node);recent.AddLast(node);}return clip;}
             if(quiet!=null)clip=AdditionalInteractions.LoadQuiet(quiet);
             else if(imported) {
                 var spec=definition.Manifest.Animations[IllustratedPack.Actions[action<9?action:action-2]];
-                string path=IllustratedPack.AssetPath(definition.Source,spec.File);
-                var image=IllustratedPack.ReadImage(path,480*spec.Columns,520*((spec.Frames+spec.Columns-1)/spec.Columns));
+                var image=definition.ReadImage(spec.File,480*spec.Columns,520*((spec.Frames+spec.Columns-1)/spec.Columns));
                 clip=new MotionClip(image,spec.Frames,spec.Frames/spec.Fps,spec.Loop,480,520,spec.Columns);
             } else using(var input=Assembly.GetExecutingAssembly().GetManifestResourceStream("Dafeiyu.Motion."+skin+"-"+action)) {
                 if(input==null)return null;

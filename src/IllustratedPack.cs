@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -136,6 +136,14 @@ namespace Dafeiyu
             }
         }
         static int ReadInt(byte[] b,int i){return b[i]<<24|b[i+1]<<16|b[i+2]<<8|b[i+3];}
+        public static BitmapSource ReadImage(OfficialCompanionSnapshot snapshot,string path,int width,int height)
+        {
+            using(var input=new MemoryStream(snapshot.ReadVerifiedBytes(path),false)) {
+                var image=BitmapDecoder.Create(input,BitmapCreateOptions.PreservePixelFormat,BitmapCacheOption.OnLoad).Frames[0];
+                if(image.PixelWidth!=width||image.PixelHeight!=height)throw new InvalidDataException("Invalid companion image geometry.");
+                image.Freeze();return image;
+            }
+        }
         public static BitmapSource ReadImage(string path,int width,int height)
         {
             ValidateHeader(path,width,height);

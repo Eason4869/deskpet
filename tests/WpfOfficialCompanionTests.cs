@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -20,11 +20,34 @@ namespace Dafeiyu.Tests
     {
         static int passed;
         static void Check(bool value,string message){if(!value)throw new Exception(message);passed++;Console.WriteLine("PASS "+message);}
+        static void DecodedBudget()
+        {
+            var cache=new CompanionDecodedCache<object>(64);var a=new object();var b=new object();var c=new object();
+            cache.Put("a",a,60);cache.Pin("a");cache.Put("b",b,40);cache.Put("c",c,40);
+            Check(cache.Get("a")==a&&cache.Get("b")==null&&cache.Get("c")==c,"decoded LRU retains current pin and limits noncurrent bytes");
+            cache.Unpin("a");Check(cache.UnpinnedBytes<=64,"unpin enforces decoded budget immediately");
+        }
+        static void VerifiedDecode()
+        {
+            string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"verified-wpf-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+            try {
+                string path=Path.Combine(root,"gaze.png");WriteNative(path,4,4,16);var bytes=File.ReadAllBytes(path);
+                var files=new Dictionary<string,OfficialCompanionFile>{{"gaze.png",new OfficialCompanionFile(bytes.Length,OfficialCompanionSnapshot.Digest(bytes))}};
+                var asset=new OfficialCompanionAsset("e-bao","E","1.0.0","1.0.0","v1.0.0","e.zip",1,new string('a',64),new OfficialCompanionOutfit[0]);
+                using(var snapshot=new OfficialCompanionSnapshot(new OfficialCompanionInstallation(asset,root),files,"verified",root,null)) {
+                    var image=IllustratedPack.ReadImage(snapshot,"gaze.png",1920,2080);
+                    Check(image.IsFrozen&&image.PixelWidth==1920,"snapshot decoder consumes verified bytes into frozen native image");
+                    bytes[bytes.Length-1]^=1;File.WriteAllBytes(path,bytes);bool rejected=false;
+                    try{IllustratedPack.ReadImage(snapshot,"gaze.png",1920,2080);}catch(InvalidDataException){rejected=true;}
+                    Check(rejected,"snapshot decoder rejects changed bytes even after prior native success");
+                }
+            } finally {Directory.Delete(root,true);}
+        }
         static void Hold(IllustratedAnimation clip,double hold)
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
         }
         static void JumpHold()
@@ -110,7 +133,7 @@ namespace Dafeiyu.Tests
                 var settings=new PetSettings{SkinId="dafeiyu",SystemPrompt="保留原伙伴人格",PersonaProfileVersion=1,AutoUpdate=false,GreetingEnabled=false,Wander=false,FollowCursor=false,HideOnFullscreen=false,SaveChatHistory=false};
                 foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
                 pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(data,"settings.json")),null);
-                Check(pet.Skin.BuiltinCharacterId=="e-bao"&&settings.PendingOfficialCompanionId=="dafeiyu","thin startup uses embedded Ebao and persists missing selected role");
+                Check(pet.Skin.BuiltinCharacterId=="e-bao"&&settings.PendingOfficialCompanionId==""&&settings.SelectedCompanionKey=="official:dafeiyu","thin startup preserves legacy selected role without pending network intent");
                 Check(settings.PersonaOverrides["dafeiyu"]=="保留原伙伴人格","startup fallback preserves previous persona before activation");
                 Check(pet.Catalog.Skins.Count(s=>s.IsPlaceholder)==4,"thin startup has exactly four download placeholders");
                 foreach(var skin in pet.Catalog.Skins)Check(SkinCatalog.GetAvatar(skin)!=null,"every thin official avatar decodes without default role artwork");
@@ -121,7 +144,7 @@ namespace Dafeiyu.Tests
                 Check(!pet.SelectSkin(pet.Catalog.FindOfficial("marfu")),"guide companion attempt is notice-only");
                 pet.DownloadAllOfficialAsync(guide).GetAwaiter().GetResult();
                 Check(settings.SkinId==before&&settings.SelectedCompanionKey==picker&&settings.PendingOfficialCompanionId==pending&&settings.SystemPrompt==prompt,"guide attempts preserve selection persona and pending restore");
-                Check(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)==null,"guide attempts never create a download service");
+                Check(pet.CurrentCompanionSelection==null&&!app.Windows.OfType<OfficialCompanionProgressWindow>().Any(),"guide attempts never start a selection or download UI");
                 Check(Walk(guide).OfType<Button>().Single(b=>b.Name=="GuideNext").IsEnabled,"notice-only companion lesson remains advanceable");
                 guide.Close();Pump();Check(pet.SelectSkin(pet.Skin),"explicit already-visible Ebao selection succeeds");
                 Check(settings.PendingOfficialCompanionId=="","explicit Ebao selection clears older automatic restore");
@@ -154,9 +177,10 @@ namespace Dafeiyu.Tests
                         return null;
                     };
                     var selection=pet.RequestSkinAsync(pet.Catalog.FindOfficial("dafeiyu"),CompanionSelectionOrigin.StartupRestore,null);Wait(started.Task);
-                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="dafeiyu","missing request retains old visible source while downloading");
+                    Check(pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId==""&&pet.CurrentCompanionSelection.PickerKey=="official:dafeiyu","missing request retains old visible source with transient download state");
+                    var shared=service.UpdateInBackgroundAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),CancellationToken.None);
                     pet.Catalog.Remove(pet.Catalog.FindOfficial("dafeiyu"));Check(pet.Settings.PendingOfficialCompanionId==""&&!pet.Catalog.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu"),"hiding pending noncurrent role invalidates restore intent without cancelling shared installation");
-                    Check(pet.SelectSkin(pet.Skin),"already-visible Ebao supersedes in-flight requested role");hold=false;release.TrySetResult(true);Wait(selection);
+                    Check(pet.SelectSkin(pet.Skin),"already-visible Ebao supersedes in-flight requested role");hold=false;release.TrySetResult(true);Wait(selection);Wait(shared);
                     Check(service.Installed("dafeiyu")!=null&&pet.Skin.BuiltinCharacterId=="e-bao"&&pet.Settings.PendingOfficialCompanionId=="","late completed package installs without taking over latest explicit choice");
                     Check(!pet.Catalog.Skins.Any(s=>s.BuiltinCharacterId=="dafeiyu")&&new SettingsStore(Path.Combine(pet.Store.DirectoryPath,"settings.json")).Load().PendingOfficialCompanionId=="","late hidden-role completion cannot unhide or resurrect pending selection after restart");
                     pet.Catalog.RestoreRemoved();pet.Catalog.PreserveActive(pet.Skin);
@@ -182,7 +206,7 @@ namespace Dafeiyu.Tests
                     var shown=(MotionClip)Field("shownMotion").GetValue(pet);int sample=(int)Field("shownSample").GetValue(pet);
                     Check(shown!=null&&shown.AlphaAt(sample,11,0)>16&&shown.AlphaAt(sample,0,0)==0,"source refresh publishes new frame and matching hit mask rather than stale same-persona cache");
                     Check(pet.Holidays.Catalog.Find("dafeiyu","halloween-2026").SourceKey!=oldOutfit.SourceKey,"same outfit version uses refreshed immutable source identity");
-                    var delayed=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{oldInstallation,false});Wait(delayed);
+                    var delayed=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(OfficialCompanionInstallation),typeof(bool)},null).Invoke(pet,new object[]{oldInstallation,false});Wait(delayed);
                     Check(delayed.Result.Source==pet.Skin.Source,"delayed older background result cannot replace newer bulk source cache for unchanged selection token");
                     var cache=(System.Collections.IDictionary)Field("officialCatalogs").GetValue(pet);Check(cache.Count<=6,"catalog cache bounds retired sources across updates");
                     Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null));

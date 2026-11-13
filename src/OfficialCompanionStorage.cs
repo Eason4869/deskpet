@@ -54,7 +54,7 @@ namespace Dafeiyu
         {
             return ReadVersionCore(directory,id,expected,cancel,true,null);
         }
-        internal OfficialCompanionInstallation ReadVersionCore(string directory,string id,OfficialCompanionAsset expected,CancellationToken cancel,bool verify,Dictionary<string,OfficialCompanionFile> files,byte[] receiptBytes=null)
+        internal OfficialCompanionInstallation ReadVersionCore(string directory,string id,OfficialCompanionAsset expected,CancellationToken cancel,bool verify,Dictionary<string,OfficialCompanionFile> files,byte[] receiptBytes=null,bool staging=false)
         {
             cancel.ThrowIfCancellationRequested();
             if(!Directory.Exists(directory))return null;SafeDirectory(directory);
@@ -62,6 +62,7 @@ namespace Dafeiyu
             long schema=OfficialJson.Integer(receipt,"schema_version");if((schema!=1&&schema!=2)||OfficialJson.Text(receipt,"repository",200)!=ReleaseInfo.RepositoryUrl)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text"));
             var asset=ReadAsset(OfficialJson.Object(OfficialJson.Required(receipt,"asset")));
             string versionName=Path.GetFileName(directory);bool nameMatches=schema==1?versionName=="v-"+asset.Version+"-"+asset.Sha256:Maintenance.OfficialCompanionMaintenance.Managed(versionName)&&versionName.StartsWith("v2-"+asset.Version+"-"+asset.Sha256.Substring(0,32)+"-",StringComparison.Ordinal);
+            if(staging&&schema==2&&expected!=null&&Path.GetFullPath(Path.GetDirectoryName(directory))==Path.GetFullPath(CharacterRoot(id))&&Regex.IsMatch(versionName,@"\A\.stage-[a-f0-9]{32}\z"))nameMatches=true;
             if(asset.Id!=id||!nameMatches||(expected!=null&&!SameAsset(asset,expected)))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeA"));
             var listed=OfficialJson.Array(OfficialJson.Required(receipt,"files"));if(listed.Length<1||listed.Length>CompanionPackagePolicy.MaximumEntries)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.readVersion.text.alternativeB"));
             var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);long total=0;
@@ -107,6 +108,7 @@ namespace Dafeiyu
         internal OfficialCompanionInstallation Publish(string stage,OfficialCompanionAsset asset,CancellationToken cancel,Action checkAlive,Action<Action> publication,string appVersion,out bool installed,bool forceRepair=false)
         {
             installed=false;using(Maintenance.OfficialCompanionMaintenance.Lock(CharacterRoot(asset.Id),cancel)) {
+            Maintenance.OfficialCompanionMaintenance.RepairPointerForPublication(this,asset.Id,stage,asset,cancel);
             Maintenance.OfficialCompanionMaintenance.Recover(this,asset.Id);
             var existing=Installed(asset.Id);
             if(appVersion!=null&&existing!=null&&ReleaseVersion.Parse(existing.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0&&(!forceRepair&&SameContent(existing.Asset,asset)&&ConsistentContent(existing.Asset,asset)||OfficialCompanionRules.CompareContent(existing.Asset,asset)>0)){DeleteOwned(stage);return existing;}

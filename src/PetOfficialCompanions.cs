@@ -17,11 +17,33 @@ namespace Dafeiyu
         GitHubUpdates officialTransport;
         readonly Dictionary<string,HolidayCatalog> officialCatalogs=new Dictionary<string,HolidayCatalog>(StringComparer.Ordinal);
         readonly Dictionary<string,SkinDefinition> officialSources=new Dictionary<string,SkinDefinition>(StringComparer.Ordinal);
+        readonly List<OfficialCompanionSnapshot> retainedSnapshots=new List<OfficialCompanionSnapshot>();
         HolidayCatalog embeddedHolidayCatalog;
         PendingOfficialSource deferredOfficial;
-        bool officialStartupStarted;
+        bool officialStartupStarted,officialFirstFrameRendered;
         bool checkingDeferredOfficial;
+        int officialPreparationReaders;
         long officialRequest;
+        CancellationTokenSource officialSelection;
+        internal event Action<CompanionSelectionUpdate> CompanionSelectionChanged;
+        internal CompanionSelectionUpdate CurrentCompanionSelection {get;private set;}
+        CompanionSelectionUpdate renderedSelection;
+        readonly Dictionary<long,System.Diagnostics.Stopwatch> selectionClocks=new Dictionary<long,System.Diagnostics.Stopwatch>();
+        void SelectionStage(long token,SkinDefinition skin,CompanionSelectionOrigin origin,string stage,bool cached=false,OfficialCompanionProgress progress=null)
+        {
+            System.Diagnostics.Stopwatch clock;selectionClocks.TryGetValue(token,out clock);
+            var update=new CompanionSelectionUpdate(token,skin.PickerKey,origin.ToString(),stage,clock==null?0:clock.Elapsed.TotalMilliseconds,cached,progress);
+            CompanionSelectionUpdate.WriteTrace("Companion request="+token+" stage="+stage+" cache="+cached+" ms="+update.Milliseconds.ToString("F1",System.Globalization.CultureInfo.InvariantCulture));
+            CurrentCompanionSelection=update;if(CompanionSelectionChanged!=null)CompanionSelectionChanged(update);
+        }
+        internal void CancelCompanionSelection(long token){if(OwnsOfficial(token)&&officialSelection!=null)officialSelection.Cancel();}
+        void CompanionFirstFrameRendered()
+        {
+            if(IsPetVisible)officialFirstFrameRendered=true;
+            var update=renderedSelection;if(update==null||Skin.PickerKey!=update.PickerKey)return;renderedSelection=null;
+            if(OwnsOfficial(update.Request))SelectionStage(update.Request,Skin,(CompanionSelectionOrigin)Enum.Parse(typeof(CompanionSelectionOrigin),update.Origin),"completed");selectionClocks.Remove(update.Request);
+        }
+
         sealed class PendingOfficialSource
         {internal SkinDefinition Skin;internal long Request;internal bool Select;internal string ExpectedKey;internal SkinDefinition ExpectedSource;internal string Pointer;}
         OfficialCompanionDownloads OfficialDownloads
@@ -39,19 +61,13 @@ namespace Dafeiyu
         // This path is deliberately offline; refresh remains a separate operation.
         SkinDefinition RestoreCachedStartupCompanion(SkinDefinition requested)
         {
-            if(!requested.IsOfficial||!requested.IsPlaceholder||!HasOfficialPointer(requested))return requested;
+            if(!requested.IsOfficial||!HasOfficialPointer(requested))return requested;
             try {
-                var restored=Task.Run(()=>{
-                    var installed=OfficialDownloads.Installed(requested.BuiltinCharacterId);
-                    if(installed==null)return null;
-                    officialNative.ValidateAsync(installed,officialLifetime.Token).GetAwaiter().GetResult();
-                    var skin=Catalog.FromOfficial(installed);
-                    skin.PreparedOfficialAtlas=skin.Load();
-                    return skin;
-                }).GetAwaiter().GetResult();
+                var restored=Task.Run(()=>PrepareOfficialAsync(requested.BuiltinCharacterId,officialLifetime.Token)).GetAwaiter().GetResult();
                 if(restored==null)return requested;
+                ReleaseVersion bundled,installed;if(requested.BuiltinCharacterId=="e-bao"&&requested.Manifest!=null&&ReleaseVersion.TryParse(requested.Manifest.PackVersion,out bundled)&&ReleaseVersion.TryParse(restored.Manifest.PackVersion,out installed)&&installed.CompareTo(bundled)<0)return requested;
                 Catalog.ReplaceOfficial(restored);officialSources[restored.BuiltinCharacterId]=restored;
-                officialCatalogs[restored.Source]=new HolidayCatalog(restored.OfficialInstallation.HolidayRootDirectory);
+
                 if(Settings.PendingOfficialCompanionId==restored.BuiltinCharacterId)Settings.PendingOfficialCompanionId="";
                 return restored;
             }catch(Exception error){if(!OfficialError(error))throw;return requested;}
@@ -68,119 +84,144 @@ namespace Dafeiyu
             if(onboarding&&GuideCompanionSelection)guide.AllowCompanionPreparation();else if(NoticeOnlyCompanionGuide())return false;
             if(closing||IsUpdating)return false;
             if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
-            if(DialogueBusy||DictationActive||LiveActive){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
+            if(HolidayBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
             return true;
         }
         long BeginCompanionSelection(SkinDefinition target)
         {
-            officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;
-            Settings.PendingOfficialCompanionId=target.IsOfficial&&target.IsPlaceholder?target.BuiltinCharacterId:"";
+            if(officialSelection!=null)officialSelection.Cancel();
+            officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;
+            Settings.PendingOfficialCompanionId="";
             SaveSettings();return officialRequest;
         }
+        // Compatibility for local callers of the original synchronous API.
+        // Application pickers use RequestSkinAsync so all disk preparation yields.
         public bool SelectSkin(SkinDefinition skin)
         {
-            if(skin==null||!CanRequestCompanion())return false;
-            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.selectSkin.notice");return false;}
-            if(!skin.IsOfficial&&!skin.PackageHolidaysChecked &&
-                (skin.PackageHolidayCatalog!=null || !skin.Illustrated || skin.Manifest==null || !OfficialCompanionRules.Ids.Contains(skin.Manifest.PackageId) || !Directory.Exists(Path.Combine(skin.Source,"holidays"))))skin.PackageHolidaysChecked=true;
-            if(!skin.IsOfficial&&!skin.PackageHolidaysChecked||skin.IsPlaceholder||skin.Embedded&&ShouldRefreshOfficial(skin)){var ignored=RequestSkinAsync(skin,CompanionSelectionOrigin.PassiveMenu,null);return false;}
-            BeginCompanionSelection(skin);
-            bool changed=ActivateSkin(skin);if(changed){Catalog.PreserveActive(skin);MergeOfficialHoliday(skin);}if(changed&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached);}
-            return changed;
+            if(skin==null||!CanRequestCompanion()||!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey))return false;
+            if(ReferenceEquals(skin,Skin)){BeginCompanionSelection(skin);return true;}
+            if(skin.IsPlaceholder||skin.Snapshot!=null)return false;
+            long token=BeginCompanionSelection(skin);selectionClocks.Clear();selectionClocks[token]=System.Diagnostics.Stopwatch.StartNew();SelectionStage(token,skin,CompanionSelectionOrigin.PassiveMenu,"requested");
+            try{
+                using(WpfPreparedCompanion.Hold(skin)){
+                    Task.Run(async()=>{await PrepareLocalOutfitsAsync(skin);if(skin.Illustrated)PrepareDefault(skin);else if(skin.PreparedOfficialAtlas==null)skin.PreparedOfficialAtlas=skin.Load();}).GetAwaiter().GetResult();
+                    if(!ActivateSkin(skin))return false;WpfPreparedCompanion.Activate(skin);Catalog.PreserveActive(skin);
+                }
+                SelectionStage(token,skin,CompanionSelectionOrigin.PassiveMenu,"committed");renderedSelection=new CompanionSelectionUpdate(token,skin.PickerKey,CompanionSelectionOrigin.PassiveMenu.ToString(),"render-pending",0);return true;
+            }catch(Exception error){if(!OfficialError(error))throw;SelectionStage(token,skin,CompanionSelectionOrigin.PassiveMenu,"failed");return false;}
+            finally{if(renderedSelection==null||renderedSelection.Request!=token)selectionClocks.Remove(token);}
         }
         internal async Task<bool> RequestSkinAsync(SkinDefinition skin,CompanionSelectionOrigin origin,Window owner)
         {
             if(skin==null||!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding))return false;
-            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey)){Notice=TextResources.Get("petOfficialCompanions.requestSkinAsync.notice");return false;}
-            RecordPetInteraction();long token=BeginCompanionSelection(skin);
-            if(skin.Embedded&&ShouldRefreshOfficial(skin))return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
-            if(!skin.IsPlaceholder) {
-                await PrepareLocalOutfitsAsync(skin);if(!OwnsOfficial(token))return false;
-                bool selected=ActivateSkin(skin);
-                if(selected){Catalog.PreserveActive(skin);MergeOfficialHoliday(skin);}if(selected&&ShouldRefreshOfficial(skin)){var ignored=RefreshOfficialAsync(skin.BuiltinCharacterId,token,false,origin,owner,OfficialCompanionCheckMode.Cached);}
-                return selected;
+            if(!Catalog.Skins.Any(s=>s.PickerKey==skin.PickerKey))return false;
+            RecordPetInteraction();long token=BeginCompanionSelection(skin);selectionClocks.Clear();selectionClocks[token]=System.Diagnostics.Stopwatch.StartNew();
+            using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(officialLifetime.Token)) {
+                IDisposable heldPreparation=null;officialSelection=cancel;SelectionStage(token,skin,origin,"requested");
+                try {
+                    SkinDefinition ready=skin;bool cached=false,repair=false;
+                    if(skin.IsOfficial) {
+                        SkinDefinition warm;cached=officialSources.TryGetValue(skin.BuiltinCharacterId,out warm)&&warm.PreparedOfficialAtlas!=null&&WpfPreparedCompanion.HasIdle(warm);
+                        try{var local=await PrepareOfficialAsync(skin.BuiltinCharacterId,cancel.Token);if(local!=null)ready=local;}
+                        catch(Exception error){if(!OfficialError(error))throw;repair=true;ready=Catalog.FindOfficial(skin.BuiltinCharacterId);}
+                        if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
+                        if(repair||ready.IsPlaceholder) {
+                            SelectionStage(token,skin,origin,"installing");
+                            var progress=new Progress<OfficialCompanionProgress>(p=>{if(OwnsOfficial(token)&&!cancel.IsCancellationRequested)SelectionStage(token,skin,origin,"progress",false,p);});
+                            var result=await OfficialDownloads.EnsureAsync(skin.BuiltinCharacterId,OfficialRouting(),OfficialCompanionCheckMode.Cached,progress,cancel.Token,repair,false);
+                            ready=await PrepareOfficialAsync(result.Installation,true);
+                        }
+                    } else await PrepareLocalOutfitsAsync(ready);
+                    if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
+                    heldPreparation=WpfPreparedCompanion.Hold(ready);
+                    await Task.Run(()=>{if(ready.Illustrated)PrepareDefault(ready,false);else if(ready.PreparedOfficialAtlas==null)ready.PreparedOfficialAtlas=ready.Load();},cancel.Token);
+                    if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
+                    HolidayCatalog wardrobe;
+                    if(ready.OfficialInstallation!=null&&officialCatalogs.TryGetValue(ready.Source,out wardrobe)){
+                        var outfit=Holidays.PreviewOutfit(ready.OutfitCharacterId,ready.PickerKey,HolidayLocalTime(),wardrobe);
+                        if(outfit!=null)try{await Task.Run(()=>{using(var idleBytes=outfit.FindClip("idle","default").OpenResource()){}using(var gazeBytes=outfit.Gaze.OpenResource()){}var visuals=new HolidayVisualAssets(null);visuals.Get(outfit.FindClip("idle","default"));visuals.Get(outfit.Gaze);},cancel.Token);}
+                        catch(Exception error){if(!OfficialError(error))throw;wardrobe.ReportUnavailable(outfit);}
+                    }
+                    if(!OwnsOfficial(token)||cancel.IsCancellationRequested)return false;
+                    SelectionStage(token,ready,origin,"prepared",cached);
+                    if(!CanRequestCompanion(origin==CompanionSelectionOrigin.Onboarding)){SelectionStage(token,ready,origin,"reselect-required");return false;}
+                    bool changed=Skin.PickerKey!=ready.PickerKey;
+                    if(!ActivateSkin(ready))return false;
+                    WpfPreparedCompanion.Activate(ready);Catalog.PreserveActive(ready);MergeOfficialHoliday(ready);RefreshHoliday();UpdateFrame();
+                    SelectionStage(token,ready,origin,"committed",cached);
+                    if(changed&&origin!=CompanionSelectionOrigin.StartupRestore)renderedSelection=new CompanionSelectionUpdate(token,ready.PickerKey,origin.ToString(),"render-pending",0);
+                    if(ready.IsOfficial&&origin!=CompanionSelectionOrigin.StartupRestore){var background=RefreshOfficialAsync(ready.BuiltinCharacterId,token,false,origin,null,OfficialCompanionCheckMode.Cached);}
+                    return true;
+                }catch(OperationCanceledException){if(OwnsOfficial(token))SelectionStage(token,skin,origin,"cancelled");return false;}
+                catch(Exception error){if(!OfficialError(error))throw;if(OwnsOfficial(token))SelectionStage(token,skin,origin,"failed");return false;}
+                finally{if(cancel.IsCancellationRequested&&OwnsOfficial(token)&&CurrentCompanionSelection!=null&&CurrentCompanionSelection.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,skin,origin,"cancelled");if(heldPreparation!=null)heldPreparation.Dispose();if(ReferenceEquals(officialSelection,cancel))officialSelection=null;if(renderedSelection==null||renderedSelection.Request!=token)selectionClocks.Remove(token);}
             }
-            return await RefreshOfficialAsync(skin.BuiltinCharacterId,token,true,origin,owner,OfficialCompanionCheckMode.Cached);
         }
         bool OwnsOfficial(long token){return !closing&&officialDownloads!=null&&officialDownloads.OwnsSelection(token);}
         async Task<bool> RefreshOfficialAsync(string id,long token,bool selecting,CompanionSelectionOrigin origin,Window owner,OfficialCompanionCheckMode mode)
         {
-            OfficialCompanionProgressWindow dialog=null;var requestedSource=Skin;bool finishedWork=false;CancellationTokenRegistration dialogCancellation=default(CancellationTokenRegistration);
-            using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(officialLifetime.Token)) {
-                try {
-                    if(selecting||Skin.IsOfficial&&Skin.BuiltinCharacterId==id) {
-                        var installed=await Task.Run(()=>OfficialDownloads.Installed(id),cancel.Token);
-                        if(installed!=null){try{await officialNative.ValidateAsync(installed,cancel.Token);}catch(OperationCanceledException){throw;}catch(Exception error){if(!OfficialError(error))throw;installed=null;}}
-                        if(installed!=null){if(OwnsOfficial(token)){var ready=await PrepareOfficialAsync(installed,false);if(OwnsOfficial(token)){QueueOfficial(ready,token,selecting);TryApplyDeferredOfficial();if(ReferenceEquals(Skin,ready))requestedSource=Skin;}else PublishInactiveOfficial(ready);}}
-                        else if(selecting&&id=="e-bao"&&OwnsOfficial(token)){QueueOfficial(Catalog.EmbeddedFallback(),token,true);TryApplyDeferredOfficial();requestedSource=Skin;}
-                    }
-                    if(!OwnsOfficial(token))return false;
-                    if(selecting&&Skin.IsOfficial&&Skin.BuiltinCharacterId==id&&!Skin.IsPlaceholder) {
-                        // Selection is complete as soon as a usable cached role is active.
-                        // Metadata/download completion only refreshes that same role later.
-                        var ignored=RefreshOfficialAsync(id,token,false,origin,owner,mode);
-                        return true;
-                    }
-                    using(var lease=dialog==null?CancellationTokenSource.CreateLinkedTokenSource(cancel.Token):CancellationTokenSource.CreateLinkedTokenSource(cancel.Token,dialog.Token)) {
-                        var progress=new Progress<OfficialCompanionProgress>(p=>{
-                            if(finishedWork||!OwnsOfficial(token))return;
-                            bool mainEntry=origin==CompanionSelectionOrigin.Settings||origin==CompanionSelectionOrigin.MainWindow;
-                            if(dialog==null&&(selecting||mainEntry)&&origin!=CompanionSelectionOrigin.StartupRestore&&p.RequiresUpdateNotice){dialog=new OfficialCompanionProgressWindow(owner,false,!mainEntry);dialogCancellation=dialog.Token.Register(()=>cancel.Cancel());dialog.Show();}
-                            if(dialog!=null)dialog.Report(p);
-                        });
-                        var result=await OfficialDownloads.EnsureAsync(id,OfficialRouting(),mode,progress,lease.Token);
-                        if(closing)return false;
-                        var ready=await PrepareOfficialAsync(result.Installation,result.InstalledNow);
-                        if(OwnsOfficial(token)) {
-                            if(selecting||Skin.PickerKey==ready.PickerKey&&ReferenceEquals(Skin,requestedSource)){QueueOfficial(ready,token,selecting);TryApplyDeferredOfficial();}
-                            else PublishInactiveOfficial(ready);
-                            if(result.UsedOfflineFallback){Notice=TextResources.Get("petOfficialCompanions.refreshOfficialAsync.notice.alternativeA");if(preferences!=null)preferences.ShowNotice(Notice);}
-                        }else PublishInactiveOfficial(ready);
-                        if(dialog!=null)dialog.Complete();return OwnsOfficial(token);
-                    }
-                }catch(OperationCanceledException){if(dialog!=null&&dialog.Token.IsCancellationRequested&&OwnsOfficial(token)){officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;Settings.PendingOfficialCompanionId="";SaveSettings();}if(dialog!=null)dialog.Failure(TextResources.Get("petOfficialCompanions.refreshOfficialAsync.dialogFailure"),()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;}
-                catch(Exception error) {
-                    if(!OfficialError(error))throw;
-                    if(OwnsOfficial(token)){Notice=TextResources.Get("petOfficialCompanions.refreshOfficialAsync.notice.alternativeB");if(preferences!=null)preferences.ShowNotice(Notice);if(origin==CompanionSelectionOrigin.PassiveMenu)ShowHolidayNotice(Notice);}
-                    if(dialog!=null)dialog.Failure(TextResources.Get("petOfficialCompanions.refreshOfficialAsync.dialogFailure.alternativeA"),()=>{var ignored=RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);});return false;
+            if(selecting)return await RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);
+            var previous=Skin;
+            try {
+                var result=mode==OfficialCompanionCheckMode.AfterApplicationUpdate?await OfficialDownloads.EnsureAsync(id,OfficialRouting(),mode,null,officialLifetime.Token,false,true):await OfficialDownloads.UpdateInBackgroundAsync(id,OfficialRouting(),officialLifetime.Token);
+                if(closing)return false;
+                var ready=await PrepareOfficialAsync(result.Installation,result.InstalledNow);
+                if(OwnsOfficial(token)&&ReferenceEquals(Skin,previous)&&Skin.BuiltinCharacterId==id){QueueOfficial(ready,token,false);TryApplyDeferredOfficial();}
+                else {
+                    PublishInactiveOfficial(ready);
+                    if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&OwnsOfficial(token)&&ReferenceEquals(Skin,previous)&&Settings.SelectedCompanionKey==ready.PickerKey&&!HolidayBusinessBusy&&(preferences==null||!preferences.HasUnsavedEdits))await RequestSkinAsync(ready,CompanionSelectionOrigin.StartupRestore,null);
                 }
-                finally{finishedWork=true;dialogCancellation.Dispose();if(dialog!=null&&dialog.IsPassive)dialog.Complete();}
-            }
+                if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&!result.UsedOfflineFallback&&Settings.SelectedCompanionKey==ready.PickerKey){Settings.LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion;SaveSettings();}
+                return !result.UsedOfflineFallback;
+            }catch(OperationCanceledException){return false;}catch(Exception error){if(!OfficialError(error))throw;CompanionSelectionUpdate.WriteTrace("Companion background failed: "+error.GetType().Name);return false;}
         }
         static bool OfficialError(Exception error){return error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is InvalidOperationException||error is ArgumentException||error is NotSupportedException||error is ApiException||error is AggregateException||error is System.Runtime.Serialization.SerializationException;}
+        async Task<SkinDefinition> PrepareOfficialAsync(string id,CancellationToken cancel)
+        {
+            Interlocked.Increment(ref officialPreparationReaders);try{
+            SkinDefinition existing;
+            if(officialSources.TryGetValue(id,out existing)&&existing.Snapshot!=null) {
+                // A retained generation never waits behind background full validation.
+                await Task.Run(()=>PrepareDefault(existing),cancel);return existing;
+            }
+            var snapshot=await Task.Run(()=>OfficialDownloads.CaptureLocalSnapshot(id,cancel),cancel);
+            if(snapshot==null)return null;
+            return await PrepareSnapshotAsync(snapshot,cancel);
+        }finally{Interlocked.Decrement(ref officialPreparationReaders);}
+        }
         async Task<SkinDefinition> PrepareOfficialAsync(OfficialCompanionInstallation installation,bool installedNow)
         {
-            // A bulk refresh does not advance selection ownership. An older
-            // completion must also agree with the latest verified disk receipt.
-            for(int attempt=0;attempt<3;attempt++) {
-                var latest=await Task.Run(()=>OfficialDownloads.Installed(installation.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
-                if(latest.RootDirectory!=installation.RootDirectory){installation=latest;installedNow=false;}
-                await officialNative.ValidateAsync(installation,officialLifetime.Token);
-                latest=await Task.Run(()=>OfficialDownloads.Installed(installation.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
-                if(latest.RootDirectory!=installation.RootDirectory){installation=latest;installedNow=false;continue;}
-                SkinDefinition existing;
-                if(!installedNow&&officialSources.TryGetValue(installation.Asset.Id,out existing)&&existing.Source==installation.RootDirectory)return existing;
-                string persona=Catalog.FindOfficial(installation.Asset.Id).Id;
-                var selected=installation;
-                var prepared=await Task.Run(()=>{
-                    SkinManifest manifest;using(var input=File.OpenRead(selected.PetManifestPath))manifest=SkinCatalog.ReadManifest(input);
-                    var source=new SkinDefinition(persona,selected.RootDirectory,manifest){BuiltinCharacterId=selected.Asset.Id,OfficialInstallation=selected};
-                    source.PreparedOfficialAtlas=source.Load();
-                    return Tuple.Create(source,new HolidayCatalog(selected.HolidayRootDirectory));
-                },officialLifetime.Token);
-                latest=await Task.Run(()=>OfficialDownloads.Installed(selected.Asset.Id),officialLifetime.Token);
-                if(latest==null)throw new InvalidDataException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text"));
-                if(latest.RootDirectory!=selected.RootDirectory){installation=latest;installedNow=false;continue;}
-                var skin=prepared.Item1;officialSources[selected.Asset.Id]=skin;
-                if(installedNow)officialCatalogs.Remove(selected.RootDirectory);
-                if(!officialCatalogs.ContainsKey(selected.RootDirectory))officialCatalogs[selected.RootDirectory]=prepared.Item2;
-                foreach(string retired in officialCatalogs.Keys.Where(root=>!officialSources.Values.Any(s=>s.Source==root)&&Skin.Source!=root).ToArray())officialCatalogs.Remove(retired);
-                return skin;
-            }
-            throw new IOException(TextResources.Get("petOfficialCompanions.prepareOfficialAsync.text.alternativeA"));
+            Interlocked.Increment(ref officialPreparationReaders);try{
+            var snapshot=await Task.Run(()=>OfficialDownloads.CaptureLocalSnapshot(installation.Asset.Id,officialLifetime.Token),officialLifetime.Token);
+            if(snapshot==null)throw new InvalidDataException("Installed source has no usable receipt.");
+            SkinDefinition existing;
+            if(!installedNow&&officialSources.TryGetValue(installation.Asset.Id,out existing)&&existing.Snapshot!=null&&existing.Snapshot.Generation==snapshot.Generation){snapshot.Dispose();await Task.Run(()=>PrepareDefault(existing),officialLifetime.Token);return existing;}
+            return await PrepareSnapshotAsync(snapshot,officialLifetime.Token);
+        }finally{Interlocked.Decrement(ref officialPreparationReaders);}
         }
+        static void PrepareDefault(SkinDefinition skin,bool verifyCache=true)
+        {
+            // Always reverify bytes used by a warm source before trusting cached pixels.
+            if(verifyCache&&skin.Snapshot!=null){if(skin.PreparedOfficialAtlas!=null)skin.Snapshot.ReadVerifiedBytes(skin.Manifest.Gaze.File);if(WpfPreparedCompanion.HasIdle(skin))skin.Snapshot.ReadVerifiedBytes(skin.Manifest.Animations["idle"].File);}
+            if(!skin.Illustrated)return;
+            if(skin.PreparedOfficialAtlas==null)skin.PreparedOfficialAtlas=skin.Load();
+            WpfPreparedCompanion.Load(skin,skin.Manifest.Animations["idle"]);
+        }
+        async Task<SkinDefinition> PrepareSnapshotAsync(OfficialCompanionSnapshot snapshot,CancellationToken cancel)
+        {
+            try {
+                string persona=Catalog.FindOfficial(snapshot.Installation.Asset.Id).Id;
+                var prepared=await Task.Run(()=>{
+                    SkinManifest manifest;using(var input=new MemoryStream(snapshot.ReadVerifiedBytes("pet.json",cancel),false))manifest=SkinCatalog.ReadManifest(input);
+                    var source=new SkinDefinition(persona,snapshot.Installation.RootDirectory,manifest){BuiltinCharacterId=snapshot.Installation.Asset.Id,OfficialInstallation=snapshot.Installation,Snapshot=snapshot};
+                    PrepareDefault(source);return Tuple.Create(source,new HolidayCatalog(snapshot));
+                },cancel);
+                retainedSnapshots.Add(snapshot);officialSources[snapshot.Installation.Asset.Id]=prepared.Item1;officialCatalogs[snapshot.Installation.RootDirectory]=prepared.Item2;
+                var audit=AuditSnapshotAsync(snapshot);return prepared.Item1;
+            }catch{snapshot.Dispose();throw;}
+        }
+        async Task AuditSnapshotAsync(OfficialCompanionSnapshot snapshot)
+        {try{await OfficialDownloads.ValidateSnapshotInBackgroundAsync(snapshot,officialLifetime.Token);}catch(OperationCanceledException){}catch(Exception error){if(!OfficialError(error))throw;}}
         void PublishInactiveOfficial(SkinDefinition skin)
         {if(Skin.PickerKey==skin.PickerKey)return;Catalog.ReplaceOfficial(skin);MergeOfficialHoliday(skin);if(preferences!=null)preferences.RefreshSkinChoices();}
         void QueueOfficial(SkinDefinition skin,long token,bool select)
@@ -235,8 +276,8 @@ namespace Dafeiyu
         {
             var replacement=skin.Load();var interactions=InteractionAtlas.LoadForSkin(skin);
             CancelInteraction();atlas=replacement;interactionAtlas=interactions;Skin=skin;interaction.Configure(skin);
-            motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1;shownOffset=new Point();shownMirrored=false;gazeActive=false;
-            Animation=skin.CreateAnimation(atlas.FrameMultiplier);RefreshHoliday();UpdateFrame();RefreshChatAppearance();
+            WpfPreparedCompanion.Activate(skin);motion=null;motionSkin=null;shownMotion=null;shownSample=-1;shownRow=shownCol=-1;shownOffset=new Point();shownMirrored=false;gazeActive=false;
+            Animation=skin.CreateAnimation(atlas.FrameMultiplier);MergeOfficialHoliday(skin);RefreshHoliday();UpdateFrame();RefreshChatAppearance();
         }
         async Task PrepareLocalOutfitsAsync(SkinDefinition skin)
         {
@@ -307,19 +348,37 @@ namespace Dafeiyu
         }
         void TryStartOfficialStartup()
         {
-            if(officialStartupStarted||GuideActive||closing)return;officialStartupStarted=true;
-            string id=Settings.PendingOfficialCompanionId;
-            if(!String.IsNullOrEmpty(id)&&!Catalog.Skins.Any(s=>s.BuiltinCharacterId==id)){Settings.PendingOfficialCompanionId="";SaveSettings();id="";}
-            if(String.IsNullOrEmpty(id)&&Skin.IsOfficial&&!Skin.FixtureEmbedded)id=Skin.BuiltinCharacterId;
-            if(String.IsNullOrEmpty(id))return;
-            officialRequest=OfficialDownloads.BeginSelection();
-            var ignored=RefreshOfficialAsync(id,officialRequest,!String.IsNullOrEmpty(Settings.PendingOfficialCompanionId),CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate);
+            if(officialStartupStarted||GuideActive||closing||!officialFirstFrameRendered||!IsPetVisible)return;
+            officialStartupStarted=true;
+            if(Settings.PendingOfficialCompanionId.Length!=0){Settings.PendingOfficialCompanionId="";SaveSettings();}
+            var desired=Catalog.FindPicker(Settings.SelectedCompanionKey)??Skin;
+            if(Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion||!desired.IsOfficial)return;
+            // A new application version checks only the already visible selected
+            // role. Failure retains the old version marker so restart can retry.
+            var work=RefreshOfficialAsync(desired.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate);
         }
         void OfficialCompanionHidden(SkinDefinition skin)
         {
-            if(!skin.IsOfficial||Settings.PendingOfficialCompanionId!=skin.BuiltinCharacterId&&(deferredOfficial==null||!deferredOfficial.Select||deferredOfficial.Skin.PickerKey!=skin.PickerKey))return;
-            officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;Settings.PendingOfficialCompanionId="";SaveSettings();
+            if(!skin.IsOfficial||(officialSelection==null||CurrentCompanionSelection==null||CurrentCompanionSelection.PickerKey!=skin.PickerKey)&&Settings.PendingOfficialCompanionId!=skin.BuiltinCharacterId&&(deferredOfficial==null||!deferredOfficial.Select||deferredOfficial.Skin.PickerKey!=skin.PickerKey))return;
+            if(officialSelection!=null)officialSelection.Cancel();
+            officialRequest=OfficialDownloads.BeginSelection();deferredOfficial=null;renderedSelection=null;Settings.PendingOfficialCompanionId="";SaveSettings();
         }
-        void DisposeOfficialCompanions(){officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();if(officialDownloads!=null)officialDownloads.Dispose();if(officialTransport!=null)officialTransport.Dispose();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
+        void PreparedCompanionFrame(string key)
+        {
+            if(closing)return;
+            string generation=Skin.Snapshot==null?Skin.NativeSourceKey:Skin.Snapshot.Generation;
+            if(key.StartsWith(generation+"/",StringComparison.Ordinal)||key.StartsWith("holiday/"+generation+"/",StringComparison.Ordinal))UpdateFrame();
+        }
+        void RetireOfficialSources()
+        {
+            if(officialSelection!=null||officialPreparationReaders!=0||checkingDeferredOfficial)return;
+            foreach(var snapshot in retainedSnapshots.ToArray()){
+                if(ReferenceEquals(Skin.Snapshot,snapshot)||officialSources.Values.Any(s=>ReferenceEquals(s.Snapshot,snapshot))||deferredOfficial!=null&&ReferenceEquals(deferredOfficial.Skin.Snapshot,snapshot)||WpfPreparedCompanion.HasPending(snapshot.Generation))continue;
+                if(!retainedSnapshots.Any(other=>!ReferenceEquals(other,snapshot)&&other.Generation==snapshot.Generation))WpfPreparedCompanion.Retire(snapshot.Generation);
+                if(!retainedSnapshots.Any(other=>!ReferenceEquals(other,snapshot)&&other.Installation.RootDirectory==snapshot.Installation.RootDirectory))officialCatalogs.Remove(snapshot.Installation.RootDirectory);
+                retainedSnapshots.Remove(snapshot);snapshot.Dispose();
+            }
+        }
+        void DisposeOfficialCompanions(){WpfPreparedCompanion.Prepared-=PreparedCompanionFrame;officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();if(officialDownloads!=null)officialDownloads.Dispose();if(officialTransport!=null)officialTransport.Dispose();foreach(var snapshot in retainedSnapshots)snapshot.Dispose();retainedSnapshots.Clear();WpfPreparedCompanion.Deactivate();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
     }
 }

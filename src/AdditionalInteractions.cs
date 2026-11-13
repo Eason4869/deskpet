@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -68,6 +68,7 @@ namespace Dafeiyu
             bool original = action.EndsWith("-original", StringComparison.Ordinal);
             string name = original ? action.Substring(0, action.Length - 9) : action;
             if (original ? !HasOriginal(skin, name) : !Has(skin, action)) return null;
+            IllustratedAnimation verifiedSpec;if(skin.Snapshot!=null&&Specification(skin,name,original,out verifiedSpec))return WpfPreparedCompanion.Ready(skin,verifiedSpec);
             MotionClip clip; if (clips.TryGetValue(action, out clip))
             {
                 if (recent.Last.Value != action) { var node = recent.Find(action); recent.Remove(node); recent.AddLast(node); }
@@ -77,7 +78,7 @@ namespace Dafeiyu
             var quiet=Quiet(skin,name,original);
             if(quiet!=null)clip=LoadQuiet(quiet);
             else if(Specification(skin,name,original,out specification)) {
-                var image=IllustratedPack.ReadImage(IllustratedPack.AssetPath(skin.Source,specification.File),480*specification.Columns,520*((specification.Frames+specification.Columns-1)/specification.Columns));
+                var image=skin.ReadImage(specification.File,480*specification.Columns,520*((specification.Frames+specification.Columns-1)/specification.Columns));
                 clip=new MotionClip(image,specification.Frames,specification.Frames/specification.Fps,specification.Loop,480,520,specification.Columns);
             }
             else if (original) clip = LoadOriginal(skin, name);

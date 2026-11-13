@@ -90,14 +90,18 @@ internal sealed partial class DesktopController : IDisposable
         if (onboarding.Changed) store.Save(Settings);
         showAutomaticGuide = onboarding.ShowGuide || Environment.GetCommandLineArgs().Contains(ApplicationRestart.ResumeArgument);
         InitializeCompanions(officialSourceFactory);
+        companionAssets=spriteAssetsFactory?.Invoke()??new SpriteAssets();
         Skins = Task.Run(() => SpriteAssets.LoadSkins(DataDirectory)).GetAwaiter().GetResult();
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
-        var requested = Settings.PendingOfficialCompanionId.Length != 0 ? Skins.FirstOrDefault(s => s.OfficialCharacterId == Settings.PendingOfficialCompanionId) : ResolveSavedCompanion();
+        Settings.PendingOfficialCompanionId="";
+        var requested = ResolveSavedCompanion();
         requested ??= embeddedEbao;
+        if(Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey=requested.PickerKey;
         Skin = RestoreCachedStartupCompanion(requested);
-        if (Skin.IsPlaceholder) { Settings.PendingOfficialCompanionId = Skin.OfficialCharacterId!; Skin = embeddedEbao; }
+        bool companionFallback=Skin.IsPlaceholder;
+        if (companionFallback) { Skin = embeddedEbao; }
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
-        Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
+        if(!companionFallback||Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();
         Observation=new DesktopObservationHost(DataMaintenance,runtime.CreateDesktopObservationCapture());
         TextResources.LanguageChanged+=ObservationLanguageChanged;
@@ -132,7 +136,8 @@ internal sealed partial class DesktopController : IDisposable
         Questions.Changed += Notify;Questions.Changed+=NotificationQuestionsChanged;
         Session.AgentTaskChanged += Notify;
         WorkBindings=new DesktopWorkspaces(this,runtime,jobsFactory);
-        Pet = new PetWindow(this, spriteAssetsFactory?.Invoke());ObserveNotificationSession(Session);
+        if(Skin.Snapshot!=null)activeCompanionPins=Task.Run(()=>companionAssets.Prepare(Skin)).GetAwaiter().GetResult();
+        Pet = new PetWindow(this, companionAssets);ObserveNotificationSession(Session);
         relationshipFeedback=new RelationshipFeedback(Relationships,id=>!exiting&&id==RelationshipCompanionId&&!Settings.QuietMode&&Pet.RelationshipFeedbackAllowed,ShowRelationshipFeedback,null,action=>Dispatcher.UIThread.Post(action));
         lifetime.ShutdownRequested+=ShutdownRequested;
         if (!runtime.ShowTray) return;
@@ -345,7 +350,9 @@ internal sealed partial class DesktopController : IDisposable
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
-        companionLifetime.Cancel(); preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
+        companionLifetime.Cancel();
+        activeCompanionPins?.Dispose();lock(preparedCompanions){foreach(var snapshot in companionSnapshots)snapshot.Dispose();companionSnapshots.Clear();}
+         preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();
         proactiveHistory?.Close();

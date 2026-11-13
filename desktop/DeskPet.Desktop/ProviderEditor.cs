@@ -144,6 +144,7 @@ internal sealed class ProviderEditor : StackPanel, IDisposable
         catch (OperationCanceledException) { if (tokenRevision == revision) LocalizedUi.Set(notice,"Text",()=>(TextResources.Get("providerEditor.fetchAsync.notice.alternativeC"))); }
         finally { if (ReferenceEquals(fetch, cancellation)) fetch = null; cancellation.Dispose(); }
     }
+    internal bool HasUnsavedChanges {get{Capture();return SerializeProvider(view)!=providerBaseline||descriptionModel!=null&&!SameReference(descriptionDraft,descriptionBaseline);}}
     private void Save()
     {
         try

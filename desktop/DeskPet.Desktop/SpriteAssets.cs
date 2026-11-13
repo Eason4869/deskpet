@@ -19,6 +19,7 @@ internal sealed class PetSkin
     public string? OfficialCharacterId { get; set; }
     public bool IsPlaceholder { get; set; }
     public string SourceKey { get; set; } = Guid.NewGuid().ToString("N");
+    internal OfficialCompanionSnapshot? Snapshot { get; set; }
     public string? BuiltinCharacterId { get; set; }
     internal HolidayCatalog? PackageHolidayCatalog { get; set; }
     internal string? OutfitCharacterId => OfficialCharacterId ?? BuiltinCharacterId ?? (PackageHolidayCatalog != null ? PackageId : null);
@@ -49,27 +50,34 @@ internal sealed class PetSkin
 
 internal sealed class SpriteAssets : IDisposable
 {
+    private readonly object assetGate = new();
+    private bool disposed;
     private readonly Func<string, Stream>? openHoliday;
     internal SpriteAssets(Func<string, Stream>? holidaySource = null) => openHoliday = holidaySource;
     private readonly Dictionary<string, Bitmap> images = new();
     private readonly LinkedList<string> recentImages = new();
     private readonly Dictionary<string,int> pins = new(StringComparer.Ordinal);
-    internal long RetainedPixelBytes => images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);
+    private readonly HashSet<string> retiredImages=new(StringComparer.Ordinal);
+    internal bool HasPendingSource(string generation){lock(assetGate)return pendingClips.Any(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal));}
+    internal void RetireSource(string generation){lock(assetGate){foreach(var key in images.Keys.Where(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal)).ToArray())retiredImages.Add(key);TrimImages();}}
+    private void RemoveImage(string key){recentImages.Remove(key);images[key].Dispose();images.Remove(key);retiredImages.Remove(key);foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(key+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);}
+
+    internal long RetainedPixelBytes {get{lock(assetGate)return images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);}}
     internal int DecodeCount {get;private set;}
     private void TrimImages(string? requested=null)
     {
-        while(images.Count>5 || RetainedPixelBytes>64L*1024*1024) {
+        foreach(var key in retiredImages.Where(k=>!pins.ContainsKey(k)).ToArray())RemoveImage(key);
+        while(images.Where(p=>!pins.ContainsKey(p.Key)).Sum(p=>(long)p.Value.PixelSize.Width*p.Value.PixelSize.Height*4)+masks.Where(p=>!pins.Keys.Any(k=>p.Key.Item1.StartsWith(k+"/",StringComparison.Ordinal))).Sum(p=>(long)p.Value.Length)>64L*1024*1024) {
             var oldest=recentImages.FirstOrDefault(k=>k!=requested&&!pins.ContainsKey(k));if(oldest==null)break;
-            recentImages.Remove(oldest);images[oldest].Dispose();images.Remove(oldest);
-            foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(oldest+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);
+            RemoveImage(oldest);
         }
     }
     internal IDisposable Pin(PetSkin skin,ClipSpec clip)
     {
-        string key=ImageKey(skin,clip.File);pins[key]=pins.GetValueOrDefault(key)+1;
+        string key=ImageKey(skin,clip.File);lock(assetGate)pins[key]=pins.GetValueOrDefault(key)+1;
         try{Get(skin,clip);return new ImagePin(this,key);}catch{ReleasePin(key);throw;}
     }
-    private void ReleasePin(string key){if(pins.TryGetValue(key,out int count)){if(count<=1)pins.Remove(key);else pins[key]=count-1;}TrimImages();}
+    private void ReleasePin(string key){lock(assetGate){if(pins.TryGetValue(key,out int count)){if(count<=1)pins.Remove(key);else pins[key]=count-1;}TrimImages();}}
     private sealed class ImagePin:IDisposable {private SpriteAssets? owner;private readonly string key;internal ImagePin(SpriteAssets assets,string imageKey){owner=assets;key=imageKey;}public void Dispose(){var assets=owner;owner=null;assets?.ReleasePin(key);}}
 
     private readonly Dictionary<(string, int), byte[]> masks = new();
@@ -252,6 +260,14 @@ internal sealed class SpriteAssets : IDisposable
         if (!double.IsFinite(hold) || hold < 0 || hold > 2 || hold != 0 && (action != "jumping" || loop)) throw new InvalidDataException(TextResources.Get("spriteAssets.readHold.text"));
         return hold;
     }
+    internal static PetSkin ReadOfficial(OfficialCompanionSnapshot snapshot, string personaId)
+    {
+        using var stream=new MemoryStream(snapshot.ReadVerifiedBytes("pet.json"),false);
+        var skin=ReadManifest(stream,personaId,snapshot.Installation.RootDirectory);
+        skin.Snapshot=snapshot;skin.OfficialCharacterId=skin.BuiltinCharacterId=snapshot.Installation.Asset.Id;
+        skin.PickerKey="official:"+skin.OfficialCharacterId;skin.SourceKey=snapshot.Generation+"/avalonia-bgra32-mask8";
+        return skin;
+    }
     internal static PetSkin ReadOfficial(OfficialCompanionInstallation installation, string personaId)
     {
         using var stream = File.OpenRead(installation.PetManifestPath);
@@ -365,7 +381,7 @@ internal sealed class SpriteAssets : IDisposable
         finally { if (Directory.Exists(staging)) Directory.Delete(staging, true); }
     }
     public Bitmap Get(PetSkin skin, string path) => GetImage(ImageKey(skin, path), () => path.StartsWith("holiday|", StringComparison.Ordinal)
-        ? OpenHoliday(path.Split('|')[2]) : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null)));
+        ? OpenHoliday(path.Split('|')[2]) : skin.Snapshot != null ? new MemoryStream(skin.Snapshot.ReadVerifiedBytes(path),false) : skin.BuiltIn ? OpenAsset(path) : File.OpenRead(SafePath(skin.Folder!, path, skin.Atlas != null)));
     private Stream OpenHoliday(string resource) => openHoliday != null ? openHoliday(resource) : typeof(HolidayCatalog).Assembly.GetManifestResourceStream(resource) ?? throw new InvalidDataException(TextResources.Get("spriteAssets.openHoliday.text"));
     public Bitmap Get(PetSkin skin, ClipSpec clip) => clip.HolidaySource is { } source
         ? GetImage(clip.File, () => openHoliday != null ? openHoliday(source.ResourceName) : source.OpenResource() ?? throw new InvalidDataException(TextResources.Get("spriteAssets.get.getImage")))
@@ -374,19 +390,19 @@ internal sealed class SpriteAssets : IDisposable
         () => openHoliday != null ? openHoliday("Dafeiyu.Holidays." + outfit.Preview.Replace('/', '.')) : outfit.OpenPreview() ?? throw new InvalidDataException(TextResources.Get("spriteAssets.getPreview.getImage")));
     private Bitmap GetImage(string key, Func<Stream> open)
     {
-        if (!images.TryGetValue(key, out var image))
-        {
-            using var stream = open();
-            if (stream.Length > 64L * 1024 * 1024) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text"));
-            Span<byte> header = stackalloc byte[24]; stream.ReadExactly(header); stream.Position = 0;
-            if (!header[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeA"));
-            var width = BinaryPrimitives.ReadUInt32BigEndian(header[16..20]); var height = BinaryPrimitives.ReadUInt32BigEndian(header[20..24]);
-            if (width == 0 || height == 0 || width > 8192 || height > 33280 || (long)width * height > 55000000) throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeB"));
-            image = new Bitmap(stream);
-            DecodeCount++;images[key] = image;
+        lock(assetGate){if(disposed)throw new ObjectDisposedException(nameof(SpriteAssets));if(images.TryGetValue(key,out var hit)){recentImages.Remove(key);recentImages.AddLast(key);return hit;}}
+        using var stream=open();
+        if(stream.Length>64L*1024*1024)throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text"));
+        Span<byte> header=stackalloc byte[24];stream.ReadExactly(header);stream.Position=0;
+        if(!header[..8].SequenceEqual(new byte[]{137,80,78,71,13,10,26,10}))throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeA"));
+        var width=BinaryPrimitives.ReadUInt32BigEndian(header[16..20]);var height=BinaryPrimitives.ReadUInt32BigEndian(header[20..24]);
+        if(width==0||height==0||width>8192||height>33280||(long)width*height>55000000)throw new InvalidDataException(TextResources.Get("spriteAssets.getImage.text.alternativeB"));
+        var image=new Bitmap(stream);
+        lock(assetGate){
+            if(disposed){image.Dispose();throw new ObjectDisposedException(nameof(SpriteAssets));}
+            if(images.TryGetValue(key,out var existing)){image.Dispose();return existing;}
+            DecodeCount++;images[key]=image;recentImages.Remove(key);recentImages.AddLast(key);TrimImages(key);return image;
         }
-        recentImages.Remove(key);recentImages.AddLast(key);TrimImages(key);
-        return image;
     }
     private static string ImageKey(PetSkin skin, string path) => path.StartsWith("holiday|", StringComparison.Ordinal) ? path : skin.SourceKey + "/" + path;
     public static ClipSpec OutfitClip(OutfitDefinition outfit, OutfitClipDefinition clip) => new("holiday|" + outfit.CharacterId + ":" + outfit.OutfitId + ":" + outfit.Version + ":" + clip.SourceKey + "|" + clip.ResourceName, clip.Columns, clip.FrameCount, clip.Fps, clip.Loop, clip.FrameWidth, clip.FrameHeight, OffsetX: clip.OffsetX, OffsetY: clip.OffsetY, HolidaySource: clip);
@@ -396,6 +412,39 @@ internal sealed class SpriteAssets : IDisposable
         var image = Get(skin, clip); var rect = Rect(clip, frame);
         if (frame < 0 || frame >= clip.Frames || rect.Right > image.PixelSize.Width || rect.Bottom > image.PixelSize.Height) throw new InvalidDataException(TextResources.Get("spriteAssets.prepareFrame.text"));
         if (IsHolidayClip(clip)) _ = Mask(skin, clip, frame);
+    }
+    internal bool IsPrepared(PetSkin skin){lock(assetGate)return skin.Gaze!=null&&skin.Clips.TryGetValue("idle",out var idle)&&images.ContainsKey(ImageKey(skin,idle.File))&&images.ContainsKey(ImageKey(skin,skin.Gaze.File));}
+    internal IDisposable Prepare(PetSkin skin,OutfitDefinition? outfit=null)
+    {
+        var idle=Resolve(skin,"idle",true);var gaze=Gaze(skin);
+        if(skin.Snapshot!=null){bool cachedIdle,cachedGaze;lock(assetGate){cachedIdle=images.ContainsKey(ImageKey(skin,idle.File));cachedGaze=images.ContainsKey(ImageKey(skin,gaze.File));}if(cachedIdle)skin.Snapshot.ReadVerifiedBytes(idle.File);if(cachedGaze)skin.Snapshot.ReadVerifiedBytes(gaze.File);}
+        if(outfit!=null){using var idleBytes=outfit.FindClip("idle","default").OpenResource();using var gazeBytes=outfit.Gaze.OpenResource();}
+        var held=new List<IDisposable>();
+        try {foreach(var clip in outfit==null?new[]{idle,gaze}:new[]{idle,gaze,Resolve(skin,"idle",true,outfit),Gaze(skin,outfit)}){held.Add(Pin(skin,clip));for(int frame=0;frame<clip.Frames;frame++)ValidateFrame(skin,clip,frame);}return new PreparedPins(held);}
+        catch {foreach(var pin in held)pin.Dispose();throw;}
+    }
+    private sealed class PreparedPins(List<IDisposable> pins):IDisposable {public void Dispose(){foreach(var pin in pins)pin.Dispose();pins.Clear();}}
+    internal event Action<PetSkin>? ClipPrepared;
+    private readonly HashSet<string> pendingClips=new(StringComparer.Ordinal), failedClips=new(StringComparer.Ordinal);
+    internal ClipSpec Ready(PetSkin skin,ClipSpec clip)
+    {
+        if(skin.Snapshot==null)return clip;
+        var key=ImageKey(skin,clip.File);
+        lock(assetGate){
+            if(images.ContainsKey(key))return clip;
+            if(failedClips.Contains(key)&&IsHolidayClip(clip))throw new InvalidDataException("Companion costume read failed.");
+            if(!failedClips.Contains(key)&&pendingClips.Add(key))_ = Task.Run(()=>{
+                try {
+                    var held=Pin(skin,clip);
+                    try{for(int frame=0;frame<clip.Frames;frame++)ValidateFrame(skin,clip,frame);}
+                    catch{held.Dispose();throw;}
+                    Avalonia.Threading.Dispatcher.UIThread.Post(()=>{try{if(!disposed)ClipPrepared?.Invoke(skin);}finally{held.Dispose();}});
+                }
+                catch(Exception){lock(assetGate)failedClips.Add(key);}
+                finally{lock(assetGate)pendingClips.Remove(key);}
+            });
+        }
+        return Resolve(skin,"idle",true);
     }
     public static string? AvatarPath(PetSkin skin) => skin.Avatar ?? (skin.OfficialCharacterId != null ? "@official/" + skin.OfficialCharacterId : skin.BuiltIn && skin.Id is "e-bao" or "dafeiyu" or "marfu" or "xiaobei" ? "avatars/" + skin.Id + ".png" : null);
     public Bitmap? GetAvatar(PetSkin skin) => AvatarPath(skin) is { } path ? path.StartsWith("@official/", StringComparison.Ordinal) ? GetImage(path, () => OpenAsset("avatars/" + path.Substring(10) + ".png")) : Get(skin, path) : null;
@@ -444,18 +493,14 @@ internal sealed class SpriteAssets : IDisposable
     public static PixelRect Rect(ClipSpec spec, int frame) => new(frame % spec.Columns * spec.Width, spec.Top + frame / spec.Columns * spec.Height, spec.Width, spec.Height);
     private byte[] Mask(PetSkin skin, ClipSpec spec, int frame)
     {
-        var key = (ImageKey(skin, spec.File) + "/" + spec.Top + "/" + spec.Width + "/" + spec.Height + "/" + spec.Columns, frame);
-        if (masks.TryGetValue(key, out var result)) return result;
-        var bytes = new byte[spec.Width * spec.Height * 4];
-        var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
-        try { Get(skin, spec).CopyPixels(Rect(spec, frame), handle.AddrOfPinnedObject(), bytes.Length, spec.Width * 4); }
-        finally { handle.Free(); }
-        result = new byte[spec.Width * spec.Height];
-        for (int i = 0; i < result.Length; i++) result[i] = bytes[i * 4 + 3];
-        // Some native decoders accept broken IDAT as empty pixels rather than
-        // throwing. A holiday frame must still have a character and transparency.
-        if (IsHolidayClip(spec) && (!result.Any(b => b > 16) || !result.Any(b => b == 0))) throw new InvalidDataException(TextResources.Get("spriteAssets.mask.text"));
-        masks[key] = result;TrimImages(ImageKey(skin,spec.File)); return result;
+        var key=(ImageKey(skin,spec.File)+"/"+spec.Top+"/"+spec.Width+"/"+spec.Height+"/"+spec.Columns,frame);
+        lock(assetGate)if(masks.TryGetValue(key,out var hit))return hit;
+        using var pin=Pin(skin,spec);
+        var bytes=new byte[spec.Width*spec.Height*4];var handle=GCHandle.Alloc(bytes,GCHandleType.Pinned);
+        try{lock(assetGate){if(disposed)throw new ObjectDisposedException(nameof(SpriteAssets));Get(skin,spec).CopyPixels(Rect(spec,frame),handle.AddrOfPinnedObject(),bytes.Length,spec.Width*4);}}finally{handle.Free();}
+        var result=new byte[spec.Width*spec.Height];for(int i=0;i<result.Length;i++)result[i]=bytes[i*4+3];
+        if(IsHolidayClip(spec)&&(!result.Any(b=>b>16)||!result.Any(b=>b==0)))throw new InvalidDataException(TextResources.Get("spriteAssets.mask.text"));
+        lock(assetGate){masks[key]=result;TrimImages(ImageKey(skin,spec.File));}return result;
     }
     private void ValidateFrame(PetSkin skin, ClipSpec spec, int frame)
     {
@@ -467,7 +512,7 @@ internal sealed class SpriteAssets : IDisposable
         var px = (int)(x * spec.Width); var py = (int)(y * spec.Height);
         return px >= 0 && py >= 0 && px < spec.Width && py < spec.Height && Mask(skin, spec, frame)[py * spec.Width + px] > 16;
     }
-    public void Dispose() { foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear();recentImages.Clear();pins.Clear(); }
+    public void Dispose() { lock(assetGate){ disposed=true; foreach (var image in images.Values) image.Dispose(); images.Clear(); masks.Clear();recentImages.Clear();pins.Clear(); }}
 }
 
 internal sealed class SpriteView : Control

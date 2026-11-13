@@ -65,7 +65,9 @@ internal sealed partial class PetWindow : Window
         Background = Brushes.Transparent; CanResize = false; ShowInTaskbar = false;
         LocalizedUi.Set(this,"Title",()=>(TextResources.Get("petWindow.petWindow.title")));
         sprite = new SpriteView { Assets = assets, Skin = owner.Skin };
+        sprite.FrameRendered+=owner.CompanionFirstFrameRendered;
         playback = new InteractionPlayback(ResolveHolidayAction);
+        assets.ClipPrepared+=skin=>{if(ReferenceEquals(owner.Skin,skin)){playback.RefreshAppearance();PublishHolidayFrame(playback.Clip,playback.Frame,OriginalMirror());sprite.InvalidateVisual();}};
         InitializeHoliday();
         PointerPressed += Pressed; PointerMoved += Moved; PointerReleased += Released;
         PointerCaptureLost += (_, _) => { if (dragging) FinishDrag(); };
@@ -106,7 +108,7 @@ internal sealed partial class PetWindow : Window
         committedOutfit = null; LeaveHolidayHover(); clouds.InvalidateVisual();
         var previousCompanion=RelationshipIdentity.Resolve(owner.DataDirectory,sprite.Skin.PickerKey,sprite.Skin.OfficialCharacterId,sprite.Skin.Id);
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.InvalidateFeedback();
-        drop.Cancel(); sprite.ResetFrames(); assets.Dispose(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
+        drop.Cancel(); sprite.ResetFrames(); sprite.Skin = owner.Skin; Play("idle", false); ContextMenu = BuildMenu();
         if(previousCompanion!=owner.RelationshipCompanionId)owner.Relationships.EnqueueVisit(owner.RelationshipCompanionId,IsPetVisible);
         RefreshHoliday(true);
     }

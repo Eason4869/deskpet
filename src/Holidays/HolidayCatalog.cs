@@ -80,10 +80,12 @@ namespace Dafeiyu
         }
 #pragma warning restore 0649
         public HolidayCatalog():this((string)null){}
-        public HolidayCatalog(string rootDirectory)
+        public HolidayCatalog(string rootDirectory):this(CreateOpener(rootDirectory),null,true){}
+        public HolidayCatalog(OfficialCompanionSnapshot snapshot):this(path=>new MemoryStream(snapshot.ReadVerifiedBytes("holidays/"+path),false),snapshot.Generation,false){}
+        readonly bool verifyAssets;
+        internal HolidayCatalog(Func<string,Stream> opener,string generation,bool validateAssets)
         {
-            if(rootDirectory==null)open=path=>typeof(HolidayCatalog).Assembly.GetManifestResourceStream("Dafeiyu.Holidays."+path.Replace('/','.'));
-            else {string root=System.IO.Path.GetFullPath(rootDirectory).TrimEnd(System.IO.Path.DirectorySeparatorChar)+System.IO.Path.DirectorySeparatorChar;open=path=>{ValidatePath(path);string resolved=System.IO.Path.GetFullPath(System.IO.Path.Combine(root,path.Replace('/',System.IO.Path.DirectorySeparatorChar)));if(!resolved.StartsWith(root,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Asset escapes holiday root.");return File.OpenRead(resolved);};}
+            open=opener;verifyAssets=validateAssets;if(generation!=null)sourceKey=generation;
             var outfits=new List<OutfitDefinition>();
             try {
                 var index=ReadJson<Index>("catalog.json");if(index==null || index.Version!=1 || index.Outfits==null || index.Outfits.Count>128)throw new InvalidDataException("Invalid holiday catalog.");
@@ -98,6 +100,12 @@ namespace Dafeiyu
                 }
             }catch(Exception e){if(!Expected(e))throw;Warning=e.Message;outfits.Clear();}
             Outfits=new ReadOnlyCollection<OutfitDefinition>(outfits);
+        }
+        static Func<string,Stream> CreateOpener(string rootDirectory)
+        {
+            if(rootDirectory==null)return path=>typeof(HolidayCatalog).Assembly.GetManifestResourceStream("Dafeiyu.Holidays."+path.Replace('/','.'));
+            string root=System.IO.Path.GetFullPath(rootDirectory).TrimEnd(System.IO.Path.DirectorySeparatorChar)+System.IO.Path.DirectorySeparatorChar;
+            return path=>{ValidatePath(path);string resolved=System.IO.Path.GetFullPath(System.IO.Path.Combine(root,path.Replace('/',System.IO.Path.DirectorySeparatorChar)));if(!resolved.StartsWith(root,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Asset escapes holiday root.");return File.OpenRead(resolved);};
         }
         internal HolidayCatalog(IEnumerable<OutfitDefinition> outfits){Outfits=new ReadOnlyCollection<OutfitDefinition>(outfits.ToList());}
         public HolidayCatalog WithCharacter(string characterId,HolidayCatalog replacement)
@@ -154,7 +162,7 @@ namespace Dafeiyu
         }
         void ValidatePng(string path,int width,int height)
         {
-            ValidatePath(path);string geometry=width+":"+height,cached;if(validatedPngs.TryGetValue(path,out cached)){if(cached!=geometry)throw new InvalidDataException("Conflicting PNG geometry.");return;}byte[] b;
+            ValidatePath(path);if(!verifyAssets)return;string geometry=width+":"+height,cached;if(validatedPngs.TryGetValue(path,out cached)){if(cached!=geometry)throw new InvalidDataException("Conflicting PNG geometry.");return;}byte[] b;
             using(var input=open(path)){if(input==null)throw new InvalidDataException("Missing holiday PNG: "+path);using(var output=new MemoryStream()){CopyBounded(input,output,32*1024*1024);b=output.ToArray();}}
             byte[] signature={137,80,78,71,13,10,26,10};if(b.Length<45 || !signature.SequenceEqual(b.Take(8)))throw new InvalidDataException("Invalid PNG signature.");
             int position=8;bool header=false,data=false,end=false;

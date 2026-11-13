@@ -24,6 +24,7 @@ internal sealed class SettingsWindow : Window
     private readonly ContentControl pageHost = new() { Name = "SettingsPageHost", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
     private readonly List<Control?> pages = new();
     private readonly List<Func<Control>> pageFactories = new();
+    internal bool HasUnsavedChanges=>providers.Any(p=>p.HasUnsavedChanges)||imageProvider?.HasUnsavedChanges==true||imChannels?.HasUnsavedChanges==true||conversation?.HasUnsavedChanges==true||this.GetVisualDescendants().OfType<WebSearchSettingsView>().Any(v=>v.HasUnsavedChanges);
     internal string SelectedSection => selectedSection;
     private readonly SpriteAssets avatarAssets;
     private Action? refreshVoice;
