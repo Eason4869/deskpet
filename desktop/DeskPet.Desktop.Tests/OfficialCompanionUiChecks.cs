@@ -285,7 +285,7 @@ internal static class OfficialCompanionUiChecks
         Check(!owner.Skins.Any(s => s.PickerKey == entry.PickerKey), "late inactive refresh also respects hidden membership");
         Finish(owner); return checks;
     }
-    private static OfficialCompanionInstallation CreatePackage(string root, string role, string holidayRoot)
+    private static OfficialCompanionInstallation CreatePackage(string root, string role, string holidayRoot,bool coldAction=false)
     {
         Directory.CreateDirectory(root);
         var profile = OfficialCompanionProfiles.Find(role)!;
@@ -295,6 +295,7 @@ internal static class OfficialCompanionUiChecks
         Paint(Path.Combine(root, "avatar.png"), 480, 480, 1, 120);
         object Clip(string path, bool loop = false) => new { file = path, columns = 8, frames = 8, fps = 8, loop };
         var normal = AnimationPlayer.States.Concat(SpriteAssets.Interactions).ToDictionary(action => action, action => Clip("normal.png", action == "idle"));
+        if(coldAction){File.Copy(Path.Combine(root,"normal.png"),Path.Combine(root,"cold.png"));normal["running"]=Clip("cold.png",true);}
         var extras = new[] { "stumble", "special2" }.ToDictionary(action => action, _ => Clip("normal.png"));
         var alternateNames = SpriteAssets.PairedActions.Concat(role is "e-bao" or "gugugaga" ? new[] { "jumping" } : Array.Empty<string>());
         var alternates = alternateNames.ToDictionary(action => action, _ => Clip("normal.png"));
@@ -439,6 +440,41 @@ internal static class OfficialCompanionUiChecks
         }
         return checks;
     }
+    internal static int RunReviewFailures(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Review failures: "+label);checks++;}
+        using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"dafeiyu",null,false);
+        foreach(var relative in new[]{"catalog.json","outfit.json"}){
+            var installation=CreatePackage(Path.Combine(directory,relative,"installed"),"dafeiyu",fixture.Root);var source=new FakeSource{InstalledValue=installation};
+            using(var snapshot=source.CaptureLocalSnapshot("dafeiyu",CancellationToken.None)){}
+            var file=Path.Combine(installation.HolidayRootDirectory,relative);var bytes=File.ReadAllBytes(file);bytes[0]^=1;File.WriteAllBytes(file,bytes);
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,relative,"data")),officialSourceFactory:_=>source);
+            var old=owner.Skin;var sprite=(SpriteView)typeof(PetWindow).GetField("sprite",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner.Pet)!;var frame=sprite.Clip;var pixels=frame==null?null:sprite.Assets.Get(sprite.Skin,frame);string key=owner.Settings.SelectedCompanionKey,persona=owner.Settings.SystemPrompt,id=owner.Settings.SkinId;owner.Save();
+            source.Result.TrySetException(new ApiException("offline repair"));Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu")));
+            Check(ReferenceEquals(owner.Skin,old)&&sprite.Clip?.File==frame?.File&&ReferenceEquals(sprite.Skin,old)&&ReferenceEquals(sprite.Assets.Get(sprite.Skin,sprite.Clip!),pixels)&&owner.Settings.SelectedCompanionKey==key&&owner.Settings.SystemPrompt==persona&&owner.Settings.SkinId==id&&new SettingsStore(Path.Combine(owner.DataDirectory,"settings.json")).Load().SelectedCompanionKey==key,"corrupt "+relative+" retains visual pixels persona and persisted selection");Finish(owner);
+        }
+        var installed=CreatePackage(Path.Combine(directory,"lazy"),"dafeiyu",fixture.Root,true);var lazySource=new FakeSource{InstalledValue=installed};var assets=new SpriteAssets();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"lazy-data")),spriteAssetsFactory:()=>assets,officialSourceFactory:_=>lazySource)){
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="dafeiyu"),CompanionSelectionOrigin.StartupRestore));
+            var active=owner.Skin;lazySource.Result.SetResult(new OfficialCompanionResult(installed,false,true,false,""));
+            Complete((Task)typeof(DesktopController).GetMethod("RefreshOfficialAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,new object?[]{active,(long)lazySource.Selections,OfficialCompanionCheckMode.Cached,CompanionSelectionOrigin.StartupRestore,null})!);
+            lazySource.Result=new(TaskCreationOptions.RunContinuationsAsynchronously);var cold=Path.Combine(installed.RootDirectory,"cold.png");var bytes=File.ReadAllBytes(cold);bytes[0]^=1;File.WriteAllBytes(cold,bytes);
+            var clip=assets.Resolve(active,"running",true);for(int n=0;n<8;n++)assets.Ready(active,clip);
+            Until(()=>lazySource.Repairs==1);Check(lazySource.Repairs==1&&lazySource.RepairBackground&&ReferenceEquals(owner.Skin,active),"cold default failure starts one background repair with working source retained");
+            lazySource.Result.SetException(new ApiException("offline"));var repairs=(System.Collections.IDictionary)typeof(DesktopController).GetField("companionRepairs",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;Until(()=>repairs.Count==0);
+            for(int n=0;n<8;n++)assets.Ready(active,clip);Dispatcher.UIThread.RunJobs();Check(lazySource.Repairs==1&&ReferenceEquals(owner.Skin,active),"offline lazy repair throttles repeated frames without discarding active source");
+            var replacement=CreatePackage(Path.Combine(directory,"repaired"),"dafeiyu",fixture.Root,true);lazySource.InstalledValue=replacement;lazySource.Result=new(TaskCreationOptions.RunContinuationsAsynchronously);
+            ((System.Collections.IDictionary)typeof(DesktopController).GetField("companionRepairAfter",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!)[active.Snapshot!.Generation]=DateTime.MinValue;
+            assets.Ready(active,clip);Until(()=>lazySource.Repairs==2);
+            var question=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId="repair-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+            lazySource.Result.SetResult(new OfficialCompanionResult(replacement,false,true,true,""));Until(()=>repairs.Count==0);Check(ReferenceEquals(owner.Skin,active),"successful repair waits for safe idle without interrupting business");
+            owner.Questions.CancelSession("repair-busy");owner.ApplyPendingCompanionAppearance();Until(()=>!ReferenceEquals(owner.Skin,active));
+            Check(owner.Skin.Folder==replacement.RootDirectory&&owner.Settings.SelectedCompanionKey==active.PickerKey&&owner.CurrentCompanionSelection?.Stage!="completed","later repair silently applies same-role source at idle");assets.PrepareFrame(owner.Skin,assets.Resolve(owner.Skin,"running",true),0);checks++;
+            Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.StartupRestore));int settled=lazySource.Repairs;assets.Ready(active,clip);Dispatcher.UIThread.RunJobs();
+            Check(owner.Skin.OfficialCharacterId=="e-bao"&&lazySource.Repairs==settled,"superseded source failure cannot start repair or reclaim latest selection");Finish(owner);
+        }
+        return checks;
+    }
     internal static int RunPreparedSwitch(string directory)
     {
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Prepared switch: "+label);checks++;}
@@ -559,7 +595,9 @@ internal static class OfficialCompanionUiChecks
     }
     private sealed class FakeSource : IOfficialCompanionSource
     {
-        internal int Calls, BulkCalls, Selections, InstalledCalls;
+        internal int Calls, BulkCalls, Selections, InstalledCalls, Repairs;
+        internal bool RepairBackground;
+        public Task<OfficialCompanionResult> RepairAsync(string id,OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel,bool background=false){Repairs++;RepairBackground=background;return EnsureAsync(id,routing,OfficialCompanionCheckMode.Cached,progress,cancel);}
         internal readonly List<string> RequestedIds=new();
         internal OfficialCompanionInstallation? InstalledValue;
         internal TaskCompletionSource<IList<OfficialCompanionResult>>? BulkResult;

@@ -67,6 +67,11 @@ namespace Dafeiyu.Tests
                 var repaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
                 Check(!repaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs corrupt pointer from known managed lifecycle current");
                 Check(Directory.Exists(first.Installation.RootDirectory)&&Directory.Exists(second.Installation.RootDirectory),"pointer repair preserves current and previous resource directories");
+                foreach(var damagedPointer in new[]{new byte[]{0xff,0xfe,0xc0},new byte[0],System.Text.Encoding.UTF8.GetBytes("v2-")}){
+                    File.WriteAllBytes(pointer,damagedPointer);
+                    var binaryRepaired=await service.UpdateInBackgroundAsync("dafeiyu",Direct);
+                    Check(!binaryRepaired.UsedOfflineFallback&&service.Installed("dafeiyu")!=null,"verified publication repairs binary/empty/truncated pointer with managed lifecycle; bytes="+damagedPointer.Length);
+                }
                 File.WriteAllText(pointer,"invalid-pointer");string transaction=Path.Combine(role,"version-transaction.json");File.WriteAllText(transaction,"{}");
                 bool rejected=false;try{await service.UpdateInBackgroundAsync("dafeiyu",Direct);}catch(ApiException){rejected=true;}
                 Check(rejected&&File.ReadAllText(pointer)=="invalid-pointer"&&File.Exists(transaction),"corrupt pointer with unknown transaction fails closed without changing recovery evidence");File.Delete(transaction);

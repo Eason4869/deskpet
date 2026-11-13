@@ -11,13 +11,15 @@ namespace Dafeiyu
         static readonly HashSet<string> failed=new HashSet<string>(StringComparer.Ordinal);
         static string currentAtlas,currentIdle,currentFrame;
         internal static event Action<string> Prepared;
-        static void StartPreparation(string key,Action prepare)
+        internal static event Action<SkinDefinition> DefaultFailed;
+        static void StartPreparation(string key,Action prepare,SkinDefinition source=null)
         {
             cache.Pin(key);var app=System.Windows.Application.Current;var dispatcher=app==null?null:app.Dispatcher;
             Task.Run(()=>{
-                try{prepare();}catch(Exception){cache.Remove(key);lock(gate)failed.Add(key);}
+                bool failedRead=false;
+                try{prepare();}catch(Exception){failedRead=true;cache.Remove(key);lock(gate)failed.Add(key);}
                 finally{
-                    Action complete=()=>{try{if(Prepared!=null)Prepared(key);}finally{cache.Unpin(key);lock(gate)preparing.Remove(key);}};
+                    Action complete=()=>{try{if(failedRead&&source!=null&&DefaultFailed!=null)DefaultFailed(source);if(Prepared!=null)Prepared(key);}finally{cache.Unpin(key);lock(gate)preparing.Remove(key);}};
                     if(dispatcher!=null&&!dispatcher.HasShutdownStarted)dispatcher.BeginInvoke(complete);else complete();
                 }
             });
@@ -58,7 +60,8 @@ namespace Dafeiyu
         internal static MotionClip Ready(SkinDefinition skin,IllustratedAnimation spec)
         {
             string key=MotionKey(skin,spec);var clip=cache.Get(key) as MotionClip;if(clip!=null)return clip;
-            lock(gate){if(!preparing.Contains(key)&&!failed.Contains(key)){preparing.Add(key);StartPreparation(key,()=>Load(skin,spec));}}
+            bool retry;lock(gate){retry=failed.Contains(key);if(!preparing.Contains(key)&&!retry){preparing.Add(key);StartPreparation(key,()=>Load(skin,spec),skin);}}
+            if(retry&&DefaultFailed!=null)DefaultFailed(skin);
             return cache.Get(MotionKey(skin,skin.Manifest.Animations["idle"])) as MotionClip;
         }
         internal static IDisposable Hold(SkinDefinition skin)

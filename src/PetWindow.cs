@@ -261,7 +261,7 @@ namespace Dafeiyu
             if(Skin.IsPlaceholder){companionFallback=true;Settings.PendingOfficialCompanionId="";PersonaProfiles.SaveVoices(Settings);if(!String.IsNullOrWhiteSpace(Settings.SystemPrompt)&&Settings.PersonaProfileVersion>0)Settings.PersonaOverrides[Settings.SkinId]=Settings.SystemPrompt;Skin=Catalog.EmbeddedFallback();}
             try { atlas=Skin.Load(); }
             catch {companionFallback=true;if(Skin.IsOfficial)Settings.PendingOfficialCompanionId="";Skin=Catalog.EmbeddedFallback();atlas=source??Skin.Load();Notice=TextResources.Get("petWindow.petWindow.notice");}
-            WpfPreparedCompanion.Prepared+=PreparedCompanionFrame;WpfPreparedCompanion.Activate(Skin);interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
+            WpfPreparedCompanion.Prepared+=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed+=DefaultCompanionFailed;WpfPreparedCompanion.Activate(Skin);interactionAtlas=InteractionAtlas.LoadForSkin(Skin);interaction.Configure(Skin);
             PersonaProfiles.Activate(Settings,Skin.Id,Skin.SystemPrompt,Skin.VoiceRecommendations,Skin.BuiltinCharacterId);ProactiveCompanionChanged(Skin.Id);Settings.SelectedCompanionKey=companionFallback&&!String.IsNullOrEmpty(savedCompanionKey)?savedCompanionKey:Skin.PickerKey;Animation=Skin.CreateAnimation(atlas.FrameMultiplier);
             ResetGreetingSchedule();
             Microsoft.Win32.SystemEvents.SessionSwitch+=SessionChanged;

@@ -98,6 +98,7 @@ internal sealed partial class DesktopController
         }
         try {
             var skin=SpriteAssets.ReadOfficial(snapshot,persona);var catalog=new HolidayCatalog(snapshot);
+            catalog.WithCharacter(snapshot.Installation.Asset.Id,catalog);
             using(var prepared=companionAssets.Prepare(skin)){}
             lock(preparedCompanions){companionLifetime.Token.ThrowIfCancellationRequested();preparedCompanions[skin.OfficialCharacterId!]=(skin,catalog);companionSnapshots.Add(snapshot);}
             _=AuditCompanionAsync(snapshot);return (skin,catalog);
@@ -229,6 +230,29 @@ internal sealed partial class DesktopController
         }
         catch (OperationCanceledException) { }
         catch (Exception) { /* Background refresh preserves the usable source. */ }
+    }
+    private readonly Dictionary<string,bool> companionRepairs=new(StringComparer.Ordinal);
+    private readonly Dictionary<string,DateTime> companionRepairAfter=new(StringComparer.Ordinal);
+    private void DefaultCompanionFailed(PetSkin source)
+    {
+        if(exiting||source.Snapshot==null||!ReferenceEquals(Skin,source))return;
+        string generation=source.Snapshot.Generation;
+        if(companionRepairs.ContainsKey(generation)||companionRepairAfter.TryGetValue(generation,out var retry)&&DateTime.UtcNow<retry)return;
+        companionRepairs[generation]=true;
+        long token=latestCompanionToken,order=++appearanceOperation;
+        Run(()=>RepairDefaultCompanionAsync(source,token,order));
+    }
+    private async Task RepairDefaultCompanionAsync(PetSkin source,long token,long order)
+    {
+        string generation=source.Snapshot!.Generation;
+        try{
+            var result=await officialCompanions.RepairAsync(source.OfficialCharacterId!,CompanionRouting(),null,companionLifetime.Token,true);
+            if(exiting||result.UsedOfflineFallback)return;
+            var next=await Task.Run(()=>ReadPublished(result.Installation,source.Id),companionLifetime.Token);
+            if(officialCompanions.OwnsSelection(token)&&ReferenceEquals(Skin,source))QueueAppearance(next.Skin,next.Catalog,source,token,order);
+        }catch(OperationCanceledException){}
+        catch(Exception){/* Silent repair keeps the already prepared working frame. */}
+        finally{companionRepairs.Remove(generation);companionRepairAfter[generation]=DateTime.UtcNow.AddSeconds(30);}
     }
     private bool AcceptAppearance(PetSkin next, long order)
     {

@@ -91,6 +91,7 @@ internal sealed partial class DesktopController : IDisposable
         showAutomaticGuide = onboarding.ShowGuide || Environment.GetCommandLineArgs().Contains(ApplicationRestart.ResumeArgument);
         InitializeCompanions(officialSourceFactory);
         companionAssets=spriteAssetsFactory?.Invoke()??new SpriteAssets();
+        companionAssets.DefaultClipFailed+=DefaultCompanionFailed;
         Skins = Task.Run(() => SpriteAssets.LoadSkins(DataDirectory)).GetAwaiter().GetResult();
         embeddedEbao = Skins.First(s => s.OfficialCharacterId == "e-bao" && s.BuiltIn && !s.IsPlaceholder);
         Settings.PendingOfficialCompanionId="";
@@ -350,7 +351,7 @@ internal sealed partial class DesktopController : IDisposable
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
-        companionLifetime.Cancel();
+        companionAssets.DefaultClipFailed-=DefaultCompanionFailed;companionLifetime.Cancel();
         activeCompanionPins?.Dispose();lock(preparedCompanions){foreach(var snapshot in companionSnapshots)snapshot.Dispose();companionSnapshots.Clear();}
          preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
         lifetime.ShutdownRequested-=ShutdownRequested;

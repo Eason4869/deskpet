@@ -78,7 +78,7 @@ namespace Dafeiyu.Maintenance
         {
             string path=PathFor(role,"current.txt");if(!File.Exists(path))return "";
             if(new FileInfo(path).Length>240)throw new IOException("Oversized official pointer.");
-            return Name(File.ReadAllText(path,new UTF8Encoding(false,true)));
+            return Name(new UTF8Encoding(false,true).GetString(OfficialCompanionSnapshot.ReadBounded(path,240,CancellationToken.None)));
         }
         static State Read(string role)
         {
@@ -110,7 +110,7 @@ namespace Dafeiyu.Maintenance
         internal static void RepairPointerForPublication(OfficialCompanionStorage store,string id,string stage,OfficialCompanionAsset asset,CancellationToken cancel)
         {
             string role=store.CharacterRoot(id),pointer=PathFor(role,"current.txt");
-            try{Pointer(role);return;}catch(IOException){}
+            try{if(Pointer(role).Length!=0||!File.Exists(PathFor(role,"versions.json")))return;}catch(IOException){}catch(DecoderFallbackException){}
             cancel.ThrowIfCancellationRequested();
             if(store.ReadVersionCore(stage,id,asset,cancel,true,null,null,true)==null)throw new IOException("Incoming companion is not fully verified.");
             if(File.Exists(PathFor(role,"version-transaction.json")))throw new IOException("Cannot repair an ambiguous publication transaction.");

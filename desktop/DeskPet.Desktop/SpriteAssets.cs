@@ -59,7 +59,7 @@ internal sealed class SpriteAssets : IDisposable
     private readonly Dictionary<string,int> pins = new(StringComparer.Ordinal);
     private readonly HashSet<string> retiredImages=new(StringComparer.Ordinal);
     internal bool HasPendingSource(string generation){lock(assetGate)return pendingClips.Any(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal));}
-    internal void RetireSource(string generation){lock(assetGate){foreach(var key in images.Keys.Where(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal)).ToArray())retiredImages.Add(key);TrimImages();}}
+    internal void RetireSource(string generation){lock(assetGate){foreach(var key in images.Keys.Where(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal)).ToArray())retiredImages.Add(key);failedClips.RemoveWhere(key=>key.StartsWith(generation+"/",StringComparison.Ordinal)||key.Contains(generation,StringComparison.Ordinal));TrimImages();}}
     private void RemoveImage(string key){recentImages.Remove(key);images[key].Dispose();images.Remove(key);retiredImages.Remove(key);foreach(var mask in masks.Keys.Where(k=>k.Item1.StartsWith(key+"/",StringComparison.Ordinal)).ToArray())masks.Remove(mask);}
 
     internal long RetainedPixelBytes {get{lock(assetGate)return images.Values.Sum(b=>(long)b.PixelSize.Width*b.PixelSize.Height*4)+masks.Values.Sum(b=>(long)b.Length);}}
@@ -425,14 +425,17 @@ internal sealed class SpriteAssets : IDisposable
     }
     private sealed class PreparedPins(List<IDisposable> pins):IDisposable {public void Dispose(){foreach(var pin in pins)pin.Dispose();pins.Clear();}}
     internal event Action<PetSkin>? ClipPrepared;
+    internal event Action<PetSkin>? DefaultClipFailed;
+    private void ReportDefaultFailure(PetSkin skin)=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!disposed)DefaultClipFailed?.Invoke(skin);});
     private readonly HashSet<string> pendingClips=new(StringComparer.Ordinal), failedClips=new(StringComparer.Ordinal);
     internal ClipSpec Ready(PetSkin skin,ClipSpec clip)
     {
         if(skin.Snapshot==null)return clip;
         var key=ImageKey(skin,clip.File);
         lock(assetGate){
-            if(images.ContainsKey(key))return clip;
+            if(images.ContainsKey(key)&&!failedClips.Contains(key))return clip;
             if(failedClips.Contains(key)&&IsHolidayClip(clip))throw new InvalidDataException("Companion costume read failed.");
+            if(failedClips.Contains(key)&&!IsHolidayClip(clip))ReportDefaultFailure(skin);
             if(!failedClips.Contains(key)&&pendingClips.Add(key))_ = Task.Run(()=>{
                 try {
                     var held=Pin(skin,clip);
@@ -440,7 +443,7 @@ internal sealed class SpriteAssets : IDisposable
                     catch{held.Dispose();throw;}
                     Avalonia.Threading.Dispatcher.UIThread.Post(()=>{try{if(!disposed)ClipPrepared?.Invoke(skin);}finally{held.Dispose();}});
                 }
-                catch(Exception){lock(assetGate)failedClips.Add(key);}
+                catch(Exception){lock(assetGate){failedClips.Add(key);if(images.ContainsKey(key)){retiredImages.Add(key);TrimImages();}}if(!IsHolidayClip(clip))ReportDefaultFailure(skin);}
                 finally{lock(assetGate)pendingClips.Remove(key);}
             });
         }
