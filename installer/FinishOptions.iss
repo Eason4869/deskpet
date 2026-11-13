@@ -33,6 +33,7 @@ begin
     Icon := Link.IconLocation;
     Result := (CompareText(Link.TargetPath, ExpandConstant('{app}\桌面伙伴.exe')) = 0)
       and (Link.Arguments = '')
+      and (Link.Hotkey = '')
       and (CompareText(Link.WorkingDirectory, ExpandConstant('{app}')) = 0)
       and ((Link.Description = '') or (Link.Description = '桌面伙伴'))
       and ((Icon = '') or (Icon = ',0') or (Icon = ', 0') or (CompareText(Icon, ExpandConstant('{app}\桌面伙伴.exe') + ',0') = 0)
@@ -56,8 +57,9 @@ end;
 
 function CreateSilentDesktopIcon: Boolean;
 begin
-  { Preserve Inno /TASKS=desktopicon for the silent updater and CLI callers. }
-  Result := WizardSilent and (not FileExists(DesktopLink) or OwnedDesktopLink);
+  { An inherited task must not recreate an absent, opted-out desktop link.
+    Explicit task flags may create it; existing custom links stay protected. }
+  Result := WizardSilent and (OwnedDesktopLink or (HasExplicitDesktopTask and not FileExists(DesktopLink)));
 end;
 
 procedure LoadFinishOptions;
@@ -98,6 +100,8 @@ begin
             ExpandConstant('{app}'), ExpandConstant('{app}\桌面伙伴.exe'), 0, SW_SHOWNORMAL);
           if (Link = '') or not FileExists(DesktopLink) then
             RaiseException('无法创建桌面快捷方式，请检查桌面文件夹权限后重试。');
+          DesktopSnapshot := GetSHA256OfFile(DesktopLink);
+          DesktopWasOwned := True;
         end else if not OwnedDesktopLink then
           RaiseException('桌面快捷方式已被其他安装或用户修改，请取消勾选后重试。');
       end else if DesktopWasOwned and OwnedDesktopLink then begin

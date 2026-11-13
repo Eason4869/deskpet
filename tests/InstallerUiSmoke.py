@@ -22,6 +22,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--compiler',type=Path,default=Path(os.environ.get('DESKPET_TEST_INNO','work/tools/inno/ISCC.exe')))
 parser.add_argument('--mutate-hidden-dir',action='store_true',help='Mutation check: restore the old reinstall path-hiding bug in the owned copy only.')
 parser.add_argument('--mutate-no-previous-dir',action='store_true',help='Mutation check: stop reusing the previous directory in the owned copy only.')
+parser.add_argument('--finish-regressions-only',action='store_true',help='Run the focused completion state/ownership regressions only.')
 args=parser.parse_args()
 PROJECT=Path(__file__).resolve().parents[1]
 ROOT=PROJECT/'work'/('installer-ui-'+uuid.uuid4().hex)
@@ -289,8 +290,81 @@ def compile_fixture():
     (ROOT/'legacy-compile.log').write_bytes(result.stdout+result.stderr)
     check(result.returncode==0,'legacy unconditional icon-log fixture compiles separately')
 
+def change_link_hotkey():
+    command='$s=New-Object -ComObject WScript.Shell;$l=$s.CreateShortcut($env:DESKPET_FIXTURE_LINK);$l.TargetPath=$env:DESKPET_FIXTURE_EXE;$l.WorkingDirectory=$env:DESKPET_FIXTURE_APP;$l.Arguments="";$l.Description="";$l.IconLocation=$env:DESKPET_FIXTURE_EXE+",0";$l.WindowStyle=1;$l.Hotkey="CTRL+ALT+D";$l.Save();if(!$l.Hotkey){throw "Missing hotkey"}'
+    si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=0
+    subprocess.run(['powershell.exe','-NoProfile','-Command',command],
+        env=dict(os.environ,DESKPET_FIXTURE_LINK=str(SHORTCUT),DESKPET_FIXTURE_EXE=str(INSTALL/'桌面伙伴.exe'),DESKPET_FIXTURE_APP=str(INSTALL)),
+        startupinfo=si,check=True,capture_output=True,timeout=15)
+    return SHORTCUT.read_bytes()
+
+def finish_regressions():
+    results=[]
+    def record(condition,label):
+        results.append((bool(condition),label))
+        print(('PASS' if condition else 'FAIL')+' regression: '+label,flush=True)
+    def uninstall():
+        executable=registered_uninstaller()
+        p=start([executable,'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'])
+        check(p.wait(timeout=30)==0,'focused fixture uninstalls normally')
+        wait(lambda:not executable.exists(),'focused uninstaller cleanup')
+
+    # Real inherited Inno task state, followed by the app updater's exact flags
+    # (including protocol 2 identity) with no task override whatsoever.
+    p=start([ROOT/'legacy-installer.exe','/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART','/DIR='+str(INSTALL),'/TASKS=desktopicon'])
+    check(p.wait(timeout=60)==0 and SHORTCUT.exists(),'legacy fixture selects and creates desktopicon')
+    p=setup(allow_reuse_previous=True);w=path_page();complete_install(w)
+    check(user.SendMessageW(find(w,'创建桌面快捷方式'),0xF0,0,0)==1,'inherited desktop option starts checked')
+    click(find(w,'创建桌面快捷方式'));click(find(w,'完成，稍后启动'))
+    check(p.wait(timeout=20)==0 and not SHORTCUT.exists(),'interactive Finish opts out of inherited desktop link')
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER,APP_KEY) as key:selected=winreg.QueryValueEx(key,'Inno Setup: Selected Tasks')[0]
+    check('desktopicon' in selected,'actual historical Inno desktop task remains inherited')
+    p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTARTAPPLICATIONS','/NOCLOSEAPPLICATIONS','/EXPECTEDBUILD=1.0.4-dev.1')
+    check(p.wait(timeout=60)==0,'ordinary updater flags without TASKS succeed')
+    record(not SHORTCUT.exists(),'ordinary silent update preserves interactive desktop opt-out')
+    uninstall();wait(lambda:not INSTALL.exists(),'fresh-install reset for partial Finish case')
+
+    # Let desktop creation succeed, then fail startup ownership validation after
+    # Finish has loaded its initial state. The real foreign-value guard supplies
+    # the failure without test hooks in production code or registry ACL changes.
+    p=setup();w=path_page();complete_install(w)
+    desktop_box=find(w,'创建桌面快捷方式');startup_box=find(w,'开机时启动桌面伙伴')
+    click(startup_box)
+    changed_command='"'+str(ROOT/'changed startup owner.exe')+'" --startup'
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER,RUN_KEY) as key:winreg.SetValueEx(key,'DafeiyuDeskPet',0,winreg.REG_SZ,changed_command)
+    click(find(w,'完成，稍后启动'))
+    dialog=wait(lambda:next((d for d in windows() if classname(d)=='#32770'),None),'startup ownership failure after shortcut creation')
+    check(p.poll() is None and SHORTCUT.exists() and run_value()==changed_command,'real startup ownership failure follows successful desktop creation')
+    user.PostMessageW(dialog,0x10,0,0);wait(lambda:not user.IsWindow(dialog),'partial Finish error dismissal')
+    click(desktop_box);click(startup_box);click(find(w,'完成，稍后启动'))
+    check(p.wait(timeout=20)==0,'revised unchecked Finish choices succeed')
+    record(not SHORTCUT.exists() and run_value()==changed_command,'unchecked retry removes only its own partially created link and preserves foreign startup')
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER,RUN_KEY,0,winreg.KEY_SET_VALUE) as key:winreg.DeleteValue(key,'DafeiyuDeskPet')
+
+    # Only Hotkey differs from installed defaults. Exercise explicit silent
+    # update, interactive opt-out, and native uninstall as independent checks.
+    p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/TASKS=desktopicon');check(p.wait(timeout=60)==0,'explicit desktop creation remains supported')
+    before=change_link_hotkey()
+    p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/TASKS=desktopicon');check(p.wait(timeout=60)==0,'hotkey fixture silent update succeeds')
+    record(SHORTCUT.exists() and SHORTCUT.read_bytes()==before,'silent explicit task preserves a same-target hotkey-modified link')
+    before=change_link_hotkey()
+    p=setup();w=path_page();complete_install(w)
+    desktop_box=find(w,'创建桌面快捷方式')
+    record(not user.IsWindowEnabled(desktop_box),'Finish protects a same-target shortcut with a real COM hotkey')
+    if user.IsWindowEnabled(desktop_box) and user.SendMessageW(desktop_box,0xF0,0,0)==1:click(desktop_box)
+    click(find(w,'完成，稍后启动'));check(p.wait(timeout=20)==0,'hotkey fixture finishes normally')
+    record(SHORTCUT.exists() and SHORTCUT.read_bytes()==before,'Finish does not remove the user hotkey shortcut')
+    before=change_link_hotkey();uninstall()
+    record(SHORTCUT.exists() and SHORTCUT.read_bytes()==before,'uninstall preserves a same-target hotkey-modified link byte for byte')
+    if SHORTCUT.exists():SHORTCUT.unlink()
+    wait(lambda:not INSTALL.exists(),'focused fixture directory cleanup')
+    for condition,label in results:check(condition,label)
+    (ROOT/'finish-regressions.json').write_text(json.dumps({'passed':len(results),'results':results},ensure_ascii=False,indent=2),encoding='utf-8')
+
 try:
     compile_fixture()
+    finish_regressions()
+    if args.finish_regressions_only:raise SystemExit(0)
     p=start([ROOT/'installer.exe','/SP-','/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR='+str(GUARD_PROBE),'/LOG='+str(ROOT/'target-guard.log')],guard_probe=True)
     check(p.wait(timeout=30)!=0 and not GUARD_PROBE.exists(),'native PrepareToInstall guard rejects a repository sibling target before directory creation')
     p=setup('/DIR='+str(INSTALL));w=path_page()
