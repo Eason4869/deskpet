@@ -53,7 +53,7 @@ namespace Dafeiyu.Tests
         {var property=typeof(IllustratedAnimation).GetProperty("HoldLastSeconds");Check(property!=null,"illustrated jump hold metadata is available");property.SetValue(clip,hold,null);}
         [STAThread] public static int Main(string[] args)
         {
-            try {if(args.Contains("--selection-admission")){SelectionAdmissionChecks();Console.WriteLine("WPF selection admission: "+passed+" passed");return 0;}if(args.Any(a=>a.StartsWith("--real-performance="))){WpfCompanionPerformance.Run(args.Single(a=>a.StartsWith("--performance-index=")).Substring("--performance-index=".Length),args.Single(a=>a.StartsWith("--real-performance=")).Substring("--real-performance=".Length),args.Where(a=>a.StartsWith("--owned-fixtures=")).Select(a=>a.Substring("--owned-fixtures=".Length)).FirstOrDefault(),args.Contains("--phase-probe"),args.Contains("--natural-background"));return 0;}if(args.Contains("--operation-sounds-ui")){OperationSoundChecks();Console.WriteLine("WPF operation sounds: "+passed+" passed");return 0;}if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
+            try {if(args.Contains("--fixture-teardown")){FixtureTeardownChecks();Console.WriteLine("WPF fixture teardown: "+passed+" passed");return 0;}if(args.Contains("--selection-admission")){SelectionAdmissionChecks();Console.WriteLine("WPF selection admission: "+passed+" passed");return 0;}if(args.Any(a=>a.StartsWith("--real-performance="))){WpfCompanionPerformance.Run(args.Single(a=>a.StartsWith("--performance-index=")).Substring("--performance-index=".Length),args.Single(a=>a.StartsWith("--real-performance=")).Substring("--real-performance=".Length),args.Where(a=>a.StartsWith("--owned-fixtures=")).Select(a=>a.Substring("--owned-fixtures=".Length)).FirstOrDefault(),args.Contains("--phase-probe"),args.Contains("--natural-background"));return 0;}if(args.Contains("--operation-sounds-ui")){FixtureTeardownChecks();OperationSoundChecks();Console.WriteLine("WPF operation sounds: "+passed+" passed");return 0;}if(args.Contains("--bulk-reader-lifetime")){BulkRecoveryReaderLifetime();Console.WriteLine("WPF bulk reader lifetime: "+passed+" passed");return 0;}if(args.Contains("--installation-status")){InstallationStatusChecks();Console.WriteLine("Installation status: "+passed+" passed");return 0;}if(args.Contains("--bundled-e")){BundledEbaoChecks();Console.WriteLine("Bundled Ebao: "+passed+" passed");return 0;}if(args.Contains("--review-fixes")){ReviewFailurePaths();Console.WriteLine("WPF review fixes: "+passed+" passed");return 0;}DecodedBudget();VerifiedDecode();JumpHold();NativePixels();CatalogTrust();if(args.Contains("--thin-ui"))ThinStartupAndGuide(args.FirstOrDefault(a=>a.StartsWith("--legacy-assets=",StringComparison.Ordinal)));Console.WriteLine("WPF official companion tests: "+passed+" passed");return 0;}
             catch(Exception error){Console.WriteLine("FAIL WPF official companion: "+error);return 1;}
         }
         static void SelectionAdmissionChecks()
@@ -70,6 +70,42 @@ namespace Dafeiyu.Tests
                 settings.PendingOfficialCompanionId="dafeiyu";begin.Invoke(pet,new object[]{pet.Skin});var persisted=store.Load();
                 Check(persisted.PendingOfficialCompanionId==""&&persisted.SelectedCompanionKey==selected,"admission still persists a legacy pending clear without changing last successful selection");
             }finally{pet.Close();Pump();Directory.Delete(root,true);}
+        }
+        static async Task CloseFixtureAsync(PetWindow pet)
+        {
+            var closed=new TaskCompletionSource<bool>();EventHandler onClosed=delegate{closed.TrySetResult(true);};pet.Closed+=onClosed;
+            try{
+                // Close first schedules asynchronous persistence/draining. The actual
+                // Closed event confirms companion ownership was released and final services started.
+                pet.Close();await closed.Task;await pet.ImageServicesShutdown;
+            }finally{pet.Closed-=onClosed;}
+        }
+        static void FixtureTeardownChecks()
+        {
+            var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                string data=fixture.Root;OfficialCompanionInstallation installed;
+                using(var downloads=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                    var prepare=downloads.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(prepare);installed=prepare.Result.Installation;
+                }
+                var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};var store=new SettingsStore(Path.Combine(data,"settings.json"));
+                var pet=new PetWindow(null,settings,store,null);Field("officialStartupStarted").SetValue(pet,true);
+                var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};
+                var saving=new TaskCompletionSource<bool>();var release=new ManualResetEventSlim();store.BeforeExactSave=delegate{saving.TrySetResult(true);release.Wait();};
+                string key=Dafeiyu.Maintenance.CacheResourceLease.Key(Path.Combine(data,"cache-maintenance"),installed.RootDirectory);
+                try{
+                    Check(pet.Skin.Snapshot!=null&&pet.Skin.Snapshot.Installation.RootDirectory==installed.RootDirectory,"teardown fixture owns actual installed companion snapshot");
+                    Check(File.ReadAllText(key+".owner").Contains(installed.RootDirectory),"locked cache owner record identifies selected official version");
+                    var closing=CloseFixtureAsync(pet);Wait(saving.Task);
+                    bool locked=false;try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){locked=true;}
+                    Check(locked&&!closed.Task.IsCompleted,"pending close still holds actual snapshot cache lock");
+                    Check(!closing.IsCompleted,"fixture teardown waits for asynchronous close before deleting data");
+                    release.Set();Wait(closing);
+                    Check(closed.Task.IsCompleted&&pet.ImageServicesShutdown.IsCompleted,"teardown observes real Closed and final service shutdown");
+                    using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"actual official snapshot owner releases cache lock after teardown");
+                }finally{release.Set();if(!closed.Task.IsCompleted)pet.Close();Wait(closed.Task);Wait(pet.ImageServicesShutdown);store.BeforeExactSave=null;release.Dispose();}
+            }
         }
         sealed class OperationOutput:ILiveAudioOutput
         {
@@ -94,7 +130,7 @@ namespace Dafeiyu.Tests
                 settings.NotificationSoundsEnabled=false;var panel=new QuietPanel(pet);preferences=new Window{Content=panel,Width=780,Height=1000};preferences.Show();Pump();Check(Descendants(panel).OfType<CheckBox>().Count(c=>c.Name=="NotificationSoundsEnabled")==1&&!Descendants(panel).OfType<CheckBox>().Any(c=>c.Name=="CompanionOperationSoundsEnabled"),"one visible sound master");var preview=Descendants(panel).OfType<Button>().Single(b=>b.Name=="PreviewCompanionSwitch");var volume=Descendants(panel).OfType<Slider>().Single(v=>v.Name=="CompanionOperationSoundVolume");volume.Value=47;preview.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));wait(7);Check(output.Volume==47&&settings.CompanionOperationSoundVolume==47,"preview uses displayed independent volume");Check(output.LastBytes==41280&&!settings.NotificationSoundsEnabled,"actual preview button works while disabled");Check(Descendants(panel).OfType<Slider>().Single(v=>v.Name=="CompanionOperationSoundVolume").Maximum==100,"native volume range");
                 CaptureBubble(preferences,"task-4-wpf-operation-settings.png");
                 foreach(var language in UiLanguages.Choices.Where(c=>c.Code!="system")){TextResources.ApplyLanguage(TextResources.PrepareLanguage(language.Code));Pump();Check(System.Windows.Automation.AutomationProperties.GetName(preview)==TextResources.Get("operationSounds.switch"),"live localized accessible preview "+language.Code);}
-            }finally{if(preferences!=null)preferences.Close();if(pet!=null)pet.Close();Pump();Directory.Delete(data,true);}
+            }finally{if(preferences!=null)preferences.Close();if(pet!=null)Wait(CloseFixtureAsync(pet));Directory.Delete(data,true);}
         }
         static void InstallationStatusChecks()
         {
@@ -130,7 +166,7 @@ namespace Dafeiyu.Tests
                 bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","installing",0));bubble.Accept(new CompanionSelectionUpdate(4,"official:marfu","Settings","failed",0));Check(bubble.IsVisible&&Descendants(bubble).OfType<Button>().First(b=>b.Name=="RetryCompanionInstallation").IsVisible,"new failed install immediately offers retry in native bubble");CaptureBubble(bubble,"task-3-failed.png");
                 bubble.Close();bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","requested",0));bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","installing",0));Check(bubble.IsVisible,"system close hides presentation and permits a later new request");
                 bubble.Accept(new CompanionSelectionUpdate(5,"official:marfu","Settings","cancelled",0));Check(!bubble.IsVisible&&pet.Notice=="","cancel immediately removes bubble and selector status without a timer tick");
-            }finally{if(bubble!=null)bubble.Shutdown();if(pet!=null)pet.Close();Pump();Directory.Delete(data,true);}
+            }finally{if(bubble!=null)bubble.Shutdown();if(pet!=null)Wait(CloseFixtureAsync(pet));Directory.Delete(data,true);}
         }
         static void CaptureBubble(Window window,string name){window.UpdateLayout();var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var output=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,name)))png.Save(output);}
         static System.Collections.Generic.IEnumerable<DependencyObject> Descendants(DependencyObject root){for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++){var child=System.Windows.Media.VisualTreeHelper.GetChild(root,i);yield return child;foreach(var nested in Descendants(child))yield return nested;}}
@@ -186,10 +222,10 @@ namespace Dafeiyu.Tests
                         var asset=new OfficialCompanionAsset("e-bao","E","9.0.0","0.10.3-dev.1","v9.0.0","new.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
                         var snapshot=new OfficialCompanionSnapshot(new OfficialCompanionInstallation(asset,installed.RootDirectory),entries,"newer-E",root,null);
                         var prepare=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareSnapshotAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{snapshot,CancellationToken.None});Wait(prepare);Check(prepare.Result.Snapshot==snapshot&&prepare.Result.Bundle==null,"newer compatible installed E wins over application bundle");
-                    }finally{pet.Close();Pump();}
+                    }finally{Wait(CloseFixtureAsync(pet));}
                 }
 
-            }finally{try{Directory.Delete(root,true);}catch(IOException){}}
+            }finally{Directory.Delete(root,true);}
         }
         static void ReviewFailurePaths()
         {
