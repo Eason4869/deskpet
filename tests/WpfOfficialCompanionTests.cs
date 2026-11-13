@@ -83,8 +83,16 @@ namespace Dafeiyu.Tests
                     for(int n=0;n<8;n++)WpfPreparedCompanion.Ready(active,motion);Pump();
                     Check(repairCalls==before+1&&ReferenceEquals(pet.Skin,active)&&ReferenceEquals(((Image)pet.Content).Source,currentFrame),"offline lazy repair is throttled and retains working frame");
                     ((System.Collections.IDictionary)Field("officialRepairAfter").GetValue(pet))[active.Snapshot.Generation]=DateTime.MinValue;offline=false;
-                    WpfPreparedCompanion.Ready(active,motion);deadline=DateTime.UtcNow.AddSeconds(30);while(ReferenceEquals(pet.Skin,active)&&DateTime.UtcNow<deadline)Pump();
-                    Check(!ReferenceEquals(pet.Skin,active)&&pet.Settings.SelectedCompanionKey==active.PickerKey&&pet.CurrentCompanionSelection.Stage!="completed","later lazy repair replaces source at safe idle without selection cue");
+                    var busy=pet.QuestionController.AskAsync(new AgentQuestionRequest{SessionId="repair-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+                    WpfPreparedCompanion.Ready(active,motion);deadline=DateTime.UtcNow.AddSeconds(30);while((repairCalls<before+2||repairs.Count!=0)&&DateTime.UtcNow<deadline)Pump();
+                    var pending=Field("deferredOfficial").GetValue(pet);Check(pending!=null&&ReferenceEquals(pet.Skin,active),"successful repair remains queued while business is busy");
+                    var prepared=(SkinDefinition)pending.GetType().GetField("Skin",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pending);
+                    ((System.Collections.IDictionary)Field("officialRepairAfter").GetValue(pet))[active.Snapshot.Generation]=DateTime.MinValue;
+                    for(int n=0;n<8;n++)WpfPreparedCompanion.Ready(active,motion);Pump();
+                    Check(repairCalls==before+2&&ReferenceEquals(Field("deferredOfficial").GetValue(pet),pending)&&ReferenceEquals(pet.Skin,active),"pending successful repair suppresses another transfer after retry deadline expires");
+                    pet.QuestionController.CancelSession("repair-busy");typeof(PetWindow).GetMethod("TryApplyDeferredOfficial",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    deadline=DateTime.UtcNow.AddSeconds(10);while(ReferenceEquals(pet.Skin,active)&&DateTime.UtcNow<deadline)Pump();
+                    Check(ReferenceEquals(pet.Skin,prepared)&&pet.Settings.SelectedCompanionKey==active.PickerKey&&pet.CurrentCompanionSelection.Stage!="completed","safe idle applies the original successful pending repair without selection cue");
                     Check(WpfPreparedCompanion.Load(pet.Skin,pet.Skin.Manifest.Animations["running"])!=null,"repaired cold default action decodes");
                     Wait(pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null));int settled=repairCalls;
                     WpfPreparedCompanion.Ready(active,motion);Pump();Check(pet.Skin.BuiltinCharacterId=="e-bao"&&repairCalls==settled,"late failure from superseded source cannot repair or reclaim user selection");

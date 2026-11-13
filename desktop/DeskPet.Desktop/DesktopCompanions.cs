@@ -237,6 +237,10 @@ internal sealed partial class DesktopController
     {
         if(exiting||source.Snapshot==null||!ReferenceEquals(Skin,source))return;
         string generation=source.Snapshot.Generation;
+        // Successful preparation remains authoritative until the pending source
+        // is applied, invalidated, or loses selection ownership.
+        if(pendingAppearances.TryGetValue(source.PickerKey,out var pending)&&ReferenceEquals(pending.Previous,source)
+            &&officialCompanions.OwnsSelection(pending.Token)&&pending.Skin.Snapshot!=null&&pending.Skin.Snapshot.Generation!=generation)return;
         if(companionRepairs.ContainsKey(generation)||companionRepairAfter.TryGetValue(generation,out var retry)&&DateTime.UtcNow<retry)return;
         companionRepairs[generation]=true;
         long token=latestCompanionToken,order=++appearanceOperation;
@@ -300,6 +304,11 @@ internal sealed partial class DesktopController
                     Pet.CancelHolidayForSkinChange();Skin=next.Skin;ReplaceCompanionEntry(next.Skin);
                     var old=activeCompanionPins;activeCompanionPins=hold;hold=null;
                     MergeCompanionCatalog(next.Skin.OfficialCharacterId!,next.Catalog);Pet.SelectSkin();old?.Dispose();Notify();
+                }catch{
+                    // A replacement that failed preparation must no longer block
+                    // a later repair attempt for the still-visible source.
+                    if(pendingAppearances.TryGetValue(item.Key,out var failed)&&ReferenceEquals(failed.Skin,next.Skin))pendingAppearances.Remove(item.Key);
+                    throw;
                 }finally{hold?.Dispose();}
             }
         }catch(OperationCanceledException){}catch(Exception){/* A failed refresh keeps the current source. */}

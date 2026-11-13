@@ -370,6 +370,11 @@ namespace Dafeiyu
             if(!Dispatcher.CheckAccess()){Dispatcher.BeginInvoke(new Action(()=>DefaultCompanionFailed(source)));return;}
             if(closing||source.Snapshot==null||!ReferenceEquals(Skin,source))return;
             string generation=source.Snapshot.Generation;DateTime retry;
+            var pending=deferredOfficial;
+            // The prepared replacement already owns the repair while waiting for
+            // safe idle. The existing pending slot is cleared on apply/invalidation.
+            if(pending!=null&&!pending.Select&&ReferenceEquals(pending.ExpectedSource,source)&&OwnsOfficial(pending.Request)
+                &&pending.Skin.Snapshot!=null&&pending.Skin.Snapshot.Generation!=generation)return;
             if(officialRepairs.ContainsKey(generation)||officialRepairAfter.TryGetValue(generation,out retry)&&DateTime.UtcNow<retry)return;
             officialRepairs[generation]=true;
             var work=RepairDefaultCompanionAsync(source,officialRequest);

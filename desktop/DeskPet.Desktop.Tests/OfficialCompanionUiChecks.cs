@@ -468,6 +468,9 @@ internal static class OfficialCompanionUiChecks
             assets.Ready(active,clip);Until(()=>lazySource.Repairs==2);
             var question=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId="repair-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
             lazySource.Result.SetResult(new OfficialCompanionResult(replacement,false,true,true,""));Until(()=>repairs.Count==0);Check(ReferenceEquals(owner.Skin,active),"successful repair waits for safe idle without interrupting business");
+            ((System.Collections.IDictionary)typeof(DesktopController).GetField("companionRepairAfter",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!)[active.Snapshot!.Generation]=DateTime.MinValue;
+            for(int n=0;n<8;n++)assets.Ready(active,clip);Dispatcher.UIThread.RunJobs();
+            Check(lazySource.Repairs==2&&ReferenceEquals(owner.Skin,active),"pending successful repair suppresses repeated transfers after retry deadline expires");
             owner.Questions.CancelSession("repair-busy");owner.ApplyPendingCompanionAppearance();Until(()=>!ReferenceEquals(owner.Skin,active));
             Check(owner.Skin.Folder==replacement.RootDirectory&&owner.Settings.SelectedCompanionKey==active.PickerKey&&owner.CurrentCompanionSelection?.Stage!="completed","later repair silently applies same-role source at idle");assets.PrepareFrame(owner.Skin,assets.Resolve(owner.Skin,"running",true),0);checks++;
             Complete(owner.SelectSkinAsync(owner.Skins.Single(s=>s.OfficialCharacterId=="e-bao"),CompanionSelectionOrigin.StartupRestore));int settled=lazySource.Repairs;assets.Ready(active,clip);Dispatcher.UIThread.RunJobs();
