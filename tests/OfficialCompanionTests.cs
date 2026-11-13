@@ -13,8 +13,8 @@ namespace Dafeiyu.Tests
         public static int Main()
         {
             try {
-                if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
-                RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
+                if(Environment.GetCommandLineArgs().Contains("--shared-resource-only")){SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();Console.WriteLine("Shared resource tests: "+passed+" passed");return 0;}
+                RepairInFlight().GetAwaiter().GetResult();SnapshotAudit().GetAwaiter().GetResult();BackgroundLeases().GetAwaiter().GetResult();BackgroundPriorityCancellation().GetAwaiter().GetResult();SnapshotReads();TransferAdmission().GetAwaiter().GetResult();ForcedRepair().GetAwaiter().GetResult();SingleVerifiedRead();AutomaticHistorySweep().GetAwaiter().GetResult();ReaderLockContention();CommittedPointerOutcome();ManagedVersionLifecycle();MaterialReusePolicy();ConcurrentMaterialReuse().GetAwaiter().GetResult();PreparationLifecycle().GetAwaiter().GetResult();ProgressNoticeGate();Run().GetAwaiter().GetResult();Console.WriteLine("Official companion tests: "+passed+" passed");return 0;
             }catch(Exception error){Console.WriteLine("FAIL OfficialCompanion: "+error);return 1;}
         }
         static void SnapshotReads()
@@ -80,6 +80,35 @@ namespace Dafeiyu.Tests
                     string receiptPath=Path.Combine(snapshot.Installation.RootDirectory,"receipt.json");File.AppendAllText(receiptPath," ");using(var changed=service.CaptureLocalSnapshot("dafeiyu")){Check(changed.Generation!=snapshot.Generation&&await service.ValidateSnapshotInBackgroundAsync(changed)&&service.Storage.VerificationCount==2&&nativeCalls==2,"receipt digest changes invalidate background audit generation");}
                     using(var cancel=new CancellationTokenSource()){cancel.Cancel();bool cancelled=false;try{await service.ValidateSnapshotInBackgroundAsync(snapshot,cancel.Token);}catch(OperationCanceledException){cancelled=true;}Check(cancelled,"background audit honors caller cancellation even when already audited");}
                 }
+            }
+        }
+        static int AdmissionWaiters(OfficialCompanionTransferAdmission admission)
+        {
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;object sync=typeof(OfficialCompanionTransferAdmission).GetField("gate",flags).GetValue(admission);
+            lock(sync)return ((System.Collections.ICollection)typeof(OfficialCompanionTransferAdmission).GetField("waiting",flags).GetValue(admission)).Count;
+        }
+        static async Task BackgroundPriorityCancellation()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var service=new OfficialCompanionDownloads(fixture.Root,OfficialCompanionFixture.Version,UpdateChannel.Preview,transport,(i,c)=>Task.FromResult(0)))
+            using(var cancel=new CancellationTokenSource()){
+                var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+                var admission=(OfficialCompanionTransferAdmission)typeof(OfficialCompanionDownloads).GetField("slots",flags).GetValue(service);
+                var first=await admission.AcquireAsync(()=>false,CancellationToken.None);var second=await admission.AcquireAsync(()=>false,CancellationToken.None);
+                var firstAsset=new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);var release=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);Task<OfficialCompanionResult> background=null,foreground=null;
+                fixture.Intercept=async(r,c)=>{if(r.RequestUri.AbsolutePath.EndsWith(".zip")){firstAsset.TrySetResult(Uri.UnescapeDataString(r.RequestUri.Segments.Last()));await release.Task;}return null;};
+                try{
+                    background=service.UpdateInBackgroundAsync("dafeiyu",Direct,CancellationToken.None);await WaitUntil(()=>AdmissionWaiters(admission)==1);
+                    var promoted=service.EnsureAsync("dafeiyu",Direct,OfficialCompanionCheckMode.Cached,null,cancel.Token);await WaitUntil(()=>Subscribers(service)==2);
+                    cancel.Cancel();await Canceled(promoted,"cancelled foreground subscriber leaves background transfer subscribed");
+                    foreground=service.EnsureAsync("xiaobei",Direct,OfficialCompanionCheckMode.Cached,null,CancellationToken.None);await WaitUntil(()=>AdmissionWaiters(admission)==2);
+                    first.Dispose();string started=await Timeout(firstAsset.Task);
+                    Check(started==OfficialCompanionFixture.PackageName("xiaobei"),"cancelled foreground promotion demotes background behind later foreground install");
+                }finally{
+                    release.TrySetResult(true);first.Dispose();second.Dispose();
+                    var pending=new[]{background,foreground}.Where(t=>t!=null).ToArray();if(pending.Length!=0)Timeout(Task.WhenAll(pending)).GetAwaiter().GetResult();
+                }
+                Check(background.Result.InstalledNow&&foreground.Result.InstalledNow,"demoted background still completes after foreground admission");
             }
         }
         static async Task BackgroundLeases()

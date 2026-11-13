@@ -38,7 +38,7 @@ namespace Dafeiyu
         SemaphoreSlim ContentSlot(OfficialCompanionAsset asset){lock(gate){string key=asset.Id;SemaphoreSlim value;if(!contentSlots.TryGetValue(key,out value)){value=new SemaphoreSlim(1,1);contentSlots.Add(key,value);}return value;}}
         sealed class Work<T>
         {
-            internal CancellationTokenSource Cancel;internal Task<T> Task;internal volatile bool Background;internal readonly Dictionary<long,IProgress<OfficialCompanionProgress>> Listeners=new Dictionary<long,IProgress<OfficialCompanionProgress>>();internal long Next;
+            internal CancellationTokenSource Cancel;internal Task<T> Task;internal volatile bool Background;internal readonly HashSet<long> ForegroundListeners=new HashSet<long>();internal readonly Dictionary<long,IProgress<OfficialCompanionProgress>> Listeners=new Dictionary<long,IProgress<OfficialCompanionProgress>>();internal long Next;
             internal void Report(OfficialCompanionProgress progress,object sync){IProgress<OfficialCompanionProgress>[] listeners;lock(sync)listeners=Listeners.Values.Where(x=>x!=null).ToArray();foreach(var listener in listeners)try{listener.Report(progress);}catch{} }
         }
         public OfficialCompanionDownloads(string dataRoot,string appVersion,UpdateChannel channel,GitHubUpdates transport,Func<OfficialCompanionInstallation,CancellationToken,Task> validateNative)
@@ -164,7 +164,7 @@ namespace Dafeiyu
                     if(await Task.WhenAny(work.Task,signal.Task).ConfigureAwait(false)!=work.Task)throw new OperationCanceledException(cancel);
                     cancel.ThrowIfCancellationRequested();return await work.Task.ConfigureAwait(false);
                 }
-            }finally {lock(gate){work.Listeners.Remove(lease);if(work.Listeners.Count==0){if(!work.Task.IsCompleted){remove();work.Cancel.Cancel();}else work.Cancel.Dispose();}}}
+            }finally {lock(gate){work.Listeners.Remove(lease);work.ForegroundListeners.Remove(lease);work.Background=work.ForegroundListeners.Count==0;if(work.Listeners.Count==0){if(!work.Task.IsCompleted){remove();work.Cancel.Cancel();}else work.Cancel.Dispose();}}}
         }
         void DisposeWhenUnleased<T>(Work<T> work){work.Task.ContinueWith(t=>{lock(gate)if(work.Listeners.Count==0)work.Cancel.Dispose();},CancellationToken.None,TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);}
         Task<InstallResult> InstallAsync(OfficialCompanionAsset asset,OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel,bool forceRepair=false,bool background=false)
@@ -176,7 +176,7 @@ namespace Dafeiyu
                     work=new Work<InstallResult>{Cancel=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token),Background=background};installs.Add(key,work);var captured=work;
                     work.Task=Task.Run(async()=>{try{return await InstallCoreAsync(asset,routing,captured,captured.Cancel.Token,forceRepair).ConfigureAwait(false);}finally{lock(gate){Work<InstallResult> current;if(installs.TryGetValue(key,out current)&&ReferenceEquals(current,captured))installs.Remove(key);}}});Observe(work.Task);DisposeWhenUnleased(work);
                 }
-                if(!background)work.Background=false;lease=++work.Next;work.Listeners.Add(lease,progress);
+                lease=++work.Next;work.Listeners.Add(lease,progress);if(!background)work.ForegroundListeners.Add(lease);work.Background=work.ForegroundListeners.Count==0;
             }
             return LeaseAsync(work,lease,cancel,()=>{Work<InstallResult> current;if(installs.TryGetValue(key,out current)&&ReferenceEquals(current,work))installs.Remove(key);});
         }
