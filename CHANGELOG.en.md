@@ -4,6 +4,7 @@
 
 ## [1.0.4-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.1) · Development preview
 
+- The Windows installer uses a light two-column layout and five companion portraits. Reinstalls keep an editable location with browse and reset actions. Desktop and login-startup choices apply on Finish while preserving custom entries and silent-update behavior.
 - Switch installed companions from local resources first. A passive bubble reports installation or repair, supports cancellation and retry, and keeps the current companion while work is busy.
 - Restore the last selected companion after an app upgrade, then silently check only that companion for compatible material updates. The complete Ebao pack and matching outfits are included for offline use.
 - Load and reuse companion images on demand, verify material in the background, and retire unused old packages while protecting active readers and the latest usable version.

@@ -21,9 +21,10 @@ AppSupportURL={#RepositoryUrl}/issues
 AppUpdatesURL={#RepositoryUrl}/releases/latest
 DefaultDirName={localappdata}\Programs\EbaoDeskPet
 UsePreviousAppDir=yes
+DisableDirPage=no
 DefaultGroupName=桌面伙伴
 UsePreviousGroup=no
-DisableProgramGroupPage=auto
+DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible and not arm64
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -43,7 +44,8 @@ VersionInfoCompany=彧晟Eason
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
-DisableWelcomePage=no
+DisableWelcomePage=yes
+DisableReadyPage=yes
 Uninstallable=yes
 
 [Languages]
@@ -54,6 +56,8 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 #include RuntimeFiles
+Source: "assets\*.png"; Flags: dontcopy
+Source: "..\assets\deskpet-logo.png"; Flags: dontcopy
 
 [InstallDelete]
 Type: files; Name: "{app}\大肥鱼桌宠.exe"
@@ -62,10 +66,7 @@ Type: files; Name: "{app}\大肥鱼桌宠.exe.config"
 [Icons]
 Name: "{group}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"
 Name: "{group}\卸载桌面伙伴"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"; Tasks: desktopicon
-
-[Run]
-Filename: "{app}\桌面伙伴.exe"; Description: "启动桌面伙伴"; Flags: nowait postinstall skipifsilent
+Name: "{autodesktop}\桌面伙伴"; Filename: "{app}\桌面伙伴.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Check: CreateSilentDesktopIcon; Flags: uninsneveruninstall
 
 [Code]
 var
@@ -74,7 +75,14 @@ var
   RetiredSuccess: Boolean;
 
 #include "VersionGuard.iss"
+#include "FinishOptions.iss"
+#include "InstallerUi.iss"
 #include "RetireRuntime.iss"
+
+procedure InitializeWizard;
+begin
+  InitializeInstallerUi;
+end;
 
 procedure RemoveLegacyShortcut(Path, Target: String);
 var
@@ -95,6 +103,7 @@ var
   RegisteredCommand, LegacyCommand, NewCommand: String;
 begin
   if CurStep = ssInstall then begin
+    WasInstalled := FileExists(ExpandConstant('{app}\桌面伙伴.exe')) or FileExists(ExpandConstant('{app}\大肥鱼桌宠.exe'));
     RetireKnownFiles;
     RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1', 'Inno Setup: Icon Group', PreviousIconGroup);
   end;
@@ -129,8 +138,10 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   RegisteredCommand, ExpectedCommand: String;
 begin
+  if CurUninstallStep = usPostUninstall then RestoreCustomDesktopLink;
   if CurUninstallStep = usUninstall then
   begin
+    if OwnedDesktopLink then DeleteFile(DesktopLink);
     ExpectedCommand := '"' + ExpandConstant('{app}\桌面伙伴.exe') + '" --startup';
     if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DafeiyuDeskPet', RegisteredCommand) then
       if CompareText(RegisteredCommand, ExpectedCommand) = 0 then
