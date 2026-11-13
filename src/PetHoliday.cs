@@ -88,8 +88,12 @@ namespace Dafeiyu
             var surface=image as HolidayPetImage;if(surface!=null){surface.DrawClouds=DrawHolidayClouds;surface.FrameRendered=HolidayFrameRendered;}
             RefreshHoliday();if(!Skin.IsOfficial){var restore=RestoreLocalOutfitsAsync();}
         }
+        // Explicit companion selection can interrupt completed-result feedback.
+        // Holiday playback and background publication also wait for that animation.
+        bool CompanionBusinessBusy
+        {get{return DialogueBusy || DictationActive || LiveActive || HasActiveAgentJobs || questionController!=null&&questionController.Requests.Count!=0 || HasQueuedMessages || ConversationSessions.Any(s=>s.IsBusy || s.NeedsExecutionReconciliation);}}
         bool HolidayBusinessBusy
-        {get{return DialogueBusy || DictationActive || LiveActive || HasActiveAgentJobs || questionController!=null&&questionController.Requests.Count!=0 || HasQueuedMessages || ConversationSessions.Any(s=>s.IsBusy || s.NeedsExecutionReconciliation) || watch.Elapsed.TotalSeconds<completionUntil;}}
+        {get{return CompanionBusinessBusy || watch.Elapsed.TotalSeconds<completionUntil;}}
         bool HolidayCanAnimate
         {get{return !closing && IsPetVisible && !Paused && !dragging && !walking && !dropMotion.Active && !interaction.Active && Animation.State=="idle" && !Settings.QuietMode && !Settings.ClickThrough && !sessionLocked && !IsUpdating && !GuideActive && !HolidayBusinessBusy && !clickTimer.IsEnabled && (updates==null || !updates.HasRestartCountdown) && (ContextMenu==null || !ContextMenu.IsOpen) && (trayMenu==null || !trayMenu.Visible) && (palette==null || !palette.IsVisible) && !DesktopInterop.ForegroundIsFullScreen(handle);}}
         internal void RefreshHoliday()

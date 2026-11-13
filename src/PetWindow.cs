@@ -718,7 +718,7 @@ namespace Dafeiyu
             RecordPetInteraction();
             if(Object.ReferenceEquals(skin,Skin))return true;
             if(preferences!=null && preferences.HasUnsavedEdits){Notice=TextResources.Get("petWindow.activateSkin.notice");preferences.ShowNotice(Notice);return false;}
-            if(HolidayBusinessBusy){Notice=TextResources.Get("petWindow.activateSkin.notice.alternativeA");return false;}
+            if(CompanionBusinessBusy){Notice=TextResources.Get("petWindow.activateSkin.notice.alternativeA");return false;}
             try
             {
                 using(DataMaintenance.EnterActivity()){

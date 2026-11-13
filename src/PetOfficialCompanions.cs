@@ -102,7 +102,7 @@ namespace Dafeiyu
             if(onboarding&&GuideCompanionSelection)guide.AllowCompanionPreparation();else if(NoticeOnlyCompanionGuide())return false;
             if(closing||IsUpdating)return false;
             if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
-            if(HolidayBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
+            if(CompanionBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
             return true;
         }
         long BeginCompanionSelection(SkinDefinition target)
