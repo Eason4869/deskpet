@@ -160,7 +160,7 @@ python -m pip install Pillow
 .\Build.ps1 -Target App -OutputDirectory "$PWD\work\local-app"
 ```
 
-Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。鹅宝默认资源的构建也需要 Python / Pillow：脚本先按素材注册表校验完整角色包，再仅将全部常规动作、视线、头像和元数据 33 项嵌入 EXE，运行时只读取所需条目，不解压整包。Avalonia 生产构建前运行 `python tools/prepare_bundled_ebao.py`；Mac 使用同一源码在 Windows 生成的鹅宝 ZIP，并传入 `--package`（见 [Mac 打包说明](installer/macos/README.md)）。安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
+Windows 构建使用系统 .NET Framework 编译器与 System.Speech；不需要 Docker。共享核心与 Avalonia 开发使用 `desktop/global.json` 指定的 .NET 10 SDK，Mac 原生桥接需在 Mac 构建，见[平台开发说明](desktop/DeskPet.Platform.Mac/README.md)。鹅宝默认资源的构建也需要 Python / Pillow：脚本先按素材注册表校验完整角色包，再仅将全部常规动作、视线、头像和元数据 33 项嵌入 EXE，运行时只读取所需条目，不解压整包。Avalonia 生产构建前运行 `python tools/prepare_bundled_ebao.py`；Mac 将同一源码在 Windows 生成的完整鹅宝来源 ZIP 传入 `--package`（不是派生默认 ZIP）（见 [Mac 打包说明](installer/macos/README.md)）。安装器构建使用 Inno Setup；以仓库脚本与 CI 为准。
 
 ## 源码、素材与许可
 
