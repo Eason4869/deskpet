@@ -262,6 +262,12 @@ procedure CurPageChanged(CurPageID: Integer);
 var I, ActiveStep: Integer;
 begin
   if WizardSilent then Exit;
+  { Ownership reads can pump COM messages. Do not publish editable choices or
+    completion actions until every initial option has been loaded. }
+  if (CurPageID = wpFinished) and not OptionsLoaded then begin
+    WizardForm.NextButton.Enabled := False; FinishLater.Enabled := False;
+    FinishDesktop.Enabled := False; FinishStartup.Enabled := False;
+  end;
   { Inno performs its own final wizard sizing after InitializeWizard. }
   if not NativeSized then begin
     WizardForm.ClientWidth := ScaleX(1000); WizardForm.ClientHeight := ScaleY(636);
@@ -297,6 +303,9 @@ begin
     WizardForm.NextButton.SetBounds(ScaleX(835), ScaleY(562), ScaleX(124), ScaleY(46));
     UiTitle.Caption := '安装完成，欢迎回家'; UiLead.Caption := '桌面伙伴已准备就绪，现在可以开始陪伴了。';
     WizardForm.NextButton.Caption := '完成并启动'; LoadFinishOptions;
+    if OptionsLoaded and not OptionsLoading then begin
+      WizardForm.NextButton.Enabled := True; FinishLater.Enabled := True;
+    end;
   end else begin
     UiTitle.Caption := '伙伴正在安家'; UiLead.Caption := '稍等片刻，马上就能见面。';
   end;

@@ -22,6 +22,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--compiler',type=Path,default=Path(os.environ.get('DESKPET_TEST_INNO','work/tools/inno/ISCC.exe')))
 parser.add_argument('--mutate-hidden-dir',action='store_true',help='Mutation check: restore the old reinstall path-hiding bug in the owned copy only.')
 parser.add_argument('--mutate-no-previous-dir',action='store_true',help='Mutation check: stop reusing the previous directory in the owned copy only.')
+parser.add_argument('--mutate-unready-finish',action='store_true',help='Mutation check: remove only the unready Finish-entry guard in the owned copy.')
 parser.add_argument('--finish-regressions-only',action='store_true',help='Run the focused completion state/ownership regressions only.')
 args=parser.parse_args()
 PROJECT=Path(__file__).resolve().parents[1]
@@ -31,6 +32,10 @@ IDENTITY=str(uuid.uuid4()).upper()
 RUN_KEY='Software\\DeskPet.Tests\\InstallerUi\\'+IDENTITY
 APP_KEY='Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{'+IDENTITY+'}_is1'
 DESKTOP=ROOT/'desktop';DESKTOP.mkdir()
+FINISH_READY=ROOT/'finish-options-ready'
+FINISH_ENTERED=ROOT/'finish-unready-entry'
+FINISH_GATE_TEXT='Owned finish readiness gate'
+finish_gate_observed=False
 SHORTCUT=DESKTOP/'桌面伙伴.lnk'
 INSTALL=ROOT/'中文 install'
 DEFAULT_INSTALL=ROOT/'default install'
@@ -169,6 +174,7 @@ def start(command,*,allow_reuse_previous=False,guard_probe=False):
     processes.append(p);return p
 
 def setup(*flags,allow_reuse_previous=False):
+    FINISH_READY.unlink(missing_ok=True)
     directory=[] if allow_reuse_previous or any(str(flag).upper().startswith('/DIR=') for flag in flags) else ['/DIR='+str(INSTALL)]
     return start([ROOT/'installer.exe','/SP-','/NORESTART',*directory,'/LOG='+str(ROOT/('setup-'+str(len(processes))+'.log')),'/GROUP=DeskPetFixture-'+IDENTITY,*flags],allow_reuse_previous=allow_reuse_previous)
 
@@ -226,13 +232,44 @@ def registered_uninstaller():
     return path
 
 def finish_page(w):
-    return find(w,'完成并启动')
+    action=find(w,'完成并启动');later=find(w,'完成，稍后启动')
+    return action if action and later and user.IsWindowEnabled(action) and user.IsWindowEnabled(later) else None
+
+def completion_state(w,name):
+    rows=[dict(hwnd=int(c),control_id=user.GetDlgCtrlID(c),kind=classname(c),caption=text(c),enabled=bool(user.IsWindowEnabled(c)),checked=int(user.SendMessageW(c,0xF0,0,0))) for c in controls(w)] if w else []
+    data=dict(root=str(ROOT),app_id=IDENTITY,options_loaded=FINISH_READY.exists(),shortcut_exists=SHORTCUT.exists(),startup=run_value(),controls=rows)
+    (ROOT/(name+'.json')).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
+    if w:snapshot(w,name)
+    return data
+
+def observe_finish_gate(w):
+    global finish_gate_observed
+    if finish_gate_observed:return
+    dialog=next((d for d in windows() if classname(d)=='#32770' and any(FINISH_GATE_TEXT in text(c) for c in controls(d))),None)
+    if not dialog:return
+    finish_gate_observed=True
+    # A real modal message loop provides the same reentrant dispatch opportunity
+    # as COM. Re-enable only this owned wizard to model COM's nonmodal pump.
+    user.EnableWindow.argtypes=[W.HWND,W.BOOL];user.EnableWindow(w,True)
+    action=find(w,'完成并启动');later=find(w,'完成，稍后启动')
+    boxes=[find(w,'创建桌面快捷方式'),find(w,'开机时启动桌面伙伴')]
+    completion_state(w,'finish-loading')
+    check(not FINISH_READY.exists() and all(boxes) and not any(user.IsWindowEnabled(c) for c in boxes),'loading completion choices cannot be edited during reentrant ownership reads')
+    check(action and later and not user.IsWindowEnabled(action) and not user.IsWindowEnabled(later),'loading completion actions are disabled before readiness publication')
+    before=SHORTCUT.read_bytes();startup=run_value()
+    # The owned source invokes the actual Finish callback before loading, even
+    # though normal native input routing correctly rejects disabled buttons.
+    check(FINISH_ENTERED.read_text()=='rejected' and not FINISH_READY.exists() and wizard()==w and not (INSTALL/'launch.txt').exists() and SHORTCUT.read_bytes()==before and run_value()==startup,'unready Finish entry cannot launch or change inherited options')
+    user.PostMessageW(dialog,0x10,0,0)
+    wait(lambda:FINISH_READY.exists() and finish_page(w),'initialized completion choices and actions are published together')
+    completion_state(w,'finish-ready')
 
 def complete_install(w):
     click(find(w,'开始安装'))
     values=set();captured=False
     end=time.monotonic()+60
     while time.monotonic()<end and not finish_page(w):
+        observe_finish_gate(w)
         for c in controls(w):
             value=text(c)
             if classname(c)=='TNewStaticText' and value.isdigit():
@@ -263,6 +300,23 @@ def compile_fixture():
             prefix=str(ROOT.resolve()).replace("'","''")+'\\'
             guard="  if CompareText(Copy(AddBackslash(ExpandFileName(WizardDirValue)), 1, Length('"+prefix+"')), '"+prefix+"') <> 0 then begin Result := 'Fixture refuses installation outside its owned root.'; Exit; end;\n"
             content=content.replace(needle,guard+needle)
+        if file.name=='FinishOptions.iss':
+            # This message loop and its acknowledgements exist only in the
+            # already isolated, uniquely identified fixture source copy.
+            used=str(ROOT/'finish-gate-used').replace("'","''")
+            ready=str(FINISH_READY).replace("'","''");entered=str(FINISH_ENTERED).replace("'","''")
+            marker='  OptionsLoading := True;'
+            assert content.count(marker)==1
+            content=content.replace(marker,marker+"\n  if not FileExists('"+used+"') then begin SaveStringToFile('"+used+"', 'entered', False); if NextButtonClick(wpFinished) then SaveStringToFile('"+entered+"', 'accepted', False) else SaveStringToFile('"+entered+"', 'rejected', False); MsgBox('"+FINISH_GATE_TEXT+"', mbInformation, MB_OK); end;")
+            marker='    OptionsLoaded := True;';assert content.count(marker)==1
+            content=content.replace(marker,marker+" SaveStringToFile('"+ready+"', 'ready', False);")
+            if args.mutate_unready_finish:
+                marker='  if not OptionsLoaded or OptionsLoading then begin Result := False; Exit; end;'
+                assert content.count(marker)==1;content=content.replace(marker,'')
+            # Pascal functions must precede their callers. Relocate this exact
+            # unchanged body in the owned copy so the probe can call real Finish.
+            first=content.index('procedure LoadFinishOptions;');last=content.index('function ApplyFinishOptions:',first)
+            load=content[first:last];content=content[:first]+content[last:]+'\n'+load
         if args.mutate_hidden_dir:content=content.replace('DisableDirPage=no','DisableDirPage=auto')
         if args.mutate_no_previous_dir:content=content.replace('UsePreviousAppDir=yes','UsePreviousAppDir=no')
         content=content.replace('3B63C162-076E-4B2F-BDCC-2572664875A9',IDENTITY)
@@ -440,6 +494,21 @@ try:
     check(any(0<v<100 for v in values),'native percentage shows actual intermediate installation progress')
     (ROOT/'result.json').write_text(json.dumps({'passed':passed,'progress_values':sorted(values),'root':str(ROOT)},ensure_ascii=False,indent=2),encoding='utf-8')
     print('Installer UI smoke: '+str(passed)+' passed; evidence '+str(ROOT),flush=True)
+except Exception as failure:
+    evidence=dict(success=False,passed=passed,root=str(ROOT),error=repr(failure))
+    try:
+        evidence['completion']=completion_state(wizard(),'failure-controls')
+        if SHORTCUT.is_file():
+            command='[Console]::OutputEncoding=[Text.Encoding]::UTF8;$s=New-Object -ComObject WScript.Shell;$l=$s.CreateShortcut($env:DESKPET_FIXTURE_LINK);[pscustomobject]@{TargetPath=$l.TargetPath;Arguments=$l.Arguments;Hotkey=$l.Hotkey;WorkingDirectory=$l.WorkingDirectory;Description=$l.Description;IconLocation=$l.IconLocation;WindowStyle=$l.WindowStyle}|ConvertTo-Json'
+            hidden=subprocess.STARTUPINFO();hidden.dwFlags|=subprocess.STARTF_USESHOWWINDOW;hidden.wShowWindow=0
+            result=subprocess.run(['powershell.exe','-NoProfile','-Command',command],env=dict(os.environ,DESKPET_FIXTURE_LINK=str(SHORTCUT)),startupinfo=hidden,capture_output=True,timeout=15)
+            (ROOT/'failure-link-com.json').write_bytes(result.stdout)
+            evidence['shortcut_com']=dict(exit_code=result.returncode,output=result.stdout.decode('utf-8-sig',errors='replace'))
+    except Exception as diagnostic:
+        evidence['diagnostic_error']=repr(diagnostic);print('Failure evidence could not complete: '+repr(diagnostic),flush=True)
+    (ROOT/'result.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2),encoding='utf-8')
+    print('Failed fixture evidence: '+str(ROOT),flush=True)
+    raise
 finally:
     for p in processes:
         if p.poll() is None:p.kill();p.wait()

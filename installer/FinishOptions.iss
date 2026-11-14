@@ -1,4 +1,4 @@
-{ Completion choices use the same Run command as src/StartupRegistration.cs.
+﻿{ Completion choices use the same Run command as src/StartupRegistration.cs.
   They deliberately never read or rewrite settings.json. }
 const
   StartupKey = 'Software\Microsoft\Windows\CurrentVersion\Run';
@@ -7,7 +7,7 @@ var
   FinishDesktop, FinishStartup: TNewCheckBox;
   FinishLater: TNewButton;
   FinishNotice: TLabel;
-  WasInstalled, OptionsLoaded, LaunchOnFinish, LaunchDone: Boolean;
+  WasInstalled, OptionsLoaded, OptionsLoading, LaunchOnFinish, LaunchDone: Boolean;
   DesktopWasOwned, StartupWasOwned: Boolean;
   DesktopSnapshot: String;
   UninstallDesktopBackup: String;
@@ -63,29 +63,36 @@ begin
 end;
 
 procedure LoadFinishOptions;
-var Command: String;
+var Command: String; DesktopCanEdit, StartupCanEdit: Boolean;
 begin
-  if WizardSilent or OptionsLoaded then Exit;
-  DesktopWasOwned := OwnedDesktopLink;
-  if DesktopWasOwned then
-    try
-      DesktopSnapshot := GetSHA256OfFile(DesktopLink);
-    except
-      DesktopWasOwned := False;
-    end;
-  FinishDesktop.Enabled := not FileExists(DesktopLink) or DesktopWasOwned;
-  FinishDesktop.Checked := DesktopWasOwned or ((not WasInstalled) and (not FileExists(DesktopLink)));
-  if HasExplicitDesktopTask and FinishDesktop.Enabled then
-    FinishDesktop.Checked := WizardIsTaskSelected('desktopicon');
-  StartupWasOwned := RegQueryStringValue(HKCU, StartupKey, StartupValue, Command)
-    and (CompareText(Command, StartupCommand) = 0);
-  FinishStartup.Checked := StartupWasOwned;
-  FinishStartup.Enabled := not RegValueExists(HKCU, StartupKey, StartupValue) or StartupWasOwned;
-  if not FinishDesktop.Enabled or not FinishStartup.Enabled then
-    FinishNotice.Caption := '已保留其他安装或自定义的快捷方式 / 启动项。'
-  else
-    FinishNotice.Caption := '点击下方完成按钮后应用这些设置。';
-  OptionsLoaded := True;
+  if WizardSilent or OptionsLoaded or OptionsLoading then Exit;
+  OptionsLoading := True;
+  try
+    DesktopWasOwned := OwnedDesktopLink;
+    if DesktopWasOwned then
+      try
+        DesktopSnapshot := GetSHA256OfFile(DesktopLink);
+      except
+        DesktopWasOwned := False;
+      end;
+    DesktopCanEdit := not FileExists(DesktopLink) or DesktopWasOwned;
+    FinishDesktop.Checked := DesktopWasOwned or ((not WasInstalled) and (not FileExists(DesktopLink)));
+    if HasExplicitDesktopTask and DesktopCanEdit then
+      FinishDesktop.Checked := WizardIsTaskSelected('desktopicon');
+    StartupWasOwned := RegQueryStringValue(HKCU, StartupKey, StartupValue, Command)
+      and (CompareText(Command, StartupCommand) = 0);
+    FinishStartup.Checked := StartupWasOwned;
+    StartupCanEdit := not RegValueExists(HKCU, StartupKey, StartupValue) or StartupWasOwned;
+    if not DesktopCanEdit or not StartupCanEdit then
+      FinishNotice.Caption := '已保留其他安装或自定义的快捷方式 / 启动项。'
+    else
+      FinishNotice.Caption := '点击下方完成按钮后应用这些设置。';
+    OptionsLoaded := True;
+    FinishDesktop.Enabled := DesktopCanEdit;
+    FinishStartup.Enabled := StartupCanEdit;
+  finally
+    OptionsLoading := False;
+  end;
 end;
 
 function ApplyFinishOptions: Boolean;
@@ -151,6 +158,7 @@ var ErrorCode: Integer;
 begin
   Result := True;
   if WizardSilent or (CurPageID <> wpFinished) then Exit;
+  if not OptionsLoaded or OptionsLoading then begin Result := False; Exit; end;
   Result := ApplyFinishOptions;
   if not Result then Exit;
   if LaunchOnFinish and not LaunchDone then begin
