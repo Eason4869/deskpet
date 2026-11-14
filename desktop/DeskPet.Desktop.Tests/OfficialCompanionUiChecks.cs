@@ -100,6 +100,80 @@ internal static class OfficialCompanionUiChecks
         File.WriteAllText(reportPath, JsonSerializer.Serialize(new { materialRoot, indexPath, backend = "Avalonia Skia Headless on " + System.Runtime.InteropServices.RuntimeInformation.OSDescription, results }, new JsonSerializerOptions { WriteIndented = true }));
         return results.Count;
     }
+    // Runs in the existing official-thin CI suite as well as its focused flag.
+    internal static int RunShutdownLeaseProbe(string directory)
+    {
+        int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Shutdown lease: "+label);checks++;Console.WriteLine("PASS "+label);}
+        foreach(bool timeout in new[]{false,true}){
+            string root=Path.Combine(directory,timeout?"timeout":"release");
+            using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(root,"holiday"),"e-bao",null,false);
+            string data=Path.Combine(root,"data");using var source=new ShutdownLeaseSource(data);
+            string stage=Path.Combine(source.Downloads.Storage.CharacterRoot("e-bao"),".stage-"+Guid.NewGuid().ToString("N"));var package=CreatePackage(stage,"e-bao",fixture.Root);
+            source.Downloads.Storage.WriteReceipt(stage,package.Asset,CancellationToken.None);var installed=source.Downloads.Storage.Publish(stage,package.Asset,CancellationToken.None,()=>{},action=>action());
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>source);
+            Task? worker=null;
+            try{
+                Until(()=>source.Entered.Task.IsCompleted);
+                var audits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(source.Downloads)!;
+                var work=audits.Values.Cast<object>().Single();worker=(Task)work.GetType().GetField("Task",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(work)!;
+                string record=Directory.GetFiles(Path.Combine(data,"cache-maintenance"),"*.owner").Single(path=>File.ReadAllLines(path)[1]==installed.RootDirectory);string locked=Path.ChangeExtension(record,".lock");
+                bool CanOpen(){try{using var handle=new FileStream(locked,FileMode.Open,FileAccess.ReadWrite,FileShare.None);return true;}catch(IOException){return false;}}
+                Check(!worker.IsCompleted&&!CanOpen(),"real native audit retains the exact managed E owner lock");Console.WriteLine("LEASE_OWNER "+File.ReadAllLines(record)[1]+" LOCK="+locked);
+                if(!timeout)Check(ProbeLockChild(locked)==2,"independent process confirms retained owner lock");
+                owner.Pet.Close();owner.Dispose();Until(()=>source.Shutdown!=null&&audits.Count==0);
+                Check(!owner.ImageServicesShutdown.IsCompleted&&!source.Shutdown!.IsCompleted&&!worker.IsCompleted&&!CanOpen(),"removed cancelled audit remains owned until actual worker exits");
+                bool rejected=false;try{using var late=source.Downloads.CaptureLocalSnapshot("e-bao");}catch(Exception error) when(error is ObjectDisposedException or OperationCanceledException){rejected=true;}
+                Check(rejected,"closed service rejects late snapshot admission");
+                if(timeout){
+                    bool expired=false;try{Complete(owner.ImageServicesShutdown);}catch(TimeoutException){expired=true;}
+                    Check(expired&&!worker.IsCompleted&&!CanOpen(),"five-second timeout reports incomplete drain without releasing worker lease");
+                }
+                source.Release.TrySetResult();try{Complete(worker);}catch(OperationCanceledException){}
+                if(!timeout)Complete(owner.ImageServicesShutdown);
+                Check(worker.IsCompleted&&CanOpen(),"real worker exit releases original owner lock");
+                if(!timeout)Check(ProbeLockChild(locked)==0,"independent process acquires exact lock after shutdown");
+            }finally{
+                source.Release.TrySetResult();if(worker!=null)try{Complete(worker);}catch(OperationCanceledException){}
+                owner.Pet.Close();owner.Dispose();try{Complete(owner.ImageServicesShutdown);}catch(TimeoutException) when(timeout){}
+            }
+            Directory.Delete(data,true);Check(!Directory.Exists(data),"strict owned data deletion succeeds after real worker exit");
+        }
+        // Genuine non-cancellation failures stay observable to asynchronous hosts.
+        using(var transport=new GitHubUpdates())using(var service=new OfficialCompanionDownloads(Path.Combine(directory,"fault"),ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,(i,c)=>Task.CompletedTask))
+        using(var entered=new ManualResetEventSlim())using(var release=new ManualResetEventSlim()){
+            service.UtcNow=()=>{entered.Set();release.Wait();throw new InvalidOperationException("controlled maintenance fault");};
+            Task work=service.ScheduleMaintenance();Task? drain=null;
+            try{Until(()=>entered.IsSet);drain=service.ShutdownAsync();Check(!drain.IsCompleted,"shutdown awaits accepted maintenance worker");}
+            finally{release.Set();}
+            bool fault=false;try{Complete(drain!);}catch(InvalidOperationException error) when(error.Message=="controlled maintenance fault"){fault=true;}
+            Check(fault&&work.IsFaulted,"real worker fault is preserved by drain");
+        }
+        return checks;
+    }
+    private static int ProbeLockChild(string path)
+    {
+        var info=new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true};
+        if(Path.GetFileNameWithoutExtension(info.FileName).Equals("dotnet",StringComparison.OrdinalIgnoreCase))info.ArgumentList.Add(typeof(OfficialCompanionUiChecks).Assembly.Location);
+        info.ArgumentList.Add("--companion-lock-probe");info.ArgumentList.Add(path);
+        using var child=System.Diagnostics.Process.Start(info)!;
+        if(!child.WaitForExit(10000))throw new TimeoutException("Owned lock probe did not exit");return child.ExitCode;
+    }
+    private sealed class ShutdownLeaseSource:IOfficialCompanionSource
+    {
+        readonly GitHubUpdates transport=new();internal readonly OfficialCompanionDownloads Downloads;
+        internal readonly TaskCompletionSource Entered=new(TaskCreationOptions.RunContinuationsAsynchronously),Release=new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal ShutdownLeaseSource(string data){Downloads=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,async(i,c)=>{Entered.TrySetResult();await Release.Task.ConfigureAwait(false);c.ThrowIfCancellationRequested();},OfficialCompanionReadMode.Snapshots);}
+        public long BeginSelection()=>Downloads.BeginSelection();public bool OwnsSelection(long token)=>Downloads.OwnsSelection(token);
+        public OfficialCompanionInstallation? Installed(string id)=>Downloads.Installed(id);
+        public OfficialCompanionSnapshot? CaptureLocalSnapshot(string id,CancellationToken cancel)=>Downloads.CaptureLocalSnapshot(id,cancel);
+        public Task<bool> AuditAsync(OfficialCompanionSnapshot snapshot,CancellationToken cancel)=>Downloads.ValidateSnapshotInBackgroundAsync(snapshot,cancel);
+        public Task<OfficialCompanionResult?> UpdateAsync(string id,OfficialDownloadRouting routing,CancellationToken cancel,OfficialCompanionCheckMode mode=OfficialCompanionCheckMode.Cached,string? availableVersion=null)=>Task.FromResult<OfficialCompanionResult?>(null);
+        public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<OfficialCompanionResult>(new IOException("No fixture network"));
+        public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<IList<OfficialCompanionResult>>(new IOException("No fixture network"));
+        internal Task? Shutdown;
+        public async Task ShutdownAsync(){try{await (Shutdown=Downloads.ShutdownAsync()).ConfigureAwait(false);}finally{transport.Dispose();}}
+        public void Dispose(){Downloads.Dispose();transport.Dispose();}
+    }
     internal static int RunBulkReaderLifetime(string directory)
     {
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Bulk reader lifetime: "+label);checks++;}

@@ -22,6 +22,10 @@ namespace Dafeiyu
         readonly Dictionary<string,Work<InstallResult>> installs=new Dictionary<string,Work<InstallResult>>();
         readonly HashSet<string> nativeValidated=new HashSet<string>(StringComparer.Ordinal),upgradeChecked=new HashSet<string>(StringComparer.Ordinal);
         readonly Dictionary<string,IDisposable> installedLeases=new Dictionary<string,IDisposable>(StringComparer.Ordinal);
+        // Active dictionaries may drop cancelled callers before their workers
+        // release native/transfer leases. Lifetime ownership ends at Task completion.
+        readonly HashSet<Task> workers=new HashSet<Task>();
+        Task shutdown;
         bool maintenanceRunning,maintenanceRequested;
         Task<Maintenance.CacheCleanResult> historyMaintenance=Task.FromResult(new Maintenance.CacheCleanResult());
         internal Task<Maintenance.CacheCleanResult> HistoryMaintenance {get{lock(gate)return historyMaintenance;}}
@@ -42,7 +46,7 @@ namespace Dafeiyu
                         total.DeletedItems+=result.DeletedItems;total.FreedBytes+=result.FreedBytes;total.SkippedItems+=result.SkippedItems;total.FailedItems+=result.FailedItems;
                     }}catch{lock(gate)maintenanceRunning=false;throw;}
                 });
-                return historyMaintenance;
+                Observe(historyMaintenance);return historyMaintenance;
             }
         }
         // Call after preparing the declared bundled coverage. A default-only source
@@ -50,7 +54,7 @@ namespace Dafeiyu
         // Full byte validation and durable pointer handoff run on the background pool.
         public Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel)
         {
-            return Task.Run(async()=>{
+            return StartWorker(async()=>{
                 using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
                     bundle.VerifyDeclaredContents(linked.Token);
                     if(!bundle.HasCompleteCoverage)return;
@@ -59,7 +63,9 @@ namespace Dafeiyu
                 }
             },cancel);
         }
-        public async Task MaintainAfterStartupAsync(CancellationToken cancel)
+        public Task MaintainAfterStartupAsync(CancellationToken cancel)
+        {return StartWorker(()=>MaintainAfterStartupCoreAsync(cancel),cancel);}
+        async Task MaintainAfterStartupCoreAsync(CancellationToken cancel)
         {
             // A restarted app can render before its updater releases the cache lease.
             // Bounded retries also cover transient sharing violations; later installs and
@@ -87,12 +93,12 @@ namespace Dafeiyu
             this.readMode=readMode;this.appVersion=appVersion;this.transport=transport;this.validateNative=validateNative;store=new OfficialCompanionStorage(dataRoot);feed=new OfficialCompanionFeed(transport,appVersion,channel,store.Root);
         }
         void Alive(){if(disposed)throw new ObjectDisposedException("OfficialCompanionDownloads");}
-        void CheckAlive(){lock(gate){Alive();lifetime.Token.ThrowIfCancellationRequested();}}
+        void CheckAlive(){lock(gate){lifetime.Token.ThrowIfCancellationRequested();Alive();}}
         bool Compatible(OfficialCompanionInstallation installation){return installation!=null&&ReleaseVersion.Parse(installation.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0;}
         void Retain(OfficialCompanionInstallation installed)
         {
             if(readMode==OfficialCompanionReadMode.Snapshots||!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return;
-            lock(gate){Alive();if(!installedLeases.ContainsKey(installed.RootDirectory))installedLeases.Add(installed.RootDirectory,Maintenance.CacheResourceLease.ProtectExisting(System.IO.Path.GetDirectoryName(store.Root),installed.RootDirectory));}
+            lock(gate){CheckAlive();if(!installedLeases.ContainsKey(installed.RootDirectory))installedLeases.Add(installed.RootDirectory,Maintenance.CacheResourceLease.ProtectExisting(System.IO.Path.GetDirectoryName(store.Root),installed.RootDirectory));}
         }
         OfficialCompanionInstallation Usable(string id)
         {
@@ -102,10 +108,10 @@ namespace Dafeiyu
             if(!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(current))){installed=store.InstalledCancelable(id,lifetime.Token);if(!Compatible(installed))return null;if(!Maintenance.OfficialCompanionMaintenance.Managed(System.IO.Path.GetFileName(installed.RootDirectory)))return installed;}
             using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot(id),lifetime.Token)){try{Maintenance.OfficialCompanionMaintenance.Recover(store,id);}catch(Exception error){if(!Maintenance.CachePaths.StorageError(error))throw;}installed=store.InstalledCancelable(id,lifetime.Token);if(!Compatible(installed))return null;Retain(installed);return installed;}
         }
-        public OfficialCompanionInstallation Installed(string id){lock(gate)Alive();return Usable(id);}
+        public OfficialCompanionInstallation Installed(string id){using(BeginReader())return Usable(id);}
         public OfficialCompanionSnapshot CaptureLocalSnapshot(string id,CancellationToken cancel=default(CancellationToken))
         {
-            OfficialCompanionRules.Id(id);CheckAlive();using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token))
+            OfficialCompanionRules.Id(id);using(var reader=BeginReader())using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token))
             using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot(id),linked.Token)){
                 IDisposable lease=null;
                 try{
@@ -113,7 +119,7 @@ namespace Dafeiyu
                     byte[] receipt=OfficialCompanionSnapshot.ReadBounded(OfficialCompanionStorage.SafePath(root,"receipt.json"),1024*1024,linked.Token);
                     var files=new Dictionary<string,OfficialCompanionFile>(StringComparer.Ordinal);
                     var installed=store.ReadVersionCore(root,id,null,linked.Token,false,files,receipt);if(!Compatible(installed))return null;
-                    string dataRoot=System.IO.Path.GetDirectoryName(store.Root);lease=OfficialCompanionSnapshot.Protect(dataRoot,root);CheckAlive();
+                    string dataRoot=System.IO.Path.GetDirectoryName(store.Root);linked.Token.ThrowIfCancellationRequested();lease=OfficialCompanionSnapshot.Protect(dataRoot,root);CheckAlive();linked.Token.ThrowIfCancellationRequested();
                     var snapshot=new OfficialCompanionSnapshot(installed,files,root+":"+OfficialCompanionSnapshot.Digest(receipt),dataRoot,lease,readMode==OfficialCompanionReadMode.Snapshots?(Action)(()=>ScheduleMaintenance()):null);lease=null;return snapshot;
                 }catch(Exception error){if(Expected(error))return null;throw;}finally{if(lease!=null)lease.Dispose();}
             }
@@ -122,7 +128,7 @@ namespace Dafeiyu
         {
             if(snapshot==null)throw new ArgumentNullException("snapshot");Work<bool> work;long lease;string key=snapshot.Generation;
             lock(gate){
-                Alive();cancel.ThrowIfCancellationRequested();
+                cancel.ThrowIfCancellationRequested();Alive();
                 if(!audits.TryGetValue(key,out work)){
                     var retained=snapshot.Retain();work=new Work<bool>{Cancel=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)};audits.Add(key,work);var captured=work;
                     work.Task=Task.Run(async()=>{
@@ -150,7 +156,7 @@ namespace Dafeiyu
             OfficialCompanionRules.Id(id);var baseline=ReleaseVersion.Parse(availableVersion);
             if(routing==null)throw new ArgumentNullException("routing");
             if(mode<OfficialCompanionCheckMode.Cached||mode>OfficialCompanionCheckMode.AfterApplicationUpdate)throw new ArgumentOutOfRangeException("mode");CheckAlive();
-            return Task.Run(async()=>{
+            return StartWorker(async()=>{
                 using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
                     var token=linked.Token;
                     try{
@@ -172,7 +178,7 @@ namespace Dafeiyu
         public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel,bool forceRepair,bool background)
         {
             OfficialCompanionRules.Id(id);if(routing==null)throw new ArgumentNullException("routing");if(mode<OfficialCompanionCheckMode.Cached||mode>OfficialCompanionCheckMode.AfterApplicationUpdate)throw new ArgumentException(TextResources.Get("officialCompanionDownloads.ensureAsync.text"));CheckAlive();
-            return Task.Run(async()=>{try{return await EnsureCoreAsync(id,routing,mode,background?null:progress,cancel,forceRepair,background).ConfigureAwait(false);}catch(OperationCanceledException){throw;}catch(MetadataConflictException){cancel.ThrowIfCancellationRequested();lifetime.Token.ThrowIfCancellationRequested();throw new ApiException(TextResources.Get("companions.package.metadataConflict"));}catch(Exception){cancel.ThrowIfCancellationRequested();lifetime.Token.ThrowIfCancellationRequested();throw new ApiException(id+"："+OfficialCompanionRules.SafeMessage);}},cancel);
+            return StartWorker(async()=>{try{return await EnsureCoreAsync(id,routing,mode,background?null:progress,cancel,forceRepair,background).ConfigureAwait(false);}catch(OperationCanceledException){throw;}catch(MetadataConflictException){cancel.ThrowIfCancellationRequested();lifetime.Token.ThrowIfCancellationRequested();throw new ApiException(TextResources.Get("companions.package.metadataConflict"));}catch(Exception){cancel.ThrowIfCancellationRequested();lifetime.Token.ThrowIfCancellationRequested();throw new ApiException(id+"："+OfficialCompanionRules.SafeMessage);}},cancel);
         }
         async Task<OfficialCompanionResult> EnsureCoreAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel,bool forceRepair,bool background)
         {
@@ -194,14 +200,14 @@ namespace Dafeiyu
         {
             string key=routing.Key;Work<OfficialCompanionFeed.Snapshot> work;long lease;
             lock(gate) {
-                Alive();cancel.ThrowIfCancellationRequested();Cache entry;bool upgrade=mode==OfficialCompanionCheckMode.AfterApplicationUpdate;
+                cancel.ThrowIfCancellationRequested();Alive();Cache entry;bool upgrade=mode==OfficialCompanionCheckMode.AfterApplicationUpdate;
                 if(cache.TryGetValue(key,out entry)&&((mode==OfficialCompanionCheckMode.Cached&&entry.Expires>UtcNow())||(upgrade&&upgradeChecked.Contains(key))))return new Metadata{Snapshot=entry.Snapshot,Checked=false};
                 if(!refreshes.TryGetValue(key,out work)) {
                     work=new Work<OfficialCompanionFeed.Snapshot>{Cancel=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token)};refreshes.Add(key,work);var captured=work;
                     work.Task=Task.Run(async()=> {
                         try {
                             var snapshot=await feed.RefreshAsync(routing,new OfficialProgress<OfficialCompanionProgress>(p=>captured.Report(p,gate)),captured.Cancel.Token).ConfigureAwait(false);
-                            lock(gate){Alive();captured.Cancel.Token.ThrowIfCancellationRequested();cache[key]=new Cache{Snapshot=snapshot,Expires=UtcNow().AddMinutes(5)};}
+                            lock(gate){captured.Cancel.Token.ThrowIfCancellationRequested();Alive();cache[key]=new Cache{Snapshot=snapshot,Expires=UtcNow().AddMinutes(5)};}
                             return snapshot;
                         }finally{lock(gate){Work<OfficialCompanionFeed.Snapshot> current;if(refreshes.TryGetValue(key,out current)&&ReferenceEquals(current,captured))refreshes.Remove(key);}}
                     });Observe(work.Task);DisposeWhenUnleased(work);
@@ -210,14 +216,33 @@ namespace Dafeiyu
             }
             var result=await LeaseAsync(work,lease,cancel,()=>{Work<OfficialCompanionFeed.Snapshot> current;if(refreshes.TryGetValue(key,out current)&&ReferenceEquals(current,work))refreshes.Remove(key);}).ConfigureAwait(false);
             if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate) {
-                lock(gate){Alive();cancel.ThrowIfCancellationRequested();upgradeChecked.Add(key);}
+                lock(gate){cancel.ThrowIfCancellationRequested();Alive();upgradeChecked.Add(key);}
                 string marker=OfficialCompanionStorage.SafePath(store.Root,"last-checked-app-version.txt"),temporary=OfficialCompanionStorage.SafePath(store.Root,".checked-"+Guid.NewGuid().ToString("N"));
                 try{System.IO.File.WriteAllText(temporary,appVersion);store.Commit(temporary,marker);}catch{lock(gate)upgradeChecked.Remove(key);throw;}finally{if(System.IO.File.Exists(temporary))System.IO.File.Delete(temporary);}
             }
             return new Metadata{Snapshot=result,Checked=true};
         }
         static bool Expected(Exception error){return error is System.IO.IOException||error is System.IO.InvalidDataException||error is ApiException||error is UnauthorizedAccessException||error is ArgumentException||error is InvalidOperationException||error is OverflowException||error is FormatException||error is NotSupportedException||error is System.Net.Http.HttpRequestException||error is System.Net.WebException;}
-        static void Observe(Task task){task.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted|TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);}
+        void Observe(Task task)
+        {
+            // Every caller holds gate while starting/registering work. Shutdown
+            // closes that admission under the same gate before taking its snapshot.
+            workers.Add(task);
+            task.ContinueWith(t=>{var ignored=t.Exception;lock(gate)workers.Remove(t);},CancellationToken.None,TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+        }
+        Task<T> StartWorker<T>(Func<Task<T>> start,CancellationToken cancel)
+        {lock(gate){cancel.ThrowIfCancellationRequested();Alive();var task=Task.Run(start,cancel);Observe(task);return task;}}
+        Task StartWorker(Func<Task> start,CancellationToken cancel)
+        {lock(gate){cancel.ThrowIfCancellationRequested();Alive();var task=Task.Run(start,cancel);Observe(task);return task;}}
+        sealed class Reader:IDisposable
+        {
+            readonly TaskCompletionSource<bool> completed;
+            internal Reader(TaskCompletionSource<bool> completed){this.completed=completed;}
+            public void Dispose(){completed.TrySetResult(true);}
+        }
+        IDisposable BeginReader()
+        {lock(gate){Alive();var completed=new TaskCompletionSource<bool>();Observe(completed.Task);return new Reader(completed);}}
+
         async Task<T> LeaseAsync<T>(Work<T> work,long lease,CancellationToken cancel,Action remove)
         {
             try {
@@ -232,7 +257,7 @@ namespace Dafeiyu
         {
             string key=System.Convert.ToBase64String(OfficialJson.Bytes(OfficialCompanionStorage.AssetRecord(asset)))+(forceRepair?":repair":"");Work<InstallResult> work;long lease;
             lock(gate) {
-                Alive();cancel.ThrowIfCancellationRequested();
+                cancel.ThrowIfCancellationRequested();Alive();
                 if(!installs.TryGetValue(key,out work)) {
                     work=new Work<InstallResult>{Cancel=CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token),Background=background};installs.Add(key,work);var captured=work;
                     work.Task=Task.Run(async()=>{try{return await InstallCoreAsync(asset,routing,captured,captured.Cancel.Token,forceRepair).ConfigureAwait(false);}finally{lock(gate){Work<InstallResult> current;if(installs.TryGetValue(key,out current)&&ReferenceEquals(current,captured))installs.Remove(key);}}});Observe(work.Task);DisposeWhenUnleased(work);
@@ -247,7 +272,7 @@ namespace Dafeiyu
             Action<string,long,double> report=(step,bytes,percent)=>work.Report(new OfficialCompanionProgress(asset.Id,step,"",bytes,asset.Size,percent),gate);
             try {
                 transferPermit=await slots.AcquireAsync(()=>work.Background,cancel).ConfigureAwait(false);
-                CheckAlive();cancel.ThrowIfCancellationRequested();var existing=Usable(asset.Id);
+                cancel.ThrowIfCancellationRequested();CheckAlive();var existing=Usable(asset.Id);
                 if(existing!=null&&(ReuseExisting(existing.Asset,asset)&&(!forceRepair||OfficialCompanionRules.CompareContent(existing.Asset,asset)>0))) {
                     await NativeAsync(existing,cancel).ConfigureAwait(false);report("install",existing.Asset.Size,100);return new InstallResult{Installation=existing,Installed=false};
                 }
@@ -264,7 +289,7 @@ namespace Dafeiyu
                 lock(characterGates[asset.Id]) {
                     existing=Usable(asset.Id);
                     if(existing!=null&&(ReuseExisting(existing.Asset,asset)&&(!forceRepair||OfficialCompanionRules.CompareContent(existing.Asset,asset)>0))){installed=existing;installedNow=false;}
-                    else{CheckAlive();cancel.ThrowIfCancellationRequested();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}},appVersion,out installedNow,forceRepair);stage=null;if(installedNow)lock(gate)nativeValidated.Add(installed.RootDirectory+":"+installed.Asset.Sha256);Retain(installed);}
+                    else{cancel.ThrowIfCancellationRequested();CheckAlive();installed=store.Publish(stage,asset,cancel,CheckAlive,action=>{lock(publicationGate){CheckAlive();action();}},appVersion,out installedNow,forceRepair);stage=null;if(installedNow)lock(gate)nativeValidated.Add(installed.RootDirectory+":"+installed.Asset.Sha256);Retain(installed);}
                 }
                 if(!installedNow)await NativeAsync(installed,cancel).ConfigureAwait(false);report("install",installed.Asset.Size,100);if(installedNow){var maintenance=ScheduleMaintenance();}return new InstallResult{Installation=installed,Installed=installedNow};
             }finally {try{if(stage!=null)OfficialCompanionStorage.DeleteOwned(stage);if(transfer!=null)OfficialCompanionStorage.DeleteOwned(transfer);}finally{if(stageLease!=null)stageLease.Dispose();if(transferLease!=null)transferLease.Dispose();if(spaceLease!=null)spaceLease.Dispose();if(transferPermit!=null)transferPermit.Dispose();contentSlot.Release();}}
@@ -279,14 +304,14 @@ namespace Dafeiyu
         }
         async Task NativeAsync(OfficialCompanionInstallation installation,CancellationToken cancel)
         {
-            string key=installation.RootDirectory+":"+installation.Asset.Sha256;lock(gate){Alive();if(nativeValidated.Contains(key))return;}
+            string key=installation.RootDirectory+":"+installation.Asset.Sha256;lock(gate){cancel.ThrowIfCancellationRequested();Alive();if(nativeValidated.Contains(key))return;}
             IDisposable reader;using(Maintenance.OfficialCompanionMaintenance.Lock(store.CharacterRoot(installation.Asset.Id),cancel)){
                 if(!System.IO.Directory.Exists(installation.RootDirectory))throw new System.IO.IOException("Companion was retired before native validation.");
                 reader=OfficialCompanionSnapshot.Protect(System.IO.Path.GetDirectoryName(store.Root),installation.RootDirectory);
             }
             try{using(reader)await ValidateNativeAsync(installation,cancel).ConfigureAwait(false);}
             finally{if(readMode==OfficialCompanionReadMode.Snapshots){var maintenance=ScheduleMaintenance();}}
-            cancel.ThrowIfCancellationRequested();lock(gate){Alive();nativeValidated.Add(key);}
+            cancel.ThrowIfCancellationRequested();lock(gate){cancel.ThrowIfCancellationRequested();Alive();nativeValidated.Add(key);}
         }
         async Task ValidateNativeAsync(OfficialCompanionInstallation installation,CancellationToken cancel)
         {
@@ -294,7 +319,7 @@ namespace Dafeiyu
         }
         public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
         {
-            if(routing==null)throw new ArgumentNullException("routing");CheckAlive();return Task.Run(()=>EnsureAllCoreAsync(routing,progress,cancel),cancel);
+            if(routing==null)throw new ArgumentNullException("routing");CheckAlive();return StartWorker(()=>EnsureAllCoreAsync(routing,progress,cancel),cancel);
         }
         async Task<IList<OfficialCompanionResult>> EnsureAllCoreAsync(OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
         {
@@ -311,9 +336,31 @@ namespace Dafeiyu
                 await Task.WhenAll(tasks).ConfigureAwait(false);token.ThrowIfCancellationRequested();if(errors.Count!=0)throw new AggregateException(TextResources.Get("officialCompanionDownloads.ensureAllCoreAsync.text"),errors);return new ReadOnlyCollection<OfficialCompanionResult>(results);
             }
         }
+        // The existing five-second service bound now covers all accepted workers,
+        // including removed audit/install entries. No worker lease is force-closed.
+        public Task ShutdownAsync()
+        {
+            lock(publicationGate)lock(gate){
+                if(shutdown!=null)return shutdown;
+                disposed=true;lifetime.Cancel();
+                foreach(var lease in installedLeases.Values)lease.Dispose();installedLeases.Clear();
+                shutdown=DrainWorkersAsync(workers.ToArray());
+                shutdown.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted|TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+                return shutdown;
+            }
+        }
+        static async Task DrainWorkersAsync(Task[] accepted)
+        {
+            var all=Task.WhenAll(accepted);
+            if(await Task.WhenAny(all,Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false)!=all)
+                throw new TimeoutException("Official companion shutdown exceeded its five-second worker drain.");
+            try{await all.ConfigureAwait(false);}catch(OperationCanceledException){if(all.IsFaulted)throw;}
+        }
         public void Dispose()
         {
-            Task pending;lock(publicationGate)lock(gate){if(disposed)return;disposed=true;lifetime.Cancel();pending=historyMaintenance;foreach(var lease in installedLeases.Values)lease.Dispose();installedLeases.Clear();}
+            var drain=ShutdownAsync();Task pending;lock(gate)pending=historyMaintenance;
+            // Preserve the legacy IDisposable history wait; UI hosts use the
+            // asynchronous full drain and never synchronously wait for workers.
             try{if(!pending.Wait(TimeSpan.FromSeconds(5)))System.Diagnostics.Trace.TraceWarning("Official companion history shutdown exceeded its wait bound.");}
             catch(AggregateException){System.Diagnostics.Trace.TraceWarning("Official companion history shutdown did not complete normally.");}
         }

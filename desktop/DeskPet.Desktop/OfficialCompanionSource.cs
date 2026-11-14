@@ -4,6 +4,7 @@ namespace DeskPet.Desktop;
 
 internal interface IOfficialCompanionSource : IDisposable
 {
+    Task ShutdownAsync() => Task.Run(Dispose);
     Task MaintainAfterStartupAsync(CancellationToken cancel) => Task.CompletedTask;
     Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel) => Task.CompletedTask;
     long BeginSelection();
@@ -37,5 +38,6 @@ internal sealed class OfficialCompanionSource : IOfficialCompanionSource
     public Task<bool> AuditAsync(OfficialCompanionSnapshot snapshot,CancellationToken cancel) => downloads.ValidateSnapshotInBackgroundAsync(snapshot,cancel);
     public Task<OfficialCompanionResult> RepairAsync(string id,OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel,bool background=false) => downloads.EnsureAsync(id,routing,OfficialCompanionCheckMode.Cached,progress!,cancel,true,background);
     public async Task<OfficialCompanionResult?> UpdateAsync(string id,OfficialDownloadRouting routing,CancellationToken cancel,OfficialCompanionCheckMode mode=OfficialCompanionCheckMode.Cached,string? availableVersion=null) => availableVersion==null?await downloads.EnsureAsync(id,routing,mode,null!,cancel,false,true):await downloads.UpdateBeyondVersionAsync(id,availableVersion,routing,mode,cancel);
+    public async Task ShutdownAsync(){try{await downloads.ShutdownAsync().ConfigureAwait(false);}finally{transport.Dispose();}}
     public void Dispose() { downloads.Dispose(); transport.Dispose(); }
 }

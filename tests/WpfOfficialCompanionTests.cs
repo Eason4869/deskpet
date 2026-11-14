@@ -83,6 +83,7 @@ namespace Dafeiyu.Tests
         static void FixtureTeardownChecks()
         {
             var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            WorkerDrainChecks();
             using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
                 string data=fixture.Root;OfficialCompanionInstallation installed;
                 using(var downloads=new OfficialCompanionDownloads(data,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
@@ -105,6 +106,38 @@ namespace Dafeiyu.Tests
                     Check(closed.Task.IsCompleted&&pet.ImageServicesShutdown.IsCompleted,"teardown observes real Closed and final service shutdown");
                     using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"actual official snapshot owner releases cache lock after teardown");
                 }finally{release.Set();if(!closed.Task.IsCompleted)pet.Close();Wait(closed.Task);Wait(pet.ImageServicesShutdown);store.BeforeExactSave=null;release.Dispose();}
+            }
+        }
+        static void WorkerDrainChecks()
+        {
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport()){
+                OfficialCompanionInstallation installed;
+                using(var initial=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                    fixture.Files[OfficialCompanionFixture.PackageName("dafeiyu")]=NativePackage("dafeiyu",100);
+                    var prepare=initial.EnsureAsync("dafeiyu",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(prepare);installed=prepare.Result.Installation;
+                }
+                var entered=new TaskCompletionSource<bool>();var release=new TaskCompletionSource<bool>();
+                using(var service=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,async(i,c)=>{entered.TrySetResult(true);await release.Task.ConfigureAwait(false);c.ThrowIfCancellationRequested();},OfficialCompanionReadMode.Snapshots))
+                using(var caller=new CancellationTokenSource()){
+                    var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(fixture.Root,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);
+                    var previous=(OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet);if(previous!=null)Wait(previous.ShutdownAsync());Field("officialDownloads").SetValue(pet,service);
+                    var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};Task closing=null;
+                    try{
+                        using(var snapshot=service.CaptureLocalSnapshot("dafeiyu")){
+                            var audit=service.ValidateSnapshotInBackgroundAsync(snapshot,caller.Token);Wait(entered.Task);caller.Cancel();
+                            bool cancelled=false;try{Wait(audit);}catch(OperationCanceledException){cancelled=true;}
+                            var audits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(service);
+                            Check(cancelled&&audits.Count==0,"WPF cancelled audit has left active dictionary while real worker is gated");
+                        }
+                        closing=CloseFixtureAsync(pet);Wait(closed.Task);
+                        string key=Maintenance.CacheResourceLease.Key(Path.Combine(fixture.Root,"cache-maintenance"),installed.RootDirectory);bool locked=false;
+                        try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){locked=true;}
+                        Check(!closing.IsCompleted&&!pet.ImageServicesShutdown.IsCompleted&&locked,"WPF final image shutdown waits for removed worker retaining actual cache lock");
+                        release.TrySetResult(true);Wait(closing);
+                        using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"WPF worker drain releases real lock before final shutdown completes");
+                    }finally{release.TrySetResult(true);if(closing==null)closing=CloseFixtureAsync(pet);Wait(closing);}
+                }
             }
         }
         sealed class OperationOutput:ILiveAudioOutput

@@ -136,7 +136,7 @@ namespace Dafeiyu
         void DisposeImageServices()
         {
             if(notificationTasks!=null)notificationTasks.Changed-=ImageTaskCompleted;
-            imageServicesShutdown=Task.Run(async delegate
+            var independent=Task.Run(async delegate
             {
                 try{await applicationExitDrain.ConfigureAwait(false);}catch(Exception){}
                 await imageRepairExitDrain.ConfigureAwait(false);
@@ -147,6 +147,7 @@ namespace Dafeiyu
                 if(imageClient!=null)imageClient.Dispose();
                 if(imageStore!=null)imageStore.Dispose();
             });
+            imageServicesShutdown=Task.WhenAll(officialShutdown,independent);
         }
     }
 }

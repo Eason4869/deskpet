@@ -12,6 +12,7 @@ namespace Dafeiyu
     public sealed partial class PetWindow
     {
         readonly WpfOfficialNativeValidator officialNative=new WpfOfficialNativeValidator();
+        Task officialShutdown=Task.FromResult(0);
         readonly CancellationTokenSource officialLifetime=new CancellationTokenSource();
         OfficialCompanionDownloads officialDownloads;
         GitHubUpdates officialTransport;
@@ -242,6 +243,7 @@ namespace Dafeiyu
                     var source=new SkinDefinition(persona,snapshot.Installation.RootDirectory,manifest){BuiltinCharacterId=snapshot.Installation.Asset.Id,OfficialInstallation=snapshot.Installation,Snapshot=snapshot};
                     PrepareDefault(source);var wardrobe=new HolidayCatalog(snapshot);wardrobe.WithCharacter(snapshot.Installation.Asset.Id,wardrobe);return Tuple.Create(source,wardrobe);
                 },cancel);
+                officialLifetime.Token.ThrowIfCancellationRequested();cancel.ThrowIfCancellationRequested();
                 retainedSnapshots.Add(snapshot);officialSources[snapshot.Installation.Asset.Id]=prepared.Item1;officialCatalogs[snapshot.Installation.RootDirectory]=prepared.Item2;
                 var audit=AuditSnapshotAsync(snapshot);return prepared.Item1;
             }catch{snapshot.Dispose();throw;}
@@ -442,6 +444,8 @@ namespace Dafeiyu
                 retainedSnapshots.Remove(snapshot);snapshot.Dispose();
             }
         }
-        void DisposeOfficialCompanions(){if(companionInstallationBubble!=null)companionInstallationBubble.Shutdown();WpfPreparedCompanion.Prepared-=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed-=DefaultCompanionFailed;officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();if(officialDownloads!=null)officialDownloads.Dispose();if(officialTransport!=null)officialTransport.Dispose();foreach(var snapshot in retainedSnapshots)snapshot.Dispose();retainedSnapshots.Clear();WpfPreparedCompanion.Deactivate();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
+        async Task ShutdownOfficialCompanionsAsync()
+        {try{if(officialDownloads!=null)await officialDownloads.ShutdownAsync().ConfigureAwait(false);}finally{if(officialTransport!=null)officialTransport.Dispose();}}
+        void DisposeOfficialCompanions(){if(companionInstallationBubble!=null)companionInstallationBubble.Shutdown();WpfPreparedCompanion.Prepared-=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed-=DefaultCompanionFailed;officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();officialShutdown=ShutdownOfficialCompanionsAsync();foreach(var snapshot in retainedSnapshots)snapshot.Dispose();retainedSnapshots.Clear();WpfPreparedCompanion.Deactivate();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
     }
 }

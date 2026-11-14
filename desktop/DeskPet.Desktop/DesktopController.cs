@@ -365,13 +365,13 @@ internal sealed partial class DesktopController : IDisposable
         Holidays.RetrySave();
         tray?.Dispose();
         foreach(var binding in hotkeys)binding.Dispose();
-        ImageServicesShutdown=Task.Run(async()=>
+        var companions=ShutdownCompanionsAsync();
+        var independent=Task.Run(async()=>
         {
             await ObservationSettingsIdle;
             await Observation.DrainAsync();await DrainProactiveBindingsAsync();
             try{await applicationExitDrain;}catch(Exception){}
             await HolidayKeepsakes.ShutdownAsync();
-            officialCompanions.Dispose();companionNative.Dispose();
             await ImageTasks.StopAsync(CancellationToken.None);
             await WorkBindings.StopForExitAsync();
             FinalizeConversationServices();
@@ -380,5 +380,11 @@ internal sealed partial class DesktopController : IDisposable
             ImageClient.Dispose();
             ImageStore.Dispose();
         });
+        ImageServicesShutdown=Task.WhenAll(companions,independent);
+    }
+    private async Task ShutdownCompanionsAsync()
+    {
+        await officialCompanions.ShutdownAsync().ConfigureAwait(false);
+        companionNative.Dispose();
     }
 }

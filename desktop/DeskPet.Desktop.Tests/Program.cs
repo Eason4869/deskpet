@@ -21,6 +21,11 @@ using Avalonia.Threading;
 using Dafeiyu;
 using DeskPet.Desktop;
 
+if(args.Length==2&&args[0]=="--companion-lock-probe"){
+    try{using var handle=new FileStream(args[1],FileMode.Open,FileAccess.ReadWrite,FileShare.None);Environment.ExitCode=0;}
+    catch(IOException){Environment.ExitCode=2;}return;
+}
+
 if(args.Length==3&&args[0]=="--agent-job-exit-fixture"){Environment.ExitCode=AgentJobExitUiChecks.RunNativeHost(args[1],args[2]);return;}
 
 if(args.Contains("--relationship-pack-only")){Console.WriteLine("RelationshipPackChecks: "+RelationshipPackChecks.Run()+" passed");return;}
@@ -129,8 +134,9 @@ try
         Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunActualMaterials(Option("--official-native-materials"), Option("--official-native-index") ?? throw new ArgumentException("Expected --official-native-index"), Option("--report") ?? "work/official-ava-actual-native.json") + " actual complete companion packages"); return;
     }
     if(args.Contains("--bulk-reader-lifetime")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunBulkReaderLifetime(Path.Combine(directory,"bulk-reader"))+" bulk reader lifetime checks");return;}
-    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunBulkReaderLifetime(Path.Combine(directory,"bulk-reader-thin")) + OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory, "startup-restore-thin"))) + " actual thin companion assertions"); return; }
+    if (args.Contains("--official-thin-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunShutdownLeaseProbe(Path.Combine(directory,"shutdown-lease-thin")) + OfficialCompanionUiChecks.RunBulkReaderLifetime(Path.Combine(directory,"bulk-reader-thin")) + OfficialCompanionUiChecks.RunThin(Path.Combine(directory, "official-thin")) + OfficialCompanionUiChecks.RunStartupRestore(Path.Combine(directory, "startup-restore-thin"))) + " actual thin companion assertions"); return; }
     if(args.Contains("--installation-status")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunInstallationBubble(Path.Combine(directory,"installation-status"))+" installation status checks");return;}
+    if(args.Contains("--companion-shutdown-lease")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunShutdownLeaseProbe(Path.Combine(directory,"shutdown-lease"))+" companion shutdown checks");return;}
     if(args.Contains("--bundled-e")){Console.WriteLine("PASS: "+OfficialCompanionUiChecks.RunBundledEbao(Path.Combine(directory,"bundle"))+" bundled E checks");return;}
     if (args.Contains("--companion-review-fixes")) { Console.WriteLine("PASS: " + OfficialCompanionUiChecks.RunReviewFailures(Path.Combine(directory,"review-fixes")) + " review fix assertions"); return; }
     if (args.Contains("--official-companion-ui-only")) { Console.WriteLine("PASS: " + (OfficialCompanionUiChecks.RunPreparedSwitch(Path.Combine(directory,"prepared-switch")) + OfficialCompanionUiChecks.RunTiming() + OfficialCompanionUiChecks.RunSelection(Path.Combine(directory, "official-selection")) + OfficialCompanionUiChecks.RunNative(Path.Combine(directory, "official-native")) + OfficialCompanionUiChecks.RunIdentity(Path.Combine(directory, "official-identity"))) + " official companion assertions"); return; }
