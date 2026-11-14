@@ -1,0 +1,27 @@
+{
+  "tag": "v1.0.3",
+  "release_id": 439150182,
+  "zip_sha256": "bfcc5d02ce431e753f5ff42d7f03a5292f4562a48d438f0c39517c4081384858",
+  "files": [
+    {
+      "name": "桌面伙伴.exe",
+      "sha256": "534bd0ca482eee280092d76812474371e00fcd661fb36d17104141b4548ca2a6",
+      "bytes": 271215104
+    },
+    {
+      "name": "桌面伙伴.exe.config",
+      "sha256": "4b049b388c528f882ff2a04303a79744fa72e3635a6ba6ce736ebe3aa7548999",
+      "bytes": 407
+    },
+    {
+      "name": "DeskPet.Update.exe",
+      "sha256": "1d0b194660f3b3e1880e32bdd4a29d68fb405c2952a44b4a8558120c3f19b9b4",
+      "bytes": 7647744
+    },
+    {
+      "name": "DeskPet.Update.exe.config",
+      "sha256": "4b049b388c528f882ff2a04303a79744fa72e3635a6ba6ce736ebe3aa7548999",
+      "bytes": 407
+    }
+  ]
+}
