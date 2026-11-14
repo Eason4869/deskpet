@@ -175,57 +175,76 @@ namespace Dafeiyu.Tests
             string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bundle-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             try {
                 var catalog=new SkinCatalog(root);var skin=catalog.FindOfficial("e-bao");Check(skin.Illustrated&&skin.Bundle!=null,"production E uses separate illustrated resources");
-                var bundle=skin.Bundle;Check(bundle.Paths.Count()==354&&skin.PackageHolidayCatalog.Outfits.Count==10,"complete embedded source contains ten matching outfits");
-                Check(bundle.PrefersBundle("0.11.0-dev.3")&&!bundle.PrefersBundle("9.0.0"),"bundle floor rejects older and preserves newer compatible versions");
-                using(WpfPreparedCompanion.Hold(skin)){skin.PreparedOfficialAtlas=skin.Load();var clip=WpfPreparedCompanion.Load(skin,skin.Manifest.Animations["idle"]);Check(skin.PreparedOfficialAtlas.DecodedBytes<32L*1024*1024&&clip.Count==8,"E uses bounded idle and gaze instead of legacy full atlas");}
+                var bundle=skin.Bundle;Check(bundle.Paths.Count()==33&&!bundle.HasCompleteCoverage&&skin.PackageHolidayCatalog.Outfits.Count==0,"offline source declares exact defaults and no wardrobe coverage");
+                Check(!bundle.PrefersBundle("0.11.0-dev.3")&&!bundle.PrefersBundle(bundle.Version),"default-only source preserves older and same-version complete generations");
+                using(WpfPreparedCompanion.Hold(skin)){skin.PreparedOfficialAtlas=skin.Load();foreach(var motion in skin.Manifest.Animations.Values.Concat(skin.Manifest.ExtraAnimations.Values).Concat(skin.Manifest.AlternateAnimations.Values))Check(WpfPreparedCompanion.Load(skin,motion)!=null,"all normal offline actions decode");Check(skin.PreparedOfficialAtlas!=null,"offline gaze decodes");}
                 Check(!Directory.GetDirectories(root,"*",SearchOption.AllDirectories).Any(p=>p.Contains("versions")||p.Contains("bundled-skins")),"embedded selection extracts no package into user cache");
                 using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
-                using(var downloads=new OfficialCompanionDownloads(fixture.Root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
+                using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
                     fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);
                     var install=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
+                    string previous=install.Result.Installation.RootDirectory;
                     using(var reader=downloads.CaptureLocalSnapshot("e-bao")){
-                    string transaction=Path.Combine(downloads.Storage.CharacterRoot("e-bao"),"bundle-transaction.json");
-                    File.WriteAllBytes(transaction,OfficialJson.Bytes(new{schema_version=99,old_current=Path.GetFileName(install.Result.Installation.RootDirectory),bundle=bundle.Generation+"|"+bundle.Version+"|"+bundle.MinimumAppVersion+"|"+bundle.ZipSha256}));
-                    bool rejected=false;try{Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));}catch(IOException){rejected=true;}
-                    Check(rejected&&downloads.Storage.CurrentRoot("e-bao")==install.Result.Installation.RootDirectory,"unknown bundle transaction preserves old pointer and complete source");File.Delete(transaction);
-                    downloads.Storage.Commit=(from,to)=>{throw new IOException("fixture interrupted bundle handoff");};
-                    rejected=false;try{Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));}catch(IOException){rejected=true;}
-                    Check(rejected&&downloads.Storage.CurrentRoot("e-bao")==install.Result.Installation.RootDirectory&&Directory.Exists(install.Result.Installation.RootDirectory),"failed bundle pointer commit preserves working managed E");downloads.Storage.Commit=AtomicFile.Commit;
-                    var handoff=downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None);Wait(handoff);Wait(downloads.HistoryMaintenance);
-                    Check(reader!=null&&Directory.Exists(install.Result.Installation.RootDirectory)&&reader.ReadVerifiedBytes("pet.json").Length>0,"full bundle handoff protects an outstanding old E reader");
-                    Check(downloads.CaptureLocalSnapshot("e-bao")==null,"bundle lifecycle handoff clears managed pointer without fake filesystem source");
-                    string bundleProof=OfficialJson.Text(OfficialJson.File(Path.Combine(downloads.Storage.CharacterRoot("e-bao"),"versions.json"),1024*1024),"bundle",400);
-                    Check(bundleProof.Contains(bundle.Version)&&bundleProof.Contains(bundle.MinimumAppVersion)&&bundleProof.Contains(bundle.PayloadSha256)&&bundleProof.Contains(bundle.ZipSha256),"durable bundle handoff binds version minimum payload and actual archive identity");
-                    reader.Dispose();Wait(downloads.HistoryMaintenance);
-                    Check(!Directory.Exists(install.Result.Installation.RootDirectory)&&bundle.CreateHolidayCatalog().Outfits.Count==10,"last old E reader release reclaims managed E while complete bundle stays usable");
-                    var next=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(next);
-                    using(var resumed=downloads.CaptureLocalSnapshot("e-bao"))Check(next.Result.InstalledNow&&resumed!=null,"later explicit publication can resume from bundle lifecycle state");
+                        Wait(downloads.ConfirmBundleReadyAsync(bundle,CancellationToken.None));Wait(downloads.ScheduleMaintenance());
+                        Check(!bundle.CompletelyVerified&&downloads.Storage.CurrentRoot("e-bao")==previous&&Directory.Exists(previous),"partial confirmation never retires the working full source");
+                        bool rejected=false;try{Maintenance.OfficialCompanionMaintenance.HandoffBundle(downloads.Storage,bundle,CancellationToken.None);}catch(IOException){rejected=true;}
+                        Check(rejected&&reader.ReadVerifiedBytes("holidays/catalog.json").Length>0,"partial cannot supply cleanup replacement proof");
                     }
-                }
-                var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
-                using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
-                    fixture.Files[OfficialCompanionFixture.PackageName("e-bao")]=NativePackage("e-bao",100);
-                    var install=downloads.EnsureAsync("e-bao",new OfficialDownloadRouting(false,"",false,""),OfficialCompanionCheckMode.Cached,null,CancellationToken.None);Wait(install);
-                    var pet=new PetWindow(null,new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(root,"settings.json")),null);
+                    var app=Application.Current??new Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                    var settings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var wardrobe=new HolidayState();wardrobe.Unlock("e-bao","halloween-2026");wardrobe.ForCharacter("e-bao").PreferredOutfitId="halloween-2026";new HolidayStateStore(Path.Combine(root,"holiday-state.json")).Save(wardrobe);
+                    var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
                     try {
-                        Field("officialStartupStarted").SetValue(pet,true);Check(pet.Holidays.Catalog.Outfits.Count(o=>o.CharacterId=="e-bao")==10,"startup exposes all bundled E outfits");Check(pet.Skin.Bundle!=null,"startup chooses bundle before caching an older installed E");
-                        var sources=(System.Collections.IDictionary)Field("officialSources").GetValue(pet);Check(!sources.Contains("e-bao")||((SkinDefinition)sources["e-bao"]).Bundle!=null,"older installed E is never retained in prepared source cache");
-                        var select=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null);Wait(select);Check(select.Result&&pet.Skin.Bundle!=null,"explicit E reselect cannot reactivate rejected older installation");
-                        var method=typeof(PetWindow).GetMethod("PrepareOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic,null,new[]{typeof(OfficialCompanionInstallation),typeof(bool)},null);
-                        var background=(Task<SkinDefinition>)method.Invoke(pet,new object[]{install.Result.Installation,true});Wait(background);Check(background.Result.Bundle!=null,"background publication also honors bundled version floor");
-                        ((OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet)).Dispose();Field("officialDownloads").SetValue(pet,downloads);
-                        int packages=fixture.Packages;long token=downloads.BeginSelection();
-                        var refresh=(Task<bool>)typeof(PetWindow).GetMethod("RefreshOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{"e-bao",token,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate});Wait(refresh);
-                        Check(refresh.Result&&fixture.Packages==packages&&pet.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion,"WPF background check uses bundle baseline without downloading older remote E");
-                        var installed=install.Result.Installation;string json=Path.Combine(installed.RootDirectory,"pet.json");File.WriteAllText(json,File.ReadAllText(json).Replace(OfficialCompanionFixture.Version,"9.0.0"));
-                        var entries=Directory.GetFiles(installed.RootDirectory,"*",SearchOption.AllDirectories).Where(f=>!f.EndsWith("receipt.json")).ToDictionary(f=>f.Substring(installed.RootDirectory.Length+1).Replace('\\','/'),f=>new OfficialCompanionFile(new FileInfo(f).Length,OfficialCompanionSnapshot.Digest(File.ReadAllBytes(f))));
-                        var asset=new OfficialCompanionAsset("e-bao","E","9.0.0","0.10.3-dev.1","v9.0.0","new.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
-                        var snapshot=new OfficialCompanionSnapshot(new OfficialCompanionInstallation(asset,installed.RootDirectory),entries,"newer-E",root,null);
-                        var prepare=(Task<SkinDefinition>)typeof(PetWindow).GetMethod("PrepareSnapshotAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{snapshot,CancellationToken.None});Wait(prepare);Check(prepare.Result.Snapshot==snapshot&&prepare.Result.Bundle==null,"newer compatible installed E wins over application bundle");
+                        Field("officialStartupStarted").SetValue(pet,true);
+                        Check(pet.Skin.Bundle==null&&pet.Skin.Manifest.PackVersion==OfficialCompanionFixture.Version&&pet.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao"),"startup retains coherent older full E with wardrobe");
+                        Check(pet.Holidays.PreferredOutfitId=="halloween-2026"&&pet.Holidays.EffectiveOutfit!=null&&pet.Holidays.EffectiveOutfit.OutfitId=="halloween-2026","existing selected E outfit survives production startup source resolution");
+                        var select=pet.RequestSkinAsync(pet.Catalog.FindOfficial("e-bao"),CompanionSelectionOrigin.StartupRestore,null);Wait(select);
+                        Check(select.Result&&pet.Skin.Bundle==null&&pet.Settings.SelectedCompanionKey=="official:e-bao","reselect preserves complete source and selected identity");
                     }finally{Wait(CloseFixtureAsync(pet));}
                 }
-
+                foreach(bool preferred in new[]{true,false}){
+                    string legacy=Path.Combine(root,"legacy-"+preferred);Directory.CreateDirectory(legacy);
+                    var state=new HolidayState();state.Unlock("e-bao","halloween-2026");if(preferred)state.ForCharacter("e-bao").PreferredOutfitId="halloween-2026";new HolidayStateStore(Path.Combine(legacy,"holiday-state.json")).Save(state);
+                    var saved=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
+                    var pet=new PetWindow(null,saved,new SettingsStore(Path.Combine(legacy,"settings.json")),null);
+                    try{Field("officialStartupStarted").SetValue(pet,true);Check(pet.Skin.Embedded&&pet.Skin.Bundle==null&&pet.Holidays.OwnedOutfits.Any(o=>o.OutfitId=="halloween-2026"),"v1.0.3 owned embedded Halloween retains whole legacy source without a managed pointer");Check(!preferred||pet.Holidays.EffectiveOutfit!=null&&pet.Holidays.EffectiveOutfit.OutfitId=="halloween-2026","selected legacy Halloween remains effective");}
+                    finally{Wait(CloseFixtureAsync(pet));}
+                }
+                PartialEbaoStartupChecks(Path.Combine(root,"same"));
             }finally{Directory.Delete(root,true);}
+        }
+        static void PartialEbaoStartupChecks(string root)
+        {
+            var bundle=OfficialCompanionBundle.Ebao;
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())
+            using(var downloads=new OfficialCompanionDownloads(root,ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync,OfficialCompanionReadMode.Snapshots)){
+                fixture.PublishedVersion=bundle.Version;
+                foreach(string id in OfficialCompanionFixture.Ids){fixture.Files.Remove(OfficialCompanionFixture.PackageName(id));fixture.Files[OfficialCompanionFixture.PackageName(id).Replace(OfficialCompanionFixture.Version,bundle.Version)]=NativePackage(id,100,false,bundle.Version);}
+                var gate=new TaskCompletionSource<System.Net.Http.HttpResponseMessage>();int requests=0;
+                fixture.Intercept=(request,cancel)=>{if(request.RequestUri.AbsolutePath.EndsWith(".zip",StringComparison.Ordinal)){Interlocked.Increment(ref requests);return gate.Task;}return Task.FromResult<System.Net.Http.HttpResponseMessage>(null);};
+                var settings=new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion};
+                var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+                try{
+                    var original=pet.Skin;var previous=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,downloads);
+                    pet.Show();Field("officialFirstFrameRendered").SetValue(pet,true);typeof(PetWindow).GetMethod("TryStartOfficialStartup",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    var deadline=DateTime.UtcNow.AddSeconds(20);while(requests==0&&DateTime.UtcNow<deadline)Pump();
+                    Check(requests==1&&ReferenceEquals(original,pet.Skin)&&pet.Skin.Bundle==bundle,"same-version partial renders before selected-only silent startup completion despite current app marker");
+                    var question=pet.QuestionController.AskAsync(new AgentQuestionRequest{SessionId="partial-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+                    gate.SetResult(OfficialCompanionFixture.Response(fixture.Files[OfficialCompanionFixture.PackageName("e-bao").Replace(OfficialCompanionFixture.Version,bundle.Version)]));
+                    deadline=DateTime.UtcNow.AddSeconds(30);while(Field("deferredOfficial").GetValue(pet)==null&&DateTime.UtcNow<deadline)Pump();
+                    Check(Field("deferredOfficial").GetValue(pet)!=null&&ReferenceEquals(original,pet.Skin),"same-version full completion defers commit while real business is busy");
+                    pet.QuestionController.CancelSession("partial-busy");typeof(PetWindow).GetMethod("TryApplyDeferredOfficial",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+                    Check(pet.Skin.Bundle==null&&pet.Skin.Manifest.PackVersion==bundle.Version&&pet.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao")&&pet.Settings.SelectedCompanionKey=="official:e-bao","safe completion atomically publishes same-version full generation and wardrobe");
+                    Check(requests==1&&fixture.Requests.Where(r=>r.EndsWith(".zip")).All(r=>r.Contains("Companion-e-bao-")),"startup never downloads an unselected companion");
+                }finally{Field("officialDownloads").SetValue(pet,null);Wait(CloseFixtureAsync(pet));}
+            }
+            using(var fixture=new OfficialCompanionFixture())using(var transport=fixture.Transport())using(var downloads=new OfficialCompanionDownloads(root+"-offline",ReleaseInfo.DisplayVersion,UpdateChannel.Preview,transport,new WpfOfficialNativeValidator().ValidateAsync)){
+                fixture.Offline=true;var pet=new PetWindow(null,new PetSettings{OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false},new SettingsStore(Path.Combine(root+"-offline","settings.json")),null);
+                try{var original=pet.Skin;var previous=Field("officialDownloads").GetValue(pet) as OfficialCompanionDownloads;if(previous!=null)previous.Dispose();Field("officialDownloads").SetValue(pet,downloads);long token=downloads.BeginSelection();
+                    var refresh=(Task<bool>)typeof(PetWindow).GetMethod("RefreshOfficialAsync",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,new object[]{"e-bao",token,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.Cached});Wait(refresh);
+                    Check(!refresh.Result&&ReferenceEquals(original,pet.Skin)&&pet.Skin.Bundle==bundle&&pet.Settings.SelectedCompanionKey=="official:e-bao","offline completion failure preserves usable defaults and identity");
+                }finally{Field("officialDownloads").SetValue(pet,null);Wait(CloseFixtureAsync(pet));}
+            }
         }
         static void ReviewFailurePaths()
         {
@@ -522,14 +541,14 @@ namespace Dafeiyu.Tests
                 Check(explicitSelection.Result && pet.Skin.PickerKey==target.PickerKey,"explicit user selection still commits the same prepared source during completed feedback");
             }finally{Field("completionUntil").SetValue(pet,0d);}
         }
-        internal static byte[] NativePackage(string id,byte color,bool coldAction=false)
+        internal static byte[] NativePackage(string id,byte color,bool coldAction=false,string version=null)
         {
             return OfficialCompanionFixture.Package(id,files=>{
                 foreach(string path in files.Keys.Where(k=>k.EndsWith(".png",StringComparison.Ordinal)).ToArray()) {
                     int columns=path.EndsWith("gaze.png",StringComparison.Ordinal)?4:path.EndsWith("preview.png",StringComparison.Ordinal)?1:8;
                     files[path]=NativePng(columns,columns==4?4:1,columns==4?16:columns,color);
                 }
-                var manifest=OfficialJson.Object(OfficialJson.Parse(files["pet.json"],65536));manifest["avatar"]="avatar.png";if(coldAction){var running=OfficialJson.Object(OfficialJson.Object(manifest["animations"])["running"]);files["cold.png"]=files[(string)running["file"]];running["file"]="cold.png";}files["pet.json"]=OfficialCompanionFixture.Json(manifest);
+                var manifest=OfficialJson.Object(OfficialJson.Parse(files["pet.json"],65536));if(version!=null){manifest["pack_version"]=version;var identity=OfficialJson.Object(OfficialJson.Parse(files["companions.json"],65536));identity["version"]=version;files["companions.json"]=OfficialCompanionFixture.Json(identity);}manifest["avatar"]="avatar.png";if(coldAction){var running=OfficialJson.Object(OfficialJson.Object(manifest["animations"])["running"]);files["cold.png"]=files[(string)running["file"]];running["file"]="cold.png";}files["pet.json"]=OfficialCompanionFixture.Json(manifest);
                 var pixels=new byte[64*64*4];pixels[0]=color;pixels[3]=255;var image=BitmapSource.Create(64,64,96,96,PixelFormats.Bgra32,null,pixels,64*4);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(image));using(var output=new MemoryStream()){encoder.Save(output);files["avatar.png"]=output.ToArray();}
             });
         }

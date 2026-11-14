@@ -162,7 +162,10 @@ internal sealed class SpriteAssets : IDisposable
                     else skin = new PetSkin { Id = persona, Name = profile.Name, Prompt = profile.SystemPrompt, Description = profile.Description, Voices = profile.VoicePresets, SpecialAction = profile.SpecialAction, SpecialAction2 = profile.SpecialAction2, IsPlaceholder = true };
                 }
             }
-            if(profile.Id=="e-bao"&&BundledEbao!=null)skin=ReadBundledEbao(persona);
+            if(profile.Id=="e-bao"&&BundledEbao!=null){
+                var legacy=!BundledEbao.HasCompleteCoverage&&skin.BuiltIn&&!skin.IsPlaceholder?OfficialCompanionBundle.RetainedLegacyEbaoWardrobe(data):null;
+                if(legacy!=null)skin.PackageHolidayCatalog=legacy;else skin=ReadBundledEbao(persona);
+            }
             skin.CanonicalBuiltIn = skin.BuiltIn && !skin.IsPlaceholder;
             skin.OfficialCharacterId = skin.BuiltinCharacterId = profile.Id; skin.PickerKey = "official:" + profile.Id;
             skin.Avatar = skin.Folder == null ? skin.Avatar ?? "avatars/" + profile.Id + ".png" : skin.Avatar;

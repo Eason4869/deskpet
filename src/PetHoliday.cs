@@ -83,7 +83,7 @@ namespace Dafeiyu
             holidayPlayback.Cancel();holidayTransition.FinishImmediately();holidayTransition.TakeCommit();
             holidayCommitted=holidayTarget=null;holidaySourceKey=holidayFailedKey=null;
             holidayAssets=new HolidayVisualAssets(open);
-            Holidays=controller??new HolidayController(new HolidayCalendar(),OfficialCompanionBundle.Ebao==null?new HolidayCatalog():OfficialCompanionBundle.Ebao.CreateHolidayCatalog(),new HolidayStateStore(Path.Combine(Store.DirectoryPath,"holiday-state.json")));
+            Holidays=controller??new HolidayController(new HolidayCalendar(),Skin.PackageHolidayCatalog??(Skin.Bundle==null?new HolidayCatalog():Skin.Bundle.CreateHolidayCatalog()),new HolidayStateStore(Path.Combine(Store.DirectoryPath,"holiday-state.json")));
             Holidays.Changed+=HolidayChanged;
             var surface=image as HolidayPetImage;if(surface!=null){surface.DrawClouds=DrawHolidayClouds;surface.FrameRendered=HolidayFrameRendered;}
             RefreshHoliday();if(!Skin.IsOfficial){var restore=RestoreLocalOutfitsAsync();}

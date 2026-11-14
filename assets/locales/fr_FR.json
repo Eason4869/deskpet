@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "Volume des sons d’action",
   "operationSounds.appear": "Écouter l’apparition",
   "operationSounds.switch": "Écouter le changement",
-  "operationSounds.hide": "Écouter le masquage"
+  "operationSounds.hide": "Écouter le masquage",
+  "onboarding.companionOfflineDefaults": "Les actions habituelles d’Ebao fonctionnent hors ligne ; ses tenues de fête sont préparées en arrière-plan après sélection. Vos compagnons et tenues restent utilisables, et les mises à jour s’appliquent automatiquement dès qu’elles sont prêtes. Les autres compagnons s’installent à leur première sélection. Les préférences de personnalité et de voix sont enregistrées par compagnon."
 }

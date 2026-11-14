@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "Volume dos sons de ação",
   "operationSounds.appear": "Ouvir aparição",
   "operationSounds.switch": "Ouvir troca",
-  "operationSounds.hide": "Ouvir ocultação"
+  "operationSounds.hide": "Ouvir ocultação",
+  "onboarding.companionOfflineDefaults": "As ações normais de Ebao funcionam offline; os trajes festivos são preparados em segundo plano ao selecioná-lo. Os companheiros e trajes existentes continuam disponíveis, e as atualizações são aplicadas automaticamente quando prontas. Outros companheiros são instalados na primeira seleção. Preferências de personalidade e voz são salvas por companheiro."
 }

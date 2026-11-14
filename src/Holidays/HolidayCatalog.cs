@@ -108,6 +108,13 @@ namespace Dafeiyu
             return path=>{ValidatePath(path);string resolved=System.IO.Path.GetFullPath(System.IO.Path.Combine(root,path.Replace('/',System.IO.Path.DirectorySeparatorChar)));if(!resolved.StartsWith(root,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Asset escapes holiday root.");return File.OpenRead(resolved);};
         }
         internal HolidayCatalog(IEnumerable<OutfitDefinition> outfits){Outfits=new ReadOnlyCollection<OutfitDefinition>(outfits.ToList());}
+        // Explicit absence is used only by a source whose declared coverage has
+        // no wardrobe. Empty catalogs still cannot pass full replacement validation.
+        public HolidayCatalog WithoutCharacter(string characterId)
+        {
+            if(!Characters.Contains(characterId))throw new ArgumentException("Untrusted holiday character.","characterId");
+            return new HolidayCatalog(Outfits.Where(outfit=>outfit.CharacterId!=characterId)){Warning=Warning};
+        }
         public HolidayCatalog WithCharacter(string characterId,HolidayCatalog replacement)
         {
             if(!Characters.Contains(characterId))throw new ArgumentException("Untrusted holiday character.","characterId");

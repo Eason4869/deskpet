@@ -8,7 +8,7 @@ A desktop companion for interactions, conversation and project work.
 
 Version 1.0.3 adds key visibility controls, improves Windows image-result cards, and fixes shared-key provider masking and Windows accessible names. See the [changelog](CHANGELOG.en.md).
 
-Current source development preview: **1.0.4-dev.1**. Local companion switching, retained selection and silent material updates after upgrades, a complete bundled Ebao, and unified sound settings are described in the [changelog](CHANGELOG.en.md). Check the [release list](https://github.com/Eason4869/deskpet/releases) for preview packages.
+Current source development preview: **1.0.4-dev.1**. Local companion switching, retained selection and silent material updates after upgrades, all regular Ebao actions available offline, and unified sound settings are described in the [changelog](CHANGELOG.en.md). Check the [release list](https://github.com/Eason4869/deskpet/releases) for preview packages.
 
 ![New conversation, with companion artwork above the composer](previews/release-1.0.0/conversation.png)
 
@@ -28,7 +28,7 @@ The Windows installer installs for the current user, normally without administra
 ## Quick start
 
 1. **Try an interaction.** Drag the companion, click its head for a pat, or middle-click to open the action palette. These interactions require no model configuration.
-2. **Choose a companion.** A fresh installation starts with Ebao. Other official companions download their complete packs when first selected. Settings also offers **Download/update all**.
+2. **Choose a companion.** A fresh installation starts with Ebao. Ebao’s regular actions work offline; remaining holiday outfits prepare silently when selected, while owned outfits stay usable. Other official companions download their complete packs when first selected. Settings also offers **Download/update all**.
 3. **Configure a text model.** Open **Settings → Setup guide**, or **Model configuration → Text models**. Add a provider, enter its URL, protocol and API key, save and fetch models, then add the models you need individually. You can also enter a complete model ID manually.
 4. **Test, then chat.** Explicitly run a connection test. Double-click the companion for quick chat; right-click it or double-click the tray icon to open the full window. Defaults: **Enter to send, Shift + Enter for a new line**.
 5. **Switch to Work for files.** Add a project and bind its folder, select a model with native tool calling, review permissions and send a task. Use plan mode to inspect a project first, or stay in ordinary chat.
@@ -168,4 +168,4 @@ Author: **彧晟Eason**. Artwork, platform identifiers, fonts and dependencies h
 
 The repository currently has no standalone LICENSE covering the entire project. Publicly viewable source does not make third-party component licenses apply to the whole project. Confirm authorization with the author before redistribution or commercial use.
 
-Production builds embed the complete pinned Ebao pack. Python and Pillow prepare and validate it before WPF compilation; runtime reads only demanded ZIP entries. Before an Avalonia production build, run `python tools/prepare_bundled_ebao.py` on Windows. On macOS, pass `--package` with the matching Windows-authored Ebao ZIP; see [macOS packaging](installer/macos/README.md).
+Production builds validate the complete pinned Ebao source, then embed only its 33 regular-action, gaze, avatar and metadata entries. The complete ZIP remains a build proof and is never included in the app or runtime package. Python and Pillow prepare and validate it before WPF compilation; runtime reads only demanded ZIP entries. Before an Avalonia production build, run `python tools/prepare_bundled_ebao.py` on Windows. On macOS, pass `--package` with the matching Windows-authored Ebao ZIP; see [macOS packaging](installer/macos/README.md).

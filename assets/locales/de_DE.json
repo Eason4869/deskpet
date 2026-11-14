@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "Lautstärke der Aktionsklänge",
   "operationSounds.appear": "Erscheinen anhören",
   "operationSounds.switch": "Wechsel anhören",
-  "operationSounds.hide": "Ausblenden anhören"
+  "operationSounds.hide": "Ausblenden anhören",
+  "onboarding.companionOfflineDefaults": "Ebaos normale Aktionen funktionieren offline; Festtagskostüme werden nach der Auswahl im Hintergrund vorbereitet. Vorhandene Begleiter und Kostüme bleiben nutzbar. Fertige Updates werden automatisch angewendet. Andere Begleiter werden bei der ersten Auswahl installiert. Persönlichkeit und Stimme werden je Begleiter gespeichert."
 }

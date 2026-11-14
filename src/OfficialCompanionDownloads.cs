@@ -45,12 +45,15 @@ namespace Dafeiyu
                 return historyMaintenance;
             }
         }
-        // Call only after the platform has prepared the real bundled default/wardrobe.
+        // Call after preparing the declared bundled coverage. A default-only source
+        // never supplies a full replacement receipt or authorizes a pointer handoff.
         // Full byte validation and durable pointer handoff run on the background pool.
         public Task ConfirmBundleReadyAsync(OfficialCompanionBundle bundle,CancellationToken cancel)
         {
             return Task.Run(async()=>{
                 using(var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,lifetime.Token)){
+                    bundle.VerifyDeclaredContents(linked.Token);
+                    if(!bundle.HasCompleteCoverage)return;
                     bundle.VerifyComplete(linked.Token);Maintenance.OfficialCompanionMaintenance.HandoffBundle(store,bundle,linked.Token);
                     await ScheduleMaintenance().ConfigureAwait(false);
                 }

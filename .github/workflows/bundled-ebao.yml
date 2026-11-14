@@ -28,7 +28,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: pinned-ebao-${{ github.sha }}
-          path: work/bundled-ebao/e-bao.zip
+          path: work/bundled-ebao/e-bao.canonical.zip
           if-no-files-found: error
           retention-days: 3
           compression-level: 0

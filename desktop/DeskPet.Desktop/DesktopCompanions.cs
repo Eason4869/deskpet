@@ -41,7 +41,7 @@ internal sealed partial class DesktopController
             var retry=officialCompanions.MaintainAfterStartupAsync(companionLifetime.Token);
             try{
                 if(SpriteAssets.BundledEbao is { } bundle){
-                    await Task.Run(()=>{var skin=SpriteAssets.ReadBundledEbao("e-bao");using(companionAssets.Prepare(skin)){}skin.PackageHolidayCatalog!.WithCharacter("e-bao",skin.PackageHolidayCatalog);},companionLifetime.Token);
+                    await Task.Run(()=>{var skin=SpriteAssets.ReadBundledEbao("e-bao");using(companionAssets.Prepare(skin)){}if(bundle.HasCompleteCoverage)skin.PackageHolidayCatalog!.WithCharacter("e-bao",skin.PackageHolidayCatalog);},companionLifetime.Token);
                     await officialCompanions.ConfirmBundleReadyAsync(bundle,companionLifetime.Token);
                 }
             }catch(OperationCanceledException){}catch(Exception){System.Diagnostics.Trace.TraceWarning("Bundled companion cache handoff will retry on a later launch.");}
@@ -145,7 +145,8 @@ internal sealed partial class DesktopController
         embeddedHolidayCatalog??=Holidays.Catalog;
         var merged=embeddedHolidayCatalog;
         foreach(var item in officialHolidayCatalogs)merged=merged.WithCharacter(item.Key,item.Value);
-        if(selected?.PackageHolidayCatalog is { } local)merged=merged.WithCharacter(selected.OutfitCharacterId!,local);
+        if(selected?.Bundle is {HasCompleteCoverage:false})merged=merged.WithoutCharacter(selected.OutfitCharacterId!);
+        else if(selected?.PackageHolidayCatalog is { } local)merged=merged.WithCharacter(selected.OutfitCharacterId!,local);
         Holidays.ReplaceCatalog(merged);
     }
     public Task SelectSkinAsync(PetSkin skin) => SelectSkinAsync(skin, CompanionSelectionOrigin.Settings);
@@ -202,7 +203,7 @@ internal sealed partial class DesktopController
             Pet.CancelHolidayForSkinChange();if(next.OfficialCharacterId==null)next.PackageHolidayCatalog=nextCatalog;
             PersonaProfiles.SaveVoices(Settings);Skin=next;PersonaProfiles.Activate(Settings,next.Id,next.Prompt,next.Voices,next.OfficialCharacterId??next.BuiltinCharacterId);Session.SelectPersona(next.Id);
             Settings.SelectedCompanionKey=next.PickerKey;Settings.PendingOfficialCompanionId="";ReplaceCompanionEntry(next);
-            if(nextCatalog!=null&&next.OfficialCharacterId!=null)MergeCompanionCatalog(next.OfficialCharacterId,nextCatalog);else RebuildCompanionCatalog();
+            if(next.Bundle is {HasCompleteCoverage:false})RebuildCompanionCatalog();else if(nextCatalog!=null&&next.OfficialCharacterId!=null)MergeCompanionCatalog(next.OfficialCharacterId,nextCatalog);else RebuildCompanionCatalog();
             var oldPins=activeCompanionPins;activeCompanionPins=preparedPins;preparedPins=null;
             if(changed&&origin!=CompanionSelectionOrigin.StartupRestore)awaitingCompanionFrame=new CompanionSelectionUpdate(token,next.PickerKey,origin.ToString(),"render-pending",0);
             Pet.SelectSkin();oldPins?.Dispose();Save();if(tray!=null)tray.ToolTipText="DeskPet · "+next.Name;
@@ -233,7 +234,7 @@ internal sealed partial class DesktopController
         long order = ++appearanceOperation;
         try
         {
-            var result=await officialCompanions.UpdateAsync(id,CompanionRouting(),companionLifetime.Token,mode,id=="e-bao"?SpriteAssets.BundledEbao?.Version:null);
+            var result=await officialCompanions.UpdateAsync(id,CompanionRouting(),companionLifetime.Token,mode,id=="e-bao"&&SpriteAssets.BundledEbao?.HasCompleteCoverage==true?SpriteAssets.BundledEbao.Version:null);
             if(exiting)return;
             if(result==null){
                 if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&officialCompanions.OwnsSelection(token)&&Settings.SelectedCompanionKey=="official:"+id){Settings.LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion;Save();}
@@ -405,8 +406,10 @@ internal sealed partial class DesktopController
         }
         if(Settings.PendingOfficialCompanionId.Length!=0){Settings.PendingOfficialCompanionId="";Save();}
         var desired=ResolveSavedCompanion()??Skin;
-        if(!companionFirstVisibleFrame||!Pet.IsPetVisible||companionUpgradeStarted||Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion||desired.OfficialCharacterId==null)return;
+        bool partial=desired.OfficialCharacterId=="e-bao"&&SpriteAssets.BundledEbao is {HasCompleteCoverage:false}&&Skin.BuiltIn;
+        if(!companionFirstVisibleFrame||!Pet.IsPetVisible||companionUpgradeStarted||Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion&&!partial||desired.OfficialCharacterId==null)return;
         companionUpgradeStarted=true;
-        await RefreshOfficialAsync(Skin,latestCompanionToken,OfficialCompanionCheckMode.AfterApplicationUpdate,requestedId:desired.OfficialCharacterId);
+        var mode=Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion?OfficialCompanionCheckMode.Cached:OfficialCompanionCheckMode.AfterApplicationUpdate;
+        await RefreshOfficialAsync(Skin,latestCompanionToken,mode,requestedId:desired.OfficialCharacterId);
     }
 }

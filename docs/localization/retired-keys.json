@@ -124,5 +124,6 @@
   "petOfficialCompanions.requestSkinAsync.notice": "The shared installation status presenter now owns selection progress and retry copy.",
   "petOfficialCompanions.selectSkin.notice": "Usable companions now switch through asynchronous prepared selection and the shared installation status presenter.",
   "cache.preservedPackVersions": "Managed companion cleanup retains the latest usable source per role; cache.preservedLatest describes this policy.",
-  "notificationSounds.help": "operationSounds.help now describes one NotificationSoundsEnabled master for task notifications and companion operations."
+  "notificationSounds.help": "operationSounds.help now describes one NotificationSoundsEnabled master for task notifications and companion operations.",
+  "onboardingLessons.build.add.alternativeC": "Replaced by onboarding.companionOfflineDefaults after the approved default-only offline coverage change; original translations preserved."
 }

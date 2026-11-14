@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "조작 효과음 볼륨",
   "operationSounds.appear": "표시 소리 미리 듣기",
   "operationSounds.switch": "전환 소리 미리 듣기",
-  "operationSounds.hide": "숨김 소리 미리 듣기"
+  "operationSounds.hide": "숨김 소리 미리 듣기",
+  "onboarding.companionOfflineDefaults": "어바오의 일반 동작은 오프라인에서 사용할 수 있으며, 선택하면 명절 의상을 백그라운드에서 준비합니다. 기존 동료와 의상은 계속 사용할 수 있고 업데이트가 준비되면 자동 적용됩니다. 다른 동료는 처음 선택할 때 설치합니다. 성격과 음성 설정은 동료별로 저장됩니다."
 }

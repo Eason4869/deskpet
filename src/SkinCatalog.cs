@@ -145,7 +145,10 @@ namespace Dafeiyu
                 if(registered.Id!=persona&&registered.Illustrated)registered=new SkinDefinition(persona,registered.Source,registered.Manifest){BuiltinCharacterId=profile.Id};
                 if(profile.Id=="e-bao"&&OfficialCompanionBundle.Ebao!=null){
                     var bundle=OfficialCompanionBundle.Ebao;SkinManifest manifest;using(var input=bundle.Open("pet.json"))manifest=ReadManifest(input);
-                    registered=new SkinDefinition(persona,bundle.Generation,manifest){BuiltinCharacterId="e-bao",Bundle=bundle,PackageHolidayCatalog=bundle.CreateHolidayCatalog(),PackageHolidaysChecked=true};embeddedFallback=registered;
+                    var legacy=!bundle.HasCompleteCoverage&&registered.Embedded?OfficialCompanionBundle.RetainedLegacyEbaoWardrobe(dataRoot):null;
+                    if(legacy!=null){registered.PackageHolidayCatalog=legacy;registered.PackageHolidaysChecked=true;}
+                    else registered=new SkinDefinition(persona,bundle.Generation,manifest){BuiltinCharacterId="e-bao",Bundle=bundle,PackageHolidayCatalog=bundle.CreateHolidayCatalog(),PackageHolidaysChecked=true};
+                    embeddedFallback=registered;
                 }
                 if(profile.Id=="e-bao"&&registered.Embedded)embeddedFallback=registered;
                 if(resources.Contains("Dafeiyu.Bundled."+(profile.Id=="xiaobei"?"Xiaobei":profile.Id=="gugugaga"?"Gugugaga":"None")+".pet.json")){registered.FixtureEmbedded=true;registered.Bundled=true;}

@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "Volume suara tindakan",
   "operationSounds.appear": "Pratinjau suara muncul",
   "operationSounds.switch": "Pratinjau suara ganti",
-  "operationSounds.hide": "Pratinjau suara sembunyi"
+  "operationSounds.hide": "Pratinjau suara sembunyi",
+  "onboarding.companionOfflineDefaults": "Gerakan biasa Ebao tersedia offline; kostum hari raya disiapkan di latar belakang saat dipilih. Pendamping dan kostum yang ada tetap dapat digunakan, dan pembaruan diterapkan otomatis saat siap. Pendamping lain dipasang saat pertama dipilih. Preferensi kepribadian dan suara disimpan terpisah untuk tiap pendamping."
 }

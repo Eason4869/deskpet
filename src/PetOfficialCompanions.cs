@@ -55,7 +55,7 @@ namespace Dafeiyu
                     var bundle=OfficialCompanionBundle.Ebao;
                     if(bundle!=null){
                         var fallback=Catalog.EmbeddedFallback();
-                        await Task.Run(()=>{PrepareDefault(fallback);fallback.PackageHolidayCatalog.WithCharacter("e-bao",fallback.PackageHolidayCatalog);},officialLifetime.Token);
+                        if(bundle.HasCompleteCoverage)await Task.Run(()=>{PrepareDefault(fallback);fallback.PackageHolidayCatalog.WithCharacter("e-bao",fallback.PackageHolidayCatalog);},officialLifetime.Token);
                         await downloads.ConfirmBundleReadyAsync(bundle,officialLifetime.Token);
                     }
                 }catch(OperationCanceledException){}catch(Exception error){if(!OfficialError(error))throw;System.Diagnostics.Trace.TraceWarning("Bundled companion cache handoff will retry on a later launch.");}
@@ -83,7 +83,7 @@ namespace Dafeiyu
             try {
                 var restored=Task.Run(()=>PrepareOfficialAsync(requested.BuiltinCharacterId,officialLifetime.Token)).GetAwaiter().GetResult();
                 if(restored==null)return requested;
-                ReleaseVersion bundled,installed;if(requested.BuiltinCharacterId=="e-bao"&&requested.Manifest!=null&&ReleaseVersion.TryParse(requested.Manifest.PackVersion,out bundled)&&ReleaseVersion.TryParse(restored.Manifest.PackVersion,out installed)&&installed.CompareTo(bundled)<0)return requested;
+                if(requested.Bundle!=null&&requested.Bundle.PrefersBundle(restored.Manifest.PackVersion))return requested;
                 Catalog.ReplaceOfficial(restored);officialSources[restored.BuiltinCharacterId]=restored;
 
                 if(Settings.PendingOfficialCompanionId==restored.BuiltinCharacterId)Settings.PendingOfficialCompanionId="";
@@ -182,7 +182,7 @@ namespace Dafeiyu
             var previous=Skin;
             try {
                 var bundle=id=="e-bao"?OfficialCompanionBundle.Ebao:null;
-                var result=bundle!=null?await OfficialDownloads.UpdateBeyondVersionAsync(id,bundle.Version,OfficialRouting(),mode,officialLifetime.Token):await OfficialDownloads.EnsureAsync(id,OfficialRouting(),mode,null,officialLifetime.Token,false,true);
+                var result=bundle!=null&&bundle.HasCompleteCoverage?await OfficialDownloads.UpdateBeyondVersionAsync(id,bundle.Version,OfficialRouting(),mode,officialLifetime.Token):await OfficialDownloads.EnsureAsync(id,OfficialRouting(),mode,null,officialLifetime.Token,false,true);
                 if(closing)return false;
                 if(result==null){
                     if(mode==OfficialCompanionCheckMode.AfterApplicationUpdate&&Settings.SelectedCompanionKey=="official:"+id){Settings.LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion;SaveSettings();}
@@ -336,7 +336,8 @@ namespace Dafeiyu
                 HolidayCatalog catalog;if(!officialCatalogs.TryGetValue(source.Source,out catalog))continue;
                 merged=merged.WithCharacter(pair.Key,catalog);
             }
-            if(skin.PackageHolidayCatalog!=null)merged=merged.WithCharacter(skin.OutfitCharacterId,skin.PackageHolidayCatalog);
+            if(skin.Bundle!=null&&!skin.Bundle.HasCompleteCoverage)merged=merged.WithoutCharacter(skin.OutfitCharacterId);
+            else if(skin.PackageHolidayCatalog!=null)merged=merged.WithCharacter(skin.OutfitCharacterId,skin.PackageHolidayCatalog);
             Holidays.ReplaceCatalog(merged);
         }
         OfficialCompanionPreparation preparation;
@@ -383,10 +384,12 @@ namespace Dafeiyu
             officialStartupStarted=true;
             if(Settings.PendingOfficialCompanionId.Length!=0){Settings.PendingOfficialCompanionId="";SaveSettings();}
             var desired=Catalog.FindPicker(Settings.SelectedCompanionKey)??Skin;
-            if(Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion||!desired.IsOfficial)return;
+            bool partial=desired.BuiltinCharacterId=="e-bao"&&OfficialCompanionBundle.Ebao!=null&&!OfficialCompanionBundle.Ebao.HasCompleteCoverage&&(Skin.Bundle!=null||Skin.Embedded);
+            if(!desired.IsOfficial||Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion&&!partial)return;
             // A new application version checks only the already visible selected
             // role. Failure retains the old version marker so restart can retry.
-            var work=RefreshOfficialAsync(desired.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,OfficialCompanionCheckMode.AfterApplicationUpdate);
+            var mode=Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion?OfficialCompanionCheckMode.Cached:OfficialCompanionCheckMode.AfterApplicationUpdate;
+            var work=RefreshOfficialAsync(desired.BuiltinCharacterId,officialRequest,false,CompanionSelectionOrigin.StartupRestore,null,mode);
         }
         void OfficialCompanionHidden(SkinDefinition skin)
         {

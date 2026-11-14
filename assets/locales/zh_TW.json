@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "操作音效音量",
   "operationSounds.appear": "試聽顯示",
   "operationSounds.switch": "試聽切換",
-  "operationSounds.hide": "試聽隱藏"
+  "operationSounds.hide": "試聽隱藏",
+  "onboarding.companionOfflineDefaults": "鵝寶的一般動作可離線使用，節日服裝在選取後於背景補齊。已有夥伴和服裝可繼續使用，更新準備好後自動套用。其他夥伴首次選取時按需安裝；人格與聲音偏好依夥伴分別儲存。"
 }

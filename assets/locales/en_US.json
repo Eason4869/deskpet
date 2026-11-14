@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "Operation sound volume",
   "operationSounds.appear": "Preview appear",
   "operationSounds.switch": "Preview switch",
-  "operationSounds.hide": "Preview hide"
+  "operationSounds.hide": "Preview hide",
+  "onboarding.companionOfflineDefaults": "Ebao’s regular actions work offline; holiday outfits prepare in the background when selected. Existing companions and outfits remain usable, and updates apply automatically when ready. Other companions install on first selection. Persona and voice preferences are saved separately for each companion."
 }

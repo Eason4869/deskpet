@@ -159,7 +159,7 @@ namespace Dafeiyu.Maintenance
         {return bundle.Generation+"|"+bundle.Version+"|"+bundle.MinimumAppVersion+"|"+bundle.ZipSha256;}
         internal static void HandoffBundle(OfficialCompanionStorage store,OfficialCompanionBundle bundle,CancellationToken cancel)
         {
-            if(bundle==null||!ReferenceEquals(bundle,OfficialCompanionBundle.Ebao)||!bundle.CompletelyVerified)throw new IOException("Complete bundled replacement is not verified.");
+            if(bundle==null||!ReferenceEquals(bundle,OfficialCompanionBundle.Ebao)||!bundle.HasCompleteCoverage||!bundle.CompletelyVerified)throw new IOException("Complete bundled replacement is not verified.");
             string role=store.CharacterRoot("e-bao"),transaction=PathFor(role,"bundle-transaction.json");
             using(Lock(role,cancel)){
                 if(File.Exists(PathFor(role,"version-transaction.json")))return;

@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install Pillow
-          python -X utf8 tools/prepare_bundled_ebao.py --package work/messaging-bundle-input/e-bao.zip
+          python -X utf8 tools/prepare_bundled_ebao.py --package work/messaging-bundle-input/e-bao.canonical.zip
       - name: Build desktop fixtures
         run: dotnet build desktop/DeskPet.Desktop.Tests/DeskPet.Desktop.Tests.csproj -c Release -m:1 -nr:false -p:DeskPetFullResourceFixtures=false
       - name: Native controls and all thirteen locales

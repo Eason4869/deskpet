@@ -581,23 +581,49 @@ internal static class OfficialCompanionUiChecks
     internal static int RunBundledEbao(string directory)
     {
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Bundled Ebao: "+label);checks++;}
-        var bundle=OfficialCompanionBundle.Ebao;Check(bundle!=null,"production Core contains complete pinned bundle");
+        var bundle=OfficialCompanionBundle.Ebao??throw new Exception("Missing bundle");Check(!bundle.HasCompleteCoverage&&bundle.Paths.Count()==33,"production Core contains exact default-only coverage");
         using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(directory,"holiday"),"e-bao",null,false);
-        var installed=CreatePackage(Path.Combine(directory,"installed"),"e-bao",fixture.Root);var source=new FakeSource{InstalledValue=installed};var assets=new SpriteAssets();
+        var installed=CreatePackage(Path.Combine(directory,"installed"),"e-bao",fixture.Root);var source=new FakeSource{InstalledValue=installed,NoNewerBundle=true};var assets=new SpriteAssets();
         using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"data")),spriteAssetsFactory:()=>assets,officialSourceFactory:_=>source)){
-            Check(owner.Skin.Bundle!=null&&owner.Skin.PackageHolidayCatalog!.Outfits.Count==10&&owner.Holidays.Catalog.Outfits.Count(o=>o.CharacterId=="e-bao")==10,"startup rejects older installed E before cache and retains full embedded wardrobe");
-            Complete(owner.SelectSkinAsync(owner.Skin,CompanionSelectionOrigin.StartupRestore));Check(owner.Skin.Bundle!=null&&assets.RetainedPixelBytes<64L*1024*1024,"explicit E reselect uses small prepared idle gaze resources");
+            Check(owner.Skin.Bundle==null&&owner.Skin.Snapshot!=null&&owner.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao"),"older complete E and its wardrobe stay in one generation at startup");
+            Complete(owner.SelectSkinAsync(owner.Skin,CompanionSelectionOrigin.StartupRestore));Check(owner.Skin.Bundle==null&&owner.Settings.SelectedCompanionKey=="official:e-bao","reselect preserves complete generation and identity");
             var read=typeof(DesktopController).GetMethod("ReadPublished",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!;
-            var next=((PetSkin Skin,HolidayCatalog Catalog))read.Invoke(owner,new object[]{installed,owner.Skin.Id})!;Check(next.Skin.Bundle!=null,"background publication cannot downgrade bundled E");
-            source.NoNewerBundle=true;long token=source.BeginSelection();
-            var refresh=(Task)typeof(DesktopController).GetMethod("RefreshOfficialAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,new object?[]{owner.Skin,token,OfficialCompanionCheckMode.AfterApplicationUpdate,CompanionSelectionOrigin.StartupRestore,null})!;Complete(refresh);
-            Check(source.AvailableVersion==bundle!.Version&&owner.Settings.LastCompanionUpgradeVersion==ReleaseInfo.DisplayVersion,"Avalonia background passes bundle baseline and records metadata-only upgrade success");Finish(owner);
+            var next=((PetSkin Skin,HolidayCatalog Catalog))read.Invoke(owner,new object[]{installed,owner.Skin.Id})!;Check(next.Skin.Bundle==null,"background read preserves older complete wardrobe instead of mixing default bundle");
+            Finish(owner);
         }
-        string manifest=Path.Combine(installed.RootDirectory,"pet.json");File.WriteAllText(manifest,File.ReadAllText(manifest).Replace("0.10.3-dev.1","9.0.0"));
-        var asset=new OfficialCompanionAsset("e-bao","E","9.0.0","0.10.3-dev.1","v9.0.0","new.zip",1,new string('a',64),new[]{new OfficialCompanionOutfit("halloween-2026","1.0.0")});
-        var newer=new FakeSource{InstalledValue=new OfficialCompanionInstallation(asset,installed.RootDirectory)};
-        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"newer-data")),officialSourceFactory:_=>newer)){
-            Check(owner.Skin.Snapshot!=null&&owner.Skin.PackVersion=="9.0.0","newer compatible local E wins at startup");Finish(owner);
+        foreach(bool preferred in new[]{true,false}){
+            string legacy=Path.Combine(directory,"legacy-"+preferred);Directory.CreateDirectory(legacy);
+            var state=new HolidayState();state.Unlock("e-bao","halloween-2026");if(preferred)state.ForCharacter("e-bao").PreferredOutfitId="halloween-2026";new HolidayStateStore(Path.Combine(legacy,"holiday-state.json")).Save(state);
+            new SettingsStore(Path.Combine(legacy,"settings.json")).Save(new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false});
+            using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(legacy),officialSourceFactory:_=>new FakeSource{NoNewerBundle=true});
+            Check(owner.Skin.Bundle==null&&owner.Skin.BuiltIn&&owner.Holidays.OwnedOutfits.Any(o=>o.OutfitId=="halloween-2026"),"v1.0.3 owned legacy Halloween retains original whole embedded source");
+            Check(!preferred||owner.Holidays.EffectiveOutfit?.OutfitId=="halloween-2026","selected legacy outfit remains effective without managed install");Finish(owner);
+        }
+        var same=CreatePackage(Path.Combine(directory,"same"),"e-bao",fixture.Root,packVersion:bundle.Version);
+        string data=Path.Combine(directory,"partial-data");Directory.CreateDirectory(data);
+        new SettingsStore(Path.Combine(data,"settings.json")).Save(new PetSettings{SkinId="e-bao",SelectedCompanionKey="official:e-bao",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,LastCompanionUpgradeVersion=ReleaseInfo.DisplayVersion});
+        var partial=new FakeSource();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>partial)){
+            Check(owner.Skin.Bundle==bundle&&owner.Skin.PackageHolidayCatalog!.Outfits.Count==0,"offline defaults expose no fabricated full wardrobe");
+            owner.Settings.OnboardingState="completed";
+            var old=owner.Skin;var updates=new List<CompanionSelectionUpdate>();owner.CompanionSelectionChanged+=updates.Add;
+            owner.Pet.Show();var sprite=(SpriteView)typeof(PetWindow).GetField("sprite",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner.Pet)!;
+            using(var target=new RenderTargetBitmap(new PixelSize(192,208)))using(var context=target.CreateDrawingContext())sprite.Render(context);
+            Until(()=>partial.Calls==1);
+            Check(partial.AvailableVersion==null&&partial.RequestedIds.SequenceEqual(new[]{"e-bao"})&&ReferenceEquals(old,owner.Skin)&&partial.Progress==null,"first visible partial frame starts selected-only silent completion even at same app/material version");
+            var question=owner.Questions.AskAsync(new AgentQuestionRequest{SessionId="partial-busy",TaskId="task",CallId="call",Question="wait"},CancellationToken.None);
+            partial.InstalledValue=same;partial.Result.SetResult(new OfficialCompanionResult(same,false,true,true,""));
+            Until(()=>((System.Collections.IDictionary)typeof(DesktopController).GetField("pendingAppearances",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!).Count>0);
+            Check(ReferenceEquals(old,owner.Skin),"completed full source stays pending while business is busy");
+            owner.Questions.CancelSession("partial-busy");owner.ApplyPendingCompanionAppearance();Until(()=>owner.Skin.Bundle==null);
+            Check(owner.Skin.PackVersion==bundle.Version&&owner.Holidays.Catalog.Outfits.Any(o=>o.CharacterId=="e-bao")&&owner.Settings.SelectedCompanionKey=="official:e-bao","safe idle atomically commits same-version full source");
+            Check(updates.Count==0,"background completion emits no foreground selection or sound intent");Finish(owner);
+        }
+        var offline=new FakeSource();
+        using(var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(Path.Combine(directory,"offline-data")),officialSourceFactory:_=>offline)){
+            var old=owner.Skin;var refresh=(Task)typeof(DesktopController).GetMethod("RefreshOfficialAsync",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.Invoke(owner,new object?[]{old,offline.BeginSelection(),OfficialCompanionCheckMode.Cached,CompanionSelectionOrigin.StartupRestore,null})!;
+            Until(()=>offline.Calls==1);offline.Result.SetException(new IOException("offline"));Complete(refresh);
+            Check(ReferenceEquals(owner.Skin,old)&&owner.Skin.Bundle==bundle&&owner.CompanionSelectionNotice=="","offline failure keeps default frame without a popup");Finish(owner);
         }
         return checks;
     }

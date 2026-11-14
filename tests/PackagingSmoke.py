@@ -19,6 +19,7 @@ from tools.localization.helper_resources import expected_locale_resources, valid
 version = re.search(r'DisplayVersion="([^"]+)"', (PROJECT / 'src/ReleaseInfo.cs').read_text(encoding='utf-8-sig')).group(1)
 arguments = argparse.ArgumentParser()
 arguments.add_argument('--compiler', help='Optional Inno ISCC.exe for full fresh installer verification')
+arguments.add_argument('--legacy-app', type=Path, help='Published v1.0.3 application for real client/download/helper handoff')
 arguments.add_argument('--legacy-worker', type=Path, help='Existing older DeskPet.Update.exe to verify backward compatible packages')
 options = arguments.parse_args()
 # Keep this fresh-checkout fixture short enough for Framework's real MAX_PATH
@@ -67,6 +68,9 @@ assert app_asset.is_file(), 'versioned standalone application release asset miss
 assert app_asset.read_bytes() == (runtime / '桌面伙伴.exe').read_bytes(), 'standalone release asset must preserve the built application bytes'
 print('PASS versioned standalone application matches the runtime executable')
 with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
+    assert (output / ('DeskPet-Windows-' + version + '.zip')).stat().st_size <= 300 * 1024 * 1024, 'must remain compatible with v1.0.3 client/download/worker limit'
+    assert sum(item.file_size for item in bundle.infolist()) <= 400 * 1024 * 1024 and len(bundle.infolist()) <= 500, 'must retain legacy extraction bounds'
+    assert not any('canonical' in name.lower() for name in bundle.namelist()), 'build-only complete source must never enter runtime ZIP or installer contract'
     assert not any(name.endswith('大肥鱼桌宠.exe') or 'private-key' in name or '/data/' in name for name in bundle.namelist())
     for name in ['桌面伙伴.exe', '桌面伙伴.exe.config', 'DeskPet.Update.exe', 'DeskPet.Update.exe.config']:
         assert bundle.read('DafeiyuDeskPet/' + name) == (runtime / name).read_bytes()
@@ -76,6 +80,11 @@ for worker in [runtime / 'DeskPet.Update.exe'] + ([options.legacy_worker.resolve
     subprocess.run([sys.executable, str(checkout / 'tests/LegacyUpdateSmoke.py'), '--worker', str(worker),
                     '--package', str(output / ('DeskPet-Windows-' + version + '.zip')),
                     '--work-directory', str(PROJECT/'work')], check=True, timeout=120)
+if options.legacy_app:
+    assert options.legacy_worker, '--legacy-app requires the genuine published helper'
+    subprocess.run([sys.executable, str(checkout / 'tests/LegacyUpdateSmoke.py'), '--worker', str(options.legacy_worker.resolve()),
+                    '--published-app', str(options.legacy_app.resolve()), '--package', str(output / ('DeskPet-Windows-' + version + '.zip')),
+                    '--work-directory', str(PROJECT/'work')], check=True, timeout=180)
 print('PASS real update engine accepts the complete release archive and preserves personal data')
 with ZipFile(output / ('DeskPet-Windows-' + version + '.zip')) as bundle:
     for document in ['skin-format.md', 'character-packs.md', 'dialogue-setup.md', 'conversation-agent.md', 'native-agent-design.md', 'third-party-notices.md', 'sources.md', 'installation.md', 'daily-use.md', 'voice-presets.md', 'release-naming.md', 'interaction-extension.md']:
@@ -196,6 +205,8 @@ result=subprocess.run(['powershell.exe','-NoProfile','-Command',
     '$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_APP); $a.GetManifestResourceNames()'],
     env=dict(os.environ,DESKPET_TEST_APP=str(runtime/'桌面伙伴.exe')),capture_output=True,check=True)
 resources=result.stdout.decode('utf-8',errors='replace')
+assert 'canonical' not in resources.lower(), 'complete canonical source is build proof only'
+assert 'Dafeiyu.BundledEbao.zip' in resources
 assert 'Dafeiyu.Motion.' not in resources and 'Dafeiyu.MotionManifest' not in resources
 assert 'Dafeiyu.EbaoAtlas' in resources and 'Dafeiyu.Holidays.halloween.e-bao.outfit.json' in resources
 assert 'Dafeiyu.Atlas' not in resources and 'Dafeiyu.MarfuAtlas' not in resources
@@ -204,7 +215,25 @@ for role in ('dafeiyu','marfu','xiaobei','gugugaga'):
     assert 'Dafeiyu.Avatar.'+role in resources
     assert 'Dafeiyu.Companion.'+role+'.' not in resources and 'Dafeiyu.Additional.'+role not in resources
     assert 'Dafeiyu.Holidays.halloween.'+role+'.' not in resources
-print('PASS final application embeds one complete Ebao, five avatars and no other full-role artwork')
+# Inspect the actual embedded ZIP, not just the generated build inputs.
+resource_probe = '''
+$a=[Reflection.Assembly]::LoadFile($env:DESKPET_TEST_APP)
+$stream=$a.GetManifestResourceStream('Dafeiyu.BundledEbao.zip')
+$output=[IO.File]::Create($env:DESKPET_TEST_BUNDLE)
+try { $stream.CopyTo($output) } finally { $stream.Dispose();$output.Dispose() }
+$reader=[IO.StreamReader]::new($a.GetManifestResourceStream('Dafeiyu.BundledEbao.inventory.json'))
+try { $reader.ReadToEnd() } finally { $reader.Dispose() }
+'''
+embedded=root/'embedded-defaults.zip'
+probe=subprocess.run(['powershell.exe','-NoProfile','-Command',resource_probe], env=dict(os.environ,DESKPET_TEST_APP=str(runtime/'桌面伙伴.exe'),DESKPET_TEST_BUNDLE=str(embedded)),capture_output=True,check=True)
+inventory=json.loads(probe.stdout.decode('utf-8-sig'))
+assert inventory['schema_version']==2 and inventory['coverage']=='defaults' and len(inventory['files'])==33
+with ZipFile(embedded) as defaults, ZipFile(checkout/'work/bundled-ebao/e-bao.canonical.zip') as canonical:
+    assert len(defaults.namelist())==33 and not any(n.startswith('holidays/') for n in defaults.namelist())
+    assert len(canonical.namelist())==354
+    assert all(defaults.read(n)==canonical.read(n) for n in defaults.namelist())
+    assert inventory['canonical_zip_sha256']==hashlib.sha256((checkout/'work/bundled-ebao/e-bao.canonical.zip').read_bytes()).hexdigest()
+print('PASS final application embeds 33 exact canonical defaults, legacy Halloween, five avatars; complete source stays build-only')
 staged_runtime=Path(json.loads((output/'runtime-stage.json').read_text(encoding='utf-8'))['path'])
 readme = (staged_runtime / 'README.md').read_text(encoding='utf-8-sig')
 images = re.findall(r'<img\s+src="([^"]+)"|!\[[^\]]*\]\(([^)]+)\)', readme)

@@ -6,7 +6,7 @@
 
 - The Windows installer uses a light two-column layout and five companion portraits. Reinstalls keep an editable location with browse and reset actions. Desktop and login-startup choices apply on Finish while preserving custom entries and silent-update behavior.
 - Switch installed companions from local resources first. A passive bubble reports installation or repair, supports cancellation and retry, and keeps the current companion while work is busy.
-- Restore the last selected companion after an app upgrade, then silently check only that companion for compatible material updates. The complete Ebao pack and matching outfits are included for offline use.
+- Restore the last selected companion after an app upgrade, then silently check only that companion for compatible material updates. All current regular Ebao actions are included for offline use. Selecting Ebao silently prepares remaining holiday outfits; offline failure keeps it usable. Existing complete sources and owned outfits retain their whole generation until a complete replacement can safely switch.
 - Load and reuse companion images on demand, verify material in the background, and retire unused old packages while protecting active readers and the latest usable version.
 - One sound toggle controls task notifications and companion appear, switch and hide cues. Companion cues retain their own volume and three previews, respecting quiet mode and occupied speech audio.
 - This is a development preview. Production release 1.0.3 remains Latest.

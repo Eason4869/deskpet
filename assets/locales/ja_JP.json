@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "操作音の音量",
   "operationSounds.appear": "表示音を試聴",
   "operationSounds.switch": "切り替え音を試聴",
-  "operationSounds.hide": "非表示音を試聴"
+  "operationSounds.hide": "非表示音を試聴",
+  "onboarding.companionOfflineDefaults": "鵝宝の通常動作はオフラインで使えます。選択すると祝日衣装をバックグラウンドで準備します。既存の仲間や衣装は引き続き使え、準備が整うと更新が自動で適用されます。他の仲間は初回選択時にインストールします。人格と音声の設定は仲間ごとに保存されます。"
 }

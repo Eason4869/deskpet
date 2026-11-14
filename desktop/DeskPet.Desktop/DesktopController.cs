@@ -101,7 +101,7 @@ internal sealed partial class DesktopController : IDisposable
         Skin = RestoreCachedStartupCompanion(requested);
         bool companionFallback=Skin.IsPlaceholder;
         if (companionFallback) { Skin = embeddedEbao; }
-        if(Skin.Bundle!=null)RebuildCompanionCatalogFor(Skin);
+        if(Skin.PackageHolidayCatalog!=null)RebuildCompanionCatalogFor(Skin);
         PersonaProfiles.Activate(Settings, Skin.Id, Skin.Prompt, Skin.Voices, Skin.OfficialCharacterId ?? Skin.BuiltinCharacterId);
         if(!companionFallback||Settings.SelectedCompanionKey.Length==0)Settings.SelectedCompanionKey = Skin.PickerKey; store.Save(Settings);
         Api = new ApiClient();

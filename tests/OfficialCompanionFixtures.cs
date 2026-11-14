@@ -24,6 +24,8 @@ namespace Dafeiyu.Tests
         internal bool Offline=false,CorruptMirror=false,WrongSize=false,WrongDigest=false,ForeignUrl=false,IndexIncomplete=false,AllIncompatible=false;
         internal Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> Intercept;
         internal int Packages,Metadata;
+        internal string PublishedVersion=Version;
+        string PublishedName(string id){return PackageName(id).Replace(Version,PublishedVersion);}
         internal OfficialCompanionFixture(){Directory.CreateDirectory(Root);foreach(string id in Ids)Files[PackageName(id)]=Package(id,null);}
         internal static string PackageName(string id){return "DeskPet-Companion-"+id+"-"+Version+".zip";}
         internal static string Hash(byte[] bytes){using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
@@ -31,7 +33,7 @@ namespace Dafeiyu.Tests
         internal static byte[] Json(object value){return Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(value));}
         internal byte[] Index()
         {
-            return Json(Obj("schema_version",1,"companions",Ids.Take(IndexIncomplete?4:5).Select(id=>Obj("id",id,"name",id,"version",Version,"min_app_version",AllIncompatible?"99.0.0":Version,"asset_name",PackageName(id),"size",WrongSize?Files[PackageName(id)].Length+1:Files[PackageName(id)].Length,"sha256",WrongDigest?new string('0',64):Hash(Files[PackageName(id)]),"outfits",new[]{Obj("outfit_id","halloween-2026","version","1.0.0")})).ToArray()));
+            return Json(Obj("schema_version",1,"companions",Ids.Take(IndexIncomplete?4:5).Select(id=>Obj("id",id,"name",id,"version",PublishedVersion,"min_app_version",AllIncompatible?"99.0.0":Version,"asset_name",PublishedName(id),"size",WrongSize?Files[PublishedName(id)].Length+1:Files[PublishedName(id)].Length,"sha256",WrongDigest?new string('0',64):Hash(Files[PublishedName(id)]),"outfits",new[]{Obj("outfit_id","halloween-2026","version","1.0.0")})).ToArray()));
         }
         internal Dictionary<string,object> Release(string tag,byte[] index)
         {

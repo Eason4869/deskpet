@@ -19,7 +19,7 @@ namespace Dafeiyu
             string current=Path.GetFullPath(path);
             while(!String.IsNullOrEmpty(current)){if((Directory.Exists(current)||File.Exists(current))&&(File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException(TextResources.Get("officialCompanionStorage.safeDirectory.text"));current=Path.GetDirectoryName(current);}
         }
-        static void ValidateRelativePath(string relative)
+        internal static void ValidateRelativePath(string relative)
         {
             if(String.IsNullOrEmpty(relative)||relative.Length>220||relative.StartsWith("/",StringComparison.Ordinal)||relative.Contains("\\")||relative.Contains(":"))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.safePath.text"));
             foreach(string part in relative.Split('/'))if(part.Length==0||part=="."||part==".."||part.EndsWith(".",StringComparison.Ordinal)||part.EndsWith(" ",StringComparison.Ordinal)||part.Any(c=>c<32||"<>\"|?*".IndexOf(c)>=0)||Regex.IsMatch(part,@"\A(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|\z)",RegexOptions.IgnoreCase))throw new InvalidDataException(TextResources.Get("officialCompanionStorage.safePath.text"));

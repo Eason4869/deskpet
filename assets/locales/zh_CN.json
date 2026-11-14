@@ -5067,5 +5067,6 @@
   "operationSounds.volume": "操作音效音量",
   "operationSounds.appear": "试听显示",
   "operationSounds.switch": "试听切换",
-  "operationSounds.hide": "试听隐藏"
+  "operationSounds.hide": "试听隐藏",
+  "onboarding.companionOfflineDefaults": "鹅宝的常规动作可离线使用，节日装扮在选中后后台补齐。已有伙伴和装扮可继续使用，更新准备就绪后自动应用。其他伙伴首次选择时按需安装；人格与声音偏好按伙伴分别保存。"
 }
