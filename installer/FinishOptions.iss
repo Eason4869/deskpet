@@ -23,25 +23,17 @@ begin
 end;
 
 function OwnedDesktopLink: Boolean;
-var Shell, Link: Variant; Icon: String;
+var Link: TUnicodeShortcut;
 begin
-  Result := False;
-  if not FileExists(DesktopLink) then Exit;
-  try
-    Shell := CreateOleObject('WScript.Shell');
-    Link := Shell.CreateShortcut(DesktopLink);
-    Icon := Link.IconLocation;
-    Result := (CompareText(Link.TargetPath, ExpandConstant('{app}\桌面伙伴.exe')) = 0)
-      and (Link.Arguments = '')
-      and (Link.Hotkey = '')
-      and (CompareText(Link.WorkingDirectory, ExpandConstant('{app}')) = 0)
-      and ((Link.Description = '') or (Link.Description = '桌面伙伴'))
-      and ((Icon = '') or (Icon = ',0') or (Icon = ', 0') or (CompareText(Icon, ExpandConstant('{app}\桌面伙伴.exe') + ',0') = 0)
-        or (CompareText(Icon, ExpandConstant('{app}\桌面伙伴.exe') + ', 0') = 0))
-      and (Link.WindowStyle = 1);
-  except
-    { Unreadable / user-modified links are never adopted. }
-  end;
+  Result := ReadUnicodeShortcut(DesktopLink, Link);
+  if not Result then Exit;
+  Result := (CompareText(Link.Target, ExpandConstant('{app}\桌面伙伴.exe')) = 0)
+    and (Link.Arguments = '') and (Link.Hotkey = 0)
+    and (CompareText(Link.WorkingDirectory, ExpandConstant('{app}')) = 0)
+    and ((Link.Description = '') or (Link.Description = '桌面伙伴'))
+    and (Link.IconIndex = 0)
+    and ((Link.Icon = '') or (CompareText(Link.Icon, ExpandConstant('{app}\桌面伙伴.exe')) = 0))
+    and (Link.ShowCommand = 1);
 end;
 
 function HasExplicitDesktopTask: Boolean;

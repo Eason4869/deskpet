@@ -17,6 +17,8 @@ import subprocess
 import time
 import uuid
 import winreg
+import zipfile
+from WindowsShortcut import Shortcut, create_shortcut
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--compiler',type=Path,default=Path(os.environ.get('DESKPET_TEST_INNO','work/tools/inno/ISCC.exe')))
@@ -345,12 +347,22 @@ def compile_fixture():
     check(result.returncode==0,'legacy unconditional icon-log fixture compiles separately')
 
 def change_link_hotkey():
-    command='$s=New-Object -ComObject WScript.Shell;$l=$s.CreateShortcut($env:DESKPET_FIXTURE_LINK);$l.TargetPath=$env:DESKPET_FIXTURE_EXE;$l.WorkingDirectory=$env:DESKPET_FIXTURE_APP;$l.Arguments="";$l.Description="";$l.IconLocation=$env:DESKPET_FIXTURE_EXE+",0";$l.WindowStyle=1;$l.Hotkey="CTRL+ALT+D";$l.Save();if(!$l.Hotkey){throw "Missing hotkey"}'
-    si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=0
-    subprocess.run(['powershell.exe','-NoProfile','-Command',command],
-        env=dict(os.environ,DESKPET_FIXTURE_LINK=str(SHORTCUT),DESKPET_FIXTURE_EXE=str(INSTALL/'桌面伙伴.exe'),DESKPET_FIXTURE_APP=str(INSTALL)),
-        startupinfo=si,check=True,capture_output=True,timeout=15)
+    values=create_shortcut(SHORTCUT,INSTALL/'桌面伙伴.exe',working_directory=INSTALL,
+        icon=INSTALL/'桌面伙伴.exe',hotkey=0x0644)
+    check(values['hotkey']==0x0644,'Unicode fixture preserves the exact target and user hotkey')
     return SHORTCUT.read_bytes()
+
+
+def preserve_shortcut_evidence():
+    with Shortcut(SHORTCUT,load=True) as link:values=link.read()
+    values.update(sha256=hashlib.sha256(SHORTCUT.read_bytes()).hexdigest(),
+        process_acp=ctypes.windll.kernel32.GetACP(),compiler=str(args.compiler),
+        target_sha256=hashlib.sha256((INSTALL/'桌面伙伴.exe').read_bytes()).hexdigest())
+    with zipfile.ZipFile(ROOT/'shortcut-evidence.zip','w',zipfile.ZIP_DEFLATED) as archive:
+        archive.write(SHORTCUT,'桌面伙伴.lnk')
+        archive.writestr('metadata.json',json.dumps(values,ensure_ascii=False,indent=2))
+        for source in (ROOT/'script').glob('*.iss'):archive.write(source,'script/'+source.name)
+        archive.write(ROOT/'runtime.iss','runtime.iss')
 
 def finish_regressions():
     results=[]
@@ -367,6 +379,7 @@ def finish_regressions():
     # (including protocol 2 identity) with no task override whatsoever.
     p=start([ROOT/'legacy-installer.exe','/VERYSILENT','/SUPPRESSMSGBOXES','/SP-','/NORESTART','/DIR='+str(INSTALL),'/TASKS=desktopicon'])
     check(p.wait(timeout=60)==0 and SHORTCUT.exists(),'legacy fixture selects and creates desktopicon')
+    preserve_shortcut_evidence()
     p=setup(allow_reuse_previous=True);w=path_page();complete_install(w)
     check(user.SendMessageW(find(w,'创建桌面快捷方式'),0xF0,0,0)==1,'inherited desktop option starts checked')
     click(find(w,'创建桌面快捷方式'));click(find(w,'完成，稍后启动'))
@@ -412,6 +425,23 @@ def finish_regressions():
     record(SHORTCUT.exists() and SHORTCUT.read_bytes()==before,'uninstall preserves a same-target hotkey-modified link byte for byte')
     if SHORTCUT.exists():SHORTCUT.unlink()
     wait(lambda:not INSTALL.exists(),'focused fixture directory cleanup')
+    # A blank icon filename does not make a nonzero custom icon index owned.
+    # Corrupt files must likewise survive both update and uninstall unchanged.
+    for label,corrupt in (('blank icon with nonzero index',False),('truncated shortcut',True)):
+        p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/TASKS=desktopicon')
+        check(p.wait(timeout=60)==0,'protected-link fixture installs')
+        values=create_shortcut(SHORTCUT,INSTALL/'桌面伙伴.exe',working_directory=INSTALL,icon_index=2)
+        check(values['icon']=='' and values['icon_index']==2,'blank custom icon fixture round-trips exactly')
+        if corrupt:SHORTCUT.write_bytes(SHORTCUT.read_bytes()[:30])
+        before=SHORTCUT.read_bytes()
+        p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/TASKS=desktopicon')
+        check(p.wait(timeout=60)==0,'protected-link fixture updates')
+        record(SHORTCUT.read_bytes()==before,'silent update protects '+label)
+        p=setup();w=path_page();complete_install(w)
+        record(not user.IsWindowEnabled(find(w,'创建桌面快捷方式')),'Finish protects '+label)
+        click(find(w,'完成，稍后启动'));check(p.wait(timeout=20)==0,'protected-link fixture finishes')
+        uninstall();record(SHORTCUT.read_bytes()==before,'uninstall preserves '+label)
+        SHORTCUT.unlink();wait(lambda:not INSTALL.exists(),'protected-link fixture directory cleanup')
     for condition,label in results:check(condition,label)
     (ROOT/'finish-regressions.json').write_text(json.dumps({'passed':len(results),'results':results},ensure_ascii=False,indent=2),encoding='utf-8')
 
@@ -468,9 +498,7 @@ try:
     foreign='"'+str(ROOT/'other app.exe')+'" --startup'
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER,RUN_KEY) as key:winreg.SetValueEx(key,'DafeiyuDeskPet',0,winreg.REG_SZ,foreign)
     # Preserve a same-target link whose description the user modified.
-    command='$s=New-Object -ComObject WScript.Shell;$l=$s.CreateShortcut($env:DESKPET_FIXTURE_LINK);$l.Description="custom description";$l.Save()'
-    si=subprocess.STARTUPINFO();si.dwFlags|=subprocess.STARTF_USESHOWWINDOW;si.wShowWindow=0
-    subprocess.run(['powershell.exe','-NoProfile','-Command',command],env=dict(os.environ,DESKPET_FIXTURE_LINK=str(SHORTCUT)),startupinfo=si,check=True,capture_output=True,timeout=15)
+    create_shortcut(SHORTCUT,INSTALL/'桌面伙伴.exe',working_directory=INSTALL,description='custom description',icon=INSTALL/'桌面伙伴.exe')
     shortcut_before=SHORTCUT.read_bytes()
     p=setup('/VERYSILENT','/SUPPRESSMSGBOXES','/TASKS=desktopicon')
     check(p.wait(timeout=60)==0 and run_value()==foreign and SHORTCUT.read_bytes()==shortcut_before,'silent explicit shortcut task also preserves modified link and foreign startup')
@@ -499,11 +527,7 @@ except Exception as failure:
     try:
         evidence['completion']=completion_state(wizard(),'failure-controls')
         if SHORTCUT.is_file():
-            command='[Console]::OutputEncoding=[Text.Encoding]::UTF8;$s=New-Object -ComObject WScript.Shell;$l=$s.CreateShortcut($env:DESKPET_FIXTURE_LINK);[pscustomobject]@{TargetPath=$l.TargetPath;Arguments=$l.Arguments;Hotkey=$l.Hotkey;WorkingDirectory=$l.WorkingDirectory;Description=$l.Description;IconLocation=$l.IconLocation;WindowStyle=$l.WindowStyle}|ConvertTo-Json'
-            hidden=subprocess.STARTUPINFO();hidden.dwFlags|=subprocess.STARTF_USESHOWWINDOW;hidden.wShowWindow=0
-            result=subprocess.run(['powershell.exe','-NoProfile','-Command',command],env=dict(os.environ,DESKPET_FIXTURE_LINK=str(SHORTCUT)),startupinfo=hidden,capture_output=True,timeout=15)
-            (ROOT/'failure-link-com.json').write_bytes(result.stdout)
-            evidence['shortcut_com']=dict(exit_code=result.returncode,output=result.stdout.decode('utf-8-sig',errors='replace'))
+            with Shortcut(SHORTCUT,load=True) as link:evidence['shortcut_unicode']=link.read()
     except Exception as diagnostic:
         evidence['diagnostic_error']=repr(diagnostic);print('Failure evidence could not complete: '+repr(diagnostic),flush=True)
     (ROOT/'result.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2),encoding='utf-8')

@@ -14,6 +14,27 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - name: Verify native installer path, completion, silent update and ownership
+        shell: powershell
+        run: |
+          python -m pip install Pillow
+          if ($LASTEXITCODE) { throw 'Installer screenshot dependency installation failed' }
+          $candidates = @($env:INNO_SETUP_COMPILER, (Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
+          $compiler = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+          if (!$compiler) { throw 'Inno compiler required for native installer acceptance' }
+          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler
+          if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
+      - name: Preserve native installer UI evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installer-ui-${{ github.sha }}
+          if-no-files-found: ignore
+          path: |
+            work/installer-ui-*/*.png
+            work/installer-ui-*/*.log
+            work/installer-ui-*/result.json
+            work/installer-ui-*/shortcut-evidence.zip
       - name: Check proactive core and UI test registration
         shell: powershell
         run: |
@@ -349,24 +370,6 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
-      - name: Verify native installer path, completion, silent update and ownership
-        shell: powershell
-        run: |
-          $candidates = @($env:INNO_SETUP_COMPILER, (Join-Path $PWD 'work/tools/inno/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7/ISCC.exe'))
-          $compiler = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
-          if (!$compiler) { throw 'Inno compiler required for native installer acceptance' }
-          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler
-          if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
-      - name: Preserve native installer UI evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: installer-ui-${{ github.sha }}
-          if-no-files-found: ignore
-          path: |
-            work/installer-ui-*/*.png
-            work/installer-ui-*/*.log
-            work/installer-ui-*/result.json
       - name: Verify abortable uninstall UI and close ownership
         shell: powershell
         run: |

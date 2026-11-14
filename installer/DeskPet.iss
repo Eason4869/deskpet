@@ -75,6 +75,7 @@ var
   RetiredSuccess: Boolean;
 
 #include "VersionGuard.iss"
+#include "UnicodeShortcut.iss"
 #include "FinishOptions.iss"
 #include "InstallerUi.iss"
 #include "RetireRuntime.iss"
@@ -85,17 +86,10 @@ begin
 end;
 
 procedure RemoveLegacyShortcut(Path, Target: String);
-var
-  Shell, Shortcut: Variant;
+var Shortcut: TUnicodeShortcut;
 begin
-  if not FileExists(Path) then Exit;
-  try
-    Shell := CreateOleObject('WScript.Shell');
-    Shortcut := Shell.CreateShortcut(Path);
-    if CompareText(Shortcut.TargetPath, Target) = 0 then DeleteFile(Path);
-  except
-    { A user-modified or unreadable shortcut is left untouched. }
-  end;
+  if ReadUnicodeShortcut(Path, Shortcut) then
+    if CompareText(Shortcut.Target, Target) = 0 then DeleteFile(Path);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
