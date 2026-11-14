@@ -105,7 +105,9 @@ else:
     with installer.open('rb') as stream:assert stream.read(2)==b'MZ'
     installer_probe='[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false);$v=[Diagnostics.FileVersionInfo]::GetVersionInfo($env:DESKPET_VERIFY_INSTALLER);[pscustomobject]@{product_version=$v.ProductVersion;file_version=$v.FileVersion}|ConvertTo-Json -Compress'
     probe=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',installer_probe],env=dict(os.environ,DESKPET_VERIFY_INSTALLER=str(installer)),capture_output=True,check=True,timeout=30,creationflags=subprocess.CREATE_NO_WINDOW)
-    installer_identity=json.loads(probe.stdout.decode('utf-8-sig'))
+    installer_identity_raw=json.loads(probe.stdout.decode('utf-8-sig'))
+    # Inno reserves version-string capacity with trailing ASCII spaces.
+    installer_identity={key:value.rstrip(' ') for key,value in installer_identity_raw.items()}
     assert installer_identity==dict(product_version='1.0.4-dev.2',file_version='1.0.4.0'),installer_identity
     import winreg
     app_key=r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{3B63C162-076E-4B2F-BDCC-2572664875A9}_is1'
@@ -138,7 +140,7 @@ else:
                 assert target.stat().st_size==item.file_size and hash_file(target)==hasher.hexdigest(),item.filename
                 installed.append(dict(name=str(relative),sha256=hasher.hexdigest(),bytes=item.file_size))
         assert hash_file(install/'桌面伙伴.exe')==identity['sha256']
-        write_report('shipping-installer-identity.json',dict(commit=COMMIT,installer=installer_identity,expected_build_guard='passed',installed_files=installed))
+        write_report('shipping-installer-identity.json',dict(commit=COMMIT,installer=installer_identity,installer_raw=installer_identity_raw,expected_build_guard='passed',installed_files=installed))
     finally:
         if uninstaller.exists():
             assert uninstaller.resolve().parent==install.resolve()
