@@ -30,6 +30,12 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: work/release-fixture
+          sparse-checkout: .github/release-fixtures
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -48,7 +54,11 @@ jobs:
           python -m pip install Pillow
           if ($LASTEXITCODE) { throw 'Dependency installation failed' }
           foreach ($target in @('CompanionStartupTests','ReleaseVersionTests','ReleaseIdentityTests','UpdateChannelTests','UpdateTests','UpdateApplyTests','UpdateScheduleTests','AutoUpdateSmoke')) {
-            & ./Build.ps1 -Target $target
+            if ($target -eq 'AutoUpdateSmoke') {
+              python -X utf8 work/release-fixture/.github/release-fixtures/RunAutoUpdateFixture.py --source . --output work/release-fixture-results
+            } else {
+              & ./Build.ps1 -Target $target
+            }
             if ($LASTEXITCODE) { throw "Failed: $target" }
           }
           python tests/RuntimePackageTests.py
@@ -57,6 +67,17 @@ jobs:
           if ($LASTEXITCODE) { throw 'Asset checks failed' }
           python tests/WindowsReleaseTests.py
           if ($LASTEXITCODE) { throw 'Publication guard checks failed' }
+      - name: Preserve external fixture evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-fixture-evidence-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            work/release-fixture-results/*.json
+            work/release-fixture-results/*.log
+            work/release-fixture-results/AutoUpdateSmoke.cs
+            work/release-fixture-results/AutoUpdateSmoke.rsp
       - name: Package verified artifacts
         shell: pwsh
         run: |
