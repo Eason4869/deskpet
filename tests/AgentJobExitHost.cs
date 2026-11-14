@@ -43,11 +43,33 @@ namespace Dafeiyu.Tests
             var watch=Stopwatch.StartNew();
             while(!condition()){if(watch.ElapsedMilliseconds>milliseconds)throw new TimeoutException(description);await Task.Delay(25);}
         }
-        static async Task RunAsync(string mode,string root)
+        internal static PetWindow CreateFixturePet(string root)
         {
             var settings=new PetSettings{AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false,ReadReplies=false,FollowCursor=false,Wander=false,HideOnFullscreen=false,OnboardingState="completed"};
             foreach(string key in settings.Hotkeys.Keys.ToArray())settings.Hotkeys[key]="";
-            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);pet.Skin.FixtureEmbedded=true;pet.Show();pet.SetPaused(true);
+            var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(root,"settings.json")),null);
+            pet.Skin.FixtureEmbedded=true;
+            // This host owns only its synthetic local companion and agent tree.
+            // Match the established catalog-fixture binding before Show: neither
+            // first-frame maintenance nor selected-role upgrade belongs to it.
+            foreach(string field in new[]{"officialStartupStarted","officialFirstFrameRendered"})
+                typeof(PetWindow).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).SetValue(pet,true);
+            return pet;
+        }
+        internal static async Task VerifyFixtureSourceAsync(PetWindow pet)
+        {
+            // Exercise both production callbacks, not a timing-dependent network
+            // outcome. The queued maintenance callback must also have drained.
+            foreach(string method in new[]{"CompanionFirstFrameRendered","TryStartOfficialStartup"})
+                typeof(PetWindow).GetMethod(method,BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pet,null);
+            await pet.Dispatcher.InvokeAsync(new Action(()=>{}),System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            if(typeof(PetWindow).GetField("officialDownloads",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(pet)!=null)
+                throw new Exception("Synthetic exit fixture initiated unrelated official companion work");
+        }
+        static async Task RunAsync(string mode,string root)
+        {
+            var pet=CreateFixturePet(root);pet.Show();pet.SetPaused(true);
+            await VerifyFixtureSourceAsync(pet);
             var field=typeof(PetWindow).GetField("agentJobServices",BindingFlags.Instance|BindingFlags.NonPublic);
             var services=(AgentJobApplicationService)field.GetValue(pet);
             if(mode=="held")
