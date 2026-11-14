@@ -27,7 +27,17 @@ owned=Path(os.environ['RUNNER_TEMP']).resolve()/('dsp-'+uuid.uuid4().hex[:8])
 owned.mkdir();assets=owned/'assets';assets.mkdir()
 
 def api(path):
-    result=subprocess.run(['gh','api','repos/'+REPO+'/'+path],check=True,capture_output=True,timeout=90)
+    endpoint='repos/'+REPO+'/'+path
+    result=subprocess.run(['gh','api',endpoint],capture_output=True,timeout=90)
+    if result.returncode:
+        # Standard gh errors only: never enable HTTP debug or print headers/env.
+        error=result.stderr.decode('utf-8',errors='replace').strip()
+        for key in ('GH_TOKEN','GITHUB_TOKEN'):
+            secret=os.environ.get(key)
+            if secret:error=error.replace(secret,'[REDACTED]')
+        error=error[:1500]
+        print('GitHub GET '+endpoint+' failed (exit '+str(result.returncode)+'): '+error,file=sys.stderr,flush=True)
+        result.check_returncode()
     return json.loads(result.stdout)
 
 def write_report(name,data):

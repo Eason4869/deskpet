@@ -14,6 +14,10 @@ env:
   PYTHONUTF8: '1'
 jobs:
   verify:
+    # GitHub restricts draft release visibility to callers with push access.
+    # The verifier itself performs GET requests only; it never publishes or edits.
+    permissions:
+      contents: write
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
