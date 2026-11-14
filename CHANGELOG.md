@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.2) · 开发预览
+
+- 将 Windows 安装界面素材与程序载荷分隔压缩，避免显示窗口前反复解压大型程序数据；保留现有安装界面、五位伙伴立绘与手动、自动轮播效果。
+- 安装页的进行中圆环显示旋转动画；未开始的步骤保持静态空圈，完成页停止刷新该动画。
+
 ## [1.0.4-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.1) · 开发预览
 
 - Windows 安装向导采用浅色双栏界面与五位伙伴轮播；重装时仍可编辑、浏览或恢复默认安装位置，桌面快捷方式与开机启动在完成时确认，并保留已有的自定义项及静默更新行为。

@@ -14,6 +14,9 @@ var
   RoleDots: array[0..4] of TNewButton;
   RoleBitmaps: array[0..4] of TPngImage;
   CurrentRole: Integer;
+  ProgressSpinner: TBitmapImage;
+  SpinnerFrames: array[0..11] of TPngImage;
+  SpinnerFrame: Integer;
   CarouselTimer: LongWord;
   UiClosing: Boolean;
   NativeSized: Boolean;
@@ -71,6 +74,10 @@ begin
   { Do not animate through modal path / cancellation / error dialogs. }
   RefreshStyledButtons;
   if WizardForm.Enabled then begin
+    if (WizardForm.CurPageID = wpInstalling) and (ProgressSpinner <> nil) then begin
+      SpinnerFrame := (SpinnerFrame + 1) mod 12;
+      ProgressSpinner.PngImage.Assign(SpinnerFrames[SpinnerFrame]);
+    end;
     CarouselElapsed := CarouselElapsed + 100;
     if CarouselElapsed >= 4500 then begin SelectRole((CurrentRole + 1) mod 5); CarouselElapsed := 0; end;
   end;
@@ -85,6 +92,8 @@ begin
   end;
   for I := 0 to 4 do
     if RoleBitmaps[I] <> nil then RoleBitmaps[I].Free;
+  for I := 0 to 11 do
+    if SpinnerFrames[I] <> nil then SpinnerFrames[I].Free;
   StopNativeStyle;
 end;
 
@@ -222,6 +231,12 @@ begin
     StageIcon := TBitmapImage.Create(WizardForm); StageIcon.Parent := WizardForm.InstallingPage;
     StageIcon.SetBounds(0, ScaleY(130+I*39), ScaleX(19), ScaleY(19)); StageIcon.Stretch := True;
     StageIcon.PngImage.LoadFromFile(ExpandConstant('{tmp}\') + Name + '.png'); StageIcon.BackColor := clWhite;
+    if I = 1 then ProgressSpinner := StageIcon;
+  end;
+  for I := 0 to 11 do begin
+    Name := 'stage-spinner-' + IntToStr(I); ExtractTemporaryFile(Name + '.png');
+    SpinnerFrames[I] := TPngImage.Create;
+    SpinnerFrames[I].LoadFromFile(ExpandConstant('{tmp}\') + Name + '.png');
   end;
   UiHint := UiLabel(WizardForm.InstallingPage, '更新后将继续使用你上次选择的伙伴。', 0, 264, 548, 36, 9); UiHint.Font.Color := $00A48C7C;
 

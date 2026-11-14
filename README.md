@@ -8,7 +8,7 @@
 
 1.0.3 为密钥输入框加入显示／隐藏按钮，改进 Windows 生图结果卡片，并修复同密钥切换遮挡及 Windows 无障碍名称问题。详见[更新日志](CHANGELOG.md)。
 
-当前源码开发预览：**1.0.4-dev.1**。伙伴本地切换、升级后保留选择与静默素材更新、鹅宝完整常规动作离线可用及统一提示音设置，见[更新日志](CHANGELOG.md)；预览安装包请查看[发布列表](https://github.com/Eason4869/deskpet/releases)。
+当前源码开发预览：**1.0.4-dev.2**。本版优化 Windows 安装器启动速度；伙伴切换、后台素材更新及统一提示音等内容见[更新日志](CHANGELOG.md)。预览安装包请查看[发布列表](https://github.com/Eason4869/deskpet/releases)。
 
 ![新建对话：伙伴立绘位于输入框上方](previews/release-1.0.0/conversation.png)
 

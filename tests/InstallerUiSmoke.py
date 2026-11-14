@@ -26,6 +26,7 @@ parser.add_argument('--mutate-hidden-dir',action='store_true',help='Mutation che
 parser.add_argument('--mutate-no-previous-dir',action='store_true',help='Mutation check: stop reusing the previous directory in the owned copy only.')
 parser.add_argument('--mutate-unready-finish',action='store_true',help='Mutation check: remove only the unready Finish-entry guard in the owned copy.')
 parser.add_argument('--finish-regressions-only',action='store_true',help='Run the focused completion state/ownership regressions only.')
+parser.add_argument('--progress-animation-only',action='store_true',help='Check the active spinner moves while the pending ring stays still.')
 args=parser.parse_args()
 PROJECT=Path(__file__).resolve().parents[1]
 ROOT=PROJECT/'work'/('installer-ui-'+uuid.uuid4().hex)
@@ -268,17 +269,28 @@ def observe_finish_gate(w):
 
 def complete_install(w):
     click(find(w,'开始安装'))
-    values=set();captured=False
+    values=set();captured=False;animation_samples=[]
     end=time.monotonic()+60
     while time.monotonic()<end and not finish_page(w):
-        observe_finish_gate(w)
+        if not args.progress_animation_only:observe_finish_gate(w)
         for c in controls(w):
             value=text(c)
             if classname(c)=='TNewStaticText' and value.isdigit():
                 values.add(int(value))
                 if 0<int(value)<100 and not captured:snapshot(w,'progress');captured=True
+                if args.progress_animation_only and 0<int(value)<100 and len(animation_samples)<4:
+                    from PIL import Image
+                    name='progress-frame-'+str(len(animation_samples));snapshot(w,name)
+                    image=Image.open(ROOT/(name+'.png')).convert('RGB')
+                    sx,sy=image.width/1000,image.height/636
+                    def ring(y):return image.crop((round(400*sx),round(y*sy),round(419*sx),round((y+19)*sy))).tobytes()
+                    animation_samples.append((ring(393),ring(432)))
         time.sleep(.015)
     wait(lambda:finish_page(w),'completion page')
+    if args.progress_animation_only:
+        check(len(animation_samples)>=3,'native progress remains visible for animation sampling')
+        check(len({active for active,pending in animation_samples})>=3,'active installation ring rotates across captured native frames')
+        check(len({pending for active,pending in animation_samples})==1,'pending verification ring remains static')
     return values
 
 def compile_fixture():
@@ -288,6 +300,12 @@ def compile_fixture():
     for name in ('pet.ico','deskpet-logo.png'):shutil.copy2(PROJECT/'assets'/name,ROOT/'assets'/name)
     for file in script.glob('*.iss'):
         content=file.read_text(encoding='utf-8-sig')
+        if args.progress_animation_only and file.name=='InstallerUi.iss':
+            needle='procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);\nbegin'
+            assert content.count(needle)==1
+            # Slow only the owned fixture's copy loop so several real timer
+            # frames can be observed, even on a fast filesystem.
+            content=content.replace(needle,needle+'\n  if (CurProgress > 0) and (CurProgress < MaxProgress) then Sleep(20);')
         content=content.replace(r'DefaultDirName={localappdata}\Programs\EbaoDeskPet','DefaultDirName='+str(DEFAULT_INSTALL))
         # Bound the native reset action too; no fixture control points at the
         # real user's default installation directory.
@@ -302,7 +320,7 @@ def compile_fixture():
             prefix=str(ROOT.resolve()).replace("'","''")+'\\'
             guard="  if CompareText(Copy(AddBackslash(ExpandFileName(WizardDirValue)), 1, Length('"+prefix+"')), '"+prefix+"') <> 0 then begin Result := 'Fixture refuses installation outside its owned root.'; Exit; end;\n"
             content=content.replace(needle,guard+needle)
-        if file.name=='FinishOptions.iss':
+        if file.name=='FinishOptions.iss' and not args.progress_animation_only:
             # This message loop and its acknowledgements exist only in the
             # already isolated, uniquely identified fixture source copy.
             used=str(ROOT/'finish-gate-used').replace("'","''")
@@ -447,6 +465,12 @@ def finish_regressions():
 
 try:
     compile_fixture()
+    if args.progress_animation_only:
+        p=setup();w=path_page();complete_install(w)
+        click(find(w,'完成，稍后启动'));check(p.wait(timeout=20)==0,'animation fixture finishes normally')
+        (ROOT/'animation-result.json').write_text(json.dumps({'passed':passed,'root':str(ROOT)},indent=2),encoding='utf-8')
+        print('Installer animation evidence: '+str(ROOT),flush=True)
+        raise SystemExit(0)
     finish_regressions()
     if args.finish_regressions_only:raise SystemExit(0)
     p=start([ROOT/'installer.exe','/SP-','/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR='+str(GUARD_PROBE),'/LOG='+str(ROOT/'target-guard.log')],guard_probe=True)

@@ -66,7 +66,15 @@ def badge():
     d.ellipse((round(5.5*S),round(50.5*S),round(10.5*S),round(55.5*S)),fill='#A5C2FF')
     im.save(ROOT/'success.png')
 
+def spinner():
+    for frame in range(12):
+        im=Image.new('RGBA',(19*S,19*S),'white');d=ImageDraw.Draw(im)
+        d.ellipse((1,1,19*S-2,19*S-2),fill='white',outline='#dbe2ed',width=S)
+        d.arc((2,2,19*S-3,19*S-3),230+frame*30,350+frame*30,fill='#4568ed',width=round(1.7*S))
+        im.save(ROOT/('stage-spinner-'+str(frame)+'.png'))
+
 if __name__=='__main__':
+    spinner()
     for role in ('e-bao','dafeiyu','marfu','xiaobei','gugugaga'):panel(role)
     for row in [('button-primary',150,46,'#4568ed','#4568ed'),('button-secondary',130,45,'white','#ccd7eb'),
         ('button-link',110,30,'white','white'),('dot',26,26,'#edf4ff','#edf4ff'),('dot-active',26,26,'#edf4ff','#edf4ff')]:surface(*row)

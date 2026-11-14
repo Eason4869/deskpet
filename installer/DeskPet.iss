@@ -56,8 +56,11 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 #include RuntimeFiles
-Source: "assets\*.png"; Flags: dontcopy
-Source: "..\assets\deskpet-logo.png"; Flags: dontcopy
+; InitializeWizard extracts these before the window is shown. Keep their
+; storage separate from the large runtime payload preceding them. PNG is already
+; compressed: store these small UI assets directly for immediate random access.
+Source: "assets\*.png"; Flags: dontcopy solidbreak nocompression
+Source: "..\assets\deskpet-logo.png"; Flags: dontcopy solidbreak nocompression
 
 [InstallDelete]
 Type: files; Name: "{app}\大肥鱼桌宠.exe"

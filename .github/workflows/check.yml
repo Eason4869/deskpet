@@ -23,6 +23,8 @@ jobs:
           $compiler = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
           if (!$compiler) { throw 'Inno compiler required for native installer acceptance' }
           python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler
+          if ($LASTEXITCODE) { throw 'Installer UI checks failed' }
+          python -X utf8 tests/InstallerUiSmoke.py --compiler $compiler --progress-animation-only
           if ($LASTEXITCODE) { throw 'Native installer acceptance failed' }
       - name: Preserve native installer UI evidence
         if: always()
@@ -34,6 +36,7 @@ jobs:
             work/installer-ui-*/*.png
             work/installer-ui-*/*.log
             work/installer-ui-*/result.json
+            work/installer-ui-*/animation-result.json
             work/installer-ui-*/shortcut-evidence.zip
       - name: Check proactive core and UI test registration
         shell: powershell
@@ -370,6 +373,18 @@ jobs:
         run: |
           .\BuildInstaller.ps1 -OutputDirectory work/dev3-ci-package
           if ($LASTEXITCODE) { throw 'Installer preflight failed' }
+      - name: Verify complete installer opens within two seconds
+        shell: powershell
+        run: |
+          $version = [regex]::Match((Get-Content src/ReleaseInfo.cs -Raw), 'DisplayVersion="([^"]+)"').Groups[1].Value
+          python -X utf8 tests/InstallerStartupSmoke.py --after "work/dev3-ci-package/DeskPet-Windows-Setup-$version.exe" --output work/installer-startup --rounds 3 --max-ready-seconds 2 --ready-timeout-seconds 10
+          if ($LASTEXITCODE) { throw 'Installer startup acceptance failed' }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: installer-startup-evidence
+          path: work/installer-startup/*
+          if-no-files-found: ignore
       - name: Verify abortable uninstall UI and close ownership
         shell: powershell
         run: |

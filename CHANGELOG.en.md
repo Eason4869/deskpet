@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en.md)
 
+## [1.0.4-dev.2](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.2) · Development preview
+
+- Store Windows installer artwork in separate compression blocks to avoid repeatedly decompressing the application payload before showing the wizard. Preserve the existing UI, five character illustrations, manual selection, and automatic carousel.
+- Animate the active installation ring while pending steps remain static; stop updating the ring on the completion page.
+
 ## [1.0.4-dev.1](https://github.com/Eason4869/deskpet/releases/tag/v1.0.4-dev.1) · Development preview
 
 - The Windows installer uses a light two-column layout and five companion portraits. Reinstalls keep an editable location with browse and reset actions. Desktop and login-startup choices apply on Finish while preserving custom entries and silent-update behavior.
