@@ -107,7 +107,14 @@ namespace Dafeiyu.Tests
                 var guideSnapshot=store.SaveExactSnapshotAsync(cfg);Until(()=>entered.IsSet);store.SaveLanguageSelection(cfg,"en_US",true);releaseIO.Set();Wait(guideSnapshot);store.BeforeExactSave=null;
                 var guideSaved=store.Load();Check(guideSaved.UiLanguage=="en_US"&&guideSaved.OnboardingState=="deferred"&&guideSaved.OnboardingLessonId=="welcome"&&guideSaved.OnboardingStep==0,"newer language guide transaction survives an older asynchronous full candidate");
                 store.BeforePreferenceCommit=()=>{throw new IOException("fixture failure");};volume.RaiseEvent(new DragStartedEventArgs(0,0){RoutedEvent=Thumb.DragStartedEvent});volume.Value=63;
-                Check(!FlushPet(pet),"disk failure is reported by preference flush");pet.Close();Pump();Check(pet.IsVisible,"failed preference flush cancels window close");
+                Check(!FlushPet(pet),"disk failure is reported by preference flush");
+                // Visibility stays true while close awaits I/O; keep failure active until cancellation is complete.
+                entered.Reset();releaseIO.Reset();store.BeforePreferenceCommit=()=>{entered.Set();if(!releaseIO.Wait(5000))throw new IOException("fixture release timeout");throw new IOException("fixture failure");};
+                pet.Close();Until(()=>entered.IsSet);Pump();
+                Check(pet.IsVisible&&(bool)typeof(PetWindow).GetField("closing",Members).GetValue(pet)&&!pet.IsEnabled&&!host.IsEnabled,"visible window does not mean the gated asynchronous close was cancelled");
+                releaseIO.Set();Until(()=>!(bool)typeof(PetWindow).GetField("closing",Members).GetValue(pet));
+                Check(pet.IsVisible,"failed preference flush cancels window close");
+                Check(pet.IsEnabled&&host.IsEnabled,"failed preference close restores readiness before recovery removes the failure hook");
                 volume.RaiseEvent(new DragCompletedEventArgs(0,0,false){RoutedEvent=Thumb.DragCompletedEvent});store.BeforePreferenceCommit=null;Check(FlushPet(pet)&&store.Load().Volume==63,"retry after disk recovery saves latest value");
                 Directory.CreateDirectory(path+".tmp");pet.Close();Until(()=>!(bool)typeof(PetWindow).GetField("closing",Members).GetValue(pet));
                 Check(pet.IsVisible&&pet.IsEnabled&&host.IsEnabled,"final configuration save failure restores usable windows before teardown");Directory.Delete(path+".tmp");
