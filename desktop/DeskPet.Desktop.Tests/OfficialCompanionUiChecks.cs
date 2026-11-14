@@ -104,14 +104,16 @@ internal static class OfficialCompanionUiChecks
     internal static int RunShutdownLeaseProbe(string directory)
     {
         int checks=0;void Check(bool value,string label){if(!value)throw new Exception("Shutdown lease: "+label);checks++;Console.WriteLine("PASS "+label);}
-        foreach(bool timeout in new[]{false,true}){
-            string root=Path.Combine(directory,timeout?"timeout":"release");
+        foreach(string mode in new[]{"service","publication","release","timeout"}){
+            bool publication=mode=="publication",serviceLock=mode=="service",held=publication||serviceLock,timeout=mode!="release";
+            string root=Path.Combine(directory,mode);
             using var fixture=new HolidayReviewChecks.Fixture(Path.Combine(root,"holiday"),"e-bao",null,false);
             string data=Path.Combine(root,"data");using var source=new ShutdownLeaseSource(data);
             string stage=Path.Combine(source.Downloads.Storage.CharacterRoot("e-bao"),".stage-"+Guid.NewGuid().ToString("N"));var package=CreatePackage(stage,"e-bao",fixture.Root);
             source.Downloads.Storage.WriteReceipt(stage,package.Asset,CancellationToken.None);var installed=source.Downloads.Storage.Publish(stage,package.Asset,CancellationToken.None,()=>{},action=>action());
             using var owner=new DesktopController(new ClassicDesktopStyleApplicationLifetime(),new TestRuntime(data),officialSourceFactory:_=>source);
-            Task? worker=null;
+            Task? worker=null,holder=null,publicationAttempt=null,lateAudit=null;bool latePublished=false;var shutdownClock=new System.Diagnostics.Stopwatch();using var publicationEntered=new ManualResetEventSlim();using var publicationRelease=new ManualResetEventSlim();
+            using var watchdog=new System.Threading.Timer(_=>publicationRelease.Set(),null,Timeout.Infinite,Timeout.Infinite);
             try{
                 Until(()=>source.Entered.Task.IsCompleted);
                 var audits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(source.Downloads)!;
@@ -120,21 +122,59 @@ internal static class OfficialCompanionUiChecks
                 bool CanOpen(){try{using var handle=new FileStream(locked,FileMode.Open,FileAccess.ReadWrite,FileShare.None);return true;}catch(IOException){return false;}}
                 Check(!worker.IsCompleted&&!CanOpen(),"real native audit retains the exact managed E owner lock");Console.WriteLine("LEASE_OWNER "+File.ReadAllLines(record)[1]+" LOCK="+locked);
                 if(!timeout)Check(ProbeLockChild(locked)==2,"independent process confirms retained owner lock");
-                owner.Pet.Close();owner.Dispose();Until(()=>source.Shutdown!=null&&audits.Count==0);
+                if(serviceLock){
+                    source.AuditCaller.Cancel();Until(()=>audits.Count==0);owner.Pet.Close();
+                    var active=owner.Skin.Snapshot!;var snapshotGate=typeof(OfficialCompanionSnapshot).GetField("gate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(active)!;
+                    var assets=typeof(DesktopController).GetField("companionAssets",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!;
+                    var assetGate=typeof(SpriteAssets).GetField("assetGate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(assets)!;
+                    holder=Task.Run(()=>{lock(snapshotGate){active.ReadVerifiedBytes("pet.json");lock(assetGate){publicationEntered.Set();publicationRelease.Wait();}}});Until(()=>publicationEntered.IsSet);
+                    lateAudit=Task.Run(()=>source.Downloads.ValidateSnapshotInBackgroundAsync(active,CancellationToken.None));
+                    var serviceGate=typeof(OfficialCompanionDownloads).GetField("gate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(source.Downloads)!;
+                    bool GateHeld(){if(!System.Threading.Monitor.TryEnter(serviceGate))return true;System.Threading.Monitor.Exit(serviceGate);return false;}
+                    Until(GateHeld);Check(!lateAudit.IsCompleted,"actual audit holds service gate while retaining the active snapshot read lock");
+                }
+                if(publication){
+                    var boundary=typeof(OfficialCompanionDownloads).GetField("publicationGate",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(source.Downloads)!;
+                    holder=Task.Run(()=>{lock(boundary){publicationEntered.Set();publicationRelease.Wait();}});Until(()=>publicationEntered.IsSet);
+                    string lateStage=Path.Combine(source.Downloads.Storage.CharacterRoot("e-bao"),".stage-"+Guid.NewGuid().ToString("N"));var late=CreatePackage(lateStage,"e-bao",fixture.Root);
+                    var original=late.Asset;var replacement=new OfficialCompanionAsset(original.Id,original.Name,original.Version,original.MinimumAppVersion,original.Tag,original.AssetName,original.Size,new string('c',64),original.Outfits);
+                    source.Downloads.Storage.WriteReceipt(lateStage,replacement,CancellationToken.None);
+                    var alive=(Action)Delegate.CreateDelegate(typeof(Action),source.Downloads,typeof(OfficialCompanionDownloads).GetMethod("CheckAlive",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!);
+                    publicationAttempt=Task.Run(()=>{try{source.Downloads.Storage.Publish(lateStage,replacement,CancellationToken.None,alive,action=>{lock(boundary)action();});latePublished=true;}catch(Exception error) when(error is OperationCanceledException or ObjectDisposedException){}});
+                    Until(()=>Directory.GetFiles(source.Downloads.Storage.CharacterRoot("e-bao"),".current-*").Length==1);
+                    // Only a deadlock watchdog: success depends on the boundary still
+                    // being held, never on sleeping long enough for it to release.
+                    watchdog.Change(8000,Timeout.Infinite);
+                }
+                if(held)watchdog.Change(8000,Timeout.Infinite);
+                shutdownClock.Start();owner.Pet.Close();owner.Dispose();
+                if(held){
+                    Check(!publicationRelease.IsSet,"UI shutdown returns while actual companion I/O locks remain held");
+                    bool dispatched=false;Dispatcher.UIThread.Post(()=>dispatched=true);
+                    var disposed=typeof(GeneratedImageStore).GetField("disposed",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!;
+                    Until(()=>dispatched&&(bool)disposed.GetValue(owner.ImageStore)!);
+                    Check(!publicationRelease.IsSet,"UI dispatcher and independent image cleanup progress during companion I/O hold");
+                }
+                Until(()=>source.Shutdown!=null&&audits.Count==0);
                 Check(!owner.ImageServicesShutdown.IsCompleted&&!source.Shutdown!.IsCompleted&&!worker.IsCompleted&&!CanOpen(),"removed cancelled audit remains owned until actual worker exits");
-                bool rejected=false;try{using var late=source.Downloads.CaptureLocalSnapshot("e-bao");}catch(Exception error) when(error is ObjectDisposedException or OperationCanceledException){rejected=true;}
+                var closedReadClock=System.Diagnostics.Stopwatch.StartNew();bool rejected=false;try{using var late=source.Downloads.CaptureLocalSnapshot("e-bao");}catch(Exception error) when(error is ObjectDisposedException or OperationCanceledException){rejected=true;}
+                Console.WriteLine("CLOSED_READ mode="+mode+" elapsedMs="+closedReadClock.ElapsedMilliseconds+" held="+!publicationRelease.IsSet);
                 Check(rejected,"closed service rejects late snapshot admission");
                 if(timeout){
-                    bool expired=false;try{Complete(owner.ImageServicesShutdown);}catch(TimeoutException){expired=true;}
-                    Check(expired&&!worker.IsCompleted&&!CanOpen(),"five-second timeout reports incomplete drain without releasing worker lease");
+                    bool expired=false;try{Complete(owner.ImageServicesShutdown);}catch(TimeoutException error){expired=true;Console.WriteLine("SHUTDOWN_TIMEOUT mode="+mode+" elapsedMs="+shutdownClock.ElapsedMilliseconds+" type="+error.GetType().FullName+" message="+error.Message+" worker="+worker.Status+" exclusive="+CanOpen()+" held="+!publicationRelease.IsSet+" source="+source.Shutdown!.Status+" all="+owner.ImageServicesShutdown.Status);}
+                    Check(expired&&!worker.IsCompleted&&!CanOpen()&&(!held||!publicationRelease.IsSet),"five-second timeout reports incomplete drain without releasing worker lease");
                 }
+                publicationRelease.Set();if(holder!=null)Complete(holder);if(publicationAttempt!=null){Complete(publicationAttempt);Check(!latePublished&&source.Downloads.Storage.CurrentRoot("e-bao")==installed.RootDirectory,"queued real pointer publication is rejected after exit admission closes");}
+                if(lateAudit!=null)try{Complete(lateAudit);}catch(Exception error) when(error is OperationCanceledException or ObjectDisposedException){}
                 source.Release.TrySetResult();try{Complete(worker);}catch(OperationCanceledException){}
                 if(!timeout)Complete(owner.ImageServicesShutdown);
+                Complete((Task)typeof(DesktopController).GetField("companionResourceShutdown",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!);
                 Check(worker.IsCompleted&&CanOpen(),"real worker exit releases original owner lock");
                 if(!timeout)Check(ProbeLockChild(locked)==0,"independent process acquires exact lock after shutdown");
             }finally{
-                source.Release.TrySetResult();if(worker!=null)try{Complete(worker);}catch(OperationCanceledException){}
+                publicationRelease.Set();if(holder!=null)Complete(holder);if(publicationAttempt!=null)Complete(publicationAttempt);if(lateAudit!=null)try{Complete(lateAudit);}catch(Exception error) when(error is OperationCanceledException or ObjectDisposedException){}source.Release.TrySetResult();if(worker!=null)try{Complete(worker);}catch(OperationCanceledException){}
                 owner.Pet.Close();owner.Dispose();try{Complete(owner.ImageServicesShutdown);}catch(TimeoutException) when(timeout){}
+                Complete((Task)typeof(DesktopController).GetField("companionResourceShutdown",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)!.GetValue(owner)!);
             }
             Directory.Delete(data,true);Check(!Directory.Exists(data),"strict owned data deletion succeeds after real worker exit");
         }
@@ -166,7 +206,8 @@ internal static class OfficialCompanionUiChecks
         public long BeginSelection()=>Downloads.BeginSelection();public bool OwnsSelection(long token)=>Downloads.OwnsSelection(token);
         public OfficialCompanionInstallation? Installed(string id)=>Downloads.Installed(id);
         public OfficialCompanionSnapshot? CaptureLocalSnapshot(string id,CancellationToken cancel)=>Downloads.CaptureLocalSnapshot(id,cancel);
-        public Task<bool> AuditAsync(OfficialCompanionSnapshot snapshot,CancellationToken cancel)=>Downloads.ValidateSnapshotInBackgroundAsync(snapshot,cancel);
+        internal readonly CancellationTokenSource AuditCaller=new();
+        public async Task<bool> AuditAsync(OfficialCompanionSnapshot snapshot,CancellationToken cancel){using var linked=CancellationTokenSource.CreateLinkedTokenSource(cancel,AuditCaller.Token);return await Downloads.ValidateSnapshotInBackgroundAsync(snapshot,linked.Token);}
         public Task<OfficialCompanionResult?> UpdateAsync(string id,OfficialDownloadRouting routing,CancellationToken cancel,OfficialCompanionCheckMode mode=OfficialCompanionCheckMode.Cached,string? availableVersion=null)=>Task.FromResult<OfficialCompanionResult?>(null);
         public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<OfficialCompanionResult>(new IOException("No fixture network"));
         public Task<IList<OfficialCompanionResult>> EnsureAllAsync(OfficialDownloadRouting routing,IProgress<OfficialCompanionProgress>? progress,CancellationToken cancel)=>Task.FromException<IList<OfficialCompanionResult>>(new IOException("No fixture network"));

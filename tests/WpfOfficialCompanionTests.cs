@@ -122,21 +122,36 @@ namespace Dafeiyu.Tests
                     var settings=new PetSettings{SkinId="dafeiyu",SelectedCompanionKey="official:dafeiyu",OnboardingState="skipped",AutoUpdate=false,GreetingEnabled=false,SaveChatHistory=false};
                     var pet=new PetWindow(null,settings,new SettingsStore(Path.Combine(fixture.Root,"settings.json")),null);Field("officialStartupStarted").SetValue(pet,true);
                     var previous=(OfficialCompanionDownloads)Field("officialDownloads").GetValue(pet);if(previous!=null)Wait(previous.ShutdownAsync());Field("officialDownloads").SetValue(pet,service);
-                    var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};Task closing=null;
+                    var imageStore=pet.ImageStore;
+                    var closed=new TaskCompletionSource<bool>();pet.Closed+=delegate{closed.TrySetResult(true);};Task closing=null,reader=null,worker=null;bool timedOut=false;
+                    using(var readEntered=new ManualResetEventSlim())using(var readRelease=new ManualResetEventSlim())using(var watchdog=new System.Threading.Timer(_=>readRelease.Set(),null,Timeout.Infinite,Timeout.Infinite))
                     try{
                         using(var snapshot=service.CaptureLocalSnapshot("dafeiyu")){
-                            var audit=service.ValidateSnapshotInBackgroundAsync(snapshot,caller.Token);Wait(entered.Task);caller.Cancel();
+                            var audit=service.ValidateSnapshotInBackgroundAsync(snapshot,caller.Token);Wait(entered.Task);
+                            var activeAudits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(service);var work=activeAudits.Values.Cast<object>().Single();worker=(Task)work.GetType().GetField("Task",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(work);caller.Cancel();
                             bool cancelled=false;try{Wait(audit);}catch(OperationCanceledException){cancelled=true;}
                             var audits=(System.Collections.IDictionary)typeof(OfficialCompanionDownloads).GetField("audits",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(service);
                             Check(cancelled&&audits.Count==0,"WPF cancelled audit has left active dictionary while real worker is gated");
                         }
-                        closing=CloseFixtureAsync(pet);Wait(closed.Task);
+                        var active=pet.Skin.Snapshot;var snapshotGate=typeof(OfficialCompanionSnapshot).GetField("gate",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(active);
+                        reader=Task.Run(()=>{lock(snapshotGate){active.ReadVerifiedBytes("pet.json");readEntered.Set();readRelease.Wait();}});
+                        Wait(Task.Run(()=>readEntered.Wait()));watchdog.Change(8000,Timeout.Infinite);
+                        var shutdownClock=System.Diagnostics.Stopwatch.StartNew();closing=CloseFixtureAsync(pet);Wait(closed.Task);
+                        Check(!readRelease.IsSet,"WPF actual Close reaches Closed without waiting for the active snapshot read lock");
+                        bool dispatched=false;Dispatcher.CurrentDispatcher.BeginInvoke(new Action(()=>dispatched=true));
+                        var disposed=typeof(GeneratedImageStore).GetField("disposed",BindingFlags.NonPublic|BindingFlags.Instance);
+                        Wait(Task.Run(async()=>{while(!(bool)disposed.GetValue(imageStore))await Task.Delay(1).ConfigureAwait(false);}));Pump();
+                        Check(dispatched&&!readRelease.IsSet,"WPF dispatcher and independent image cleanup progress while active snapshot remains held");
                         string key=Maintenance.CacheResourceLease.Key(Path.Combine(fixture.Root,"cache-maintenance"),installed.RootDirectory);bool locked=false;
                         try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){locked=true;}
                         Check(!closing.IsCompleted&&!pet.ImageServicesShutdown.IsCompleted&&locked,"WPF final image shutdown waits for removed worker retaining actual cache lock");
-                        release.TrySetResult(true);Wait(closing);
-                        using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"WPF worker drain releases real lock before final shutdown completes");
-                    }finally{release.TrySetResult(true);if(closing==null)closing=CloseFixtureAsync(pet);Wait(closing);}
+                        try{Wait(closing);}catch(TimeoutException error){timedOut=true;Console.WriteLine("WPF_SHUTDOWN_TIMEOUT elapsedMs="+shutdownClock.ElapsedMilliseconds+" type="+error.GetType().FullName+" message="+error.Message+" held="+!readRelease.IsSet+" worker="+worker.Status);}
+                        bool stillLocked=false;try{using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None)){} }catch(IOException){stillLocked=true;}
+                        Check(timedOut&&!readRelease.IsSet&&!worker.IsCompleted&&stillLocked,"WPF five-second host timeout leaves active reader and worker leases intact");
+                        readRelease.Set();Wait(reader);release.TrySetResult(true);try{Wait(worker);}catch(OperationCanceledException){}
+                        Wait((Task)Field("officialResourceShutdown").GetValue(pet));
+                        using(var stream=new FileStream(key+".lock",FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(stream.CanWrite,"WPF actual resource and worker completion releases original lock after timeout");
+                    }finally{readRelease.Set();if(reader!=null)Wait(reader);release.TrySetResult(true);if(worker!=null)try{Wait(worker);}catch(OperationCanceledException){}if(closing==null)closing=CloseFixtureAsync(pet);try{Wait(closing);}catch(TimeoutException){if(!timedOut)throw;}Wait((Task)Field("officialResourceShutdown").GetValue(pet));}
                 }
             }
         }

@@ -117,7 +117,7 @@ internal sealed partial class DesktopController
             var skin=SpriteAssets.ReadOfficial(snapshot,persona);var catalog=new HolidayCatalog(snapshot);
             catalog.WithCharacter(snapshot.Installation.Asset.Id,catalog);
             using(var prepared=companionAssets.Prepare(skin)){}
-            lock(preparedCompanions){companionLifetime.Token.ThrowIfCancellationRequested();preparedCompanions[skin.OfficialCharacterId!]=(skin,catalog);companionSnapshots.Add(snapshot);}
+            lock(preparedCompanions){if(Volatile.Read(ref disposeStarted)!=0)throw new OperationCanceledException();companionLifetime.Token.ThrowIfCancellationRequested();preparedCompanions[skin.OfficialCharacterId!]=(skin,catalog);companionSnapshots.Add(snapshot);}
             _=AuditCompanionAsync(snapshot);return (skin,catalog);
         }catch {snapshot.Dispose();throw;}
     }

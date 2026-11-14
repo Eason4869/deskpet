@@ -25,23 +25,24 @@ namespace Dafeiyu
         // Active dictionaries may drop cancelled callers before their workers
         // release native/transfer leases. Lifetime ownership ends at Task completion.
         readonly HashSet<Task> workers=new HashSet<Task>();
+        readonly object shutdownInitGate=new object();
         Task shutdown;
         bool maintenanceRunning,maintenanceRequested;
         Task<Maintenance.CacheCleanResult> historyMaintenance=Task.FromResult(new Maintenance.CacheCleanResult());
         internal Task<Maintenance.CacheCleanResult> HistoryMaintenance {get{lock(gate)return historyMaintenance;}}
         readonly OfficialCompanionReadMode readMode;
-        readonly string appVersion;bool disposed;long selection;
+        readonly string appVersion;volatile bool stopping;bool disposed;long selection;
         internal Func<DateTime> UtcNow=()=>DateTime.UtcNow;
         internal OfficialCompanionStorage Storage {get{return store;}}
         public Task<Maintenance.CacheCleanResult> ScheduleMaintenance()
         {
             lock(gate){
-                if(disposed)return historyMaintenance;maintenanceRequested=true;if(maintenanceRunning)return historyMaintenance;
+                if(stopping||disposed)return historyMaintenance;maintenanceRequested=true;if(maintenanceRunning)return historyMaintenance;
                 maintenanceRunning=true;var cancel=lifetime.Token;string dataRoot=System.IO.Path.GetDirectoryName(store.Root);
                 historyMaintenance=Task.Run(()=>{
                     var total=new Maintenance.CacheCleanResult();
                     try{while(true){
-                        lock(gate){if(disposed||!maintenanceRequested){maintenanceRunning=false;return total;}maintenanceRequested=false;}
+                        lock(gate){if(stopping||disposed||!maintenanceRequested){maintenanceRunning=false;return total;}maintenanceRequested=false;}
                         var result=Maintenance.OfficialCompanionMaintenance.MaintainHistory(dataRoot,UtcNow(),cancel);
                         total.DeletedItems+=result.DeletedItems;total.FreedBytes+=result.FreedBytes;total.SkippedItems+=result.SkippedItems;total.FailedItems+=result.FailedItems;
                     }}catch{lock(gate)maintenanceRunning=false;throw;}
@@ -92,8 +93,8 @@ namespace Dafeiyu
             OfficialCompanionRules.Version(appVersion);if(channel!=UpdateChannel.Stable&&channel!=UpdateChannel.Preview)throw new ArgumentException(TextResources.Get("officialCompanionDownloads.officialCompanionDownloads.text"));
             this.readMode=readMode;this.appVersion=appVersion;this.transport=transport;this.validateNative=validateNative;store=new OfficialCompanionStorage(dataRoot);feed=new OfficialCompanionFeed(transport,appVersion,channel,store.Root);
         }
-        void Alive(){if(disposed)throw new ObjectDisposedException("OfficialCompanionDownloads");}
-        void CheckAlive(){lock(gate){lifetime.Token.ThrowIfCancellationRequested();Alive();}}
+        void Alive(){if(disposed)throw new ObjectDisposedException("OfficialCompanionDownloads");if(stopping)throw new OperationCanceledException(lifetime.Token);}
+        void CheckAlive(){if(stopping)throw new OperationCanceledException(lifetime.Token);lock(gate){lifetime.Token.ThrowIfCancellationRequested();Alive();}}
         bool Compatible(OfficialCompanionInstallation installation){return installation!=null&&ReleaseVersion.Parse(installation.Asset.MinimumAppVersion).CompareTo(ReleaseVersion.Parse(appVersion))<=0;}
         void Retain(OfficialCompanionInstallation installed)
         {
@@ -172,7 +173,7 @@ namespace Dafeiyu
             },cancel);
         }
         public long BeginSelection(){lock(gate){Alive();return ++selection;}}
-        public bool OwnsSelection(long token){lock(gate)return !disposed&&token==selection;}
+        public bool OwnsSelection(long token){if(stopping)return false;lock(gate)return !stopping&&!disposed&&token==selection;}
         public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel)
         {return EnsureAsync(id,routing,mode,progress,cancel,false,false);}
         public Task<OfficialCompanionResult> EnsureAsync(string id,OfficialDownloadRouting routing,OfficialCompanionCheckMode mode,IProgress<OfficialCompanionProgress> progress,CancellationToken cancel,bool forceRepair,bool background)
@@ -241,7 +242,7 @@ namespace Dafeiyu
             public void Dispose(){completed.TrySetResult(true);}
         }
         IDisposable BeginReader()
-        {lock(gate){Alive();var completed=new TaskCompletionSource<bool>();Observe(completed.Task);return new Reader(completed);}}
+        {if(stopping)throw new OperationCanceledException(lifetime.Token);lock(gate){Alive();var completed=new TaskCompletionSource<bool>();Observe(completed.Task);return new Reader(completed);}}
 
         async Task<T> LeaseAsync<T>(Work<T> work,long lease,CancellationToken cancel,Action remove)
         {
@@ -340,21 +341,38 @@ namespace Dafeiyu
         // including removed audit/install entries. No worker lease is force-closed.
         public Task ShutdownAsync()
         {
-            lock(publicationGate)lock(gate){
+            var deadline=Task.Delay(TimeSpan.FromSeconds(5));
+            lock(shutdownInitGate){
                 if(shutdown!=null)return shutdown;
-                disposed=true;lifetime.Cancel();
-                foreach(var lease in installedLeases.Values)lease.Dispose();installedLeases.Clear();
-                shutdown=DrainWorkersAsync(workers.ToArray());
+                // Close admission before scheduling. Publication, cancellation
+                // callbacks and filesystem lease disposal must never block UI.
+                stopping=true;
+                var closing=Task.Run((Func<Task>)StopWorkersAsync);
+                closing.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted|TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+                shutdown=DrainWorkersAsync(closing,deadline);
                 shutdown.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted|TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
                 return shutdown;
             }
         }
-        static async Task DrainWorkersAsync(Task[] accepted)
+        async Task StopWorkersAsync()
         {
+            Task[] accepted;IDisposable[] leases;
+            // Preserve the publication/exit boundary: a commit already inside it
+            // finishes before disposal; queued commits fail the stopping check.
+            lock(publicationGate){
+                lifetime.Cancel();
+                lock(gate){disposed=true;leases=installedLeases.Values.ToArray();installedLeases.Clear();accepted=workers.ToArray();}
+                foreach(var lease in leases)lease.Dispose();
+            }
             var all=Task.WhenAll(accepted);
-            if(await Task.WhenAny(all,Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false)!=all)
-                throw new TimeoutException("Official companion shutdown exceeded its five-second worker drain.");
             try{await all.ConfigureAwait(false);}catch(OperationCanceledException){if(all.IsFaulted)throw;}
+        }
+        internal static async Task DrainWorkersAsync(Task closing,Task deadline)
+        {
+            var observed=closing.ContinueWith(t=>{var ignored=t.Exception;},CancellationToken.None,TaskContinuationOptions.OnlyOnFaulted|TaskContinuationOptions.ExecuteSynchronously,TaskScheduler.Default);
+            if(await Task.WhenAny(closing,deadline).ConfigureAwait(false)!=closing)
+                throw new TimeoutException("Official companion shutdown exceeded its five-second worker drain.");
+            await closing.ConfigureAwait(false);
         }
         public void Dispose()
         {

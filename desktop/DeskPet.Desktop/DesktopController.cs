@@ -353,9 +353,9 @@ internal sealed partial class DesktopController : IDisposable
         if(Interlocked.Exchange(ref disposeStarted,1)!=0)return;
         exiting = true;
         relationshipFeedback.Dispose();relationshipNotice?.Close();
-        companionAssets.DefaultClipFailed-=DefaultCompanionFailed;companionLifetime.Cancel();
-        companionInstallationBubble?.Shutdown();activeCompanionPins?.Dispose();lock(preparedCompanions){foreach(var snapshot in companionSnapshots)snapshot.Dispose();companionSnapshots.Clear();}
-         preparation?.Dispose(); companionSelection?.Cancel(); companionRefreshProgress?.Dispose();
+        companionAssets.DefaultClipFailed-=DefaultCompanionFailed;
+        companionInstallationBubble?.Shutdown();companionRefreshProgress?.Dispose();
+        var companions=ShutdownCompanionsAsync();
         lifetime.ShutdownRequested-=ShutdownRequested;
         CloseAgentJobViews();DisposeNotificationServices();DisposeProactiveGreetingSpeech();
         proactiveHistory?.Close();
@@ -365,7 +365,6 @@ internal sealed partial class DesktopController : IDisposable
         Holidays.RetrySave();
         tray?.Dispose();
         foreach(var binding in hotkeys)binding.Dispose();
-        var companions=ShutdownCompanionsAsync();
         var independent=Task.Run(async()=>
         {
             await ObservationSettingsIdle;
@@ -382,9 +381,23 @@ internal sealed partial class DesktopController : IDisposable
         });
         ImageServicesShutdown=Task.WhenAll(companions,independent);
     }
+    private Task companionResourceShutdown=Task.CompletedTask;
     private async Task ShutdownCompanionsAsync()
     {
-        await officialCompanions.ShutdownAsync().ConfigureAwait(false);
+        var deadline=Task.Delay(TimeSpan.FromSeconds(5));
+        var source=officialCompanions.ShutdownAsync();
+        // Token callbacks, decoded pins and retained snapshots can wait for a
+        // real reader's locks. Each owner must finish, never on the UI thread.
+        companionResourceShutdown=Task.WhenAll(
+            Task.Run(()=>companionLifetime.Cancel()),
+            Task.Run(()=>preparation?.Dispose()),
+            Task.Run(()=>{
+                activeCompanionPins?.Dispose();
+                OfficialCompanionSnapshot[] snapshots;
+                lock(preparedCompanions){snapshots=companionSnapshots.ToArray();companionSnapshots.Clear();}
+                foreach(var snapshot in snapshots)snapshot.Dispose();
+            }));
+        await OfficialCompanionDownloads.DrainWorkersAsync(Task.WhenAll(source,companionResourceShutdown),deadline).ConfigureAwait(false);
         companionNative.Dispose();
     }
 }

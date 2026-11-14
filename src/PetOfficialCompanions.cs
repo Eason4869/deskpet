@@ -12,7 +12,8 @@ namespace Dafeiyu
     public sealed partial class PetWindow
     {
         readonly WpfOfficialNativeValidator officialNative=new WpfOfficialNativeValidator();
-        Task officialShutdown=Task.FromResult(0);
+        Task officialShutdown=Task.FromResult(0),officialResourceShutdown=Task.FromResult(0);
+        volatile bool officialStopping;
         readonly CancellationTokenSource officialLifetime=new CancellationTokenSource();
         OfficialCompanionDownloads officialDownloads;
         GitHubUpdates officialTransport;
@@ -101,7 +102,7 @@ namespace Dafeiyu
         bool CanRequestCompanion(bool onboarding=false,bool startupRestore=false)
         {
             if(onboarding&&GuideCompanionSelection)guide.AllowCompanionPreparation();else if(NoticeOnlyCompanionGuide())return false;
-            if(closing||IsUpdating)return false;
+            if(officialStopping||closing||IsUpdating)return false;
             if(preferences!=null&&preferences.HasUnsavedEdits){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice");preferences.ShowNotice(Notice);return false;}
             if(startupRestore?HolidayBusinessBusy:CompanionBusinessBusy){Notice=TextResources.Get("petOfficialCompanions.canRequestCompanion.notice.alternativeA");return false;}
             return true;
@@ -176,7 +177,7 @@ namespace Dafeiyu
                 finally{if(cancel.IsCancellationRequested&&OwnsOfficial(token)&&CurrentCompanionSelection!=null&&CurrentCompanionSelection.Request==token&&CurrentCompanionSelection.Stage!="cancelled")SelectionStage(token,skin,origin,"cancelled");if(heldPreparation!=null)heldPreparation.Dispose();if(ReferenceEquals(officialSelection,cancel))officialSelection=null;if(renderedSelection==null||renderedSelection.Request!=token)selectionClocks.Remove(token);}
             }
         }
-        bool OwnsOfficial(long token){return !closing&&officialDownloads!=null&&officialDownloads.OwnsSelection(token);}
+        bool OwnsOfficial(long token){return !officialStopping&&!closing&&officialDownloads!=null&&officialDownloads.OwnsSelection(token);}
         async Task<bool> RefreshOfficialAsync(string id,long token,bool selecting,CompanionSelectionOrigin origin,Window owner,OfficialCompanionCheckMode mode)
         {
             if(selecting)return await RequestSkinAsync(Catalog.FindOfficial(id),origin,owner);
@@ -243,7 +244,7 @@ namespace Dafeiyu
                     var source=new SkinDefinition(persona,snapshot.Installation.RootDirectory,manifest){BuiltinCharacterId=snapshot.Installation.Asset.Id,OfficialInstallation=snapshot.Installation,Snapshot=snapshot};
                     PrepareDefault(source);var wardrobe=new HolidayCatalog(snapshot);wardrobe.WithCharacter(snapshot.Installation.Asset.Id,wardrobe);return Tuple.Create(source,wardrobe);
                 },cancel);
-                officialLifetime.Token.ThrowIfCancellationRequested();cancel.ThrowIfCancellationRequested();
+                if(officialStopping)throw new OperationCanceledException();officialLifetime.Token.ThrowIfCancellationRequested();cancel.ThrowIfCancellationRequested();
                 retainedSnapshots.Add(snapshot);officialSources[snapshot.Installation.Asset.Id]=prepared.Item1;officialCatalogs[snapshot.Installation.RootDirectory]=prepared.Item2;
                 var audit=AuditSnapshotAsync(snapshot);return prepared.Item1;
             }catch{snapshot.Dispose();throw;}
@@ -251,7 +252,7 @@ namespace Dafeiyu
         async Task AuditSnapshotAsync(OfficialCompanionSnapshot snapshot)
         {try{await OfficialDownloads.ValidateSnapshotInBackgroundAsync(snapshot,officialLifetime.Token);}catch(OperationCanceledException){}catch(Exception error){if(!OfficialError(error))throw;}}
         void PublishInactiveOfficial(SkinDefinition skin)
-        {if(Skin.PickerKey==skin.PickerKey)return;Catalog.ReplaceOfficial(skin);MergeOfficialHoliday(skin);if(preferences!=null)preferences.RefreshSkinChoices();}
+        {if(officialStopping||Skin.PickerKey==skin.PickerKey)return;Catalog.ReplaceOfficial(skin);MergeOfficialHoliday(skin);if(preferences!=null)preferences.RefreshSkinChoices();}
         void QueueOfficial(SkinDefinition skin,long token,bool select)
         {if(!OwnsOfficial(token)){PublishInactiveOfficial(skin);return;}deferredOfficial=new PendingOfficialSource{Skin=skin,Request=token,Select=select,ExpectedKey=Skin.PickerKey,ExpectedSource=Skin,Pointer=skin.OfficialInstallation==null?CurrentOfficialPointer(skin.BuiltinCharacterId):Path.GetFileName(skin.Source)};}
         string CurrentOfficialPointer(string id)
@@ -444,8 +445,25 @@ namespace Dafeiyu
                 retainedSnapshots.Remove(snapshot);snapshot.Dispose();
             }
         }
-        async Task ShutdownOfficialCompanionsAsync()
-        {try{if(officialDownloads!=null)await officialDownloads.ShutdownAsync().ConfigureAwait(false);}finally{if(officialTransport!=null)officialTransport.Dispose();}}
-        void DisposeOfficialCompanions(){if(companionInstallationBubble!=null)companionInstallationBubble.Shutdown();WpfPreparedCompanion.Prepared-=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed-=DefaultCompanionFailed;officialLifetime.Cancel();if(preparation!=null)preparation.Dispose();officialShutdown=ShutdownOfficialCompanionsAsync();foreach(var snapshot in retainedSnapshots)snapshot.Dispose();retainedSnapshots.Clear();WpfPreparedCompanion.Deactivate();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;}
+        async Task ShutdownOfficialCompanionsAsync(OfficialCompanionSnapshot[] snapshots)
+        {
+            var deadline=Task.Delay(TimeSpan.FromSeconds(5));
+            var source=officialDownloads==null?Task.FromResult(0):officialDownloads.ShutdownAsync();
+            officialResourceShutdown=Task.WhenAll(
+                Task.Run((Action)officialLifetime.Cancel),
+                Task.Run(()=>{if(preparation!=null)preparation.Dispose();}),
+                Task.Run(()=>{foreach(var snapshot in snapshots)snapshot.Dispose();}));
+            try{await OfficialCompanionDownloads.DrainWorkersAsync(Task.WhenAll(source,officialResourceShutdown),deadline).ConfigureAwait(false);}
+            finally{if(officialTransport!=null)officialTransport.Dispose();}
+        }
+        void DisposeOfficialCompanions()
+        {
+            if(officialStopping)return;officialStopping=true;
+            if(companionInstallationBubble!=null)companionInstallationBubble.Shutdown();
+            WpfPreparedCompanion.Prepared-=PreparedCompanionFrame;WpfPreparedCompanion.DefaultFailed-=DefaultCompanionFailed;
+            var snapshots=retainedSnapshots.ToArray();retainedSnapshots.Clear();
+            officialShutdown=ShutdownOfficialCompanionsAsync(snapshots);
+            WpfPreparedCompanion.Deactivate();officialCatalogs.Clear();officialSources.Clear();deferredOfficial=null;
+        }
     }
 }

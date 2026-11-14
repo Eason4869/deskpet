@@ -45,6 +45,7 @@ int assertions = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); assertions++; }
 void Until(Func<bool> ready) { var started = System.Diagnostics.Stopwatch.StartNew(); while (!ready()) { if (started.ElapsedMilliseconds > 10000) throw new TimeoutException("UI operation did not complete"); Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); } Dispatcher.UIThread.RunJobs(); }
 void Complete(Task task) { Until(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
+void CloseController(DesktopController owner){owner.Pet.Close();owner.Dispose();Complete(owner.ImageServicesShutdown);}
 T Result<T>(Task<T> task) { Complete(task); return task.GetAwaiter().GetResult(); }
 void Reject(Action action, string name) { try { action(); } catch (Exception e) when (e is InvalidDataException or ArgumentException or IOException or JsonException) { assertions++; return; } throw new Exception("FAIL: accepted " + name); }
 object Asset(string name, string? url = null) => new { name, browser_download_url = url ?? "https://github.com/Eason4869/deskpet/releases/download/v0.6.0/" + Uri.EscapeDataString(name), size = 1024L };
@@ -388,19 +389,21 @@ try
     var migrationStore = new SettingsStore(Path.Combine(migrationDirectory, "settings.json")); migrationStore.Save(legacy);
     using (var upgraded = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
+        try{
         Check(upgraded.ShouldShowAutomaticGuide && upgraded.Settings.OnboardingState == "new" && upgraded.Settings.OnboardingStep == 0, "actual saved 0.5.6 configuration triggers current-version UI guide at first step");
         Check(migrationStore.Load().LastOnboardingSeries == runningSeries, "current series upgrade is persisted before opening UI guide");
         var upgradedGuide = new GuideWindow(upgraded); upgradedGuide.Show(); upgradedGuide.Close(); Dispatcher.UIThread.RunJobs();
         Check(migrationStore.Load().OnboardingState == "deferred", "closing upgraded UI guide persists the deferred state");
-        upgraded.Pet.Close();
+        }finally{CloseController(upgraded);}
     }
     using (var reopened = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(migrationDirectory)))
     {
-        Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == runningSeries, "restarting current version after closing upgrade guide never opens it again");
-        reopened.Pet.Close();
+        try{Check(!reopened.ShouldShowAutomaticGuide && reopened.Settings.LastOnboardingSeries == runningSeries, "restarting current version after closing upgrade guide never opens it again");
+        }finally{CloseController(reopened);}
     }
     var runtime = new TestRuntime(Path.Combine(directory, "data"));
     using var controller = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), runtime);
+    try{
     assertions += ImageUiChecks.Run(Path.Combine(directory, "image-ui"));
     assertions += ImageTaskCenterUiChecks.Run(Path.Combine(directory, "image-task-ui"));
     const string richMarkdown = "# 原生标题\n\n普通 **粗体**、*斜体*、~~删除~~、`inline()` 和 [文档](https://example.com)。\n\n> 引用文本\n\n3. 有序项目\n4. 第二项\n\n- 无序项目\n\n```csharp\nvar answer = 42;\n```\n\n| 名称 | 值 |\n| --- | --- |\n| Markdown | **已渲染** |";
@@ -548,7 +551,7 @@ try
     Check(narrowScroll.Offset.Y > 0, "slim scrollbar remains draggable from the invisible padded grab area beside its six pixel thumb");
     AvaloniaHeadlessPlatform.ForceRenderTimerTick(); using (var scrollbarFrame = scrollHost.CaptureRenderedFrame()) scrollbarFrame!.Save(Path.Combine(AppContext.BaseDirectory, "artifacts", "slim-scrollbar.png"), new PngBitmapEncoderOptions()); scrollHost.Close();
     controller.Settings.OnboardingState = "completed"; controller.Save();
-    using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")))) { Check(!restarted.ShouldShowAutomaticGuide, "same-series restart does not reopen completed guide"); restarted.Pet.Close(); }
+    using (var restarted = new DesktopController(new ClassicDesktopStyleApplicationLifetime(), new TestRuntime(Path.Combine(directory, "data")))) { try{Check(!restarted.ShouldShowAutomaticGuide, "same-series restart does not reopen completed guide");}finally{CloseController(restarted);} }
     Check(!OnboardingUpgrade.Prepare(controller.Settings, runningSeries + ".99").ShowGuide, "patch upgrade does not show UI guide");
     var upgrade = OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".0"); Check(upgrade.ShowGuide && controller.Settings.OnboardingStep == 0, "next series upgrade resets actual UI guide state");
     Check(!OnboardingUpgrade.Prepare(controller.Settings, followingSeries + ".1").ShowGuide, "claimed next series guide not retriggered");
@@ -813,8 +816,8 @@ try
     GuideUiChecks(controller);
     editor.Dispose(); editorHost.Close();
     foreach (var window in windows) window.Close();
-    controller.Pet.Close(); Dispatcher.UIThread.RunJobs();
     Console.WriteLine("PASS: " + assertions + " Desktop UI/resource/animation assertions");
+    }finally{CloseController(controller);}
 }
 finally
 {
