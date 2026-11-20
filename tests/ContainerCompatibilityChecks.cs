@@ -260,12 +260,15 @@ namespace Dafeiyu.Tests
                 string main = Digest(path);
                 string wal = Digest(path + "-wal");
                 string shared = Digest(path + "-shm");
-                Expect<InvalidDataException>(() => reader.Inspect(path, CancellationToken.None), "SQLite rejects active WAL before reading stale data");
+                Expect<AttachmentFileProblem>(() => reader.Inspect(path, CancellationToken.None), "SQLite rejects active WAL before reading stale data");
+                var batch = FileContentService.ImportBatch(new[] { path }, Path.Combine(directory, "wal-import"), false, null, CancellationToken.None);
+                Require(batch.Files.Count == 0 && batch.Errors.Count == 1 && batch.Errors[0].Contains("导出独立 SQLite 文件"),
+                    "SQLite WAL attachment explains how to export a consistent standalone copy");
                 Require(main == Digest(path) && wal == Digest(path + "-wal") && shared == Digest(path + "-shm"),
                     "SQLite rejection preserves active database and sidecar bytes");
             }
             finally { api.Close(db); }
-            Expect<InvalidDataException>(() => reader.Inspect(path, CancellationToken.None), "SQLite rejects WAL-mode copies missing sidecars");
+            Expect<AttachmentFileProblem>(() => reader.Inspect(path, CancellationToken.None), "SQLite rejects WAL-mode copies missing sidecars");
             return checks;
         }
 

@@ -147,9 +147,11 @@ namespace Dafeiyu
             string extension = Extension(path);
             if (IsImage(extension)) return ChatAttachment.Read(path);
             if (!CanRead(extension)) throw new ApiException(TextResources.Get("fileCompatibility.type"));
+            bool sqlite = IsSqlite(extension);
+            if (sqlite) SqliteFileReader.EnsureStandalone(path);
             var store = new AttachmentFileStore(dataRoot);
             var file = store.Import(path, extension, IsMedia(extension) ? AttachmentFileStore.AbsoluteFileLimit : DocumentLimit, persistent, token,
-                IsSqlite(extension) ? new Action<string, Stream>(SqliteFileReader.EnsureStandalone) : null,ownerId);
+                sqlite ? new Action<string, Stream>(SqliteFileReader.EnsureStandalone) : null,ownerId);
             try
             {
                 using (var lease = store.Open(file,token))
